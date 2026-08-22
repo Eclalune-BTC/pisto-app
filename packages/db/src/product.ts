@@ -332,6 +332,7 @@ export function createProductRepository(db: Database): ProductRepository {
             and(
               eq(session.id, actor.sessionId),
               eq(session.userId, actor.userId),
+              eq(session.activeOrganizationId, businessId),
               sql`${session.expiresAt} > transaction_timestamp()`,
             ),
           )
@@ -462,6 +463,7 @@ export function createProductRepository(db: Database): ProductRepository {
           and(
             eq(session.id, actor.sessionId),
             eq(session.userId, actor.userId),
+            eq(session.activeOrganizationId, businessId),
             sql`${session.expiresAt} > transaction_timestamp()`,
           ),
         )
@@ -502,6 +504,7 @@ export function createProductRepository(db: Database): ProductRepository {
           inner join ${session}
             on ${session.id} = ${actor.sessionId}
             and ${session.userId} = ${actor.userId}
+            and ${session.activeOrganizationId} = ${businessId}
             and ${session.expiresAt} > transaction_timestamp()
           where ${businessSettings.businessId} = ${businessId}
         ), clock as (

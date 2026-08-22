@@ -518,6 +518,22 @@ describe("product repository on PostgreSQL 18", () => {
       timeZone: "America/El_Salvador",
     });
     businessIds.push(secondBusiness.business.id);
+    await database.db
+      .update(session)
+      .set({ activeOrganizationId: secondBusiness.business.id })
+      .where(eq(session.id, sessionIds[0] as string));
+    await expect(
+      repository.createSale(activeActor, {
+        idempotencyKey: crypto.randomUUID(),
+        grossMinorUnits: "100",
+        occurredLocalDate: emptySummary.periodStartLocal,
+        occurredLocalTime: "12:04",
+      }),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await database.db
+      .update(session)
+      .set({ activeOrganizationId: created.business.id })
+      .where(eq(session.id, sessionIds[0] as string));
     await expect(
       repository.getSale(
         { ...secondActor, activeBusinessId: secondBusiness.business.id },

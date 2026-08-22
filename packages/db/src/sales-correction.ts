@@ -74,6 +74,7 @@ export function createSalesCorrectionRepository(db: Database): SalesCorrectionRe
           and(
             eq(session.id, actor.sessionId),
             eq(session.userId, actor.userId),
+            eq(session.activeOrganizationId, businessId),
             sql`${session.expiresAt} > transaction_timestamp()`,
           ),
         )
