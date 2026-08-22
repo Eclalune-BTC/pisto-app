@@ -58,6 +58,11 @@ jobs:
       - name: Validate source and tests
         run: bun run check
 
+      - name: Apply and exercise PostgreSQL migrations
+        run: |
+          bun run db:migrate
+          bun run --filter @pisto/db test:integration
+
       - name: Reject new dependency advisories
         run: bun run audit:ci
 

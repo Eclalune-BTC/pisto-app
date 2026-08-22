@@ -136,11 +136,11 @@ multiple recurring report jobs and direct-entry value. On compact native and web
 more than three to five durable destinations; fewer are valid. Wide web may expose nested module
 links and contextual secondary navigation without changing product meaning.
 
-The product brief requires conversational Spanish, but the exact visible-copy locale is still an
-owner decision. Neutral Latin American Spanish (`es-419`) is the initial hypothesis, evaluated with
-Salvadoran terminology and users before implementation. Source code and repository documentation
-remain English. A second locale is a separately briefed capability, not a reason to install
-speculative localization infrastructure now.
+The manual increment uses neutral Latin American Spanish copy with Salvadoran `es-SV` money/date
+formatting as its explicit initial product choice. Validate it with Salvadoran terminology and users
+before release. Source code and repository documentation remain English. The typed `es-SV` catalog
+separates presentation from logic without claiming a second language; a second locale, selector, and
+preference synchronization remain separately briefed capabilities. See [ADR 0013](adrs/0013-es-sv-localization-boundary.md).
 
 Do not place one permanent tab per capability. Do not turn Home into a grid of feature cards. New
 capabilities enter the shell only when they introduce a durable user job; otherwise they live inside

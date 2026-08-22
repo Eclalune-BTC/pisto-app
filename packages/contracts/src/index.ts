@@ -15,6 +15,8 @@ export const apiErrorCodeSchema = z.enum([
   "BILLING_UNAVAILABLE",
   "INTERNAL_ERROR",
   "SERVICE_UNAVAILABLE",
+  "BUSINESS_REQUIRED",
+  "IDEMPOTENCY_CONFLICT",
 ]);
 
 export const apiErrorEnvelopeSchema = z.object({
@@ -133,6 +135,131 @@ export const billingRedirectResponseSchema = z.object({
   }),
 });
 
+const signedBigintMaximum = 9_223_372_036_854_775_807n;
+
+export const aggregateIntegerSchema = z
+  .string()
+  .regex(/^(?:0|[1-9]\d*)$/, "Must be a canonical non-negative integer");
+
+function isSignedBigint(value: string): boolean {
+  return /^(?:0|[1-9]\d{0,18})$/.test(value) && BigInt(value) <= signedBigintMaximum;
+}
+
+export const minorUnitsSchema = z
+  .string()
+  .regex(/^(?:0|[1-9]\d{0,18})$/, "Must be a canonical non-negative integer")
+  .refine(isSignedBigint, "Must fit in a signed 64-bit integer");
+
+export const positiveMinorUnitsSchema = minorUnitsSchema.refine(
+  (value) => isSignedBigint(value) && BigInt(value) > 0n,
+  "Must be greater than zero",
+);
+
+export const currencyCodeSchema = z.string().regex(/^[A-Z]{3}$/);
+export const currencyMinorUnitDigitsSchema = z.number().int().min(0).max(4);
+export const timeZoneSchema = z.string().trim().min(1).max(64);
+export const localDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+export const localTimeSchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
+
+export const businessRoleSchema = z.enum(["owner", "admin", "member"]);
+
+export const businessPermissionSchema = z.enum([
+  "business:configure",
+  "business:read",
+  "sales:create",
+  "sales:read",
+  "sales:summary:read",
+]);
+
+export const businessAccessSchema = z.object({
+  role: businessRoleSchema,
+  permissions: z.array(businessPermissionSchema),
+});
+
+export const businessSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  currency: currencyCodeSchema,
+  currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
+  timeZone: timeZoneSchema,
+  createdAt: z.string().datetime({ offset: true }),
+  access: businessAccessSchema,
+});
+
+export const businessesResponseSchema = z.object({
+  data: z.object({
+    activeBusinessId: z.string().min(1).nullable(),
+    items: z.array(businessSchema),
+  }),
+});
+
+export const createBusinessRequestSchema = z
+  .object({
+    name: z.string().trim().min(2).max(80),
+    currency: currencyCodeSchema,
+    timeZone: timeZoneSchema,
+  })
+  .strict();
+
+export const createBusinessResponseSchema = z.object({
+  data: z.object({
+    business: businessSchema,
+    replayed: z.boolean(),
+  }),
+});
+
+export const saleStatusSchema = z.enum(["posted", "voided"]);
+
+export const saleSchema = z.object({
+  id: z.string().uuid(),
+  status: saleStatusSchema,
+  entryMode: z.literal("total_only"),
+  grossMinorUnits: positiveMinorUnitsSchema,
+  currency: currencyCodeSchema,
+  currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
+  occurredAt: z.string().datetime({ offset: true }),
+  occurredLocalDate: localDateSchema,
+  occurredLocalTime: localTimeSchema,
+  timeZone: timeZoneSchema,
+  description: z.string().min(1).max(240).nullable(),
+  createdAt: z.string().datetime({ offset: true }),
+});
+
+export const createSaleRequestSchema = z
+  .object({
+    idempotencyKey: z.string().uuid(),
+    grossMinorUnits: positiveMinorUnitsSchema,
+    occurredLocalDate: localDateSchema,
+    occurredLocalTime: localTimeSchema,
+    description: z.string().trim().min(1).max(240).optional(),
+  })
+  .strict();
+
+export const saleResponseSchema = z.object({
+  data: z.object({
+    sale: saleSchema,
+    replayed: z.boolean(),
+  }),
+});
+
+export const previousMonthSummarySchema = z.object({
+  periodStartLocal: localDateSchema,
+  periodEndLocalExclusive: localDateSchema,
+  periodStartUtc: z.string().datetime({ offset: true }),
+  periodEndUtcExclusive: z.string().datetime({ offset: true }),
+  timeZone: timeZoneSchema,
+  currency: currencyCodeSchema,
+  currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
+  grossMinorUnits: aggregateIntegerSchema,
+  saleCount: aggregateIntegerSchema,
+  averageMinorUnits: minorUnitsSchema.nullable(),
+  queriedAt: z.string().datetime({ offset: true }),
+});
+
+export const previousMonthSummaryResponseSchema = z.object({
+  data: z.object({ summary: previousMonthSummarySchema }),
+});
+
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 export type ApiErrorEnvelope = z.infer<typeof apiErrorEnvelopeSchema>;
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
@@ -146,3 +273,15 @@ export type EntitlementsResponse = z.infer<typeof entitlementsResponseSchema>;
 export type BillingStateResponse = z.infer<typeof billingStateResponseSchema>;
 export type BillingCheckoutRequest = z.infer<typeof billingCheckoutRequestSchema>;
 export type BillingRedirectResponse = z.infer<typeof billingRedirectResponseSchema>;
+export type BusinessRole = z.infer<typeof businessRoleSchema>;
+export type BusinessPermission = z.infer<typeof businessPermissionSchema>;
+export type BusinessAccess = z.infer<typeof businessAccessSchema>;
+export type Business = z.infer<typeof businessSchema>;
+export type BusinessesResponse = z.infer<typeof businessesResponseSchema>;
+export type CreateBusinessRequest = z.infer<typeof createBusinessRequestSchema>;
+export type CreateBusinessResponse = z.infer<typeof createBusinessResponseSchema>;
+export type Sale = z.infer<typeof saleSchema>;
+export type CreateSaleRequest = z.infer<typeof createSaleRequestSchema>;
+export type SaleResponse = z.infer<typeof saleResponseSchema>;
+export type PreviousMonthSummary = z.infer<typeof previousMonthSummarySchema>;
+export type PreviousMonthSummaryResponse = z.infer<typeof previousMonthSummaryResponseSchema>;

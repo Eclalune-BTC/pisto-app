@@ -1,12 +1,13 @@
 import { Slot } from "@rn-primitives/slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text } from "react-native";
 
 import { cn } from "@/lib/cn";
 
 const buttonVariants = cva(
-  "min-h-12 flex-row items-center justify-center gap-2 rounded-xl px-5 active:opacity-80 disabled:opacity-45",
+  "min-h-12 flex-row items-center justify-center gap-2 rounded-lg px-5 active:opacity-80 disabled:opacity-45",
   {
     variants: {
       variant: {
@@ -64,13 +65,15 @@ export function Button({
   variant,
   ...props
 }: ButtonProps) {
+  const { t } = useTranslation();
   const Component = asChild ? Slot : Pressable;
 
   return (
     <Component
       {...props}
       accessibilityLabel={
-        accessibilityLabel ?? (loading ? (label ? `${label}, loading` : "Loading") : undefined)
+        accessibilityLabel ??
+        (loading ? (label ? `${label}, ${t("common.loading")}` : t("common.loading")) : undefined)
       }
       accessibilityRole="button"
       accessibilityState={{

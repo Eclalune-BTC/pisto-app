@@ -64,6 +64,18 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     name: "Pisto",
+    plugins: [
+      ...(config.plugins ?? []),
+      [
+        "expo-localization",
+        {
+          supportedLocales: {
+            android: ["es-SV"],
+            ios: ["es-SV"],
+          },
+        },
+      ],
+    ],
     slug: "pisto",
     scheme,
     ios: {

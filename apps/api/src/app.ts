@@ -1,6 +1,6 @@
 import type { Auth } from "@pisto/auth";
 import type { BillingRuntime } from "@pisto/billing";
-import type { DatabaseHandle } from "@pisto/db";
+import type { DatabaseHandle, ProductRepository } from "@pisto/db";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
@@ -19,6 +19,7 @@ export function createApp(input: {
   auth: Auth;
   billing: BillingRuntime;
   database: DatabaseHandle;
+  product: ProductRepository;
 }) {
   const app = new Hono<AppEnv>();
 
@@ -50,10 +51,29 @@ export function createApp(input: {
     }),
   );
 
+  app.use("/v1/*", async (context, next) => {
+    if (context.req.method === "POST") {
+      const origin = context.req.header("origin");
+      if (origin && !input.config.corsOrigins.includes(origin)) {
+        throw new ApiError(403, "FORBIDDEN", "Request origin is not allowed");
+      }
+      const contentType = context.req.header("content-type")?.toLowerCase() ?? "";
+      if (!contentType.startsWith("application/json")) {
+        throw new ApiError(415, "BAD_REQUEST", "A JSON request body is required");
+      }
+    }
+    await next();
+    context.header("Cache-Control", "no-store");
+  });
+
   app.route("/", systemRoutes({ database: input.database, billing: input.billing }));
 
   const authHandler = (context: { req: { raw: Request } }) => input.auth.handler(context.req.raw);
   const providerBillingRouteGuard = () => {
+    throw new ApiError(404, "NOT_FOUND", "Route not found");
+  };
+
+  const organizationMutationGuard = () => {
     throw new ApiError(404, "NOT_FOUND", "Route not found");
   };
 
@@ -64,6 +84,11 @@ export function createApp(input: {
   app.on(["GET", "POST"], "/api/auth/checkout/*", providerBillingRouteGuard);
   app.on(["GET", "POST"], "/api/auth/customer", providerBillingRouteGuard);
   app.on(["GET", "POST"], "/api/auth/customer/*", providerBillingRouteGuard);
+  // Pisto owns business creation and keeps membership owner-only in Increment 1.
+  // Better Auth remains the selector for the single server-created organization.
+  app.on("POST", "/api/auth/organization/set-active", authHandler);
+  app.on(["GET", "POST"], "/api/auth/organization", organizationMutationGuard);
+  app.on(["GET", "POST"], "/api/auth/organization/*", organizationMutationGuard);
   app.on(["GET", "POST"], "/api/auth", authHandler);
   app.on(["GET", "POST"], "/api/auth/*", authHandler);
 
@@ -74,6 +99,7 @@ export function createApp(input: {
       authBaseUrl: input.authConfig.baseUrl,
       billing: input.billing,
       db: input.database.db,
+      product: input.product,
     }),
   );
 
@@ -102,7 +128,7 @@ export function createApp(input: {
           level: "error",
           message: "Unhandled request error",
           requestId,
-          error: error instanceof Error ? error.message : String(error),
+          errorType: error instanceof Error ? error.name : typeof error,
         }),
       );
     }

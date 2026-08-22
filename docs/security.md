@@ -65,15 +65,22 @@ secret.
 - Use parameterized Drizzle queries; do not concatenate SQL identifiers/input.
 - Use stable public error envelopes without stacks, SQL, environment, or provider payloads.
 - Generate a request ID and log structured fields with redaction.
-- Add secure headers and a narrow CORS origin function before routes.
+- Add secure headers and a narrow CORS origin function before routes. Unsafe cookie-authenticated
+  `/v1` requests require JSON and reject a present `Origin` outside the exact client allowlist before
+  domain code runs; CORS response headers alone are not treated as CSRF protection.
+- Mark `/v1` account, business, financial, and billing responses `Cache-Control: no-store`.
+- Unexpected request logs contain an opaque request ID and stable error type, never an arbitrary
+  exception/driver message that may include business data.
 - Protect redirects: only server-created or allowlisted HTTPS URLs can leave the trusted origin.
 - Use explicit outbound timeouts; retry mutations only with idempotency.
 - Distinguish authentication (`401`) from authorization (`403`) without disclosing hidden resources.
 
 ## AI and financial-operation controls when introduced
 
-No assistant or sales implementation exists in the baseline. The following controls are mandatory
-for the approved first slice:
+The manual total-only sales path implements server-resolved tenancy, fresh action authorization,
+minor-unit money, IANA time-zone validation, transactional idempotency/audit, and canonical reads.
+Correction and the assistant remain incomplete. The following controls remain mandatory as those
+paths are introduced:
 
 - Keep provider credentials, prompts, tool implementations, and provider-specific options on the
   server. The client receives only Pisto-owned contracts and safe stream events.
@@ -83,9 +90,10 @@ for the approved first slice:
   filesystem, generic HTTP, secrets, billing, role administration, or unrestricted record search.
 - Treat a model proposal as untrusted draft data. Recompute money in deterministic domain code using
   integer minor units and explicit currency and business time zone.
-- Approval is not authorization. Bind a financial approval to the subject, business, exact canonical
-  draft, expiry, and idempotency key; then repeat authorization, validation, current-state checks, and
-  deterministic calculation immediately before the short audited transaction.
+- Approval is not authorization. Manual confirmation binds the actor/business through fresh server
+  state and an exact command fingerprint/idempotency key. A future model-proposed draft additionally
+  requires explicit expiry. Repeat authorization, validation, current-state checks, and deterministic
+  calculation immediately before the short audited transaction.
 - Design for prompt injection in user text, stored notes, uploads, retrieval results, and provider
   output. Instructions inside business content cannot expand tool capabilities or override policy.
 - Bound model steps, tokens, input/audio size, duration, concurrency, rate, cost, timeout, retry, and

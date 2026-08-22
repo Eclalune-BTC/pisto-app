@@ -3,11 +3,14 @@ import { getTableColumns, getTableName } from "drizzle-orm";
 
 import {
   account,
+  businessSettings,
   entitlement,
   invitation,
   member,
   organization,
   rateLimit,
+  sale,
+  saleOperation,
   session,
   user,
   verification,
@@ -48,5 +51,17 @@ describe("database schema", () => {
 
     expect(columns).toHaveProperty("userId");
     expect(columns).toHaveProperty("organizationId");
+  });
+
+  test("stores business settings and total-only sales in tenant-owned tables", () => {
+    expect(getTableName(businessSettings)).toBe("business_settings");
+    expect(getTableColumns(businessSettings)).toHaveProperty("timeZone");
+    expect(getTableColumns(businessSettings)).toHaveProperty("currencyMinorUnitDigits");
+    expect(getTableColumns(sale)).toHaveProperty("grossMinorUnits");
+    expect(getTableColumns(sale)).toHaveProperty("occurredAt");
+    expect(getTableColumns(sale)).toHaveProperty("occurredLocalDate");
+    expect(getTableColumns(sale)).toHaveProperty("occurredLocalTime");
+    expect(getTableColumns(sale)).toHaveProperty("timeZone");
+    expect(getTableColumns(saleOperation)).toHaveProperty("idempotencyKey");
   });
 });

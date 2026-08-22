@@ -3,7 +3,8 @@
 - Status: **approved product direction and first vertical slice**
 - Owner: **repository owner**
 - Approved: **2026-08-22**
-- Implementation status: **not started**
+- Implementation status: **manual total-only increment implemented locally; approved conversational
+  slice remains incomplete**
 
 ## Product definition
 
@@ -21,12 +22,12 @@ Pisto is an operational and financial copilot, not a licensed accountant, tax fi
 or autonomous money manager. It must distinguish revenue, cash, cost, margin, and profit rather than
 using those words interchangeably.
 
-Conversational Spanish is approved for the first job. The exact visible-copy locale remains an owner
-decision before implementation. Neutral Latin American Spanish (`es-419`) is the initial hypothesis
-and must be evaluated with Salvadoran terminology/users. Code, identifiers, tests, logs, and
-repository documentation remain English. Do not install a generic localization system or advertise
-a bilingual UI until a locale decision and any second locale have an approved brief; keep component
-copy boundaries clean so later localization does not require changing domain contracts.
+Conversational Spanish is approved for the first job. The manual increment uses neutral Latin
+American Spanish copy with Salvadoran `es-SV` money/date formatting as the explicit initial product
+choice; it still requires validation with Salvadoran users before release. Code, identifiers, tests,
+logs, and repository documentation remain English. The client uses one typed `es-SV` catalog and
+system-locale adapter per [ADR 0013](../adrs/0013-es-sv-localization-boundary.md). Do not advertise a
+bilingual UI, language selector, or persisted override until a second locale has an approved brief.
 
 ## Problem and competitive direction
 
@@ -279,12 +280,15 @@ gates, capability slice contract, product shell, and shared UI/action rules are 
 
 ## Current repository truth
 
-As of approval, the repository contains none of the sales, inventory, assistant, voice, retrieval, or
-graph implementation described above. It contains the universal Expo client, Hono API, PostgreSQL/
-Drizzle foundation, Better Auth, billing/entitlement seams, and Google Cloud target architecture.
-Better Auth organization tables exist, but the business creation/selection client flow and Pisto
-domain settings do not. This brief authorizes product design and the named first slice; it is not
-evidence that they are built.
+As of 2026-08-22, the repository implements and locally validates one narrower manual increment:
+owner-only business onboarding, static current-operation permissions for exact
+`owner`/`admin`/`member` memberships, a reviewed total-only sale, idempotent canonical persistence,
+and a deterministic previous-calendar-month summary. It does not yet implement conversational text
+extraction, clarification, correction/void, AI SDK orchestration, voice, inventory, retrieval, or the
+other modules described above. The exact implemented boundary and evidence are in
+[Sales Increment 1](../sales-increment-1.md). This approved brief remains the acceptance contract for
+the larger first slice; a passing manual increment is not evidence that the conversational slice is
+complete or deployed.
 
 ## Primary market sources
 

@@ -1,100 +1,100 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { AlertCircle, CheckCircle2, Clock3, RefreshCw } from "lucide-react-native";
-import { useEffect } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Text, View } from "react-native";
 
+import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api-client";
+import { deriveBillingAccessState } from "@/lib/billing/billing-access";
 
 export default function BillingSuccessScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const [verifiedAfterReturn, setVerifiedAfterReturn] = useState(false);
   const { checkout_id: checkoutId } = useLocalSearchParams<{ checkout_id?: string }>();
   const entitlements = useQuery({
+    enabled: false,
     queryFn: api.billing.entitlements,
     queryKey: ["billing", "entitlements"],
   });
-  const hasActiveAccess =
-    entitlements.data?.items.some((item) => item.status === "active") ?? false;
-  const accessState = entitlements.isPending
-    ? "pending"
-    : entitlements.isError
-      ? "error"
-      : hasActiveAccess
-        ? "active"
-        : "inactive";
+  const activeCount =
+    entitlements.data?.items.filter((item) => item.status === "active").length ?? 0;
+  const billingAccessState = deriveBillingAccessState({
+    activeCount,
+    fetchStatus: entitlements.fetchStatus,
+    isError: entitlements.isError,
+    isPending: entitlements.isPending,
+    verifiedAfterReturn,
+  });
+  const accessState =
+    billingAccessState === "active"
+      ? "active"
+      : billingAccessState === "unknown"
+        ? "error"
+        : billingAccessState === "standard"
+          ? "inactive"
+          : "pending";
+
+  const verifyAccess = useCallback(async () => {
+    setVerifiedAfterReturn(false);
+    await entitlements.refetch();
+    setVerifiedAfterReturn(true);
+  }, [entitlements.refetch]);
 
   useEffect(() => {
-    void queryClient.invalidateQueries({ queryKey: ["billing"] });
-  }, [queryClient]);
+    void verifyAccess();
+  }, [verifyAccess]);
+
+  const StateIcon =
+    accessState === "active" ? CheckCircle2 : accessState === "error" ? AlertCircle : Clock3;
+  const iconColor =
+    accessState === "active" ? "#237A55" : accessState === "error" ? "#B94242" : "#B86718";
 
   return (
-    <ScrollView
-      className="flex-1"
-      contentContainerClassName="mx-auto w-full max-w-[720px] flex-grow items-center justify-center px-5 py-10 sm:px-8"
-      showsVerticalScrollIndicator={false}
-    >
-      <Card className="w-full items-center gap-6 p-7 sm:p-10">
-        <View
-          className={`h-16 w-16 items-center justify-center rounded-full ${accessState === "active" ? "bg-[#DCF4E6] dark:bg-[#214533]" : accessState === "error" ? "bg-[#FBE6E6] dark:bg-[#4B2929]" : "bg-[#FFF0DA] dark:bg-[#4A3320]"}`}
-        >
-          {accessState === "active" ? (
-            <CheckCircle2 color="#237A55" size={30} strokeWidth={2.4} />
-          ) : accessState === "error" ? (
-            <AlertCircle color="#B94242" size={30} strokeWidth={2.4} />
-          ) : (
-            <Clock3 color="#B86718" size={30} strokeWidth={2.4} />
-          )}
-        </View>
-        <View className="items-center gap-2">
+    <Page contentContainerClassName="gap-7" width="reading">
+      <View className="flex-row items-start gap-4">
+        <StateIcon color={iconColor} size={32} strokeWidth={2.4} />
+        <View className="min-w-0 flex-1 gap-2">
           <Text className="text-xs font-extrabold uppercase tracking-[1.6px] text-positive dark:text-[#8DDEAF]">
-            Back in Pisto
+            {t("billing.returnEyebrow")}
           </Text>
-          <CardTitle className="text-center text-[30px] leading-[36px]">
-            {accessState === "active"
-              ? "Your access is ready"
-              : accessState === "error"
-                ? "We could not verify your access"
-                : accessState === "inactive"
-                  ? "Access is not active yet"
-                  : "We are confirming your access"}
-          </CardTitle>
-          <CardDescription className="max-w-[520px] text-center text-base leading-6">
-            {accessState === "active"
-              ? "The latest entitlement is now attached to your account."
-              : accessState === "error"
-                ? "Checkout returned safely, but the entitlement service could not be reached. Pisto will not assume a successful purchase."
-                : accessState === "inactive"
-                  ? "The server has not reported active access. Refresh again shortly or return to billing for the current account state."
-                  : "Checkout returned safely. Pisto is refreshing the server-backed billing state before showing access as active."}
-          </CardDescription>
+          <Text
+            accessibilityRole="header"
+            className="text-[30px] font-black leading-[36px] tracking-[-1px] text-ink dark:text-white"
+          >
+            {t(`billing.returnTitle.${accessState}`)}
+          </Text>
+          <Text className="text-base leading-6 text-ink-muted dark:text-[#AAB8B0]">
+            {t(`billing.returnDescription.${accessState}`)}
+          </Text>
           {checkoutId ? (
-            <Text className="mt-1 text-center text-xs text-[#819087] dark:text-[#82938A]">
-              A checkout return reference was received for this refresh.
+            <Text className="text-xs text-ink-muted dark:text-[#91A198]">
+              {t("billing.returnReference")}
             </Text>
           ) : null}
         </View>
-        <View className="w-full gap-3 sm:flex-row sm:justify-center">
+      </View>
+
+      <View className="gap-3 border-y border-line py-6 dark:border-[#304239] sm:flex-row">
+        <Button
+          label={t("billing.back")}
+          onPress={() => router.replace("/billing")}
+          variant="secondary"
+        />
+        {accessState !== "active" ? (
           <Button
-            className="sm:min-w-[180px]"
-            label="Back to billing"
-            onPress={() => router.replace("/billing")}
-          />
-          {accessState !== "active" ? (
-            <Button
-              className="sm:min-w-[180px]"
-              loading={entitlements.isFetching}
-              onPress={() => entitlements.refetch()}
-              variant="secondary"
-            >
-              <RefreshCw color="#617168" size={16} />
-              <Text className="text-[15px] font-bold text-ink dark:text-white">Refresh status</Text>
-            </Button>
-          ) : null}
-        </View>
-      </Card>
-    </ScrollView>
+            loading={entitlements.isFetching}
+            onPress={() => void verifyAccess()}
+            variant="primary"
+          >
+            <RefreshCw color="#FFFFFF" size={16} />
+            <Text className="text-[15px] font-bold text-white">{t("billing.refresh")}</Text>
+          </Button>
+        ) : null}
+      </View>
+    </Page>
   );
 }

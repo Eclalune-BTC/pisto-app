@@ -7,7 +7,7 @@ export function Card({ className, ...props }: ComponentProps<typeof View>) {
   return (
     <View
       className={cn(
-        "rounded-2xl border border-line bg-surface p-5 dark:border-[#304239] dark:bg-[#192A23]",
+        "rounded-xl border border-line bg-surface p-5 dark:border-[#304239] dark:bg-[#192A23]",
         className,
       )}
       {...props}

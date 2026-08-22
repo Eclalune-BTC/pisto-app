@@ -1,15 +1,31 @@
 import type { Auth } from "@pisto/auth";
-import { type Database, member } from "@pisto/db";
+import { type Database, member, type ProductActor } from "@pisto/db";
 import { and, eq } from "drizzle-orm";
 
 import { ApiError } from "./errors.ts";
 
 export async function requireSession(auth: Auth, headers: Headers) {
-  const session = await auth.api.getSession({ headers });
+  const session = await auth.api.getSession({
+    headers,
+    query: { disableCookieCache: true, disableRefresh: true },
+  });
   if (!session) {
     throw new ApiError(401, "UNAUTHORIZED", "Authentication is required");
   }
   return session;
+}
+
+export function toProductActor(
+  authSession: NonNullable<Awaited<ReturnType<Auth["api"]["getSession"]>>>,
+): ProductActor {
+  const sessionRecord = authSession.session as typeof authSession.session & {
+    activeOrganizationId?: string | null;
+  };
+  return {
+    userId: authSession.user.id,
+    sessionId: sessionRecord.id,
+    activeBusinessId: sessionRecord.activeOrganizationId ?? null,
+  };
 }
 
 export async function resolveBillingScope(input: {

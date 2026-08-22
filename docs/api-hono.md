@@ -20,6 +20,11 @@ The baseline surface is:
 | `GET`, `POST` | `/api/auth`, `/api/auth/*` | Route-specific | Better Auth identity/session handler; provider billing guards run first |
 | `GET` | `/v1` | No | API version marker |
 | `GET` | `/v1/me` | Yes | Normalized user and session summary |
+| `GET` | `/v1/businesses` | Yes, fresh session | Explicit memberships and active business selector |
+| `POST` | `/v1/businesses` | Yes, fresh session | Create or replay the one owner business and settings |
+| `POST` | `/v1/sales` | `sales:create`, fresh session | Confirm or replay one total-only sale |
+| `GET` | `/v1/sales/:saleId` | `sales:read`, fresh session | Read a canonical active-business sale |
+| `GET` | `/v1/sales/summary/previous-month` | `sales:summary:read`, fresh session | Calculate the previous business-local calendar month |
 | `GET` | `/v1/billing/catalog` | No | Allowlisted public web product catalog |
 | `GET` | `/v1/billing/state` | Yes | Current provider and normalized entitlement state |
 | `GET` | `/v1/billing/entitlements` | Yes | Internal entitlement projection |
@@ -31,6 +36,10 @@ The baseline surface is:
 The implementation and `@pisto/contracts` are definitive. Update this table in the same change as a
 route addition or removal.
 
+All Better Auth organization routes are denied at the Hono edge except
+`POST /api/auth/organization/set-active`. Pisto owns business onboarding and does not expose raw
+organization, invitation, member, role, or team mutations.
+
 ## Request pipeline
 
 Recommended order:
@@ -39,7 +48,7 @@ Recommended order:
 2. structured request logging with redaction;
 3. secure response headers;
 4. exact CORS policy, including credentials only for approved origins;
-5. request/body limits and content-type checks;
+5. request/body limits plus JSON and exact-Origin checks for unsafe `/v1` methods;
 6. Better Auth raw request handler for `/api/auth/*`;
 7. session guard for protected `/v1/*` routes;
 8. Zod contract validation;
@@ -50,6 +59,10 @@ Hono CORS must run before affected routes. When credentials are allowed, never u
 exact configured origin and keep it synchronized with Better Auth `trustedOrigins`. In production,
 configured CORS origins must use HTTPS and cannot use localhost, loopback, reserved TLDs, or the
 example domains.
+
+CORS controls response sharing, not whether a credentialed request executes. A browser `POST` with
+a present `Origin` must match the configured client allowlist, and every `/v1` POST requires
+`application/json` before route parsing. Native clients may omit `Origin` but still send JSON.
 
 ## Response contract
 
@@ -69,6 +82,10 @@ webhook acknowledgements. Errors use:
 `details` is optional and must not contain stack traces, SQL, tokens, cookies, raw provider payloads,
 or sensitive personal data. Public error codes live in `@pisto/contracts`.
 
+Every `/v1` response sets `Cache-Control: no-store`, including account, business, financial, and
+billing data. Unexpected exceptions are logged only by stable type plus request ID; arbitrary driver
+messages are not copied into logs or responses.
+
 ## Billing behavior
 
 - When `BILLING_ENABLED=false`, catalog/state remain explicit and checkout/portal return the stable
@@ -83,7 +100,7 @@ or sensitive personal data. Public error codes live in `@pisto/contracts`.
   endpoint remains externally reachable.
 - Checkout can attach the active organization as Polar's `referenceId`. The portal remains scoped to
   the purchasing Polar customer; organization membership does not grant access to another member's
-  customer portal. The portal POST accepts either an empty body or the documented empty object.
+  customer portal. The portal POST accepts the documented empty JSON object.
 - Webhook handlers must receive the exact request body required by the provider verifier, verify
   before parsing/trusting, and deduplicate before applying state.
 
@@ -114,6 +131,8 @@ not hold request/user state.
 - [Hono Bun adapter](https://hono.dev/docs/getting-started/bun)
 - [Hono CORS middleware](https://hono.dev/docs/middleware/builtin/cors)
 - [Hono secure headers](https://hono.dev/docs/middleware/builtin/secure-headers)
+- [OWASP CSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
+- [RFC 9111 `no-store`](https://www.rfc-editor.org/rfc/rfc9111.html#name-no-store)
 - [Hono validation](https://hono.dev/docs/guides/validation)
 - [Better Auth Hono integration](https://better-auth.com/docs/integrations/hono)
 - [Cloud Run container contract](https://cloud.google.com/run/docs/container-contract)

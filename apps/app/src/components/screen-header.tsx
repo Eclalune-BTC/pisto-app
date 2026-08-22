@@ -15,7 +15,10 @@ export function ScreenHeader({ action, description, eyebrow, title }: ScreenHead
         {eyebrow ? (
           <Text className="text-sm font-bold text-positive dark:text-[#8DDEAF]">{eyebrow}</Text>
         ) : null}
-        <Text className="text-[32px] font-black leading-[38px] tracking-[-1.4px] text-ink dark:text-white sm:text-[40px] sm:leading-[46px]">
+        <Text
+          accessibilityRole="header"
+          className="text-[32px] font-black leading-[38px] tracking-[-1.4px] text-ink dark:text-white sm:text-[40px] sm:leading-[46px]"
+        >
           {title}
         </Text>
         <Text className="text-base leading-6 text-ink-muted dark:text-[#AAB8B0]">

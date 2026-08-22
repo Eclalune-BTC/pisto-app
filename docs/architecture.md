@@ -89,7 +89,11 @@ in Pisto-owned tables rather than auth metadata. See
 5. A repository performs bounded database work.
 6. The API returns a typed response without internal exceptions, credentials, or provider payloads.
 
-### Conversational sale and report (approved target; not implemented)
+### Sale and report
+
+The structured total-only path through onboarding, review, confirmation, canonical result, and
+previous-month summary is implemented in [Sales Increment 1](sales-increment-1.md). Correction and
+the conversational path below remain approved but unimplemented.
 
 1. The authenticated app submits text to a bounded assistant route; the API resolves the user and
    business instead of trusting either identifier from the client or model.

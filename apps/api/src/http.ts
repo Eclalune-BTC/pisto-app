@@ -1,6 +1,31 @@
 import type { Auth } from "@pisto/auth";
 import { ApiError } from "./errors.ts";
 
+type JsonBodyContext = {
+  req: {
+    json: () => Promise<unknown>;
+    text: () => Promise<string>;
+  };
+};
+
+export async function parseJsonBody(context: JsonBodyContext): Promise<unknown> {
+  try {
+    return await context.req.json();
+  } catch {
+    throw new ApiError(400, "BAD_REQUEST", "Request body must be valid JSON");
+  }
+}
+
+export async function parseOptionalJsonBody(context: JsonBodyContext): Promise<unknown> {
+  const rawBody = await context.req.text();
+  if (!rawBody.trim()) return {};
+  try {
+    return JSON.parse(rawBody) as unknown;
+  } catch {
+    throw new ApiError(400, "BAD_REQUEST", "Request body must be valid JSON");
+  }
+}
+
 function statusForAuthResponse(status: number): 400 | 401 | 403 | 500 | 503 {
   if (status === 400) return 400;
   if (status === 401) return 401;

@@ -77,10 +77,12 @@ for undeclared dependencies: each workspace must still declare every package it 
 | Define how a future product capability composes | Its approved brief plus `docs/product-capability-architecture.md` |
 | Record an operational rule or decision | `docs` and, for architectural decisions, `docs/adrs` |
 
-When the approved first product slice is implemented, create a focused sales domain package only if
-the cross-route/domain ownership warrants it, and an assistant package only for provider-neutral
-orchestration. Do not create either package as empty scaffolding. Sales/domain code must not depend
-on the assistant; the API composes authorized sales capabilities into assistant tools.
+Increment 1 keeps its cohesive sales repository/transaction code in `@pisto/db`, public schemas in
+`@pisto/contracts`, HTTP composition in `@pisto/api`, and universal product flow in `@pisto/app`.
+Create a focused sales domain package only when independent invariants and sustained cross-route
+ownership justify extraction, and an assistant package only for provider-neutral orchestration. Do
+not create either package as empty scaffolding. Sales/domain code must not depend on the assistant;
+the API composes authorized sales capabilities into assistant tools.
 
 If a feature crosses boundaries, keep orchestration in the API and domain logic in the owning
 package. Do not create a generic `utils` package for code with a clear owner.

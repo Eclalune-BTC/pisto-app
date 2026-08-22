@@ -166,13 +166,15 @@ The included `.github/workflows/ci.yml` currently:
 2. starts a PostgreSQL 18 service;
 3. installs from `bun.lock` with `--frozen-lockfile`;
 4. runs `bun run check`;
-5. runs `bun run audit:ci` to reject advisories outside the reviewed exception set;
-6. runs `bun run build`.
+5. applies committed migrations and runs the isolated sales repository integration test against the
+   PostgreSQL 18 service;
+6. runs `bun run audit:ci` to reject advisories outside the reviewed exception set;
+7. runs `bun run build`.
 
-It does **not** currently run `doctor`, migrations, `db:check`, `auth:schema:check`, an API image
-build/scan, or an Expo preview build. Those are not implied by a green CI workflow. The separate
-Cloud Build reference does configure, execute, and wait for a migration job before its API deploy;
-that is deployment-path configuration, not part of GitHub CI and not proof it has run.
+It does **not** currently run `doctor`, `db:check`, `auth:schema:check`, an API image build/scan, a
+previous-schema upgrade fixture, or an Expo native preview build. Those are not implied by a green CI
+workflow. The separate Cloud Build reference does configure, execute, and wait for a migration job
+before its API deploy; that is deployment-path configuration, not proof it has run.
 
 A protected production promotion gate should additionally:
 

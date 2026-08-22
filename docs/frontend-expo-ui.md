@@ -23,7 +23,11 @@ The application shell is organized around these user journeys:
 | `/` | Public | Product introduction and welcome actions |
 | `/sign-in` | Public | Email/password sign-in, intended for signed-out users |
 | `/sign-up` | Public | Account creation, intended for signed-out users |
-| `/dashboard` | Authenticated | Primary product surface |
+| `/dashboard` | Authenticated | Compatibility redirect to `/operate/sales` |
+| `/business` | Authenticated | One owner business create/select and settings confirmation |
+| `/operate/sales` | Authenticated owner | Previous-calendar-month sales summary |
+| `/operate/sales/new` | Authenticated owner | Total-only sale entry and review |
+| `/operate/sales/:saleId` | Authenticated owner | Canonical sale result |
 | `/billing` | Authenticated | Plan, entitlement state, purchase/restore actions |
 | `/billing/success` | Authenticated | Refresh entitlement state after returning from web checkout |
 | `/settings` | Authenticated | Account, session, support identity, and sign-out |
@@ -32,10 +36,9 @@ Route groups and layouts may add file-system parentheses without changing these 
 authentication gating in a layout/provider and enforce the same requirement on the API; client-side
 redirects are usability, not authorization.
 
-These routes describe the current scaffold. The generic planning dashboard and its
-`Home / Billing / Settings` navigation are not the approved long-term product information
-architecture. Replace product language and navigation only as real capability slices are implemented;
-do not infer future records or workflows from the illustrative dashboard.
+The generic planning dashboard has been removed. Product navigation exposes `Operar` and `Cuenta`;
+billing remains secondary account context. Do not infer future records, tabs, or workflows from the
+long-term capability map.
 
 ## Responsive shell
 
@@ -55,14 +58,11 @@ components for layout changes and narrow platform-resolved adapters for differen
 
 ## Product shell and feature composition
 
-Top-level destinations represent durable user jobs, not packages or database modules. One small
-initial hypothesis is Home, daily Operations, and the Pisto Assistant, with business/account,
-settings, security, team, and billing in secondary account context. Surface the approved
-previous-month summary contextually in Assistant and Sales/Operations. Reports earns a permanent
-destination only after an approved brief proves multiple recurring report jobs and direct-entry
-value. Exact labels and each destination still require validation with real product slices. The
-approved first slice needs Operations/Sales and Assistant entry; Home remains absent until it has
-approved real orientation/attention content rather than invented dashboard filler.
+Top-level destinations represent durable user jobs, not packages or database modules. Increment 1
+uses daily `Operar` plus `Cuenta`, with billing in secondary account context. Assistant is not exposed
+until its structured proposal/query flow exists. Reports earns a permanent destination only after an
+approved brief proves multiple recurring report jobs and direct-entry value. Home remains absent
+until it has approved real orientation/attention content rather than invented dashboard filler.
 
 - Keep three to five durable compact destinations; wide web may reveal nested links without changing
   their meaning.
@@ -86,11 +86,9 @@ fork feature screens or business logic merely to change navigation chrome. See
 [Product capability architecture](product-capability-architecture.md) and
 [ADR 0011](adrs/0011-modular-capabilities-and-app-owned-composition.md).
 
-The target first-slice route composition is a session guard, a required business setup/selection
-flow, a workspace layout containing only approved destinations, nested Sales routes under Operate,
-Assistant entry, and secondary account/billing routes. Home is added only with real approved content.
-Exact slugs are chosen with the implementation brief; this boundary prevents the scaffold dashboard
-or billing screen from dictating future product hierarchy.
+The current route composition is a session guard, required business setup/selection, a workspace
+layout containing only approved destinations, Sales routes under Operate, and secondary
+account/billing routes. Home and Assistant are added only with real approved content.
 
 ## Screen and action contract
 
@@ -133,12 +131,13 @@ hierarchy with type, spacing, alignment, and dividers before adding another deco
 Visual cleanup preserves approved copy, product behavior, accessibility, and responsive intent. It
 does not justify an unrelated redesign.
 
-Conversational Spanish is approved; the exact visible-copy locale is not. Neutral Latin American
-Spanish (`es-419`) is the initial hypothesis and must be checked with Salvadoran terminology/users in
-the implementation brief. Code, identifiers, logs, tests, and repository documentation remain
-English. Do not expose raw provider/server messages as user copy. Keep copy at feature/component
-boundaries so a later approved locale can be introduced without changing domain contracts, but do
-not add a localization package before that need exists.
+The manual increment uses neutral Latin American Spanish copy and Salvadoran `es-SV` money/date
+formatting as its explicit initial product choice. Validate terminology and comprehension with
+Salvadoran users before release. Code, identifiers, logs, tests, and repository documentation remain
+English. Visible and accessibility copy lives in the typed `es-SV` i18next catalog; domain and
+provider layers return stable English reason codes and never expose raw messages. `expo-localization`
+reads system/app preferences, but unsupported preferences intentionally resolve to `es-SV` while it
+is the only approved locale. See [ADR 0013](adrs/0013-es-sv-localization-boundary.md).
 
 ## Voice UI boundary
 

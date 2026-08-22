@@ -25,7 +25,7 @@ export function Field({
       <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">{label}</Text>
       <View
         className={cn(
-          "min-h-14 flex-row items-center rounded-2xl border bg-white px-4 dark:bg-[#14241D]",
+          "min-h-14 flex-row items-center rounded-lg border bg-white px-4 dark:bg-[#14241D]",
           error ? "border-danger" : "border-line dark:border-[#3B4A43]",
         )}
       >

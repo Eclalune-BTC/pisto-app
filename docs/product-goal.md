@@ -1,6 +1,6 @@
 # Active product goal
 
-- Status: **first product slice approved; implementation not started**
+- Status: **manual sales Increment 1 implemented locally; approved milestone incomplete**
 - Owner: **repository owner**
 - Last reviewed: **2026-08-22**
 
@@ -23,6 +23,8 @@ navigation follow [Product capability architecture](product-capability-architect
 
 - The repository has explicit boundaries for a universal Expo client, Hono API, transport contracts,
   PostgreSQL/Drizzle persistence, Better Auth, provider-neutral entitlements, and deployment seams.
+- [Sales Increment 1](sales-increment-1.md) implements one organization-backed owner business,
+  total-only manual sale review/confirmation, canonical result, and previous-month summary.
 - The web, native, authentication, billing, data, and cloud foundations have documented invariants
   and primary-source references.
 - Included scaffolding or a configured provider is not evidence that a complete product flow has been
@@ -68,11 +70,12 @@ The milestone is complete only when:
 
 ## Next delivery decision
 
-The next delivery agent should plan the smallest end-to-end **typed sale plus previous-month summary**
-slice from the approved brief. Voice, inventory deduction, expenses, roles, RAG, graphs, provider
-failover, and paid-plan gating are not included. Any unresolved decision about taxes, stock ownership,
-future tenant roles, or expanded money semantics must be returned to the owner as a focused product
-question rather than guessed in code.
+The next delivery agent should finish the smallest **void/replacement correction** increment described
+in the approved brief. It must preserve the original sale, commit the void/replacement/audit links
+atomically, prevent cross-business or repeated correction, and update summaries deterministically.
+Voice, AI, inventory deduction, expenses, invitations/domain-specific team roles, RAG, graphs,
+provider failover, and paid-plan gating are not included. Use the
+[copy-ready next-session prompt](prompts/pisto-next-codex-session.md).
 
 ## Related sources
 

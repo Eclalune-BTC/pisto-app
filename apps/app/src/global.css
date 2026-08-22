@@ -19,6 +19,12 @@
   box-sizing: border-box;
 }
 
+*:focus-visible {
+  outline: 3px solid #0b57d0;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
 html,
 body {
   background: #f3f6f1;

@@ -18,6 +18,9 @@ changes, add a new ADR that supersedes the old one instead of rewriting the old 
 | [0009](0009-provider-neutral-ai-assistant.md) | Accepted | Provider-neutral AI orchestration with deterministic business tools |
 | [0010](0010-organization-backed-business-tenancy.md) | Accepted | Better Auth organization IDs back Pisto business tenant boundaries |
 | [0011](0011-modular-capabilities-and-app-owned-composition.md) | Accepted | Product capabilities compose explicitly inside a modular monolith |
+| [0012](0012-total-only-sales-increment.md) | Accepted | Total-only manual sales are the first persisted product increment |
+| [0013](0013-es-sv-localization-boundary.md) | Accepted | Typed `es-SV` localization separates product copy from application logic |
+| [0014](0014-static-current-operation-permissions.md) | Accepted | Static Pisto permissions authorize current business and sales operations |
 
 ## Status values
 

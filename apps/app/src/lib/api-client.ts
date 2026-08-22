@@ -1,23 +1,35 @@
 import {
-  type ApiErrorCode,
   type BillingCatalogResponse,
   type BillingCheckoutRequest,
   type BillingRedirectResponse,
   type BillingStateResponse,
+  type BusinessesResponse,
   billingCatalogResponseSchema,
   billingCheckoutRequestSchema,
   billingPortalRequestSchema,
   billingRedirectResponseSchema,
   billingStateResponseSchema,
+  businessesResponseSchema,
+  type CreateBusinessRequest,
+  type CreateBusinessResponse,
+  type CreateSaleRequest,
+  createBusinessRequestSchema,
+  createBusinessResponseSchema,
+  createSaleRequestSchema,
   type EntitlementsResponse,
   entitlementsResponseSchema,
   type HealthResponse,
   healthResponseSchema,
   type MeResponse,
   meResponseSchema,
+  type PreviousMonthSummaryResponse,
+  previousMonthSummaryResponseSchema,
+  type SaleResponse,
+  saleResponseSchema,
 } from "@pisto/contracts";
 import { Platform } from "react-native";
 import type { ZodType } from "zod";
+import { ApiClientError } from "@/lib/api-error";
 import { isApiFailure, parseSuccessPayload, type ResponseMode } from "@/lib/api-response";
 import { authClient } from "@/lib/auth-client";
 import { env } from "@/lib/env";
@@ -27,23 +39,14 @@ type ApiRequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
 };
 
-export class ApiClientError extends Error {
-  readonly code: ApiErrorCode | "API_REQUEST_FAILED";
-  readonly requestId?: string;
-  readonly status: number;
+export { ApiClientError, isAmbiguousMutationError } from "@/lib/api-error";
 
-  constructor(
-    message: string,
-    status: number,
-    code: ApiErrorCode | "API_REQUEST_FAILED" = "API_REQUEST_FAILED",
-    requestId?: string,
-  ) {
-    super(message);
-    this.name = "ApiClientError";
-    this.status = status;
-    this.code = code;
-    this.requestId = requestId;
+function parseRequestPayload<T>(schema: ZodType<T>, payload: unknown): T {
+  const result = schema.safeParse(payload);
+  if (!result.success) {
+    throw new ApiClientError("The request payload is invalid.", 400, "VALIDATION_ERROR");
   }
+  return result.data;
 }
 
 export async function apiRequest<TResponse, TResult>(
@@ -69,12 +72,17 @@ export async function apiRequest<TResponse, TResult>(
     credentials = "omit";
   }
 
-  const response = await fetch(`${env.apiUrl}${path}`, {
-    ...init,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    credentials,
-    headers: requestHeaders,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${env.apiUrl}${path}`, {
+      ...init,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      credentials,
+      headers: requestHeaders,
+    });
+  } catch {
+    throw new ApiClientError("The API could not be reached.", 0);
+  }
 
   let payload: unknown;
 
@@ -106,6 +114,48 @@ export const api = {
     apiRequest<HealthResponse, HealthResponse>("/health", {}, healthResponseSchema, "raw"),
   me: () =>
     apiRequest<MeResponse, MeResponse["data"]>("/v1/me", { authenticated: true }, meResponseSchema),
+  businesses: {
+    list: () =>
+      apiRequest<BusinessesResponse, BusinessesResponse["data"]>(
+        "/v1/businesses",
+        { authenticated: true },
+        businessesResponseSchema,
+      ),
+    create: (command: CreateBusinessRequest) =>
+      apiRequest<CreateBusinessResponse, CreateBusinessResponse["data"]>(
+        "/v1/businesses",
+        {
+          authenticated: true,
+          body: parseRequestPayload(createBusinessRequestSchema, command),
+          method: "POST",
+        },
+        createBusinessResponseSchema,
+      ),
+  },
+  sales: {
+    create: (command: CreateSaleRequest) =>
+      apiRequest<SaleResponse, SaleResponse["data"]>(
+        "/v1/sales",
+        {
+          authenticated: true,
+          body: parseRequestPayload(createSaleRequestSchema, command),
+          method: "POST",
+        },
+        saleResponseSchema,
+      ),
+    get: (saleId: string) =>
+      apiRequest<SaleResponse, SaleResponse["data"]>(
+        `/v1/sales/${encodeURIComponent(saleId)}`,
+        { authenticated: true },
+        saleResponseSchema,
+      ),
+    previousMonthSummary: () =>
+      apiRequest<PreviousMonthSummaryResponse, PreviousMonthSummaryResponse["data"]>(
+        "/v1/sales/summary/previous-month",
+        { authenticated: true },
+        previousMonthSummaryResponseSchema,
+      ),
+  },
   billing: {
     catalog: () =>
       apiRequest<BillingCatalogResponse, BillingCatalogResponse["data"]>(
@@ -130,7 +180,7 @@ export const api = {
         "/v1/billing/checkout",
         {
           authenticated: true,
-          body: billingCheckoutRequestSchema.parse({ slug }),
+          body: parseRequestPayload(billingCheckoutRequestSchema, { slug }),
           method: "POST",
         },
         billingRedirectResponseSchema,
@@ -140,7 +190,7 @@ export const api = {
         "/v1/billing/portal",
         {
           authenticated: true,
-          body: billingPortalRequestSchema.parse({}),
+          body: parseRequestPayload(billingPortalRequestSchema, {}),
           method: "POST",
         },
         billingRedirectResponseSchema,

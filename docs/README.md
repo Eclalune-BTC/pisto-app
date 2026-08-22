@@ -16,16 +16,20 @@ feature is deployed merely because its code or design exists.
 
 ## Current product state
 
-Pisto currently includes a universal authenticated application shell, email/password sign-up/sign-in
-wiring, a session-backed account summary, API health/readiness, and server-backed billing catalog and
-entitlement paths. Polar web checkout/portal behavior is available only when configured.
+Pisto currently includes a universal authenticated application, one organization-backed business
+onboarding flow, static current-operation permissions for exact `owner`/`admin`/`member` memberships,
+total-only manual sales with review/idempotent confirmation/canonical result, and a deterministic
+previous-calendar-month gross/count/average. The implementation and local validation evidence are
+documented in [Sales Increment 1](sales-increment-1.md). API health/readiness and
+server-backed billing catalog/entitlement paths also exist; Polar web checkout/portal behavior is
+available only when configured.
 
-No sales, inventory, expenses, financial accounts, obligations, goals, assistant route, model
-provider, voice flow, RAG, graph, monthly computation, or activity history exists in this baseline.
-The first product job is approved but not implemented. Dashboard planning items are guidance, not
-stored product state. Email verification/recovery delivery, a finished organization/roles workflow,
-native purchases, and provisioned production cloud resources remain incomplete or release-gated;
-see [Production capabilities](production-capabilities.md).
+The current sales increment does not include correction, inventory, expenses, financial accounts,
+obligations, goals, AI/voice, retrieval, graph, or general activity history. Email
+verification/recovery delivery, invitations/role administration/domain-specific team roles, native
+purchases, and provisioned production cloud resources remain incomplete or release-gated; see
+[Production capabilities](production-capabilities.md). Implemented and locally validated does not
+mean deployed or production-ready.
 
 ## System map
 
@@ -49,31 +53,34 @@ see [Production capabilities](production-capabilities.md).
    conversational sale/report slice.
 3. [Product capability architecture](product-capability-architecture.md) defines how future modules,
    navigation, UI actions, assistant/voice channels, and delivery ownership compose without a flat UI.
-4. [Engineering workflow](engineering-workflow.md) defines research, reuse, architecture, review,
+4. [Sales Increment 1](sales-increment-1.md) records the implemented product flow, contracts,
+   persistence, failure behavior, evidence, and explicit limitations.
+5. [Engineering workflow](engineering-workflow.md) defines research, reuse, architecture, review,
    and completion evidence.
-5. [AI assistant architecture](ai-assistant.md) records model, tools, voice, retrieval, evaluation,
+6. [AI assistant architecture](ai-assistant.md) records model, tools, voice, retrieval, evaluation,
    and provider portability decisions.
-6. [Voice architecture](voice-architecture.md) records the staged push-to-talk, ElevenLabs,
+7. [Voice architecture](voice-architecture.md) records the staged push-to-talk, ElevenLabs,
    privacy, transport, evaluation, TTS, and realtime decision gates without selecting a provider.
-7. [Reusable agent feature prompt](agent-feature-prompt.md) frames bounded Codex or Claude Code work.
-8. [Architecture](architecture.md) explains boundaries and request flows.
-9. [Repository layout](repository-layout.md) says where changes belong.
-10. [Getting started](getting-started.md) takes a new checkout to a verified local environment.
-11. [CLI workflow](cli-workflow.md) documents the safe `init`, `doctor`, and `help` commands.
-12. [Expo and UI](frontend-expo-ui.md) covers routes, responsive UI, client configuration, and
+8. [Next Codex session prompt](prompts/pisto-next-codex-session.md) is the current copy-ready mission.
+9. [Reusable agent feature prompt](agent-feature-prompt.md) frames other bounded Codex or Claude Code work.
+10. [Architecture](architecture.md) explains boundaries and request flows.
+11. [Repository layout](repository-layout.md) says where changes belong.
+12. [Getting started](getting-started.md) takes a new checkout to a verified local environment.
+13. [CLI workflow](cli-workflow.md) documents the safe `init`, `doctor`, and `help` commands.
+14. [Expo and UI](frontend-expo-ui.md) covers routes, responsive UI, client configuration, and
    platform boundaries.
-13. [Web deployment](web-deployment.md) separates the Expo static host from the API runtime.
-14. [API and Hono](api-hono.md) defines the HTTP composition and route conventions.
-15. [PostgreSQL and Drizzle](database-drizzle.md) defines schema and migration policy.
-16. [Better Auth](authentication.md) defines sessions, origins, and secret handling.
-17. [Billing and entitlements](billing-entitlements.md) is the normative purchase and access model.
-18. [Google Cloud deployment](cloud-deployment.md) describes the production topology.
-19. [Production capabilities](production-capabilities.md) separates included code from future seams.
-20. [Security](security.md) is the security baseline and review checklist.
-21. [Testing and release](testing-release.md) defines evidence required before release.
-22. [Versioning and upgrades](versioning-upgrades.md) defines dependency and migration policy.
-23. [Official source index](source-index.md) maps every major decision to primary documentation.
-24. [Architecture decision records](adrs/README.md) preserve the reasoning behind the design.
+15. [Web deployment](web-deployment.md) separates the Expo static host from the API runtime.
+16. [API and Hono](api-hono.md) defines the HTTP composition and route conventions.
+17. [PostgreSQL and Drizzle](database-drizzle.md) defines schema and migration policy.
+18. [Better Auth](authentication.md) defines sessions, origins, and secret handling.
+19. [Billing and entitlements](billing-entitlements.md) is the normative purchase and access model.
+20. [Google Cloud deployment](cloud-deployment.md) describes the production topology.
+21. [Production capabilities](production-capabilities.md) separates included code from future seams.
+22. [Security](security.md) is the security baseline and review checklist.
+23. [Testing and release](testing-release.md) defines evidence required before release.
+24. [Versioning and upgrades](versioning-upgrades.md) defines dependency and migration policy.
+25. [Official source index](source-index.md) maps every major decision to primary documentation.
+26. [Architecture decision records](adrs/README.md) preserve the reasoning behind the design.
 
 ## Non-negotiable invariants
 

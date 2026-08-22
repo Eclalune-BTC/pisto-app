@@ -51,6 +51,13 @@ Never edit an already-applied migration. Add a forward migration.
 - Entitlements enforce exactly one user/organization subject. A unique `(source, sourceId, key)`
   identity prevents the same provider grant from being projected twice; subject/status indexes serve
   authorization queries.
+- `business_settings` binds create-once ISO currency, server-resolved minor-unit exponent, and an IANA
+  time zone accepted by both Bun/ICU and PostgreSQL to one organization-backed business.
+- `sale` stores total-only minor units as positive `bigint` plus occurrence instant, confirmed local
+  date/minute, time-zone, currency/exponent snapshots, status, actor, and optional description. A
+  composite foreign key prevents the sale currency/exponent from diverging from its business.
+- `sale_operation` binds an actor/business UUID idempotency key and command fingerprint to the
+  canonical sale. Its composite foreign key prevents cross-business audit links.
 - The public entitlement contract accepts `polar`, `revenuecat`, and reserved `manual` sources, but
   no supported manual-grant write workflow is implemented.
 
@@ -67,6 +74,12 @@ columns with indexes; code does not scan provider JSON to authorize each request
   database transaction.
 - Use UTC `timestamp with time zone` for instants and explicit nullable period ends for lifetime
   access.
+- A sale and its operation receipt commit in one short transaction after fresh `sales:create` access is loaded.
+  Exact command/key replay returns the original record; changed input conflicts. Previous-month
+  summaries derive half-open business-local bounds from one database timestamp.
+- Protected sale reads and summaries compose an unexpired session plus an exact recognized membership
+  with the required Pisto permission into the same SQL statement that reads financial data, avoiding
+  an authorization/read gap.
 
 ## Connections
 
@@ -84,6 +97,12 @@ Set production TLS/network behavior deliberately through `DATABASE_SSL` and the 
 connection path. Do not disable certificate verification globally.
 
 ## Production migration policy
+
+Migration `0002` preserves the already-applied local sales migration. Its pre-release backfill derives
+the missing wall-clock snapshots from each sale instant plus current business time zone and accepts
+existing USD businesses only; it fails closed for any pre-existing non-USD business so its exponent
+can be reviewed rather than guessed. Fresh databases still apply both migrations without a backfill
+row. This is pre-release compatibility evidence, not a general future currency-migration policy.
 
 - Back up and confirm recovery objectives before a destructive or high-risk change.
 - Run migrations as a separately authorized release step or Cloud Run Job, not in every API instance.

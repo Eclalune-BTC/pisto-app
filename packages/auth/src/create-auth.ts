@@ -8,7 +8,15 @@ import { organization } from "better-auth/plugins";
 import type { AuthConfig } from "./env.ts";
 
 export function createAuth(input: { config: AuthConfig; db: Database; billing: BillingRuntime }) {
-  const plugins: BetterAuthPlugin[] = [expo(), organization()];
+  const plugins: BetterAuthPlugin[] = [
+    expo(),
+    organization({
+      allowUserToCreateOrganization: false,
+      creatorRole: "owner",
+      disableOrganizationDeletion: true,
+      organizationLimit: 1,
+    }),
+  ];
   if (input.billing.polar.plugin) plugins.push(input.billing.polar.plugin);
 
   return betterAuth({

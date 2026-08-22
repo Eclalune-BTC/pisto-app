@@ -2,37 +2,20 @@ import type { Auth } from "@pisto/auth";
 import type { BillingRuntime } from "@pisto/billing";
 import { RevenueCatWebhookError } from "@pisto/billing";
 import { billingCheckoutRequestSchema, billingPortalRequestSchema } from "@pisto/contracts";
-import type { Database } from "@pisto/db";
+import type { Database, ProductRepository } from "@pisto/db";
 import { Hono } from "hono";
 import { z } from "zod";
 
 import { ApiError } from "../errors.ts";
-import { callAuthEndpoint } from "../http.ts";
+import { callAuthEndpoint, parseJsonBody, parseOptionalJsonBody } from "../http.ts";
 import { requireSession, resolveBillingScope } from "../session.ts";
 import type { AppEnv } from "../types.ts";
+import { productRoutes } from "./product.ts";
 
 const providerRedirectSchema = z.object({
   url: z.string().url(),
   redirect: z.boolean(),
 });
-
-async function parseJsonBody(context: { req: { json: () => Promise<unknown> } }) {
-  try {
-    return await context.req.json();
-  } catch {
-    throw new ApiError(400, "BAD_REQUEST", "Request body must be valid JSON");
-  }
-}
-
-async function parseOptionalJsonBody(context: { req: { text: () => Promise<string> } }) {
-  const rawBody = await context.req.text();
-  if (!rawBody.trim()) return {};
-  try {
-    return JSON.parse(rawBody) as unknown;
-  } catch {
-    throw new ApiError(400, "BAD_REQUEST", "Request body must be valid JSON");
-  }
-}
 
 function parseProviderRedirect(payload: unknown) {
   const parsed = providerRedirectSchema.safeParse(payload);
@@ -51,12 +34,15 @@ export function v1Routes(input: {
   authBaseUrl: string;
   billing: BillingRuntime;
   db: Database;
+  product: ProductRepository;
 }) {
   const routes = new Hono<AppEnv>();
 
   routes.get("/", (context) =>
     context.json({ data: { version: "v1" as const, service: "pisto-api" as const } }),
   );
+
+  routes.route("/", productRoutes({ auth: input.auth, product: input.product }));
 
   routes.get("/me", async (context) => {
     const authSession = await requireSession(input.auth, context.req.raw.headers);

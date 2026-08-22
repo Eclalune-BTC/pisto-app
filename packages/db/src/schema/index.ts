@@ -1,8 +1,12 @@
 export * from "./auth.ts";
 export * from "./billing.ts";
+export * from "./business.ts";
+export * from "./sales.ts";
 
 import * as auth from "./auth.ts";
 import * as billing from "./billing.ts";
+import * as business from "./business.ts";
+import * as sales from "./sales.ts";
 
 export const schema = {
   user: auth.user,
@@ -17,4 +21,7 @@ export const schema = {
   billingCustomer: billing.billingCustomer,
   billingSubscription: billing.billingSubscription,
   entitlement: billing.entitlement,
+  businessSettings: business.businessSettings,
+  sale: sales.sale,
+  saleOperation: sales.saleOperation,
 };

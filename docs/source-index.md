@@ -64,6 +64,7 @@ can drift.
 | Hono on Bun | [Hono Bun guide](https://hono.dev/docs/getting-started/bun) | Runtime/framework upgrade |
 | Exact credentialed CORS | [Hono CORS](https://hono.dev/docs/middleware/builtin/cors) | Origin/auth topology change |
 | Security response headers | [Hono secure headers](https://hono.dev/docs/middleware/builtin/secure-headers) | Browser/API exposure change |
+| Unsafe cookie-authenticated `/v1` requests enforce exact Origin and JSON checks; sensitive responses are not cached | [OWASP CSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html), [RFC 9111 `no-store`](https://www.rfc-editor.org/rfc/rfc9111.html#name-no-store) | Client origin, cookie, cache, or mutation topology change |
 | Boundary validation | [Hono validation](https://hono.dev/docs/guides/validation) | Contract/validator change |
 | Cloud Run listener uses `0.0.0.0:$PORT` | [Cloud Run container contract](https://cloud.google.com/run/docs/container-contract) | Container/runtime change |
 
@@ -95,6 +96,12 @@ can drift.
 | PostgreSQL 18+ Compose volume targets `/var/lib/postgresql`, not the legacy data subdirectory | [Official PostgreSQL image](https://hub.docker.com/_/postgres) | Every container-image major upgrade |
 | Drizzle PostgreSQL driver | [Drizzle PostgreSQL guide](https://orm.drizzle.team/docs/get-started-postgresql) | Driver/ORM change |
 | Code-first, reviewed migrations | [Drizzle migrations](https://orm.drizzle.team/docs/migrations), [generate](https://orm.drizzle.team/docs/drizzle-kit-generate), [migrate](https://orm.drizzle.team/docs/drizzle-kit-migrate) | Every schema change |
+| Sales money uses constrained `bigint` minor units and composite tenant foreign keys | [Drizzle indexes and constraints](https://orm.drizzle.team/docs/indexes-constraints), [PostgreSQL numeric types](https://www.postgresql.org/docs/current/datatype-numeric.html) | Financial schema or amount-range change |
+| Currency minor-unit digits are resolved server-side at onboarding and frozen into business/sale contracts | [ECMA-402 `CurrencyDigits`](https://tc39.es/ecma402/#sec-currencydigits), [`Intl.NumberFormat.resolvedOptions`](https://tc39.es/ecma402/#sec-intl.numberformat.prototype.resolvedoptions) | Currency support or formatting-runtime change |
+| The universal client uses system/app locale input, a typed `es-SV` catalog, and correct static HTML language metadata | [Expo localization](https://docs.expo.dev/guides/localization/), [Expo Localization SDK](https://docs.expo.dev/versions/latest/sdk/localization/), [Expo Router static rendering](https://docs.expo.dev/router/web/static-rendering/), [i18next TypeScript](https://www.i18next.com/overview/typescript) | Second locale, locale override, RTL, or localization-library change |
+| Business-local sale instants and previous-calendar-month bounds are resolved by the server | [PostgreSQL date/time types](https://www.postgresql.org/docs/current/datatype-datetime.html), [date/time functions](https://www.postgresql.org/docs/current/functions-datetime.html) | Time-zone, reporting-period, or occurrence-time change |
+| Accepted business time-zone names must exist in both ICU and PostgreSQL and confirmed wall-clock values are snapshotted | [ECMA-402 IANA time-zone use](https://tc39.es/ecma402/#sec-use-of-the-iana-time-zone-database), [PostgreSQL time-zone names](https://www.postgresql.org/docs/current/view-pg-timezone-names.html) | Runtime/tzdb upgrade or time-zone policy change |
+| Onboarding and sale plus operation receipt are atomic; same-key writes serialize before replay checks | [PostgreSQL transactions](https://www.postgresql.org/docs/current/tutorial-transactions.html), [advisory locks](https://www.postgresql.org/docs/current/explicit-locking.html#ADVISORY-LOCKS) | Mutation, idempotency, or concurrency change |
 | Bounded Cloud SQL connections | [Cloud SQL connection management](https://cloud.google.com/sql/docs/postgres/manage-connections) | Pool/scaling change |
 | Backup and recovery | [Cloud SQL backups](https://cloud.google.com/sql/docs/postgres/backup-recovery/backups) | Data/recovery change |
 
@@ -150,7 +157,7 @@ summary for a later submission; read the live documents and enrolled-program ter
 | Decision | Primary official source | Review trigger |
 | --- | --- | --- |
 | Password recovery needs an explicit email sender | [Better Auth email/password](https://better-auth.com/docs/authentication/email-password), [email provider seam](https://better-auth.com/docs/concepts/email) | Recovery/email implementation |
-| Organizations remain a server/schema foundation until the product role and invitation flow is approved and tested | [Better Auth organization plugin](https://better-auth.com/docs/plugins/organization) | Organization, role, permission, or invitation work |
+| Exact static organization roles map through Pisto-owned current-operation permissions; invitations and role administration remain blocked | [Better Auth organization plugin](https://better-auth.com/docs/plugins/organization) | Organization, role, permission, or invitation work |
 | Push requires native and server delivery integration | [Expo push overview](https://docs.expo.dev/push-notifications/overview/) | Notification feature |
 | Cloud Run logs are collected; production alerts/SLOs still need configuration | [Cloud Run logging](https://cloud.google.com/run/docs/logging), [Error Reporting](https://cloud.google.com/run/docs/error-reporting) | Observability deployment |
 | Analytics requires a privacy design before an SDK/vendor | [Expo data and privacy](https://docs.expo.dev/guides/data-and-privacy-protection/) | Analytics/tracking feature |
