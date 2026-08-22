@@ -169,6 +169,7 @@ export const businessPermissionSchema = z.enum([
   "sales:create",
   "sales:read",
   "sales:summary:read",
+  "sales:correct",
   "catalog:read",
   "catalog:manage",
   "inventory:read",
@@ -224,6 +225,17 @@ export const createBusinessResponseSchema = z.object({
 
 export const saleStatusSchema = z.enum(["posted", "voided"]);
 
+export const saleCorrectionKindSchema = z.enum(["void", "replacement"]);
+
+export const saleCorrectionSchema = z.object({
+  id: z.string().uuid(),
+  kind: saleCorrectionKindSchema,
+  reason: z.string().min(2).max(240),
+  originalSaleId: z.string().uuid(),
+  replacementSaleId: z.string().uuid().nullable(),
+  correctedAt: z.string().datetime({ offset: true }),
+});
+
 export const saleSchema = z.object({
   id: z.string().uuid(),
   status: saleStatusSchema,
@@ -236,6 +248,7 @@ export const saleSchema = z.object({
   occurredLocalTime: localTimeSchema,
   timeZone: timeZoneSchema,
   description: z.string().min(1).max(240).nullable(),
+  correction: saleCorrectionSchema.nullable(),
   createdAt: z.string().datetime({ offset: true }),
 });
 
@@ -252,6 +265,32 @@ export const createSaleRequestSchema = z
 export const saleResponseSchema = z.object({
   data: z.object({
     sale: saleSchema,
+    replayed: z.boolean(),
+  }),
+});
+
+export const voidSaleRequestSchema = z
+  .object({
+    idempotencyKey: z.string().uuid(),
+    reason: z.string().trim().min(2).max(240),
+  })
+  .strict();
+
+const replacementSaleDraftSchema = createSaleRequestSchema.omit({ idempotencyKey: true });
+
+export const replaceSaleRequestSchema = z
+  .object({
+    idempotencyKey: z.string().uuid(),
+    reason: z.string().trim().min(2).max(240),
+    replacement: replacementSaleDraftSchema,
+  })
+  .strict();
+
+export const saleCorrectionResponseSchema = z.object({
+  data: z.object({
+    correction: saleCorrectionSchema,
+    originalSale: saleSchema,
+    replacementSale: saleSchema.nullable(),
     replayed: z.boolean(),
   }),
 });
@@ -297,5 +336,10 @@ export type CreateBusinessResponse = z.infer<typeof createBusinessResponseSchema
 export type Sale = z.infer<typeof saleSchema>;
 export type CreateSaleRequest = z.infer<typeof createSaleRequestSchema>;
 export type SaleResponse = z.infer<typeof saleResponseSchema>;
+export type SaleCorrectionKind = z.infer<typeof saleCorrectionKindSchema>;
+export type SaleCorrection = z.infer<typeof saleCorrectionSchema>;
+export type VoidSaleRequest = z.infer<typeof voidSaleRequestSchema>;
+export type ReplaceSaleRequest = z.infer<typeof replaceSaleRequestSchema>;
+export type SaleCorrectionResponse = z.infer<typeof saleCorrectionResponseSchema>;
 export type PreviousMonthSummary = z.infer<typeof previousMonthSummarySchema>;
 export type PreviousMonthSummaryResponse = z.infer<typeof previousMonthSummaryResponseSchema>;

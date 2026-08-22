@@ -24,8 +24,14 @@ import {
   meResponseSchema,
   type PreviousMonthSummaryResponse,
   previousMonthSummaryResponseSchema,
+  type ReplaceSaleRequest,
+  replaceSaleRequestSchema,
+  type SaleCorrectionResponse,
   type SaleResponse,
+  saleCorrectionResponseSchema,
   saleResponseSchema,
+  type VoidSaleRequest,
+  voidSaleRequestSchema,
 } from "@pisto/contracts";
 import { Platform } from "react-native";
 import type { ZodType } from "zod";
@@ -148,6 +154,26 @@ export const api = {
         `/v1/sales/${encodeURIComponent(saleId)}`,
         { authenticated: true },
         saleResponseSchema,
+      ),
+    void: (saleId: string, command: VoidSaleRequest) =>
+      apiRequest<SaleCorrectionResponse, SaleCorrectionResponse["data"]>(
+        `/v1/sales/${encodeURIComponent(saleId)}/void`,
+        {
+          authenticated: true,
+          body: parseRequestPayload(voidSaleRequestSchema, command),
+          method: "POST",
+        },
+        saleCorrectionResponseSchema,
+      ),
+    replace: (saleId: string, command: ReplaceSaleRequest) =>
+      apiRequest<SaleCorrectionResponse, SaleCorrectionResponse["data"]>(
+        `/v1/sales/${encodeURIComponent(saleId)}/replace`,
+        {
+          authenticated: true,
+          body: parseRequestPayload(replaceSaleRequestSchema, command),
+          method: "POST",
+        },
+        saleCorrectionResponseSchema,
       ),
     previousMonthSummary: () =>
       apiRequest<PreviousMonthSummaryResponse, PreviousMonthSummaryResponse["data"]>(

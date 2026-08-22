@@ -24,4 +24,5 @@ export const schema = {
   businessSettings: business.businessSettings,
   sale: sales.sale,
   saleOperation: sales.saleOperation,
+  saleCorrection: sales.saleCorrection,
 };

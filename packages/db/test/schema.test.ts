@@ -10,6 +10,7 @@ import {
   organization,
   rateLimit,
   sale,
+  saleCorrection,
   saleOperation,
   session,
   user,
@@ -63,5 +64,8 @@ describe("database schema", () => {
     expect(getTableColumns(sale)).toHaveProperty("occurredLocalTime");
     expect(getTableColumns(sale)).toHaveProperty("timeZone");
     expect(getTableColumns(saleOperation)).toHaveProperty("idempotencyKey");
+    expect(getTableColumns(saleCorrection)).toHaveProperty("originalSaleId");
+    expect(getTableColumns(saleCorrection)).toHaveProperty("replacementSaleId");
+    expect(getTableColumns(saleCorrection)).toHaveProperty("reason");
   });
 });

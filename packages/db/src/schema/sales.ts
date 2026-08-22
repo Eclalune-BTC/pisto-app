@@ -98,3 +98,64 @@ export const saleOperation = pgTable(
     index("sale_operation_sale_id_idx").on(table.saleId),
   ],
 );
+
+export const saleCorrection = pgTable(
+  "sale_correction",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    businessId: text("business_id")
+      .notNull()
+      .references(() => businessSettings.businessId, { onDelete: "restrict" }),
+    originalSaleId: uuid("original_sale_id").notNull(),
+    replacementSaleId: uuid("replacement_sale_id"),
+    actorUserId: text("actor_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    idempotencyKey: uuid("idempotency_key").notNull(),
+    commandFingerprint: text("command_fingerprint").notNull(),
+    kind: text("kind").notNull(),
+    reason: text("reason").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    check("sale_correction_kind_check", sql`${table.kind} in ('void', 'replacement')`),
+    check(
+      "sale_correction_replacement_check",
+      sql`(${table.kind} = 'void' and ${table.replacementSaleId} is null)
+        or (${table.kind} = 'replacement' and ${table.replacementSaleId} is not null)`,
+    ),
+    check(
+      "sale_correction_distinct_sales_check",
+      sql`${table.replacementSaleId} is null or ${table.replacementSaleId} <> ${table.originalSaleId}`,
+    ),
+    check(
+      "sale_correction_reason_length_check",
+      sql`char_length(${table.reason}) between 2 and 240`,
+    ),
+    check("sale_correction_fingerprint_check", sql`${table.commandFingerprint} ~ '^[a-f0-9]{64}$'`),
+    foreignKey({
+      columns: [table.businessId, table.originalSaleId],
+      foreignColumns: [sale.businessId, sale.id],
+      name: "sale_correction_business_original_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.businessId, table.replacementSaleId],
+      foreignColumns: [sale.businessId, sale.id],
+      name: "sale_correction_business_replacement_fk",
+    }).onDelete("restrict"),
+    uniqueIndex("sale_correction_business_original_unique").on(
+      table.businessId,
+      table.originalSaleId,
+    ),
+    uniqueIndex("sale_correction_business_replacement_unique").on(
+      table.businessId,
+      table.replacementSaleId,
+    ),
+    uniqueIndex("sale_correction_actor_key_unique").on(
+      table.businessId,
+      table.actorUserId,
+      table.idempotencyKey,
+    ),
+    index("sale_correction_business_created_at_idx").on(table.businessId, table.createdAt),
+  ],
+);

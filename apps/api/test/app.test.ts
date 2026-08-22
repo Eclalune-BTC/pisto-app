@@ -81,6 +81,12 @@ function testApp(
       createSale: async () => {
         throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
       },
+      voidSale: async () => {
+        throw new ProductError("NOT_FOUND", "Sale was not found");
+      },
+      replaceSale: async () => {
+        throw new ProductError("NOT_FOUND", "Sale was not found");
+      },
       getSale: async () => {
         throw new ProductError("NOT_FOUND", "Sale was not found");
       },
@@ -311,5 +317,44 @@ describe("Pisto API", () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ error: { code: "BUSINESS_REQUIRED" } });
+  });
+
+  test("validates sale corrections before dispatching them", async () => {
+    let repositoryCalled = false;
+    const product = {
+      voidSale: async () => {
+        repositoryCalled = true;
+        throw new Error("Repository should not be called");
+      },
+      replaceSale: async () => {
+        repositoryCalled = true;
+        throw new Error("Repository should not be called");
+      },
+    } as unknown as ProductRepository;
+    const app = testApp({ authenticated: true, product });
+    const saleId = "5312a3e6-7c91-486a-9233-0cf4d9d3dcc7";
+
+    const invalidVoid = await app.request(`/v1/sales/${saleId}/void`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ idempotencyKey: crypto.randomUUID(), reason: " " }),
+    });
+    const invalidReplacement = await app.request(`/v1/sales/${saleId}/replace`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        idempotencyKey: crypto.randomUUID(),
+        reason: "Correct amount",
+        replacement: {
+          grossMinorUnits: "12.50",
+          occurredLocalDate: "2026-08-22",
+          occurredLocalTime: "14:30",
+        },
+      }),
+    });
+
+    expect(invalidVoid.status).toBe(400);
+    expect(invalidReplacement.status).toBe(400);
+    expect(repositoryCalled).toBe(false);
   });
 });

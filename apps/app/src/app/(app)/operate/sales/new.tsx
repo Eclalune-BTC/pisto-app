@@ -11,32 +11,19 @@ import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
+import {
+  type SaleDraftIssues,
+  type SaleDraftValues,
+  validateSaleDraft,
+} from "@/features/sales/sale-draft";
+import { SaleDraftFields } from "@/features/sales/sale-draft-fields";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { api, isAmbiguousMutationError } from "@/lib/api-client";
-import {
-  type AmountParseError,
-  currentLocalDateTime,
-  formatMinorUnits,
-  parseAmountToMinorUnits,
-} from "@/lib/money";
+import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 
-type DraftErrors = Partial<Record<"amount" | "date" | "time" | "description", string>>;
-
-function isValidCalendarDate(value: string): boolean {
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return false;
-  const [, yearText, monthText, dayText] = match;
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return (
-    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
-  );
-}
+type DraftErrors = Partial<Record<keyof SaleDraftValues, string>>;
 
 export default function NewSaleScreen() {
   const { i18n, t } = useTranslation();
@@ -80,37 +67,29 @@ export default function NewSaleScreen() {
   if (!business) return <Redirect href="/business" />;
 
   const prepareReview = () => {
-    const nextErrors: DraftErrors = {};
-    const money = parseAmountToMinorUnits(amount, business.currencyMinorUnitDigits);
-    if ("error" in money) {
-      const moneyMessages: Record<AmountParseError, string> = {
-        "invalid-decimals": t("sales.validation.amountDecimals", {
-          count: business.currencyMinorUnitDigits,
-        }),
-        "invalid-integer": t("sales.validation.amountInteger"),
-        "non-positive": t("sales.validation.amountPositive"),
-        "too-large": t("sales.validation.amountTooLarge"),
-      };
-      nextErrors.amount = moneyMessages[money.error];
-    }
-    if (!isValidCalendarDate(date)) {
-      nextErrors.date = t("sales.validation.date");
-    }
-    if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) {
-      nextErrors.time = t("sales.validation.time");
-    }
-    const trimmedDescription = description.trim();
-    if (trimmedDescription.length > 240) {
-      nextErrors.description = t("sales.validation.description");
-    }
+    const validation = validateSaleDraft(
+      { amount, date, time, description },
+      business.currencyMinorUnitDigits,
+    );
+    const messages: Record<NonNullable<SaleDraftIssues[keyof SaleDraftIssues]>, string> = {
+      "invalid-decimals": t("sales.validation.amountDecimals", {
+        count: business.currencyMinorUnitDigits,
+      }),
+      "invalid-integer": t("sales.validation.amountInteger"),
+      "non-positive": t("sales.validation.amountPositive"),
+      "too-large": t("sales.validation.amountTooLarge"),
+      "invalid-date": t("sales.validation.date"),
+      "invalid-time": t("sales.validation.time"),
+      "description-too-long": t("sales.validation.description"),
+    };
+    const nextErrors = Object.fromEntries(
+      Object.entries(validation.issues).map(([field, issue]) => [field, messages[issue]]),
+    ) as DraftErrors;
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0 || "error" in money) return;
+    if (!validation.draft) return;
     setCommand({
       idempotencyKey: Crypto.randomUUID(),
-      grossMinorUnits: money.value,
-      occurredLocalDate: date,
-      occurredLocalTime: time,
-      ...(trimmedDescription ? { description: trimmedDescription } : {}),
+      ...validation.draft,
     });
     confirmation.reset();
   };
@@ -206,48 +185,25 @@ export default function NewSaleScreen() {
         </View>
       ) : (
         <View className="gap-7 border-y border-line py-7 dark:border-[#304239]">
-          <Field
-            error={errors.amount}
-            keyboardType="decimal-pad"
-            label={t("sales.totalField")}
-            onChangeText={setAmount}
-            placeholder="0.00"
-            trailing={
-              <Text className="text-sm font-bold text-ink-muted dark:text-[#AAB8B0]">
-                {business.currency}
-              </Text>
-            }
-            value={amount}
-          />
-          <View className="gap-5 sm:flex-row">
-            <View className="flex-1">
-              <Field
-                error={errors.date}
-                keyboardType="numbers-and-punctuation"
-                label={t("sales.date")}
-                onChangeText={setDate}
-                placeholder={t("sales.datePlaceholder")}
-                value={date}
-              />
-            </View>
-            <View className="flex-1">
-              <Field
-                error={errors.time}
-                keyboardType="numbers-and-punctuation"
-                label={t("sales.time")}
-                onChangeText={setTime}
-                placeholder={t("sales.timePlaceholder")}
-                value={time}
-              />
-            </View>
-          </View>
-          <Field
-            error={errors.description}
-            label={t("sales.descriptionOptional")}
-            maxLength={240}
-            onChangeText={setDescription}
-            placeholder={t("sales.descriptionPlaceholder")}
-            value={description}
+          <SaleDraftFields
+            currency={business.currency}
+            errors={errors}
+            labels={{
+              amount: t("sales.totalField"),
+              date: t("sales.date"),
+              datePlaceholder: t("sales.datePlaceholder"),
+              description: t("sales.descriptionOptional"),
+              descriptionPlaceholder: t("sales.descriptionPlaceholder"),
+              time: t("sales.time"),
+              timePlaceholder: t("sales.timePlaceholder"),
+            }}
+            onChange={(field, value) => {
+              if (field === "amount") setAmount(value);
+              if (field === "date") setDate(value);
+              if (field === "time") setTime(value);
+              if (field === "description") setDescription(value);
+            }}
+            values={{ amount, date, time, description }}
           />
           <View className="gap-2">
             <Button

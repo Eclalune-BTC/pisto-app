@@ -241,3 +241,17 @@ conversation remain separate future capabilities.
 - `bun run check`, build, migration consistency, PostgreSQL 18 integration, web browser, and available
   native checks must pass before the milestone is called locally validated. This milestone excludes
   deployment, store submission, and a production-release claim.
+
+## Sources
+
+- [ADR 0011: modular capabilities and app-owned composition](../adrs/0011-modular-capabilities-and-app-owned-composition.md)
+- [ADR 0015: business-owned currency and immutable money snapshots](../adrs/0015-business-owned-currency-and-money-snapshots.md)
+- [Better Auth organization plugin](https://www.better-auth.com/docs/plugins/organization)
+- [Drizzle ORM transactions](https://orm.drizzle.team/docs/transactions)
+- [Drizzle indexes and constraints](https://orm.drizzle.team/docs/indexes-constraints)
+- [PostgreSQL explicit and advisory locking](https://www.postgresql.org/docs/current/explicit-locking.html)
+- [PostgreSQL numeric types](https://www.postgresql.org/docs/current/datatype-numeric.html)
+- [Expo Router introduction](https://docs.expo.dev/router/introduction/)
+- [AI SDK tool calling](https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling)
+- [OpenAI Responses API](https://developers.openai.com/api/reference/resources/responses/methods/create)
+- [Expo Audio](https://docs.expo.dev/versions/latest/sdk/audio/)

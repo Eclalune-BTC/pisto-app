@@ -5,9 +5,12 @@ import type {
   CreateBusinessRequest,
   CreateSaleRequest,
   PreviousMonthSummary,
+  ReplaceSaleRequest,
   Sale,
+  SaleCorrection,
+  VoidSaleRequest,
 } from "@pisto/contracts";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 
 import type { Database } from "./client.ts";
 import {
@@ -17,7 +20,7 @@ import {
 } from "./product-access.ts";
 import { member, organization, session } from "./schema/auth.ts";
 import { businessSettings } from "./schema/business.ts";
-import { sale, saleOperation } from "./schema/sales.ts";
+import { sale, saleCorrection, saleOperation } from "./schema/sales.ts";
 
 const maximumMinorUnits = 9_223_372_036_854_775_807n;
 const supportedCurrencies = new Set(Intl.supportedValuesOf("currency"));
@@ -62,11 +65,29 @@ export interface ProductRepository {
     actor: ProductActor,
     command: CreateSaleRequest,
   ): Promise<{ sale: Sale; replayed: boolean }>;
+  voidSale(
+    actor: ProductActor,
+    saleId: string,
+    command: VoidSaleRequest,
+  ): Promise<SaleCorrectionResult>;
+  replaceSale(
+    actor: ProductActor,
+    saleId: string,
+    command: ReplaceSaleRequest,
+  ): Promise<SaleCorrectionResult>;
   getSale(actor: ProductActor, saleId: string): Promise<Sale>;
   getPreviousMonthSummary(actor: ProductActor): Promise<PreviousMonthSummary>;
 }
 
 type SaleRecord = typeof sale.$inferSelect;
+type SaleCorrectionRecord = typeof saleCorrection.$inferSelect;
+
+export interface SaleCorrectionResult {
+  correction: SaleCorrection;
+  originalSale: Sale;
+  replacementSale: Sale | null;
+  replayed: boolean;
+}
 
 function toBusiness(record: {
   access: BusinessAccess;
@@ -214,19 +235,50 @@ function parseMinorUnits(value: string): bigint {
   return parsed;
 }
 
-async function fingerprint(command: CreateSaleRequest): Promise<string> {
-  const canonical = JSON.stringify({
+async function fingerprintValue(value: unknown): Promise<string> {
+  const canonical = JSON.stringify(value);
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function saleFingerprint(command: CreateSaleRequest): Promise<string> {
+  return fingerprintValue({
     version: 1,
+    action: "sale.posted",
     grossMinorUnits: command.grossMinorUnits,
     occurredLocalDate: command.occurredLocalDate,
     occurredLocalTime: command.occurredLocalTime,
     description: command.description ?? null,
   });
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function toSale(record: SaleRecord): Sale {
+function correctionFingerprint(
+  saleId: string,
+  input:
+    | { kind: "void"; command: VoidSaleRequest }
+    | { kind: "replacement"; command: ReplaceSaleRequest },
+): Promise<string> {
+  return fingerprintValue({
+    version: 1,
+    action: input.kind === "void" ? "sale.voided" : "sale.replaced",
+    saleId,
+    reason: input.command.reason,
+    replacement: input.kind === "replacement" ? input.command.replacement : null,
+  });
+}
+
+function toCorrection(record: SaleCorrectionRecord): SaleCorrection {
+  return {
+    id: record.id,
+    kind: record.kind === "replacement" ? "replacement" : "void",
+    reason: record.reason,
+    originalSaleId: record.originalSaleId,
+    replacementSaleId: record.replacementSaleId,
+    correctedAt: record.createdAt.toISOString(),
+  };
+}
+
+function toSale(record: SaleRecord, correction: SaleCorrection | null = null): Sale {
   return {
     id: record.id,
     status: record.status === "voided" ? "voided" : "posted",
@@ -239,6 +291,7 @@ function toSale(record: SaleRecord): Sale {
     occurredLocalTime: record.occurredLocalTime,
     timeZone: record.timeZone,
     description: record.description,
+    correction,
     createdAt: record.createdAt.toISOString(),
   };
 }
@@ -270,6 +323,214 @@ function businessSlug(name: string, id: string): string {
 }
 
 export function createProductRepository(db: Database): ProductRepository {
+  async function correctSale(
+    actor: ProductActor,
+    saleId: string,
+    input:
+      | { kind: "void"; command: VoidSaleRequest }
+      | { kind: "replacement"; command: ReplaceSaleRequest },
+  ): Promise<SaleCorrectionResult> {
+    const businessId = requireActiveBusiness(actor);
+    const reason = input.command.reason.trim();
+    if (reason.length < 2 || reason.length > 240) {
+      throw new ProductError("VALIDATION_ERROR", "Correction reason must be 2 to 240 characters");
+    }
+    const replacementMinorUnits =
+      input.kind === "replacement"
+        ? parseMinorUnits(input.command.replacement.grossMinorUnits)
+        : null;
+    const commandFingerprint = await correctionFingerprint(saleId, {
+      ...input,
+      command: { ...input.command, reason },
+    } as typeof input);
+
+    return db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${`${businessId}:${actor.userId}:${input.command.idempotencyKey}`}, 0))`,
+      );
+
+      const [activeSession] = await tx
+        .select({ id: session.id })
+        .from(session)
+        .where(
+          and(
+            eq(session.id, actor.sessionId),
+            eq(session.userId, actor.userId),
+            sql`${session.expiresAt} > transaction_timestamp()`,
+          ),
+        )
+        .limit(1)
+        .for("update");
+      if (!activeSession) {
+        throw new ProductError("UNAUTHORIZED", "The authenticated session is no longer active");
+      }
+
+      const [access] = await tx
+        .select({
+          currency: businessSettings.currency,
+          currencyMinorUnitDigits: businessSettings.currencyMinorUnitDigits,
+          role: member.role,
+          timeZone: businessSettings.timeZone,
+        })
+        .from(member)
+        .innerJoin(businessSettings, eq(businessSettings.businessId, member.organizationId))
+        .where(and(eq(member.organizationId, businessId), eq(member.userId, actor.userId)))
+        .limit(1)
+        .for("update");
+      if (!access) {
+        throw new ProductError("FORBIDDEN", "The active business membership is no longer valid");
+      }
+      requireBusinessPermission(access.role, "sales:correct");
+
+      const [existingPostedOperation] = await tx
+        .select({ id: saleOperation.id })
+        .from(saleOperation)
+        .where(
+          and(
+            eq(saleOperation.businessId, businessId),
+            eq(saleOperation.actorUserId, actor.userId),
+            eq(saleOperation.idempotencyKey, input.command.idempotencyKey),
+          ),
+        )
+        .limit(1);
+      if (existingPostedOperation) {
+        throw new ProductError(
+          "IDEMPOTENCY_CONFLICT",
+          "That confirmation key was already used for another sale operation",
+        );
+      }
+
+      const [existingCorrection] = await tx
+        .select()
+        .from(saleCorrection)
+        .where(
+          and(
+            eq(saleCorrection.businessId, businessId),
+            eq(saleCorrection.actorUserId, actor.userId),
+            eq(saleCorrection.idempotencyKey, input.command.idempotencyKey),
+          ),
+        )
+        .limit(1);
+
+      if (existingCorrection) {
+        if (existingCorrection.commandFingerprint !== commandFingerprint) {
+          throw new ProductError(
+            "IDEMPOTENCY_CONFLICT",
+            "That confirmation key was already used for a different correction",
+          );
+        }
+        const ids = [
+          existingCorrection.originalSaleId,
+          existingCorrection.replacementSaleId,
+        ].filter((id): id is string => id !== null);
+        const records = await tx
+          .select()
+          .from(sale)
+          .where(and(eq(sale.businessId, businessId), inArray(sale.id, ids)));
+        const originalRecord = records.find(({ id }) => id === existingCorrection.originalSaleId);
+        const replacementRecord = records.find(
+          ({ id }) => id === existingCorrection.replacementSaleId,
+        );
+        if (!originalRecord || (existingCorrection.replacementSaleId && !replacementRecord)) {
+          throw new Error("Sale correction references missing canonical records");
+        }
+        const correction = toCorrection(existingCorrection);
+        return {
+          correction,
+          originalSale: toSale(originalRecord, correction),
+          replacementSale: replacementRecord ? toSale(replacementRecord, correction) : null,
+          replayed: true,
+        };
+      }
+
+      const [originalRecord] = await tx
+        .select()
+        .from(sale)
+        .where(and(eq(sale.businessId, businessId), eq(sale.id, saleId)))
+        .limit(1)
+        .for("update");
+      if (!originalRecord) throw new ProductError("NOT_FOUND", "Sale was not found");
+      const [relatedCorrection] = await tx
+        .select({ id: saleCorrection.id })
+        .from(saleCorrection)
+        .where(
+          and(
+            eq(saleCorrection.businessId, businessId),
+            or(
+              eq(saleCorrection.originalSaleId, saleId),
+              eq(saleCorrection.replacementSaleId, saleId),
+            ),
+          ),
+        )
+        .limit(1);
+      if (relatedCorrection) {
+        throw new ProductError("CONFLICT", "A corrected sale cannot be corrected again");
+      }
+      if (originalRecord.status !== "posted") {
+        throw new ProductError("CONFLICT", "Only a posted sale can be corrected");
+      }
+
+      let replacementRecord: SaleRecord | null = null;
+      if (input.kind === "replacement") {
+        const replacement = input.command.replacement;
+        const occurredAt = resolveLocalDateTime({
+          date: replacement.occurredLocalDate,
+          time: replacement.occurredLocalTime,
+          timeZone: access.timeZone,
+        });
+        const [createdReplacement] = await tx
+          .insert(sale)
+          .values({
+            businessId,
+            grossMinorUnits: replacementMinorUnits as bigint,
+            currency: access.currency,
+            currencyMinorUnitDigits: access.currencyMinorUnitDigits,
+            occurredAt,
+            occurredLocalDate: replacement.occurredLocalDate,
+            occurredLocalTime: replacement.occurredLocalTime,
+            timeZone: access.timeZone,
+            description: replacement.description ?? null,
+            createdByUserId: actor.userId,
+          })
+          .returning();
+        if (!createdReplacement) throw new Error("Replacement sale insert returned no record");
+        replacementRecord = createdReplacement;
+      }
+
+      const [voidedOriginal] = await tx
+        .update(sale)
+        .set({ status: "voided" })
+        .where(and(eq(sale.businessId, businessId), eq(sale.id, saleId), eq(sale.status, "posted")))
+        .returning();
+      if (!voidedOriginal) {
+        throw new ProductError("CONFLICT", "The sale was corrected by another operation");
+      }
+
+      const [createdCorrection] = await tx
+        .insert(saleCorrection)
+        .values({
+          businessId,
+          originalSaleId: saleId,
+          replacementSaleId: replacementRecord?.id ?? null,
+          actorUserId: actor.userId,
+          idempotencyKey: input.command.idempotencyKey,
+          commandFingerprint,
+          kind: input.kind,
+          reason,
+        })
+        .returning();
+      if (!createdCorrection) throw new Error("Sale correction insert returned no record");
+
+      const correction = toCorrection(createdCorrection);
+      return {
+        correction,
+        originalSale: toSale(voidedOriginal, correction),
+        replacementSale: replacementRecord ? toSale(replacementRecord, correction) : null,
+        replayed: false,
+      };
+    });
+  }
+
   return {
     async listBusinesses(actor) {
       const records = await db
@@ -486,7 +747,7 @@ export function createProductRepository(db: Database): ProductRepository {
     async createSale(actor, command) {
       const businessId = requireActiveBusiness(actor);
       const grossMinorUnits = parseMinorUnits(command.grossMinorUnits);
-      const commandFingerprint = await fingerprint(command);
+      const commandFingerprint = await saleFingerprint(command);
 
       return db.transaction(async (tx) => {
         await tx.execute(
@@ -526,6 +787,24 @@ export function createProductRepository(db: Database): ProductRepository {
           throw new ProductError("FORBIDDEN", "The active business membership is no longer valid");
         }
         requireBusinessPermission(access.role, "sales:create");
+
+        const [existingCorrectionOperation] = await tx
+          .select({ id: saleCorrection.id })
+          .from(saleCorrection)
+          .where(
+            and(
+              eq(saleCorrection.businessId, businessId),
+              eq(saleCorrection.actorUserId, actor.userId),
+              eq(saleCorrection.idempotencyKey, command.idempotencyKey),
+            ),
+          )
+          .limit(1);
+        if (existingCorrectionOperation) {
+          throw new ProductError(
+            "IDEMPOTENCY_CONFLICT",
+            "That confirmation key was already used for another sale operation",
+          );
+        }
 
         const [existingOperation] = await tx
           .select({
@@ -588,6 +867,14 @@ export function createProductRepository(db: Database): ProductRepository {
       });
     },
 
+    voidSale(actor, saleId, command) {
+      return correctSale(actor, saleId, { kind: "void", command });
+    },
+
+    replaceSale(actor, saleId, command) {
+      return correctSale(actor, saleId, { kind: "replacement", command });
+    },
+
     async getSale(actor, saleId) {
       const businessId = requireActiveBusiness(actor);
       const [result] = await db
@@ -610,7 +897,20 @@ export function createProductRepository(db: Database): ProductRepository {
         .limit(1);
       if (!result) throw new ProductError("NOT_FOUND", "Sale was not found");
       requireBusinessPermission(result.role, "sales:read");
-      return toSale(result.record);
+      const [correctionRecord] = await db
+        .select()
+        .from(saleCorrection)
+        .where(
+          and(
+            eq(saleCorrection.businessId, businessId),
+            or(
+              eq(saleCorrection.originalSaleId, saleId),
+              eq(saleCorrection.replacementSaleId, saleId),
+            ),
+          ),
+        )
+        .limit(1);
+      return toSale(result.record, correctionRecord ? toCorrection(correctionRecord) : null);
     },
 
     async getPreviousMonthSummary(actor) {

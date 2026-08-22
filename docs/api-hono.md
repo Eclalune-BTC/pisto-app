@@ -24,6 +24,8 @@ The baseline surface is:
 | `POST` | `/v1/businesses` | Yes, fresh session | Create or replay the one owner business and settings |
 | `POST` | `/v1/sales` | `sales:create`, fresh session | Confirm or replay one total-only sale |
 | `GET` | `/v1/sales/:saleId` | `sales:read`, fresh session | Read a canonical active-business sale |
+| `POST` | `/v1/sales/:saleId/void` | `sales:correct`, fresh session | Void or exactly replay one posted sale correction |
+| `POST` | `/v1/sales/:saleId/replace` | `sales:correct`, fresh session | Atomically void and replace or exactly replay one sale |
 | `GET` | `/v1/sales/summary/previous-month` | `sales:summary:read`, fresh session | Calculate the previous business-local calendar month |
 | `GET` | `/v1/billing/catalog` | No | Allowlisted public web product catalog |
 | `GET` | `/v1/billing/state` | Yes | Current provider and normalized entitlement state |

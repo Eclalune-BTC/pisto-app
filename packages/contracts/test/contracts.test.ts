@@ -10,6 +10,9 @@ import {
   createSaleRequestSchema,
   positiveMinorUnitsSchema,
   previousMonthSummarySchema,
+  replaceSaleRequestSchema,
+  saleCorrectionResponseSchema,
+  voidSaleRequestSchema,
 } from "../src/index.ts";
 
 describe("API contracts", () => {
@@ -134,5 +137,64 @@ describe("API contracts", () => {
         businessId: "another-business",
       }).success,
     ).toBe(false);
+  });
+
+  test("keeps sale correction commands explicit and tenant-free", () => {
+    const idempotencyKey = "85d434e5-a7fd-49b7-9f12-38aa80a920ae";
+    expect(
+      voidSaleRequestSchema.safeParse({ idempotencyKey, reason: "Duplicate sale" }).success,
+    ).toBe(true);
+    expect(
+      voidSaleRequestSchema.safeParse({
+        idempotencyKey,
+        reason: "Duplicate sale",
+        businessId: "another-business",
+      }).success,
+    ).toBe(false);
+    expect(
+      replaceSaleRequestSchema.safeParse({
+        idempotencyKey,
+        reason: "Correct amount",
+        replacement: {
+          grossMinorUnits: "1250",
+          occurredLocalDate: "2026-08-22",
+          occurredLocalTime: "14:30",
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  test("requires canonical correction links on corrected sales", () => {
+    const correctedAt = "2026-08-22T20:30:00.000Z";
+    const originalSaleId = "5312a3e6-7c91-486a-9233-0cf4d9d3dcc7";
+    const correction = {
+      id: "3ce0fe40-da34-4fc4-b8a6-0b9b3df52136",
+      kind: "void",
+      reason: "Duplicate sale",
+      originalSaleId,
+      replacementSaleId: null,
+      correctedAt,
+    };
+    const sale = {
+      id: originalSaleId,
+      status: "voided",
+      entryMode: "total_only",
+      grossMinorUnits: "1250",
+      currency: "USD",
+      currencyMinorUnitDigits: 2,
+      occurredAt: "2026-08-22T20:30:00.000Z",
+      occurredLocalDate: "2026-08-22",
+      occurredLocalTime: "14:30",
+      timeZone: "America/El_Salvador",
+      description: null,
+      correction,
+      createdAt: correctedAt,
+    };
+
+    expect(
+      saleCorrectionResponseSchema.safeParse({
+        data: { correction, originalSale: sale, replacementSale: null, replayed: false },
+      }).success,
+    ).toBe(true);
   });
 });

@@ -10,6 +10,7 @@ import {
   ProductError,
   parseDatabaseConfig,
   sale,
+  saleCorrection,
   saleOperation,
   session,
   user,
@@ -127,6 +128,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (businessIds.length > 0) {
+    await database.db.delete(saleCorrection).where(inArray(saleCorrection.businessId, businessIds));
     await database.db.delete(saleOperation).where(inArray(saleOperation.businessId, businessIds));
     await database.db.delete(sale).where(inArray(sale.businessId, businessIds));
     await database.db
@@ -245,6 +247,7 @@ describe("product repository on PostgreSQL 18", () => {
         "sales:create",
         "sales:read",
         "sales:summary:read",
+        "sales:correct",
         "catalog:read",
         "catalog:manage",
         "inventory:read",
@@ -363,6 +366,7 @@ describe("product repository on PostgreSQL 18", () => {
         "sales:create",
         "sales:read",
         "sales:summary:read",
+        "sales:correct",
         "catalog:read",
         "catalog:manage",
         "inventory:read",
@@ -421,6 +425,73 @@ describe("product repository on PostgreSQL 18", () => {
     expect((await repository.getSale(memberActor, adminSale.sale.id)).id).toBe(adminSale.sale.id);
     expect((await repository.getPreviousMonthSummary(adminActor)).saleCount).toBe("5");
     expect((await repository.getPreviousMonthSummary(memberActor)).saleCount).toBe("5");
+    await expect(
+      repository.voidSale(memberActor, adminSale.sale.id, {
+        idempotencyKey: crypto.randomUUID(),
+        reason: "Member should not be allowed",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    const voidCommand = {
+      idempotencyKey: crypto.randomUUID(),
+      reason: "Duplicate admin sale",
+    };
+    const voided = await repository.voidSale(activeActor, adminSale.sale.id, voidCommand);
+    expect(voided.replayed).toBe(false);
+    expect(voided.correction.kind).toBe("void");
+    expect(voided.originalSale.status).toBe("voided");
+    expect(voided.originalSale.correction?.id).toBe(voided.correction.id);
+    expect(voided.replacementSale).toBeNull();
+    expect((await repository.voidSale(activeActor, adminSale.sale.id, voidCommand)).replayed).toBe(
+      true,
+    );
+    await expect(
+      repository.voidSale(activeActor, adminSale.sale.id, {
+        ...voidCommand,
+        reason: "Changed correction command",
+      }),
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
+
+    const replacementCommand = {
+      idempotencyKey: crypto.randomUUID(),
+      reason: "Correct member sale amount",
+      replacement: {
+        grossMinorUnits: "350",
+        occurredLocalDate: emptySummary.periodStartLocal,
+        occurredLocalTime: "12:02",
+        description: "Corrected member integration sale",
+      },
+    };
+    const replaced = await repository.replaceSale(
+      adminActor,
+      memberSale.sale.id,
+      replacementCommand,
+    );
+    expect(replaced.replayed).toBe(false);
+    expect(replaced.correction.kind).toBe("replacement");
+    expect(replaced.originalSale.status).toBe("voided");
+    expect(replaced.replacementSale?.status).toBe("posted");
+    expect(replaced.replacementSale?.correction?.originalSaleId).toBe(memberSale.sale.id);
+    expect(
+      (await repository.replaceSale(adminActor, memberSale.sale.id, replacementCommand)).replayed,
+    ).toBe(true);
+    const replacementSaleId = replaced.replacementSale?.id;
+    expect(replacementSaleId).toBeTruthy();
+    await expect(
+      repository.voidSale(activeActor, replacementSaleId as string, {
+        idempotencyKey: crypto.randomUUID(),
+        reason: "Attempt to correct a replacement",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect((await repository.getSale(memberActor, memberSale.sale.id)).correction?.id).toBe(
+      replaced.correction.id,
+    );
+    expect(
+      (await repository.getSale(memberActor, replacementSaleId as string)).correction?.id,
+    ).toBe(replaced.correction.id);
+    const correctedSummary = await repository.getPreviousMonthSummary(activeActor);
+    expect(correctedSummary.saleCount).toBe("4");
+    expect(correctedSummary.grossMinorUnits).toBe("18446744073709553214");
     await expect(
       repository.createSale(unsupportedRoleActor, {
         idempotencyKey: crypto.randomUUID(),

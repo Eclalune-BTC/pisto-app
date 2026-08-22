@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, CheckCircle2, Plus } from "lucide-react-native";
+import { ArrowLeft, CheckCircle2, Pencil, Plus } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { DetailList } from "@/components/detail-list";
@@ -11,6 +11,7 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { api } from "@/lib/api-client";
 import { formatMinorUnits } from "@/lib/money";
+import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 
 export default function SaleResultScreen() {
   const { i18n, t } = useTranslation();
@@ -23,6 +24,7 @@ export default function SaleResultScreen() {
     queryFn: () => api.sales.get(saleId as string),
     queryKey: ["sales", "detail", saleId],
   });
+  const businesses = useQuery(businessesQueryOptions);
 
   if (result.fetchStatus === "paused" && !result.data) return <OfflineState />;
 
@@ -55,6 +57,8 @@ export default function SaleResultScreen() {
   }
 
   const { sale } = result.data;
+  const business = getActiveBusiness(businesses.data);
+  const canCorrect = business?.access.permissions.includes("sales:correct") ?? false;
   return (
     <Page width="form">
       <Button
@@ -102,10 +106,44 @@ export default function SaleResultScreen() {
             value: sale.description ?? t("common.noDescription"),
           },
           { label: t("common.identifier"), value: sale.id },
+          ...(sale.correction
+            ? [
+                {
+                  label: t("sales.correction.action"),
+                  value:
+                    sale.correction.kind === "replacement"
+                      ? t("sales.correction.replaceAction")
+                      : t("sales.correction.voidAction"),
+                },
+                { label: t("sales.correction.reason"), value: sale.correction.reason },
+                ...(sale.correction.replacementSaleId
+                  ? [
+                      {
+                        label: t("sales.correction.replacementIdentifier"),
+                        value: sale.correction.replacementSaleId,
+                      },
+                    ]
+                  : []),
+              ]
+            : []),
         ]}
       />
 
       <View className="gap-3 sm:flex-row">
+        {sale.status === "posted" && canCorrect ? (
+          <Button
+            onPress={() =>
+              router.push({
+                pathname: "/operate/sales/correct/[saleId]",
+                params: { saleId: sale.id },
+              })
+            }
+            variant="secondary"
+          >
+            <Pencil color="#237A55" size={18} />
+            <ButtonText variant="secondary">{t("sales.correction.open")}</ButtonText>
+          </Button>
+        ) : null}
         <Button onPress={() => router.replace("/operate/sales/new")} variant="accent">
           <Plus color="#14241D" size={18} />
           <ButtonText variant="accent">{t("sales.registerAnother")}</ButtonText>

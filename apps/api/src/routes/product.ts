@@ -1,5 +1,10 @@
 import type { Auth } from "@pisto/auth";
-import { createBusinessRequestSchema, createSaleRequestSchema } from "@pisto/contracts";
+import {
+  createBusinessRequestSchema,
+  createSaleRequestSchema,
+  replaceSaleRequestSchema,
+  voidSaleRequestSchema,
+} from "@pisto/contracts";
 import { ProductError, type ProductRepository } from "@pisto/db";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -81,6 +86,56 @@ export function productRoutes(input: { auth: Auth; product: ProductRepository })
     try {
       const summary = await input.product.getPreviousMonthSummary(toProductActor(authSession));
       return context.json({ data: { summary } });
+    } catch (error) {
+      return mapProductError(error);
+    }
+  });
+
+  routes.post("/sales/:saleId/void", async (context) => {
+    const authSession = await requireSession(input.auth, context.req.raw.headers);
+    const saleId = saleIdSchema.safeParse(context.req.param("saleId"));
+    if (!saleId.success) throw new ApiError(404, "NOT_FOUND", "Sale was not found");
+    const body = voidSaleRequestSchema.safeParse(await parseJsonBody(context));
+    if (!body.success) {
+      throw new ApiError(
+        400,
+        "VALIDATION_ERROR",
+        "Sale correction is invalid",
+        body.error.flatten(),
+      );
+    }
+    try {
+      const result = await input.product.voidSale(
+        toProductActor(authSession),
+        saleId.data,
+        body.data,
+      );
+      return context.json({ data: result }, result.replayed ? 200 : 201);
+    } catch (error) {
+      return mapProductError(error);
+    }
+  });
+
+  routes.post("/sales/:saleId/replace", async (context) => {
+    const authSession = await requireSession(input.auth, context.req.raw.headers);
+    const saleId = saleIdSchema.safeParse(context.req.param("saleId"));
+    if (!saleId.success) throw new ApiError(404, "NOT_FOUND", "Sale was not found");
+    const body = replaceSaleRequestSchema.safeParse(await parseJsonBody(context));
+    if (!body.success) {
+      throw new ApiError(
+        400,
+        "VALIDATION_ERROR",
+        "Replacement sale is invalid",
+        body.error.flatten(),
+      );
+    }
+    try {
+      const result = await input.product.replaceSale(
+        toProductActor(authSession),
+        saleId.data,
+        body.data,
+      );
+      return context.json({ data: result }, result.replayed ? 200 : 201);
     } catch (error) {
       return mapProductError(error);
     }

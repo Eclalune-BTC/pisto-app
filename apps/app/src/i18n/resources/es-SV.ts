@@ -183,6 +183,35 @@ export const esSV = {
     voided: "Anulada",
     registerAnother: "Registrar otra venta",
     viewSummary: "Ver resumen",
+    correction: {
+      eyebrow: "Corrección de venta",
+      title: "Corrige sin borrar el historial",
+      description:
+        "Anula el registro o crea un reemplazo revisado. La venta original seguirá visible.",
+      original: "Registro original",
+      open: "Corregir venta",
+      action: "Acción",
+      voidAction: "Anular venta",
+      replaceAction: "Reemplazar venta",
+      reason: "Motivo de la corrección",
+      reasonPlaceholder: "Ej. Se registró dos veces",
+      reasonValidation: "Escribe un motivo de 2 a 240 caracteres.",
+      replacementTotal: "Nuevo total",
+      replacementIdentifier: "Venta de reemplazo",
+      replacementTimeNote:
+        "Escribe la fecha y hora del reemplazo de forma explícita; Pisto no copiará silenciosamente las del registro original.",
+      review: "Revisar corrección",
+      reviewTitle: "Revisa la corrección",
+      reviewDescription:
+        "Confirma el registro original, el motivo y el reemplazo antes de guardar un cambio irreversible.",
+      confirm: "Confirmar corrección",
+      uncertain:
+        "No sabemos si llegó la confirmación. Reintenta sin editar para conservar la misma clave y evitar duplicados.",
+      failed: "No pudimos guardar la corrección. El registro original no cambió.",
+      unavailableTitle: "Esta venta no se puede corregir",
+      unavailableDescription:
+        "Solo owner y admin pueden corregir una venta registrada, y cada venta puede corregirse una sola vez.",
+    },
     validation: {
       amountInteger: "Escribe un monto entero válido.",
       amountDecimals: "Escribe un monto válido con hasta {{count}} decimales.",

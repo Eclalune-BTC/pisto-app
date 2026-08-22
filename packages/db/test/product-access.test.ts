@@ -25,6 +25,8 @@ describe("Pisto business access policy", () => {
       expect(hasBusinessPermission(role, "sales:summary:read")).toBe(true);
     }
     expect(rolesWithBusinessPermission("business:configure")).toEqual(["owner"]);
+    expect(rolesWithBusinessPermission("sales:correct")).toEqual(["owner", "admin"]);
+    expect(hasBusinessPermission("member", "sales:correct")).toBe(false);
   });
 
   test("keeps sensitive operating-core management away from members", () => {
