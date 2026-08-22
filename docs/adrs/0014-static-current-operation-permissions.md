@@ -36,10 +36,21 @@ financial records merely because the provider recognizes it.
 | `sales:create` | Yes | Yes | Yes |
 | `sales:read` | Yes | Yes | Yes |
 | `sales:summary:read` | Yes | Yes | Yes |
+| `catalog:read` | Yes | Yes | Yes |
+| `catalog:manage` | Yes | Yes | No |
+| `inventory:read` | Yes | Yes | Yes |
+| `inventory:manage` | Yes | Yes | No |
+| `expenses:read` / `expenses:manage` | Yes | Yes | No |
+| `cash:read` / `cash:manage` | Yes | Yes | No |
+| `customers:read` / `customers:manage` | Yes | Yes | No |
+| `receivables:read` / `receivables:manage` | Yes | Yes | No |
+| `reports:read` | Yes | Yes | No |
+| `assistant:use` | Yes | Yes | Yes |
 
 - Business bootstrap, sole-owner legacy adoption, and replay of create-once currency/time-zone
-  configuration remain owner-only. `admin` and `member` can perform only the complete daily sales
-  workflow that already exists.
+  configuration remain owner-only. Owner and admin can manage the accepted operating-core modules;
+  member keeps the sales workflow, can read catalog/stock, and can use the assistant only through
+  tools independently authorized by their underlying permission.
 - Business responses expose the server-resolved exact role and effective permission list. This lets
   a client present truthful capability state, but the client response is not authorization evidence.
 - Every financial command/query still resolves the active business from a fresh session and reloads
@@ -56,7 +67,8 @@ financial records merely because the provider recognizes it.
 - The existing `member.role` column is sufficient, so this change adds no dependency, table, or
   migration.
 - Owner, admin, and member can all complete the current manual sale and previous-month summary flow;
-  only an owner can establish the business's immutable initial settings.
+  only an owner can establish the business's immutable initial settings. The accepted operating-core
+  permissions are available for implementation without inferring a custom-role system.
 - Product permissions have one explicit source instead of raw role checks distributed across SQL.
 - A future capability adds its named permission only after its actor and denial behavior are
   approved. A future cashier/accountant model or multiple simultaneous roles requires a new role

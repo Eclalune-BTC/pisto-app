@@ -245,6 +245,20 @@ describe("product repository on PostgreSQL 18", () => {
         "sales:create",
         "sales:read",
         "sales:summary:read",
+        "catalog:read",
+        "catalog:manage",
+        "inventory:read",
+        "inventory:manage",
+        "expenses:read",
+        "expenses:manage",
+        "cash:read",
+        "cash:manage",
+        "customers:read",
+        "customers:manage",
+        "receivables:read",
+        "receivables:manage",
+        "reports:read",
+        "assistant:use",
       ],
     });
 
@@ -344,11 +358,38 @@ describe("product repository on PostgreSQL 18", () => {
 
     expect((await repository.listBusinesses(adminActor)).items[0]?.access).toEqual({
       role: "admin",
-      permissions: ["business:read", "sales:create", "sales:read", "sales:summary:read"],
+      permissions: [
+        "business:read",
+        "sales:create",
+        "sales:read",
+        "sales:summary:read",
+        "catalog:read",
+        "catalog:manage",
+        "inventory:read",
+        "inventory:manage",
+        "expenses:read",
+        "expenses:manage",
+        "cash:read",
+        "cash:manage",
+        "customers:read",
+        "customers:manage",
+        "receivables:read",
+        "receivables:manage",
+        "reports:read",
+        "assistant:use",
+      ],
     });
     expect((await repository.listBusinesses(memberActor)).items[0]?.access).toEqual({
       role: "member",
-      permissions: ["business:read", "sales:create", "sales:read", "sales:summary:read"],
+      permissions: [
+        "business:read",
+        "sales:create",
+        "sales:read",
+        "sales:summary:read",
+        "catalog:read",
+        "inventory:read",
+        "assistant:use",
+      ],
     });
     expect(await repository.listBusinesses(unsupportedRoleActor)).toEqual({
       activeBusinessId: null,

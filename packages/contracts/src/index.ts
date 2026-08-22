@@ -169,6 +169,20 @@ export const businessPermissionSchema = z.enum([
   "sales:create",
   "sales:read",
   "sales:summary:read",
+  "catalog:read",
+  "catalog:manage",
+  "inventory:read",
+  "inventory:manage",
+  "expenses:read",
+  "expenses:manage",
+  "cash:read",
+  "cash:manage",
+  "customers:read",
+  "customers:manage",
+  "receivables:read",
+  "receivables:manage",
+  "reports:read",
+  "assistant:use",
 ]);
 
 export const businessAccessSchema = z.object({
