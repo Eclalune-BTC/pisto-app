@@ -1,7 +1,7 @@
 interface:
   display_name: "Pisto Architecture Delivery"
   short_description: "Architecture-first delivery for Pisto product work"
-  default_prompt: "Use $pisto-architecture-delivery to plan and implement a truthful Pisto product slice, then commission a separate read-only reviewer for material changes."
+  default_prompt: "Use $pisto-architecture-delivery, the approved Pisto product brief, and the reusable feature prompt to plan and implement one truthful vertical slice, then commission a separate read-only reviewer for material changes."
 
 policy:
   allow_implicit_invocation: true

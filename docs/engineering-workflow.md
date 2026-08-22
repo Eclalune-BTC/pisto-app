@@ -7,13 +7,19 @@ truth, repository boundaries, and delivery evidence without turning small edits 
 
 For a material change:
 
-1. Read [Active product goal](product-goal.md), this workflow, and the relevant domain guide/ADRs.
+1. Read [Active product goal](product-goal.md), the approved
+   [AI-native product brief](product-briefs/pisto-ai-business-assistant.md), this workflow, and the
+   relevant domain guide/ADRs. Read [AI assistant architecture](ai-assistant.md) completely when the
+   change touches AI, voice, retrieval, models, tools, or assistant behavior.
 2. Inspect `git status`, the actual implementation, public contracts, tests, manifests, and nearby
    patterns. Do not plan from filenames or documentation alone.
 3. State the requested outcome, acceptance criteria, non-goals, confirmed facts, and unresolved
    assumptions. A missing product decision is a reason to ask, not permission to invent.
 4. Trace ownership through `apps/app`, `apps/api`, `packages/contracts`, `packages/db`,
    `packages/auth`, and `packages/billing` before choosing files or abstractions.
+
+Use the [reusable feature-delivery prompt](agent-feature-prompt.md) to turn a material request into one
+observable outcome with explicit authorization, acceptance criteria, evidence, and non-goals.
 
 A copy correction, formatting-only edit, or obvious local rename can use a shorter version of this
 flow. It still must preserve behavior and pass the relevant check.
@@ -146,6 +152,13 @@ Skip delegation for trivial, isolated edits unless they touch a high-risk invari
 cost and coordination overhead; use them where a second reasoning path can materially improve safety
 or quality.
 
+Prefer parallel agents for independent research, repository exploration, test analysis, and review.
+If Codex, Claude Code, or their subagents write concurrently, give each writer a separate Git worktree
+checked out to its own dedicated branch and disjoint file ownership. Writers may commit only assigned
+files in their own worktree when requested; they do not push or merge unless explicitly assigned.
+One lead owns requirements and integration. Repository instructions do not launch another vendor
+runtime, and the handoff must not claim that a runtime was used without direct evidence.
+
 ## 7. Definition of done
 
 A change is done only when all applicable items are true:
@@ -176,6 +189,8 @@ deployment, or production path.
 - [OpenAI: build skills](https://learn.chatgpt.com/docs/build-skills)
 - [OpenAI: subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents)
 - [OpenAI: harness engineering and repository knowledge](https://openai.com/index/harness-engineering/)
+- [Anthropic: Claude Code project memory](https://code.claude.com/docs/en/memory)
+- [Anthropic: Claude Code subagents and worktrees](https://code.claude.com/docs/en/sub-agents)
 - [NIST SP 800-218 Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
 - [GitHub dependency review](https://docs.github.com/en/code-security/concepts/supply-chain-security/dependency-review)
 - [OpenSSF Scorecard](https://openssf.org/scorecard/)

@@ -38,6 +38,10 @@ Desktop.ini
 .fleet/
 .history/
 
+# Local agent overrides (shared instructions remain committed)
+CLAUDE.local.md
+.claude/settings.local.json
+
 # Infrastructure local state and variable values (commit reviewed *.tfvars.example files only)
 *.tfstate
 *.tfstate.*

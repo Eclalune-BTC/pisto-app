@@ -2,13 +2,18 @@
 
 ## Start here
 
-- Read `docs/README.md`, `docs/product-goal.md`, and `docs/engineering-workflow.md` before planning a
-  material change. Then read the domain guide and accepted ADRs for the area you will touch.
+- Read `docs/README.md`, `docs/product-goal.md`,
+  `docs/product-briefs/pisto-ai-business-assistant.md`, and `docs/engineering-workflow.md` before
+  planning a material change. Then read the domain guide and accepted ADRs for the area you will
+  touch. For AI, voice, retrieval, or model work, also read `docs/ai-assistant.md` completely.
 - Inspect the current implementation, tests, package manifests, and `git status` before proposing
   work. Treat repository evidence as fact; label assumptions and unresolved product decisions.
 - Do not infer real product behavior from illustrative UI, starter copy, package availability, or a
   future capability seam. If neither the user's request nor an approved product brief defines the
   exact user job, stop before implementation and request that decision.
+- Use `docs/agent-feature-prompt.md` to frame a material delivery assignment for either Codex or
+  Claude Code. `CLAUDE.md` imports these shared instructions for Claude Code; neither file proves that
+  a particular agent runtime or external provider ran.
 
 ## Architecture boundaries
 
@@ -41,6 +46,13 @@
 - Never invent plan data, progress, account activity, saved settings, or success-shaped fallbacks to
   make an incomplete feature appear finished.
 - Do not read provider credentials in client-side code.
+- Treat model output, retrieved text, uploads, and transcripts as untrusted input. A model may propose
+  typed drafts and bounded tools; it cannot choose a tenant, authorize itself, calculate canonical
+  money, execute arbitrary SQL/HTTP, or commit a financial mutation without the approved confirmation,
+  server authorization, deterministic validation, idempotency, transaction, and audit path.
+- Use exact relational queries for transactional facts. Do not add RAG, pgvector, Neo4j, GraphRAG,
+  silent provider fallback, or autonomous financial actions unless the evidence gates and ADR in
+  `docs/ai-assistant.md` are satisfied.
 - Treat billing webhooks as untrusted, retried, and possibly out of order.
 - Keep the internal entitlement model provider-neutral.
 - Keep web checkout disabled for native digital features by default. Any regional exception
@@ -50,6 +62,9 @@
 - For a material change, ask an independent read-only reviewer or subagent to try to falsify the
   result when that capability is available. Resolve findings against evidence; do not delegate
   trivial edits merely to satisfy a ritual.
+- Prefer read-heavy parallel agents. Every parallel writer uses a separate Git worktree on its own
+  branch with non-overlapping file ownership; one integration owner reviews and integrates only the
+  assigned commits.
 - Run `bun run check` before handing work off. Run the additional scope-specific gates in
   `docs/engineering-workflow.md` and distinguish implemented, locally validated, built, pushed,
   deployed, and released.

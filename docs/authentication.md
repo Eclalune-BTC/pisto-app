@@ -70,6 +70,27 @@ Server authorization and session expiry still apply.
   routes.
 - Avoid account enumeration: public messages should not reveal whether an email exists.
 
+## Organization-backed business boundary
+
+The server organization plugin and its organization/member/invitation schema are included. Because
+the raw Better Auth handler is mounted, its organization endpoints exist even though the Expo client
+plugin, business onboarding, invitations, and Pisto role model are not implemented.
+
+[ADR 0010](adrs/0010-organization-backed-business-tenancy.md) uses one organization identifier as
+Pisto's `businessId` to avoid a second membership system. Apply these rules before product records:
+
+- restrict organization creation to the approved owner onboarding path and configured limits;
+- add the exact organization client plugin only with the truthful create/select UX;
+- treat session `activeOrganizationId` as a selector and reload membership/action authorization on
+  every protected request;
+- store currency, time zone, and financial state in typed Pisto domain tables, never auth metadata;
+- disable/intercept direct organization deletion before canonical business data exists; and
+- deny invitation/member flows until verified email delivery, acceptance, role permissions, rate
+  limits, denial tests, and audit are approved and implemented.
+
+The first slice authorizes the owner workflow only. Better Auth's default role strings are not a
+complete Pisto RBAC contract and must not be checked ad hoc across routes, tools, or UI.
+
 ## Database ownership
 
 Better Auth schema, including the database-backed `rateLimit` table, is represented in `@pisto/db`
@@ -102,6 +123,8 @@ must not become an authorization source of truth.
 - Email/password enablement matches product policy; email verification/recovery delivery is tested if
   exposed.
 - Session revoke, sign-out, device reinstall, identity switch, and expired-session behavior pass.
+- Organization creation limits, active-business selection, membership reload, wrong-business denial,
+  and organization deletion protection pass before business data is enabled.
 - Auth database migration and rollback compatibility are verified.
 
 ## Official sources
@@ -114,4 +137,5 @@ must not become an authorization source of truth.
 - [Better Auth Drizzle adapter](https://better-auth.com/docs/adapters/drizzle)
 - [Better Auth CLI](https://better-auth.com/docs/concepts/cli)
 - [Better Auth Polar billing plugin](https://better-auth.com/docs/plugins/polar)
+- [Better Auth organization plugin](https://better-auth.com/docs/plugins/organization)
 - [Expo SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)

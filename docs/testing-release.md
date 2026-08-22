@@ -46,7 +46,10 @@ digest/build IDs.
 | Database integration | PostgreSQL constraints, transactions, migrations, repositories | Fresh PostgreSQL 18 container |
 | API integration | Hono middleware order, auth guards, CORS, errors, health | In-process Hono requests |
 | Provider adapter | Signed/authenticated webhook fixtures, catalog allowlist, disabled state | Sandbox-safe adapter tests |
+| Assistant orchestration | Tool schemas, loop bounds, approvals, denial, timeout, cancellation, duplicate continuation | AI SDK mock model; no live provider required |
+| Model semantic evaluation | Spanish extraction, clarification, tool choice, abstention, injection resistance, revenue/profit language | Versioned dataset against each pinned provider/model candidate |
 | App component/navigation | Loading/error/auth routing, accessibility, platform adapter selection | React Native/Expo test tooling |
+| Voice acceptance | Permission, recording bounds, audio formats, editable transcript, cancellation/deletion/failure | Web plus physical iOS/Android devices and provider sandbox |
 | Native purchase acceptance | Real store sandbox purchase/restore lifecycle | Physical iOS/Android development/preview build |
 | Deployment smoke | Container contract, DB connection, secrets, IAM, health, rollback | No-traffic/canary Cloud Run revision |
 
@@ -54,6 +57,8 @@ digest/build IDs.
 
 - Unknown/missing fields and oversized input are rejected.
 - Unauthenticated and unauthorized users cannot access protected routes or another subject's data.
+- No-active-business, wrong-business, removed-member, stale active-organization, and unapproved role
+  cases fail closed; direct organization deletion cannot erase canonical business records.
 - Credentialed CORS allows only exact configured origins.
 - A deployed Cloud Run smoke verifies the client-IP header contract: a client cannot choose a
   rate-limit key with a spoofed `X-Forwarded-For` value, and ambiguous comma-separated chains use the
@@ -65,6 +70,31 @@ digest/build IDs.
 - Pending/unknown/expired grants fail closed.
 - CLI `init` is repeatable and preserves existing environment files.
 - Once a Cloud Tasks handler exists, task replay causes one domain effect.
+- Model/tool input cannot select another tenant, bypass confirmation, expand tool scope, or override
+  server policy through direct or stored prompt injection.
+- Duplicate approval, reconnect, provider retry, timeout, and stream interruption create at most one
+  financial effect and never turn failure into success or zero-valued business data.
+
+## AI assistant acceptance gate when introduced
+
+The accepted AI architecture is currently documentation, not implementation evidence. A model or
+assistant change cannot be promoted until it records:
+
+1. deterministic unit and integration coverage for contracts, tool schemas, server authorization,
+   money precision, idempotency, transactionality, audit, correction, period/time-zone boundaries,
+   approval denial/expiry/tampering, timeout, abort, and provider-unavailable behavior;
+2. a versioned representative Spanish evaluation set containing complete, incomplete, ambiguous,
+   adversarial, injected, and unsupported sale/report requests;
+3. exact-field, clarification, tool-choice, abstention, revenue-versus-profit, quality, latency,
+   token, cost, and failure-rate results for the pinned provider/model and prompt version;
+4. Bun/Hono/container stream and abort evidence plus compact/wide Expo web and iOS/Android evidence;
+5. cross-tenant, rate/cost-limit, telemetry-redaction, retention/deletion, and kill-switch verification;
+6. provider account data-use/retention/privacy review and exact environment configuration; and
+7. independent architecture/security review with every material finding resolved.
+
+A structured-schema pass is not semantic correctness, a provider mock is not provider evidence, and
+a provider sandbox is not a production deployment. Voice additionally requires physical-device
+permission, format, duration, cancellation, transcription, deletion, and accessibility evidence.
 
 ## Database migration tests
 
@@ -132,6 +162,10 @@ A protected production promotion gate should additionally:
 4. build Expo preview artifacts when native/config changes;
 5. require review for migration, auth, billing, IAM, secret, or store-policy changes.
 
+AI/model/prompt/tool changes additionally require the versioned semantic evaluation and cost/privacy
+evidence above. CI must use mocks and credential-free fixtures by default; live provider suites run in
+an explicitly protected environment and never receive production business data.
+
 Do not inject production provider credentials into pull-request jobs from untrusted forks.
 
 ## API and Cloud Run release
@@ -174,3 +208,6 @@ change native RevenueCat modules. Use a new binary for native-code/config-plugin
 - [RevenueCat sandbox testing](https://www.revenuecat.com/docs/test-and-launch/sandbox)
 - [Polar sandbox](https://polar.sh/docs/integrate/sandbox)
 - [Cloud Run rollouts and rollback](https://cloud.google.com/run/docs/rollouts-rollbacks-traffic-migration)
+- [Vercel AI SDK testing](https://ai-sdk.dev/docs/ai-sdk-core/testing)
+- [Vercel AI SDK loop control](https://ai-sdk.dev/docs/agents/loop-control)
+- [Expo Audio](https://docs.expo.dev/versions/v57.0.0/sdk/audio/)

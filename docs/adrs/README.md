@@ -15,6 +15,8 @@ changes, add a new ADR that supersedes the old one instead of rewriting the old 
 | [0006](0006-split-billing-channels.md) | Accepted | Polar web billing and RevenueCat/native store billing |
 | [0007](0007-provider-neutral-entitlements.md) | Accepted | Internal entitlements are the authorization boundary |
 | [0008](0008-google-cloud-managed-runtime.md) | Accepted | Cloud Run and managed Google Cloud supporting services |
+| [0009](0009-provider-neutral-ai-assistant.md) | Accepted | Provider-neutral AI orchestration with deterministic business tools |
+| [0010](0010-organization-backed-business-tenancy.md) | Accepted | Better Auth organization IDs back Pisto business tenant boundaries |
 
 ## Status values
 

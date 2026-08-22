@@ -58,6 +58,19 @@ API owns authorization. A client assertion such as `isPro: true` is never truste
 Dependencies point inward toward contracts and domain packages. The API composes packages; packages
 do not import the API. The app may import public contracts, but never server implementations.
 
+The approved assistant architecture adds future sales and assistant domain packages only with the
+first implementation slice. The sales domain owns money rules, commands, queries, and audit without
+depending on AI SDK, Hono, or React. The assistant domain owns prompt versions, the provider/model
+registry, narrow tool selection, and bounded orchestration without owning SQL or business rules.
+The API remains their composition root. See [AI assistant architecture](ai-assistant.md); none of
+these future packages or capabilities exists in the current codebase.
+
+One Pisto business workspace uses one Better Auth organization identifier as its `businessId`.
+Organization/session state selects a candidate workspace; the API reloads membership and applies
+Pisto action policy before every domain operation. Typed business settings and financial records stay
+in Pisto-owned tables rather than auth metadata. See
+[ADR 0010](adrs/0010-organization-backed-business-tenancy.md).
+
 ## Core flows
 
 ### Authenticated API request
@@ -68,6 +81,22 @@ do not import the API. The app may import public contracts, but never server imp
 4. The route validates input using shared contracts.
 5. A repository performs bounded database work.
 6. The API returns a typed response without internal exceptions, credentials, or provider payloads.
+
+### Conversational sale and report (approved target; not implemented)
+
+1. The authenticated app submits text to a bounded assistant route; the API resolves the user and
+   business instead of trusting either identifier from the client or model.
+2. A server-side Vercel AI SDK boundary asks the configured provider for a typed proposal or narrow
+   tool selection. Provider credentials and raw response types stay at this edge.
+3. A proposed sale is returned as an editable draft with no domain effect.
+4. Explicit approval returns to the API, which revalidates authorization, current state, typed
+   inputs, deterministic money totals, expiry, and idempotency before a transactional audited commit.
+5. A report request invokes an authorized sales query; PostgreSQL/domain code calculates the exact
+   period and totals, and the model explains those facts without becoming their source.
+
+Provider or assistant failure leaves the structured product path available and must not become fake
+data, success, or a silent model fallback. Voice later produces an editable transcript and reuses
+this same flow; it is not a separate financial execution path.
 
 ### Web purchase
 
@@ -135,6 +164,10 @@ target service as shipped.
 - Cancellation and expiration are distinct: cancellation can leave access active until period end.
 - A provider-specific revocation removes only that provider grant. Another valid source may continue
   to satisfy the same entitlement.
+- Model output, retrieved content, and transcripts are untrusted. Every business mutation repeats
+  server authorization and deterministic validation and is idempotent and auditable.
+- PostgreSQL is authoritative for transactional facts. RAG, vector search, and graphs do not replace
+  domain queries or financial records.
 
 ## Official sources
 
@@ -144,3 +177,5 @@ target service as shipped.
 - [Cloud Run container contract](https://cloud.google.com/run/docs/container-contract)
 - [Cloud Tasks HTTP targets](https://cloud.google.com/tasks/docs/creating-http-target-tasks)
 - [Cloud Storage signed URLs](https://cloud.google.com/storage/docs/access-control/signed-urls)
+- [Vercel AI SDK 7](https://vercel.com/changelog/ai-sdk-7)
+- [Vercel AI SDK provider management](https://ai-sdk.dev/docs/ai-sdk-core/provider-management)

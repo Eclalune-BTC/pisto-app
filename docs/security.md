@@ -13,6 +13,7 @@ Treat all of these as untrusted until verified at their boundary:
 - Polar and RevenueCat webhook requests before signature/authentication checks;
 - task requests before Cloud Run/IAM OIDC validation;
 - provider metadata and raw JSON before normalization;
+- model output, tool arguments, retrieved content, uploads, audio, and transcripts;
 - database content when rendered into HTML, logs, filenames, redirects, or provider requests;
 - package install scripts, container bases, and CI artifacts.
 
@@ -25,7 +26,8 @@ The API, not the client, makes authorization and entitlement decisions.
 | Public | API origin, app scheme, store product display data, RevenueCat public SDK key | May be in Expo/build config; still validate |
 | Internal | Request IDs, non-sensitive feature configuration, internal product slug | Do not expose unnecessarily |
 | Sensitive personal | Email, account/provider identifiers, support history | Minimize, authorize, redact, retain deliberately |
-| Secret | Better Auth secret, DB password, Polar token/webhook secret, RevenueCat webhook auth/HMAC secret | Server only; Secret Manager in production |
+| Sensitive business | Sales, prices, inventory, expenses, customer/supplier data, prompts, transcripts, and tool inputs/results | Tenant-scope, minimize, encrypt in transit/at rest, redact telemetry, retain/delete deliberately |
+| Secret | Better Auth secret, DB password, Polar token/webhook secret, RevenueCat webhook auth/HMAC secret, model/transcription provider credential | Server only; Secret Manager in production |
 | High impact | Migration/deployer credentials, signing keys, service-account impersonation | Separate identity, least privilege, audit, rotation |
 
 `EXPO_PUBLIC_*` is always public. A misleading variable name does not make client-bundled data
@@ -49,6 +51,12 @@ secret.
 - Revoke sessions after password/security changes and expose device/session revocation as appropriate.
 - Keep development `exp://` wildcard origins strictly out of production.
 - Rotate using Better Auth's documented secret set so supported encrypted data can transition safely.
+- Treat active organization as a workspace selector, not authorization proof. Reload membership and
+  Pisto action policy before every protected business operation.
+- Disable or intercept organization deletion before financial records exist; no auth endpoint may
+  cascade-delete canonical business history without an approved retention/export/audit policy.
+- Restrict organization creation to the approved onboarding rule, and deny invitation/member
+  operations until their verification, delivery, permission, rate-limit, and audit flows exist.
 
 ## API controls
 
@@ -61,6 +69,37 @@ secret.
 - Protect redirects: only server-created or allowlisted HTTPS URLs can leave the trusted origin.
 - Use explicit outbound timeouts; retry mutations only with idempotency.
 - Distinguish authentication (`401`) from authorization (`403`) without disclosing hidden resources.
+
+## AI and financial-operation controls when introduced
+
+No assistant or sales implementation exists in the baseline. The following controls are mandatory
+for the approved first slice:
+
+- Keep provider credentials, prompts, tool implementations, and provider-specific options on the
+  server. The client receives only Pisto-owned contracts and safe stream events.
+- Resolve the authenticated subject and business on the server. Never let a client, model, prompt,
+  retrieved document, or tool argument choose an arbitrary tenant.
+- Expose a small static allowlist of schema-bounded Pisto tools. Do not expose arbitrary SQL, shell,
+  filesystem, generic HTTP, secrets, billing, role administration, or unrestricted record search.
+- Treat a model proposal as untrusted draft data. Recompute money in deterministic domain code using
+  integer minor units and explicit currency and business time zone.
+- Approval is not authorization. Bind a financial approval to the subject, business, exact canonical
+  draft, expiry, and idempotency key; then repeat authorization, validation, current-state checks, and
+  deterministic calculation immediately before the short audited transaction.
+- Design for prompt injection in user text, stored notes, uploads, retrieval results, and provider
+  output. Instructions inside business content cannot expand tool capabilities or override policy.
+- Bound model steps, tokens, input/audio size, duration, concurrency, rate, cost, timeout, retry, and
+  cancellation. Keep a server kill switch that preserves structured access to canonical data.
+- Never silently switch providers or replay a mutation after a provider/stream failure. Expose a
+  truthful degraded state and require a fresh valid continuation when recovery is safe.
+- Separate conversation/audio/transcript retention from canonical financial records. Delete raw
+  audio after the documented retry window by default, and define export/deletion before production.
+- Log safe metadata such as opaque request/business IDs, model alias, prompt version, tool name,
+  approval outcome, latency, token counts, estimated cost, finish reason, and bounded error code—not
+  raw prompts, transcripts, outputs, tool payloads, or business records by default.
+
+See [AI assistant architecture](ai-assistant.md) and the
+[approved product brief](product-briefs/pisto-ai-business-assistant.md) for the complete policy.
 
 ## Billing and webhook controls
 
@@ -173,6 +212,8 @@ Do not log:
 - database URLs or process environment dumps;
 - Polar/RevenueCat credentials, webhook signature material, checkout/portal/signed Storage URLs;
 - full webhook bodies by default;
+- raw prompts, model output, retrieved passages, tool arguments/results, audio, or transcripts by
+  default;
 - payment details or unnecessary email/IP/device identifiers.
 
 Define retention and access by environment/data class. Cloud logs are a data store and need access
@@ -183,6 +224,11 @@ control.
 - [ ] Threat/trust boundaries changed? Update this document and an ADR when architectural.
 - [ ] New environment keys classified public/server-secret and added to the right example.
 - [ ] New route has schema, auth rule, size/rate limit, error mapping, and tests.
+- [ ] AI tool is narrow, tenant-scoped, injection-resistant, bounded, and tested for denial/failure.
+- [ ] Financial mutation binds confirmation, authorization, deterministic money, idempotency,
+  transaction, audit, and correction behavior.
+- [ ] Model/transcription data path, retention, deletion, provider terms, telemetry redaction, and kill
+  switch are reviewed against the exact configured account.
 - [ ] New redirect/outbound URL is allowlisted or server-generated.
 - [ ] Webhook uses raw-body verification, replay/deduplication, and ordering tests.
 - [ ] Entitlement decision remains provider-neutral and server authoritative.
@@ -215,3 +261,5 @@ control.
 - [Bun audit](https://bun.sh/docs/pm/cli/audit)
 - [Bun overrides and resolutions](https://bun.sh/docs/pm/overrides)
 - [OWASP API Security Top 10](https://owasp.org/API-Security/)
+- [Vercel AI SDK tool approvals](https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling)
+- [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)

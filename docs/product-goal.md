@@ -1,6 +1,6 @@
 # Active product goal
 
-- Status: **product-definition gate**
+- Status: **first product slice approved; implementation not started**
 - Owner: **repository owner**
 - Last reviewed: **2026-08-22**
 
@@ -9,15 +9,14 @@
 Turn the validated Pisto platform foundation into **one real, truthful, end-to-end product slice**
 that works through the shared web, iOS, and Android architecture.
 
-The first slice must let one authenticated user complete one approved money-related job using real
-data and persistence. It must include the relevant UI, contract, API, authorization, database,
-failure states, tests, and documentation. Platform behavior may differ where the capability differs,
-but the product meaning must remain consistent.
+The approved first slice lets one authenticated business owner describe a sale in conversational
+Spanish, review and confirm the typed draft, persist it exactly once, and later ask how the previous
+calendar month went. The answer is calculated from canonical sales records in the business time zone;
+it reports revenue truthfully and does not call it profit without cost and expense data.
 
-This goal deliberately does not choose the first money job. The repository contains illustrative
-planning language, not an approved product specification. A Codex agent must not turn that language
-into accounts, budgets, goals, transactions, recommendations, roles, or fabricated data without the
-owner approving the exact job and scope.
+The full product definition, data and action contracts, acceptance criteria, and exclusions are in
+[Pisto AI-native business assistant](product-briefs/pisto-ai-business-assistant.md). That brief approves
+the job, not its implementation and not every future Pisto module.
 
 ## What is already established
 
@@ -31,9 +30,10 @@ owner approving the exact job and scope.
 See [Production capabilities](production-capabilities.md) for the exact included/seam/not-chosen
 status. Do not duplicate that matrix here.
 
-## Definition of ready
+## Definition of ready — satisfied for the first slice
 
-Before product implementation, create a short approved brief that answers all of these:
+The approved product brief answers these questions for the first slice. Every later module or material
+scope change must answer them again:
 
 1. What exact decision or task can the user complete?
 2. Who is the primary actor, and what authorization rule applies?
@@ -63,21 +63,19 @@ The milestone is complete only when:
 - the applicable local, provider, device, migration, build, and release gates in
   [Testing and release](testing-release.md) are recorded accurately.
 
-## Next decision when the job is still unspecified
+## Next delivery decision
 
-If neither the user's current request nor an approved brief already answers it, the next Codex should
-begin with one focused product question:
-
-> What is the first real money decision or task a new Pisto user should be able to complete?
-
-After the owner answers—or when a specific current request already supplies the answer—the agent
-should write or update the brief, research the affected domain and platform constraints, and propose
-the smallest vertical slice. It should not implement a generic financial suite while that answer is
-missing.
+The next delivery agent should plan the smallest end-to-end **typed sale plus previous-month summary**
+slice from the approved brief. Voice, inventory deduction, expenses, roles, RAG, graphs, provider
+failover, and paid-plan gating are not included. Any unresolved decision about taxes, stock ownership,
+future tenant roles, or expanded money semantics must be returned to the owner as a focused product
+question rather than guessed in code.
 
 ## Related sources
 
 - [Pisto engineering workflow](engineering-workflow.md)
+- [Approved AI-native product brief](product-briefs/pisto-ai-business-assistant.md)
+- [AI assistant architecture](ai-assistant.md)
 - [Pisto architecture](architecture.md)
 - [OpenAI project instructions with AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
 - [OpenAI Codex skills](https://learn.chatgpt.com/docs/build-skills)

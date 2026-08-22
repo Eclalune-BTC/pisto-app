@@ -10,12 +10,15 @@ standards.
 
 ## Before changing code
 
-1. Read `AGENTS.md`, `docs/product-goal.md`, `docs/engineering-workflow.md`, and the relevant domain
-   guide and ADRs.
+1. Read `AGENTS.md`, `docs/product-goal.md`,
+   `docs/product-briefs/pisto-ai-business-assistant.md`, `docs/engineering-workflow.md`, and the
+   relevant domain guide and ADRs. Read `docs/ai-assistant.md` completely for AI, voice, retrieval,
+   model, or assistant work.
 2. Inspect the current code, tests, manifests, and `git status`. Separate confirmed facts from
    assumptions and illustrative UI.
-3. Confirm the exact user outcome, acceptance criteria, and non-goals. If the product goal is still at
-   its definition gate, do not invent the missing user job.
+3. Confirm the exact user outcome, acceptance criteria, and non-goals. Use
+   `docs/agent-feature-prompt.md` for a material assignment. Do not expand the approved first job into
+   inventory, roles, RAG, voice, or a generic ERP without a separate approved brief.
 4. Follow the research triggers and reuse-before-adding rubric in `docs/engineering-workflow.md`.
    Prefer current primary sources for external or version-sensitive decisions.
 5. Trace the change through the existing application, contract, domain, persistence, provider, and
@@ -24,6 +27,11 @@ standards.
 ## Implement and verify
 
 - Build one complete vertical slice, not a collection of speculative foundations.
+- Keep PostgreSQL and deterministic domain code authoritative. Treat model output and transcripts as
+  untrusted; financial writes require explicit confirmation, fresh server authorization, deterministic
+  money calculation, idempotency, transactionality, and audit evidence.
+- Use relational queries for business facts. Add no silent model fallback, RAG, pgvector, Neo4j, or
+  GraphRAG unless the documented evidence gate and an accepted ADR approve it.
 - Preserve one source of truth and truthful loading, empty, error, denied, disabled, and recovery
   states. Never fabricate identity, access, product data, offline behavior, or success.
 - Add tests for the risky public behavior and failure modes, then run the repository and

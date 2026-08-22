@@ -15,7 +15,8 @@ pisto-stack/
 |   |-- contracts/           # @pisto/contracts: shared transport schemas and types
 |   `-- db/                  # @pisto/db: Drizzle schema, migrations, repositories
 |-- docs/
-|   `-- adrs/                # Architecture and operating documentation
+|   |-- adrs/                # Consequential architecture decisions
+|   `-- product-briefs/      # Approved product jobs, acceptance, and non-goals
 |-- infra/gcp/               # Reference cloud configuration; not deployment evidence
 |-- scripts/
 |   |-- dev-api.ts           # Root watch entry so shared package edits restart the API
@@ -25,6 +26,7 @@ pisto-stack/
 |   `-- validate-docs.test.ts
 |-- compose.yaml             # Local PostgreSQL 18 only
 |-- AGENTS.md                # Root instructions loaded by Codex before project work
+|-- CLAUDE.md                # Claude Code adapter importing the shared AGENTS.md contract
 |-- .dockerignore            # Excludes local secrets, installs, and build output from image context
 |-- .env.example             # Canonical server and Compose environment schema
 |-- .node-version            # Node 24.19.0 toolchain pin
@@ -71,8 +73,13 @@ for undeclared dependencies: each workspace must still declare every package it 
 | Change session or sign-in behavior | `packages/auth/src` |
 | Add a billing provider or access rule | `packages/billing/src` |
 | Add a safe developer workflow | `scripts` with tests |
-| Change the Codex delivery workflow | `AGENTS.md`, `.agents/skills`, and the matching `docs` guide |
+| Change shared agent delivery rules | `AGENTS.md`, `.agents/skills`, `CLAUDE.md`, and matching docs |
 | Record an operational rule or decision | `docs` and, for architectural decisions, `docs/adrs` |
+
+When the approved first product slice is implemented, create a focused sales domain package only if
+the cross-route/domain ownership warrants it, and an assistant package only for provider-neutral
+orchestration. Do not create either package as empty scaffolding. Sales/domain code must not depend
+on the assistant; the API composes authorized sales capabilities into assistant tools.
 
 If a feature crosses boundaries, keep orchestration in the API and domain logic in the owning
 package. Do not create a generic `utils` package for code with a clear owner.
@@ -104,3 +111,4 @@ package. Do not create a generic `utils` package for code with a clear owner.
 - [TypeScript project references](https://www.typescriptlang.org/docs/handbook/project-references.html)
 - [OpenAI project instructions with AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
 - [OpenAI repository-scoped skills](https://learn.chatgpt.com/docs/build-skills)
+- [Anthropic Claude Code project memory](https://code.claude.com/docs/en/memory)

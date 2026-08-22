@@ -12,8 +12,10 @@ can drift.
 | Decision | Primary official source | Review trigger |
 | --- | --- | --- |
 | Root `AGENTS.md` supplies portable project instructions to Codex | [OpenAI AGENTS.md guidance](https://learn.chatgpt.com/docs/agent-configuration/agents-md) | Agent workflow or instruction-layout change |
+| Root `CLAUDE.md` imports the shared instructions for Claude Code | [Anthropic Claude Code project memory](https://code.claude.com/docs/en/memory) | Claude Code instruction-loading change |
 | Repository-scoped skill lives under `.agents/skills` | [OpenAI skill authoring and locations](https://learn.chatgpt.com/docs/build-skills) | Skill structure or distribution change |
 | Independent subagents are used proportionally for bounded read-heavy review | [OpenAI subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents) | Review workflow or Codex capability change |
+| Parallel writing agents use isolated worktrees and non-overlapping ownership | [Anthropic Claude Code subagents and worktrees](https://code.claude.com/docs/en/sub-agents) | Multi-agent/write-isolation workflow change |
 | Short agent instructions map to versioned repository knowledge and specific agent reviews | [OpenAI harness engineering](https://openai.com/index/harness-engineering/) | Documentation or review-system redesign |
 | Secure development and third-party component decisions use a risk-based process | [NIST SP 800-218 SSDF](https://csrc.nist.gov/pubs/sp/800/218/final) | Security/dependency policy change |
 | Dependency changes receive vulnerability, license, and transitive-impact review | [GitHub dependency review](https://docs.github.com/en/code-security/concepts/supply-chain-security/dependency-review), [OpenSSF Scorecard](https://openssf.org/scorecard/) | Every new or changed production dependency |
@@ -65,6 +67,22 @@ can drift.
 | Boundary validation | [Hono validation](https://hono.dev/docs/guides/validation) | Contract/validator change |
 | Cloud Run listener uses `0.0.0.0:$PORT` | [Cloud Run container contract](https://cloud.google.com/run/docs/container-contract) | Container/runtime change |
 
+## AI assistant, voice, retrieval, and product direction
+
+| Decision | Primary official source | Review trigger |
+| --- | --- | --- |
+| Target AI SDK 7 as a thin server-side orchestration boundary; pin exact packages only after the compatibility spike | [Vercel AI SDK 7 release](https://vercel.com/changelog/ai-sdk-7) | AI SDK/provider/Bun/Expo/Cloud Run change |
+| Central provider registry and stable task aliases isolate provider/model IDs | [AI SDK provider and model management](https://ai-sdk.dev/docs/ai-sdk-core/provider-management) | Provider, model, or gateway change |
+| Models receive narrow typed tools and explicit mutation approval rather than database access | [AI SDK tools and tool calling](https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling) | Tool/approval API or financial-action policy change |
+| Assistant turns are bounded and provider behavior is tested with mocks plus semantic evaluations | [AI SDK loop control](https://ai-sdk.dev/docs/agents/loop-control), [AI SDK testing](https://ai-sdk.dev/docs/ai-sdk-core/testing) | Orchestration, model, prompt, or evaluation change |
+| Conversation persistence stores validated application messages, not provider transport objects | [AI SDK message persistence](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-message-persistence) | Conversation history/retention change |
+| Expo client streaming and Hono server composition require an exact-version spike | [AI SDK Expo quickstart](https://ai-sdk.dev/docs/getting-started/expo), [AI SDK Hono example](https://ai-sdk.dev/cookbook/api-servers/hono), [Expo streaming fetch](https://docs.expo.dev/versions/v57.0.0/sdk/expo/) | AI SDK, Expo, Hono, or Bun upgrade |
+| Voice begins with visible bounded push-to-talk and editable server transcription, not always-on realtime audio | [Expo Audio](https://docs.expo.dev/versions/v57.0.0/sdk/audio/), [AI SDK 7 stable transcription and experimental realtime notes](https://vercel.com/changelog/ai-sdk-7) | Voice, transcription, permission, or provider change |
+| Transactional product questions use relational queries; keyword search escalates from PostgreSQL full-text only with evidence | [PostgreSQL full-text search](https://www.postgresql.org/docs/18/textsearch.html) | Search corpus/job or database upgrade |
+| pgvector requires a labeled semantic-retrieval evaluation and target Cloud SQL version check | [pgvector](https://github.com/pgvector/pgvector), [Cloud SQL extensions](https://cloud.google.com/sql/docs/postgres/extensions) | Approved unstructured corpus or retrieval benchmark |
+| Neo4j/GraphRAG requires proven variable-depth graph or cross-document questions and a second-datastore operations plan | [Neo4j graph concepts](https://neo4j.com/docs/getting-started/graph-database/), [Neo4j GraphRAG requirements](https://neo4j.com/docs/neo4j-graphrag-python/current/) | Representative graph benchmark or retrieval architecture change |
+| Treinta is product-market context for entrepreneur sales, inventory, expenses, reports, and mobile/web workflows—not implementation evidence | [Treinta reports](https://treinta.co/app-para-reportes-de-ventas-y-estadisticas-de-tu-negocio), [inventory and sales](https://treinta.co/software-inventario-ventas), [features](https://treinta.co/funcionalidades) | Competitive/product-scope research refresh |
+
 ## PostgreSQL and Drizzle
 
 | Decision | Primary official source | Review trigger |
@@ -82,6 +100,7 @@ can drift.
 | --- | --- | --- |
 | Better Auth 32+ character secret | [Better Auth installation](https://better-auth.com/docs/installation) | Auth setup/rotation change |
 | Session, cookie, CSRF, and origin baseline | [Better Auth security](https://better-auth.com/docs/reference/security) | Auth upgrade/exposure change |
+| Better Auth organization identity/membership backs Pisto `businessId`; active organization remains only a selector | [Better Auth organization plugin](https://better-auth.com/docs/plugins/organization) | Organization model, product tenancy, roles, or deletion policy change |
 | PostgreSQL-backed cross-instance Better Auth limiter and explicit trusted client-IP boundary | [Better Auth rate-limit storage, forwarded chains, and trusted proxies](https://better-auth.com/docs/concepts/rate-limit) | Auth/schema/proxy/scaling change |
 | Raw Better Auth handler on Hono | [Better Auth Hono](https://better-auth.com/docs/integrations/hono) | Route/framework change |
 | Expo SecureStore/cookie integration | [Better Auth Expo](https://better-auth.com/docs/integrations/expo), [Expo SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/) | Native auth change |
