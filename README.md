@@ -10,6 +10,13 @@ Every integration is replaceable behind a small package boundary.
 "Built from source" means the repository composition is owned here; it is not a rule to reimplement
 mature platform or library capabilities.
 
+The active product direction is an AI-native operating assistant for Spanish-speaking
+entrepreneurs, beginning with a reviewable conversational sale and deterministic previous-month
+summary. The current planning dashboard is scaffold UI, not the product definition. Start with
+[the documentation map](docs/README.md) and the
+[product capability architecture](docs/product-capability-architecture.md) before adding a module or
+changing navigation.
+
 ## Repository map
 
 - apps/app: universal Expo application and platform-specific adapters

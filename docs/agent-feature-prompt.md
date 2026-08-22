@@ -16,6 +16,10 @@ AI is an interface and orchestration layer, never the source of truth.
 PostgreSQL and deterministic domain code own business records, calculations, authorization, and audit.
 Pisto must never call gross revenue "profit" without complete cost and expense data.
 
+Pisto grows as explicit capability slices inside a modular monolith. Top-level navigation represents
+stable user jobs, not every module. A capability does not self-register routes, tools, jobs, or
+permissions and does not earn a package or permanent tab merely because it may exist later.
+
 Treinta is product-market context for the entrepreneur jobs Pisto must eventually cover. Do not copy
 its proprietary UI, copy, data, or behavior. Pisto differentiates through trustworthy conversational
 execution: a user can describe what happened, review the interpretation, confirm it, and later ask
@@ -27,6 +31,10 @@ Feature: [one observable user outcome]
 Primary actor and authorization rule: [actor and exact permission]
 Flow start: [trigger]
 Flow end: [observable persisted result]
+Capability owner and prerequisites: [existing owner/dependencies; justify any new package]
+Canonical data and correction/audit rule: [authoritative and derived records]
+Structured/manual product path: [usable path when AI/voice is unavailable]
+Shell placement: [existing work area/context; justify any new top-level destination]
 Acceptance criteria: [specific success and failure behavior]
 Non-goals: [explicit exclusions]
 Required external evidence: [provider, platform, policy, dependency, or domain facts]
@@ -37,8 +45,10 @@ Before planning or editing, read completely:
 - AGENTS.md
 - docs/product-goal.md
 - docs/product-briefs/pisto-ai-business-assistant.md
+- docs/product-capability-architecture.md
 - docs/engineering-workflow.md
 - docs/ai-assistant.md when AI, voice, retrieval, models, or assistant behavior is involved
+- docs/voice-architecture.md when recording, transcription, TTS, or realtime voice is involved
 - the relevant domain guides and accepted ADRs
 
 Inspect git status, manifests, lockfile, current code, contracts, migrations, tests, and nearby patterns.
@@ -52,6 +62,9 @@ provider data path, or platform behavior, ask one focused product question befor
 <delivery_rules>
 - Deliver the smallest complete vertical slice. Do not build a generic ERP, agent framework, role
   system, provider layer, repository layer, or design system for hypothetical future work.
+- Complete the capability slice contract in docs/product-capability-architecture.md. Keep routes,
+  navigation, tools, jobs, and permissions explicitly composed at app/API roots; do not create a
+  plugin registry, empty future package, one top-level tab per module, or feature-card directory.
 - Trace ownership through app, HTTP contract, domain policy, persistence, authorization, external
   adapter, and platform capability before choosing files.
 - Keep transport, domain, persistence, provider, and presentation concerns at their documented edges.
@@ -65,6 +78,9 @@ provider data path, or platform behavior, ask one focused product question befor
 - Preserve Pisto's ink/lime/cream visual language. Use type, spacing, alignment, and dividers before
   decorated surfaces. No decorative glow, floating card, gradient, badge, icon tile, fake metric, or
   generated activity without a concrete product purpose and real state.
+- Every button must have a task/context owner, destination or server effect, hierarchy, truthful
+  enabled/loading/error behavior, duplicate-tap behavior, and accessibility semantics. Use one
+  primary action per decision region; do not add loose floating actions.
 - Implement truthful loading, empty, validation, denied, disabled, offline, timeout, error, retry,
   interrupted, and recovery behavior where applicable. Never turn an error into fake empty data,
   guessed identity/access, or success.
@@ -97,6 +113,10 @@ Delegate only concrete independent lanes with an explicit deliverable and stoppi
 
 Prefer parallel subagents for read-heavy repository exploration, primary-source research, test
 analysis, threat/privacy review, and independent review. Return distilled evidence, not raw logs.
+
+Resolve product, data, money, permission, platform, and public-contract questions before parallel
+writing. Freeze the accepted contract and file ownership; do not ask multiple writers to design
+competing contracts for one vertical slice.
 
 Use one writing owner per file set. Every parallel writer must use a separate Git worktree checked out
 to its own dedicated branch, with non-overlapping ownership. A writer may stage and commit only its

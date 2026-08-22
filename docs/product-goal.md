@@ -16,7 +16,8 @@ it reports revenue truthfully and does not call it profit without cost and expen
 
 The full product definition, data and action contracts, acceptance criteria, and exclusions are in
 [Pisto AI-native business assistant](product-briefs/pisto-ai-business-assistant.md). That brief approves
-the job, not its implementation and not every future Pisto module.
+the job, not its implementation and not every future Pisto module. Future capability composition and
+navigation follow [Product capability architecture](product-capability-architecture.md).
 
 ## What is already established
 
@@ -44,6 +45,8 @@ scope change must answer them again:
 7. What are the acceptance criteria and explicit non-goals?
 8. Which external policy, API, dependency, or domain facts require current primary-source research?
 9. What operational evidence is required beyond local tests?
+10. Which existing capability owns it, where is its structured/manual path, and how is it discovered
+    without adding a disconnected top-level control?
 
 If any answer changes the user outcome, data model, authorization model, or platform behavior, it is
 a product decision, not a coding assumption.
@@ -75,6 +78,7 @@ question rather than guessed in code.
 
 - [Pisto engineering workflow](engineering-workflow.md)
 - [Approved AI-native product brief](product-briefs/pisto-ai-business-assistant.md)
+- [Product capability architecture](product-capability-architecture.md)
 - [AI assistant architecture](ai-assistant.md)
 - [Pisto architecture](architecture.md)
 - [OpenAI project instructions with AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md)

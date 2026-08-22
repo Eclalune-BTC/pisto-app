@@ -92,13 +92,19 @@ for the approved first slice:
   cancellation. Keep a server kill switch that preserves structured access to canonical data.
 - Never silently switch providers or replay a mutation after a provider/stream failure. Expose a
   truthful degraded state and require a fresh valid continuation when recovery is safe.
-- Separate conversation/audio/transcript retention from canonical financial records. Delete raw
-  audio after the documented retry window by default, and define export/deletion before production.
+- Separate conversation/audio/transcript retention from canonical financial records. Delete Pisto's
+  raw-audio copy after the documented retry window by default, define export/deletion before
+  production, and verify the exact provider account's retention/deletion instead of treating local
+  deletion as provider evidence.
+- A direct-client realtime credential is short-lived, single-session, minted only after Pisto auth,
+  business authorization, consent, and quota checks, and never logged or persisted. It does not
+  authorize a financial action.
 - Log safe metadata such as opaque request/business IDs, model alias, prompt version, tool name,
   approval outcome, latency, token counts, estimated cost, finish reason, and bounded error code—not
   raw prompts, transcripts, outputs, tool payloads, or business records by default.
 
-See [AI assistant architecture](ai-assistant.md) and the
+See [AI assistant architecture](ai-assistant.md),
+[Voice architecture](voice-architecture.md), and the
 [approved product brief](product-briefs/pisto-ai-business-assistant.md) for the complete policy.
 
 ## Billing and webhook controls

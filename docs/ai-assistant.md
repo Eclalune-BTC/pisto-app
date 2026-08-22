@@ -161,21 +161,36 @@ deployment, outlive one request, or wait for a long approval.
 
 ## Voice boundary
 
-The first voice capability uses `expo-audio` and AI SDK 7's stable server-side transcription API after
-the pinned provider is verified.
+No voice provider or dependency is selected. The first possible voice capability uses `expo-audio`
+and AI SDK 7's stable server-side transcription API only after text behavior is proven, a separate
+brief is approved, and the exact provider/account is verified.
 
 - Use a visible press-to-record control and request permission in context.
 - Keep background recording disabled.
 - Cap duration and bytes and allow only tested formats from web, iOS, and Android.
+- Use a narrow authenticated multipart upload adapter; do not weaken the JSON API client or use
+  base64 JSON.
 - Treat audio and transcripts as sensitive business data.
-- Delete raw audio after transcription and a short documented retry window by default.
+- Delete Pisto's raw-audio copy after transcription and a short documented retry window by default;
+  separately verify provider retention/deletion instead of implying local deletion controls it.
 - Return editable text to the composer; do not submit or execute it automatically.
 - Provide silence, permission-denied, unsupported-format, timeout, provider-error, cancellation, and
   offline states.
+- Keep batch transcription, optional streaming STT, optional TTS, and full realtime conversation as
+  separately approved capabilities and aliases.
+
+ElevenLabs is an evaluated candidate, not an architecture choice. If a voice brief is approved,
+evaluate first whether AI SDK 7 plus the direct ElevenLabs provider fits `transcription.primary`; a
+small raw REST adapter is allowed only if an evaluated requirement is missing. This is evaluation
+order, not provider selection. AI Gateway, ElevenAgents/Speech Engine, TTS, and realtime voice are
+not selected for the push-to-talk slice.
 
 Realtime speech-to-speech remains experimental in AI SDK 7 and is not the first voice architecture.
 Add it only after a measured hands-free or latency requirement justifies ephemeral-token, WebSocket,
 interruption, privacy, provider-capability, and native-device work.
+
+See [Voice architecture and ElevenLabs evaluation](voice-architecture.md) for transport, credentials,
+retention, state, accessibility, cost, evaluation, and provider-selection gates.
 
 ## Retrieval decision ladder
 
@@ -218,8 +233,9 @@ bounded error code. Do not record raw prompts, transcripts, audio, model output,
 or canonical records in telemetry by default.
 
 The provider data-use, retention, training, region, subprocessors, and deletion terms are a release
-decision and must be reviewed against the exact selected account/product. Internet documentation does
-not prove the configured account setting.
+decision and must be reviewed against the exact selected account/product. Deleting Pisto's local
+copy does not prove provider deletion, and Internet documentation does not prove the configured
+account setting.
 
 ## Current capability state
 
@@ -243,9 +259,14 @@ not prove the configured account setting.
 - [AI SDK testing](https://ai-sdk.dev/docs/ai-sdk-core/testing)
 - [AI SDK message persistence](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-message-persistence)
 - [AI SDK Expo quickstart](https://ai-sdk.dev/docs/getting-started/expo)
+- [AI SDK transcription](https://ai-sdk.dev/docs/ai-sdk-core/transcription)
+- [AI SDK speech](https://ai-sdk.dev/docs/ai-sdk-core/speech)
+- [AI SDK ElevenLabs provider](https://ai-sdk.dev/providers/ai-sdk-providers/elevenlabs)
 - [AI SDK with Hono](https://ai-sdk.dev/cookbook/api-servers/hono)
 - [Expo SDK 57 streaming fetch](https://docs.expo.dev/versions/v57.0.0/sdk/expo/)
 - [Expo Audio](https://docs.expo.dev/versions/v57.0.0/sdk/audio/)
+- [ElevenLabs single-use tokens](https://elevenlabs.io/docs/api-reference/tokens/create)
+- [ElevenLabs Zero Retention Mode](https://elevenlabs.io/docs/eleven-api/resources/zero-retention-mode)
 - [PostgreSQL full-text search](https://www.postgresql.org/docs/18/textsearch.html)
 - [pgvector](https://github.com/pgvector/pgvector)
 - [Neo4j graph database concepts](https://neo4j.com/docs/getting-started/graph-database/)

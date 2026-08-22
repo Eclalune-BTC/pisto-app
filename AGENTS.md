@@ -3,9 +3,10 @@
 ## Start here
 
 - Read `docs/README.md`, `docs/product-goal.md`,
-  `docs/product-briefs/pisto-ai-business-assistant.md`, and `docs/engineering-workflow.md` before
-  planning a material change. Then read the domain guide and accepted ADRs for the area you will
-  touch. For AI, voice, retrieval, or model work, also read `docs/ai-assistant.md` completely.
+  `docs/product-briefs/pisto-ai-business-assistant.md`, `docs/product-capability-architecture.md`,
+  and `docs/engineering-workflow.md` before planning a material change. Then read the domain guide
+  and accepted ADRs for the area you will touch. For AI, voice, retrieval, or model work, also read
+  `docs/ai-assistant.md` completely; for voice, also read `docs/voice-architecture.md`.
 - Inspect the current implementation, tests, package manifests, and `git status` before proposing
   work. Treat repository evidence as fact; label assumptions and unresolved product decisions.
 - Do not infer real product behavior from illustrative UI, starter copy, package availability, or a
@@ -39,6 +40,9 @@
 - Prefer the smallest complete vertical slice and an existing repository boundary. Apply a named
   pattern only when its ownership or change-pressure problem exists; do not prebuild generic layers,
   roles, providers, or configuration for hypothetical use.
+- Before adding a product capability, complete the slice contract in
+  `docs/product-capability-architecture.md`. Keep application-owned composition explicit; do not add
+  a self-registering module/plugin system, one top-level tab per feature, or an empty future package.
 - Follow the product visual language in `docs/frontend-expo-ui.md`; preserve the Pisto palette and
   inspect rendered UI before making visual judgments.
 - Do not add decorative glows, floating cards, gradients, pills, shadows, or icon tiles without a
@@ -62,9 +66,10 @@
 - For a material change, ask an independent read-only reviewer or subagent to try to falsify the
   result when that capability is available. Resolve findings against evidence; do not delegate
   trivial edits merely to satisfy a ritual.
-- Prefer read-heavy parallel agents. Every parallel writer uses a separate Git worktree on its own
-  branch with non-overlapping file ownership; one integration owner reviews and integrates only the
-  assigned commits.
+- Prefer read-heavy parallel agents. The lead resolves product/data/permission decisions and freezes
+  public contracts before parallel writing. Every parallel writer uses a separate Git worktree on
+  its own branch with non-overlapping file ownership; one integration owner reviews and integrates
+  only the assigned commits.
 - Run `bun run check` before handing work off. Run the additional scope-specific gates in
   `docs/engineering-workflow.md` and distinguish implemented, locally validated, built, pushed,
   deployed, and released.

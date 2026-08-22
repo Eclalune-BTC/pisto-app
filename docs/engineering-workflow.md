@@ -8,9 +8,11 @@ truth, repository boundaries, and delivery evidence without turning small edits 
 For a material change:
 
 1. Read [Active product goal](product-goal.md), the approved
-   [AI-native product brief](product-briefs/pisto-ai-business-assistant.md), this workflow, and the
+   [AI-native product brief](product-briefs/pisto-ai-business-assistant.md),
+   [Product capability architecture](product-capability-architecture.md), this workflow, and the
    relevant domain guide/ADRs. Read [AI assistant architecture](ai-assistant.md) completely when the
-   change touches AI, voice, retrieval, models, tools, or assistant behavior.
+   change touches AI, voice, retrieval, models, tools, or assistant behavior, and read
+   [Voice architecture](voice-architecture.md) for recording, transcription, TTS, or realtime voice.
 2. Inspect `git status`, the actual implementation, public contracts, tests, manifests, and nearby
    patterns. Do not plan from filenames or documentation alone.
 3. State the requested outcome, acceptance criteria, non-goals, confirmed facts, and unresolved
@@ -93,11 +95,16 @@ run the dependency audit, and record any intentional exception.
 ## 4. Design the smallest coherent slice
 
 - Start from the user job and invariants, then define contract and data ownership before UI plumbing.
+- Complete the capability slice contract in
+  [Product capability architecture](product-capability-architecture.md) before distributing material
+  implementation work. Name the structured/manual path even when the feature begins through AI.
 - Use the existing boundary that owns the concept. Introduce an adapter, repository, policy object,
   command, or strategy only when there is an actual external capability or variation to isolate.
 - Named patterns are tools for ownership and change pressure, not a checklist. Do not add a dependency
   injection container, generic service layer, catch-all manager, premature plugin system, or roles for
   hypothetical actors.
+- Keep routes, navigation, tools, jobs, and permissions explicitly composed at the applications. A
+  new product module does not earn a package or permanent top-level destination by default.
 - Keep composition at application roots, domain meaning provider-neutral, public contracts free of
   persistence/provider payloads, and platform differences behind narrow capability adapters.
 - Prefer one complete vertical slice over many disconnected foundations. Delete superseded paths
@@ -156,8 +163,10 @@ Prefer parallel agents for independent research, repository exploration, test an
 If Codex, Claude Code, or their subagents write concurrently, give each writer a separate Git worktree
 checked out to its own dedicated branch and disjoint file ownership. Writers may commit only assigned
 files in their own worktree when requested; they do not push or merge unless explicitly assigned.
-One lead owns requirements and integration. Repository instructions do not launch another vendor
-runtime, and the handoff must not claim that a runtime was used without direct evidence.
+One lead owns requirements and integration. Resolve product/data/permission questions and freeze the
+public contract before parallel writers start; do not ask multiple writers to invent competing
+contracts for one vertical slice. Repository instructions do not launch another vendor runtime, and
+the handoff must not claim that a runtime was used without direct evidence.
 
 ## 7. Definition of done
 

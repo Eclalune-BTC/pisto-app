@@ -65,6 +65,13 @@ registry, narrow tool selection, and bounded orchestration without owning SQL or
 The API remains their composition root. See [AI assistant architecture](ai-assistant.md); none of
 these future packages or capabilities exists in the current codebase.
 
+All later product domains follow the capability slice contract in
+[Product capability architecture](product-capability-architecture.md) and
+[ADR 0011](adrs/0011-modular-capabilities-and-app-owned-composition.md). This remains a modular
+monolith: applications compose explicit routes, commands, queries, tools, and platform adapters.
+A capability earns a focused package, asynchronous boundary, or service only from demonstrated
+ownership, consumer, scale, reliability, or deployment pressure.
+
 One Pisto business workspace uses one Better Auth organization identifier as its `businessId`.
 Organization/session state selects a candidate workspace; the API reloads membership and applies
 Pisto action policy before every domain operation. Typed business settings and financial records stay

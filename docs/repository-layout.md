@@ -74,6 +74,7 @@ for undeclared dependencies: each workspace must still declare every package it 
 | Add a billing provider or access rule | `packages/billing/src` |
 | Add a safe developer workflow | `scripts` with tests |
 | Change shared agent delivery rules | `AGENTS.md`, `.agents/skills`, `CLAUDE.md`, and matching docs |
+| Define how a future product capability composes | Its approved brief plus `docs/product-capability-architecture.md` |
 | Record an operational rule or decision | `docs` and, for architectural decisions, `docs/adrs` |
 
 When the approved first product slice is implemented, create a focused sales domain package only if
@@ -83,6 +84,11 @@ on the assistant; the API composes authorized sales capabilities into assistant 
 
 If a feature crosses boundaries, keep orchestration in the API and domain logic in the owning
 package. Do not create a generic `utils` package for code with a clear owner.
+
+The capability map is not a directory generator. Do not mirror every future product row with an
+empty workspace. Routes, navigation, assistant tools, jobs, and permissions remain explicitly
+composed by `apps/app` or `apps/api`; modules do not self-register through a plugin mechanism. See
+[ADR 0011](adrs/0011-modular-capabilities-and-app-owned-composition.md).
 
 ## Public versus internal contracts
 

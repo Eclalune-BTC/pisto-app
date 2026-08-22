@@ -32,6 +32,11 @@ Route groups and layouts may add file-system parentheses without changing these 
 authentication gating in a layout/provider and enforce the same requirement on the API; client-side
 redirects are usability, not authorization.
 
+These routes describe the current scaffold. The generic planning dashboard and its
+`Home / Billing / Settings` navigation are not the approved long-term product information
+architecture. Replace product language and navigation only as real capability slices are implemented;
+do not infer future records or workflows from the illustrative dashboard.
+
 ## Responsive shell
 
 - Web uses a persistent sidebar when space permits and a compact header/navigation at narrow widths.
@@ -47,6 +52,63 @@ Code reuse is not a claim of pixel or behavior parity. Routes, product state, to
 primitives stay shared when their semantics match. Navigation density, keyboard handling, safe
 areas, pointer behavior, and provider entry points may adapt by platform. Prefer responsive shared
 components for layout changes and narrow platform-resolved adapters for different capabilities.
+
+## Product shell and feature composition
+
+Top-level destinations represent durable user jobs, not packages or database modules. One small
+initial hypothesis is Home, daily Operations, and the Pisto Assistant, with business/account,
+settings, security, team, and billing in secondary account context. Surface the approved
+previous-month summary contextually in Assistant and Sales/Operations. Reports earns a permanent
+destination only after an approved brief proves multiple recurring report jobs and direct-entry
+value. Exact labels and each destination still require validation with real product slices. The
+approved first slice needs Operations/Sales and Assistant entry; Home remains absent until it has
+approved real orientation/attention content rather than invented dashboard filler.
+
+- Keep three to five durable compact destinations; wide web may reveal nested links without changing
+  their meaning.
+- Keep one typed destination model and let platform shells render it. Active state must match nested
+  routes intentionally (for example, a billing return route remains inside Billing) rather than
+  relying only on exact path equality.
+- Do not add one tab per sales, inventory, customers, suppliers, expenses, or other capability.
+- Do not turn Home into a feature-card directory. It shows real business state, attention, and the
+  next useful action.
+- A module normally lives inside an existing work area, record detail, contextual action, search
+  result, or assistant tool.
+- Use platform-specific navigation composition only for real native/web interaction differences.
+  The destination map, route meaning, permission, and state vocabulary remain aligned.
+
+Expo Router supports platform-resolved navigation layouts. Adopt that boundary when the real native
+shell is implemented: use the installed stable Expo Router JavaScript `Tabs` on native and an
+explicit web layout backed by the same typed destination model. A universal fallback route/layout
+must remain for deep linking. Do not add another navigation dependency or adopt experimental native
+or custom tabs without a demonstrated interaction requirement and SDK-specific evaluation. Do not
+fork feature screens or business logic merely to change navigation chrome. See
+[Product capability architecture](product-capability-architecture.md) and
+[ADR 0011](adrs/0011-modular-capabilities-and-app-owned-composition.md).
+
+The target first-slice route composition is a session guard, a required business setup/selection
+flow, a workspace layout containing only approved destinations, nested Sales routes under Operate,
+Assistant entry, and secondary account/billing routes. Home is added only with real approved content.
+Exact slugs are chosen with the implementation brief; this boundary prevents the scaffold dashboard
+or billing screen from dictating future product hierarchy.
+
+## Screen and action contract
+
+Every material screen defines context, content, truthful state, and owned actions. Every action must
+name its user intent, record/context, destination or server effect, hierarchy, enabled/disabled state,
+loading, success/error/retry behavior, duplicate-tap behavior, and accessibility semantics where
+applicable.
+
+- Use one primary action per decision region.
+- Put record actions with the record. A global create/register entry can open a short task chooser,
+  but it cannot become an unowned floating button for unrelated features.
+- Keep assistant proposals visibly editable and separate from confirmed canonical results.
+- Preserve a complete structured/manual route for any canonical operation when AI or voice is
+  disabled or unavailable.
+- Reuse a component when its semantics are stable. Do not build a flag-heavy universal screen merely
+  to maximize code reuse.
+- On web, every route exposes one meaningful page heading and semantic main/navigation/header regions
+  as applicable. A `View` and visually large `Text` alone are not sufficient document semantics.
 
 ## Product visual language
 
@@ -70,6 +132,33 @@ hierarchy with type, spacing, alignment, and dividers before adding another deco
 
 Visual cleanup preserves approved copy, product behavior, accessibility, and responsive intent. It
 does not justify an unrelated redesign.
+
+Conversational Spanish is approved; the exact visible-copy locale is not. Neutral Latin American
+Spanish (`es-419`) is the initial hypothesis and must be checked with Salvadoran terminology/users in
+the implementation brief. Code, identifiers, logs, tests, and repository documentation remain
+English. Do not expose raw provider/server messages as user copy. Keep copy at feature/component
+boundaries so a later approved locale can be introduced without changing domain contracts, but do
+not add a localization package before that need exists.
+
+## Voice UI boundary
+
+No voice dependency or surface exists today. A later approved push-to-talk slice uses a visible
+record/stop/cancel control, keeps background recording off, records to cache, uploads through a
+narrow authenticated multipart adapter, and returns editable text to the existing composer. It does
+not submit or execute the transcript automatically.
+
+Design permission, ready, recording/elapsed, stopped, discarded, uploading, transcribing, silence,
+unsupported/too-large, offline, timeout, rate-limit/provider-error, aborted, retry, and transcript-
+ready states explicitly. The microphone has a text label, keyboard/assistive-technology activation,
+and non-color-only state. A waveform must communicate real level/status and have an accessible
+alternative. Text remains complete when microphone access or transcription is unavailable.
+
+Web microphone support requires a secure context, and Expo documents browser `MediaRecorder`
+differences and missing Chrome WebM duration metadata. Validate exact formats and limits on the
+supported device/browser matrix before adding a polyfill. Optional speech output is a separate later
+capability with visible source text and explicit Listen/Pause/Stop controls; never autoplay.
+
+See [Voice architecture and ElevenLabs evaluation](voice-architecture.md).
 
 ## Public configuration
 
@@ -152,6 +241,12 @@ bun --filter @pisto/app build
 Before adding native modules, use `npx expo install <package>` (or the Bun-compatible Expo invocation)
 so versions match SDK 57. RevenueCat requires native code, so validate it in a development build and
 store sandbox; Expo Go preview alone is not purchase acceptance evidence.
+
+For material shell or route work, verify compact and wide web plus required native targets. Include
+nested-route active state, keyboard order, visible focus, one page heading, semantic landmarks,
+screen-reader names/states, safe-area behavior, and the documented loading/empty/error/disabled
+states. The current scaffold does not yet satisfy all of these checks; treat them as implementation
+acceptance criteria, not as shipped claims.
 
 ## Official sources
 

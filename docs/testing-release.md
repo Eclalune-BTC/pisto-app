@@ -53,6 +53,24 @@ digest/build IDs.
 | Native purchase acceptance | Real store sandbox purchase/restore lifecycle | Physical iOS/Android development/preview build |
 | Deployment smoke | Container contract, DB connection, secrets, IAM, health, rollback | No-traffic/canary Cloud Run revision |
 
+## Product UI acceptance gate when introduced
+
+Material shell, route, or feature UI changes require evidence for:
+
+- compact web at 390 CSS pixels, tablet/intermediate width, and wide web without horizontal overflow;
+- representative physical iOS and Android devices, portrait/landscape where supported, large font
+  scale, software keyboard, safe areas, and bottom-navigation obstruction;
+- one meaningful page heading and named main/navigation/header landmarks on web as applicable;
+- correct link-versus-button semantics, logical keyboard order, visible focus, current/selected
+  navigation state including descendant routes, and live validation/server errors;
+- VoiceOver and TalkBack names, roles, states, non-color-only meaning, and adequate touch targets; and
+- every applicable loading, ready, empty, stale/offline, denied, rate-limited, timeout, error,
+  disabled, interrupted, retry, and recovery state without fabricated data or success.
+
+Component or navigation tests should cover stable public behavior, but they do not replace rendered
+responsive checks or physical-device/screen-reader evidence. Record unsupported or untested targets
+explicitly rather than calling shared source code platform parity.
+
 ## Required security cases
 
 - Unknown/missing fields and oversized input are rejected.
@@ -94,7 +112,9 @@ assistant change cannot be promoted until it records:
 
 A structured-schema pass is not semantic correctness, a provider mock is not provider evidence, and
 a provider sandbox is not a production deployment. Voice additionally requires physical-device
-permission, format, duration, cancellation, transcription, deletion, and accessibility evidence.
+permission, format, duration, cancellation, transcription, deletion, and accessibility evidence;
+a versioned Salvadoran Spanish/financial audio corpus; latency and cost budgets; provider-account
+retention evidence; sensitive-log checks; and a provider-swap/kill-switch test.
 
 ## Database migration tests
 

@@ -21,6 +21,13 @@ Pisto is an operational and financial copilot, not a licensed accountant, tax fi
 or autonomous money manager. It must distinguish revenue, cash, cost, margin, and profit rather than
 using those words interchangeably.
 
+Conversational Spanish is approved for the first job. The exact visible-copy locale remains an owner
+decision before implementation. Neutral Latin American Spanish (`es-419`) is the initial hypothesis
+and must be evaluated with Salvadoran terminology/users. Code, identifiers, tests, logs, and
+repository documentation remain English. Do not install a generic localization system or advertise
+a bilingual UI until a locale decision and any second locale have an approved brief; keep component
+copy boundaries clean so later localization does not require changing domain contracts.
+
 ## Problem and competitive direction
 
 The primary user is an owner-operator who currently tracks the business in memory, paper, chat, or
@@ -232,7 +239,9 @@ The intended module order is:
 7. document ingestion or semantic retrieval only when a real job requires it.
 
 This order is directional. Each module still needs a small approved feature brief. Do not build all
-modules, generic workflow engines, speculative tables, or role systems in advance.
+modules, generic workflow engines, speculative tables, or role systems in advance. The dependency
+gates, capability slice contract, product shell, and shared UI/action rules are in
+[Product capability architecture](../product-capability-architecture.md).
 
 ## Explicit first-slice non-goals
 
