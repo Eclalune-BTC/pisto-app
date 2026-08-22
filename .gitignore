@@ -3,9 +3,11 @@ node_modules/
 .turbo/
 .expo/
 .expo-shared/
+.cache/
 dist/
 build/
 coverage/
+*.tsbuildinfo
 **/.generated/
 
 # Native build outputs
@@ -18,19 +20,46 @@ apps/app/ios/
 !.env.example
 !**/.env.example
 
-# Logs and local tooling
+# Logs, editor state, and operating-system files
 *.log
+*.pid
+*.pid.lock
+*.tmp
+*.swp
+*.swo
+*.orig
+*~
 .DS_Store
+._*
 Thumbs.db
+Desktop.ini
 .idea/
 .vscode/
+.fleet/
+.history/
 
-# Infrastructure local state
+# Infrastructure local state and variable values (commit reviewed *.tfvars.example files only)
 *.tfstate
 *.tfstate.*
 .terraform/
-.terraform.lock.hcl
+.terraform.tfstate.lock.info
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+!*.tfvars.json.example
+*.tfplan
 
-# Generated local certificates and keys
+# Keep .terraform.lock.hcl trackable for reproducible provider selections.
+
+# Generated local credentials, certificates, and signing keys
+/apps/app/credentials.json
+.secrets/
 *.pem
 *.key
+*.p8
+*.p12
+*.pfx
+*.ppk
+*.jks
+*.keystore
+*.mobileprovision
