@@ -1,0 +1,42 @@
+{
+  "name": "pisto-stack",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "bun@1.4.0",
+  "engines": {
+    "bun": ">=1.4.0",
+    "node": ">=24.19.0 <25"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "setup": "bun run scripts/pisto.ts init",
+    "doctor": "bun run scripts/pisto.ts doctor",
+    "dev": "turbo run dev",
+    "dev:app": "bun run --filter @pisto/app dev",
+    "dev:api": "bun --env-file=.env --watch scripts/dev-api.ts",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "bun test ./scripts && turbo run test",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "docs:check": "bun run scripts/validate-docs.ts",
+    "audit:ci": "bun audit --ignore GHSA-67mh-4wv8-2f99 --ignore GHSA-w3rx-r6r6-pgpr --ignore GHSA-5p2g-fcmc-qvqq --ignore GHSA-w5hq-g745-h8pq",
+    "check": "bun run lint && bun run docs:check && bun test ./scripts && turbo run typecheck test",
+    "verify": "bun run doctor && bun run check && bun run build",
+    "db:generate": "bun --env-file=.env run --filter @pisto/db db:generate",
+    "db:migrate": "bun --env-file=.env run --filter @pisto/db db:migrate",
+    "db:push": "bun --env-file=.env run --filter @pisto/db db:push",
+    "db:check": "bun --env-file=.env run --filter @pisto/db db:check",
+    "db:studio": "bun --env-file=.env run --filter @pisto/db db:studio",
+    "auth:schema:check": "bun run --filter @pisto/auth auth:schema:check",
+    "auth:schema:generate": "bun --env-file=.env run --filter @pisto/auth auth:schema:generate"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.10",
+    "turbo": "2.10.11",
+    "typescript": "6.0.3"
+  }
+}

@@ -1,0 +1,16 @@
+.git
+.github
+.expo
+.turbo
+node_modules
+**/node_modules
+**/dist
+**/build
+**/coverage
+apps/app/android
+apps/app/ios
+.env
+.env.*
+*.log
+*.tfstate*
+.terraform

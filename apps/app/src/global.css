@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@import "uniwind";
+
+@theme {
+  --color-ink: #14241d;
+  --color-ink-muted: #617168;
+  --color-canvas: #f3f6f1;
+  --color-surface: #ffffff;
+  --color-line: #dce5dd;
+  --color-accent: #d9fb67;
+  --color-accent-strong: #b8e637;
+  --color-positive: #237a55;
+  --color-warning: #b86718;
+  --color-danger: #b94242;
+  --radius-card: 24px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: #f3f6f1;
+}

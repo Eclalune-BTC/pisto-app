@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Pisto",
+    "slug": "pisto",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/brand/icon.png",
+    "scheme": "pisto",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.example.pisto",
+      "supportsTablet": true,
+      "icon": "./assets/brand/icon.png"
+    },
+    "android": {
+      "package": "com.example.pisto",
+      "adaptiveIcon": {
+        "backgroundColor": "#E7F1E8",
+        "foregroundImage": "./assets/brand/adaptive-foreground.png",
+        "backgroundImage": "./assets/brand/adaptive-background.png",
+        "monochromeImage": "./assets/brand/monochrome.png"
+      },
+      "predictiveBackGestureEnabled": true
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/brand/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F3F6F1",
+          "dark": {
+            "backgroundColor": "#0F1D18"
+          },
+          "image": "./assets/brand/splash-icon.png",
+          "imageWidth": 120
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

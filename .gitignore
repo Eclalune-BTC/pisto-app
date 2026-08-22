@@ -1,0 +1,36 @@
+# Dependencies and build caches
+node_modules/
+.turbo/
+.expo/
+.expo-shared/
+dist/
+build/
+coverage/
+**/.generated/
+
+# Native build outputs
+apps/app/android/
+apps/app/ios/
+
+# Runtime configuration and secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Logs and local tooling
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Infrastructure local state
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Generated local certificates and keys
+*.pem
+*.key

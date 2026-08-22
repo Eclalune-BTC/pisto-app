@@ -1,0 +1,109 @@
+substitutions:
+  _REGION: us-central1
+  _REPOSITORY: pisto
+  _SERVICE: pisto-api
+  _SERVICE_ACCOUNT: pisto-api
+  _MIGRATION_JOB: pisto-migrate
+  _MIGRATION_SERVICE_ACCOUNT: pisto-migrate
+  _CLOUD_SQL_INSTANCE: replace-project:us-central1:pisto-postgres
+  _API_URL: https://api.example.com
+  _APP_URL: https://app.example.com
+  _APP_SCHEME: pisto
+
+steps:
+  - id: validate-substitutions
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        case "${_CLOUD_SQL_INSTANCE}" in
+          replace-project:*) echo "Replace _CLOUD_SQL_INSTANCE before deployment." >&2; exit 2 ;;
+        esac
+        case ",${_API_URL},${_APP_URL}," in
+          *,https://example.com,*|*,https://*.example.com,*|*,https://example.net,*|*,https://*.example.net,*|*,https://example.org,*|*,https://*.example.org,*)
+            echo "Replace _API_URL and _APP_URL before deployment." >&2; exit 2 ;;
+        esac
+        case "${_API_URL},${_APP_URL}" in
+          https://*,https://*) ;;
+          *) echo "_API_URL and _APP_URL must both use HTTPS." >&2; exit 2 ;;
+        esac
+
+  - id: build-api
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file
+      - apps/api/Dockerfile
+      - --tag
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$COMMIT_SHA
+      - .
+
+  - id: push-api
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$COMMIT_SHA
+
+  - id: configure-migration-job
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - deploy
+      - ${_MIGRATION_JOB}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$COMMIT_SHA
+      - --region=${_REGION}
+      - --service-account=${_MIGRATION_SERVICE_ACCOUNT}@$PROJECT_ID.iam.gserviceaccount.com
+      - --set-cloudsql-instances=${_CLOUD_SQL_INSTANCE}
+      - --set-secrets=DATABASE_URL=pisto-migration-database-url:latest
+      - --set-env-vars=DATABASE_SSL=disable,DATABASE_MAX_CONNECTIONS=2
+      - --command=bun
+      - --args=packages/db/dist/bundled-migrate.js
+      - --tasks=1
+      - --max-retries=0
+      - --task-timeout=10m
+      - --cpu=1
+      - --memory=512Mi
+
+  - id: execute-migrations
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - execute
+      - ${_MIGRATION_JOB}
+      - --region=${_REGION}
+      - --wait
+
+  - id: deploy-api
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$COMMIT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --execution-environment=gen2
+      - --service-account=${_SERVICE_ACCOUNT}@$PROJECT_ID.iam.gserviceaccount.com
+      - --add-cloudsql-instances=${_CLOUD_SQL_INSTANCE}
+      - --set-secrets=DATABASE_URL=pisto-database-url:latest,BETTER_AUTH_SECRET=pisto-auth-secret:latest,POLAR_ACCESS_TOKEN=pisto-polar-token:latest,POLAR_WEBHOOK_SECRET=pisto-polar-webhook-secret:latest,POLAR_PRODUCTS_JSON=pisto-polar-products:latest
+      - --set-env-vars=^@^NODE_ENV=production@BETTER_AUTH_URL=${_API_URL}@CORS_ORIGINS=${_APP_URL}@TRUSTED_ORIGINS=${_APP_URL},${_APP_SCHEME}://@EXPO_SCHEME=${_APP_SCHEME}@DATABASE_SSL=disable@DATABASE_MAX_CONNECTIONS=10@BILLING_ENABLED=true@POLAR_SERVER=production@POLAR_SUCCESS_URL=${_APP_URL}/billing/success@POLAR_RETURN_URL=${_APP_URL}/billing@REVENUECAT_ENABLED=false@PORT=3001
+      - --port=3001
+      - --cpu=1
+      - --memory=512Mi
+      - --concurrency=80
+      - --min-instances=0
+      - --max-instances=10
+      - --timeout=60s
+      - --allow-unauthenticated
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$COMMIT_SHA
+
+options:
+  logging: CLOUD_LOGGING_ONLY
