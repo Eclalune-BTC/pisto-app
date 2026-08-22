@@ -14,6 +14,12 @@
 ## Engineering rules
 
 - Use English for source code, comments, command output, errors, and documentation.
+- Follow the product visual language in `docs/frontend-expo-ui.md`; preserve the Pisto palette and
+  inspect rendered UI before making visual judgments.
+- Do not add decorative glows, floating cards, gradients, pills, shadows, or icon tiles without a
+  concrete hierarchy, interaction, state, feedback, or brand purpose.
+- Never invent plan data, progress, account activity, saved settings, or success-shaped fallbacks to
+  make an incomplete feature appear finished.
 - Do not read provider credentials in client-side code.
 - Treat billing webhooks as untrusted, retried, and possibly out of order.
 - Keep the internal entitlement model provider-neutral.

@@ -13,9 +13,7 @@ export function ScreenHeader({ action, description, eyebrow, title }: ScreenHead
     <View className="gap-4 sm:flex-row sm:items-end sm:justify-between">
       <View className="max-w-[680px] gap-2">
         {eyebrow ? (
-          <Text className="text-xs font-extrabold uppercase tracking-[1.8px] text-positive dark:text-[#8DDEAF]">
-            {eyebrow}
-          </Text>
+          <Text className="text-sm font-bold text-positive dark:text-[#8DDEAF]">{eyebrow}</Text>
         ) : null}
         <Text className="text-[32px] font-black leading-[38px] tracking-[-1.4px] text-ink dark:text-white sm:text-[40px] sm:leading-[46px]">
           {title}

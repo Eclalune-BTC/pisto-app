@@ -5,7 +5,7 @@ export type RuntimePlatform = "android" | "ios" | "web" | "windows" | "macos";
 export type BillingCapabilities = {
   canManage: boolean;
   canPurchase: boolean;
-  channel: "web-checkout" | "native-store-placeholder";
+  channel: "native-store-placeholder" | "unresolved" | "web-checkout";
 };
 
 export function getBillingCapabilities(platform: RuntimePlatform): BillingCapabilities {

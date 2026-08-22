@@ -1,15 +1,18 @@
-import { getBillingCapabilities } from "@/lib/billing/billing-policy";
 import type { PlatformBillingAdapter } from "@/lib/billing/platform-billing.types";
 
-const unavailableMessage =
-  "Native purchases are not configured yet. Existing access will still appear here.";
+const resolutionError =
+  "Platform billing adapter resolution failed. Expected the .web or .native implementation.";
 
 export const platformBilling: PlatformBillingAdapter = {
-  capabilities: getBillingCapabilities("ios"),
+  capabilities: {
+    canManage: false,
+    canPurchase: false,
+    channel: "unresolved",
+  },
   async manage() {
-    return { status: "unavailable", message: unavailableMessage };
+    throw new Error(resolutionError);
   },
   async purchase() {
-    return { status: "unavailable", message: unavailableMessage };
+    throw new Error(resolutionError);
   },
 };

@@ -1,12 +1,11 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { type Href, Link, usePathname, useRouter } from "expo-router";
+import { type Href, Link, usePathname } from "expo-router";
 import { CreditCard, LayoutDashboard, LogOut, Settings } from "lucide-react-native";
 import type { ComponentType, PropsWithChildren } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Brand } from "@/components/brand";
-import { authClient } from "@/lib/auth-client";
+import { useSignOut } from "@/hooks/use-sign-out";
 import { cn } from "@/lib/cn";
 
 type NavItem = {
@@ -28,15 +27,8 @@ type AppShellProps = PropsWithChildren<{
 
 export function AppShell({ children, email, name }: AppShellProps) {
   const pathname = usePathname();
-  const queryClient = useQueryClient();
-  const router = useRouter();
   const isWeb = Platform.OS === "web";
-
-  const signOut = async () => {
-    await authClient.signOut();
-    queryClient.clear();
-    router.replace("/sign-in");
-  };
+  const signOutAction = useSignOut();
 
   return (
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#0F1D18]" edges={["top", "left", "right"]}>
@@ -93,11 +85,17 @@ export function AppShell({ children, email, name }: AppShellProps) {
               <Pressable
                 accessibilityLabel="Sign out"
                 className="min-h-10 flex-row items-center gap-2 rounded-xl active:opacity-70"
-                onPress={signOut}
+                disabled={signOutAction.isPending}
+                onPress={signOutAction.signOut}
               >
                 <LogOut color="#D3DDD7" size={17} />
-                <Text className="text-sm font-bold text-[#D3DDD7]">Sign out</Text>
+                <Text className="text-sm font-bold text-[#D3DDD7]">
+                  {signOutAction.isPending ? "Signing out..." : "Sign out"}
+                </Text>
               </Pressable>
+              {signOutAction.error ? (
+                <Text className="text-xs leading-4 text-[#F6BB76]">{signOutAction.error}</Text>
+              ) : null}
             </View>
           </View>
         ) : null}
@@ -119,11 +117,12 @@ export function AppShell({ children, email, name }: AppShellProps) {
 
           <View className="min-h-0 flex-1">{children}</View>
 
-          <View
+          <SafeAreaView
             className={cn(
               "flex-row border-t border-line bg-white px-3 pb-2 pt-2 dark:border-[#2B3C34] dark:bg-[#15251E]",
               isWeb && "lg:hidden",
             )}
+            edges={["bottom"]}
           >
             {navItems.map((item) => {
               const active = pathname === item.href;
@@ -149,7 +148,7 @@ export function AppShell({ children, email, name }: AppShellProps) {
                 </Link>
               );
             })}
-          </View>
+          </SafeAreaView>
         </View>
       </View>
     </SafeAreaView>

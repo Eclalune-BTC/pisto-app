@@ -1,7 +1,6 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { ArrowRight, Check, LockKeyhole, Sparkles, WalletCards } from "lucide-react-native";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ArrowRight } from "lucide-react-native";
+import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Brand } from "@/components/brand";
@@ -9,19 +8,31 @@ import { Button, ButtonText } from "@/components/ui/button";
 
 const featureItems = [
   {
-    icon: WalletCards,
     title: "A clear starting point",
     description: "Bring the pieces of your financial life into one calm, organized view.",
   },
   {
-    icon: Sparkles,
     title: "Less financial noise",
     description: "See the next useful action without digging through dense charts or menus.",
   },
   {
-    icon: LockKeyhole,
     title: "Security by design",
     description: "Sessions are protected with secure, platform-aware storage on mobile.",
+  },
+] as const;
+
+const previewItems = [
+  {
+    title: "Choose what matters",
+    description: "Focus the plan on the accounts, goals, and decisions that are useful to you.",
+  },
+  {
+    title: "Make the next decision clear",
+    description: "Keep one practical action visible instead of adding more financial noise.",
+  },
+  {
+    title: "Review when you need to",
+    description: "Return to the plan when your priorities or circumstances change.",
   },
 ] as const;
 
@@ -30,12 +41,6 @@ export default function WelcomeScreen() {
 
   return (
     <View className="flex-1 bg-ink">
-      <LinearGradient
-        colors={["#132A22", "#1B392E", "#132A22"]}
-        end={{ x: 1, y: 1 }}
-        start={{ x: 0, y: 0 }}
-        style={StyleSheet.absoluteFill}
-      />
       <SafeAreaView className="flex-1" edges={["top", "left", "right"]}>
         <ScrollView contentContainerClassName="flex-grow" showsVerticalScrollIndicator={false}>
           <View className="mx-auto w-full max-w-[1200px] px-5 pb-10 pt-4 sm:px-8 lg:px-12">
@@ -62,12 +67,9 @@ export default function WelcomeScreen() {
 
             <View className="gap-12 py-14 lg:min-h-[620px] lg:flex-row lg:items-center lg:gap-16 lg:py-12">
               <View className="flex-1 gap-8">
-                <View className="self-start flex-row items-center gap-2 rounded-full border border-[#496155] bg-[#203C31] px-4 py-2">
-                  <View className="h-2 w-2 rounded-full bg-accent" />
-                  <Text className="text-xs font-extrabold uppercase tracking-[1.4px] text-[#D9E5DE]">
-                    Your money, made clearer
-                  </Text>
-                </View>
+                <Text className="self-start text-sm font-bold text-accent">
+                  Your money, made clearer
+                </Text>
                 <View className="gap-5">
                   <Text className="max-w-[660px] text-[48px] font-black leading-[51px] tracking-[-2.4px] text-white sm:text-[64px] sm:leading-[66px]">
                     Feel good about what comes next.
@@ -93,79 +95,57 @@ export default function WelcomeScreen() {
                 <View className="flex-row flex-wrap gap-x-5 gap-y-2">
                   {["No card to begin", "Private by default", "Built for every screen"].map(
                     (item) => (
-                      <View key={item} className="flex-row items-center gap-2">
-                        <View className="h-5 w-5 items-center justify-center rounded-full bg-[#2A4B3E]">
-                          <Check color="#D9FB67" size={12} strokeWidth={3} />
-                        </View>
-                        <Text className="text-sm font-semibold text-[#BFD0C6]">{item}</Text>
-                      </View>
+                      <Text key={item} className="text-sm font-semibold text-[#BFD0C6]">
+                        {item}
+                      </Text>
                     ),
                   )}
                 </View>
               </View>
 
               <View className="w-full self-center sm:max-w-[520px] lg:w-[420px] lg:max-w-none">
-                <View className="rotate-[-2deg] rounded-[32px] border border-[#4A6257] bg-[#F1F5EF] p-4 shadow-2xl">
-                  <View className="gap-5 rounded-[24px] bg-white p-6">
-                    <View className="flex-row items-center justify-between">
-                      <View className="gap-1">
-                        <Text className="text-xs font-bold uppercase tracking-[1.4px] text-[#728179]">
-                          Today
-                        </Text>
-                        <Text className="text-xl font-black tracking-[-0.6px] text-ink">
-                          Your money plan
-                        </Text>
+                <View className="border border-[#4A6257] bg-[#F1F5EF]">
+                  <View className="gap-2 border-b border-[#D5DED6] p-6">
+                    <Text className="text-xs font-bold uppercase tracking-[1.4px] text-[#617168]">
+                      Illustrative preview
+                    </Text>
+                    <Text className="text-[28px] font-black leading-[34px] tracking-[-0.8px] text-ink">
+                      A simple planning flow
+                    </Text>
+                    <Text className="text-sm leading-5 text-ink-muted">
+                      This example shows how Pisto can organize a decision. It does not represent an
+                      account or saved progress.
+                    </Text>
+                  </View>
+                  <View className="px-6">
+                    {previewItems.map((item, index) => (
+                      <View
+                        key={item.title}
+                        className={`gap-1 py-5 ${index > 0 ? "border-t border-[#D5DED6]" : ""}`}
+                      >
+                        <Text className="text-base font-bold text-ink">{item.title}</Text>
+                        <Text className="text-sm leading-5 text-ink-muted">{item.description}</Text>
                       </View>
-                      <View className="h-11 w-11 items-center justify-center rounded-full bg-accent">
-                        <Sparkles color="#14241D" size={20} />
-                      </View>
-                    </View>
-                    <View className="rounded-[22px] bg-ink p-5">
-                      <Text className="text-sm font-semibold text-[#ABC0B4]">
-                        Ready for your next goal
-                      </Text>
-                      <Text className="mt-2 text-[34px] font-black tracking-[-1.3px] text-white">
-                        Start small
-                      </Text>
-                      <View className="mt-5 h-2 overflow-hidden rounded-full bg-[#365046]">
-                        <View className="h-full w-[62%] rounded-full bg-accent" />
-                      </View>
-                      <Text className="mt-2 text-xs text-[#ABC0B4]">One step at a time</Text>
-                    </View>
-                    <View className="gap-3">
-                      {[
-                        ["Connect your first account", "2 min"],
-                        ["Choose one monthly goal", "Next"],
-                        ["Review your plan", "Weekly"],
-                      ].map(([label, meta], index) => (
-                        <View
-                          key={label}
-                          className="flex-row items-center gap-3 rounded-2xl bg-[#F3F6F1] p-3.5"
-                        >
-                          <View className="h-8 w-8 items-center justify-center rounded-full bg-white">
-                            <Text className="text-sm font-black text-positive">{index + 1}</Text>
-                          </View>
-                          <Text className="min-w-0 flex-1 text-sm font-bold text-ink">{label}</Text>
-                          <Text className="text-xs font-semibold text-[#728179]">{meta}</Text>
-                        </View>
-                      ))}
-                    </View>
+                    ))}
                   </View>
                 </View>
               </View>
             </View>
 
-            <View className="gap-4 border-t border-[#385247] pt-8 sm:flex-row">
-              {featureItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <View key={item.title} className="flex-1 gap-3 rounded-[24px] bg-[#1B332A] p-5">
-                    <Icon color="#D9FB67" size={22} />
-                    <Text className="text-base font-bold text-white">{item.title}</Text>
-                    <Text className="text-sm leading-5 text-[#AFC0B6]">{item.description}</Text>
-                  </View>
-                );
-              })}
+            <View className="border-t border-[#385247] pt-2 sm:flex-row">
+              {featureItems.map((item, index) => (
+                <View
+                  key={item.title}
+                  className={`flex-1 gap-2 py-6 ${
+                    index < featureItems.length - 1
+                      ? "border-b border-[#385247] sm:border-b-0 sm:border-r sm:pr-6"
+                      : ""
+                  } ${index > 0 ? "sm:pl-6" : ""}`}
+                >
+                  <Text className="text-base font-bold text-white">{item.title}</Text>
+                  <Text className="text-sm leading-5 text-[#AFC0B6]">{item.description}</Text>
+                </View>
+              ))}
             </View>
           </View>
         </ScrollView>

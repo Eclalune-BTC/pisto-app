@@ -5,6 +5,7 @@ import {
   assertSafeCheckoutUrl,
   getBillingCapabilities,
 } from "@/lib/billing/billing-policy";
+import { platformBilling as unresolvedPlatformBilling } from "@/lib/billing/platform-billing";
 
 describe("billing platform policy", () => {
   it("enables server checkout only on web", () => {
@@ -17,6 +18,13 @@ describe("billing platform policy", () => {
       channel: "native-store-placeholder",
     });
     expect(getBillingCapabilities("android").canPurchase).toBe(false);
+  });
+
+  it("fails explicitly when platform module resolution does not select an adapter", async () => {
+    expect(unresolvedPlatformBilling.capabilities.channel).toBe("unresolved");
+    await expect(unresolvedPlatformBilling.purchase("pisto-plus-monthly")).rejects.toThrow(
+      "Platform billing adapter resolution failed",
+    );
   });
 
   it("accepts only bounded catalog slugs", () => {

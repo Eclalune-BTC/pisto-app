@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AlertCircle, Check, ExternalLink, ShieldCheck, Sparkles } from "lucide-react-native";
+import { AlertCircle, ExternalLink } from "lucide-react-native";
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
@@ -9,12 +9,6 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api-client";
 import { platformBilling } from "@/lib/billing/platform-billing";
-
-const includedItems = [
-  "A focused money overview",
-  "Goals and planning workspace",
-  "Secure access across supported devices",
-] as const;
 
 export default function BillingScreen() {
   const [notice, setNotice] = useState<string>();
@@ -29,7 +23,9 @@ export default function BillingScreen() {
   const product = catalog.data?.products[0];
   const activeEntitlements =
     entitlements.data?.items.filter((item) => item.status === "active") ?? [];
-  const webCheckout = platformBilling.capabilities.channel === "web-checkout";
+  const billingChannel = platformBilling.capabilities.channel;
+  const webCheckout = billingChannel === "web-checkout";
+  const nativeBilling = billingChannel === "native-store-placeholder";
 
   const purchase = useMutation({
     mutationFn: async () => {
@@ -81,9 +77,18 @@ export default function BillingScreen() {
 
       <View className="gap-5 lg:flex-row">
         <Card className="flex-1 gap-6 p-6 sm:p-7">
-          <View className="flex-row items-center justify-between">
-            <View className="h-12 w-12 items-center justify-center rounded-2xl bg-[#EAF4EC] dark:bg-[#244334]">
-              <ShieldCheck color="#237A55" size={24} />
+          <View className="flex-row items-start justify-between gap-4">
+            <View className="min-w-0 flex-1 gap-2">
+              <CardTitle className="text-2xl">Current access</CardTitle>
+              <CardDescription>
+                {entitlements.isPending
+                  ? "Pisto is checking your server-backed access."
+                  : entitlements.isError
+                    ? "Pisto could not verify your current access. No access state is being assumed."
+                    : activeEntitlements.length > 0
+                      ? `${activeEntitlements.length} active entitlement${activeEntitlements.length === 1 ? "" : "s"} found for your account.`
+                      : "Your account is using the standard Pisto experience."}
+              </CardDescription>
             </View>
             <Badge
               tone={
@@ -95,25 +100,13 @@ export default function BillingScreen() {
               }
             >
               {entitlements.isPending
-                ? "CHECKING"
+                ? "Checking"
                 : entitlements.isError
-                  ? "UNKNOWN"
+                  ? "Unknown"
                   : activeEntitlements.length > 0
-                    ? "ACTIVE"
-                    : "STANDARD"}
+                    ? "Active"
+                    : "Standard"}
             </Badge>
-          </View>
-          <View className="gap-2">
-            <CardTitle className="text-2xl">Current access</CardTitle>
-            <CardDescription>
-              {entitlements.isPending
-                ? "Pisto is checking your server-backed access."
-                : entitlements.isError
-                  ? "Pisto could not verify your current access. No access state is being assumed."
-                  : activeEntitlements.length > 0
-                    ? `${activeEntitlements.length} active entitlement${activeEntitlements.length === 1 ? "" : "s"} found for your account.`
-                    : "Your account is using the standard Pisto experience."}
-            </CardDescription>
           </View>
           {entitlements.isError ? (
             <Button
@@ -127,7 +120,7 @@ export default function BillingScreen() {
             {activeEntitlements.slice(0, 3).map((item) => (
               <View
                 key={item.key}
-                className="flex-row items-center justify-between rounded-2xl bg-[#F2F6F2] p-3 dark:bg-[#14241D]"
+                className="flex-row items-center justify-between border-t border-line py-3 dark:border-[#304239]"
               >
                 <Text className="font-bold text-ink dark:text-white">{item.key}</Text>
                 <Badge tone="positive">{item.status}</Badge>
@@ -143,97 +136,96 @@ export default function BillingScreen() {
           />
         </Card>
 
-        <View className="flex-[1.2] overflow-hidden rounded-[28px] bg-ink p-6 sm:p-8">
-          <View className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-[#29483B]" />
-          <View className="relative gap-7">
-            <View className="flex-row items-start justify-between gap-4">
-              <View className="min-w-0 flex-1 gap-2">
-                <Badge className="bg-accent">{webCheckout ? "WEB PLAN" : "NATIVE ACCESS"}</Badge>
-                <Text className="text-[30px] font-black leading-[36px] tracking-[-1px] text-white">
-                  {catalog.isPending
-                    ? "Loading plan details"
-                    : catalog.isError
-                      ? "Plan status unavailable"
-                      : product?.name || "Pisto Plus"}
-                </Text>
-                <Text className="text-base leading-6 text-[#B6C7BE]">
-                  {catalog.isError
-                    ? "Pisto could not verify the current catalog. Retry before making a purchase decision."
-                    : product?.description ||
-                      "A focused upgrade for people who want more room to plan and stay organized."}
-                </Text>
-              </View>
-              <View className="h-12 w-12 items-center justify-center rounded-full bg-accent">
-                <Sparkles color="#14241D" size={22} />
-              </View>
-            </View>
-
-            <View className="gap-3">
-              {includedItems.map((item) => (
-                <View key={item} className="flex-row items-center gap-3">
-                  <View className="h-6 w-6 items-center justify-center rounded-full bg-[#2A4B3E]">
-                    <Check color="#D9FB67" size={14} strokeWidth={3} />
-                  </View>
-                  <Text className="min-w-0 flex-1 text-sm font-semibold text-[#DCE7E1]">
-                    {item}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            {webCheckout ? (
-              <View className="gap-3">
-                {catalog.isError ? (
-                  <Button
-                    label="Retry plan status"
-                    loading={catalog.isFetching}
-                    onPress={() => catalog.refetch()}
-                    variant="accent"
-                  />
-                ) : (
-                  <Button
-                    disabled={!canPurchase}
-                    loading={purchase.isPending}
-                    onPress={() => purchase.mutate()}
-                    variant="accent"
-                  >
-                    <ButtonText variant="accent">
-                      {catalog.isPending
-                        ? "Loading plan"
-                        : catalogEnabled
-                          ? "Continue to secure checkout"
-                          : "Checkout unavailable"}
-                    </ButtonText>
-                    <ExternalLink color="#14241D" size={16} strokeWidth={2.4} />
-                  </Button>
-                )}
-                <Text className="text-center text-xs leading-5 text-[#9EB1A7]">
-                  Web checkout opens only after Pisto creates an authenticated session on the
-                  server.
-                </Text>
-              </View>
-            ) : (
-              <View className="gap-3 rounded-[20px] border border-[#41594E] bg-[#1B332A] p-4">
-                <Text className="font-bold text-white">Native store adapter pending</Text>
-                <Text className="text-sm leading-5 text-[#AFC0B6]">
-                  This build does not send you to an external checkout. Connect an App Store or Play
-                  billing adapter before enabling native purchases.
-                </Text>
-                <Button disabled label="Purchases unavailable in this build" variant="secondary" />
-              </View>
-            )}
+        <View className="flex-[1.2] gap-7 rounded-2xl bg-ink p-6 sm:p-8">
+          <View className="gap-2 border-l-4 border-accent pl-5">
+            <Text className="text-sm font-bold text-accent">
+              {webCheckout
+                ? "Web subscription"
+                : nativeBilling
+                  ? "Native access"
+                  : "Billing unavailable"}
+            </Text>
+            <Text className="text-[30px] font-black leading-[36px] tracking-[-1px] text-white">
+              {catalog.isPending
+                ? "Loading plan details"
+                : catalog.isError
+                  ? "Plan details unavailable"
+                  : product?.name
+                    ? product.name
+                    : catalogEnabled
+                      ? "No plan available"
+                      : "Checkout is not configured"}
+            </Text>
+            {catalog.isError ? (
+              <Text className="text-base leading-6 text-[#B6C7BE]">
+                Pisto could not verify the current catalog. Retry before making a purchase decision.
+              </Text>
+            ) : product?.description ? (
+              <Text className="text-base leading-6 text-[#B6C7BE]">{product.description}</Text>
+            ) : !catalog.isPending ? (
+              <Text className="text-base leading-6 text-[#B6C7BE]">
+                {catalogEnabled
+                  ? "The server did not return a purchasable plan."
+                  : "Web checkout remains unavailable until the billing catalog is enabled."}
+              </Text>
+            ) : null}
           </View>
+
+          {webCheckout ? (
+            <View className="gap-3 border-t border-[#41594E] pt-5">
+              {catalog.isError ? (
+                <Button
+                  label="Retry plan status"
+                  loading={catalog.isFetching}
+                  onPress={() => catalog.refetch()}
+                  variant="accent"
+                />
+              ) : canPurchase ? (
+                <Button
+                  loading={purchase.isPending}
+                  onPress={() => purchase.mutate()}
+                  variant="accent"
+                >
+                  <ButtonText variant="accent">Continue to secure checkout</ButtonText>
+                  <ExternalLink color="#14241D" size={16} strokeWidth={2.4} />
+                </Button>
+              ) : (
+                <Text className="text-sm leading-5 text-[#AFC0B6]">
+                  There is no checkout action available for the current catalog state.
+                </Text>
+              )}
+              <Text className="text-xs leading-5 text-[#9EB1A7]">
+                Checkout opens only after Pisto creates an authenticated server session.
+              </Text>
+            </View>
+          ) : nativeBilling ? (
+            <View className="gap-2 border-t border-[#41594E] pt-5">
+              <Text className="font-bold text-white">Native purchases are not enabled</Text>
+              <Text className="text-sm leading-5 text-[#AFC0B6]">
+                This build does not open an external checkout. An App Store or Play billing adapter
+                must be connected before native purchases are offered.
+              </Text>
+            </View>
+          ) : (
+            <View className="gap-2 border-t border-[#41594E] pt-5">
+              <Text className="font-bold text-white">Platform adapter could not be resolved</Text>
+              <Text className="text-sm leading-5 text-[#AFC0B6]">
+                This build did not select its web or native billing implementation. Billing actions
+                remain disabled until the build configuration is corrected.
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
-      <Card className="gap-3 p-6">
-        <CardTitle>How billing works here</CardTitle>
-        <CardDescription>
+      <View className="gap-2 border-t border-line pt-6 dark:border-[#304239]">
+        <Text className="font-bold text-ink dark:text-white">How billing works here</Text>
+        <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
           On the web, Pisto asks the authenticated API to create checkout or portal sessions. On iOS
           and Android, this build exposes only a provider-neutral store state until a native in-app
           purchase adapter is configured.
-        </CardDescription>
-      </Card>
+        </Text>
+      </View>
     </ScrollView>
   );
 }

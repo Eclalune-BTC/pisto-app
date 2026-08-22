@@ -43,6 +43,34 @@ redirects are usability, not authorization.
 - Interactive controls have labels, roles, states, adequate hit targets, keyboard behavior on web,
   and VoiceOver/TalkBack verification.
 
+Code reuse is not a claim of pixel or behavior parity. Routes, product state, tokens, copy, and
+primitives stay shared when their semantics match. Navigation density, keyboard handling, safe
+areas, pointer behavior, and provider entry points may adapt by platform. Prefer responsive shared
+components for layout changes and narrow platform-resolved adapters for different capabilities.
+
+## Product visual language
+
+Pisto keeps the ink, lime, cream, white, and semantic status palette defined in `global.css`. Build
+hierarchy with type, spacing, alignment, and dividers before adding another decorated surface.
+
+- A card, pill, icon, shadow, gradient, or illustration must communicate grouping, interaction,
+  state, hierarchy, feedback, or established brand character. If removing it preserves meaning and
+  usability, simplify it.
+- Do not combine decorative glows, floating or tilted cards, oversized rounding, sparkle icons,
+  status-like pills, or repeated icon tiles merely to make a screen feel complete.
+- Status badges remain appropriate for real states such as entitlement, verification, connection,
+  and session status. Do not use them as ornamental section labels.
+- Never invent progress, account activity, timing, plan names, catalog descriptions, testimonials,
+  or security claims. Missing remote data receives an explicit loading, empty, unavailable, or
+  error state.
+- Do not expose controls that only mutate temporary component state while implying that a setting
+  was saved. Implement persistence first or omit the control.
+- Cards and rounded controls are not banned. Use them where a surface is independently actionable
+  or where containment materially improves comprehension.
+
+Visual cleanup preserves approved copy, product behavior, accessibility, and responsive intent. It
+does not justify an unrelated redesign.
+
 ## Public configuration
 
 Expo replaces statically referenced `process.env.EXPO_PUBLIC_*` values in the client bundle. Those
@@ -129,6 +157,7 @@ store sandbox; Expo Go preview alone is not purchase acceptance evidence.
 
 - [Expo SDK compatibility matrix](https://docs.expo.dev/versions/latest/)
 - [Expo Router introduction](https://docs.expo.dev/router/introduction/)
+- [Expo Router platform-specific modules](https://docs.expo.dev/router/advanced/platform-specific-modules/)
 - [Expo Router SDK 57 reference](https://docs.expo.dev/versions/v57.0.0/sdk/router/)
 - [Expo environment variables](https://docs.expo.dev/guides/environment-variables/)
 - [Expo development builds](https://docs.expo.dev/develop/development-builds/introduction/)
