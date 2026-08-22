@@ -1,5 +1,18 @@
 import { z } from "zod";
 
+import {
+  aggregateIntegerSchema,
+  currencyCodeSchema,
+  currencyMinorUnitDigitsSchema,
+  localDateSchema,
+  localTimeSchema,
+  minorUnitsSchema,
+  positiveMinorUnitsSchema,
+  timeZoneSchema,
+} from "./primitives";
+
+export * from "./primitives";
+
 export const apiVersion = "v1" as const;
 
 export const requestIdSchema = z.string().min(1).max(128);
@@ -134,32 +147,6 @@ export const billingRedirectResponseSchema = z.object({
     redirect: z.literal(false),
   }),
 });
-
-const signedBigintMaximum = 9_223_372_036_854_775_807n;
-
-export const aggregateIntegerSchema = z
-  .string()
-  .regex(/^(?:0|[1-9]\d*)$/, "Must be a canonical non-negative integer");
-
-function isSignedBigint(value: string): boolean {
-  return /^(?:0|[1-9]\d{0,18})$/.test(value) && BigInt(value) <= signedBigintMaximum;
-}
-
-export const minorUnitsSchema = z
-  .string()
-  .regex(/^(?:0|[1-9]\d{0,18})$/, "Must be a canonical non-negative integer")
-  .refine(isSignedBigint, "Must fit in a signed 64-bit integer");
-
-export const positiveMinorUnitsSchema = minorUnitsSchema.refine(
-  (value) => isSignedBigint(value) && BigInt(value) > 0n,
-  "Must be greater than zero",
-);
-
-export const currencyCodeSchema = z.string().regex(/^[A-Z]{3}$/);
-export const currencyMinorUnitDigitsSchema = z.number().int().min(0).max(4);
-export const timeZoneSchema = z.string().trim().min(1).max(64);
-export const localDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-export const localTimeSchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
 
 export const businessRoleSchema = z.enum(["owner", "admin", "member"]);
 
