@@ -7,6 +7,17 @@ supports the decision; the repository documentation records how Pisto applies it
 their review trigger because package behavior, cloud services, and especially store billing policy
 can drift.
 
+## Agent and engineering workflow
+
+| Decision | Primary official source | Review trigger |
+| --- | --- | --- |
+| Root `AGENTS.md` supplies portable project instructions to Codex | [OpenAI AGENTS.md guidance](https://learn.chatgpt.com/docs/agent-configuration/agents-md) | Agent workflow or instruction-layout change |
+| Repository-scoped skill lives under `.agents/skills` | [OpenAI skill authoring and locations](https://learn.chatgpt.com/docs/build-skills) | Skill structure or distribution change |
+| Independent subagents are used proportionally for bounded read-heavy review | [OpenAI subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents) | Review workflow or Codex capability change |
+| Short agent instructions map to versioned repository knowledge and specific agent reviews | [OpenAI harness engineering](https://openai.com/index/harness-engineering/) | Documentation or review-system redesign |
+| Secure development and third-party component decisions use a risk-based process | [NIST SP 800-218 SSDF](https://csrc.nist.gov/pubs/sp/800/218/final) | Security/dependency policy change |
+| Dependency changes receive vulnerability, license, and transitive-impact review | [GitHub dependency review](https://docs.github.com/en/code-security/concepts/supply-chain-security/dependency-review), [OpenSSF Scorecard](https://openssf.org/scorecard/) | Every new or changed production dependency |
+
 ## Runtime and repository
 
 | Decision | Primary official source | Review trigger |
@@ -116,6 +127,7 @@ summary for a later submission; read the live documents and enrolled-program ter
 | Decision | Primary official source | Review trigger |
 | --- | --- | --- |
 | Password recovery needs an explicit email sender | [Better Auth email/password](https://better-auth.com/docs/authentication/email-password), [email provider seam](https://better-auth.com/docs/concepts/email) | Recovery/email implementation |
+| Organizations remain a server/schema foundation until the product role and invitation flow is approved and tested | [Better Auth organization plugin](https://better-auth.com/docs/plugins/organization) | Organization, role, permission, or invitation work |
 | Push requires native and server delivery integration | [Expo push overview](https://docs.expo.dev/push-notifications/overview/) | Notification feature |
 | Cloud Run logs are collected; production alerts/SLOs still need configuration | [Cloud Run logging](https://cloud.google.com/run/docs/logging), [Error Reporting](https://cloud.google.com/run/docs/error-reporting) | Observability deployment |
 | Analytics requires a privacy design before an SDK/vendor | [Expo data and privacy](https://docs.expo.dev/guides/data-and-privacy-protection/) | Analytics/tracking feature |

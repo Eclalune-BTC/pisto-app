@@ -9,6 +9,18 @@ target is Google Cloud Run with Cloud SQL and explicitly provisioned supporting 
 These documents describe the intended engineering and operating contract. They do not claim that a
 feature is deployed merely because its code or design exists.
 
+## Current product state
+
+Pisto currently includes a universal authenticated application shell, email/password sign-up/sign-in
+wiring, a session-backed account summary, API health/readiness, and server-backed billing catalog and
+entitlement paths. Polar web checkout/portal behavior is available only when configured.
+
+No persisted financial accounts, obligations, goals, monthly targets, plan computation, progress, or
+activity history exists in this baseline. Dashboard planning items are guidance, not stored product
+state. Email verification/recovery delivery, a finished organization/roles workflow, native
+purchases, and provisioned production cloud resources remain incomplete or release-gated; see
+[Production capabilities](production-capabilities.md).
+
 ## System map
 
 | Area | Choice | Source of truth |
@@ -24,24 +36,27 @@ feature is deployed merely because its code or design exists.
 
 ## Reading order
 
-1. [Architecture](architecture.md) explains boundaries and request flows.
-2. [Repository layout](repository-layout.md) says where changes belong.
-3. [Getting started](getting-started.md) takes a new checkout to a verified local environment.
-4. [CLI workflow](cli-workflow.md) documents the safe `init`, `doctor`, and `help` commands.
-5. [Expo and UI](frontend-expo-ui.md) covers routes, responsive UI, client configuration, and
+1. [Active product goal](product-goal.md) states the current milestone and blocks invented scope.
+2. [Engineering workflow](engineering-workflow.md) defines research, reuse, architecture, review,
+   and completion evidence.
+3. [Architecture](architecture.md) explains boundaries and request flows.
+4. [Repository layout](repository-layout.md) says where changes belong.
+5. [Getting started](getting-started.md) takes a new checkout to a verified local environment.
+6. [CLI workflow](cli-workflow.md) documents the safe `init`, `doctor`, and `help` commands.
+7. [Expo and UI](frontend-expo-ui.md) covers routes, responsive UI, client configuration, and
    platform boundaries.
-6. [Web deployment](web-deployment.md) separates the Expo static host from the API runtime.
-7. [API and Hono](api-hono.md) defines the HTTP composition and route conventions.
-8. [PostgreSQL and Drizzle](database-drizzle.md) defines schema and migration policy.
-9. [Better Auth](authentication.md) defines sessions, origins, and secret handling.
-10. [Billing and entitlements](billing-entitlements.md) is the normative purchase and access model.
-11. [Google Cloud deployment](cloud-deployment.md) describes the production topology.
-12. [Production capabilities](production-capabilities.md) separates included code from future seams.
-13. [Security](security.md) is the security baseline and review checklist.
-14. [Testing and release](testing-release.md) defines evidence required before release.
-15. [Versioning and upgrades](versioning-upgrades.md) defines dependency and migration policy.
-16. [Official source index](source-index.md) maps every major decision to primary documentation.
-17. [Architecture decision records](adrs/README.md) preserve the reasoning behind the design.
+8. [Web deployment](web-deployment.md) separates the Expo static host from the API runtime.
+9. [API and Hono](api-hono.md) defines the HTTP composition and route conventions.
+10. [PostgreSQL and Drizzle](database-drizzle.md) defines schema and migration policy.
+11. [Better Auth](authentication.md) defines sessions, origins, and secret handling.
+12. [Billing and entitlements](billing-entitlements.md) is the normative purchase and access model.
+13. [Google Cloud deployment](cloud-deployment.md) describes the production topology.
+14. [Production capabilities](production-capabilities.md) separates included code from future seams.
+15. [Security](security.md) is the security baseline and review checklist.
+16. [Testing and release](testing-release.md) defines evidence required before release.
+17. [Versioning and upgrades](versioning-upgrades.md) defines dependency and migration policy.
+18. [Official source index](source-index.md) maps every major decision to primary documentation.
+19. [Architecture decision records](adrs/README.md) preserve the reasoning behind the design.
 
 ## Non-negotiable invariants
 

@@ -7,6 +7,8 @@ Polar, and native purchase boundaries for the Apple App Store and Google Play.
 
 The repository is intentionally built from source instead of cloned from another starter.
 Every integration is replaceable behind a small package boundary.
+"Built from source" means the repository composition is owned here; it is not a rule to reimplement
+mature platform or library capabilities.
 
 ## Repository map
 
@@ -18,6 +20,7 @@ Every integration is replaceable behind a small package boundary.
 - packages/billing: Polar adapter and canonical entitlements
 - scripts: safe setup and diagnostic CLI
 - docs: architecture, setup, operations, security, and source links
+- .agents/skills: repository-scoped Codex workflow for architecture-first product delivery
 - infra/gcp: Cloud Build and Cloud Run deployment reference
 
 ## Quick start
@@ -40,7 +43,9 @@ ones. Run bun run doctor whenever a local tool or service appears misconfigured.
 - bun run build builds all packages and applications.
 - bun run verify adds environment diagnostics before the full validation.
 
-Start with docs/README.md for the complete guide and primary-source references.
+Start with docs/README.md for the active product goal, engineering workflow, complete guide, and
+primary-source references. Codex agents also load the root AGENTS.md and the repository-scoped skill
+under `.agents/skills`.
 
 ## Billing boundary
 

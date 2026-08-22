@@ -7,7 +7,9 @@ where a capability belongs, but external configuration or implementation is stil
 
 | Capability | Included now | Integration seam / release gate | Intentionally not chosen |
 | --- | --- | --- | --- |
-| Email/password auth and recovery | Better Auth email/password switch, schema, rate limiting, and sign-in/up UI | Select a transactional email provider; implement `sendResetPassword`/verification, templates, enumeration-safe UX, bounce/domain/DKIM/DMARC and delivery tests before claiming recovery works | No email vendor or working recovery delivery is bundled |
+| Email/password sign-up and sign-in | Better Auth email/password switch, PostgreSQL-backed schema/rate limiting, sign-in/up UI, and session-backed account summary | Run PostgreSQL-backed lifecycle/denial tests and complete the release checks in [Authentication](authentication.md) before claiming production readiness | No social login, passkeys, or MFA is implied by the base account schema |
+| Email verification and password recovery | Verification schema and reset-route rate rule only | Select a transactional email provider; implement verification and `sendResetPassword`, templates, enumeration-safe UX, session-revocation policy, bounce/domain/DKIM/DMARC, and delivery tests | No email vendor, verification flow, or working recovery delivery is bundled |
+| Organizations, roles, and permissions | Better Auth organization server plugin plus organization/member/invitation schema | Approve the multi-user product job; define Pisto roles/permissions and limits; add the client plugin, invitation delivery/acceptance UX, verification policy, authorization tests, and audit evidence | No complete organization UI, invitation flow, Pisto RBAC model, admin/support role, or impersonation is claimed |
 | Billing and entitlement projection | Polar web subscription catalog/checkout/portal, verified subscription lifecycle projection, provider-neutral entitlements, and an optional authenticated RevenueCat subscription webhook | Provision/test provider dashboards and sandbox products; install the RevenueCat native SDK for mobile; add a separate verified order/refund model before offering Polar one-time products | No Polar one-time-order entitlement projection and no local Apple/Google receipt verification |
 | Expo push notifications | No push delivery | Add `expo-notifications`, permission UX, device-token ownership/rotation, server send path, receipts, opt-out, and physical-device testing | No push provider/config/credentials or campaign system |
 | Jobs and tasks | API remains request-driven; billing webhook receipt is synchronous/durable; the Cloud Build reference configures, executes, and waits for a one-task, zero-retry Cloud Run migration job with a distinct identity/secret | Provision that job/IAM/database role and prove execution; add a Cloud Tasks adapter/private OIDC handler for retryable short HTTP work plus queues/alerts | No background loop inside API instances; no job/queue resource or successful execution is claimed deployed |
@@ -34,6 +36,7 @@ A capability moves from seam to included only in the same change/release record 
 
 - [Better Auth email and password recovery](https://better-auth.com/docs/authentication/email-password)
 - [Better Auth email provider seam](https://better-auth.com/docs/concepts/email)
+- [Better Auth organization plugin](https://better-auth.com/docs/plugins/organization)
 - [Better Auth database-backed rate limits](https://better-auth.com/docs/concepts/rate-limit)
 - [Expo push notification overview](https://docs.expo.dev/push-notifications/overview/)
 - [Cloud Tasks HTTP targets](https://cloud.google.com/tasks/docs/creating-http-target-tasks)

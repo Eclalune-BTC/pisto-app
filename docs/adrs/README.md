@@ -42,6 +42,7 @@ changes, add a new ADR that supersedes the old one instead of rewriting the old 
 ## Official sources
 ```
 
-An ADR that relies on store or regulatory policy records its research date and a mandatory recheck
-trigger. An implementation detail that does not alter a boundary usually belongs in the relevant
+An ADR that relies on changeable external behavior records its research date and a mandatory recheck
+trigger. Library-versus-build evidence belongs under `Alternatives considered` when it affects the
+decision. An implementation detail that does not alter a boundary usually belongs in the relevant
 guide rather than a new ADR.

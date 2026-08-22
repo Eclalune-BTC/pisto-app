@@ -1,5 +1,15 @@
 # Pisto Stack contributor guide
 
+## Start here
+
+- Read `docs/README.md`, `docs/product-goal.md`, and `docs/engineering-workflow.md` before planning a
+  material change. Then read the domain guide and accepted ADRs for the area you will touch.
+- Inspect the current implementation, tests, package manifests, and `git status` before proposing
+  work. Treat repository evidence as fact; label assumptions and unresolved product decisions.
+- Do not infer real product behavior from illustrative UI, starter copy, package availability, or a
+  future capability seam. If neither the user's request nor an approved product brief defines the
+  exact user job, stop before implementation and request that decision.
+
 ## Architecture boundaries
 
 - apps/app owns the Expo Router user interface and platform adapters.
@@ -14,6 +24,16 @@
 ## Engineering rules
 
 - Use English for source code, comments, command output, errors, and documentation.
+- Follow the proportional research and review contract in `docs/engineering-workflow.md`.
+- Research primary, current sources before deciding anything version-sensitive, security-sensitive,
+  provider-specific, policy-dependent, unfamiliar, or architectural when it depends on an external
+  fact. Stable internal decisions supported by repository evidence do not require ceremonial browsing.
+- Before adding a production dependency, inspect built-in and already-installed capabilities, then
+  compare a new library with a small local implementation. Record the reason, compatibility,
+  maintenance/security evidence, and exit cost. Never add a wrapper that only renames a library.
+- Prefer the smallest complete vertical slice and an existing repository boundary. Apply a named
+  pattern only when its ownership or change-pressure problem exists; do not prebuild generic layers,
+  roles, providers, or configuration for hypothetical use.
 - Follow the product visual language in `docs/frontend-expo-ui.md`; preserve the Pisto palette and
   inspect rendered UI before making visual judgments.
 - Do not add decorative glows, floating cards, gradients, pills, shadows, or icon tiles without a
@@ -27,4 +47,9 @@
   requires an explicit policy review, enrolled program, release gate, and dedicated ADR.
 - Add an environment variable to the relevant .env.example when code requires it.
 - Add or update a test for business logic and security-sensitive behavior.
-- Run bun run check before handing work off.
+- For a material change, ask an independent read-only reviewer or subagent to try to falsify the
+  result when that capability is available. Resolve findings against evidence; do not delegate
+  trivial edits merely to satisfy a ritual.
+- Run `bun run check` before handing work off. Run the additional scope-specific gates in
+  `docs/engineering-workflow.md` and distinguish implemented, locally validated, built, pushed,
+  deployed, and released.
