@@ -1,23 +1,23 @@
 # Active product goal
 
-- Status: **manual sales Increment 1 implemented locally; approved milestone incomplete**
+- Status: **operating core V1 approved for implementation; manual sales Increment 1 implemented locally**
 - Owner: **repository owner**
 - Last reviewed: **2026-08-22**
 
 ## Goal
 
-Turn the validated Pisto platform foundation into **one real, truthful, end-to-end product slice**
-that works through the shared web, iOS, and Android architecture.
+Turn the validated Pisto platform foundation into a **complete modular operating core** that works
+through the shared web, iOS, and Android architecture.
 
-The approved first slice lets one authenticated business owner describe a sale in conversational
-Spanish, review and confirm the typed draft, persist it exactly once, and later ask how the previous
-calendar month went. The answer is calculated from canonical sales records in the business time zone;
-it reports revenue truthfully and does not call it profit without cost and expense data.
+The active milestone adds catalog/inventory, expenses/cash, customers/receivables, exact reports,
+provider-neutral text assistance with narrow tools, and bounded push-to-talk transcription around
+the implemented manual sales foundation. Each capability keeps a complete structured path, and AI
+remains an interface over deterministic commands and queries rather than a source of truth.
 
-The full product definition, data and action contracts, acceptance criteria, and exclusions are in
-[Pisto AI-native business assistant](product-briefs/pisto-ai-business-assistant.md). That brief approves
-the job, not its implementation and not every future Pisto module. Future capability composition and
-navigation follow [Product capability architecture](product-capability-architecture.md).
+The frozen data/action contracts and exclusions for this milestone are in
+[Operating core V1 capability contracts](product-slices/operating-core-v1.md). The long-term product
+definition remains [Pisto AI-native business assistant](product-briefs/pisto-ai-business-assistant.md),
+and composition follows [Product capability architecture](product-capability-architecture.md).
 
 ## What is already established
 
@@ -68,20 +68,19 @@ The milestone is complete only when:
 - the applicable local, provider, device, migration, build, and release gates in
   [Testing and release](testing-release.md) are recorded accurately.
 
-## Next delivery decision
+## Active delivery sequence
 
-The next delivery agent should finish the smallest **void/replacement correction** increment described
-in the approved brief. It must preserve the original sale, commit the void/replacement/audit links
-atomically, prevent cross-business or repeated correction, and update summaries deterministically.
-Voice, AI, inventory deduction, expenses, invitations/domain-specific team roles, RAG, graphs,
-provider failover, and paid-plan gating are not included. Use the
-[copy-ready next-session prompt](prompts/pisto-next-codex-session.md).
+Implement the accepted [Operating core V1 capability contracts](product-slices/operating-core-v1.md)
+in isolated capability branches, integrate them through the explicit app/API composition roots, then
+add exact reports, the text assistant, and bounded push-to-talk voice. Deployment, store submission,
+RAG/graphs, silent provider fallback, and a production-release claim remain excluded.
 
 ## Related sources
 
 - [Pisto engineering workflow](engineering-workflow.md)
 - [Approved AI-native product brief](product-briefs/pisto-ai-business-assistant.md)
 - [Product capability architecture](product-capability-architecture.md)
+- [Operating core V1 capability contracts](product-slices/operating-core-v1.md)
 - [AI assistant architecture](ai-assistant.md)
 - [Pisto architecture](architecture.md)
 - [OpenAI project instructions with AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md)

@@ -53,34 +53,36 @@ mean deployed or production-ready.
    conversational sale/report slice.
 3. [Product capability architecture](product-capability-architecture.md) defines how future modules,
    navigation, UI actions, assistant/voice channels, and delivery ownership compose without a flat UI.
-4. [Sales Increment 1](sales-increment-1.md) records the implemented product flow, contracts,
+4. [Operating core V1 contracts](product-slices/operating-core-v1.md) freeze the active catalog,
+   inventory, expense, cash, customer, receivable, report, assistant, and voice capability slices.
+5. [Sales Increment 1](sales-increment-1.md) records the implemented product flow, contracts,
    persistence, failure behavior, evidence, and explicit limitations.
-5. [Engineering workflow](engineering-workflow.md) defines research, reuse, architecture, review,
+6. [Engineering workflow](engineering-workflow.md) defines research, reuse, architecture, review,
    and completion evidence.
-6. [AI assistant architecture](ai-assistant.md) records model, tools, voice, retrieval, evaluation,
+7. [AI assistant architecture](ai-assistant.md) records model, tools, voice, retrieval, evaluation,
    and provider portability decisions.
-7. [Voice architecture](voice-architecture.md) records the staged push-to-talk, ElevenLabs,
+8. [Voice architecture](voice-architecture.md) records the staged push-to-talk, ElevenLabs,
    privacy, transport, evaluation, TTS, and realtime decision gates without selecting a provider.
-8. [Next Codex session prompt](prompts/pisto-next-codex-session.md) is the current copy-ready mission.
-9. [Reusable agent feature prompt](agent-feature-prompt.md) frames other bounded Codex or Claude Code work.
-10. [Architecture](architecture.md) explains boundaries and request flows.
-11. [Repository layout](repository-layout.md) says where changes belong.
-12. [Getting started](getting-started.md) takes a new checkout to a verified local environment.
-13. [CLI workflow](cli-workflow.md) documents the safe `init`, `doctor`, and `help` commands.
-14. [Expo and UI](frontend-expo-ui.md) covers routes, responsive UI, client configuration, and
+9. [Next Codex session prompt](prompts/pisto-next-codex-session.md) is the current copy-ready mission.
+10. [Reusable agent feature prompt](agent-feature-prompt.md) frames other bounded Codex or Claude Code work.
+11. [Architecture](architecture.md) explains boundaries and request flows.
+12. [Repository layout](repository-layout.md) says where changes belong.
+13. [Getting started](getting-started.md) takes a new checkout to a verified local environment.
+14. [CLI workflow](cli-workflow.md) documents the safe `init`, `doctor`, and `help` commands.
+15. [Expo and UI](frontend-expo-ui.md) covers routes, responsive UI, client configuration, and
    platform boundaries.
-15. [Web deployment](web-deployment.md) separates the Expo static host from the API runtime.
-16. [API and Hono](api-hono.md) defines the HTTP composition and route conventions.
-17. [PostgreSQL and Drizzle](database-drizzle.md) defines schema and migration policy.
-18. [Better Auth](authentication.md) defines sessions, origins, and secret handling.
-19. [Billing and entitlements](billing-entitlements.md) is the normative purchase and access model.
-20. [Google Cloud deployment](cloud-deployment.md) describes the production topology.
-21. [Production capabilities](production-capabilities.md) separates included code from future seams.
-22. [Security](security.md) is the security baseline and review checklist.
-23. [Testing and release](testing-release.md) defines evidence required before release.
-24. [Versioning and upgrades](versioning-upgrades.md) defines dependency and migration policy.
-25. [Official source index](source-index.md) maps every major decision to primary documentation.
-26. [Architecture decision records](adrs/README.md) preserve the reasoning behind the design.
+16. [Web deployment](web-deployment.md) separates the Expo static host from the API runtime.
+17. [API and Hono](api-hono.md) defines the HTTP composition and route conventions.
+18. [PostgreSQL and Drizzle](database-drizzle.md) defines schema and migration policy.
+19. [Better Auth](authentication.md) defines sessions, origins, and secret handling.
+20. [Billing and entitlements](billing-entitlements.md) is the normative purchase and access model.
+21. [Google Cloud deployment](cloud-deployment.md) describes the production topology.
+22. [Production capabilities](production-capabilities.md) separates included code from future seams.
+23. [Security](security.md) is the security baseline and review checklist.
+24. [Testing and release](testing-release.md) defines evidence required before release.
+25. [Versioning and upgrades](versioning-upgrades.md) defines dependency and migration policy.
+26. [Official source index](source-index.md) maps every major decision to primary documentation.
+27. [Architecture decision records](adrs/README.md) preserve the reasoning behind the design.
 
 ## Non-negotiable invariants
 

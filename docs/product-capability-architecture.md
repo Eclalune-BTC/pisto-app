@@ -9,8 +9,9 @@ a collection of disconnected forms or assistant demos. Growth must preserve one 
 product, trustworthy records, and clear ownership for the engineers and agents who extend it.
 
 This document defines how future capabilities fit together. It does not approve every capability for
-implementation. The active milestone remains the typed sale and previous-calendar-month summary in
-[Active product goal](product-goal.md).
+implementation. The active milestone is the bounded operating core in
+[Active product goal](product-goal.md), with its frozen capability contracts in
+[Operating core V1](product-slices/operating-core-v1.md).
 
 ## Competitive direction
 
