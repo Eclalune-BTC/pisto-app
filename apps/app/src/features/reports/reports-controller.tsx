@@ -27,17 +27,20 @@ export function ReportsController() {
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
   const canRead = resolveBusinessPermission(business, "reports:read");
+  const timeZone = business?.timeZone;
   const [draftRange, setDraftRange] = useState<OperatingReportQuery>(unseededRange);
   const [appliedRange, setAppliedRange] = useState<OperatingReportQuery>(unseededRange);
   const [rangeIssue, setRangeIssue] = useState<ReportRangeIssue | null>(null);
 
+  // A refetch can hand back a new business object for unchanged data, so
+  // depending on the object here would discard the range the user typed.
   useEffect(() => {
-    if (!business) return;
-    const initialRange = currentBusinessMonthRange(business.timeZone);
+    if (!timeZone) return;
+    const initialRange = currentBusinessMonthRange(timeZone);
     setDraftRange(initialRange);
     setAppliedRange(initialRange);
     setRangeIssue(null);
-  }, [business]);
+  }, [timeZone]);
 
   const businessId = business?.id ?? "unselected";
   const seeded = Boolean(appliedRange.startLocalDate && appliedRange.endLocalDate);
