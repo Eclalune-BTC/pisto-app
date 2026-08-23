@@ -1,7 +1,6 @@
 # Catalog and inventory V1
 
-- Status: **implemented on the isolated catalog/inventory feature branch; integration migration and
-  composition remain pending**
+- Status: **integrated into `main`; schema ships in migration `0003` and the routes are mounted under `/v1`**
 - Owner: `@pisto/contracts`, `@pisto/db`, `@pisto/api`, and the Expo `catalog`/`inventory` features
 - Last reviewed: **2026-08-22**
 - Parent contract: [Operating core V1](operating-core-v1.md#catalog-and-inventory-slice)

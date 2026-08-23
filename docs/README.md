@@ -24,8 +24,14 @@ documented in [Sales Increment 1](sales-increment-1.md). API health/readiness an
 server-backed billing catalog/entitlement paths also exist; Polar web checkout/portal behavior is
 available only when configured.
 
-The current sales increment does not include correction, inventory, expenses, financial accounts,
-obligations, goals, AI/voice, retrieval, graph, or general activity history. Email
+Catalog, inventory, customers, receivables, cash accounts, expenses, and void/replacement sale
+correction are implemented, mounted under `/v1`, and covered by the PostgreSQL integration suite.
+Migration `0003` carries their schema.
+
+Still absent: obligations, goals, AI/voice, retrieval, graph, general activity history, and a sales
+list — there is no `GET /v1/sales`, so the implemented correction flow is unreachable for any sale
+the user has navigated away from. Reports exist only as a contract in `packages/contracts/src/reports.ts`
+with no route, repository, or screen. Entitlements are projected but gate no product route. Email
 verification/recovery delivery, invitations/role administration/domain-specific team roles, native
 purchases, and provisioned production cloud resources remain incomplete or release-gated; see
 [Production capabilities](production-capabilities.md). Implemented and locally validated does not

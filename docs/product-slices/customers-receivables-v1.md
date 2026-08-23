@@ -1,6 +1,6 @@
 # Customers and receivables V1
 
-- Status: **implemented on an isolated feature branch; integration required before release**
+- Status: **integrated into `main`; schema ships in migration `0003` and the routes are mounted under `/v1`**
 - Product contract: [Operating core V1](./operating-core-v1.md#customers-and-receivables-slice)
 - Owners: `packages/contracts`, `packages/db`, `apps/api`, and `apps/app`
 - Last reviewed: **2026-08-22**

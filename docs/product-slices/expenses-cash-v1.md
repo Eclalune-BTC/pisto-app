@@ -1,6 +1,6 @@
 # Expenses and cash V1
 
-- Status: **implemented on an isolated capability branch; composition and migration are integration-owner work**
+- Status: **integrated into `main`; schema ships in migration `0003` and the routes are mounted under `/v1`**
 - Capability owner: `packages/db/src/cash/*`
 - Product surfaces: `/operate/expenses` and `/operate/cash`
 - Last reviewed: **2026-08-22**
