@@ -33,15 +33,32 @@ export interface OperationCommandIdentity<Action extends string = string> {
  * message. Domain tables stay separate because their foreign keys and action
  * constraints differ.
  */
-export interface OperationLog<ResultColumn extends PgColumn = PgColumn> {
-  readonly action: PgColumn;
-  readonly actorUserId: PgColumn;
-  readonly businessId: PgColumn;
-  readonly commandFingerprint: PgColumn;
+type OperationIdentityColumns = {
+  action: PgColumn;
+  actorUserId: PgColumn;
+  businessId: PgColumn;
+  commandFingerprint: PgColumn;
+  idempotencyKey: PgColumn;
+};
+
+/** A table that carries the shared receipt identity under these exact names. */
+export type OperationLogTable = PgTable & OperationIdentityColumns;
+
+/**
+ * The identity columns are read from the table rather than listed beside it. A
+ * descriptor that named them separately could point `businessId` at another
+ * column of the same table, which typechecks, generates a predicate that never
+ * matches, and silently re-executes the command on every retry.
+ */
+export interface OperationLog<
+  Table extends OperationLogTable = OperationLogTable,
+  ResultColumn extends PgColumn & { _: { tableName: Table["_"]["name"] } } = PgColumn & {
+    _: { tableName: Table["_"]["name"] };
+  },
+> {
   readonly conflictMessage: string;
-  readonly idempotencyKey: PgColumn;
   readonly result: ResultColumn;
-  readonly table: PgTable;
+  readonly table: Table;
 }
 
 export async function sha256Hex(canonical: string): Promise<string> {
@@ -101,23 +118,26 @@ export interface OperationReplay<Result = unknown> {
  * Returns the stored result when the same actor already committed this exact command,
  * and fails closed when the key was reused for a different action or payload.
  */
-export async function findOperationReplay<ResultColumn extends PgColumn>(
+export async function findOperationReplay<
+  Table extends OperationLogTable,
+  ResultColumn extends PgColumn,
+>(
   tx: DatabaseTransaction,
-  log: OperationLog<ResultColumn>,
+  log: OperationLog<Table, ResultColumn>,
   identity: OperationCommandIdentity,
 ): Promise<OperationReplay<ResultColumn["_"]["data"]> | null> {
   const [receipt] = await tx
     .select({
-      action: log.action,
-      commandFingerprint: log.commandFingerprint,
+      action: log.table.action,
+      commandFingerprint: log.table.commandFingerprint,
       result: log.result,
     })
-    .from(log.table)
+    .from(log.table as PgTable)
     .where(
       and(
-        eq(log.businessId, identity.businessId),
-        eq(log.actorUserId, identity.actorUserId),
-        eq(log.idempotencyKey, identity.idempotencyKey),
+        eq(log.table.businessId, identity.businessId),
+        eq(log.table.actorUserId, identity.actorUserId),
+        eq(log.table.idempotencyKey, identity.idempotencyKey),
       ),
     )
     .limit(1);
@@ -142,7 +162,11 @@ export async function findOperationReplay<ResultColumn extends PgColumn>(
  * Leave them as they are: moving them onto this prologue would change their lock
  * order, which is exactly the kind of edit that introduces a deadlock.
  */
-export async function beginOperation<Action extends string, ResultColumn extends PgColumn>(
+export async function beginOperation<
+  Action extends string,
+  Table extends OperationLogTable,
+  ResultColumn extends PgColumn,
+>(
   tx: DatabaseTransaction,
   input: {
     action: Action;
@@ -150,7 +174,7 @@ export async function beginOperation<Action extends string, ResultColumn extends
     commandFingerprint: string;
     idempotencyKey: string;
     lock: BusinessLockStrength;
-    log: OperationLog<ResultColumn>;
+    log: OperationLog<Table, ResultColumn>;
     permissions: readonly BusinessPermission[];
   },
 ): Promise<{

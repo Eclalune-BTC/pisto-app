@@ -37,15 +37,10 @@ export function requireCurrency(access: AuthorizedBusiness, currency: string): v
 }
 
 export const cashOperationLog = {
-  action: cashOperationReceipt.action,
-  actorUserId: cashOperationReceipt.actorUserId,
-  businessId: cashOperationReceipt.businessId,
-  commandFingerprint: cashOperationReceipt.commandFingerprint,
   conflictMessage: "That confirmation key was already used for a different cash operation",
-  idempotencyKey: cashOperationReceipt.idempotencyKey,
   result: cashOperationReceipt.result,
   table: cashOperationReceipt,
-} satisfies OperationLog;
+} satisfies OperationLog<typeof cashOperationReceipt>;
 
 /** Authorizes the actor, takes the idempotency lock, and reads any stored replay. */
 export async function beginCashOperation(

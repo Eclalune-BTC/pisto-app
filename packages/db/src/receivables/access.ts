@@ -25,15 +25,10 @@ export async function authorize(
 }
 
 export const receivableOperationLog = {
-  action: receivableOperation.action,
-  actorUserId: receivableOperation.actorUserId,
-  businessId: receivableOperation.businessId,
-  commandFingerprint: receivableOperation.commandFingerprint,
   conflictMessage: "That confirmation key was already used for a different operation",
-  idempotencyKey: receivableOperation.idempotencyKey,
   result: receivableOperation.resultSnapshot,
   table: receivableOperation,
-} satisfies OperationLog;
+} satisfies OperationLog<typeof receivableOperation>;
 
 /**
  * Authorizes the actor, takes the idempotency lock, and reads any stored replay

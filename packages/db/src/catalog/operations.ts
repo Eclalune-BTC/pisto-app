@@ -17,15 +17,10 @@ import type {
 } from "./types.ts";
 
 export const catalogOperationLog = {
-  action: catalogOperation.action,
-  actorUserId: catalogOperation.actorUserId,
-  businessId: catalogOperation.businessId,
-  commandFingerprint: catalogOperation.commandFingerprint,
   conflictMessage: "That confirmation key was already used for a different catalog operation",
-  idempotencyKey: catalogOperation.idempotencyKey,
   result: catalogOperation.resultSnapshot,
   table: catalogOperation,
-} satisfies OperationLog;
+} satisfies OperationLog<typeof catalogOperation>;
 
 /** Authorizes the actor, takes the idempotency lock, and reads any stored replay. */
 export async function beginCatalogOperation(
