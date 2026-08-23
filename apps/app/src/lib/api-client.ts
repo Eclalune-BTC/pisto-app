@@ -27,8 +27,11 @@ import {
   type ReplaceSaleRequest,
   replaceSaleRequestSchema,
   type SaleCorrectionResponse,
+  type SaleListQuery,
+  type SaleListResponse,
   type SaleResponse,
   saleCorrectionResponseSchema,
+  saleListResponseSchema,
   saleResponseSchema,
   type VoidSaleRequest,
   voidSaleRequestSchema,
@@ -46,6 +49,14 @@ type ApiRequestOptions = Omit<RequestInit, "body"> & {
 };
 
 export { ApiClientError, isAmbiguousMutationError } from "@/lib/api-error";
+
+function pathWithQuery(path: `/${string}`, query: Record<string, unknown>): `/${string}` {
+  const search = Object.entries(query)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+    .join("&");
+  return search ? `${path}?${search}` : path;
+}
 
 function parseRequestPayload<T>(schema: ZodType<T>, payload: unknown): T {
   const result = schema.safeParse(payload);
@@ -154,6 +165,12 @@ export const api = {
         `/v1/sales/${encodeURIComponent(saleId)}`,
         { authenticated: true },
         saleResponseSchema,
+      ),
+    list: (query: SaleListQuery = {}) =>
+      apiRequest<SaleListResponse, SaleListResponse["data"]>(
+        pathWithQuery("/v1/sales", query),
+        { authenticated: true },
+        saleListResponseSchema,
       ),
     void: (saleId: string, command: VoidSaleRequest) =>
       apiRequest<SaleCorrectionResponse, SaleCorrectionResponse["data"]>(

@@ -268,6 +268,26 @@ export const esSV = {
       unavailableDescription:
         "Solo owner y admin pueden corregir una venta registrada, y cada venta puede corregirse una sola vez.",
     },
+    list: {
+      title: "Historial de ventas",
+      description:
+        "Las ventas aparecen de la más reciente a la más antigua. Una venta anulada sigue visible con su motivo; corregir nunca borra el historial.",
+      filterLabel: "Filtrar por estado",
+      statusAll: "Todas",
+      statusPosted: "Registradas",
+      statusVoided: "Anuladas",
+      loading: "Consultando el historial…",
+      emptyTitle: "No hay ventas con este filtro",
+      emptyDescription:
+        "La consulta funcionó y devolvió cero ventas. Cambia el filtro o registra una venta.",
+      deniedTitle: "No puedes consultar el historial",
+      deniedDescription: "Tu rol en este negocio no permite leer las ventas registradas.",
+      unavailableTitle: "No pudimos cargar el historial",
+      unavailableDescription:
+        "No mostramos una lista vacía cuando la consulta falla. Vuelve a intentarlo.",
+      voidReason: "Motivo",
+      queriedAt: "Historial consultado el {{date}}",
+    },
     validation: {
       amountInteger: "Escribe un monto entero válido.",
       amountDecimals: "Escribe un monto válido con hasta {{count}} decimales.",

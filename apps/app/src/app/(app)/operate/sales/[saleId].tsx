@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, CheckCircle2, Pencil, Plus } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
@@ -8,8 +8,8 @@ import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { saleQueryOptions } from "@/features/sales/queries";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
-import { api } from "@/lib/api-client";
 import { formatMinorUnits } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 
@@ -19,16 +19,22 @@ export default function SaleResultScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ saleId?: string | string[] }>();
   const saleId = Array.isArray(params.saleId) ? params.saleId[0] : params.saleId;
-  const result = useQuery({
-    enabled: Boolean(saleId),
-    queryFn: () => api.sales.get(saleId as string),
-    queryKey: ["sales", "detail", saleId],
-  });
   const businesses = useQuery(businessesQueryOptions);
+  const business = getActiveBusiness(businesses.data);
+  const result = useQuery({
+    ...saleQueryOptions(business?.id ?? "unselected", saleId ?? ""),
+    enabled: Boolean(saleId && business),
+  });
 
-  if (result.fetchStatus === "paused" && !result.data) return <OfflineState />;
+  if (
+    (businesses.fetchStatus === "paused" && !businesses.data) ||
+    (result.fetchStatus === "paused" && !result.data)
+  ) {
+    return <OfflineState />;
+  }
+  if (businesses.data && !business) return <Redirect href="/business" />;
 
-  if (result.isPending) {
+  if (businesses.isPending || result.isPending) {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
         <ActivityIndicator color="#237A55" size="large" />
@@ -57,7 +63,6 @@ export default function SaleResultScreen() {
   }
 
   const { sale } = result.data;
-  const business = getActiveBusiness(businesses.data);
   const canCorrect = business?.access.permissions.includes("sales:correct") ?? false;
   return (
     <Page width="form">
