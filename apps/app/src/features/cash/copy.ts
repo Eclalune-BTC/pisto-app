@@ -246,7 +246,7 @@ export function buildCashCopy(t: TFunction) {
     overview,
     remote: {
       mutationFallback: t("cash.remote.mutationFallback"),
-      offline: t("cash.remote.offline"),
+      offline: t("remote.offlineLoad"),
       staleMutation: t("remote.staleMutation"),
       unavailable: t("cash.remote.unavailable"),
     },

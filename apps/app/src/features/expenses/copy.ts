@@ -143,7 +143,7 @@ export function buildExpensesCopy(t: TFunction) {
     remote: {
       invalidPeriod: t("expenses.remote.invalidPeriod"),
       mutationFallback: t("expenses.remote.mutationFallback"),
-      offline: t("cash.remote.offline"),
+      offline: t("remote.offlineLoad"),
       staleMutation: t("remote.staleMutation"),
       unavailable: t("expenses.remote.unavailable"),
     },

@@ -108,6 +108,7 @@ export const esSV = {
     offlineTitle: "Sin conexión",
     offlineDescription:
       "Conéctate a internet para consultar información actualizada. No mostramos datos inventados.",
+    offlineLoad: "No hay conexión para cargar esta información.",
     stale: "Mostramos la última información disponible; no pudimos actualizarla todavía.",
     staleMutation:
       "No podemos confirmar una operación mientras el acceso o los datos están desactualizados. Vuelve a cargar.",
@@ -400,7 +401,6 @@ export const esSV = {
         "La conexión se interrumpió antes de confirmar el resultado. Reintenta exactamente la misma operación; Pisto conserva la clave para evitar duplicados.",
     },
     remote: {
-      offline: "No hay conexión para cargar esta información.",
       unavailable: "No pudimos consultar la información del efectivo. Intenta nuevamente.",
       mutationFallback: "Revisa los datos e intenta nuevamente.",
     },
