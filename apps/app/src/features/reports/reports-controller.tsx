@@ -1,7 +1,7 @@
 import type { OperatingReportQuery } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { Redirect } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { resolveBusinessPermission } from "@/features/customers/access";
@@ -27,22 +27,24 @@ export function ReportsController() {
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
   const canRead = resolveBusinessPermission(business, "reports:read");
+  const businessId = business?.id ?? "unselected";
   const timeZone = business?.timeZone;
   const [draftRange, setDraftRange] = useState<OperatingReportQuery>(unseededRange);
   const [appliedRange, setAppliedRange] = useState<OperatingReportQuery>(unseededRange);
   const [rangeIssue, setRangeIssue] = useState<ReportRangeIssue | null>(null);
+  const seededBusinessId = useRef<string | null>(null);
 
-  // A refetch can hand back a new business object for unchanged data, so
-  // depending on the object here would discard the range the user typed.
+  // A refetch hands back a new businesses payload, so the range is seeded once
+  // per business rather than whenever that payload changes identity.
   useEffect(() => {
-    if (!timeZone) return;
+    if (!timeZone || seededBusinessId.current === businessId) return;
+    seededBusinessId.current = businessId;
     const initialRange = currentBusinessMonthRange(timeZone);
     setDraftRange(initialRange);
     setAppliedRange(initialRange);
     setRangeIssue(null);
-  }, [timeZone]);
+  }, [businessId, timeZone]);
 
-  const businessId = business?.id ?? "unselected";
   const seeded = Boolean(appliedRange.startLocalDate && appliedRange.endLocalDate);
   const report = useQuery({
     ...operatingReportQueryOptions(businessId, appliedRange),
