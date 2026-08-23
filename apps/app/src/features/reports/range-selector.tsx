@@ -79,7 +79,7 @@ export function ReportRangeSelector({
             autoCapitalize="none"
             autoCorrect={false}
             error={errors.start}
-            inputMode="numeric"
+            keyboardType="numbers-and-punctuation"
             label={copy.startLabel}
             maxLength={10}
             onChangeText={onStartLocalDateChange}
@@ -93,7 +93,7 @@ export function ReportRangeSelector({
             autoCapitalize="none"
             autoCorrect={false}
             error={errors.end}
-            inputMode="numeric"
+            keyboardType="numbers-and-punctuation"
             label={copy.endLabel}
             maxLength={10}
             onChangeText={onEndLocalDateChange}
