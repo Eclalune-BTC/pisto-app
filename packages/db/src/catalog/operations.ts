@@ -1,9 +1,20 @@
 import { and, eq, sql } from "drizzle-orm";
 
-import { lockCommandKey } from "../operation-log.ts";
+import { findOperationReplay, lockCommandKey, type OperationLog } from "../operation-log.ts";
 import { type ProductActor, ProductError } from "../product.ts";
 import { catalogCategory, catalogOperation, inventoryMovement } from "../schema/catalog.ts";
 import type { DatabaseExecutor, DatabaseTransaction, OperationAction } from "./types.ts";
+
+export const catalogOperationLog: OperationLog = {
+  action: catalogOperation.action,
+  actorUserId: catalogOperation.actorUserId,
+  businessId: catalogOperation.businessId,
+  commandFingerprint: catalogOperation.commandFingerprint,
+  conflictMessage: "That confirmation key was already used for a different catalog operation",
+  idempotencyKey: catalogOperation.idempotencyKey,
+  result: catalogOperation.resultSnapshot,
+  table: catalogOperation,
+};
 
 export async function lockOperation(
   transaction: DatabaseTransaction,
@@ -11,30 +22,21 @@ export async function lockOperation(
   businessId: string,
   idempotencyKey: string,
   commandFingerprint: string,
+  action: OperationAction,
 ): Promise<Record<string, unknown> | null> {
-  await lockCommandKey(transaction, { actorUserId: actor.userId, businessId, idempotencyKey });
-  const [existing] = await transaction
-    .select({
-      commandFingerprint: catalogOperation.commandFingerprint,
-      resultSnapshot: catalogOperation.resultSnapshot,
-    })
-    .from(catalogOperation)
-    .where(
-      and(
-        eq(catalogOperation.businessId, businessId),
-        eq(catalogOperation.actorUserId, actor.userId),
-        eq(catalogOperation.idempotencyKey, idempotencyKey),
-      ),
-    )
-    .limit(1);
-  if (!existing) return null;
-  if (existing.commandFingerprint !== commandFingerprint) {
-    throw new ProductError(
-      "IDEMPOTENCY_CONFLICT",
-      "That confirmation key was already used for a different catalog operation",
-    );
-  }
-  return existing.resultSnapshot;
+  const identity = {
+    action,
+    actorUserId: actor.userId,
+    businessId,
+    commandFingerprint,
+    idempotencyKey,
+  };
+  await lockCommandKey(transaction, identity);
+  // The caller validates the stored snapshot against its public contract.
+  return (await findOperationReplay(transaction, catalogOperationLog, identity)) as Record<
+    string,
+    unknown
+  > | null;
 }
 
 export async function saveOperation(

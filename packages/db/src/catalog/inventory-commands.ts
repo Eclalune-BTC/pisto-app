@@ -49,6 +49,7 @@ export function createInventoryCommands(db: Database): InventoryCommands {
           access.businessId,
           command.idempotencyKey,
           commandFingerprint,
+          action,
         );
         if (replay) return parseMutationReplay(inventoryMutationResponseSchema.shape.data, replay);
         const [product] = await transaction
@@ -138,6 +139,7 @@ export function createInventoryCommands(db: Database): InventoryCommands {
           access.businessId,
           command.idempotencyKey,
           commandFingerprint,
+          action,
         );
         if (replay) return parseMutationReplay(inventoryMutationResponseSchema.shape.data, replay);
         const [initial] = await transaction

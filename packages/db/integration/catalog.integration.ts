@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { and, eq, inArray } from "drizzle-orm";
-
+import { fingerprint } from "../src/catalog/codec.ts";
 import { createCatalogRepository } from "../src/catalog.ts";
 import {
   businessSettings,
@@ -227,6 +227,37 @@ describe("catalog and inventory repository on PostgreSQL 18", () => {
     await expect(
       repository.listProducts(actor("expired"), { limit: 25, status: "active" }),
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
+  test("refuses to replay a receipt recorded for a different action", async () => {
+    // The replay guard compares the stored action as well as the fingerprint. A
+    // receipt written by another command must never be returned as this one, even
+    // when its recorded fingerprint matches the confirmed command.
+    const product = await repository.createProduct(actor("owner"), {
+      idempotencyKey: crypto.randomUUID(),
+      name: "Action guard probe",
+      sku: "GUARD-01",
+      unitKind: "unit",
+      quantityPrecision: 0,
+      tracked: false,
+    });
+    const categoryCommand = {
+      idempotencyKey: crypto.randomUUID(),
+      name: "Action guard category",
+    };
+    await database.db.insert(catalogOperation).values({
+      action: "product.archived",
+      actorUserId: userIds.owner,
+      businessId: firstBusinessId,
+      commandFingerprint: await fingerprint("category.created", { name: categoryCommand.name }),
+      idempotencyKey: categoryCommand.idempotencyKey,
+      productId: product.product.id,
+      resultSnapshot: { product: product.product },
+    });
+
+    await expect(repository.createCategory(actor("owner"), categoryCommand)).rejects.toMatchObject({
+      code: "IDEMPOTENCY_CONFLICT",
+    });
   });
 
   test("serializes outbound stock, preserves exact precision, and reverses once", async () => {

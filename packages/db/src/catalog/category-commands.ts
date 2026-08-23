@@ -32,6 +32,7 @@ export function createCategoryCommands(db: Database): CategoryCommands {
           access.businessId,
           command.idempotencyKey,
           commandFingerprint,
+          action,
         );
         if (replay) {
           return parseMutationReplay(categoryMutationResponseSchema.shape.data, replay);
@@ -83,6 +84,7 @@ export function createCategoryCommands(db: Database): CategoryCommands {
           access.businessId,
           command.idempotencyKey,
           commandFingerprint,
+          action,
         );
         if (replay) return parseMutationReplay(categoryMutationResponseSchema.shape.data, replay);
         const [existing] = await transaction
@@ -154,6 +156,7 @@ export function createCategoryCommands(db: Database): CategoryCommands {
           access.businessId,
           command.idempotencyKey,
           commandFingerprint,
+          action,
         );
         if (replay) return parseMutationReplay(categoryMutationResponseSchema.shape.data, replay);
         const [existing] = await transaction

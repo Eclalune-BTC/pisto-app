@@ -3,7 +3,12 @@ import { and, eq, sql } from "drizzle-orm";
 import type { ZodType } from "zod";
 
 import { authorizeBusinessAction } from "../business-access.ts";
-import { lockCommandKey } from "../operation-log.ts";
+import {
+  findOperationReplay,
+  lockCommandKey,
+  type OperationLog,
+  parseReplaySnapshot,
+} from "../operation-log.ts";
 import { type ProductActor, ProductError } from "../product.ts";
 import { receivable, receivableOperation, receivablePayment } from "../schema/receivables.ts";
 import { toReceivable } from "./mappers.ts";
@@ -27,6 +32,17 @@ export async function lockIdempotencyKey(
   await lockCommandKey(tx, { actorUserId: actor.userId, businessId, idempotencyKey });
 }
 
+export const receivableOperationLog: OperationLog = {
+  action: receivableOperation.action,
+  actorUserId: receivableOperation.actorUserId,
+  businessId: receivableOperation.businessId,
+  commandFingerprint: receivableOperation.commandFingerprint,
+  conflictMessage: "That confirmation key was already used for a different operation",
+  idempotencyKey: receivableOperation.idempotencyKey,
+  result: receivableOperation.resultSnapshot,
+  table: receivableOperation,
+};
+
 export async function readOperationSnapshot<T>(input: {
   action: string;
   actor: ProductActor;
@@ -36,31 +52,19 @@ export async function readOperationSnapshot<T>(input: {
   schema: ZodType<T>;
   tx: DatabaseTransaction;
 }): Promise<T | null> {
-  const [operation] = await input.tx
-    .select({
-      action: receivableOperation.action,
-      commandFingerprint: receivableOperation.commandFingerprint,
-      resultSnapshot: receivableOperation.resultSnapshot,
-    })
-    .from(receivableOperation)
-    .where(
-      and(
-        eq(receivableOperation.businessId, input.businessId),
-        eq(receivableOperation.actorUserId, input.actor.userId),
-        eq(receivableOperation.idempotencyKey, input.idempotencyKey),
-      ),
-    )
-    .limit(1);
-  if (!operation) return null;
-  if (operation.action !== input.action || operation.commandFingerprint !== input.fingerprint) {
-    throw new ProductError(
-      "IDEMPOTENCY_CONFLICT",
-      "That confirmation key was already used for a different operation",
-    );
-  }
-  const snapshot = input.schema.safeParse(operation.resultSnapshot);
-  if (!snapshot.success) throw new Error("Stored receivables operation snapshot is invalid");
-  return snapshot.data;
+  const snapshot = await findOperationReplay(input.tx, receivableOperationLog, {
+    action: input.action,
+    actorUserId: input.actor.userId,
+    businessId: input.businessId,
+    commandFingerprint: input.fingerprint,
+    idempotencyKey: input.idempotencyKey,
+  });
+  if (snapshot === null) return null;
+  return parseReplaySnapshot(
+    input.schema,
+    snapshot,
+    "Stored receivables operation snapshot is invalid",
+  );
 }
 
 export async function insertOperation(

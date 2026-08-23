@@ -2,7 +2,12 @@ import type { BusinessPermission } from "@pisto/contracts";
 import { and, eq, sql } from "drizzle-orm";
 
 import { authorizeBusinessAction, requireActiveBusiness } from "../business-access.ts";
-import { lockCommandKey } from "../operation-log.ts";
+import {
+  findOperationReplay,
+  lockCommandKey,
+  type OperationCommandIdentity,
+  type OperationLog,
+} from "../operation-log.ts";
 import { type ProductActor, ProductError } from "../product.ts";
 import { cashAccount, cashMovement, cashOperationReceipt } from "../schema/cash.ts";
 import type {
@@ -40,39 +45,22 @@ export async function lockIdempotencyKey(
   await lockCommandKey(tx, { actorUserId, businessId, idempotencyKey });
 }
 
-export async function findReplay(
+export const cashOperationLog: OperationLog = {
+  action: cashOperationReceipt.action,
+  actorUserId: cashOperationReceipt.actorUserId,
+  businessId: cashOperationReceipt.businessId,
+  commandFingerprint: cashOperationReceipt.commandFingerprint,
+  conflictMessage: "That confirmation key was already used for a different cash operation",
+  idempotencyKey: cashOperationReceipt.idempotencyKey,
+  result: cashOperationReceipt.result,
+  table: cashOperationReceipt,
+};
+
+export function findReplay(
   tx: CashTransaction,
-  input: {
-    action: CashOperationAction;
-    actorUserId: string;
-    businessId: string;
-    commandFingerprint: string;
-    idempotencyKey: string;
-  },
+  input: OperationCommandIdentity<CashOperationAction>,
 ): Promise<unknown | null> {
-  const [receipt] = await tx
-    .select({
-      action: cashOperationReceipt.action,
-      commandFingerprint: cashOperationReceipt.commandFingerprint,
-      result: cashOperationReceipt.result,
-    })
-    .from(cashOperationReceipt)
-    .where(
-      and(
-        eq(cashOperationReceipt.businessId, input.businessId),
-        eq(cashOperationReceipt.actorUserId, input.actorUserId),
-        eq(cashOperationReceipt.idempotencyKey, input.idempotencyKey),
-      ),
-    )
-    .limit(1);
-  if (!receipt) return null;
-  if (receipt.action !== input.action || receipt.commandFingerprint !== input.commandFingerprint) {
-    throw new ProductError(
-      "IDEMPOTENCY_CONFLICT",
-      "That confirmation key was already used for a different cash operation",
-    );
-  }
-  return receipt.result;
+  return findOperationReplay(tx, cashOperationLog, input);
 }
 
 export async function saveReceipt(

@@ -48,6 +48,7 @@ export function createProductCommands(db: Database): ProductCommands {
           access.businessId,
           command.idempotencyKey,
           commandFingerprint,
+          action,
         );
         if (replay) return parseMutationReplay(productMutationResponseSchema.shape.data, replay);
         if (command.categoryId) {
@@ -133,6 +134,7 @@ export function createProductCommands(db: Database): ProductCommands {
           access.businessId,
           command.idempotencyKey,
           commandFingerprint,
+          action,
         );
         if (replay) return parseMutationReplay(productMutationResponseSchema.shape.data, replay);
         const [existing] = await transaction
@@ -262,6 +264,7 @@ export function createProductCommands(db: Database): ProductCommands {
           access.businessId,
           command.idempotencyKey,
           commandFingerprint,
+          action,
         );
         if (replay) return parseMutationReplay(productMutationResponseSchema.shape.data, replay);
         const [existing] = await transaction
