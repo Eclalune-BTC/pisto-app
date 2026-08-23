@@ -6,9 +6,10 @@ import { type DatabaseHandle, ProductError, type ProductRepository } from "@pist
 
 import { createApp } from "../src/app.ts";
 
-function unavailableRepository<T extends object>(name: string): T {
+function unavailableRepository<T extends object>(name: string, onCall?: () => void): T {
   return new Proxy({} as T, {
     get: () => async () => {
+      onCall?.();
       throw new Error(`${name} is not configured in this test`);
     },
   });
@@ -20,6 +21,7 @@ function testApp(
     polarEnabled?: boolean;
     activeBusinessId?: string | null;
     product?: ProductRepository;
+    onRepositoryCall?: () => void;
   } = {},
 ) {
   const auth = {
@@ -82,27 +84,29 @@ function testApp(
   } as unknown as DatabaseHandle;
   const product =
     options.product ??
-    ({
-      listBusinesses: async () => ({ activeBusinessId: null, items: [] }),
-      createBusiness: async () => {
-        throw new ProductError("CONFLICT", "Not configured in this test");
-      },
-      createSale: async () => {
-        throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
-      },
-      voidSale: async () => {
-        throw new ProductError("NOT_FOUND", "Sale was not found");
-      },
-      replaceSale: async () => {
-        throw new ProductError("NOT_FOUND", "Sale was not found");
-      },
-      getSale: async () => {
-        throw new ProductError("NOT_FOUND", "Sale was not found");
-      },
-      getPreviousMonthSummary: async () => {
-        throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
-      },
-    } satisfies ProductRepository);
+    (options.onRepositoryCall
+      ? unavailableRepository<ProductRepository>("Product repository", options.onRepositoryCall)
+      : ({
+          listBusinesses: async () => ({ activeBusinessId: null, items: [] }),
+          createBusiness: async () => {
+            throw new ProductError("CONFLICT", "Not configured in this test");
+          },
+          createSale: async () => {
+            throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
+          },
+          voidSale: async () => {
+            throw new ProductError("NOT_FOUND", "Sale was not found");
+          },
+          replaceSale: async () => {
+            throw new ProductError("NOT_FOUND", "Sale was not found");
+          },
+          getSale: async () => {
+            throw new ProductError("NOT_FOUND", "Sale was not found");
+          },
+          getPreviousMonthSummary: async () => {
+            throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
+          },
+        } satisfies ProductRepository));
 
   return createApp({
     config: {
@@ -115,11 +119,17 @@ function testApp(
     authConfig: { baseUrl: "https://api.example.test" },
     auth,
     billing,
-    cash: unavailableRepository<CashRepository>("Cash repository"),
-    catalog: unavailableRepository<CatalogRepository>("Catalog repository"),
+    cash: unavailableRepository<CashRepository>("Cash repository", options.onRepositoryCall),
+    catalog: unavailableRepository<CatalogRepository>(
+      "Catalog repository",
+      options.onRepositoryCall,
+    ),
     database,
     product,
-    receivables: unavailableRepository<ReceivablesRepository>("Receivables repository"),
+    receivables: unavailableRepository<ReceivablesRepository>(
+      "Receivables repository",
+      options.onRepositoryCall,
+    ),
   });
 }
 
@@ -390,6 +400,154 @@ describe("Pisto API", () => {
     expect(invalidVoid.status).toBe(400);
     expect(invalidReplacement.status).toBe(400);
     expect(repositoryCalled).toBe(false);
+  });
+
+  // One table in src/errors.ts replaced four hand-written route mappers. These
+  // triples are the statuses those mappers produced, asserted through the whole
+  // application rather than against the table itself.
+  const productErrorContract = [
+    { code: "BUSINESS_REQUIRED", status: 409 },
+    { code: "CONFLICT", status: 409 },
+    { code: "FORBIDDEN", status: 403 },
+    { code: "IDEMPOTENCY_CONFLICT", status: 409 },
+    { code: "NOT_FOUND", status: 404 },
+    { code: "UNAUTHORIZED", status: 401 },
+    { code: "VALIDATION_ERROR", status: 400 },
+  ] as const;
+
+  test("translates every domain failure code to its unchanged public status", async () => {
+    const consoleError = spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      for (const { code, status } of productErrorContract) {
+        const response = await testApp({
+          authenticated: true,
+          product: {
+            listBusinesses: async () => {
+              throw new ProductError(code, `Domain rejected the request as ${code}`);
+            },
+          } as unknown as ProductRepository,
+        }).request("/v1/businesses");
+
+        expect(response.status).toBe(status);
+        expect(await response.json()).toMatchObject({
+          error: { code, message: `Domain rejected the request as ${code}` },
+        });
+      }
+      // A translated domain failure is an expected outcome, not an unhandled
+      // exception, so the boundary must not log it.
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  test("keeps an unrecognized failure opaque at the same boundary", async () => {
+    const consoleError = spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const response = await testApp({
+        authenticated: true,
+        product: {
+          listBusinesses: async () => {
+            throw new TypeError("driver detail that must not reach the client");
+          },
+        } as unknown as ProductRepository,
+      }).request("/v1/businesses");
+
+      expect(response.status).toBe(500);
+      expect(await response.json()).toMatchObject({
+        error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred" },
+      });
+      expect(consoleError).toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  test("covers the business listing that previously had no error translation", async () => {
+    const response = await testApp({
+      authenticated: true,
+      product: {
+        listBusinesses: async () => {
+          throw new ProductError("FORBIDDEN", "The membership is no longer valid");
+        },
+      } as unknown as ProductRepository,
+    }).request("/v1/businesses");
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ error: { code: "FORBIDDEN" } });
+  });
+
+  // Session resolution moved into one requireActor call per handler. This
+  // enumerates the mounted domain surface so a handler that ever loses that call
+  // fails here instead of serving an anonymous request.
+  const jsonBody = { "content-type": "application/json" };
+  const recordId = "11111111-1111-4111-8111-111111111111";
+  const protectedRoutes: ReadonlyArray<readonly [string, string]> = [
+    ["GET", "/v1/businesses"],
+    ["POST", "/v1/businesses"],
+    ["POST", "/v1/sales"],
+    ["GET", "/v1/sales/summary/previous-month"],
+    ["POST", `/v1/sales/${recordId}/void`],
+    ["POST", `/v1/sales/${recordId}/replace`],
+    ["GET", `/v1/sales/${recordId}`],
+    ["GET", "/v1/catalog/categories"],
+    ["POST", "/v1/catalog/categories"],
+    ["PATCH", `/v1/catalog/categories/${recordId}`],
+    ["POST", `/v1/catalog/categories/${recordId}/archive`],
+    ["GET", "/v1/catalog/products"],
+    ["POST", "/v1/catalog/products"],
+    ["GET", `/v1/catalog/products/${recordId}`],
+    ["PATCH", `/v1/catalog/products/${recordId}`],
+    ["POST", `/v1/catalog/products/${recordId}/archive`],
+    ["GET", "/v1/inventory/stock"],
+    ["GET", `/v1/inventory/products/${recordId}/movements`],
+    ["POST", `/v1/inventory/products/${recordId}/movements`],
+    ["POST", `/v1/inventory/movements/${recordId}/reverse`],
+    ["GET", "/v1/cash/accounts"],
+    ["POST", "/v1/cash/accounts"],
+    ["POST", `/v1/cash/accounts/${recordId}/update`],
+    ["POST", `/v1/cash/accounts/${recordId}/archive`],
+    ["GET", `/v1/cash/accounts/${recordId}`],
+    ["POST", "/v1/cash/adjustments"],
+    ["POST", `/v1/cash/movements/${recordId}/reverse`],
+    ["POST", "/v1/cash/transfers"],
+    ["GET", "/v1/cash/movements"],
+    ["GET", "/v1/expenses/summary"],
+    ["GET", "/v1/expenses"],
+    ["POST", "/v1/expenses"],
+    ["POST", `/v1/expenses/${recordId}/void`],
+    ["GET", `/v1/expenses/${recordId}`],
+    ["GET", "/v1/customers"],
+    ["POST", "/v1/customers"],
+    ["GET", `/v1/customers/${recordId}`],
+    ["POST", `/v1/customers/${recordId}/update`],
+    ["POST", `/v1/customers/${recordId}/archive`],
+    ["GET", "/v1/receivables/summary"],
+    ["GET", "/v1/receivables"],
+    ["POST", "/v1/receivables"],
+    ["GET", `/v1/receivables/${recordId}`],
+    ["POST", `/v1/receivables/${recordId}/void`],
+    ["POST", `/v1/receivables/${recordId}/payments`],
+    ["POST", `/v1/receivable-payments/${recordId}/reverse`],
+  ];
+
+  test("resolves a session before every domain handler touches a repository", async () => {
+    let repositoryCalls = 0;
+    const app = testApp({ onRepositoryCall: () => (repositoryCalls += 1) });
+
+    for (const [method, path] of protectedRoutes) {
+      const response = await app.request(path, {
+        method,
+        ...(method === "GET" ? {} : { headers: jsonBody, body: "{}" }),
+      });
+      expect({ method, path, status: response.status }).toEqual({
+        method,
+        path,
+        status: 401,
+      });
+    }
+
+    expect(repositoryCalls).toBe(0);
   });
 
   test("mounts every operating capability behind authentication and permits PATCH preflight", async () => {
