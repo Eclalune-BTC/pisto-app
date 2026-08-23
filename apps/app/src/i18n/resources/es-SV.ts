@@ -39,7 +39,7 @@ export const esSV = {
     setupBusiness: "Configurar mi negocio",
     existingAccount: "Ya tengo una cuenta",
     availableNow:
-      "Disponible ahora: ventas por total y resumen del mes anterior. Inventario, utilidad, voz e IA todavía no forman parte de este incremento.",
+      "Disponible ahora: ventas con corrección e historial, catálogo e inventario, gastos y efectivo, clientes y cuentas por cobrar, y reportes exactos. La utilidad, la voz y la IA todavía no forman parte de este incremento.",
     capabilities: {
       businessContext: {
         title: "Contexto de negocio",
