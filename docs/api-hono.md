@@ -34,6 +34,45 @@ The baseline surface is:
 | `POST` | `/v1/billing/portal` | Yes, web only | Create/open Polar customer portal flow |
 | `POST` | `/api/auth/polar/webhooks` | Signed provider request | Polar webhook handler when billing is enabled |
 | `POST` | `/v1/webhooks/revenuecat` | RevenueCat Authorization and optional HMAC | Project native-store events when RevenueCat is enabled |
+| `GET` | `/v1/catalog/categories` | `catalog:read`, fresh session | List active-business product categories |
+| `POST` | `/v1/catalog/categories` | `catalog:manage`, fresh session | Create or replay one category |
+| `PATCH` | `/v1/catalog/categories/:categoryId` | `catalog:manage`, fresh session | Update one category |
+| `POST` | `/v1/catalog/categories/:categoryId/archive` | `catalog:manage`, fresh session | Archive one category |
+| `GET` | `/v1/catalog/products` | `catalog:read`, fresh session | List products with search and status filters |
+| `POST` | `/v1/catalog/products` | `catalog:manage`, fresh session | Create or replay one product |
+| `GET` | `/v1/catalog/products/:productId` | `catalog:read`, fresh session | Read one product |
+| `PATCH` | `/v1/catalog/products/:productId` | `catalog:manage`, fresh session | Update one product |
+| `POST` | `/v1/catalog/products/:productId/archive` | `catalog:manage`, fresh session | Archive one product |
+| `GET` | `/v1/inventory/stock` | `inventory:read`, fresh session | List tracked stock with a low-stock filter |
+| `GET` | `/v1/inventory/products/:productId/movements` | `inventory:read`, fresh session | List one product's movement history |
+| `POST` | `/v1/inventory/products/:productId/movements` | `inventory:manage`, fresh session | Record or replay one stock movement |
+| `POST` | `/v1/inventory/movements/:movementId/reverse` | `inventory:manage`, fresh session | Reverse one movement exactly once |
+| `GET` | `/v1/cash/accounts` | `cash:read`, fresh session | List cash accounts and derived balances |
+| `POST` | `/v1/cash/accounts` | `cash:manage`, fresh session | Create or replay one cash account |
+| `GET` | `/v1/cash/accounts/:accountId` | `cash:read`, fresh session | Read one account with its balance |
+| `POST` | `/v1/cash/accounts/:accountId/update` | `cash:manage`, fresh session | Update one account reference, never its balance |
+| `POST` | `/v1/cash/accounts/:accountId/archive` | `cash:manage`, fresh session | Archive one cash account |
+| `GET` | `/v1/cash/movements` | `cash:read`, fresh session | List ledger movements |
+| `POST` | `/v1/cash/adjustments` | `cash:manage`, fresh session | Record or replay one balance adjustment |
+| `POST` | `/v1/cash/movements/:movementId/reverse` | `cash:manage`, fresh session | Reverse one movement exactly once |
+| `POST` | `/v1/cash/transfers` | `cash:manage`, fresh session | Record one linked outgoing/incoming pair |
+| `GET` | `/v1/expenses` | `expenses:read`, fresh session | List paid expenses with filters |
+| `GET` | `/v1/expenses/summary` | `expenses:read`, fresh session | Aggregate one business-local period |
+| `POST` | `/v1/expenses` | `expenses:manage`, fresh session | Post or replay one paid expense and its cash movement |
+| `GET` | `/v1/expenses/:expenseId` | `expenses:read`, fresh session | Read one expense |
+| `POST` | `/v1/expenses/:expenseId/void` | `expenses:manage`, fresh session | Void one posted expense |
+| `GET` | `/v1/customers` | `customers:read`, fresh session | List customers with search |
+| `POST` | `/v1/customers` | `customers:manage`, fresh session | Create or replay one customer |
+| `GET` | `/v1/customers/:customerId` | `customers:read`, fresh session | Read one customer |
+| `POST` | `/v1/customers/:customerId/update` | `customers:manage`, fresh session | Update one customer |
+| `POST` | `/v1/customers/:customerId/archive` | `customers:manage`, fresh session | Archive one customer |
+| `GET` | `/v1/receivables` | `receivables:read`, fresh session | List receivables with derived balances |
+| `GET` | `/v1/receivables/summary` | `receivables:read`, fresh session | Aggregate outstanding and overdue balances |
+| `POST` | `/v1/receivables` | `receivables:manage`, fresh session | Create or replay one charge |
+| `GET` | `/v1/receivables/:receivableId` | `receivables:read`, fresh session | Read one receivable and its payments |
+| `POST` | `/v1/receivables/:receivableId/payments` | `receivables:manage`, fresh session | Record one payment and its linked cash movement |
+| `POST` | `/v1/receivables/:receivableId/void` | `receivables:manage`, fresh session | Void one receivable after its payments are reversed |
+| `POST` | `/v1/receivable-payments/:paymentId/reverse` | `receivables:manage`, fresh session | Reverse one payment exactly once |
 
 The implementation and `@pisto/contracts` are definitive. Update this table in the same change as a
 route addition or removal.
