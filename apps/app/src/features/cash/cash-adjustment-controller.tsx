@@ -4,7 +4,7 @@ import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
-import { currentLocalDateTime } from "@/lib/money";
+import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { cashApi } from "./api";
 import {
   type CashAdjustmentDraft,
@@ -13,7 +13,6 @@ import {
 } from "./cash-adjustment-screen";
 import { cashAdjustmentCopy, cashErrorMessage, cashIssueMessage, cashUiCopy } from "./copy";
 import { buildCashAdjustmentCommand } from "./drafts";
-import { formatCashMinorUnits } from "./format";
 import { invalidateCashLedger } from "./invalidate";
 import { cashConfirmationState } from "./mutation-state";
 import { activeCashAccountsInfiniteOptions, flattenPages } from "./queries";
@@ -122,7 +121,7 @@ export function CashAdjustmentController() {
       errorMessage={mutation.error ? cashErrorMessage(mutation.error) : undefined}
       errors={errors}
       formatMoney={(minorUnits, currency) =>
-        formatCashMinorUnits(
+        formatMinorUnits(
           minorUnits,
           currency,
           accounts.find(({ id }) => id === command?.accountId)?.currencyMinorUnitDigits ??

@@ -1,13 +1,13 @@
 import type { CashAccount } from "@pisto/contracts";
 import { describe, expect, test } from "vitest";
 import { ApiClientError } from "@/lib/api-error";
+import { formatMinorUnits } from "@/lib/money";
 import {
   buildCashAccountCommand,
   buildCashAdjustmentCommand,
   buildCashReversalCommand,
   buildCashTransferCommand,
 } from "./drafts";
-import { formatCashMinorUnits } from "./format";
 import { cashConfirmationState } from "./mutation-state";
 
 const account = (overrides: Partial<CashAccount> = {}): CashAccount => ({
@@ -162,7 +162,7 @@ describe("cash draft commands", () => {
 
 describe("cash money formatting", () => {
   test("formats signed minor-unit balances without corrupting small negatives", () => {
-    expect(formatCashMinorUnits("-5", "USD", 2, "es-SV")).toContain("0.05");
-    expect(formatCashMinorUnits("-5", "USD", 2, "es-SV").startsWith("-")).toBe(true);
+    expect(formatMinorUnits("-5", "USD", 2, "es-SV")).toContain("0.05");
+    expect(formatMinorUnits("-5", "USD", 2, "es-SV").startsWith("-")).toBe(true);
   });
 });

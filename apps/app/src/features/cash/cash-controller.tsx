@@ -3,9 +3,9 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
 import { useState } from "react";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { formatMinorUnits } from "@/lib/money";
 import { CashScreen, type CashScreenState } from "./cash-screen";
 import { cashOverviewCopy, cashUiCopy } from "./copy";
-import { formatCashMinorUnits } from "./format";
 import { cashAccountsInfiniteOptions, cashMovementsInfiniteOptions, flattenPages } from "./queries";
 import { featureRemoteState, queryHasStaleData } from "./remote-state";
 import { useCashAccess } from "./use-cash-access";
@@ -60,7 +60,7 @@ export function CashController() {
       accountStatus={accountStatus}
       copy={cashOverviewCopy(business?.name ?? "este negocio")}
       formatMoney={(minorUnits, currency, fractionDigits) =>
-        formatCashMinorUnits(minorUnits, currency, fractionDigits, DEFAULT_LOCALE)
+        formatMinorUnits(minorUnits, currency, fractionDigits, DEFAULT_LOCALE)
       }
       hasMoreAccounts={Boolean(accounts.hasNextPage)}
       hasMoreMovements={Boolean(movements.hasNextPage)}

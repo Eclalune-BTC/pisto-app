@@ -4,7 +4,7 @@ import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
-import { currentLocalDateTime } from "@/lib/money";
+import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { cashApi } from "./api";
 import {
   type CashAccountEditorDraft,
@@ -19,7 +19,6 @@ import {
   cashUiCopy,
 } from "./copy";
 import { buildCashAccountCommand } from "./drafts";
-import { formatCashMinorUnits } from "./format";
 import { invalidateCashLedger } from "./invalidate";
 import { cashConfirmationState } from "./mutation-state";
 import { cashAccountQueryOptions } from "./queries";
@@ -158,7 +157,7 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
       errorMessage={mutation.error ? cashErrorMessage(mutation.error) : undefined}
       errors={errors}
       formatMoney={(minorUnits, currency) =>
-        formatCashMinorUnits(
+        formatMinorUnits(
           minorUnits,
           currency,
           business?.currencyMinorUnitDigits ?? 2,

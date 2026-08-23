@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { useEffect, useState } from "react";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
-import { currentLocalDateTime } from "@/lib/money";
+import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { cashApi } from "./api";
 import {
   CashMovementDetailScreen,
@@ -12,7 +12,6 @@ import {
 } from "./cash-movement-detail-screen";
 import { cashErrorMessage, cashIssueMessage, cashMovementDetailCopy } from "./copy";
 import { buildCashReversalCommand } from "./drafts";
-import { formatCashMinorUnits } from "./format";
 import { invalidateCashLedger } from "./invalidate";
 import { cashConfirmationState } from "./mutation-state";
 
@@ -93,7 +92,7 @@ export function CashMovementDetailController({
       copy={cashMovementDetailCopy}
       errorMessage={mutation.error ? cashErrorMessage(mutation.error) : undefined}
       formatMoney={(minorUnits, currency, fractionDigits) =>
-        formatCashMinorUnits(minorUnits, currency, fractionDigits, DEFAULT_LOCALE)
+        formatMinorUnits(minorUnits, currency, fractionDigits, DEFAULT_LOCALE)
       }
       isStale={isStale}
       movement={movement}

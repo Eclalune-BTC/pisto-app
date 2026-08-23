@@ -5,11 +5,11 @@ import { useState } from "react";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { ApiClientError } from "@/lib/api-error";
+import { formatMinorUnits } from "@/lib/money";
 import { cashApi } from "./api";
 import { CashAccountDetailScreen } from "./cash-account-detail-screen";
 import { CashMovementDetailController } from "./cash-movement-detail-controller";
 import { cashAccountDetailCopy, cashErrorMessage, cashUiCopy } from "./copy";
-import { formatCashMinorUnits } from "./format";
 import { invalidateCashLedger } from "./invalidate";
 import { cashConfirmationState } from "./mutation-state";
 import { cashAccountQueryOptions, cashMovementsInfiniteOptions, flattenPages } from "./queries";
@@ -106,7 +106,7 @@ export function CashAccountDetailController() {
       copy={cashAccountDetailCopy}
       errorMessage={archiveMutation.error ? cashErrorMessage(archiveMutation.error) : undefined}
       formatMoney={(minorUnits, currency, fractionDigits) =>
-        formatCashMinorUnits(minorUnits, currency, fractionDigits, DEFAULT_LOCALE)
+        formatMinorUnits(minorUnits, currency, fractionDigits, DEFAULT_LOCALE)
       }
       hasMoreMovements={Boolean(movementsQuery.hasNextPage)}
       isLoadingMoreMovements={movementsQuery.isFetchingNextPage}

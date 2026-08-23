@@ -3,9 +3,8 @@ import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
-import { currentLocalDateTime } from "@/lib/money";
+import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { isValidCashLocalDate } from "../cash/drafts";
-import { formatCashMinorUnits } from "../cash/format";
 import {
   cashAccountsInfiniteOptions,
   expenseSummaryQueryOptions,
@@ -143,7 +142,7 @@ export function ExpensesController() {
       copy={expensesOverviewCopy(business?.name ?? "este negocio")}
       filters={filters}
       formatMoney={(minorUnits, currency, fractionDigits) =>
-        formatCashMinorUnits(minorUnits, currency, fractionDigits, locale)
+        formatMinorUnits(minorUnits, currency, fractionDigits, locale)
       }
       hasMoreAccounts={Boolean(accounts.hasNextPage)}
       hasMoreExpenses={Boolean(expenses.hasNextPage)}

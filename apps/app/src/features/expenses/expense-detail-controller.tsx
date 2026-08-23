@@ -5,9 +5,8 @@ import { useEffect, useState } from "react";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { ApiClientError } from "@/lib/api-error";
-import { currentLocalDateTime } from "@/lib/money";
+import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { cashApi } from "../cash/api";
-import { formatCashMinorUnits } from "../cash/format";
 import { invalidateExpensesAndCash } from "../cash/invalidate";
 import { cashConfirmationState } from "../cash/mutation-state";
 import { cashAccountQueryOptions, expenseQueryOptions } from "../cash/queries";
@@ -132,7 +131,7 @@ export function ExpenseDetailController() {
       errorMessage={mutation.error ? expenseErrorMessage(mutation.error) : undefined}
       expense={expense ?? null}
       formatMoney={(minorUnits, currency, fractionDigits) =>
-        formatCashMinorUnits(minorUnits, currency, fractionDigits, DEFAULT_LOCALE)
+        formatMinorUnits(minorUnits, currency, fractionDigits, DEFAULT_LOCALE)
       }
       isStale={stale}
       onBeginVoid={() => setStage("void-edit")}

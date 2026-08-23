@@ -4,9 +4,8 @@ import { Redirect, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
-import { currentLocalDateTime } from "@/lib/money";
+import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { cashApi } from "../cash/api";
-import { formatCashMinorUnits } from "../cash/format";
 import { invalidateExpensesAndCash } from "../cash/invalidate";
 import { cashConfirmationState } from "../cash/mutation-state";
 import { activeCashAccountsInfiniteOptions, flattenPages } from "../cash/queries";
@@ -132,7 +131,7 @@ export function ExpenseEditorController() {
       errorMessage={mutation.error ? expenseErrorMessage(mutation.error) : undefined}
       errors={errors}
       formatMoney={(minorUnits, currency) =>
-        formatCashMinorUnits(
+        formatMinorUnits(
           minorUnits,
           currency,
           business?.currencyMinorUnitDigits ?? 2,
