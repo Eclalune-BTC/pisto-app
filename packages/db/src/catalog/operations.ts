@@ -16,7 +16,7 @@ import type {
   OperationAction,
 } from "./types.ts";
 
-export const catalogOperationLog: OperationLog = {
+export const catalogOperationLog = {
   action: catalogOperation.action,
   actorUserId: catalogOperation.actorUserId,
   businessId: catalogOperation.businessId,
@@ -25,7 +25,7 @@ export const catalogOperationLog: OperationLog = {
   idempotencyKey: catalogOperation.idempotencyKey,
   result: catalogOperation.resultSnapshot,
   table: catalogOperation,
-};
+} satisfies OperationLog;
 
 /** Authorizes the actor, takes the idempotency lock, and reads any stored replay. */
 export async function beginCatalogOperation(
@@ -51,12 +51,7 @@ export async function beginCatalogOperation(
     log: catalogOperationLog,
     permissions: [permission],
   });
-  // The caller validates the stored snapshot against its public contract.
-  return {
-    access,
-    identity,
-    replay: replay === null ? null : (replay.result as Record<string, unknown>),
-  };
+  return { access, identity, replay: replay === null ? null : replay.result };
 }
 
 export async function saveOperation(

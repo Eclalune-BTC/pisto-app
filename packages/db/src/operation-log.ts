@@ -33,14 +33,14 @@ export interface OperationCommandIdentity<Action extends string = string> {
  * message. Domain tables stay separate because their foreign keys and action
  * constraints differ.
  */
-export interface OperationLog {
+export interface OperationLog<ResultColumn extends PgColumn = PgColumn> {
   readonly action: PgColumn;
   readonly actorUserId: PgColumn;
   readonly businessId: PgColumn;
   readonly commandFingerprint: PgColumn;
   readonly conflictMessage: string;
   readonly idempotencyKey: PgColumn;
-  readonly result: PgColumn;
+  readonly result: ResultColumn;
   readonly table: PgTable;
 }
 
@@ -93,19 +93,19 @@ export async function lockSemanticKey(
  * validates its snapshot still fails loudly on a corrupt one instead of replaying
  * the command.
  */
-export interface OperationReplay {
-  result: unknown;
+export interface OperationReplay<Result = unknown> {
+  result: Result;
 }
 
 /**
  * Returns the stored result when the same actor already committed this exact command,
  * and fails closed when the key was reused for a different action or payload.
  */
-export async function findOperationReplay(
+export async function findOperationReplay<ResultColumn extends PgColumn>(
   tx: DatabaseTransaction,
-  log: OperationLog,
+  log: OperationLog<ResultColumn>,
   identity: OperationCommandIdentity,
-): Promise<OperationReplay | null> {
+): Promise<OperationReplay<ResultColumn["_"]["data"]> | null> {
   const [receipt] = await tx
     .select({
       action: log.action,
@@ -128,16 +128,21 @@ export async function findOperationReplay(
   ) {
     throw new ProductError("IDEMPOTENCY_CONFLICT", log.conflictMessage);
   }
-  return { result: receipt.result };
+  return { result: receipt.result as ResultColumn["_"]["data"] };
 }
 
 /**
- * The prologue every financial command shares: authorize the fresh session and
- * membership first, then take the idempotency lock, then read the replay. The order
- * is deliberate — session, then business membership, then the command key and the
- * resource rows the caller locks next — and reordering it can deadlock.
+ * The prologue the cash, catalog, and receivables commands share: authorize the fresh
+ * session and membership first, then take the idempotency lock, then read the replay.
+ * The order is deliberate — session, then business membership, then the command key
+ * and the resource rows the caller locks next — and reordering it can deadlock.
+ *
+ * The sales paths in `product.ts` and `sales-correction.ts` deliberately take the
+ * command-key lock BEFORE their session read and compose their own authorization.
+ * Leave them as they are: moving them onto this prologue would change their lock
+ * order, which is exactly the kind of edit that introduces a deadlock.
  */
-export async function beginOperation<Action extends string>(
+export async function beginOperation<Action extends string, ResultColumn extends PgColumn>(
   tx: DatabaseTransaction,
   input: {
     action: Action;
@@ -145,13 +150,13 @@ export async function beginOperation<Action extends string>(
     commandFingerprint: string;
     idempotencyKey: string;
     lock: BusinessLockStrength;
-    log: OperationLog;
+    log: OperationLog<ResultColumn>;
     permissions: readonly BusinessPermission[];
   },
 ): Promise<{
   access: AuthorizedBusinessContext;
   identity: OperationCommandIdentity<Action>;
-  replay: OperationReplay | null;
+  replay: OperationReplay<ResultColumn["_"]["data"]> | null;
 }> {
   const access = await authorizeBusinessAction(tx, input.actor, input.permissions, input.lock);
   const identity: OperationCommandIdentity<Action> = {

@@ -24,7 +24,7 @@ export async function authorize(
   return authorizeBusinessAction(tx, actor, permissions, "share");
 }
 
-export const receivableOperationLog: OperationLog = {
+export const receivableOperationLog = {
   action: receivableOperation.action,
   actorUserId: receivableOperation.actorUserId,
   businessId: receivableOperation.businessId,
@@ -33,7 +33,7 @@ export const receivableOperationLog: OperationLog = {
   idempotencyKey: receivableOperation.idempotencyKey,
   result: receivableOperation.resultSnapshot,
   table: receivableOperation,
-};
+} satisfies OperationLog;
 
 /**
  * Authorizes the actor, takes the idempotency lock, and reads any stored replay
