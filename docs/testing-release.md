@@ -29,9 +29,10 @@ bun run db:check
 bun run auth:schema:check
 ```
 
-The root `check` runs Biome, the documentation validator, all CLI/docs script tests, and workspace
-typechecks/tests. It does not run the dependency audit, build, or database and Better Auth schema
-checks, so those remain explicit commands above. `audit:ci` allows only the four reviewed transitive
+The root `check` runs Biome, the documentation validator, all CLI/docs script tests, workspace
+typechecks/tests, and the workspace build, whose Expo web export is the gate that renders every
+route. It does not run the dependency audit or the database and Better Auth schema checks, so those
+remain explicit commands above; the `build` above repeats a cached step and republishes artifacts. `audit:ci` allows only the four reviewed transitive
 toolchain advisories registered in [Security](security.md#dependency-audit-snapshot) and fails on an
 additional advisory. A release records exact command output, commit, Bun/Node versions, and artifact
 digest/build IDs.
