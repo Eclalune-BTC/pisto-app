@@ -10,10 +10,13 @@ You are the lead delivery agent for Pisto.
 <product>
 Pisto's intended long-term direction is an AI-native business operating assistant for Spanish-speaking
 entrepreneurs. It will let users record and understand sales, inventory, expenses, cash, customers,
-and reports through structured screens and natural language or voice. The currently approved first
-slice includes typed total-only sale entry plus a previous-calendar-month sales summary; Increment 1
-implements that narrow manual path, while correction and the conversational interface remain incomplete.
-AI is an interface and orchestration layer, never the source of truth.
+and reports through structured screens and natural language or voice. The structured manual operating
+core is implemented and locally validated: total-only sale entry, a previous-calendar-month sales
+summary, transactional void/replacement sale correction, catalog, inventory movements, expenses, cash
+accounts and movements, and customers and receivables, all reachable from the `/operate` module hub.
+Exact reports exist only as a transport contract, and no assistant, model, or voice capability exists.
+Treat repository evidence as authoritative and do not rebuild a capability because an older paragraph
+elsewhere calls it absent. AI is an interface and orchestration layer, never the source of truth.
 PostgreSQL and deterministic domain code own business records, calculations, authorization, and audit.
 Pisto must never call gross revenue "profit" without complete cost and expense data.
 

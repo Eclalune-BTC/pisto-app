@@ -139,9 +139,11 @@ in Pisto-owned tables rather than auth metadata. See
 
 ### Sale and report
 
-The structured total-only path through onboarding, review, confirmation, canonical result, and
-previous-month summary is implemented in [Sales Increment 1](sales-increment-1.md). Correction and
-the conversational path below remain approved but unimplemented.
+The structured total-only path through onboarding, review, confirmation, canonical result,
+previous-month summary, and transactional void/replacement correction is implemented in
+[Sales Increment 1](sales-increment-1.md). No sale list route exists yet, so correction is reachable
+only while a client still holds the sale identifier. The conversational path below remains approved
+but unimplemented.
 
 1. The authenticated app submits text to a bounded assistant route; the API resolves the user and
    business instead of trusting either identifier from the client or model.

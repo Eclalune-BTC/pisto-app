@@ -75,12 +75,17 @@ secret.
 - Use explicit outbound timeouts; retry mutations only with idempotency.
 - Distinguish authentication (`401`) from authorization (`403`) without disclosing hidden resources.
 
-## AI and financial-operation controls when introduced
+## Financial-operation controls, and AI controls when introduced
 
-The manual total-only sales path implements server-resolved tenancy, fresh action authorization,
-minor-unit money, IANA time-zone validation, transactional idempotency/audit, and canonical reads.
-Correction and the assistant remain incomplete. The following controls remain mandatory as those
-paths are introduced:
+The implemented financial and inventory paths — total-only sales, void/replacement sale correction,
+catalog and inventory movements, expenses, cash accounts/adjustments/transfers, and customers,
+receivables, payments, and payment reversals — apply server-resolved tenancy, fresh action
+authorization, minor-unit money, IANA time-zone validation, transactional idempotency/audit, and
+canonical reads. Sale correction reloads the session and membership inside its own transaction,
+checks `sales:correct`, voids the original and writes any replacement in that same transaction, and
+appends an immutable `sale_correction` receipt. The assistant, voice, and exact reports remain
+unimplemented. The controls below are mandatory for the implemented paths and for the assistant and
+voice paths as they are introduced:
 
 - Keep provider credentials, prompts, tool implementations, and provider-specific options on the
   server. The client receives only Pisto-owned contracts and safe stream events.

@@ -3,8 +3,8 @@
 - Status: **approved product direction and first vertical slice**
 - Owner: **repository owner**
 - Approved: **2026-08-22**
-- Implementation status: **manual total-only increment implemented locally; approved conversational
-  slice remains incomplete**
+- Implementation status: **manual operating core implemented and locally validated; approved
+  conversational slice remains unimplemented**
 
 ## Product definition
 
@@ -280,15 +280,23 @@ gates, capability slice contract, product shell, and shared UI/action rules are 
 
 ## Current repository truth
 
-As of 2026-08-22, the repository implements and locally validates one narrower manual increment:
-owner-only business onboarding, static current-operation permissions for exact
-`owner`/`admin`/`member` memberships, a reviewed total-only sale, idempotent canonical persistence,
-and a deterministic previous-calendar-month summary. It does not yet implement conversational text
-extraction, clarification, correction/void, AI SDK orchestration, voice, inventory, retrieval, or the
-other modules described above. The exact implemented boundary and evidence are in
-[Sales Increment 1](../sales-increment-1.md). This approved brief remains the acceptance contract for
-the larger first slice; a passing manual increment is not evidence that the conversational slice is
-complete or deployed.
+As of 2026-08-23, the repository implements and locally validates a manual structured operating core:
+owner-only business onboarding; static current-operation permissions for exact
+`owner`/`admin`/`member` memberships; a reviewed total-only sale with idempotent canonical
+persistence and a deterministic previous-calendar-month summary; transactional void and replacement
+sale correction; catalog categories and products; append-only inventory movements and one-time
+reversals; paid expenses; cash accounts, adjustments, transfers, and movement history; and customers,
+receivable charges, payments, payment reversals, and voids. Each capability is reachable through the
+`/operate` module hub under `/v1` routes.
+
+It does not implement conversational text extraction, clarification, AI SDK orchestration, voice, or
+retrieval. Exact reports exist only as the contract in `packages/contracts/src/reports.ts`. There is
+also no `GET /v1/sales` list, so the implemented correction path cannot be reached for a sale the
+user has navigated away from. The exact implemented boundary and evidence are in
+[Sales Increment 1](../sales-increment-1.md) and the
+[operating core slice records](../product-slices/operating-core-v1.md). This approved brief remains
+the acceptance contract for the larger first slice; a passing manual operating core is not evidence
+that the conversational slice is complete, and nothing here is pushed, deployed, or released.
 
 ## Primary market sources
 
