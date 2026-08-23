@@ -9,7 +9,7 @@ import { and, eq } from "drizzle-orm";
 import type { Database } from "../client.ts";
 import { ProductError } from "../product.ts";
 import { customer } from "../schema/receivables.ts";
-import { authorize, insertOperation, lockIdempotencyKey, readOperationSnapshot } from "./access.ts";
+import { beginReceivableOperation, insertOperation } from "./access.ts";
 import { commandFingerprint, uuidPattern, validate } from "./codec.ts";
 import { toCustomer } from "./mappers.ts";
 import type { ReceivablesRepository } from "./types.ts";
@@ -35,17 +35,17 @@ export function createCustomerCommands(db: Database): CustomerCommands {
         phone: command.phone ?? null,
       });
       return db.transaction(async (tx) => {
-        const access = await authorize(tx, actor, "customers:manage");
-        await lockIdempotencyKey(tx, actor, access.businessId, command.idempotencyKey);
-        const replay = await readOperationSnapshot({
-          action,
-          actor,
-          businessId: access.businessId,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
-          schema: customerSchema,
+        const { access, identity, replay } = await beginReceivableOperation(
           tx,
-        });
+          actor,
+          "customers:manage",
+          {
+            action,
+            fingerprint,
+            idempotencyKey: command.idempotencyKey,
+            schema: customerSchema,
+          },
+        );
         if (replay) return { customer: replay, replayed: true };
 
         const [record] = await tx
@@ -60,13 +60,8 @@ export function createCustomerCommands(db: Database): CustomerCommands {
           .returning();
         if (!record) throw new Error("Customer insert returned no record");
         const result = toCustomer(record);
-        await insertOperation(tx, {
-          action,
-          actor,
-          businessId: access.businessId,
+        await insertOperation(tx, identity, {
           customerId: result.id,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
           resultSnapshot: result,
         });
         return { customer: result, replayed: false };
@@ -91,17 +86,17 @@ export function createCustomerCommands(db: Database): CustomerCommands {
         phone: command.phone,
       });
       return db.transaction(async (tx) => {
-        const access = await authorize(tx, actor, "customers:manage");
-        await lockIdempotencyKey(tx, actor, access.businessId, command.idempotencyKey);
-        const replay = await readOperationSnapshot({
-          action,
-          actor,
-          businessId: access.businessId,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
-          schema: customerSchema,
+        const { access, identity, replay } = await beginReceivableOperation(
           tx,
-        });
+          actor,
+          "customers:manage",
+          {
+            action,
+            fingerprint,
+            idempotencyKey: command.idempotencyKey,
+            schema: customerSchema,
+          },
+        );
         if (replay) return { customer: replay, replayed: true };
 
         const [existing] = await tx
@@ -127,13 +122,8 @@ export function createCustomerCommands(db: Database): CustomerCommands {
           .returning();
         if (!record) throw new Error("Customer update returned no record");
         const result = toCustomer(record);
-        await insertOperation(tx, {
-          action,
-          actor,
-          businessId: access.businessId,
+        await insertOperation(tx, identity, {
           customerId,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
           resultSnapshot: result,
         });
         return { customer: result, replayed: false };
@@ -152,17 +142,17 @@ export function createCustomerCommands(db: Database): CustomerCommands {
       const action = "customer.archived";
       const fingerprint = await commandFingerprint(action, { customerId });
       return db.transaction(async (tx) => {
-        const access = await authorize(tx, actor, "customers:manage");
-        await lockIdempotencyKey(tx, actor, access.businessId, command.idempotencyKey);
-        const replay = await readOperationSnapshot({
-          action,
-          actor,
-          businessId: access.businessId,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
-          schema: customerSchema,
+        const { access, identity, replay } = await beginReceivableOperation(
           tx,
-        });
+          actor,
+          "customers:manage",
+          {
+            action,
+            fingerprint,
+            idempotencyKey: command.idempotencyKey,
+            schema: customerSchema,
+          },
+        );
         if (replay) return { customer: replay, replayed: true };
 
         const [existing] = await tx
@@ -182,13 +172,8 @@ export function createCustomerCommands(db: Database): CustomerCommands {
           .returning();
         if (!record) throw new Error("Customer archive returned no record");
         const result = toCustomer(record);
-        await insertOperation(tx, {
-          action,
-          actor,
-          businessId: access.businessId,
+        await insertOperation(tx, identity, {
           customerId,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
           resultSnapshot: result,
         });
         return { customer: result, replayed: false };

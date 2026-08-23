@@ -4,9 +4,10 @@ import type { ZodType } from "zod";
 
 import { authorizeBusinessAction } from "../business-access.ts";
 import {
-  findOperationReplay,
-  lockCommandKey,
+  beginOperation,
+  type OperationCommandIdentity,
   type OperationLog,
+  operationIdentityValues,
   parseReplaySnapshot,
 } from "../operation-log.ts";
 import { type ProductActor, ProductError } from "../product.ts";
@@ -23,15 +24,6 @@ export async function authorize(
   return authorizeBusinessAction(tx, actor, permissions, "share");
 }
 
-export async function lockIdempotencyKey(
-  tx: DatabaseTransaction,
-  actor: ProductActor,
-  businessId: string,
-  idempotencyKey: string,
-): Promise<void> {
-  await lockCommandKey(tx, { actorUserId: actor.userId, businessId, idempotencyKey });
-}
-
 export const receivableOperationLog: OperationLog = {
   action: receivableOperation.action,
   actorUserId: receivableOperation.actorUserId,
@@ -43,54 +35,61 @@ export const receivableOperationLog: OperationLog = {
   table: receivableOperation,
 };
 
-export async function readOperationSnapshot<T>(input: {
-  action: string;
-  actor: ProductActor;
-  businessId: string;
-  fingerprint: string;
-  idempotencyKey: string;
-  schema: ZodType<T>;
-  tx: DatabaseTransaction;
-}): Promise<T | null> {
-  const snapshot = await findOperationReplay(input.tx, receivableOperationLog, {
-    action: input.action,
-    actorUserId: input.actor.userId,
-    businessId: input.businessId,
-    commandFingerprint: input.fingerprint,
-    idempotencyKey: input.idempotencyKey,
+/**
+ * Authorizes the actor, takes the idempotency lock, and reads any stored replay
+ * back through the contract that produced it.
+ */
+export async function beginReceivableOperation<T>(
+  tx: DatabaseTransaction,
+  actor: ProductActor,
+  permission: BusinessPermission | readonly BusinessPermission[],
+  command: {
+    action: string;
+    fingerprint: string;
+    idempotencyKey: string;
+    schema: ZodType<T>;
+  },
+): Promise<{ access: AccessContext; identity: OperationCommandIdentity; replay: T | null }> {
+  const permissions = Array.isArray(permission) ? permission : [permission];
+  const { access, identity, replay } = await beginOperation(tx, {
+    action: command.action,
+    actor,
+    commandFingerprint: command.fingerprint,
+    idempotencyKey: command.idempotencyKey,
+    lock: "share",
+    log: receivableOperationLog,
+    permissions,
   });
-  if (snapshot === null) return null;
-  return parseReplaySnapshot(
-    input.schema,
-    snapshot,
-    "Stored receivables operation snapshot is invalid",
-  );
+  return {
+    access,
+    identity,
+    replay:
+      replay === null
+        ? null
+        : parseReplaySnapshot(
+            command.schema,
+            replay,
+            "Stored receivables operation snapshot is invalid",
+          ),
+  };
 }
 
 export async function insertOperation(
   tx: DatabaseTransaction,
-  input: {
-    action: string;
-    actor: ProductActor;
-    businessId: string;
+  identity: OperationCommandIdentity,
+  target: {
     customerId: string;
-    fingerprint: string;
-    idempotencyKey: string;
     paymentId?: string;
     receivableId?: string;
     resultSnapshot: unknown;
   },
 ): Promise<void> {
   await tx.insert(receivableOperation).values({
-    businessId: input.businessId,
-    actorUserId: input.actor.userId,
-    idempotencyKey: input.idempotencyKey,
-    commandFingerprint: input.fingerprint,
-    action: input.action,
-    customerId: input.customerId,
-    receivableId: input.receivableId ?? null,
-    paymentId: input.paymentId ?? null,
-    resultSnapshot: input.resultSnapshot,
+    ...operationIdentityValues(identity),
+    customerId: target.customerId,
+    receivableId: target.receivableId ?? null,
+    paymentId: target.paymentId ?? null,
+    resultSnapshot: target.resultSnapshot,
   });
 }
 

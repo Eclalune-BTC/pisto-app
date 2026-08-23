@@ -3,10 +3,10 @@ import { and, eq, sql } from "drizzle-orm";
 
 import { authorizeBusinessAction, requireActiveBusiness } from "../business-access.ts";
 import {
-  findOperationReplay,
-  lockCommandKey,
+  beginOperation,
   type OperationCommandIdentity,
   type OperationLog,
+  operationIdentityValues,
 } from "../operation-log.ts";
 import { type ProductActor, ProductError } from "../product.ts";
 import { cashAccount, cashMovement, cashOperationReceipt } from "../schema/cash.ts";
@@ -36,15 +36,6 @@ export function requireCurrency(access: AuthorizedBusiness, currency: string): v
   }
 }
 
-export async function lockIdempotencyKey(
-  tx: CashTransaction,
-  businessId: string,
-  actorUserId: string,
-  idempotencyKey: string,
-): Promise<void> {
-  await lockCommandKey(tx, { actorUserId, businessId, idempotencyKey });
-}
-
 export const cashOperationLog: OperationLog = {
   action: cashOperationReceipt.action,
   actorUserId: cashOperationReceipt.actorUserId,
@@ -56,26 +47,42 @@ export const cashOperationLog: OperationLog = {
   table: cashOperationReceipt,
 };
 
-export function findReplay(
+/** Authorizes the actor, takes the idempotency lock, and reads any stored replay. */
+export function beginCashOperation(
   tx: CashTransaction,
-  input: OperationCommandIdentity<CashOperationAction>,
-): Promise<unknown | null> {
-  return findOperationReplay(tx, cashOperationLog, input);
+  actor: ProductActor,
+  permissions: readonly BusinessPermission[],
+  command: {
+    action: CashOperationAction;
+    commandFingerprint: string;
+    idempotencyKey: string;
+  },
+): Promise<{
+  access: AuthorizedBusiness;
+  identity: OperationCommandIdentity<CashOperationAction>;
+  replay: unknown | null;
+}> {
+  return beginOperation(tx, {
+    action: command.action,
+    actor,
+    commandFingerprint: command.commandFingerprint,
+    idempotencyKey: command.idempotencyKey,
+    lock: "share",
+    log: cashOperationLog,
+    permissions,
+  });
 }
 
 export async function saveReceipt(
   tx: CashTransaction,
-  input: {
-    action: CashOperationAction;
-    actorUserId: string;
-    businessId: string;
-    commandFingerprint: string;
-    idempotencyKey: string;
-    resourceId: string;
-    result: object;
-  },
+  identity: OperationCommandIdentity<CashOperationAction>,
+  outcome: { resourceId: string; result: object },
 ): Promise<void> {
-  await tx.insert(cashOperationReceipt).values(input);
+  await tx.insert(cashOperationReceipt).values({
+    ...operationIdentityValues(identity),
+    resourceId: outcome.resourceId,
+    result: outcome.result,
+  });
 }
 
 export async function getAccountBalance(

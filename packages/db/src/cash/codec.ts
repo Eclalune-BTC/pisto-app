@@ -13,7 +13,7 @@ import {
   updateCashAccountRequestSchema,
 } from "@pisto/contracts";
 
-import { fingerprintCommand, maximumMinorUnits } from "../operation-log.ts";
+import { fingerprintCommand, maximumMinorUnits, parseReplaySnapshot } from "../operation-log.ts";
 import { ProductError } from "../product.ts";
 import type { CashCursorPayload, CashOperationAction } from "./types.ts";
 
@@ -98,25 +98,45 @@ export function parseUpdateAccount(command: UpdateCashAccountRequest) {
 }
 
 export function replayAccountResult(value: unknown): CashAccountCommandResult {
-  const parsed = cashAccountCommandResultSchema.safeParse(value);
-  if (!parsed.success) throw new Error("Stored cash account operation result is invalid");
-  return { ...parsed.data, replayed: true };
+  return {
+    ...parseReplaySnapshot(
+      cashAccountCommandResultSchema,
+      value,
+      "Stored cash account operation result is invalid",
+    ),
+    replayed: true,
+  };
 }
 
 export function replayExpenseResult(value: unknown): ExpenseCommandResult {
-  const parsed = expenseCommandResultSchema.safeParse(value);
-  if (!parsed.success) throw new Error("Stored expense operation result is invalid");
-  return { ...parsed.data, replayed: true };
+  return {
+    ...parseReplaySnapshot(
+      expenseCommandResultSchema,
+      value,
+      "Stored expense operation result is invalid",
+    ),
+    replayed: true,
+  };
 }
 
 export function replayMovementResult(value: unknown): CashMovementCommandResult {
-  const parsed = cashMovementCommandResultSchema.safeParse(value);
-  if (!parsed.success) throw new Error("Stored cash movement operation result is invalid");
-  return { ...parsed.data, replayed: true };
+  return {
+    ...parseReplaySnapshot(
+      cashMovementCommandResultSchema,
+      value,
+      "Stored cash movement operation result is invalid",
+    ),
+    replayed: true,
+  };
 }
 
 export function replayTransferResult(value: unknown): CashTransferCommandResult {
-  const parsed = cashTransferCommandResultSchema.safeParse(value);
-  if (!parsed.success) throw new Error("Stored cash transfer operation result is invalid");
-  return { ...parsed.data, replayed: true };
+  return {
+    ...parseReplaySnapshot(
+      cashTransferCommandResultSchema,
+      value,
+      "Stored cash transfer operation result is invalid",
+    ),
+    replayed: true,
+  };
 }

@@ -14,11 +14,9 @@ import type { Database } from "../client.ts";
 import { type ProductActor, ProductError, resolveLocalDateTime } from "../product.ts";
 import { cashAccount, cashMovement, cashTransfer } from "../schema/cash.ts";
 import {
-  findReplay,
+  beginCashOperation,
   getAccountBalance,
   lockAccount,
-  lockIdempotencyKey,
-  requireAccess,
   requireActiveBusiness,
   requireCurrency,
   requireSufficientBalance,
@@ -47,12 +45,8 @@ export async function recordCashAdjustment(
   const amount = parseCashMinorUnits(command.amountMinorUnits);
 
   return db.transaction(async (tx) => {
-    const access = await requireAccess(tx, actor, ["cash:manage"]);
-    await lockIdempotencyKey(tx, businessId, actor.userId, idempotencyKey);
-    const replay = await findReplay(tx, {
+    const { access, identity, replay } = await beginCashOperation(tx, actor, ["cash:manage"], {
       action: "cash.adjust",
-      actorUserId: actor.userId,
-      businessId,
       commandFingerprint,
       idempotencyKey,
     });
@@ -95,12 +89,7 @@ export async function recordCashAdjustment(
       movement: toCashMovement(movement),
       replayed: false,
     };
-    await saveReceipt(tx, {
-      action: "cash.adjust",
-      actorUserId: actor.userId,
-      businessId,
-      commandFingerprint,
-      idempotencyKey,
+    await saveReceipt(tx, identity, {
       resourceId: movement.id,
       result,
     });
@@ -128,12 +117,8 @@ export async function reverseCashAdjustment(
   });
 
   return db.transaction(async (tx) => {
-    const access = await requireAccess(tx, actor, ["cash:manage"]);
-    await lockIdempotencyKey(tx, businessId, actor.userId, idempotencyKey);
-    const replay = await findReplay(tx, {
+    const { access, identity, replay } = await beginCashOperation(tx, actor, ["cash:manage"], {
       action: "cash.reverse",
-      actorUserId: actor.userId,
-      businessId,
       commandFingerprint,
       idempotencyKey,
     });
@@ -199,12 +184,7 @@ export async function reverseCashAdjustment(
       movement: toCashMovement(reversal),
       replayed: false,
     };
-    await saveReceipt(tx, {
-      action: "cash.reverse",
-      actorUserId: actor.userId,
-      businessId,
-      commandFingerprint,
-      idempotencyKey,
+    await saveReceipt(tx, identity, {
       resourceId: reversal.id,
       result,
     });
@@ -226,12 +206,8 @@ export async function transferCash(
   const amount = parseCashMinorUnits(command.amountMinorUnits);
 
   return db.transaction(async (tx) => {
-    const access = await requireAccess(tx, actor, ["cash:manage"]);
-    await lockIdempotencyKey(tx, businessId, actor.userId, idempotencyKey);
-    const replay = await findReplay(tx, {
+    const { access, identity, replay } = await beginCashOperation(tx, actor, ["cash:manage"], {
       action: "cash.transfer",
-      actorUserId: actor.userId,
-      businessId,
       commandFingerprint,
       idempotencyKey,
     });
@@ -328,12 +304,7 @@ export async function transferCash(
       movements: [toCashMovement(outRecord), toCashMovement(inRecord)],
       replayed: false,
     };
-    await saveReceipt(tx, {
-      action: "cash.transfer",
-      actorUserId: actor.userId,
-      businessId,
-      commandFingerprint,
-      idempotencyKey,
+    await saveReceipt(tx, identity, {
       resourceId: createdTransfer.id,
       result,
     });

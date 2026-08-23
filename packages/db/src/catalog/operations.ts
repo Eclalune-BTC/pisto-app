@@ -1,9 +1,20 @@
+import type { BusinessPermission } from "@pisto/contracts";
 import { and, eq, sql } from "drizzle-orm";
 
-import { findOperationReplay, lockCommandKey, type OperationLog } from "../operation-log.ts";
+import {
+  beginOperation,
+  type OperationCommandIdentity,
+  type OperationLog,
+  operationIdentityValues,
+} from "../operation-log.ts";
 import { type ProductActor, ProductError } from "../product.ts";
 import { catalogCategory, catalogOperation, inventoryMovement } from "../schema/catalog.ts";
-import type { DatabaseExecutor, DatabaseTransaction, OperationAction } from "./types.ts";
+import type {
+  AuthorizedBusiness,
+  DatabaseExecutor,
+  DatabaseTransaction,
+  OperationAction,
+} from "./types.ts";
 
 export const catalogOperationLog: OperationLog = {
   action: catalogOperation.action,
@@ -16,53 +27,50 @@ export const catalogOperationLog: OperationLog = {
   table: catalogOperation,
 };
 
-export async function lockOperation(
+/** Authorizes the actor, takes the idempotency lock, and reads any stored replay. */
+export async function beginCatalogOperation(
   transaction: DatabaseTransaction,
   actor: ProductActor,
-  businessId: string,
-  idempotencyKey: string,
-  commandFingerprint: string,
-  action: OperationAction,
-): Promise<Record<string, unknown> | null> {
-  const identity = {
-    action,
-    actorUserId: actor.userId,
-    businessId,
-    commandFingerprint,
-    idempotencyKey,
-  };
-  await lockCommandKey(transaction, identity);
+  permission: BusinessPermission,
+  command: {
+    action: OperationAction;
+    commandFingerprint: string;
+    idempotencyKey: string;
+  },
+): Promise<{
+  access: AuthorizedBusiness;
+  identity: OperationCommandIdentity<OperationAction>;
+  replay: Record<string, unknown> | null;
+}> {
+  const { access, identity, replay } = await beginOperation(transaction, {
+    action: command.action,
+    actor,
+    commandFingerprint: command.commandFingerprint,
+    idempotencyKey: command.idempotencyKey,
+    lock: "update",
+    log: catalogOperationLog,
+    permissions: [permission],
+  });
   // The caller validates the stored snapshot against its public contract.
-  return (await findOperationReplay(transaction, catalogOperationLog, identity)) as Record<
-    string,
-    unknown
-  > | null;
+  return { access, identity, replay: replay as Record<string, unknown> | null };
 }
 
 export async function saveOperation(
   transaction: DatabaseTransaction,
-  input: {
-    action: OperationAction;
-    actor: ProductActor;
-    businessId: string;
+  identity: OperationCommandIdentity<OperationAction>,
+  target: {
     categoryId?: string;
-    commandFingerprint: string;
-    idempotencyKey: string;
     movementId?: string;
     productId?: string;
     resultSnapshot: Record<string, unknown>;
   },
 ) {
   await transaction.insert(catalogOperation).values({
-    action: input.action,
-    actorUserId: input.actor.userId,
-    businessId: input.businessId,
-    categoryId: input.categoryId ?? null,
-    commandFingerprint: input.commandFingerprint,
-    idempotencyKey: input.idempotencyKey,
-    movementId: input.movementId ?? null,
-    productId: input.productId ?? null,
-    resultSnapshot: input.resultSnapshot,
+    ...operationIdentityValues(identity),
+    categoryId: target.categoryId ?? null,
+    movementId: target.movementId ?? null,
+    productId: target.productId ?? null,
+    resultSnapshot: target.resultSnapshot,
   });
 }
 

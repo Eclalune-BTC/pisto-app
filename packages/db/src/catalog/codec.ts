@@ -1,9 +1,9 @@
 import type { Category, InventoryMovement, Product, ProductStock } from "@pisto/contracts";
 import { and, eq, lt, or } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { z } from "zod";
+import { type ZodType, z } from "zod";
 
-import { fingerprintCommand, maximumMinorUnits } from "../operation-log.ts";
+import { fingerprintCommand, maximumMinorUnits, parseReplaySnapshot } from "../operation-log.ts";
 import { ProductError } from "../product.ts";
 import type {
   CategoryRecord,
@@ -176,13 +176,10 @@ export function cursorCondition(
   );
 }
 
-export function parseMutationReplay<T>(
-  schema: { parse(value: unknown): T },
-  snapshot: Record<string, unknown>,
-): T {
-  try {
-    return schema.parse({ ...snapshot, replayed: true });
-  } catch {
-    throw new Error("Stored operation result does not match the catalog contract");
-  }
+export function parseMutationReplay<T>(schema: ZodType<T>, snapshot: Record<string, unknown>): T {
+  return parseReplaySnapshot(
+    schema,
+    { ...snapshot, replayed: true },
+    "Stored operation result does not match the catalog contract",
+  );
 }

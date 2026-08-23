@@ -8,7 +8,6 @@ import { and, eq } from "drizzle-orm";
 import type { Database } from "../client.ts";
 import { ProductError, resolveLocalDateTime } from "../product.ts";
 import { catalogProduct, inventoryMovement } from "../schema/catalog.ts";
-import { authorizeCatalogAction } from "./access.ts";
 import {
   fingerprint,
   parseMutationReplay,
@@ -17,7 +16,7 @@ import {
   stockFor,
   toMovement,
 } from "./codec.ts";
-import { currentBalance, lockOperation, saveOperation } from "./operations.ts";
+import { beginCatalogOperation, currentBalance, saveOperation } from "./operations.ts";
 import type { InventoryCommands } from "./types.ts";
 
 export function createInventoryCommands(db: Database): InventoryCommands {
@@ -37,19 +36,11 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         occurredLocalTime: command.occurredLocalTime,
       });
       return db.transaction(async (transaction) => {
-        const access = await authorizeCatalogAction(
+        const { access, identity, replay } = await beginCatalogOperation(
           transaction,
           actor,
           "inventory:manage",
-          "update",
-        );
-        const replay = await lockOperation(
-          transaction,
-          actor,
-          access.businessId,
-          command.idempotencyKey,
-          commandFingerprint,
-          action,
+          { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
         );
         if (replay) return parseMutationReplay(inventoryMutationResponseSchema.shape.data, replay);
         const [product] = await transaction
@@ -100,12 +91,7 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         const movement = toMovement(created, null);
         const stock = stockFor(product, nextBalance.toString());
         if (!stock) throw new Error("Tracked product did not produce stock state");
-        await saveOperation(transaction, {
-          action,
-          actor,
-          businessId: access.businessId,
-          commandFingerprint,
-          idempotencyKey: command.idempotencyKey,
+        await saveOperation(transaction, identity, {
           movementId: movement.id,
           productId,
           resultSnapshot: recordSnapshot({ movement, stock }),
@@ -127,19 +113,11 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         occurredLocalTime: command.occurredLocalTime,
       });
       return db.transaction(async (transaction) => {
-        const access = await authorizeCatalogAction(
+        const { access, identity, replay } = await beginCatalogOperation(
           transaction,
           actor,
           "inventory:manage",
-          "update",
-        );
-        const replay = await lockOperation(
-          transaction,
-          actor,
-          access.businessId,
-          command.idempotencyKey,
-          commandFingerprint,
-          action,
+          { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
         );
         if (replay) return parseMutationReplay(inventoryMutationResponseSchema.shape.data, replay);
         const [initial] = await transaction
@@ -229,12 +207,7 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         const movement = toMovement(created, null);
         const stock = stockFor(product, nextBalance.toString());
         if (!stock) throw new Error("Tracked product did not produce stock state");
-        await saveOperation(transaction, {
-          action,
-          actor,
-          businessId: access.businessId,
-          commandFingerprint,
-          idempotencyKey: command.idempotencyKey,
+        await saveOperation(transaction, identity, {
           movementId: movement.id,
           productId: product.id,
           resultSnapshot: recordSnapshot({ movement, stock }),
