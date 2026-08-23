@@ -173,7 +173,7 @@ export async function beginOperation<
     actor: ProductActor;
     commandFingerprint: string;
     idempotencyKey: string;
-    lock: BusinessLockStrength;
+    lock: Exclude<BusinessLockStrength, "none">;
     log: OperationLog<Table, ResultColumn>;
     permissions: readonly BusinessPermission[];
   },
