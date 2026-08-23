@@ -69,7 +69,11 @@ type SectionProps = {
 };
 
 function countText(value: string, locale: string): string {
-  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(BigInt(value));
+  // A canonical integer string formats exactly; a number rounds above 2^53. The
+  // DOM lib types that overload as a template-literal type no plain string can satisfy.
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(
+    value as Intl.StringNumericLiteral,
+  );
 }
 
 function MoneyValue({
