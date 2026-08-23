@@ -83,9 +83,8 @@ export function createSalesQueryRepository(db: Database): SalesQueryRepository {
         const conditions: SQL[] = [eq(sale.businessId, access.businessId)];
         if (query.status !== "all") conditions.push(eq(sale.status, query.status));
         if (cursor) {
-          // Compared as `timestamptz` rather than through a JavaScript Date, which
-          // truncates PostgreSQL's microseconds and would silently drop any sale
-          // recorded in the same millisecond as the page boundary.
+          // A JavaScript Date truncates PostgreSQL's microseconds, which would drop
+          // any sale recorded in the same millisecond as the page boundary.
           const boundary = sql`${cursor.createdAt}::timestamptz`;
           conditions.push(
             or(

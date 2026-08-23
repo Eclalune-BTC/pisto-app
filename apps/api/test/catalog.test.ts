@@ -52,8 +52,6 @@ function createRepository(overrides: Partial<CatalogRepository> = {}): CatalogRe
 function createApp(repository: CatalogRepository) {
   const app = new Hono();
   app.route("/v1", catalogRoutes({ auth: createAuth(), catalog: repository }));
-  // Mirrors the single boundary in src/app.ts so a router mounted on its own
-  // still translates a domain failure exactly as the composed application does.
   app.onError((error, context) => {
     const { apiError } = normalizeError(error);
     return context.json(

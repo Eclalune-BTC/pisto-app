@@ -32,8 +32,6 @@ function createTestApp(repository: Partial<ProductRepository>, authenticated = t
   } as unknown as Auth;
   const app = new Hono<AppEnv>();
   app.route("/v1", productRoutes({ auth, product: repository as ProductRepository }));
-  // Mirrors the single boundary in src/app.ts so a router mounted on its own
-  // still translates a domain failure exactly as the composed application does.
   app.onError((error, context) => {
     const { apiError } = normalizeError(error);
     return context.json(

@@ -32,8 +32,6 @@ function testRoutes(options: { authenticated?: boolean; cash: CashRepository }) 
     },
   } as unknown as Auth;
   const routes = cashRoutes({ auth, cash: options.cash });
-  // Mirrors the single boundary in src/app.ts so a router mounted on its own
-  // still translates a domain failure exactly as the composed application does.
   routes.onError((error, context) => {
     const { apiError } = normalizeError(error);
     return context.json(

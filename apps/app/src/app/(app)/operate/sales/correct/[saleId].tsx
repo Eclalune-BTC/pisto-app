@@ -63,9 +63,8 @@ export default function CorrectSaleScreen() {
         ? api.sales.void(saleId as string, input.command)
         : api.sales.replace(saleId as string, input.command),
     onSuccess: async () => {
-      // A correction voids the original, may create a replacement, and changes
-      // both the summary and every history page, so the whole business-scoped
-      // sales cache is invalidated rather than the two records it names.
+      // A correction changes the summary and every history page, not just the
+      // two records it names.
       await queryClient.invalidateQueries({
         queryKey: saleQueryKeys.all(business?.id ?? "unselected"),
       });
