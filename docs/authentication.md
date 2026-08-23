@@ -90,9 +90,19 @@ Pisto's `businessId` to avoid a second membership system. Apply these rules befo
   limits, denial tests, and audit are approved and implemented.
 
 ADR 0014 recognizes exact `owner`, `admin`, and `member` membership values through one Pisto policy.
-All three can complete the current daily sales flow; only `owner` can configure the business.
+All three can post and read sales; only `owner` and `admin` hold `sales:correct`, so a `member`
+cannot void or replace a sale. Only `owner` can configure the business. Owner and admin also hold the
+catalog, inventory, expense, cash, customer, and receivable manage permissions; `member` holds only
+`business:read`, the sales workflow, `catalog:read`, `inventory:read`, and `assistant:use`.
 Unknown/composite roles fail closed. Better Auth role recognition does not itself authorize product
 data, and raw role strings must not be checked ad hoc across routes, tools, or UI.
+
+`admin` and `member` currently have no reachable actor. `packages/db/src/product.ts` is the only code
+path that writes a membership row and it hardcodes `role: "owner"`, and every Better Auth
+organization mutation route returns `404` at the Hono edge except the active-organization selector.
+So the `admin` and `member` branches are defined, granted, and covered by tests, but no real user can
+occupy them until invitation delivery and role administration are implemented. Do not read a passing
+`admin` or `member` test as evidence that multi-user access works in the product.
 
 ## Database ownership
 
