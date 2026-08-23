@@ -10,10 +10,12 @@ Every integration is replaceable behind a small package boundary.
 "Built from source" means the repository composition is owned here; it is not a rule to reimplement
 mature platform or library capabilities.
 
-The active product direction is an AI-native operating assistant for Spanish-speaking
-entrepreneurs, beginning with a reviewable conversational sale and deterministic previous-month
-summary. The current planning dashboard is scaffold UI, not the product definition. Start with
-[the documentation map](docs/README.md) and the
+The active product direction is an AI-native operating assistant for Spanish-speaking entrepreneurs.
+What exists today is the structured manual path: sales with void/replacement correction, catalog,
+inventory movements, expenses, cash accounts and movements, and customers and receivables, all
+reachable from an `/operate` module hub. No AI dependency is installed in any manifest, so there is
+no conversational or voice sale path yet, and `/dashboard` is only a redirect into `/operate`. Start
+with [the documentation map](docs/README.md) and the
 [product capability architecture](docs/product-capability-architecture.md) before adding a module or
 changing navigation.
 

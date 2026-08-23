@@ -40,9 +40,15 @@ files while changing server environment variables does not change the compiled b
 Hosting rules must match Expo's output mode:
 
 - **`static` (current):** Expo emits statically rendered HTML per route. Preserve those files and
-  configure clean URLs/static-route mapping as the host requires. Direct requests to `/sign-in`,
-  `/dashboard`, `/billing`, `/billing/success`, and `/settings` must return the matching document,
-  not a storage 404.
+  configure clean URLs/static-route mapping as the host requires. Direct requests to every route in
+  the [Expo route model](frontend-expo-ui.md#route-model) must return the matching document, not a
+  storage 404.
+
+  Pay particular attention to routes with a dynamic segment, and to the ones nested two or three
+  levels deep. A host's clean-URL and directory-index rules are usually derived from the flat
+  top-level routes and then silently fail on `/operate/receivables/<id>/payments/<id>/reverse`.
+  Inspect the actual export directory to see which document each dynamic route produced, then
+  configure the mapping from the real filenames rather than assuming a naming convention.
 - **`single`:** the export contains one SPA document. Configure a final rewrite of application routes
   to `/index.html`, after real asset/file rules. Never rewrite missing JavaScript, image, manifest, or
   source-map requests to HTML.
@@ -108,8 +114,23 @@ For each deployed web origin:
 
 ## Smoke checks
 
-- Open `/`, `/sign-in`, `/sign-up`, `/dashboard`, `/billing`, `/billing/success`, and `/settings`
-  directly in a fresh browser tab; reload each path.
+- Open each of these directly in a fresh browser tab, then reload each path. The list deliberately
+  includes the deep and dynamic routes, because those are what a host's clean-URL rules break:
+  - flat: `/`, `/sign-in`, `/sign-up`, `/dashboard`, `/business`, `/billing`, `/billing/success`,
+    `/settings`, `/operate`;
+  - one module index per group: `/operate/sales`, `/operate/expenses`, `/operate/cash`,
+    `/operate/catalog`, `/operate/inventory`, `/operate/customers`, `/operate/receivables`;
+  - nested static: `/operate/sales/new`, `/operate/catalog/categories`,
+    `/operate/cash/accounts/new`, `/operate/cash/transfers/new`;
+  - one dynamic segment: `/operate/sales/<saleId>`, `/operate/expenses/<expenseId>`,
+    `/operate/catalog/<productId>`, `/operate/customers/<customerId>`;
+  - dynamic plus a nested static segment: `/operate/sales/correct/<saleId>`,
+    `/operate/catalog/<productId>/edit`, `/operate/cash/accounts/<accountId>/edit`,
+    `/operate/inventory/<productId>/new`, `/operate/receivables/<receivableId>/payment`;
+  - two dynamic segments: `/operate/inventory/<productId>/reverse/<movementId>` and
+    `/operate/receivables/<receivableId>/payments/<paymentId>/reverse`.
+- Confirm an unknown path still reaches the exported not-found document rather than a host 404 page,
+  and that a partially matching deep path does not fall through to a parent route's document.
 - Confirm HTML content type, all JS/CSS/font/image requests, and no asset request returns `index.html`.
 - Inspect production bundle/config for localhost and secret-like values.
 - Verify API CORS preflight and credentialed session behavior from the exact production origin.

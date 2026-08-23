@@ -1,8 +1,8 @@
 # Catalog and inventory V1
 
-- Status: **integrated into `main`; schema ships in migration `0003` and the routes are mounted under `/v1`**
+- Status: **integrated into local `main`; schema ships in migration `0003` and the routes are mounted under `/v1`. Not pushed to `origin/main`, not deployed, not released**
 - Owner: `@pisto/contracts`, `@pisto/db`, `@pisto/api`, and the Expo `catalog`/`inventory` features
-- Last reviewed: **2026-08-22**
+- Last reviewed: **2026-08-23**
 - Parent contract: [Operating core V1](operating-core-v1.md#catalog-and-inventory-slice)
 
 ## User job and end state
@@ -23,8 +23,9 @@ No screen or API edits a stored quantity-on-hand field because no such field exi
 - `@pisto/app` and `@pisto/api` explicitly register routes, navigation, localization, and repositories.
   This slice does not self-register or add a top-level destination.
 - The structured destinations remain `/operate/catalog` and `/operate/inventory` under `Operate`.
-  The feature branch provides route-ready feature components; the integration owner supplies the
-  small Expo Router wrappers and typed `es-SV` copy at the shared composition boundary.
+  Both are live: the Expo Router wrappers exist under `apps/app/src/app/(app)/operate`, the typed
+  `es-SV` copy is in the shared catalog, and the `/operate` hub lists each module only when the
+  current role holds `catalog:read` or `inventory:read`.
 
 ## Canonical data ownership
 
@@ -112,8 +113,9 @@ Unknown or composed role strings fail closed. Cross-business detail and movement
 ## Product surfaces and state contract
 
 The Expo feature components share web/native semantics and use responsive React Native layout. They
-receive typed localized copy instead of embedding visible fallback strings. The integration owner
-connects them to React Query, business access, and Expo Router.
+receive typed localized copy instead of embedding visible fallback strings. They are connected to
+React Query, business access, and Expo Router; the route files are thin wrappers and the controllers
+own fetching, mutations, and navigation.
 
 - Catalog list: search, category filter, active/archived state, price snapshot, stock summary, and an
   owned create action only when `catalog:manage` is present.
@@ -146,26 +148,31 @@ metrics, or unowned action buttons.
 
 An empty list is a successful empty result. A failed query never becomes empty data or a zero balance.
 
-## Evidence and integration seams
+## Evidence and integration record
 
 Focused tests cover strict contracts, fixed-scale parsing, currency snapshots, schema ownership,
 route validation/status mapping, role denial, tenant isolation, exact replay/conflict, concurrent
 negative-stock protection, reversal once, precision history, low stock, archived records, and
-uncertain UI state inputs. The suite in `packages/db/integration/catalog.integration.ts` also passes
-against an isolated PostgreSQL 18 database containing the existing migrations plus this schema.
+uncertain UI state inputs. `packages/db/integration/catalog.integration.ts` runs against a
+PostgreSQL 18 database carrying the committed migrations, and CI applies those migrations before the
+suite.
 
-The integration owner must still generate and review the shared migration. In that migration, create
-the composite unique indexes on category, product, and movement tenant keys before adding foreign
-keys that reference those columns; PostgreSQL requires the referenced uniqueness to exist first.
+Integration is complete. The shared edits the original checklist assigned are done:
 
-The integration owner still owns these shared edits:
+1. `catalog.ts` is exported from the contract and database barrels;
+2. `catalog_category`, `catalog_product`, `inventory_movement`, and `catalog_operation` are in the
+   shared Drizzle schema and ship in migration `0003_worried_weapon_omega.sql`, which declares the
+   composite tenant uniqueness on the category, product, and movement tables inline in their
+   `CREATE TABLE` statements, ahead of the foreign keys that reference those columns — PostgreSQL
+   requires the referenced uniqueness to exist first;
+3. `createCatalogRepository` is instantiated at the API composition root and `catalogRoutes` is
+   mounted under `/v1`;
+4. Expo Router wrappers, `/operate` hub entries, typed `es-SV` resources, and React Query controllers
+   exist; and
+5. the repository, migration, and PostgreSQL gates run in CI.
 
-1. export `catalog.ts` from the contract and database barrels;
-2. add the four tables to the shared Drizzle schema and generate/review one migration;
-3. instantiate `createCatalogRepository` and mount `catalogRoutes` under `/v1`;
-4. add Expo Router wrappers, Operate navigation, typed `es-SV` resources, and React Query controllers;
-5. verify compact web, wide web, iOS, and Android behavior; and
-6. run the combined repository, migration, PostgreSQL, browser, and native gates.
+Compact web, wide web, iOS, and Android verification for these screens is not recorded here. Treat
+it as an outstanding acceptance check, not a completed gate.
 
 ## Non-goals
 

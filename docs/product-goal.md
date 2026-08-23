@@ -1,18 +1,21 @@
 # Active product goal
 
-- Status: **operating core V1 approved for implementation; manual sales Increment 1 implemented locally**
+- Status: **operating core V1 partly delivered: catalog/inventory, expenses/cash, and
+  customers/receivables are implemented and locally validated alongside sales and sale correction;
+  reports, assistant, and voice are not implemented**
 - Owner: **repository owner**
-- Last reviewed: **2026-08-22**
+- Last reviewed: **2026-08-23**
 
 ## Goal
 
 Turn the validated Pisto platform foundation into a **complete modular operating core** that works
 through the shared web, iOS, and Android architecture.
 
-The active milestone adds catalog/inventory, expenses/cash, customers/receivables, exact reports,
+The milestone adds catalog/inventory, expenses/cash, customers/receivables, exact reports,
 provider-neutral text assistance with narrow tools, and bounded push-to-talk transcription around
-the implemented manual sales foundation. Each capability keeps a complete structured path, and AI
-remains an interface over deterministic commands and queries rather than a source of truth.
+the manual sales foundation. The first three are implemented and locally validated; exact reports,
+the assistant, and voice are not. Each capability keeps a complete structured path, and AI remains an
+interface over deterministic commands and queries rather than a source of truth.
 
 The frozen data/action contracts and exclusions for this milestone are in
 [Operating core V1 capability contracts](product-slices/operating-core-v1.md). The long-term product
@@ -24,7 +27,14 @@ and composition follows [Product capability architecture](product-capability-arc
 - The repository has explicit boundaries for a universal Expo client, Hono API, transport contracts,
   PostgreSQL/Drizzle persistence, Better Auth, provider-neutral entitlements, and deployment seams.
 - [Sales Increment 1](sales-increment-1.md) implements one organization-backed owner business,
-  total-only manual sale review/confirmation, canonical result, and previous-month summary.
+  total-only manual sale review/confirmation, canonical result, previous-month summary, and
+  transactional void/replacement correction. No `GET /v1/sales` list exists, so correction cannot be
+  reached for a sale the user has navigated away from.
+- The [catalog/inventory](product-slices/catalog-inventory-v1.md),
+  [expenses/cash](product-slices/expenses-cash-v1.md), and
+  [customers/receivables](product-slices/customers-receivables-v1.md) slices are implemented, mounted
+  under `/v1`, reachable from the `/operate` module hub, and covered by the PostgreSQL integration
+  suites. Their schema ships in migration `0003_worried_weapon_omega.sql`.
 - The web, native, authentication, billing, data, and cloud foundations have documented invariants
   and primary-source references.
 - Included scaffolding or a configured provider is not evidence that a complete product flow has been
@@ -70,10 +80,18 @@ The milestone is complete only when:
 
 ## Active delivery sequence
 
-Implement the accepted [Operating core V1 capability contracts](product-slices/operating-core-v1.md)
-in isolated capability branches, integrate them through the explicit app/API composition roots, then
-add exact reports, the text assistant, and bounded push-to-talk voice. Deployment, store submission,
-RAG/graphs, silent provider fallback, and a production-release claim remain excluded.
+The catalog/inventory, expenses/cash, and customers/receivables contracts in
+[Operating core V1](product-slices/operating-core-v1.md) were implemented in isolated capability
+branches and integrated through the explicit app/API composition roots. What remains, in order:
+
+1. `GET /v1/sales` and the screen that uses it, so the implemented correction flow becomes reachable
+   for a past sale;
+2. exact operating reports behind the existing `packages/contracts/src/reports.ts` contract;
+3. the provider-neutral text assistant; then
+4. bounded push-to-talk voice.
+
+Deployment, store submission, RAG/graphs, silent provider fallback, and a production-release claim
+remain excluded. Nothing in this milestone is pushed to `origin/main`, deployed, or released.
 
 ## Related sources
 

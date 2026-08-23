@@ -1,9 +1,9 @@
 # Expenses and cash V1
 
-- Status: **integrated into `main`; schema ships in migration `0003` and the routes are mounted under `/v1`**
+- Status: **integrated into local `main`; schema ships in migration `0003` and the routes are mounted under `/v1`. Not pushed to `origin/main`, not deployed, not released**
 - Capability owner: `packages/db/src/cash/*`
 - Product surfaces: `/operate/expenses` and `/operate/cash`
-- Last reviewed: **2026-08-22**
+- Last reviewed: **2026-08-23**
 
 This slice lets an owner or admin define where the business holds money, post and void a paid
 expense, correct a cash count, transfer money between accounts, and inspect exact derived balances
@@ -131,9 +131,11 @@ empty data.
 - `GET /v1/expenses/summary`
 
 All mutation bodies reject unknown fields and all identifiers are UUIDs. The route boundary maps
-domain failures to the existing stable error contract. These routes are not reachable until the
-integration owner mounts them in the shared `/v1` composition root and extends its POST security
-middleware inputs.
+domain failures to the existing stable error contract. `cashRoutes` is mounted in the shared `/v1`
+composition root in `apps/api/src/routes/v1.ts`, so every route above is reachable and inherits the
+`/v1` origin/JSON gate, request ID, and `Cache-Control: no-store` behavior. The router deliberately
+registers no `onError` of its own; the single translation boundary lives in `apps/api/src/app.ts`.
+The complete mounted surface is inventoried in [API and Hono](../api-hono.md).
 
 ## Product surfaces and failure states
 
@@ -147,33 +149,43 @@ only a status/reconciliation action. The account list labels archived and explic
 negative-balance state in text rather than color alone. Expense totals are labeled recorded expenses
 and explicitly do not claim profit.
 
-The feature boundary includes route-ready screens for the expense period/list, new-expense edit and
-review, expense detail and void review, cash overview, account creation/update, account detail and
-archive review, adjustment edit/review, movement detail and one-time reversal review, and paired
-transfer edit/review. Detail screens expose explicit navigation callbacks; they do not pretend that
-live Expo routes, data hooks, or localized resources are already composed.
+The feature boundary covers the expense period/list, new-expense edit and review, expense detail and
+void review, cash overview, account creation/update, account detail and archive review, adjustment
+edit/review, movement detail and one-time reversal review, and paired transfer edit/review. Each has
+a live Expo Router file under `apps/app/src/app/(app)/operate/expenses` and
+`apps/app/src/app/(app)/operate/cash`; the route file is a thin wrapper and the controller owns
+fetching, mutations, and navigation.
 
-Visible and accessibility copy is supplied through typed props so the integration owner can add it
-once to the shared `es-SV` catalog. Feature components do not hardcode visible fallback copy. The
-structured route wrappers still need to bind queries, mutations, localization, permission-derived
-visibility, and signed-money formatting through existing app owners.
+Visible and accessibility copy is supplied through typed props and resolved from the shared typed
+`es-SV` catalog in `apps/app/src/i18n/resources`. Feature components do not hardcode visible fallback
+copy.
 
-## Integration checklist
+## Integration record
 
-The integration owner must complete these shared files in one reviewed change:
+Integration is complete. Every item the original checklist assigned to the integration owner is
+satisfied on the current branch:
 
-1. export cash contracts from `packages/contracts/src/index.ts`;
-2. export the schema/repository and add cash tables to the Drizzle schema object;
-3. generate and review one migration, including constraints, indexes, locks, and upgrade behavior;
-4. construct one `CashRepository`, inject it into the API composition root, and mount `cashRoutes`;
-5. update the API surface guide and ensure every unsafe route receives the existing JSON/origin gate;
-6. add API client methods, typed `es-SV` copy, Operate navigation, and thin Expo Router wrappers;
-7. compose receivable payment writes through a cash-owned transaction command rather than editing
-   `cash_movement` from another module; and
-8. run PostgreSQL 18, full repository, responsive web, and available native gates.
+1. cash contracts are exported from `packages/contracts/src/index.ts`;
+2. the schema and repository are exported from `packages/db/src/index.ts`, and `cash_account`,
+   `expense`, `cash_transfer`, `cash_movement`, and `cash_operation_receipt` are in the shared
+   Drizzle schema object;
+3. migration `0003_worried_weapon_omega.sql` carries the tables, constraints, and indexes;
+4. one `CashRepository` is constructed at the API composition root and `cashRoutes` is mounted in
+   `apps/api/src/routes/v1.ts`;
+5. [API and Hono](../api-hono.md) inventories every route, and the shared `/v1` middleware applies
+   the origin and JSON gate to every unsafe method;
+6. API client methods, typed `es-SV` copy, the `/operate` module entries for `cash:read` and
+   `expenses:read`, and thin Expo Router wrappers all exist;
+7. receivable payment writes go through the cash-owned `appendReceivablePaymentCashMovement` port in
+   `packages/db/src/cash/receivable-ledger.ts`, not a direct `cash_movement` edit from another
+   module; and
+8. `packages/db/integration/cash.integration.ts` runs against PostgreSQL 18 in CI after migrations,
+   alongside the product, catalog, and receivables suites.
 
-Temporary direct source imports in isolated API/UI files exist only because shared barrels are
-integration-owned. Normalize them during composition.
+No temporary direct source imports remain; the API and UI consume the shared barrels.
+
+Responsive-web and physical-device evidence for these screens is not recorded here. Treat those as
+outstanding acceptance checks, not as completed gates.
 
 ## Evidence and non-goals
 

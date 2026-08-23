@@ -70,9 +70,9 @@ The baseline surface is:
 | `GET` | `/v1/receivables/summary` | `receivables:read`, fresh session | Aggregate outstanding and overdue balances |
 | `POST` | `/v1/receivables` | `receivables:manage`, fresh session | Create or replay one charge |
 | `GET` | `/v1/receivables/:receivableId` | `receivables:read`, fresh session | Read one receivable and its payments |
-| `POST` | `/v1/receivables/:receivableId/payments` | `receivables:manage`, fresh session | Record one payment and its linked cash movement |
+| `POST` | `/v1/receivables/:receivableId/payments` | `receivables:manage` and `cash:manage`, fresh session | Record one payment and its linked cash movement |
 | `POST` | `/v1/receivables/:receivableId/void` | `receivables:manage`, fresh session | Void one receivable after its payments are reversed |
-| `POST` | `/v1/receivable-payments/:paymentId/reverse` | `receivables:manage`, fresh session | Reverse one payment exactly once |
+| `POST` | `/v1/receivable-payments/:paymentId/reverse` | `receivables:manage` and `cash:manage`, fresh session | Reverse one payment exactly once |
 
 The implementation and `@pisto/contracts` are definitive. Update this table in the same change as a
 route addition or removal.

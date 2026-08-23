@@ -244,7 +244,9 @@ account setting.
 | Product brief and target architecture | Approved and documented |
 | AI SDK or provider dependency | Not installed |
 | Assistant route, package, prompt, tools, UI, or schema | Not implemented |
-| Sales/inventory/expense product data | Not implemented |
+| Sales, catalog, inventory, expense, cash, customer, and receivable product data | Implemented and locally validated; not pushed, deployed, or released |
+| Operating reports the assistant would read | Contract only in `packages/contracts/src/reports.ts`; no repository, route, or screen |
+| Narrow read or mutation tools over that product data | Not implemented |
 | Voice recording or transcription | Not implemented |
 | Conversation persistence or long-term memory | Not implemented |
 | RAG, embeddings, pgvector, Neo4j, or GraphRAG | Intentionally not selected |

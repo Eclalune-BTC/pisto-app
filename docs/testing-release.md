@@ -166,8 +166,9 @@ The included `.github/workflows/ci.yml` currently:
 2. starts a PostgreSQL 18 service;
 3. installs from `bun.lock` with `--frozen-lockfile`;
 4. runs `bun run check`;
-5. applies committed migrations and runs the isolated sales repository integration test against the
-   PostgreSQL 18 service;
+5. applies committed migrations and runs all four repository integration suites — product/sales,
+   catalog/inventory, cash/expenses, and customers/receivables — against the PostgreSQL 18 service
+   through `bun run --filter @pisto/db test:integration`;
 6. runs `bun run audit:ci` to reject advisories outside the reviewed exception set;
 7. runs `bun run build`.
 

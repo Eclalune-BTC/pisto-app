@@ -1,9 +1,9 @@
 # Customers and receivables V1
 
-- Status: **integrated into `main`; schema ships in migration `0003` and the routes are mounted under `/v1`**
+- Status: **integrated into local `main`; schema ships in migration `0003` and the routes are mounted under `/v1`. Not pushed to `origin/main`, not deployed, not released**
 - Product contract: [Operating core V1](./operating-core-v1.md#customers-and-receivables-slice)
 - Owners: `packages/contracts`, `packages/db`, `apps/api`, and `apps/app`
-- Last reviewed: **2026-08-22**
+- Last reviewed: **2026-08-23**
 
 ## Outcome
 
@@ -153,7 +153,8 @@ filters is invalid, not an empty page.
 
 ## HTTP surface
 
-The route module is mounted under `/v1` by the API composition owner.
+`apps/api/src/routes/receivables.ts` is mounted under `/v1` in `apps/api/src/routes/v1.ts`. Every
+route below is reachable.
 
 | Method | Path | Permission | Result |
 | --- | --- | --- | --- |
@@ -167,8 +168,8 @@ The route module is mounted under `/v1` by the API composition owner.
 | `POST` | `/receivables` | `receivables:manage` | Post/replay charge |
 | `GET` | `/receivables/:receivableId` | `receivables:read` | Charge and payment history |
 | `POST` | `/receivables/:receivableId/void` | `receivables:manage` | Void/replay charge |
-| `POST` | `/receivables/:receivableId/payments` | `receivables:manage` | Apply/replay payment |
-| `POST` | `/receivable-payments/:paymentId/reverse` | `receivables:manage` | Reverse/replay payment |
+| `POST` | `/receivables/:receivableId/payments` | `receivables:manage` and `cash:manage` | Apply/replay payment |
+| `POST` | `/receivable-payments/:paymentId/reverse` | `receivables:manage` and `cash:manage` | Reverse/replay payment |
 
 Successful responses use `{ data: ... }`. Validation is 400, absent session 401, known denied
 membership 403, undisclosed resource 404, invariant/idempotency conflict 409, and unexpected
@@ -205,27 +206,35 @@ payments are reversed, repeated reversal, changed-input idempotency reuse, stale
 cross-tenant not found, offline reads, and uncertain network confirmation. None becomes an empty
 success, guessed time, implicit account, or locally invented balance.
 
-## Required integration before mounting
+## Integration record
 
-This branch deliberately does not edit shared composition or the independently owned cash slice.
-The integration owner must complete all of the following before calling the product capability
-complete:
+Integration is complete and the cash seam is closed. Every item the original pre-mount checklist
+listed is satisfied on the current branch:
 
-1. export the contract and database schema/repository through the shared barrels or stable package
-   subpaths, then replace temporary direct source imports;
-2. generate and review a forward Drizzle migration, apply it to a clean PostgreSQL 18 database, and
-   test upgrade from the current committed schema;
-3. register `receivablesRoutes` in the `/v1` API composition root;
-4. add route wrappers, API client functions, localized resource keys, and Operate navigation without
-   creating one permanent bottom tab per module;
-5. add the composite same-business foreign key from `receivable_payment.cash_account_id` to the cash
-   account owner; and
-6. make payment plus positive `receivable_payment` cash movement, and reversal plus cash reversal,
-   commit atomically in the same transaction and operation receipt.
+1. the contract and the database schema/repository are exported through the shared
+   `packages/contracts/src/index.ts` and `packages/db/src/index.ts` barrels; no temporary direct
+   source import remains;
+2. migration `0003_worried_weapon_omega.sql` carries `customer`, `receivable`,
+   `receivable_payment`, and `receivable_operation`, and CI applies the committed migrations to a
+   clean PostgreSQL 18 service before the integration suites run;
+3. `receivablesRoutes` is registered in the `/v1` composition root in `apps/api/src/routes/v1.ts`;
+4. Expo Router wrappers under `apps/app/src/app/(app)/operate/customers` and
+   `apps/app/src/app/(app)/operate/receivables`, API client functions, typed `es-SV` resource keys,
+   and `/operate` hub entries gated on `customers:read` and `receivables:read` all exist. No module
+   received its own permanent bottom tab;
+5. the composite same-business foreign key `receivable_payment_business_cash_account_fk` binds
+   `(business_id, cash_account_id)` to `(cash_account.business_id, cash_account.id)`, so a payment
+   cannot reference another business's account or a nonexistent one; and
+6. a payment and its positive `receivable_payment` cash movement — and a reversal and its opposing
+   movement — commit in the same transaction and under the same operation receipt. The write crosses
+   the boundary through the cash-owned port `appendReceivablePaymentCashMovement` in
+   `packages/db/src/cash/receivable-ledger.ts`, which locks the account, rejects a currency or
+   exponent mismatch, and appends the movement. The receivables module never edits `cash_movement`
+   directly. This is the owner-port pattern ratified by
+   [ADR 0016](../adrs/0016-owner-ports-for-cross-capability-transactions.md).
 
-Until items 5 and 6 exist, the repository persists the selected `cashAccountId` for integration
-testing but cannot prove the account exists or claim that receivable payments changed cash. Do not
-mount these payment routes in a production-capable build before that seam is closed.
+Responsive-web and physical-device evidence for these screens is not recorded here. Treat those as
+outstanding acceptance checks, not as completed gates.
 
 ## Validation evidence
 
@@ -235,9 +244,10 @@ access, unknown-role denial, stale session denial, tenant contact isolation, arc
 behavior, concurrent overpayment rejection, reversal once, void-after-reversal, and business-local
 overdue calculation.
 
-The isolated repository test was run against a disposable PostgreSQL 18 database after applying a
-generated scratch migration. Scratch SQL is evidence only and is not a substitute for the reviewed
-integration migration required above. Local tests do not claim push, deployment, or release.
+The isolated repository test originally ran against a disposable PostgreSQL 18 database using a
+generated scratch migration. That scratch SQL has been superseded: `packages/db/integration/receivables.integration.ts`
+now runs against the committed migrations, and CI applies them to a clean PostgreSQL 18 service
+before the suite. Local tests do not claim push, deployment, or release.
 
 ## Non-goals
 

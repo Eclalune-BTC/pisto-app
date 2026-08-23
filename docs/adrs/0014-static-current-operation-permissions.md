@@ -6,6 +6,11 @@
 - Supersedes: the owner-only product-authorization clauses in ADR 0010 and ADR 0012
 - Research recheck: invitation delivery, role-management UI, a new business operation, custom roles,
   or a Better Auth organization-role storage change
+- Amended 2026-08-23: the normative matrix omitted `sales:correct`, which
+  `packages/db/src/product-access.ts` has always granted to `owner` and `admin`. That row and the
+  notes about permissions with no route and roles with no reachable actor are factual completions of
+  this same accepted decision, not a change to it, so they were added in place rather than through a
+  superseding ADR.
 
 ## Context
 
@@ -36,6 +41,7 @@ financial records merely because the provider recognizes it.
 | `sales:create` | Yes | Yes | Yes |
 | `sales:read` | Yes | Yes | Yes |
 | `sales:summary:read` | Yes | Yes | Yes |
+| `sales:correct` | Yes | Yes | No |
 | `catalog:read` | Yes | Yes | Yes |
 | `catalog:manage` | Yes | Yes | No |
 | `inventory:read` | Yes | Yes | Yes |
@@ -51,6 +57,20 @@ financial records merely because the provider recognizes it.
   configuration remain owner-only. Owner and admin can manage the accepted operating-core modules;
   member keeps the sales workflow, can read catalog/stock, and can use the assistant only through
   tools independently authorized by their underlying permission.
+- Correcting a sale is separated from creating one. `sales:correct` authorizes both void and
+  replacement and is withheld from `member`, so a member can post and read sales but cannot undo or
+  restate one. Applying or reversing a receivable payment requires `receivables:manage` **and**
+  `cash:manage`, because that one command writes in both ledgers.
+- `reports:read` and `assistant:use` are defined in the contract and granted by this matrix, but no
+  route or screen consults either one today. Exact reports exist only as the transport contract in
+  `packages/contracts/src/reports.ts`, and no assistant capability exists. Treat both as reserved
+  vocabulary until their capability lands; a granted permission is not evidence of a feature.
+- `admin` and `member` are complete, tested policy branches with no reachable actor. Business
+  onboarding in `packages/db/src/product.ts` is the only code path that writes a `member` row and it
+  hardcodes `role: "owner"`, and `apps/api/src/app.ts` returns `404` for every Better Auth
+  organization route except the active-organization selector. Until invitations and role
+  administration exist, every real actor is an `owner`, and the `admin`/`member` branches are
+  exercised only by tests.
 - Business responses expose the server-resolved exact role and effective permission list. This lets
   a client present truthful capability state, but the client response is not authorization evidence.
 - Every financial command/query still resolves the active business from a fresh session and reloads
@@ -94,7 +114,8 @@ financial records merely because the provider recognizes it.
   business response.
 - Pure policy tests cover every role, permission, and unknown/composite-role denial.
 - PostgreSQL integration tests cover owner/admin/member sales, summary reads, exposed effective
-  access, unknown-role denial, expired session, idempotency, and cross-tenant nondisclosure.
+  access, unknown-role denial, expired session, idempotency, and cross-tenant nondisclosure. They
+  also prove that `member` is denied `sales:correct` while `owner` and `admin` are allowed.
 - Existing API guards continue to deny raw organization/member/role endpoints.
 
 ## Official sources
