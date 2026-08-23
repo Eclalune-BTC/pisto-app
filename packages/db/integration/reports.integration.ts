@@ -73,7 +73,7 @@ async function seedBusinessA(): Promise<void> {
 
   const account = await cash.createAccount(owner, {
     idempotencyKey: key(),
-    name: "Caja principal",
+    name: "Main cash drawer",
     kind: "cash",
     allowNegativeBalance: true,
     currency: "USD",
@@ -82,7 +82,7 @@ async function seedBusinessA(): Promise<void> {
   activeAccountId = account.account.id;
   const retired = await cash.createAccount(owner, {
     idempotencyKey: key(),
-    name: "Zeta banco retirado",
+    name: "Retired bank account",
     kind: "bank",
     allowNegativeBalance: true,
     currency: "USD",
@@ -471,7 +471,7 @@ describe("operating reports repository on PostgreSQL 18", () => {
     expect(report.cash.accounts).toEqual([
       {
         accountId: activeAccountId,
-        accountName: "Caja principal",
+        accountName: "Main cash drawer",
         accountKind: "cash",
         accountStatus: "active",
         inflowMinorUnits: "5400",
@@ -480,7 +480,7 @@ describe("operating reports repository on PostgreSQL 18", () => {
       },
       {
         accountId: archivedAccountId,
-        accountName: "Zeta banco retirado",
+        accountName: "Retired bank account",
         accountKind: "bank",
         accountStatus: "archived",
         inflowMinorUnits: "0",
