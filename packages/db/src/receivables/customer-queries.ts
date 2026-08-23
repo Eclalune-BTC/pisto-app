@@ -2,10 +2,11 @@ import { listCustomersQuerySchema } from "@pisto/contracts";
 import { and, desc, eq, lt, or, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
+import { fingerprintValue } from "../operation-log.ts";
 import { ProductError } from "../product.ts";
 import { customer, receivable, receivablePayment } from "../schema/receivables.ts";
 import { authorize } from "./access.ts";
-import { decodeCursor, encodeCursor, sha256, uuidPattern, validate } from "./codec.ts";
+import { decodeCursor, encodeCursor, uuidPattern, validate } from "./codec.ts";
 import { toCustomer } from "./mappers.ts";
 import type { ReceivablesRepository } from "./types.ts";
 
@@ -19,7 +20,7 @@ export function createCustomerQueries(db: Database): CustomerQueries {
         rawQuery,
         "Customer list filters are invalid",
       );
-      const filterFingerprint = await sha256({
+      const filterFingerprint = await fingerprintValue({
         kind: "customers",
         query: query.query ?? null,
         status: query.status,

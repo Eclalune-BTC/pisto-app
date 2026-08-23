@@ -2,6 +2,7 @@ import type { ReplaceSaleRequest, Sale, SaleCorrection, VoidSaleRequest } from "
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 
 import type { Database } from "./client.ts";
+import { lockCommandKey } from "./operation-log.ts";
 import {
   type ProductActor,
   ProductError,
@@ -63,9 +64,11 @@ export function createSalesCorrectionRepository(db: Database): SalesCorrectionRe
     } as SaleCorrectionInput);
 
     return db.transaction(async (tx) => {
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtextextended(${`${businessId}:${actor.userId}:${input.command.idempotencyKey}`}, 0))`,
-      );
+      await lockCommandKey(tx, {
+        actorUserId: actor.userId,
+        businessId,
+        idempotencyKey: input.command.idempotencyKey,
+      });
 
       const [activeSession] = await tx
         .select({ id: session.id })

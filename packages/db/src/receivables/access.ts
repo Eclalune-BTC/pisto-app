@@ -3,6 +3,13 @@ import { and, eq, sql } from "drizzle-orm";
 import type { ZodType } from "zod";
 
 import { authorizeBusinessAction } from "../business-access.ts";
+import {
+  beginOperation,
+  type OperationCommandIdentity,
+  type OperationLog,
+  operationIdentityValues,
+  parseReplaySnapshot,
+} from "../operation-log.ts";
 import { type ProductActor, ProductError } from "../product.ts";
 import { receivable, receivableOperation, receivablePayment } from "../schema/receivables.ts";
 import { toReceivable } from "./mappers.ts";
@@ -17,77 +24,72 @@ export async function authorize(
   return authorizeBusinessAction(tx, actor, permissions, "share");
 }
 
-export async function lockIdempotencyKey(
+export const receivableOperationLog = {
+  action: receivableOperation.action,
+  actorUserId: receivableOperation.actorUserId,
+  businessId: receivableOperation.businessId,
+  commandFingerprint: receivableOperation.commandFingerprint,
+  conflictMessage: "That confirmation key was already used for a different operation",
+  idempotencyKey: receivableOperation.idempotencyKey,
+  result: receivableOperation.resultSnapshot,
+  table: receivableOperation,
+} satisfies OperationLog;
+
+/**
+ * Authorizes the actor, takes the idempotency lock, and reads any stored replay
+ * back through the contract that produced it.
+ */
+export async function beginReceivableOperation<T>(
   tx: DatabaseTransaction,
   actor: ProductActor,
-  businessId: string,
-  idempotencyKey: string,
-): Promise<void> {
-  await tx.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${`${businessId}:${actor.userId}:${idempotencyKey}`}, 0))`,
-  );
-}
-
-export async function readOperationSnapshot<T>(input: {
-  action: string;
-  actor: ProductActor;
-  businessId: string;
-  fingerprint: string;
-  idempotencyKey: string;
-  schema: ZodType<T>;
-  tx: DatabaseTransaction;
-}): Promise<T | null> {
-  const [operation] = await input.tx
-    .select({
-      action: receivableOperation.action,
-      commandFingerprint: receivableOperation.commandFingerprint,
-      resultSnapshot: receivableOperation.resultSnapshot,
-    })
-    .from(receivableOperation)
-    .where(
-      and(
-        eq(receivableOperation.businessId, input.businessId),
-        eq(receivableOperation.actorUserId, input.actor.userId),
-        eq(receivableOperation.idempotencyKey, input.idempotencyKey),
-      ),
-    )
-    .limit(1);
-  if (!operation) return null;
-  if (operation.action !== input.action || operation.commandFingerprint !== input.fingerprint) {
-    throw new ProductError(
-      "IDEMPOTENCY_CONFLICT",
-      "That confirmation key was already used for a different operation",
-    );
-  }
-  const snapshot = input.schema.safeParse(operation.resultSnapshot);
-  if (!snapshot.success) throw new Error("Stored receivables operation snapshot is invalid");
-  return snapshot.data;
+  permission: BusinessPermission | readonly BusinessPermission[],
+  command: {
+    action: string;
+    fingerprint: string;
+    idempotencyKey: string;
+    schema: ZodType<T>;
+  },
+): Promise<{ access: AccessContext; identity: OperationCommandIdentity; replay: T | null }> {
+  const permissions = Array.isArray(permission) ? permission : [permission];
+  const { access, identity, replay } = await beginOperation(tx, {
+    action: command.action,
+    actor,
+    commandFingerprint: command.fingerprint,
+    idempotencyKey: command.idempotencyKey,
+    lock: "share",
+    log: receivableOperationLog,
+    permissions,
+  });
+  return {
+    access,
+    identity,
+    replay:
+      replay === null
+        ? null
+        : parseReplaySnapshot(
+            command.schema,
+            replay.result,
+            "Stored receivables operation snapshot is invalid",
+          ),
+  };
 }
 
 export async function insertOperation(
   tx: DatabaseTransaction,
-  input: {
-    action: string;
-    actor: ProductActor;
-    businessId: string;
+  identity: OperationCommandIdentity,
+  target: {
     customerId: string;
-    fingerprint: string;
-    idempotencyKey: string;
     paymentId?: string;
     receivableId?: string;
     resultSnapshot: unknown;
   },
 ): Promise<void> {
   await tx.insert(receivableOperation).values({
-    businessId: input.businessId,
-    actorUserId: input.actor.userId,
-    idempotencyKey: input.idempotencyKey,
-    commandFingerprint: input.fingerprint,
-    action: input.action,
-    customerId: input.customerId,
-    receivableId: input.receivableId ?? null,
-    paymentId: input.paymentId ?? null,
-    resultSnapshot: input.resultSnapshot,
+    ...operationIdentityValues(identity),
+    customerId: target.customerId,
+    receivableId: target.receivableId ?? null,
+    paymentId: target.paymentId ?? null,
+    resultSnapshot: target.resultSnapshot,
   });
 }
 

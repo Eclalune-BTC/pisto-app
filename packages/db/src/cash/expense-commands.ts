@@ -11,11 +11,9 @@ import type { Database } from "../client.ts";
 import { type ProductActor, ProductError, resolveLocalDateTime } from "../product.ts";
 import { cashMovement, expense } from "../schema/cash.ts";
 import {
-  findReplay,
+  beginCashOperation,
   getAccountBalance,
   lockAccount,
-  lockIdempotencyKey,
-  requireAccess,
   requireActiveBusiness,
   requireCurrency,
   requireSufficientBalance,
@@ -44,15 +42,16 @@ export async function postPaidExpense(
   const amount = parseCashMinorUnits(command.amountMinorUnits);
 
   return db.transaction(async (tx) => {
-    const access = await requireAccess(tx, actor, ["expenses:manage", "cash:manage"]);
-    await lockIdempotencyKey(tx, businessId, actor.userId, idempotencyKey);
-    const replay = await findReplay(tx, {
-      action: "expense.post",
-      actorUserId: actor.userId,
-      businessId,
-      commandFingerprint,
-      idempotencyKey,
-    });
+    const { access, identity, replay } = await beginCashOperation(
+      tx,
+      actor,
+      ["expenses:manage", "cash:manage"],
+      {
+        action: "expense.post",
+        commandFingerprint,
+        idempotencyKey,
+      },
+    );
     if (replay) return replayExpenseResult(replay);
     requireCurrency(access, command.currency);
     const account = await lockAccount(tx, businessId, command.accountId, true);
@@ -109,12 +108,7 @@ export async function postPaidExpense(
       movement: toCashMovement(movement),
       replayed: false,
     };
-    await saveReceipt(tx, {
-      action: "expense.post",
-      actorUserId: actor.userId,
-      businessId,
-      commandFingerprint,
-      idempotencyKey,
+    await saveReceipt(tx, identity, {
       resourceId: createdExpense.id,
       result,
     });
@@ -142,15 +136,16 @@ export async function voidPaidExpense(
   });
 
   return db.transaction(async (tx) => {
-    const access = await requireAccess(tx, actor, ["expenses:manage", "cash:manage"]);
-    await lockIdempotencyKey(tx, businessId, actor.userId, idempotencyKey);
-    const replay = await findReplay(tx, {
-      action: "expense.void",
-      actorUserId: actor.userId,
-      businessId,
-      commandFingerprint,
-      idempotencyKey,
-    });
+    const { access, identity, replay } = await beginCashOperation(
+      tx,
+      actor,
+      ["expenses:manage", "cash:manage"],
+      {
+        action: "expense.void",
+        commandFingerprint,
+        idempotencyKey,
+      },
+    );
     if (replay) return replayExpenseResult(replay);
     const [current] = await tx
       .select()
@@ -219,12 +214,7 @@ export async function voidPaidExpense(
       movement: toCashMovement(reversal),
       replayed: false,
     };
-    await saveReceipt(tx, {
-      action: "expense.void",
-      actorUserId: actor.userId,
-      businessId,
-      commandFingerprint,
-      idempotencyKey,
+    await saveReceipt(tx, identity, {
       resourceId: expenseId,
       result,
     });

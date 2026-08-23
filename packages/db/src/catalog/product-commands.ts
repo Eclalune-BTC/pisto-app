@@ -7,9 +7,9 @@ import {
 import { and, eq, ne, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
+import { lockSemanticKey } from "../operation-log.ts";
 import { ProductError } from "../product.ts";
 import { catalogProduct, inventoryMovement } from "../schema/catalog.ts";
-import { authorizeCatalogAction } from "./access.ts";
 import {
   fingerprint,
   normalizeSku,
@@ -18,12 +18,7 @@ import {
   recordSnapshot,
   toProduct,
 } from "./codec.ts";
-import {
-  lockOperation,
-  lockSemanticKey,
-  requireActiveCategory,
-  saveOperation,
-} from "./operations.ts";
+import { beginCatalogOperation, requireActiveCategory, saveOperation } from "./operations.ts";
 import type { ProductCommands } from "./types.ts";
 
 export function createProductCommands(db: Database): ProductCommands {
@@ -45,13 +40,11 @@ export function createProductCommands(db: Database): ProductCommands {
         unitKind: command.unitKind,
       });
       return db.transaction(async (transaction) => {
-        const access = await authorizeCatalogAction(transaction, actor, "catalog:manage", "update");
-        const replay = await lockOperation(
+        const { access, identity, replay } = await beginCatalogOperation(
           transaction,
           actor,
-          access.businessId,
-          command.idempotencyKey,
-          commandFingerprint,
+          "catalog:manage",
+          { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
         );
         if (replay) return parseMutationReplay(productMutationResponseSchema.shape.data, replay);
         if (command.categoryId) {
@@ -99,12 +92,7 @@ export function createProductCommands(db: Database): ProductCommands {
           .returning();
         if (!created) throw new Error("Product insert returned no record");
         const product = toProduct(created);
-        await saveOperation(transaction, {
-          action,
-          actor,
-          businessId: access.businessId,
-          commandFingerprint,
-          idempotencyKey: command.idempotencyKey,
+        await saveOperation(transaction, identity, {
           productId: product.id,
           resultSnapshot: recordSnapshot({ product }),
         });
@@ -130,13 +118,11 @@ export function createProductCommands(db: Database): ProductCommands {
         unitKind: command.unitKind,
       });
       return db.transaction(async (transaction) => {
-        const access = await authorizeCatalogAction(transaction, actor, "catalog:manage", "update");
-        const replay = await lockOperation(
+        const { access, identity, replay } = await beginCatalogOperation(
           transaction,
           actor,
-          access.businessId,
-          command.idempotencyKey,
-          commandFingerprint,
+          "catalog:manage",
+          { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
         );
         if (replay) return parseMutationReplay(productMutationResponseSchema.shape.data, replay);
         const [existing] = await transaction
@@ -239,12 +225,7 @@ export function createProductCommands(db: Database): ProductCommands {
           .returning();
         if (!updated) throw new Error("Product update returned no record");
         const product = toProduct(updated);
-        await saveOperation(transaction, {
-          action,
-          actor,
-          businessId: access.businessId,
-          commandFingerprint,
-          idempotencyKey: command.idempotencyKey,
+        await saveOperation(transaction, identity, {
           productId,
           resultSnapshot: recordSnapshot({ product }),
         });
@@ -259,13 +240,11 @@ export function createProductCommands(db: Database): ProductCommands {
       const action = "product.archived" as const;
       const commandFingerprint = await fingerprint(action, { productId });
       return db.transaction(async (transaction) => {
-        const access = await authorizeCatalogAction(transaction, actor, "catalog:manage", "update");
-        const replay = await lockOperation(
+        const { access, identity, replay } = await beginCatalogOperation(
           transaction,
           actor,
-          access.businessId,
-          command.idempotencyKey,
-          commandFingerprint,
+          "catalog:manage",
+          { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
         );
         if (replay) return parseMutationReplay(productMutationResponseSchema.shape.data, replay);
         const [existing] = await transaction
@@ -289,12 +268,7 @@ export function createProductCommands(db: Database): ProductCommands {
           .returning();
         if (!updated) throw new Error("Product archive returned no record");
         const product = toProduct(updated);
-        await saveOperation(transaction, {
-          action,
-          actor,
-          businessId: access.businessId,
-          commandFingerprint,
-          idempotencyKey: command.idempotencyKey,
+        await saveOperation(transaction, identity, {
           productId,
           resultSnapshot: recordSnapshot({ product }),
         });

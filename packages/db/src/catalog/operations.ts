@@ -1,79 +1,76 @@
+import type { BusinessPermission } from "@pisto/contracts";
 import { and, eq, sql } from "drizzle-orm";
 
+import {
+  beginOperation,
+  type OperationCommandIdentity,
+  type OperationLog,
+  operationIdentityValues,
+} from "../operation-log.ts";
 import { type ProductActor, ProductError } from "../product.ts";
 import { catalogCategory, catalogOperation, inventoryMovement } from "../schema/catalog.ts";
-import type { DatabaseExecutor, DatabaseTransaction, OperationAction } from "./types.ts";
+import type {
+  AuthorizedBusiness,
+  DatabaseExecutor,
+  DatabaseTransaction,
+  OperationAction,
+} from "./types.ts";
 
-export async function lockOperation(
+export const catalogOperationLog = {
+  action: catalogOperation.action,
+  actorUserId: catalogOperation.actorUserId,
+  businessId: catalogOperation.businessId,
+  commandFingerprint: catalogOperation.commandFingerprint,
+  conflictMessage: "That confirmation key was already used for a different catalog operation",
+  idempotencyKey: catalogOperation.idempotencyKey,
+  result: catalogOperation.resultSnapshot,
+  table: catalogOperation,
+} satisfies OperationLog;
+
+/** Authorizes the actor, takes the idempotency lock, and reads any stored replay. */
+export async function beginCatalogOperation(
   transaction: DatabaseTransaction,
   actor: ProductActor,
-  businessId: string,
-  idempotencyKey: string,
-  commandFingerprint: string,
-): Promise<Record<string, unknown> | null> {
-  await transaction.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${`${businessId}:${actor.userId}:${idempotencyKey}`}, 0))`,
-  );
-  const [existing] = await transaction
-    .select({
-      commandFingerprint: catalogOperation.commandFingerprint,
-      resultSnapshot: catalogOperation.resultSnapshot,
-    })
-    .from(catalogOperation)
-    .where(
-      and(
-        eq(catalogOperation.businessId, businessId),
-        eq(catalogOperation.actorUserId, actor.userId),
-        eq(catalogOperation.idempotencyKey, idempotencyKey),
-      ),
-    )
-    .limit(1);
-  if (!existing) return null;
-  if (existing.commandFingerprint !== commandFingerprint) {
-    throw new ProductError(
-      "IDEMPOTENCY_CONFLICT",
-      "That confirmation key was already used for a different catalog operation",
-    );
-  }
-  return existing.resultSnapshot;
+  permission: BusinessPermission,
+  command: {
+    action: OperationAction;
+    commandFingerprint: string;
+    idempotencyKey: string;
+  },
+): Promise<{
+  access: AuthorizedBusiness;
+  identity: OperationCommandIdentity<OperationAction>;
+  replay: Record<string, unknown> | null;
+}> {
+  const { access, identity, replay } = await beginOperation(transaction, {
+    action: command.action,
+    actor,
+    commandFingerprint: command.commandFingerprint,
+    idempotencyKey: command.idempotencyKey,
+    lock: "update",
+    log: catalogOperationLog,
+    permissions: [permission],
+  });
+  return { access, identity, replay: replay === null ? null : replay.result };
 }
 
 export async function saveOperation(
   transaction: DatabaseTransaction,
-  input: {
-    action: OperationAction;
-    actor: ProductActor;
-    businessId: string;
+  identity: OperationCommandIdentity<OperationAction>,
+  target: {
     categoryId?: string;
-    commandFingerprint: string;
-    idempotencyKey: string;
     movementId?: string;
     productId?: string;
     resultSnapshot: Record<string, unknown>;
   },
 ) {
   await transaction.insert(catalogOperation).values({
-    action: input.action,
-    actorUserId: input.actor.userId,
-    businessId: input.businessId,
-    categoryId: input.categoryId ?? null,
-    commandFingerprint: input.commandFingerprint,
-    idempotencyKey: input.idempotencyKey,
-    movementId: input.movementId ?? null,
-    productId: input.productId ?? null,
-    resultSnapshot: input.resultSnapshot,
+    ...operationIdentityValues(identity),
+    categoryId: target.categoryId ?? null,
+    movementId: target.movementId ?? null,
+    productId: target.productId ?? null,
+    resultSnapshot: target.resultSnapshot,
   });
-}
-
-export async function lockSemanticKey(
-  transaction: DatabaseTransaction,
-  namespace: string,
-  businessId: string,
-  value: string,
-) {
-  await transaction.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${`${namespace}:${businessId}:${value.toLocaleLowerCase("en-US")}`}, 0))`,
-  );
 }
 
 export async function requireActiveCategory(

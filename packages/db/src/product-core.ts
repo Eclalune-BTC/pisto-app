@@ -129,12 +129,6 @@ export function likePattern(search: string): string {
   return `%${search.replace(/[\\%_]/g, "\\$&")}%`;
 }
 
-export async function fingerprintValue(value: unknown): Promise<string> {
-  const canonical = JSON.stringify(value);
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
 export function requireActiveBusiness(actor: ProductActor): string {
   if (!actor.activeBusinessId) {
     throw new ProductError("BUSINESS_REQUIRED", "Select or create a business before continuing");

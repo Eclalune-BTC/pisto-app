@@ -13,10 +13,9 @@ import {
   updateCashAccountRequestSchema,
 } from "@pisto/contracts";
 
+import { fingerprintCommand, maximumMinorUnits, parseReplaySnapshot } from "../operation-log.ts";
 import { ProductError } from "../product.ts";
 import type { CashCursorPayload, CashOperationAction } from "./types.ts";
-
-const maximumMinorUnits = 9_223_372_036_854_775_807n;
 
 export function parseCashMinorUnits(value: string): bigint {
   if (!/^[1-9]\d{0,18}$/.test(value)) {
@@ -29,13 +28,11 @@ export function parseCashMinorUnits(value: string): bigint {
   return parsed;
 }
 
-export async function fingerprintCashCommand(
+export function fingerprintCashCommand(
   action: CashOperationAction,
   payload: object,
 ): Promise<string> {
-  const canonical = JSON.stringify({ version: 1, action, payload });
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return fingerprintCommand(action, payload);
 }
 
 export function isCashResourceId(value: unknown): value is string {
@@ -101,25 +98,45 @@ export function parseUpdateAccount(command: UpdateCashAccountRequest) {
 }
 
 export function replayAccountResult(value: unknown): CashAccountCommandResult {
-  const parsed = cashAccountCommandResultSchema.safeParse(value);
-  if (!parsed.success) throw new Error("Stored cash account operation result is invalid");
-  return { ...parsed.data, replayed: true };
+  return {
+    ...parseReplaySnapshot(
+      cashAccountCommandResultSchema,
+      value,
+      "Stored cash account operation result is invalid",
+    ),
+    replayed: true,
+  };
 }
 
 export function replayExpenseResult(value: unknown): ExpenseCommandResult {
-  const parsed = expenseCommandResultSchema.safeParse(value);
-  if (!parsed.success) throw new Error("Stored expense operation result is invalid");
-  return { ...parsed.data, replayed: true };
+  return {
+    ...parseReplaySnapshot(
+      expenseCommandResultSchema,
+      value,
+      "Stored expense operation result is invalid",
+    ),
+    replayed: true,
+  };
 }
 
 export function replayMovementResult(value: unknown): CashMovementCommandResult {
-  const parsed = cashMovementCommandResultSchema.safeParse(value);
-  if (!parsed.success) throw new Error("Stored cash movement operation result is invalid");
-  return { ...parsed.data, replayed: true };
+  return {
+    ...parseReplaySnapshot(
+      cashMovementCommandResultSchema,
+      value,
+      "Stored cash movement operation result is invalid",
+    ),
+    replayed: true,
+  };
 }
 
 export function replayTransferResult(value: unknown): CashTransferCommandResult {
-  const parsed = cashTransferCommandResultSchema.safeParse(value);
-  if (!parsed.success) throw new Error("Stored cash transfer operation result is invalid");
-  return { ...parsed.data, replayed: true };
+  return {
+    ...parseReplaySnapshot(
+      cashTransferCommandResultSchema,
+      value,
+      "Stored cash transfer operation result is invalid",
+    ),
+    replayed: true,
+  };
 }

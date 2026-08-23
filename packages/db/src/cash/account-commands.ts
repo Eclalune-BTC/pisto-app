@@ -7,14 +7,13 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
+import { lockSemanticKey } from "../operation-log.ts";
 import { type ProductActor, ProductError, resolveLocalDateTime } from "../product.ts";
 import { cashAccount, cashMovement } from "../schema/cash.ts";
 import {
-  findReplay,
+  beginCashOperation,
   getAccountBalance,
   lockAccount,
-  lockIdempotencyKey,
-  requireAccess,
   requireActiveBusiness,
   requireCurrency,
   saveReceipt,
@@ -40,12 +39,8 @@ export async function createCashAccount(
   const commandFingerprint = await fingerprintCashCommand("cash_account.create", payload);
 
   return db.transaction(async (tx) => {
-    const access = await requireAccess(tx, actor, ["cash:manage"]);
-    await lockIdempotencyKey(tx, businessId, actor.userId, idempotencyKey);
-    const replay = await findReplay(tx, {
+    const { access, identity, replay } = await beginCashOperation(tx, actor, ["cash:manage"], {
       action: "cash_account.create",
-      actorUserId: actor.userId,
-      businessId,
       commandFingerprint,
       idempotencyKey,
     });
@@ -57,9 +52,7 @@ export async function createCashAccount(
         "An outgoing opening balance requires the explicit negative-balance setting",
       );
     }
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${`cash-account-name:${businessId}:${command.name.toLocaleLowerCase("en-US")}`}, 0))`,
-    );
+    await lockSemanticKey(tx, "cash-account-name", businessId, command.name);
     const [duplicate] = await tx
       .select({ id: cashAccount.id })
       .from(cashAccount)
@@ -124,12 +117,7 @@ export async function createCashAccount(
       openingMovement,
       replayed: false,
     };
-    await saveReceipt(tx, {
-      action: "cash_account.create",
-      actorUserId: actor.userId,
-      businessId,
-      commandFingerprint,
-      idempotencyKey,
+    await saveReceipt(tx, identity, {
       resourceId: created.id,
       result,
     });
@@ -155,12 +143,8 @@ export async function updateCashAccount(
   });
 
   return db.transaction(async (tx) => {
-    await requireAccess(tx, actor, ["cash:manage"]);
-    await lockIdempotencyKey(tx, businessId, actor.userId, idempotencyKey);
-    const replay = await findReplay(tx, {
+    const { identity, replay } = await beginCashOperation(tx, actor, ["cash:manage"], {
       action: "cash_account.update",
-      actorUserId: actor.userId,
-      businessId,
       commandFingerprint,
       idempotencyKey,
     });
@@ -170,9 +154,7 @@ export async function updateCashAccount(
       command.name !== undefined &&
       command.name.toLocaleLowerCase("en-US") !== current.name.toLocaleLowerCase("en-US")
     ) {
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtextextended(${`cash-account-name:${businessId}:${command.name.toLocaleLowerCase("en-US")}`}, 0))`,
-      );
+      await lockSemanticKey(tx, "cash-account-name", businessId, command.name);
       const [duplicate] = await tx
         .select({ id: cashAccount.id })
         .from(cashAccount)
@@ -211,12 +193,7 @@ export async function updateCashAccount(
       openingMovement: null,
       replayed: false,
     };
-    await saveReceipt(tx, {
-      action: "cash_account.update",
-      actorUserId: actor.userId,
-      businessId,
-      commandFingerprint,
-      idempotencyKey,
+    await saveReceipt(tx, identity, {
       resourceId: accountId,
       result,
     });
@@ -242,12 +219,8 @@ export async function archiveCashAccount(
   const commandFingerprint = await fingerprintCashCommand("cash_account.archive", { accountId });
 
   return db.transaction(async (tx) => {
-    await requireAccess(tx, actor, ["cash:manage"]);
-    await lockIdempotencyKey(tx, businessId, actor.userId, command.idempotencyKey);
-    const replay = await findReplay(tx, {
+    const { identity, replay } = await beginCashOperation(tx, actor, ["cash:manage"], {
       action: "cash_account.archive",
-      actorUserId: actor.userId,
-      businessId,
       commandFingerprint,
       idempotencyKey: command.idempotencyKey,
     });
@@ -268,12 +241,7 @@ export async function archiveCashAccount(
       openingMovement: null,
       replayed: false,
     };
-    await saveReceipt(tx, {
-      action: "cash_account.archive",
-      actorUserId: actor.userId,
-      businessId,
-      commandFingerprint,
-      idempotencyKey: command.idempotencyKey,
+    await saveReceipt(tx, identity, {
       resourceId: accountId,
       result,
     });

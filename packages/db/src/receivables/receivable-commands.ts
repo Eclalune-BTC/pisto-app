@@ -14,13 +14,11 @@ import type { Database } from "../client.ts";
 import { ProductError, resolveLocalDateTime } from "../product.ts";
 import { customer, receivable, receivablePayment } from "../schema/receivables.ts";
 import {
-  authorize,
+  beginReceivableOperation,
   currentReceivable,
   getPaidMinorUnits,
   insertOperation,
   loadReceivable,
-  lockIdempotencyKey,
-  readOperationSnapshot,
 } from "./access.ts";
 import {
   assertCalendarDate,
@@ -58,17 +56,17 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
       });
       const originalMinorUnits = parsePositiveMinorUnits(command.originalMinorUnits);
       return db.transaction(async (tx) => {
-        const access = await authorize(tx, actor, "receivables:manage");
-        await lockIdempotencyKey(tx, actor, access.businessId, command.idempotencyKey);
-        const replay = await readOperationSnapshot({
-          action,
-          actor,
-          businessId: access.businessId,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
-          schema: receivableSchema,
+        const { access, identity, replay } = await beginReceivableOperation(
           tx,
-        });
+          actor,
+          "receivables:manage",
+          {
+            action,
+            fingerprint,
+            idempotencyKey: command.idempotencyKey,
+            schema: receivableSchema,
+          },
+        );
         if (replay) return { receivable: replay, replayed: true };
 
         const [customerRecord] = await tx
@@ -100,13 +98,8 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
           .returning();
         if (!record) throw new Error("Receivable insert returned no record");
         const result = await currentReceivable(tx, access, record);
-        await insertOperation(tx, {
-          action,
-          actor,
-          businessId: access.businessId,
+        await insertOperation(tx, identity, {
           customerId: command.customerId,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
           receivableId: result.id,
           resultSnapshot: result,
         });
@@ -129,17 +122,17 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
         receivableId,
       });
       return db.transaction(async (tx) => {
-        const access = await authorize(tx, actor, "receivables:manage");
-        await lockIdempotencyKey(tx, actor, access.businessId, command.idempotencyKey);
-        const replay = await readOperationSnapshot({
-          action,
-          actor,
-          businessId: access.businessId,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
-          schema: receivableSchema,
+        const { access, identity, replay } = await beginReceivableOperation(
           tx,
-        });
+          actor,
+          "receivables:manage",
+          {
+            action,
+            fingerprint,
+            idempotencyKey: command.idempotencyKey,
+            schema: receivableSchema,
+          },
+        );
         if (replay) return { receivable: replay, replayed: true };
 
         const existing = await loadReceivable(tx, access, receivableId, true);
@@ -166,13 +159,8 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
           .returning();
         if (!record) throw new Error("Receivable void returned no record");
         const result = await currentReceivable(tx, access, record);
-        await insertOperation(tx, {
-          action,
-          actor,
-          businessId: access.businessId,
+        await insertOperation(tx, identity, {
           customerId: record.customerId,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
           receivableId,
           resultSnapshot: result,
         });
@@ -200,17 +188,17 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
       });
       const amountMinorUnits = parsePositiveMinorUnits(command.amountMinorUnits);
       return db.transaction(async (tx) => {
-        const access = await authorize(tx, actor, ["receivables:manage", "cash:manage"]);
-        await lockIdempotencyKey(tx, actor, access.businessId, command.idempotencyKey);
-        const replay = await readOperationSnapshot({
-          action,
-          actor,
-          businessId: access.businessId,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
-          schema: paymentResultSchema,
+        const { access, identity, replay } = await beginReceivableOperation(
           tx,
-        });
+          actor,
+          ["receivables:manage", "cash:manage"],
+          {
+            action,
+            fingerprint,
+            idempotencyKey: command.idempotencyKey,
+            schema: paymentResultSchema,
+          },
+        );
         if (replay) return { ...replay, replayed: true };
 
         const receivableRecord = await loadReceivable(tx, access, receivableId, true);
@@ -277,13 +265,8 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
           payment: toPayment(record),
           receivable: await currentReceivable(tx, access, receivableRecord),
         };
-        await insertOperation(tx, {
-          action,
-          actor,
-          businessId: access.businessId,
+        await insertOperation(tx, identity, {
           customerId: receivableRecord.customerId,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
           paymentId: record.id,
           receivableId,
           resultSnapshot: result,
@@ -309,17 +292,17 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
         reference: command.reference ?? null,
       });
       return db.transaction(async (tx) => {
-        const access = await authorize(tx, actor, ["receivables:manage", "cash:manage"]);
-        await lockIdempotencyKey(tx, actor, access.businessId, command.idempotencyKey);
-        const replay = await readOperationSnapshot({
-          action,
-          actor,
-          businessId: access.businessId,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
-          schema: paymentResultSchema,
+        const { access, identity, replay } = await beginReceivableOperation(
           tx,
-        });
+          actor,
+          ["receivables:manage", "cash:manage"],
+          {
+            action,
+            fingerprint,
+            idempotencyKey: command.idempotencyKey,
+            schema: paymentResultSchema,
+          },
+        );
         if (replay) return { ...replay, replayed: true };
 
         const [original] = await tx
@@ -387,13 +370,8 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
           payment: toPayment(record),
           receivable: await currentReceivable(tx, access, receivableRecord),
         };
-        await insertOperation(tx, {
-          action,
-          actor,
-          businessId: access.businessId,
+        await insertOperation(tx, identity, {
           customerId: original.customerId,
-          fingerprint,
-          idempotencyKey: command.idempotencyKey,
           paymentId: record.id,
           receivableId: original.receivableId,
           resultSnapshot: result,

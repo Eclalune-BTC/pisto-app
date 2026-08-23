@@ -1,10 +1,9 @@
 import { receivablePaymentSchema, receivableSchema } from "@pisto/contracts";
 import { type ZodType, z } from "zod";
 
+import { fingerprintValue, maximumMinorUnits } from "../operation-log.ts";
 import { ProductError } from "../product.ts";
 import type { PageCursor } from "./types.ts";
-
-const maximumMinorUnits = 9_223_372_036_854_775_807n;
 export const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -47,16 +46,10 @@ export function assertCalendarDate(value: string, field: string): void {
   }
 }
 
-export async function sha256(value: unknown): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(JSON.stringify(value)),
-  );
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-export async function commandFingerprint(action: string, payload: unknown): Promise<string> {
-  return sha256({ action, payload, version: 1 });
+// Receivables hashes its own key order; changing it would invalidate every stored
+// receivable fingerprint, so the canonical object stays exactly as written here.
+export function commandFingerprint(action: string, payload: unknown): Promise<string> {
+  return fingerprintValue({ action, payload, version: 1 });
 }
 
 export function encodeCursor(cursor: PageCursor): string {

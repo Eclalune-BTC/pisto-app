@@ -1,8 +1,9 @@
 import type { Category, InventoryMovement, Product, ProductStock } from "@pisto/contracts";
 import { and, eq, lt, or } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { z } from "zod";
+import { type ZodType, z } from "zod";
 
+import { fingerprintCommand, maximumMinorUnits, parseReplaySnapshot } from "../operation-log.ts";
 import { ProductError } from "../product.ts";
 import type {
   CategoryRecord,
@@ -12,7 +13,6 @@ import type {
   ProductRecord,
 } from "./types.ts";
 
-const maximumBigint = 9_223_372_036_854_775_807n;
 const cursorPayloadSchema = z.object({
   createdAt: z.string().datetime({ offset: true }),
   id: z.string().uuid(),
@@ -110,7 +110,7 @@ export function parseQuantity(value: string, label: string, allowZero: boolean):
     throw new ProductError("VALIDATION_ERROR", `${label} must be a canonical integer`);
   }
   const parsed = BigInt(value);
-  if (parsed > maximumBigint || (!allowZero && parsed === 0n)) {
+  if (parsed > maximumMinorUnits || (!allowZero && parsed === 0n)) {
     throw new ProductError("VALIDATION_ERROR", `${label} is outside the supported range`);
   }
   return parsed;
@@ -121,10 +121,8 @@ export function normalizeSku(value: string | null | undefined): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
-export async function fingerprint(action: OperationAction, payload: unknown): Promise<string> {
-  const canonical = JSON.stringify({ version: 1, action, payload });
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+export function fingerprint(action: OperationAction, payload: unknown): Promise<string> {
+  return fingerprintCommand(action, payload);
 }
 
 export function recordSnapshot(value: object): Record<string, unknown> {
@@ -178,13 +176,10 @@ export function cursorCondition(
   );
 }
 
-export function parseMutationReplay<T>(
-  schema: { parse(value: unknown): T },
-  snapshot: Record<string, unknown>,
-): T {
-  try {
-    return schema.parse({ ...snapshot, replayed: true });
-  } catch {
-    throw new Error("Stored operation result does not match the catalog contract");
-  }
+export function parseMutationReplay<T>(schema: ZodType<T>, snapshot: Record<string, unknown>): T {
+  return parseReplaySnapshot(
+    schema,
+    { ...snapshot, replayed: true },
+    "Stored operation result does not match the catalog contract",
+  );
 }
