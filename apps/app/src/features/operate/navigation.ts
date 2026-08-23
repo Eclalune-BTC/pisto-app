@@ -1,7 +1,7 @@
 import type { BusinessPermission } from "@pisto/contracts";
 import type { Href } from "expo-router";
 
-export type OperateGroupId = "money" | "stock" | "relationships";
+export type OperateGroupId = "money" | "stock" | "relationships" | "insight";
 
 export type OperateModuleId =
   | "sales"
@@ -10,7 +10,8 @@ export type OperateModuleId =
   | "catalog"
   | "inventory"
   | "customers"
-  | "receivables";
+  | "receivables"
+  | "reports";
 
 export type OperateModule = {
   descriptionKey: `operate.modules.${OperateModuleId}.description`;
@@ -28,6 +29,7 @@ export const OPERATE_GROUPS: ReadonlyArray<{
   { id: "money", labelKey: "operate.groups.money" },
   { id: "stock", labelKey: "operate.groups.stock" },
   { id: "relationships", labelKey: "operate.groups.relationships" },
+  { id: "insight", labelKey: "operate.groups.insight" },
 ];
 
 export const OPERATE_MODULES: readonly OperateModule[] = [
@@ -86,6 +88,14 @@ export const OPERATE_MODULES: readonly OperateModule[] = [
     descriptionKey: "operate.modules.receivables.description",
     group: "relationships",
     permission: "receivables:read",
+  },
+  {
+    id: "reports",
+    href: "/operate/reports",
+    labelKey: "operate.modules.reports.label",
+    descriptionKey: "operate.modules.reports.description",
+    group: "insight",
+    permission: "reports:read",
   },
 ];
 

@@ -1,4 +1,4 @@
-import type { CashAccountKind, CashMovementAction } from "@pisto/contracts";
+import type { CashAccountKind, CashAccountStatus, CashMovementAction } from "@pisto/contracts";
 import type { TFunction } from "i18next";
 
 import type { CashAccountDetailCopy } from "./cash-account-detail-screen";
@@ -26,6 +26,13 @@ export function cashAccountKindLabels(t: TFunction): Record<CashAccountKind, str
     cash: t("cash.accountKinds.cash"),
     mobile_money: t("cash.accountKinds.mobile_money"),
     other: t("cash.accountKinds.other"),
+  };
+}
+
+export function cashAccountStatusLabels(t: TFunction): Record<CashAccountStatus, string> {
+  return {
+    active: t("cash.accountDetail.active"),
+    archived: t("cash.accountDetail.archived"),
   };
 }
 

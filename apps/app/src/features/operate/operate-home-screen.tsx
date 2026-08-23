@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, Redirect, useRouter } from "expo-router";
 import {
   Boxes,
+  ChartColumn,
   ChevronRight,
   CircleDollarSign,
   ContactRound,
@@ -41,6 +42,7 @@ const moduleIcons: Record<OperateModuleId, OperateIcon> = {
   inventory: Boxes,
   customers: ContactRound,
   receivables: HandCoins,
+  reports: ChartColumn,
 };
 
 export default function OperateHomeScreen() {

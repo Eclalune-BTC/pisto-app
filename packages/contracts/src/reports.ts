@@ -13,7 +13,7 @@ import {
 } from "./primitives";
 
 const millisecondsPerDay = 86_400_000;
-const maximumInclusiveDays = 366;
+export const maximumInclusiveDays = 366;
 
 function localDateEpoch(value: string): number | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);

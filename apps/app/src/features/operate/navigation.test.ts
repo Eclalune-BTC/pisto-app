@@ -1,7 +1,11 @@
 import type { BusinessPermission } from "@pisto/contracts";
 import { describe, expect, test } from "vitest";
 
-import { getVisibleOperateModules, OPERATE_MODULES } from "@/features/operate/navigation";
+import {
+  getVisibleOperateModules,
+  OPERATE_GROUPS,
+  OPERATE_MODULES,
+} from "@/features/operate/navigation";
 
 describe("operate navigation", () => {
   test("exposes only modules the active membership may read", () => {
@@ -29,5 +33,24 @@ describe("operate navigation", () => {
 
   test("does not invent destinations without an active membership", () => {
     expect(getVisibleOperateModules(undefined)).toEqual([]);
+  });
+
+  test("keeps reports behind its own read permission", () => {
+    const withoutReports: BusinessPermission[] = ["business:read", "sales:read", "catalog:read"];
+
+    expect(getVisibleOperateModules(withoutReports).map(({ id }) => id)).not.toContain("reports");
+    expect(getVisibleOperateModules(["reports:read"]).map(({ id }) => id)).toEqual(["reports"]);
+  });
+
+  test("places every module in a declared group", () => {
+    const groupIds = new Set(OPERATE_GROUPS.map(({ id }) => id));
+
+    expect(OPERATE_MODULES.filter(({ group }) => !groupIds.has(group))).toEqual([]);
+    expect(OPERATE_GROUPS.map(({ id }) => id)).toEqual([
+      "money",
+      "stock",
+      "relationships",
+      "insight",
+    ]);
   });
 });

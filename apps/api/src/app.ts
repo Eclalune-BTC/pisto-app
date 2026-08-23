@@ -6,6 +6,7 @@ import type {
   DatabaseHandle,
   ProductRepository,
   ReceivablesRepository,
+  ReportsRepository,
 } from "@pisto/db";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -29,6 +30,7 @@ export function createApp(input: {
   database: DatabaseHandle;
   product: ProductRepository;
   receivables: ReceivablesRepository;
+  reports: ReportsRepository;
 }) {
   const app = new Hono<AppEnv>();
 
@@ -117,6 +119,7 @@ export function createApp(input: {
       db: input.database.db,
       product: input.product,
       receivables: input.receivables,
+      reports: input.reports,
     }),
   );
 
