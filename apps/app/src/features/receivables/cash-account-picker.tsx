@@ -90,7 +90,9 @@ export function CashAccountPicker({
           ) : (
             <>
               <RefreshCw color="#14241D" size={17} />
-              <ButtonText variant="secondary">{copy.customers.list.loadMore}</ButtonText>
+              <ButtonText variant="secondary">
+                {copy.receivables.picker.loadMoreAccounts}
+              </ButtonText>
             </>
           )}
         </Button>

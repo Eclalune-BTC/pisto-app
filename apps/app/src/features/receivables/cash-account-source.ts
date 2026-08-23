@@ -1,7 +1,7 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
-
 import { apiRequest } from "@/lib/api-client";
+import { cashQueryKeys } from "../cash/queries";
 
 const cashAccountChoiceSchema = z.object({
   id: z.string().uuid(),
@@ -25,8 +25,13 @@ export type CashAccountChoice = z.infer<typeof cashAccountChoiceSchema>;
 type CashAccountChoicesResponse = z.infer<typeof cashAccountChoicesResponseSchema>;
 type CashAccountChoiceDetailResponse = z.infer<typeof cashAccountChoiceDetailResponseSchema>;
 
+// Nested under the cash accounts key on purpose: invalidateCashLedger
+// invalidates cashQueryKeys.accounts(businessId), and TanStack matches by
+// prefix. A sibling namespace was never reached, so archiving a cash account
+// left it selectable here.
 export const receivableCashAccountKeys = {
-  all: (businessId: string) => ["cash", businessId, "receivable-account-choice"] as const,
+  all: (businessId: string) =>
+    [...cashQueryKeys.accounts(businessId), "receivable-account-choice"] as const,
   detail: (businessId: string, accountId: string) =>
     [...receivableCashAccountKeys.all(businessId), "detail", accountId] as const,
   list: (businessId: string, status: "active" | "all") =>

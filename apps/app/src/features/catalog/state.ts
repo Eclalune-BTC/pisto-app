@@ -27,6 +27,8 @@ export function mutationErrorMessage(error: unknown, context: MutationContext): 
       return copy.idempotency;
     case "NOT_FOUND":
       return copy.notFound;
+    case "UNAUTHORIZED":
+      return catalogInventoryCopy.errors.unauthorized;
     case "VALIDATION_ERROR":
       return copy.validation;
     default:

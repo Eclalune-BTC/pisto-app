@@ -66,6 +66,7 @@ export const catalogInventoryCopy = {
     reason: "Motivo",
   },
   errors: {
+    unauthorized: "Tu sesión venció. Inicia sesión de nuevo.",
     category: {
       validation: "Revisa el nombre antes de continuar.",
       conflict: "Ya existe una categoría con ese nombre o la categoría ya no admite cambios.",

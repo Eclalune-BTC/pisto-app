@@ -246,6 +246,7 @@ export const customersReceivablesCopy = {
       activeAccountsTitle: "Selecciona la cuenta que recibió el dinero",
       activeAccountsDescription:
         "Solo puedes elegir una cuenta de efectivo activa obtenida del servidor.",
+      loadMoreAccounts: "Cargar más cuentas",
       noAccounts: "No hay cuentas de efectivo activas disponibles.",
       noCustomers: "No hay clientes activos que coincidan con la búsqueda.",
       select: "Seleccionar",
