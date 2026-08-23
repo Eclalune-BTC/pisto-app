@@ -1,16 +1,23 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { Page } from "@/components/page";
+import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
-import type { ExpenseCategory } from "../../../../../packages/contracts/src/cash.ts";
+import type { CashAccount, ExpenseCategory } from "../../../../../packages/contracts/src/cash.ts";
+import {
+  ExpenseFilters,
+  type ExpenseFiltersCopy,
+  type ExpenseFiltersValue,
+  type ExpensePeriodValue,
+} from "./expense-filters";
 import { ExpenseHistory } from "./expense-history";
 import { ExpenseSummary } from "./expense-summary";
 import { type ExpensesScreenState, expensesScreenPresentation } from "./state";
 
 export type { ExpensesScreenState } from "./state";
 
-export type ExpensesScreenCopy = {
+export type ExpensesScreenCopy = ExpenseFiltersCopy & {
   title: string;
   description: string;
   eyebrow: string;
@@ -34,11 +41,22 @@ export type ExpensesScreenCopy = {
   uncertainTitle: string;
   uncertainDescription: string;
   checkStatus: string;
+  loadMore: string;
+  loadingMore: string;
+  noCategoryData: string;
   categories: Record<ExpenseCategory, string>;
 };
 
 type ExpensesScreenProps = {
   state: ExpensesScreenState;
+  accounts: CashAccount[];
+  filters: ExpenseFiltersValue;
+  hasMoreAccounts: boolean;
+  hasMoreExpenses: boolean;
+  isLoadingMoreAccounts: boolean;
+  isLoadingMoreExpenses: boolean;
+  period: ExpensePeriodValue;
+  periodError?: string;
   copy: ExpensesScreenCopy;
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
   onRegisterExpense: () => void;
@@ -46,6 +64,12 @@ type ExpensesScreenProps = {
   onVoidExpense: (expenseId: string) => void;
   onRetry: () => void;
   onCheckMutationStatus: () => void;
+  onApplyPeriod: () => void;
+  onFiltersChange: (next: ExpenseFiltersValue) => void;
+  onLoadMoreAccounts: () => void;
+  onLoadMoreExpenses: () => void;
+  onPeriodChange: (next: ExpensePeriodValue) => void;
+  categoryOptions: readonly { label: string; value: ExpenseCategory }[];
 };
 
 function MessageState({
@@ -72,6 +96,14 @@ function MessageState({
 
 export function ExpensesScreen({
   state,
+  accounts,
+  filters,
+  hasMoreAccounts,
+  hasMoreExpenses,
+  isLoadingMoreAccounts,
+  isLoadingMoreExpenses,
+  period,
+  periodError,
   copy,
   formatMoney,
   onRegisterExpense,
@@ -79,6 +111,12 @@ export function ExpensesScreen({
   onVoidExpense,
   onRetry,
   onCheckMutationStatus,
+  onApplyPeriod,
+  onFiltersChange,
+  onLoadMoreAccounts,
+  onLoadMoreExpenses,
+  onPeriodChange,
+  categoryOptions,
 }: ExpensesScreenProps) {
   if (state.kind === "loading") {
     return (
@@ -123,6 +161,23 @@ export function ExpensesScreen({
         title={copy.title}
       />
 
+      {state.isStale ? <StaleNotice /> : null}
+
+      <ExpenseFilters
+        accounts={accounts}
+        categoryOptions={categoryOptions}
+        copy={copy}
+        filters={filters}
+        hasMoreAccounts={hasMoreAccounts}
+        isLoadingMoreAccounts={isLoadingMoreAccounts}
+        onApplyPeriod={onApplyPeriod}
+        onFiltersChange={onFiltersChange}
+        onLoadMoreAccounts={onLoadMoreAccounts}
+        onPeriodChange={onPeriodChange}
+        period={period}
+        periodError={periodError}
+      />
+
       {state.confirmation === "uncertain" ? (
         <View className="gap-3 border-l-4 border-warning bg-[#FFF6E8] p-4 dark:bg-[#3A2A18]">
           <Text accessibilityRole="alert" className="font-bold text-ink dark:text-[#F2E4D2]">
@@ -159,6 +214,7 @@ export function ExpensesScreen({
         formatMoney={formatMoney}
         periodTotalLabel={copy.periodTotal}
         recordedExpensesLabel={copy.recordedExpenses}
+        noCategoryData={copy.noCategoryData}
         summary={state.summary}
       />
 
@@ -189,6 +245,15 @@ export function ExpensesScreen({
             voidedLabel={copy.voided}
           />
         )}
+        {hasMoreExpenses ? (
+          <Button
+            className="self-start"
+            label={isLoadingMoreExpenses ? copy.loadingMore : copy.loadMore}
+            loading={isLoadingMoreExpenses}
+            onPress={onLoadMoreExpenses}
+            variant="secondary"
+          />
+        ) : null}
       </View>
     </Page>
   );

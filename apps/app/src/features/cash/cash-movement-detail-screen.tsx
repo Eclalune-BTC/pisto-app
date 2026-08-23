@@ -1,6 +1,7 @@
 import { Text, View } from "react-native";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
+import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -48,6 +49,7 @@ export type CashMovementDetailCopy = FeatureBoundaryCopy &
     reversalUnavailable: string;
     reversalEffect: string;
     movementActions: Record<CashMovementAction, string>;
+    backToAccount: string;
   };
 
 type CashMovementDetailScreenProps = {
@@ -62,6 +64,7 @@ type CashMovementDetailScreenProps = {
   reversalCommand: ReverseCashMovementRequest | null;
   confirmation: CashConfirmationState;
   errorMessage?: string;
+  isStale: boolean;
   copy: CashMovementDetailCopy;
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
   onBeginReversal: () => void;
@@ -72,6 +75,7 @@ type CashMovementDetailScreenProps = {
   onCancelReversal: () => void;
   onCheckStatus: () => void;
   onRetry: () => void;
+  onBack: () => void;
 };
 
 export function CashMovementDetailScreen({
@@ -86,6 +90,7 @@ export function CashMovementDetailScreen({
   reversalCommand,
   confirmation,
   errorMessage,
+  isStale,
   copy,
   formatMoney,
   onBeginReversal,
@@ -96,6 +101,7 @@ export function CashMovementDetailScreen({
   onCancelReversal,
   onCheckStatus,
   onRetry,
+  onBack,
 }: CashMovementDetailScreenProps) {
   const operation = cashOperationPresentation({
     remoteKind: remoteState.kind,
@@ -109,11 +115,20 @@ export function CashMovementDetailScreen({
   return (
     <FeatureBoundary copy={copy} onRetry={onRetry} state={remoteState}>
       <Page width="form">
+        <Button
+          className="self-start px-0"
+          label={copy.backToAccount}
+          onPress={onBack}
+          size="sm"
+          variant="ghost"
+        />
         <ScreenHeader
           description={stage === "detail" ? copy.description : copy.reverseDescription}
           eyebrow={copy.eyebrow}
           title={stage === "detail" ? copy.title : copy.reverseTitle}
         />
+
+        {isStale ? <StaleNotice /> : null}
 
         {movement === null ? (
           <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">

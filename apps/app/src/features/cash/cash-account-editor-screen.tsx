@@ -32,7 +32,9 @@ export type CashAccountEditorDraft = {
   openingLocalTime: string;
 };
 
-export type CashAccountEditorErrors = Partial<Record<keyof CashAccountEditorDraft, string>>;
+export type CashAccountEditorErrors = Partial<
+  Record<keyof CashAccountEditorDraft | "form", string>
+>;
 
 export type CashAccountEditorCopy = FeatureBoundaryCopy &
   CashOperationReviewCopy & {
@@ -165,6 +167,13 @@ export function CashAccountEditorScreen({
                 ? [
                     { label: copy.currency, value: createCommand.currency },
                     { label: copy.openingBalance, value: openingValue },
+                    ...(createCommand.opening
+                      ? [
+                          { label: copy.openingReason, value: createCommand.opening.reason },
+                          { label: copy.date, value: createCommand.opening.occurredLocalDate },
+                          { label: copy.time, value: createCommand.opening.occurredLocalTime },
+                        ]
+                      : []),
                   ]
                 : []),
             ]}
@@ -255,6 +264,11 @@ export function CashAccountEditorScreen({
               <Button label={copy.review} onPress={onPrepareReview} variant="accent" />
               <Button label={copy.cancel} onPress={onCancel} variant="secondary" />
             </View>
+            {errors.form ? (
+              <Text accessibilityRole="alert" className="text-xs text-danger">
+                {errors.form}
+              </Text>
+            ) : null}
           </View>
         )}
       </Page>

@@ -57,6 +57,8 @@ export type ExpenseEditorCopy = FeatureBoundaryCopy & {
   checkStatus: string;
   currency: string;
   noPayee: string;
+  loadMore: string;
+  loadingMore: string;
 };
 
 type ExpenseEditorScreenProps = {
@@ -71,6 +73,8 @@ type ExpenseEditorScreenProps = {
   command: PostExpenseRequest | null;
   confirmation: CashConfirmationState;
   errorMessage?: string;
+  hasMoreAccounts: boolean;
+  isLoadingMoreAccounts: boolean;
   effect: string;
   copy: ExpenseEditorCopy;
   formatMoney: (minorUnits: string, currency: string) => string;
@@ -81,6 +85,7 @@ type ExpenseEditorScreenProps = {
   onCheckStatus: () => void;
   onCreateAccount: () => void;
   onRetry: () => void;
+  onLoadMoreAccounts: () => void;
 };
 
 export function ExpenseEditorScreen({
@@ -95,6 +100,8 @@ export function ExpenseEditorScreen({
   command,
   confirmation,
   errorMessage,
+  hasMoreAccounts,
+  isLoadingMoreAccounts,
   effect,
   copy,
   formatMoney,
@@ -105,6 +112,7 @@ export function ExpenseEditorScreen({
   onCheckStatus,
   onCreateAccount,
   onRetry,
+  onLoadMoreAccounts,
 }: ExpenseEditorScreenProps) {
   const authorizedState = requireFeatureManageAccess(remoteState, canManage);
   const accountOptions = accounts.map(({ id, name }) => ({ value: id, label: name }));
@@ -164,6 +172,16 @@ export function ExpenseEditorScreen({
               <Text accessibilityRole="alert" className="text-xs text-danger">
                 {errors.accountId}
               </Text>
+            ) : null}
+            {hasMoreAccounts ? (
+              <Button
+                className="self-start"
+                label={isLoadingMoreAccounts ? copy.loadingMore : copy.loadMore}
+                loading={isLoadingMoreAccounts}
+                onPress={onLoadMoreAccounts}
+                size="sm"
+                variant="secondary"
+              />
             ) : null}
             <ChoiceList
               label={copy.category}

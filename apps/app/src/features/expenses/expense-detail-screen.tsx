@@ -1,6 +1,7 @@
 import { Text, View } from "react-native";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
+import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -66,6 +67,7 @@ type ExpenseDetailScreenProps = {
   voidCommand: VoidExpenseRequest | null;
   confirmation: CashConfirmationState;
   errorMessage?: string;
+  isStale: boolean;
   copy: ExpenseDetailCopy;
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
   onBeginVoid: () => void;
@@ -89,6 +91,7 @@ export function ExpenseDetailScreen({
   voidCommand,
   confirmation,
   errorMessage,
+  isStale,
   copy,
   formatMoney,
   onBeginVoid,
@@ -116,6 +119,8 @@ export function ExpenseDetailScreen({
           eyebrow={copy.eyebrow}
           title={stage === "detail" ? copy.title : copy.voidTitle}
         />
+
+        {isStale ? <StaleNotice /> : null}
 
         {expense === null ? (
           <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
@@ -147,6 +152,8 @@ export function ExpenseDetailScreen({
                 ),
               },
               { label: copy.account, value: accountName },
+              { label: copy.category, value: copy.categories[expense.category] },
+              { label: copy.descriptionLabel, value: expense.description },
               { label: copy.reason, value: voidCommand.reason },
               { label: copy.date, value: voidCommand.occurredLocalDate },
               { label: copy.time, value: voidCommand.occurredLocalTime },

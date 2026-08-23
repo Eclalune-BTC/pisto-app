@@ -1,11 +1,16 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { Page } from "@/components/page";
+import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
-import type { CashMovementAction } from "../../../../../packages/contracts/src/cash.ts";
+import type {
+  CashAccountStatus,
+  CashMovementAction,
+} from "../../../../../packages/contracts/src/cash.ts";
 import { CashAccountList } from "./cash-account-list";
 import { CashMovementList } from "./cash-movement-list";
+import { ChoiceList } from "./choice-list";
 import { type CashScreenState, cashScreenPresentation } from "./state";
 
 export type { CashConfirmationState, CashScreenState } from "./state";
@@ -33,16 +38,30 @@ export type CashScreenCopy = {
   uncertainDescription: string;
   checkStatus: string;
   movementActions: Record<CashMovementAction, string>;
+  accountFilter: string;
+  activeAccounts: string;
+  archivedAccounts: string;
+  allAccounts: string;
+  loadMore: string;
+  loadingMore: string;
 };
 
 type CashScreenProps = {
   state: CashScreenState;
+  accountStatus: CashAccountStatus | "all";
+  hasMoreAccounts: boolean;
+  hasMoreMovements: boolean;
+  isLoadingMoreAccounts: boolean;
+  isLoadingMoreMovements: boolean;
   copy: CashScreenCopy;
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
   onCreateAccount: () => void;
   onOpenAccount: (accountId: string) => void;
   onRetry: () => void;
   onCheckMutationStatus: () => void;
+  onAccountStatusChange: (status: CashAccountStatus | "all") => void;
+  onLoadMoreAccounts: () => void;
+  onLoadMoreMovements: () => void;
 };
 
 function StateMessage({
@@ -69,12 +88,20 @@ function StateMessage({
 
 export function CashScreen({
   state,
+  accountStatus,
+  hasMoreAccounts,
+  hasMoreMovements,
+  isLoadingMoreAccounts,
+  isLoadingMoreMovements,
   copy,
   formatMoney,
   onCreateAccount,
   onOpenAccount,
   onRetry,
   onCheckMutationStatus,
+  onAccountStatusChange,
+  onLoadMoreAccounts,
+  onLoadMoreMovements,
 }: CashScreenProps) {
   if (state.kind === "loading") {
     return (
@@ -120,6 +147,21 @@ export function CashScreen({
         eyebrow={copy.eyebrow}
         title={copy.title}
       />
+
+      {state.isStale ? <StaleNotice /> : null}
+
+      <View className="max-w-[560px] border-y border-line py-5 dark:border-[#304239]">
+        <ChoiceList
+          label={copy.accountFilter}
+          onChange={onAccountStatusChange}
+          options={[
+            { label: copy.activeAccounts, value: "active" },
+            { label: copy.archivedAccounts, value: "archived" },
+            { label: copy.allAccounts, value: "all" },
+          ]}
+          value={accountStatus}
+        />
+      </View>
 
       {state.confirmation === "uncertain" ? (
         <View className="gap-3 border-l-4 border-warning bg-[#FFF6E8] p-4 dark:bg-[#3A2A18]">
@@ -173,6 +215,15 @@ export function CashScreen({
             negativeAllowedLabel={copy.negativeAllowed}
             onOpenAccount={onOpenAccount}
           />
+          {hasMoreAccounts ? (
+            <Button
+              className="self-start"
+              label={isLoadingMoreAccounts ? copy.loadingMore : copy.loadMore}
+              loading={isLoadingMoreAccounts}
+              onPress={onLoadMoreAccounts}
+              variant="secondary"
+            />
+          ) : null}
         </View>
       )}
 
@@ -186,6 +237,15 @@ export function CashScreen({
           movements={state.movements}
           noMovements={copy.noMovements}
         />
+        {hasMoreMovements ? (
+          <Button
+            className="self-start"
+            label={isLoadingMoreMovements ? copy.loadingMore : copy.loadMore}
+            loading={isLoadingMoreMovements}
+            onPress={onLoadMoreMovements}
+            variant="secondary"
+          />
+        ) : null}
       </View>
     </Page>
   );

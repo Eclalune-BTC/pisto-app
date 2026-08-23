@@ -76,7 +76,12 @@ export function CashOperationReview({
             onPress={onConfirm}
             variant="accent"
           />
-          <Button label={copy.edit} onPress={onEdit} variant="secondary" />
+          <Button
+            disabled={state === "pending"}
+            label={copy.edit}
+            onPress={onEdit}
+            variant="secondary"
+          />
         </View>
       ) : null}
     </View>

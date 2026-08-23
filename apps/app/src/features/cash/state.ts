@@ -11,6 +11,7 @@ export type CashScreenState =
       accounts: CashAccount[];
       movements: CashMovement[];
       canManage: boolean;
+      isStale: boolean;
       confirmation: CashConfirmationState;
       mutationMessage?: string;
     };

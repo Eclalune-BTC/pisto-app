@@ -47,6 +47,8 @@ export type CashTransferCopy = FeatureBoundaryCopy &
     time: string;
     review: string;
     cancel: string;
+    loadMore: string;
+    loadingMore: string;
   };
 
 type CashTransferScreenProps = {
@@ -59,6 +61,8 @@ type CashTransferScreenProps = {
   command: TransferCashRequest | null;
   confirmation: CashConfirmationState;
   errorMessage?: string;
+  hasMoreAccounts: boolean;
+  isLoadingMoreAccounts: boolean;
   effect: string;
   copy: CashTransferCopy;
   formatMoney: (minorUnits: string, currency: string) => string;
@@ -70,6 +74,7 @@ type CashTransferScreenProps = {
   onCreateAccount: () => void;
   onCheckStatus: () => void;
   onRetry: () => void;
+  onLoadMoreAccounts: () => void;
 };
 
 export function CashTransferScreen({
@@ -82,6 +87,8 @@ export function CashTransferScreen({
   command,
   confirmation,
   errorMessage,
+  hasMoreAccounts,
+  isLoadingMoreAccounts,
   effect,
   copy,
   formatMoney,
@@ -93,6 +100,7 @@ export function CashTransferScreen({
   onCreateAccount,
   onCheckStatus,
   onRetry,
+  onLoadMoreAccounts,
 }: CashTransferScreenProps) {
   const authorizedState = requireFeatureManageAccess(remoteState, canManage);
   const activeAccounts = accounts.filter(({ status }) => status === "active");
@@ -176,6 +184,16 @@ export function CashTransferScreen({
               <Text accessibilityRole="alert" className="text-xs text-danger">
                 {errors.toAccountId}
               </Text>
+            ) : null}
+            {hasMoreAccounts ? (
+              <Button
+                className="self-start"
+                label={isLoadingMoreAccounts ? copy.loadingMore : copy.loadMore}
+                loading={isLoadingMoreAccounts}
+                onPress={onLoadMoreAccounts}
+                size="sm"
+                variant="secondary"
+              />
             ) : null}
             <Field
               error={errors.amount}

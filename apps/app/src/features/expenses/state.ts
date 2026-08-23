@@ -11,6 +11,7 @@ export type ExpensesScreenState =
       expenses: Expense[];
       summary: ExpensePeriodSummary;
       canManage: boolean;
+      isStale: boolean;
       confirmation: CashConfirmationState;
       mutationMessage?: string;
     };

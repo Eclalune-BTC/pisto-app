@@ -19,6 +19,7 @@ describe("cash screen state policy", () => {
       movements: [],
       canManage: true,
       confirmation: "uncertain",
+      isStale: false,
     };
     expect(cashScreenPresentation(state)).toMatchObject({
       showCreate: false,
@@ -34,6 +35,7 @@ describe("cash screen state policy", () => {
       movements: [],
       canManage: false,
       confirmation: "idle",
+      isStale: false,
     };
     const manager: CashScreenState = { ...member, canManage: true };
     expect(cashScreenPresentation(member).showCreate).toBe(false);

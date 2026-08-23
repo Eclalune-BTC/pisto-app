@@ -1,6 +1,7 @@
 import { Text, View } from "react-native";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
+import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import type {
@@ -48,6 +49,8 @@ export type CashAccountDetailCopy = FeatureBoundaryCopy &
     archiveEffect: string;
     accountKinds: Record<CashAccountKind, string>;
     movementActions: Record<CashMovementAction, string>;
+    loadMore: string;
+    loadingMore: string;
   };
 
 type CashAccountDetailScreenProps = {
@@ -59,6 +62,9 @@ type CashAccountDetailScreenProps = {
   archiveCommand: ArchiveCashAccountRequest | null;
   confirmation: CashConfirmationState;
   errorMessage?: string;
+  hasMoreMovements: boolean;
+  isLoadingMoreMovements: boolean;
+  isStale: boolean;
   copy: CashAccountDetailCopy;
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
   onEditAccount: () => void;
@@ -70,6 +76,7 @@ type CashAccountDetailScreenProps = {
   onCancelArchive: () => void;
   onCheckStatus: () => void;
   onRetry: () => void;
+  onLoadMoreMovements: () => void;
 };
 
 export function CashAccountDetailScreen({
@@ -81,6 +88,9 @@ export function CashAccountDetailScreen({
   archiveCommand,
   confirmation,
   errorMessage,
+  hasMoreMovements,
+  isLoadingMoreMovements,
+  isStale,
   copy,
   formatMoney,
   onEditAccount,
@@ -92,6 +102,7 @@ export function CashAccountDetailScreen({
   onCancelArchive,
   onCheckStatus,
   onRetry,
+  onLoadMoreMovements,
 }: CashAccountDetailScreenProps) {
   const operation = cashOperationPresentation({
     remoteKind: remoteState.kind,
@@ -108,6 +119,8 @@ export function CashAccountDetailScreen({
           eyebrow={copy.eyebrow}
           title={reviewingArchive ? copy.archiveTitle : (account?.name ?? copy.title)}
         />
+
+        {isStale ? <StaleNotice /> : null}
 
         {account === null ? (
           <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
@@ -195,6 +208,15 @@ export function CashAccountDetailScreen({
                 noMovements={copy.noMovements}
                 onOpenMovement={onOpenMovement}
               />
+              {hasMoreMovements ? (
+                <Button
+                  className="self-start"
+                  label={isLoadingMoreMovements ? copy.loadingMore : copy.loadMore}
+                  loading={isLoadingMoreMovements}
+                  onPress={onLoadMoreMovements}
+                  variant="secondary"
+                />
+              ) : null}
             </View>
           </>
         )}

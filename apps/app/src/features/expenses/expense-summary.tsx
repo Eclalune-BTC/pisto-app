@@ -10,6 +10,7 @@ type ExpenseSummaryProps = {
   recordedExpensesLabel: string;
   categoryBreakdownLabel: string;
   expensesNotProfit: string;
+  noCategoryData: string;
   categoryLabels: Record<ExpenseCategory, string>;
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
 };
@@ -20,6 +21,7 @@ export function ExpenseSummary({
   recordedExpensesLabel,
   categoryBreakdownLabel,
   expensesNotProfit,
+  noCategoryData,
   categoryLabels,
   formatMoney,
 }: ExpenseSummaryProps) {
@@ -43,20 +45,27 @@ export function ExpenseSummary({
         </View>
         <View className="min-w-0 flex-1 gap-3 border-t border-line pt-5 dark:border-[#304239] lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
           <Text className="font-bold text-ink dark:text-white">{categoryBreakdownLabel}</Text>
-          {summary.categories.map((category) => (
-            <View className="flex-row items-baseline justify-between gap-4" key={category.category}>
-              <Text className="min-w-0 flex-1 text-sm text-ink-muted dark:text-[#AAB8B0]">
-                {categoryLabels[category.category]}
-              </Text>
-              <Text className="font-bold text-ink dark:text-white">
-                {formatMoney(
-                  category.amountMinorUnits,
-                  summary.currency,
-                  summary.currencyMinorUnitDigits,
-                )}
-              </Text>
-            </View>
-          ))}
+          {summary.categories.length === 0 ? (
+            <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">{noCategoryData}</Text>
+          ) : (
+            summary.categories.map((category) => (
+              <View
+                className="flex-row items-baseline justify-between gap-4"
+                key={category.category}
+              >
+                <Text className="min-w-0 flex-1 text-sm text-ink-muted dark:text-[#AAB8B0]">
+                  {categoryLabels[category.category]}
+                </Text>
+                <Text className="font-bold text-ink dark:text-white">
+                  {formatMoney(
+                    category.amountMinorUnits,
+                    summary.currency,
+                    summary.currencyMinorUnitDigits,
+                  )}
+                </Text>
+              </View>
+            ))
+          )}
         </View>
       </View>
       <Text className="max-w-[720px] text-xs leading-5 text-ink-muted dark:text-[#91A198]">

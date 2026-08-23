@@ -19,6 +19,7 @@ import {
 import type { CashConfirmationState } from "./state";
 
 export type CashAdjustmentDraft = {
+  accountId: string;
   direction: CashMovementDirection;
   amount: string;
   reason: string;
@@ -37,6 +38,7 @@ export type CashAdjustmentCopy = FeatureBoundaryCopy &
     reviewDescription: string;
     accountUnavailableTitle: string;
     accountUnavailableDescription: string;
+    createAccount: string;
     account: string;
     direction: string;
     moneyIn: string;
@@ -47,12 +49,16 @@ export type CashAdjustmentCopy = FeatureBoundaryCopy &
     time: string;
     review: string;
     cancel: string;
+    loadMore: string;
+    loadingMore: string;
   };
 
 type CashAdjustmentScreenProps = {
   remoteState: FeatureRemoteState;
   canManage: boolean;
-  account: CashAccount | null;
+  accounts: CashAccount[];
+  hasMoreAccounts: boolean;
+  isLoadingMoreAccounts: boolean;
   stage: "edit" | "review";
   draft: CashAdjustmentDraft;
   errors: CashAdjustmentErrors;
@@ -69,12 +75,16 @@ type CashAdjustmentScreenProps = {
   onCancel: () => void;
   onCheckStatus: () => void;
   onRetry: () => void;
+  onCreateAccount: () => void;
+  onLoadMoreAccounts: () => void;
 };
 
 export function CashAdjustmentScreen({
   remoteState,
   canManage,
-  account,
+  accounts,
+  hasMoreAccounts,
+  isLoadingMoreAccounts,
   stage,
   draft,
   errors,
@@ -91,8 +101,13 @@ export function CashAdjustmentScreen({
   onCancel,
   onCheckStatus,
   onRetry,
+  onCreateAccount,
+  onLoadMoreAccounts,
 }: CashAdjustmentScreenProps) {
   const authorizedState = requireFeatureManageAccess(remoteState, canManage);
+  const activeAccounts = accounts.filter(({ status }) => status === "active");
+  const accountOptions = activeAccounts.map(({ id, name }) => ({ label: name, value: id }));
+  const account = activeAccounts.find(({ id }) => id === (command?.accountId ?? draft.accountId));
   const reviewing = stage === "review" && command !== null;
 
   return (
@@ -104,7 +119,7 @@ export function CashAdjustmentScreen({
           title={reviewing ? copy.reviewTitle : copy.title}
         />
 
-        {account === null || account.status !== "active" ? (
+        {activeAccounts.length === 0 ? (
           <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
             <Text
               accessibilityRole="header"
@@ -115,8 +130,14 @@ export function CashAdjustmentScreen({
             <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
               {copy.accountUnavailableDescription}
             </Text>
+            <Button
+              className="self-start"
+              label={copy.createAccount}
+              onPress={onCreateAccount}
+              variant="accent"
+            />
           </View>
-        ) : reviewing ? (
+        ) : reviewing && account ? (
           <CashOperationReview
             copy={copy}
             effect={effect}
@@ -143,6 +164,27 @@ export function CashAdjustmentScreen({
         ) : (
           <View className="gap-7 border-y border-line py-7 dark:border-[#304239]">
             <ChoiceList
+              label={copy.account}
+              onChange={(accountId) => onDraftChange({ ...draft, accountId })}
+              options={accountOptions}
+              value={draft.accountId}
+            />
+            {errors.accountId ? (
+              <Text accessibilityRole="alert" className="text-xs text-danger">
+                {errors.accountId}
+              </Text>
+            ) : null}
+            {hasMoreAccounts ? (
+              <Button
+                className="self-start"
+                label={isLoadingMoreAccounts ? copy.loadingMore : copy.loadMore}
+                loading={isLoadingMoreAccounts}
+                onPress={onLoadMoreAccounts}
+                size="sm"
+                variant="secondary"
+              />
+            ) : null}
+            <ChoiceList
               label={copy.direction}
               onChange={(direction) => onDraftChange({ ...draft, direction })}
               options={[
@@ -156,7 +198,11 @@ export function CashAdjustmentScreen({
               keyboardType="decimal-pad"
               label={copy.amount}
               onChangeText={(amount) => onDraftChange({ ...draft, amount })}
-              trailing={<Text className="font-bold text-ink-muted">{account.currency}</Text>}
+              trailing={
+                account ? (
+                  <Text className="font-bold text-ink-muted">{account.currency}</Text>
+                ) : undefined
+              }
               value={draft.amount}
             />
             <Field
