@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  isRevenueCatEnvironmentAllowed,
   isRevenueCatEventProjectable,
   revenueCatEventStatus,
   revenueCatWebhookSchema,
@@ -37,5 +38,25 @@ describe("RevenueCat webhook projection", () => {
 
   test("does not grant a paused subscription", () => {
     expect(revenueCatEventStatus("SUBSCRIPTION_PAUSED", null, new Date())).toBe("inactive");
+  });
+});
+
+describe("RevenueCat store environment", () => {
+  test("projects only events from the configured environment", () => {
+    expect(isRevenueCatEnvironmentAllowed("PRODUCTION", "PRODUCTION")).toBe(true);
+    expect(isRevenueCatEnvironmentAllowed("SANDBOX", "PRODUCTION")).toBe(false);
+    expect(isRevenueCatEnvironmentAllowed("SANDBOX", "SANDBOX")).toBe(true);
+    expect(isRevenueCatEnvironmentAllowed("PRODUCTION", "SANDBOX")).toBe(false);
+  });
+
+  test("treats an unnamed environment as production", () => {
+    expect(isRevenueCatEnvironmentAllowed(undefined, "PRODUCTION")).toBe(true);
+    expect(isRevenueCatEnvironmentAllowed("", "PRODUCTION")).toBe(true);
+    expect(isRevenueCatEnvironmentAllowed(undefined, "SANDBOX")).toBe(false);
+  });
+
+  test("does not let casing or padding smuggle a sandbox purchase through", () => {
+    expect(isRevenueCatEnvironmentAllowed(" sandbox ", "PRODUCTION")).toBe(false);
+    expect(isRevenueCatEnvironmentAllowed("Sandbox", "PRODUCTION")).toBe(false);
   });
 });

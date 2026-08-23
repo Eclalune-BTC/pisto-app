@@ -31,6 +31,7 @@ export type RevenueCatBillingConfig =
       authorization: string;
       signingSecret?: string;
       signatureToleranceSeconds: number;
+      allowedEnvironment: "PRODUCTION" | "SANDBOX";
       entitlementMap: Record<string, string>;
     };
 
@@ -209,6 +210,9 @@ export function parseBillingConfig(env: Record<string, string | undefined>): Bil
           .min(30)
           .max(3600)
           .parse(env.REVENUECAT_SIGNATURE_TOLERANCE_SECONDS ?? "300"),
+        allowedEnvironment: z
+          .enum(["PRODUCTION", "SANDBOX"])
+          .parse(env.REVENUECAT_ALLOWED_ENVIRONMENT?.trim().toUpperCase() || "PRODUCTION"),
         entitlementMap: parseEntitlementMap(requireValue(env, "REVENUECAT_ENTITLEMENT_MAP_JSON")),
       }
     : { enabled: false };

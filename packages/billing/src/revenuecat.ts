@@ -64,6 +64,19 @@ function dateFromMilliseconds(value: number | null | undefined): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/**
+ * A store sandbox purchase is free to generate and reaches this webhook with the
+ * same shared secret as a real one, so projecting it would grant paid access to
+ * anyone who can trigger one. An event that does not name its environment is
+ * treated as production, matching RevenueCat's own default.
+ */
+export function isRevenueCatEnvironmentAllowed(
+  eventEnvironment: string | undefined,
+  allowed: "PRODUCTION" | "SANDBOX",
+): boolean {
+  return (eventEnvironment?.trim().toUpperCase() || "PRODUCTION") === allowed;
+}
+
 export function isRevenueCatEventProjectable(type: string): boolean {
   return new Set([
     "INITIAL_PURCHASE",
@@ -172,7 +185,11 @@ export function createRevenueCatWebhookProcessor(input: {
         .returning({ id: billingWebhookEvent.id });
       if (inserted.length === 0) return { duplicate: true, projected: false };
 
-      if (!isRevenueCatEventProjectable(event.type) || (event.entitlement_ids?.length ?? 0) === 0) {
+      if (
+        !isRevenueCatEventProjectable(event.type) ||
+        !isRevenueCatEnvironmentAllowed(event.environment, config.allowedEnvironment) ||
+        (event.entitlement_ids?.length ?? 0) === 0
+      ) {
         return { duplicate: false, projected: false };
       }
       if (candidateIds.length === 0) {
