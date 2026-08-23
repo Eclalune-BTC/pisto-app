@@ -10,7 +10,11 @@ describe("customer UI states", () => {
   });
 
   test("represents empty, denied, and failed reads as distinct states", () => {
-    const states: CustomersLoadState[] = [{ kind: "empty" }, { kind: "denied" }, { kind: "error" }];
+    const states: CustomersLoadState[] = [
+      { kind: "empty", stale: false },
+      { kind: "denied" },
+      { kind: "error" },
+    ];
     expect(states.map(({ kind }) => kind)).toEqual(["empty", "denied", "error"]);
   });
 });

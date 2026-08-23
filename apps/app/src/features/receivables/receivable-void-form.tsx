@@ -31,6 +31,7 @@ export function ReceivableVoidForm({
         label={copy.reason}
         multiline
         onChangeText={onChangeReason}
+        placeholder={copy.reasonPlaceholder}
         value={reason}
       />
       <View className="gap-3 sm:flex-row sm:justify-end">

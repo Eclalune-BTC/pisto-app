@@ -11,6 +11,7 @@ type ReceivableDetailScreenProps = {
   canManage: boolean;
   cashAccountNameFor: (cashAccountId: string) => string;
   copy: ReceivablesCopy;
+  customerActive: boolean;
   customerName: string;
   formatDate: (date: string) => string;
   formatMoney: (minorUnits: string, currency: string, digits: number) => string;
@@ -19,6 +20,8 @@ type ReceivableDetailScreenProps = {
   onRetry: () => void;
   onReversePayment: (paymentId: string) => void;
   onVoid: () => void;
+  paymentsDisabledReason: string;
+  paymentsEnabled: boolean;
   state: ReceivableDetailLoadState;
 };
 
@@ -26,6 +29,7 @@ export function ReceivableDetailScreen({
   canManage,
   cashAccountNameFor,
   copy,
+  customerActive,
   customerName,
   formatDate,
   formatMoney,
@@ -34,6 +38,8 @@ export function ReceivableDetailScreen({
   onRetry,
   onReversePayment,
   onVoid,
+  paymentsDisabledReason,
+  paymentsEnabled,
   state,
 }: ReceivableDetailScreenProps) {
   if (state.kind === "loading") {
@@ -101,8 +107,14 @@ export function ReceivableDetailScreen({
         action={
           canManage && item.state !== "voided" ? (
             <View className="flex-row gap-2">
-              {item.outstandingMinorUnits !== "0" ? (
-                <Button label={copy.applyPayment} onPress={onApplyPayment} variant="accent" />
+              {customerActive && item.outstandingMinorUnits !== "0" ? (
+                <Button
+                  accessibilityHint={paymentsEnabled ? undefined : paymentsDisabledReason}
+                  disabled={!paymentsEnabled}
+                  label={copy.applyPayment}
+                  onPress={onApplyPayment}
+                  variant="accent"
+                />
               ) : null}
               {item.paidMinorUnits === "0" ? (
                 <Button label={copy.void} onPress={onVoid} variant="ghost" />
@@ -116,6 +128,16 @@ export function ReceivableDetailScreen({
       {state.stale ? (
         <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
           <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
+        </View>
+      ) : null}
+      {canManage && !paymentsEnabled ? (
+        <View className="gap-1 border-l-4 border-warning bg-[#FFF6E8] p-4 dark:bg-[#3A2A18]">
+          <Text className="font-bold text-ink dark:text-white">
+            {copy.paymentsUnavailableTitle}
+          </Text>
+          <Text className="text-sm leading-5 text-ink-muted dark:text-[#D5C8B8]">
+            {paymentsDisabledReason}
+          </Text>
         </View>
       ) : null}
       <View className="gap-5 border-y border-line py-6 lg:flex-row dark:border-[#304239]">
@@ -150,41 +172,53 @@ export function ReceivableDetailScreen({
           </Text>
         ) : (
           <View className="border-t border-line dark:border-[#304239]">
-            {state.payments.map((payment) => (
-              <View
-                className="gap-3 border-b border-line py-4 sm:flex-row sm:items-center sm:justify-between dark:border-[#304239]"
-                key={payment.id}
-              >
-                <View className="min-w-0 flex-1 gap-1">
-                  <Text className="font-bold text-ink dark:text-white">
-                    {payment.kind === "reversal" ? copy.reversedPayment : copy.applyPayment}
-                  </Text>
-                  <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
-                    {formatDate(payment.occurredLocalDate)}
-                  </Text>
-                  <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
-                    {copy.cashAccount}: {cashAccountNameFor(payment.cashAccountId)}
-                  </Text>
+            {state.payments.map((payment) => {
+              const alreadyReversed = state.payments.some(
+                (candidate) =>
+                  candidate.kind === "reversal" && candidate.reversesPaymentId === payment.id,
+              );
+              return (
+                <View
+                  className="gap-3 border-b border-line py-4 sm:flex-row sm:items-center sm:justify-between dark:border-[#304239]"
+                  key={payment.id}
+                >
+                  <View className="min-w-0 flex-1 gap-1">
+                    <Text className="font-bold text-ink dark:text-white">
+                      {payment.kind === "reversal" ? copy.reversedPayment : copy.applyPayment}
+                    </Text>
+                    <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+                      {formatDate(payment.occurredLocalDate)}
+                    </Text>
+                    <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+                      {copy.cashAccount}: {cashAccountNameFor(payment.cashAccountId)}
+                    </Text>
+                  </View>
+                  <View className="items-start gap-2 sm:items-end">
+                    <Text className="font-black text-ink dark:text-white">
+                      {formatMoney(
+                        payment.amountMinorUnits,
+                        payment.currency,
+                        payment.currencyMinorUnitDigits,
+                      )}
+                    </Text>
+                    {canManage && payment.kind === "payment" && !alreadyReversed ? (
+                      <Button
+                        accessibilityHint={paymentsEnabled ? undefined : paymentsDisabledReason}
+                        disabled={!paymentsEnabled}
+                        onPress={() => onReversePayment(payment.id)}
+                        size="sm"
+                        variant="ghost"
+                      >
+                        <RotateCcw color="#B94242" size={16} />
+                        <ButtonText className="text-danger" variant="ghost">
+                          {copy.reverse}
+                        </ButtonText>
+                      </Button>
+                    ) : null}
+                  </View>
                 </View>
-                <View className="items-start gap-2 sm:items-end">
-                  <Text className="font-black text-ink dark:text-white">
-                    {formatMoney(
-                      payment.amountMinorUnits,
-                      payment.currency,
-                      payment.currencyMinorUnitDigits,
-                    )}
-                  </Text>
-                  {canManage && payment.kind === "payment" ? (
-                    <Button onPress={() => onReversePayment(payment.id)} size="sm" variant="ghost">
-                      <RotateCcw color="#B94242" size={16} />
-                      <ButtonText className="text-danger" variant="ghost">
-                        {copy.reverse}
-                      </ButtonText>
-                    </Button>
-                  ) : null}
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         )}
       </View>

@@ -44,12 +44,14 @@ export function CustomerArchiveReview({
         </View>
       ) : null}
       <View className="gap-3 sm:flex-row sm:justify-end">
-        <Button
-          disabled={action === "waiting"}
-          label={copy.cancel}
-          onPress={onCancel}
-          variant="ghost"
-        />
+        {mutation.kind !== "uncertain" ? (
+          <Button
+            disabled={action === "waiting"}
+            label={copy.cancel}
+            onPress={onCancel}
+            variant="ghost"
+          />
+        ) : null}
         {action === "retry" ? (
           <Button label={copy.retrySameRequest} onPress={onRetrySameRequest} variant="danger" />
         ) : action === "submit" || action === "waiting" ? (

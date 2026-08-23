@@ -16,6 +16,7 @@ describe("receivables UI states", () => {
     expect("summary" in error).toBe(false);
     const empty: ReceivablesLoadState = {
       kind: "empty",
+      stale: false,
       summary: {
         currency: "USD",
         currencyMinorUnitDigits: 2,

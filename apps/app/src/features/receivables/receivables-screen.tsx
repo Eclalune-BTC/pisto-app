@@ -123,6 +123,11 @@ export function ReceivablesScreen({
           ))}
         </View>
       ) : null}
+      {successful && state.stale ? (
+        <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
+          <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
+        </View>
+      ) : null}
       {state.kind === "loading" ? (
         <View className="min-h-56 items-start justify-center gap-3 border-y border-line dark:border-[#304239]">
           <ActivityIndicator color="#237A55" />
@@ -162,11 +167,6 @@ export function ReceivablesScreen({
         </View>
       ) : (
         <View className="gap-4">
-          {state.stale ? (
-            <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
-              <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
-            </View>
-          ) : null}
           <View className="border-t border-line dark:border-[#304239]">
             {state.items.map((item) => (
               <Pressable

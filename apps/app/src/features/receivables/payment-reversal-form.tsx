@@ -36,6 +36,7 @@ export function PaymentReversalForm({
             error={errors.date}
             label={copy.date}
             onChangeText={(value) => onChange("date", value)}
+            placeholder={copy.datePlaceholder}
             value={date}
           />
         </View>
@@ -44,6 +45,7 @@ export function PaymentReversalForm({
             error={errors.time}
             label={copy.time}
             onChangeText={(value) => onChange("time", value)}
+            placeholder={copy.timePlaceholder}
             value={time}
           />
         </View>
@@ -52,6 +54,7 @@ export function PaymentReversalForm({
         error={errors.reference}
         label={`${copy.reference} (${copy.optional})`}
         onChangeText={(value) => onChange("reference", value)}
+        placeholder={copy.referencePlaceholder}
         value={reference}
       />
       <View className="gap-3 sm:flex-row sm:justify-end">

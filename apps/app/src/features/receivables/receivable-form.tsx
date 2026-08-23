@@ -65,6 +65,7 @@ export function ReceivableForm({
             keyboardType="decimal-pad"
             label={copy.amount}
             onChangeText={(value) => onChange("amount", value)}
+            placeholder={copy.amountPlaceholder}
             value={amount}
           />
         </View>
@@ -73,6 +74,7 @@ export function ReceivableForm({
             error={errors.postedDate}
             label={copy.postedDate}
             onChangeText={(value) => onChange("postedDate", value)}
+            placeholder={copy.datePlaceholder}
             value={postedDate}
           />
         </View>
@@ -81,6 +83,7 @@ export function ReceivableForm({
         error={errors.dueDate}
         label={`${copy.dueDate} (${copy.optional})`}
         onChangeText={(value) => onChange("dueDate", value)}
+        placeholder={copy.datePlaceholder}
         value={dueDate}
       />
       <Field
@@ -88,6 +91,7 @@ export function ReceivableForm({
         label={copy.description}
         multiline
         onChangeText={(value) => onChange("description", value)}
+        placeholder={copy.descriptionPlaceholder}
         value={description}
       />
       <View className="gap-3 sm:flex-row sm:justify-end">

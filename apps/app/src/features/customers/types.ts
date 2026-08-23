@@ -9,7 +9,7 @@ export type CustomersLoadState =
   | { kind: "offline" }
   | { kind: "denied" }
   | { kind: "error" }
-  | { kind: "empty" }
+  | { kind: "empty"; stale: boolean }
   | {
       kind: "ready";
       items: Customer[];
@@ -28,6 +28,8 @@ export type CustomerDetailLoadState =
       kind: "ready";
       detail: CustomerDetail;
       receivables: Receivable[];
+      receivablesLoadingMore: boolean;
+      receivablesNextCursor: string | null;
       stale: boolean;
     };
 
@@ -39,6 +41,8 @@ export type MutationState =
   | { kind: "succeeded" };
 
 export type CustomersCopy = {
+  active: string;
+  all: string;
   archive: string;
   archived: string;
   archivedDescription: string;
@@ -55,9 +59,11 @@ export type CustomersCopy = {
   emptyTitle: string;
   errorDescription: string;
   errorTitle: string;
+  filterLabel: string;
   loadMore: string;
   loading: string;
   name: string;
+  newReceivable: string;
   noContact: string;
   noReceivables: string;
   notes: string;
@@ -68,6 +74,8 @@ export type CustomersCopy = {
   phone: string;
   receivableHistory: string;
   retry: string;
+  searchEmptyDescription: string;
+  searchEmptyTitle: string;
   searchLabel: string;
   searchPlaceholder: string;
   stale: string;
@@ -81,9 +89,13 @@ export type CustomerFormCopy = {
   cancel: string;
   confirmArchive: string;
   email: string;
+  emailPlaceholder: string;
   name: string;
+  namePlaceholder: string;
   notes: string;
+  notesPlaceholder: string;
   phone: string;
+  phonePlaceholder: string;
   retrySameRequest: string;
   save: string;
   uncertainTitle: string;

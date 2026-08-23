@@ -2,35 +2,35 @@ import { Text, View } from "react-native";
 
 import { Button } from "@/components/ui/button";
 
-import {
-  type ConfirmationCopy,
-  type ConfirmationField,
-  type FinancialMutationState,
-  financialMutationAction,
-} from "./types";
+import { customersReceivablesCopy as copy } from "./copy";
+import { customerPrimaryAction, type MutationState } from "./types";
 
-type ConfirmationPanelProps = {
-  copy: ConfirmationCopy;
-  fields: ConfirmationField[];
-  mutation: FinancialMutationState;
-  onCancel: () => void;
+export type CustomerReviewField = { label: string; value: string };
+
+type CustomerReviewProps = {
+  confirmLabel: string;
+  fields: CustomerReviewField[];
+  mutation: MutationState;
   onConfirm: () => void;
-  onRetrySameCommand: () => void;
+  onEdit: () => void;
+  onRetrySameRequest: () => void;
+  title: string;
 };
 
-export function ConfirmationPanel({
-  copy,
+export function CustomerReview({
+  confirmLabel,
   fields,
   mutation,
-  onCancel,
   onConfirm,
-  onRetrySameCommand,
-}: ConfirmationPanelProps) {
-  const action = financialMutationAction(mutation);
+  onEdit,
+  onRetrySameRequest,
+  title,
+}: CustomerReviewProps) {
+  const action = customerPrimaryAction(mutation);
   return (
     <View className="gap-6">
       <Text accessibilityRole="header" className="text-2xl font-black text-ink dark:text-white">
-        {copy.reviewTitle}
+        {title}
       </Text>
       <View className="border-y border-line dark:border-[#304239]">
         {fields.map((field) => (
@@ -49,36 +49,36 @@ export function ConfirmationPanel({
       </View>
       {mutation.kind === "uncertain" ? (
         <View className="gap-2 border-l-4 border-warning bg-[#FFF6E8] p-4 dark:bg-[#3A2A18]">
-          <Text className="font-bold text-ink dark:text-white">{copy.uncertainTitle}</Text>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#D5C8B8]">
-            {copy.uncertainDescription}
+          <Text className="font-bold text-ink dark:text-white">
+            {copy.customers.form.uncertainTitle}
           </Text>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#D5C8B8]">
+          <Text accessibilityRole="alert" className="text-sm text-ink-muted dark:text-[#D5C8B8]">
             {mutation.message}
           </Text>
         </View>
       ) : mutation.kind === "error" ? (
-        <View className="gap-1 border-l-4 border-danger bg-[#FFF1F1] p-4 dark:bg-[#3A2020]">
-          <Text className="font-bold text-danger dark:text-[#FFBABA]">{copy.errorTitle}</Text>
-          <Text accessibilityRole="alert" className="text-sm text-ink-muted dark:text-[#C9D4CE]">
-            {mutation.message}
-          </Text>
-        </View>
+        <Text accessibilityRole="alert" className="text-sm text-danger dark:text-[#FFBABA]">
+          {mutation.message}
+        </Text>
       ) : null}
       <View className="gap-3 sm:flex-row sm:justify-end">
         {mutation.kind !== "uncertain" ? (
           <Button
             disabled={action === "waiting"}
-            label={copy.cancel}
-            onPress={onCancel}
+            label={copy.receivables.review.cancel}
+            onPress={onEdit}
             variant="ghost"
           />
         ) : null}
         {action === "retry" ? (
-          <Button label={copy.retrySameCommand} onPress={onRetrySameCommand} variant="accent" />
-        ) : action === "confirm" || action === "waiting" ? (
           <Button
-            label={action === "waiting" ? copy.confirming : copy.confirm}
+            label={copy.customers.form.retrySameRequest}
+            onPress={onRetrySameRequest}
+            variant="accent"
+          />
+        ) : action === "submit" || action === "waiting" ? (
+          <Button
+            label={confirmLabel}
             loading={action === "waiting"}
             onPress={onConfirm}
             variant="accent"

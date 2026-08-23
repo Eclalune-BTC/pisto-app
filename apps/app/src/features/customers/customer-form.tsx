@@ -40,6 +40,7 @@ export function CustomerForm({
         error={errors.name}
         label={copy.name}
         onChangeText={(value) => onChange("name", value)}
+        placeholder={copy.namePlaceholder}
         value={name}
       />
       <View className="gap-5 sm:flex-row">
@@ -49,6 +50,7 @@ export function CustomerForm({
             keyboardType="phone-pad"
             label={copy.phone}
             onChangeText={(value) => onChange("phone", value)}
+            placeholder={copy.phonePlaceholder}
             value={phone}
           />
         </View>
@@ -59,6 +61,7 @@ export function CustomerForm({
             keyboardType="email-address"
             label={copy.email}
             onChangeText={(value) => onChange("email", value)}
+            placeholder={copy.emailPlaceholder}
             value={email}
           />
         </View>
@@ -68,6 +71,7 @@ export function CustomerForm({
         label={copy.notes}
         multiline
         onChangeText={(value) => onChange("notes", value)}
+        placeholder={copy.notesPlaceholder}
         value={notes}
       />
       {mutation.kind === "error" ? (

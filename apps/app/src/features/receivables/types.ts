@@ -9,7 +9,7 @@ export type ReceivablesLoadState =
   | { kind: "offline" }
   | { kind: "denied" }
   | { kind: "error" }
-  | { kind: "empty"; summary: ReceivablesSummary }
+  | { kind: "empty"; stale: boolean; summary: ReceivablesSummary }
   | {
       kind: "ready";
       items: Receivable[];
@@ -44,8 +44,12 @@ export type ReceivablesCopy = {
   applyPayment: string;
   back: string;
   cashAccount: string;
+  cashAccountLoading: string;
+  cashAccountUnavailable: string;
   charge: string;
   confirmed: string;
+  customerLoading: string;
+  customerUnavailable: string;
   deniedDescription: string;
   deniedTitle: string;
   description: string;
@@ -70,6 +74,8 @@ export type ReceivablesCopy = {
   overdueCount: string;
   paid: string;
   paymentHistory: string;
+  paymentsUnavailableDescription: string;
+  paymentsUnavailableTitle: string;
   postedDate: string;
   retry: string;
   reverse: string;
@@ -97,40 +103,51 @@ export type ConfirmationField = { label: string; value: string };
 
 export type ReceivableFormCopy = {
   amount: string;
+  amountPlaceholder: string;
   cancel: string;
   chooseCustomer: string;
   customer: string;
   description: string;
+  descriptionPlaceholder: string;
   dueDate: string;
   optional: string;
   postedDate: string;
+  datePlaceholder: string;
   review: string;
 };
 
 export type PaymentFormCopy = {
   amount: string;
+  amountPlaceholder: string;
   cancel: string;
   cashAccount: string;
   chooseCashAccount: string;
   date: string;
+  datePlaceholder: string;
   optional: string;
   reference: string;
+  referencePlaceholder: string;
   review: string;
   time: string;
+  timePlaceholder: string;
 };
 
 export type PaymentReversalFormCopy = {
   cancel: string;
   date: string;
+  datePlaceholder: string;
   optional: string;
   reference: string;
+  referencePlaceholder: string;
   review: string;
   time: string;
+  timePlaceholder: string;
 };
 
 export type VoidReceivableFormCopy = {
   cancel: string;
   reason: string;
+  reasonPlaceholder: string;
   review: string;
 };
 

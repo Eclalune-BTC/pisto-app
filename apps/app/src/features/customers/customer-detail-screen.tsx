@@ -14,7 +14,9 @@ type CustomerDetailScreenProps = {
   formatMoney: (minorUnits: string, currency: string, digits: number) => string;
   onArchive: () => void;
   onBack: () => void;
+  onCreateReceivable: () => void;
   onEdit: () => void;
+  onLoadMoreReceivables: () => void;
   onOpenReceivable: (receivableId: string) => void;
   onRetry: () => void;
   state: CustomerDetailLoadState;
@@ -27,7 +29,9 @@ export function CustomerDetailScreen({
   formatMoney,
   onArchive,
   onBack,
+  onCreateReceivable,
   onEdit,
+  onLoadMoreReceivables,
   onOpenReceivable,
   onRetry,
   state,
@@ -82,7 +86,8 @@ export function CustomerDetailScreen({
       <ScreenHeader
         action={
           canManage && customer.status === "active" ? (
-            <View className="flex-row gap-2">
+            <View className="flex-row flex-wrap gap-2">
+              <Button label={copy.newReceivable} onPress={onCreateReceivable} variant="accent" />
               <Button onPress={onEdit} variant="secondary">
                 <Pencil color="#14241D" size={17} />
                 <ButtonText variant="secondary">{copy.update}</ButtonText>
@@ -170,29 +175,40 @@ export function CustomerDetailScreen({
             {copy.noReceivables}
           </Text>
         ) : (
-          <View className="border-t border-line dark:border-[#304239]">
-            {state.receivables.map((item) => (
-              <Pressable
-                accessibilityRole="button"
-                className="min-h-16 flex-row items-center justify-between gap-4 border-b border-line py-4 active:opacity-70 dark:border-[#304239]"
-                key={item.id}
-                onPress={() => onOpenReceivable(item.id)}
-              >
-                <View className="min-w-0 flex-1 gap-1">
-                  <Text className="font-bold text-ink dark:text-white">{item.description}</Text>
-                  <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
-                    {formatDate(item.postedDate)}
+          <View className="gap-4">
+            <View className="border-t border-line dark:border-[#304239]">
+              {state.receivables.map((item) => (
+                <Pressable
+                  accessibilityRole="button"
+                  className="min-h-16 flex-row items-center justify-between gap-4 border-b border-line py-4 active:opacity-70 dark:border-[#304239]"
+                  key={item.id}
+                  onPress={() => onOpenReceivable(item.id)}
+                >
+                  <View className="min-w-0 flex-1 gap-1">
+                    <Text className="font-bold text-ink dark:text-white">{item.description}</Text>
+                    <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+                      {formatDate(item.postedDate)}
+                    </Text>
+                  </View>
+                  <Text className="font-bold text-ink dark:text-white">
+                    {formatMoney(
+                      item.outstandingMinorUnits,
+                      item.currency,
+                      item.currencyMinorUnitDigits,
+                    )}
                   </Text>
-                </View>
-                <Text className="font-bold text-ink dark:text-white">
-                  {formatMoney(
-                    item.outstandingMinorUnits,
-                    item.currency,
-                    item.currencyMinorUnitDigits,
-                  )}
-                </Text>
-              </Pressable>
-            ))}
+                </Pressable>
+              ))}
+            </View>
+            {state.receivablesNextCursor ? (
+              <Button
+                disabled={state.receivablesLoadingMore}
+                label={copy.loadMore}
+                loading={state.receivablesLoadingMore}
+                onPress={onLoadMoreReceivables}
+                variant="secondary"
+              />
+            ) : null}
           </View>
         )}
       </View>

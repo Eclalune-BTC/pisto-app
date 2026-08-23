@@ -16,9 +16,13 @@ type CustomersScreenProps = {
   onOpenCustomer: (customerId: string) => void;
   onRetry: () => void;
   onSearchChange: (query: string) => void;
+  onStatusChange: (status: CustomerStatusFilter) => void;
   searchQuery: string;
   state: CustomersLoadState;
+  status: CustomerStatusFilter;
 };
+
+export type CustomerStatusFilter = "active" | "archived" | "all";
 
 function StateMessage({
   action,
@@ -50,8 +54,10 @@ export function CustomersScreen({
   onOpenCustomer,
   onRetry,
   onSearchChange,
+  onStatusChange,
   searchQuery,
   state,
+  status,
 }: CustomersScreenProps) {
   const hasSuccessfulRead = state.kind === "empty" || state.kind === "ready";
   return (
@@ -70,15 +76,55 @@ export function CustomersScreen({
       />
 
       {hasSuccessfulRead ? (
-        <View className="max-w-[620px]">
-          <Field
-            accessibilityLabel={copy.searchLabel}
-            label={copy.searchLabel}
-            onChangeText={onSearchChange}
-            placeholder={copy.searchPlaceholder}
-            trailing={<Search color="#617168" size={18} />}
-            value={searchQuery}
-          />
+        <View className="gap-5">
+          <View className="max-w-[620px]">
+            <Field
+              accessibilityLabel={copy.searchLabel}
+              label={copy.searchLabel}
+              onChangeText={onSearchChange}
+              placeholder={copy.searchPlaceholder}
+              trailing={<Search color="#617168" size={18} />}
+              value={searchQuery}
+            />
+          </View>
+          <View
+            accessibilityLabel={copy.filterLabel}
+            className="flex-row flex-wrap border-b border-line dark:border-[#304239]"
+          >
+            {(
+              [
+                ["active", copy.active],
+                ["archived", copy.archived],
+                ["all", copy.all],
+              ] as const
+            ).map(([value, label]) => (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: status === value }}
+                className={`min-h-11 justify-center border-b-2 px-4 ${
+                  status === value ? "border-positive" : "border-transparent"
+                }`}
+                key={value}
+                onPress={() => onStatusChange(value)}
+              >
+                <Text
+                  className={`text-sm font-bold ${
+                    status === value
+                      ? "text-positive dark:text-[#8DDEAF]"
+                      : "text-ink-muted dark:text-[#AAB8B0]"
+                  }`}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {hasSuccessfulRead && state.stale ? (
+        <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
+          <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
         </View>
       ) : null}
 
@@ -101,17 +147,14 @@ export function CustomersScreen({
         />
       ) : state.kind === "empty" ? (
         <StateMessage
-          action={canManage ? { label: copy.emptyAction, onPress: onCreate } : undefined}
-          description={copy.emptyDescription}
-          title={copy.emptyTitle}
+          action={
+            canManage && !searchQuery ? { label: copy.emptyAction, onPress: onCreate } : undefined
+          }
+          description={searchQuery ? copy.searchEmptyDescription : copy.emptyDescription}
+          title={searchQuery ? copy.searchEmptyTitle : copy.emptyTitle}
         />
       ) : (
         <View className="gap-4">
-          {state.stale ? (
-            <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
-              <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
-            </View>
-          ) : null}
           <View className="border-t border-line dark:border-[#304239]">
             {state.items.map((item) => {
               const contact = item.email ?? item.phone;
