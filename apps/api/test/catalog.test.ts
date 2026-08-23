@@ -4,7 +4,7 @@ import type { CatalogRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
 import { Hono } from "hono";
 
-import { ApiError } from "../src/errors.ts";
+import { normalizeError } from "../src/errors.ts";
 import { catalogRoutes } from "../src/routes/catalog.ts";
 
 const actorSession = {
@@ -52,21 +52,21 @@ function createRepository(overrides: Partial<CatalogRepository> = {}): CatalogRe
 function createApp(repository: CatalogRepository) {
   const app = new Hono();
   app.route("/v1", catalogRoutes({ auth: createAuth(), catalog: repository }));
+  // Mirrors the single boundary in src/app.ts so a router mounted on its own
+  // still translates a domain failure exactly as the composed application does.
   app.onError((error, context) => {
-    if (error instanceof ApiError) {
-      return context.json(
-        {
-          error: {
-            code: error.code,
-            message: error.message,
-            requestId: "catalog-test",
-            details: error.details,
-          },
+    const { apiError } = normalizeError(error);
+    return context.json(
+      {
+        error: {
+          code: apiError.code,
+          message: apiError.message,
+          requestId: "catalog-test",
+          details: apiError.details,
         },
-        error.status,
-      );
-    }
-    return context.json({ error: { code: "INTERNAL_ERROR" } }, 500);
+      },
+      apiError.status,
+    );
   });
   return app;
 }

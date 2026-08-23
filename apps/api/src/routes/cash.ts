@@ -14,239 +14,161 @@ import {
   voidExpenseRequestSchema,
 } from "@pisto/contracts";
 import type { CashRepository } from "@pisto/db";
-import { ProductError } from "@pisto/db";
 import { Hono } from "hono";
-import { z } from "zod";
 
-import { ApiError } from "../errors.ts";
-import { parseJsonBody } from "../http.ts";
-import { requireSession, toProductActor } from "../session.ts";
+import { commandStatus, parseJsonBody, parseRequest, requireRecordId } from "../http.ts";
+import { requireActor } from "../session.ts";
 import type { AppEnv } from "../types.ts";
 
-const resourceIdSchema = z.string().uuid();
-
-function mapCashError(error: unknown): never {
-  if (!(error instanceof ProductError)) throw error;
-  switch (error.code) {
-    case "BUSINESS_REQUIRED":
-    case "CONFLICT":
-    case "IDEMPOTENCY_CONFLICT":
-      throw new ApiError(409, error.code, error.message);
-    case "FORBIDDEN":
-      throw new ApiError(403, "FORBIDDEN", error.message);
-    case "NOT_FOUND":
-      throw new ApiError(404, "NOT_FOUND", error.message);
-    case "UNAUTHORIZED":
-      throw new ApiError(401, "UNAUTHORIZED", error.message);
-    case "VALIDATION_ERROR":
-      throw new ApiError(400, "VALIDATION_ERROR", error.message);
-  }
-}
-
-function requireResourceId(value: string, resource: string): string {
-  const parsed = resourceIdSchema.safeParse(value);
-  if (!parsed.success) throw new ApiError(404, "NOT_FOUND", `${resource} was not found`);
-  return parsed.data;
-}
-
-function invalidRequest(message: string, details: unknown): never {
-  throw new ApiError(400, "VALIDATION_ERROR", message, details);
-}
+const accountNotFound = "Cash account was not found";
+const movementNotFound = "Cash movement was not found";
+const expenseNotFound = "Expense was not found";
 
 export function cashRoutes(input: { auth: Auth; cash: CashRepository }) {
   const routes = new Hono<AppEnv>();
 
   routes.get("/cash/accounts", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const query = cashAccountListQuerySchema.safeParse(context.req.query());
-    if (!query.success) invalidRequest("Cash account list query is invalid", query.error.flatten());
-    try {
-      return context.json({
-        data: await input.cash.listAccounts(toProductActor(authSession), query.data),
-      });
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const query = parseRequest(
+      cashAccountListQuerySchema,
+      context.req.query(),
+      "Cash account list query is invalid",
+    );
+    return context.json({ data: await input.cash.listAccounts(actor, query) });
   });
 
   routes.post("/cash/accounts", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const body = createCashAccountRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) invalidRequest("Cash account confirmation is invalid", body.error.flatten());
-    try {
-      const result = await input.cash.createAccount(toProductActor(authSession), body.data);
-      return context.json({ data: result }, result.replayed ? 200 : 201);
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const command = parseRequest(
+      createCashAccountRequestSchema,
+      await parseJsonBody(context),
+      "Cash account confirmation is invalid",
+    );
+    const result = await input.cash.createAccount(actor, command);
+    return context.json({ data: result }, commandStatus(result));
   });
 
   routes.post("/cash/accounts/:accountId/update", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const accountId = requireResourceId(context.req.param("accountId"), "Cash account");
-    const body = updateCashAccountRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) invalidRequest("Cash account update is invalid", body.error.flatten());
-    try {
-      const result = await input.cash.updateAccount(
-        toProductActor(authSession),
-        accountId,
-        body.data,
-      );
-      return context.json({ data: result });
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const accountId = requireRecordId(context.req.param("accountId"), accountNotFound);
+    const command = parseRequest(
+      updateCashAccountRequestSchema,
+      await parseJsonBody(context),
+      "Cash account update is invalid",
+    );
+    return context.json({ data: await input.cash.updateAccount(actor, accountId, command) });
   });
 
   routes.post("/cash/accounts/:accountId/archive", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const accountId = requireResourceId(context.req.param("accountId"), "Cash account");
-    const body = archiveCashAccountRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) invalidRequest("Cash account archive is invalid", body.error.flatten());
-    try {
-      const result = await input.cash.archiveAccount(
-        toProductActor(authSession),
-        accountId,
-        body.data,
-      );
-      return context.json({ data: result });
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const accountId = requireRecordId(context.req.param("accountId"), accountNotFound);
+    const command = parseRequest(
+      archiveCashAccountRequestSchema,
+      await parseJsonBody(context),
+      "Cash account archive is invalid",
+    );
+    return context.json({ data: await input.cash.archiveAccount(actor, accountId, command) });
   });
 
   routes.get("/cash/accounts/:accountId", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const accountId = requireResourceId(context.req.param("accountId"), "Cash account");
-    try {
-      const account = await input.cash.getAccount(toProductActor(authSession), accountId);
-      return context.json({ data: { account } });
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const accountId = requireRecordId(context.req.param("accountId"), accountNotFound);
+    const account = await input.cash.getAccount(actor, accountId);
+    return context.json({ data: { account } });
   });
 
   routes.post("/cash/adjustments", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const body = recordCashAdjustmentRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) invalidRequest("Cash adjustment is invalid", body.error.flatten());
-    try {
-      const result = await input.cash.recordAdjustment(toProductActor(authSession), body.data);
-      return context.json({ data: result }, result.replayed ? 200 : 201);
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const command = parseRequest(
+      recordCashAdjustmentRequestSchema,
+      await parseJsonBody(context),
+      "Cash adjustment is invalid",
+    );
+    const result = await input.cash.recordAdjustment(actor, command);
+    return context.json({ data: result }, commandStatus(result));
   });
 
   routes.post("/cash/movements/:movementId/reverse", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const movementId = requireResourceId(context.req.param("movementId"), "Cash movement");
-    const body = reverseCashMovementRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) invalidRequest("Cash reversal is invalid", body.error.flatten());
-    try {
-      const result = await input.cash.reverseAdjustment(
-        toProductActor(authSession),
-        movementId,
-        body.data,
-      );
-      return context.json({ data: result }, result.replayed ? 200 : 201);
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const movementId = requireRecordId(context.req.param("movementId"), movementNotFound);
+    const command = parseRequest(
+      reverseCashMovementRequestSchema,
+      await parseJsonBody(context),
+      "Cash reversal is invalid",
+    );
+    const result = await input.cash.reverseAdjustment(actor, movementId, command);
+    return context.json({ data: result }, commandStatus(result));
   });
 
   routes.post("/cash/transfers", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const body = transferCashRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) invalidRequest("Cash transfer is invalid", body.error.flatten());
-    try {
-      const result = await input.cash.transfer(toProductActor(authSession), body.data);
-      return context.json({ data: result }, result.replayed ? 200 : 201);
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const command = parseRequest(
+      transferCashRequestSchema,
+      await parseJsonBody(context),
+      "Cash transfer is invalid",
+    );
+    const result = await input.cash.transfer(actor, command);
+    return context.json({ data: result }, commandStatus(result));
   });
 
   routes.get("/cash/movements", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const query = cashMovementListQuerySchema.safeParse(context.req.query());
-    if (!query.success)
-      invalidRequest("Cash movement list query is invalid", query.error.flatten());
-    try {
-      return context.json({
-        data: await input.cash.listMovements(toProductActor(authSession), query.data),
-      });
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const query = parseRequest(
+      cashMovementListQuerySchema,
+      context.req.query(),
+      "Cash movement list query is invalid",
+    );
+    return context.json({ data: await input.cash.listMovements(actor, query) });
   });
 
   routes.get("/expenses/summary", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const query = expensePeriodQuerySchema.safeParse(context.req.query());
-    if (!query.success) invalidRequest("Expense period is invalid", query.error.flatten());
-    try {
-      const summary = await input.cash.getExpensePeriodSummary(
-        toProductActor(authSession),
-        query.data,
-      );
-      return context.json({ data: { summary } });
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const query = parseRequest(
+      expensePeriodQuerySchema,
+      context.req.query(),
+      "Expense period is invalid",
+    );
+    const summary = await input.cash.getExpensePeriodSummary(actor, query);
+    return context.json({ data: { summary } });
   });
 
   routes.get("/expenses", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const query = expenseListQuerySchema.safeParse(context.req.query());
-    if (!query.success) invalidRequest("Expense list query is invalid", query.error.flatten());
-    try {
-      return context.json({
-        data: await input.cash.listExpenses(toProductActor(authSession), query.data),
-      });
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const query = parseRequest(
+      expenseListQuerySchema,
+      context.req.query(),
+      "Expense list query is invalid",
+    );
+    return context.json({ data: await input.cash.listExpenses(actor, query) });
   });
 
   routes.post("/expenses", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const body = postExpenseRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) invalidRequest("Expense confirmation is invalid", body.error.flatten());
-    try {
-      const result = await input.cash.postExpense(toProductActor(authSession), body.data);
-      return context.json({ data: result }, result.replayed ? 200 : 201);
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const command = parseRequest(
+      postExpenseRequestSchema,
+      await parseJsonBody(context),
+      "Expense confirmation is invalid",
+    );
+    const result = await input.cash.postExpense(actor, command);
+    return context.json({ data: result }, commandStatus(result));
   });
 
   routes.post("/expenses/:expenseId/void", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const expenseId = requireResourceId(context.req.param("expenseId"), "Expense");
-    const body = voidExpenseRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) invalidRequest("Expense void confirmation is invalid", body.error.flatten());
-    try {
-      const result = await input.cash.voidExpense(
-        toProductActor(authSession),
-        expenseId,
-        body.data,
-      );
-      return context.json({ data: result });
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const expenseId = requireRecordId(context.req.param("expenseId"), expenseNotFound);
+    const command = parseRequest(
+      voidExpenseRequestSchema,
+      await parseJsonBody(context),
+      "Expense void confirmation is invalid",
+    );
+    return context.json({ data: await input.cash.voidExpense(actor, expenseId, command) });
   });
 
   routes.get("/expenses/:expenseId", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const expenseId = requireResourceId(context.req.param("expenseId"), "Expense");
-    try {
-      const expenseRecord = await input.cash.getExpense(toProductActor(authSession), expenseId);
-      return context.json({ data: { expense: expenseRecord } });
-    } catch (error) {
-      return mapCashError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const expenseId = requireRecordId(context.req.param("expenseId"), expenseNotFound);
+    const expenseRecord = await input.cash.getExpense(actor, expenseId);
+    return context.json({ data: { expense: expenseRecord } });
   });
 
   return routes;
