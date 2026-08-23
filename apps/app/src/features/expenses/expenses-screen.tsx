@@ -41,7 +41,7 @@ export type ExpensesScreenCopy = ExpenseFiltersCopy & {
   mutationFailedTitle: string;
   uncertainTitle: string;
   uncertainDescription: string;
-  checkStatus: string;
+  retrySameConfirmation: string;
   loadMore: string;
   loadingMore: string;
   noCategoryData: string;
@@ -189,7 +189,7 @@ export function ExpensesScreen({
           </Text>
           <Button
             className="self-start"
-            label={copy.checkStatus}
+            label={copy.retrySameConfirmation}
             onPress={onCheckMutationStatus}
             variant="secondary"
           />

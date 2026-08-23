@@ -1,23 +1,20 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "../cash/api";
+import { cashIssueMessage } from "../cash/copy";
 import { invalidateExpensesAndCash } from "../cash/invalidate";
 import { cashConfirmationState } from "../cash/mutation-state";
 import { activeCashAccountsInfiniteOptions, flattenPages } from "../cash/queries";
 import { featureRemoteState, queryHasStaleData } from "../cash/remote-state";
 import { useCashAccess } from "../cash/use-cash-access";
-import {
-  expenseCategoryOptions,
-  expenseEditorCopy,
-  expenseErrorMessage,
-  expenseIssueMessage,
-  expensesUiCopy,
-} from "./copy";
+import { buildExpensesCopy } from "./copy";
 import { buildExpenseCommand } from "./drafts";
 import {
   type ExpenseDraft,
@@ -38,6 +35,9 @@ const emptyDraft: ExpenseDraft = {
 export function ExpenseEditorController() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildExpensesCopy(t), [t]);
+  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const {
     business,
     businesses,
@@ -89,15 +89,15 @@ export function ExpenseEditorController() {
   let remoteState = featureRemoteState({
     businessPending: businesses.isPending,
     canRead,
-    offlineMessage: expensesUiCopy.offline,
+    offlineMessage: copy.remote.offline,
     queries: [businesses, ...(canRead ? [accountsQuery] : [])],
-    unavailableMessage: expensesUiCopy.unavailable,
+    unavailableMessage: copy.remote.unavailable,
   });
   const stale = accessIsStale || queryHasStaleData(accountsQuery);
   const canConfirm =
     canManage && Boolean(business?.access.permissions.includes("cash:manage")) && !stale;
   if (remoteState.kind === "ready" && stale) {
-    remoteState = { kind: "error", message: expensesUiCopy.staleMutation };
+    remoteState = { kind: "error", message: copy.remote.staleMutation };
   }
 
   const prepareReview = () => {
@@ -108,7 +108,7 @@ export function ExpenseEditorController() {
     });
     setErrors(
       Object.fromEntries(
-        Object.entries(result.issues).map(([field, issue]) => [field, expenseIssueMessage(issue)]),
+        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(t, issue)]),
       ) as ExpenseDraftErrors,
     );
     if (!result.command) return;
@@ -121,22 +121,21 @@ export function ExpenseEditorController() {
     <ExpenseEditorScreen
       accounts={accounts}
       canManage={canConfirm}
-      categoryOptions={expenseCategoryOptions}
+      categoryOptions={copy.categoryOptions}
       command={command}
       confirmation={confirmation}
-      copy={expenseEditorCopy}
+      copy={copy.editor}
       currency={business?.currency ?? ""}
       draft={draft}
-      effect={expensesUiCopy.createEffect}
-      errorMessage={mutation.error ? expenseErrorMessage(mutation.error) : undefined}
+      effect={copy.effects.create}
+      errorMessage={
+        mutation.error
+          ? productErrorMessage(mutation.error, copy.remote.mutationFallback, t)
+          : undefined
+      }
       errors={errors}
       formatMoney={(minorUnits, currency) =>
-        formatMinorUnits(
-          minorUnits,
-          currency,
-          business?.currencyMinorUnitDigits ?? 2,
-          DEFAULT_LOCALE,
-        )
+        formatMinorUnits(minorUnits, currency, business?.currencyMinorUnitDigits ?? 2, locale)
       }
       hasMoreAccounts={Boolean(accountsQuery.hasNextPage)}
       isLoadingMoreAccounts={accountsQuery.isFetchingNextPage}

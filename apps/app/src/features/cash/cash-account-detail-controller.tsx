@@ -1,15 +1,17 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { ApiClientError } from "@/lib/api-error";
 import { formatMinorUnits } from "@/lib/money";
+import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "./api";
 import { CashAccountDetailScreen } from "./cash-account-detail-screen";
 import { CashMovementDetailController } from "./cash-movement-detail-controller";
-import { cashAccountDetailCopy, cashErrorMessage, cashUiCopy } from "./copy";
+import { buildCashCopy } from "./copy";
 import { invalidateCashLedger } from "./invalidate";
 import { cashConfirmationState } from "./mutation-state";
 import { cashAccountQueryOptions, cashMovementsInfiniteOptions, flattenPages } from "./queries";
@@ -21,6 +23,9 @@ export function CashAccountDetailController() {
   const accountId = Array.isArray(params.accountId) ? params.accountId[0] : params.accountId;
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildCashCopy(t), [t]);
+  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const {
     business,
     businesses,
@@ -62,9 +67,9 @@ export function CashAccountDetailController() {
   let remoteState = featureRemoteState({
     businessPending: businesses.isPending,
     canRead,
-    offlineMessage: cashUiCopy.offline,
+    offlineMessage: copy.remote.offline,
     queries: [businesses, ...(canRead ? [accountQuery, movementsQuery] : [])],
-    unavailableMessage: cashUiCopy.unavailable,
+    unavailableMessage: copy.remote.unavailable,
   });
   if (
     accountQuery.error instanceof ApiClientError &&
@@ -103,10 +108,14 @@ export function CashAccountDetailController() {
       archiveCommand={archiveCommand}
       canManage={canManage && !stale}
       confirmation={cashConfirmationState(archiveMutation)}
-      copy={cashAccountDetailCopy}
-      errorMessage={archiveMutation.error ? cashErrorMessage(archiveMutation.error) : undefined}
+      copy={copy.accountDetail}
+      errorMessage={
+        archiveMutation.error
+          ? productErrorMessage(archiveMutation.error, copy.remote.mutationFallback, t)
+          : undefined
+      }
       formatMoney={(minorUnits, currency, fractionDigits) =>
-        formatMinorUnits(minorUnits, currency, fractionDigits, DEFAULT_LOCALE)
+        formatMinorUnits(minorUnits, currency, fractionDigits, locale)
       }
       hasMoreMovements={Boolean(movementsQuery.hasNextPage)}
       isLoadingMoreMovements={movementsQuery.isFetchingNextPage}

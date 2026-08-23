@@ -150,7 +150,7 @@ export default function NewSaleScreen() {
                   accessibilityRole="alert"
                   className="font-bold text-danger dark:text-[#FFBABA]"
                 >
-                  {ambiguousFailure ? t("sales.uncertainTitle") : t("sales.failedTitle")}
+                  {ambiguousFailure ? t("common.uncertainTitle") : t("sales.failedTitle")}
                 </Text>
                 <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
                   {ambiguousFailure

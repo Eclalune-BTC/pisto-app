@@ -202,7 +202,7 @@ export default function BusinessSetupScreen() {
             <Button
               className="self-start"
               disabled={!acknowledged || name.trim().length < 2}
-              label={uncertainCreation ? t("business.retrySame") : t("business.create")}
+              label={uncertainCreation ? t("common.retrySameConfirmation") : t("business.create")}
               loading={creation.isPending}
               onPress={createBusiness}
               variant="accent"

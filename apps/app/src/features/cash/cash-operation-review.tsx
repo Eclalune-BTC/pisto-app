@@ -11,7 +11,7 @@ export type CashOperationReviewCopy = {
   failedTitle: string;
   uncertainTitle: string;
   uncertainDescription: string;
-  checkStatus: string;
+  retrySameConfirmation: string;
 };
 
 type CashOperationReviewProps = {
@@ -50,7 +50,7 @@ export function CashOperationReview({
           </Text>
           <Button
             className="self-start"
-            label={copy.checkStatus}
+            label={copy.retrySameConfirmation}
             onPress={onCheckStatus}
             variant="secondary"
           />

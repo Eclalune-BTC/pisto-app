@@ -1,5 +1,5 @@
-import type { ApiErrorCode, CashAccountKind, CashMovementAction } from "@pisto/contracts";
-import { ApiClientError } from "@/lib/api-error";
+import type { CashAccountKind, CashMovementAction } from "@pisto/contracts";
+import type { TFunction } from "i18next";
 
 import type { CashAccountDetailCopy } from "./cash-account-detail-screen";
 import type { CashAccountEditorCopy } from "./cash-account-editor-screen";
@@ -9,281 +9,249 @@ import type { CashScreenCopy } from "./cash-screen";
 import type { CashTransferCopy } from "./cash-transfer-screen";
 import type { CashDraftIssue } from "./drafts";
 
-const accountKinds: Record<CashAccountKind, string> = {
-  bank: "Cuenta bancaria",
-  cash: "Efectivo",
-  mobile_money: "Dinero móvil",
-  other: "Otra cuenta",
-};
+const issueKeys = {
+  "account-required": "cash.issues.accountRequired",
+  "accounts-must-differ": "cash.issues.accountsMustDiffer",
+  "invalid-amount": "cash.issues.invalidAmount",
+  "invalid-date": "cash.issues.invalidDate",
+  "invalid-time": "cash.issues.invalidTime",
+  "no-changes": "cash.issues.noChanges",
+  required: "cash.issues.required",
+  "too-long": "cash.issues.tooLong",
+} as const satisfies Record<CashDraftIssue, string>;
 
-const movementActions: Record<CashMovementAction, string> = {
-  adjustment_in: "Ajuste de entrada",
-  adjustment_out: "Ajuste de salida",
-  expense: "Gasto pagado",
-  opening: "Saldo inicial",
-  receivable_payment: "Cobro recibido",
-  reverse: "Reversión",
-  transfer_in: "Transferencia recibida",
-  transfer_out: "Transferencia enviada",
-};
-
-const boundaryCopy = {
-  deniedDescription: "Tu rol actual no permite consultar ni cambiar el efectivo del negocio.",
-  deniedTitle: "No tienes acceso al efectivo",
-  loading: "Cargando efectivo y cuentas…",
-  offlineTitle: "Sin conexión",
-  retry: "Intentar de nuevo",
-  unavailableTitle: "No pudimos cargar el efectivo",
-} as const;
-
-const reviewCopy = {
-  checkStatus: "Comprobar estado",
-  confirm: "Confirmar",
-  edit: "Editar",
-  failedTitle: "No se pudo completar la operación",
-  uncertainDescription:
-    "La conexión se interrumpió antes de confirmar el resultado. Comprueba el estado con la misma operación para evitar duplicados.",
-  uncertainTitle: "El resultado todavía es incierto",
-} as const;
-
-export const cashOverviewCopy = (businessName: string): CashScreenCopy => ({
-  accountFilter: "Estado de las cuentas",
-  ...boundaryCopy,
-  accountsTitle: "Cuentas",
-  active: "Activa",
-  activeAccounts: "Activas",
-  allAccounts: "Todas",
-  archived: "Archivada",
-  archivedAccounts: "Archivadas",
-  checkStatus: reviewCopy.checkStatus,
-  createAccount: "Crear cuenta",
-  deniedDescription: boundaryCopy.deniedDescription,
-  description: `Saldos derivados de los movimientos registrados en ${businessName}. No representan una conciliación bancaria.`,
-  emptyDescription:
-    "Crea la cuenta real donde guardas dinero para registrar gastos, ajustes y transferencias.",
-  emptyTitle: "Todavía no hay cuentas",
-  eyebrow: "Operar",
-  loading: boundaryCopy.loading,
-  loadingMore: "Cargando más…",
-  loadMore: "Cargar más",
-  movementActions,
-  movementsTitle: "Movimientos recientes",
-  mutationFailedTitle: reviewCopy.failedTitle,
-  negativeAllowed: "Permite saldo negativo",
-  noMovements: "Todavía no hay movimientos registrados.",
-  retry: boundaryCopy.retry,
-  title: "Efectivo",
-  uncertainDescription: reviewCopy.uncertainDescription,
-  uncertainTitle: reviewCopy.uncertainTitle,
-  unavailableTitle: boundaryCopy.unavailableTitle,
-  deniedTitle: boundaryCopy.deniedTitle,
-});
-
-export const cashAccountEditorCopy: CashAccountEditorCopy = {
-  ...boundaryCopy,
-  ...reviewCopy,
-  allowNegative: "Permitir saldo negativo",
-  cancel: "Cancelar",
-  createDescription:
-    "Define dónde se guarda el dinero. Si existe un saldo inicial, revísalo como un movimiento explícito.",
-  createTitle: "Nueva cuenta",
-  currency: "Moneda",
-  date: "Fecha local",
-  eyebrow: "Efectivo",
-  kind: "Tipo de cuenta",
-  moneyIn: "Entrada de dinero",
-  moneyOut: "Salida de dinero",
-  name: "Nombre",
-  negativePolicy: "Política de saldo",
-  openingAmount: "Monto inicial",
-  openingBalance: "Saldo inicial",
-  openingReason: "Motivo del saldo inicial",
-  protectedBalance: "No permitir saldo negativo",
-  review: "Revisar cuenta",
-  reviewDescription:
-    "Comprueba el nombre, la política de saldo y el movimiento inicial antes de confirmar.",
-  reviewTitle: "Revisar cuenta",
-  startAtZero: "Iniciar en cero",
-  time: "Hora local",
-  updateDescription:
-    "Actualiza únicamente los datos de referencia. El saldo siempre se deriva del historial.",
-  updateTitle: "Editar cuenta",
-};
-
-export const cashAccountDetailCopy: CashAccountDetailCopy = {
-  ...boundaryCopy,
-  ...reviewCopy,
-  accountKinds,
-  active: "Activa",
-  allowNegative: "Puede quedar en negativo",
-  archiveAccount: "Archivar cuenta",
-  archiveDescription:
-    "La cuenta dejará de aceptar operaciones nuevas, pero conservará todos sus movimientos.",
-  archiveEffect:
-    "Archivar no elimina el saldo ni el historial. Las correcciones históricas seguirán disponibles.",
-  archiveTitle: "Revisar archivo de cuenta",
-  archived: "Archivada",
-  balance: "Saldo derivado",
-  currency: "Moneda",
-  description: "Consulta el saldo exacto derivado y el historial de esta cuenta.",
-  editAccount: "Editar cuenta",
-  eyebrow: "Efectivo",
-  kind: "Tipo",
-  movementActions,
-  movementsTitle: "Historial de movimientos",
-  loadMore: "Cargar más",
-  loadingMore: "Cargando más…",
-  name: "Cuenta",
-  negativePolicy: "Política de saldo",
-  noMovements: "Esta cuenta todavía no tiene movimientos.",
-  notFoundDescription: "La cuenta no existe o no está disponible en este negocio.",
-  notFoundTitle: "Cuenta no encontrada",
-  protectedBalance: "No puede quedar en negativo",
-  recordAdjustment: "Registrar ajuste",
-  status: "Estado",
-  title: "Detalle de cuenta",
-  transfer: "Transferir",
-};
-
-export const cashAdjustmentCopy: CashAdjustmentCopy = {
-  ...boundaryCopy,
-  ...reviewCopy,
-  account: "Cuenta",
-  accountUnavailableDescription: "Selecciona una cuenta activa antes de preparar un ajuste manual.",
-  accountUnavailableTitle: "No hay una cuenta activa seleccionada",
-  amount: "Monto",
-  cancel: "Cancelar",
-  createAccount: "Crear cuenta",
-  date: "Fecha local",
-  description:
-    "Registra una corrección de efectivo con un motivo verificable. No modifica movimientos anteriores.",
-  direction: "Dirección",
-  eyebrow: "Efectivo",
-  moneyIn: "Entrada de dinero",
-  moneyOut: "Salida de dinero",
-  loadMore: "Cargar más",
-  loadingMore: "Cargando más…",
-  reason: "Motivo",
-  review: "Revisar ajuste",
-  reviewDescription: "Comprueba la cuenta, el monto, la dirección y la fecha antes de confirmar.",
-  reviewTitle: "Revisar ajuste",
-  time: "Hora local",
-  title: "Ajuste manual",
-};
-
-export const cashTransferCopy: CashTransferCopy = {
-  ...boundaryCopy,
-  ...reviewCopy,
-  accountsUnavailableDescription: "Una transferencia requiere dos cuentas activas diferentes.",
-  accountsUnavailableTitle: "Faltan cuentas activas",
-  amount: "Monto",
-  cancel: "Cancelar",
-  createAccount: "Crear cuenta",
-  date: "Fecha local",
-  description: "Mueve dinero entre dos cuentas del negocio como un par de movimientos atómicos.",
-  eyebrow: "Efectivo",
-  fromAccount: "Cuenta de origen",
-  loadMore: "Cargar más",
-  loadingMore: "Cargando más…",
-  noNote: "Sin nota",
-  noteOptional: "Nota opcional",
-  review: "Revisar transferencia",
-  reviewDescription: "Comprueba ambas cuentas, el monto y la fecha antes de confirmar.",
-  reviewTitle: "Revisar transferencia",
-  time: "Hora local",
-  title: "Transferir dinero",
-  toAccount: "Cuenta de destino",
-};
-
-export const cashMovementDetailCopy: CashMovementDetailCopy = {
-  ...boundaryCopy,
-  ...reviewCopy,
-  account: "Cuenta",
-  action: "Tipo de movimiento",
-  amount: "Cambio en el saldo",
-  backToAccount: "Volver a la cuenta",
-  cancel: "Cancelar",
-  date: "Fecha local",
-  description: "Consulta el movimiento exacto que forma parte del saldo derivado.",
-  eyebrow: "Efectivo",
-  movementActions,
-  notFoundDescription: "El movimiento ya no está disponible en el historial cargado.",
-  notFoundTitle: "Movimiento no encontrado",
-  reason: "Motivo",
-  reversalEffect:
-    "La reversión agrega un movimiento opuesto y conserva el ajuste original en el historial.",
-  reversalUnavailable: "Este ajuste ya fue revertido y no puede revertirse otra vez.",
-  reverseAdjustment: "Revertir ajuste",
-  reverseDescription: "Indica por qué se revierte el ajuste y revisa el efecto antes de confirmar.",
-  reverseTitle: "Revertir ajuste",
-  reviewReversal: "Revisar reversión",
-  time: "Hora local",
-  timeZone: "Zona horaria",
-  title: "Detalle del movimiento",
-};
-
-export const cashUiCopy = {
-  accountFilter: "Estado de las cuentas",
-  accountStatus: {
-    active: "Activas",
-    all: "Todas",
-    archived: "Archivadas",
-  },
-  adjustmentEffect:
-    "El ajuste agregará un movimiento nuevo al saldo. No sobrescribe el historial existente.",
-  archiveEffect: cashAccountDetailCopy.archiveEffect,
-  backToAccount: "Volver a la cuenta",
-  createAccountEffect:
-    "La cuenta se creará una vez. El saldo inicial, si existe, quedará registrado como movimiento.",
-  editAccountEffect: "El cambio actualiza la referencia de la cuenta, no su saldo ni su historial.",
-  loadMore: "Cargar más",
-  loadingMore: "Cargando más…",
-  mutationFallback: "Revisa los datos e intenta nuevamente.",
-  offline: "No hay conexión para cargar esta información.",
-  stale:
-    "Mostramos la última información disponible. Actualiza antes de iniciar una operación nueva.",
-  staleMutation:
-    "No podemos confirmar una operación mientras el acceso o los datos están desactualizados. Vuelve a cargar.",
-  transferEffect:
-    "La confirmación registrará una salida y una entrada vinculadas en una sola operación.",
-  unavailable: "No pudimos consultar la información del efectivo. Intenta nuevamente.",
-} as const;
-
-const issueMessages: Record<CashDraftIssue, string> = {
-  "account-required": "Selecciona una cuenta activa.",
-  "accounts-must-differ": "Elige una cuenta de destino diferente.",
-  "invalid-amount": "Ingresa un monto positivo con los decimales permitidos.",
-  "invalid-date": "Usa una fecha válida con formato AAAA-MM-DD.",
-  "invalid-time": "Usa una hora válida con formato HH:MM.",
-  "no-changes": "No hay cambios para revisar.",
-  required: "Este campo es obligatorio.",
-  "too-long": "El texto supera el límite permitido.",
-};
-
-export function cashIssueMessage(issue: CashDraftIssue): string {
-  return issueMessages[issue];
+export function cashAccountKindLabels(t: TFunction): Record<CashAccountKind, string> {
+  return {
+    bank: t("cash.accountKinds.bank"),
+    cash: t("cash.accountKinds.cash"),
+    mobile_money: t("cash.accountKinds.mobile_money"),
+    other: t("cash.accountKinds.other"),
+  };
 }
 
-const apiErrorMessages: Partial<Record<ApiErrorCode, string>> = {
-  BUSINESS_REQUIRED: "Selecciona un negocio antes de continuar.",
-  CONFLICT: "La operación entra en conflicto con el estado actual. Actualiza y revisa de nuevo.",
-  FORBIDDEN: "Tu rol ya no permite completar esta operación.",
-  IDEMPOTENCY_CONFLICT:
-    "Esta confirmación ya se usó con datos diferentes. Vuelve a preparar la operación.",
-  NOT_FOUND: "El registro no existe o ya no está disponible.",
-  UNAUTHORIZED: "Tu sesión venció. Inicia sesión nuevamente.",
-  VALIDATION_ERROR: "El servidor rechazó uno o más datos. Revisa la operación.",
-};
-
-export function cashErrorMessage(
-  error: unknown,
-  fallback: string = cashUiCopy.mutationFallback,
-): string {
-  if (!(error instanceof ApiClientError)) return fallback;
-  if (error.status === 0) return cashUiCopy.offline;
-  return apiErrorMessages[error.code as ApiErrorCode] ?? fallback;
+export function cashMovementActionLabels(t: TFunction): Record<CashMovementAction, string> {
+  return {
+    adjustment_in: t("cash.movementActions.adjustment_in"),
+    adjustment_out: t("cash.movementActions.adjustment_out"),
+    expense: t("cash.movementActions.expense"),
+    opening: t("cash.movementActions.opening"),
+    receivable_payment: t("cash.movementActions.receivable_payment"),
+    reverse: t("cash.movementActions.reverse"),
+    transfer_in: t("cash.movementActions.transfer_in"),
+    transfer_out: t("cash.movementActions.transfer_out"),
+  };
 }
 
-export const cashKindOptions = (Object.entries(accountKinds) as [CashAccountKind, string][]).map(
-  ([value, label]) => ({ label, value }),
-);
+export function cashIssueMessage(t: TFunction, issue: CashDraftIssue): string {
+  return t(issueKeys[issue]);
+}
+
+export function buildCashCopy(t: TFunction) {
+  const accountKinds = cashAccountKindLabels(t);
+  const movementActions = cashMovementActionLabels(t);
+  const boundary = {
+    deniedDescription: t("cash.boundary.deniedDescription"),
+    deniedTitle: t("cash.boundary.deniedTitle"),
+    loading: t("cash.boundary.loading"),
+    offlineTitle: t("remote.offlineTitle"),
+    retry: t("common.retry"),
+    unavailableTitle: t("cash.boundary.unavailableTitle"),
+  };
+  const review = {
+    confirm: t("common.confirm"),
+    edit: t("common.edit"),
+    failedTitle: t("cash.review.failedTitle"),
+    retrySameConfirmation: t("common.retrySameConfirmation"),
+    uncertainDescription: t("cash.review.uncertainDescription"),
+    uncertainTitle: t("common.uncertainTitle"),
+  };
+
+  const accountDetail: CashAccountDetailCopy = {
+    ...boundary,
+    ...review,
+    accountKinds,
+    active: t("cash.accountDetail.active"),
+    allowNegative: t("cash.accountDetail.allowNegative"),
+    archiveAccount: t("cash.accountDetail.archiveAccount"),
+    archiveDescription: t("cash.accountDetail.archiveDescription"),
+    archiveEffect: t("cash.accountDetail.archiveEffect"),
+    archiveTitle: t("cash.accountDetail.archiveTitle"),
+    archived: t("cash.accountDetail.archived"),
+    balance: t("cash.accountDetail.balance"),
+    currency: t("cash.accountDetail.currency"),
+    description: t("cash.accountDetail.description"),
+    editAccount: t("cash.accountDetail.editAccount"),
+    eyebrow: t("cash.accountDetail.eyebrow"),
+    kind: t("cash.accountDetail.kind"),
+    loadMore: t("common.loadMore"),
+    loadingMore: t("common.loadingMore"),
+    movementActions,
+    movementsTitle: t("cash.accountDetail.movementsTitle"),
+    name: t("cash.accountDetail.name"),
+    negativePolicy: t("cash.accountDetail.negativePolicy"),
+    noMovements: t("cash.accountDetail.noMovements"),
+    notFoundDescription: t("cash.accountDetail.notFoundDescription"),
+    notFoundTitle: t("cash.accountDetail.notFoundTitle"),
+    protectedBalance: t("cash.accountDetail.protectedBalance"),
+    recordAdjustment: t("cash.accountDetail.recordAdjustment"),
+    status: t("cash.accountDetail.status"),
+    title: t("cash.accountDetail.title"),
+    transfer: t("cash.accountDetail.transfer"),
+  };
+
+  const accountEditor: CashAccountEditorCopy = {
+    ...boundary,
+    ...review,
+    allowNegative: t("cash.accountEditor.allowNegative"),
+    cancel: t("common.cancel"),
+    createDescription: t("cash.accountEditor.createDescription"),
+    createTitle: t("cash.accountEditor.createTitle"),
+    currency: t("cash.accountEditor.currency"),
+    date: t("cash.accountEditor.date"),
+    eyebrow: t("cash.accountEditor.eyebrow"),
+    kind: t("cash.accountEditor.kind"),
+    moneyIn: t("cash.accountEditor.moneyIn"),
+    moneyOut: t("cash.accountEditor.moneyOut"),
+    name: t("cash.accountEditor.name"),
+    negativePolicy: t("cash.accountEditor.negativePolicy"),
+    openingAmount: t("cash.accountEditor.openingAmount"),
+    openingBalance: t("cash.accountEditor.openingBalance"),
+    openingReason: t("cash.accountEditor.openingReason"),
+    protectedBalance: t("cash.accountEditor.protectedBalance"),
+    review: t("cash.accountEditor.review"),
+    reviewDescription: t("cash.accountEditor.reviewDescription"),
+    reviewTitle: t("cash.accountEditor.reviewTitle"),
+    startAtZero: t("cash.accountEditor.startAtZero"),
+    time: t("cash.accountEditor.time"),
+    updateDescription: t("cash.accountEditor.updateDescription"),
+    updateTitle: t("cash.accountEditor.updateTitle"),
+  };
+
+  const adjustment: CashAdjustmentCopy = {
+    ...boundary,
+    ...review,
+    account: t("cash.adjustment.account"),
+    accountUnavailableDescription: t("cash.adjustment.accountUnavailableDescription"),
+    accountUnavailableTitle: t("cash.adjustment.accountUnavailableTitle"),
+    amount: t("cash.adjustment.amount"),
+    cancel: t("common.cancel"),
+    createAccount: t("cash.adjustment.createAccount"),
+    date: t("cash.adjustment.date"),
+    description: t("cash.adjustment.description"),
+    direction: t("cash.adjustment.direction"),
+    eyebrow: t("cash.adjustment.eyebrow"),
+    loadMore: t("common.loadMore"),
+    loadingMore: t("common.loadingMore"),
+    moneyIn: t("cash.adjustment.moneyIn"),
+    moneyOut: t("cash.adjustment.moneyOut"),
+    reason: t("cash.adjustment.reason"),
+    review: t("cash.adjustment.review"),
+    reviewDescription: t("cash.adjustment.reviewDescription"),
+    reviewTitle: t("cash.adjustment.reviewTitle"),
+    time: t("cash.adjustment.time"),
+    title: t("cash.adjustment.title"),
+  };
+
+  const transfer: CashTransferCopy = {
+    ...boundary,
+    ...review,
+    accountsUnavailableDescription: t("cash.transfer.accountsUnavailableDescription"),
+    accountsUnavailableTitle: t("cash.transfer.accountsUnavailableTitle"),
+    amount: t("cash.transfer.amount"),
+    cancel: t("common.cancel"),
+    createAccount: t("cash.transfer.createAccount"),
+    date: t("cash.transfer.date"),
+    description: t("cash.transfer.description"),
+    eyebrow: t("cash.transfer.eyebrow"),
+    fromAccount: t("cash.transfer.fromAccount"),
+    loadMore: t("common.loadMore"),
+    loadingMore: t("common.loadingMore"),
+    noNote: t("cash.transfer.noNote"),
+    noteOptional: t("cash.transfer.noteOptional"),
+    review: t("cash.transfer.review"),
+    reviewDescription: t("cash.transfer.reviewDescription"),
+    reviewTitle: t("cash.transfer.reviewTitle"),
+    time: t("cash.transfer.time"),
+    title: t("cash.transfer.title"),
+    toAccount: t("cash.transfer.toAccount"),
+  };
+
+  const movementDetail: CashMovementDetailCopy = {
+    ...boundary,
+    ...review,
+    account: t("cash.movementDetail.account"),
+    action: t("cash.movementDetail.action"),
+    amount: t("cash.movementDetail.amount"),
+    backToAccount: t("cash.movementDetail.backToAccount"),
+    cancel: t("common.cancel"),
+    date: t("cash.movementDetail.date"),
+    description: t("cash.movementDetail.description"),
+    eyebrow: t("cash.movementDetail.eyebrow"),
+    movementActions,
+    notFoundDescription: t("cash.movementDetail.notFoundDescription"),
+    notFoundTitle: t("cash.movementDetail.notFoundTitle"),
+    reason: t("cash.movementDetail.reason"),
+    reversalEffect: t("cash.movementDetail.reversalEffect"),
+    reversalUnavailable: t("cash.movementDetail.reversalUnavailable"),
+    reverseAdjustment: t("cash.movementDetail.reverseAdjustment"),
+    reverseDescription: t("cash.movementDetail.reverseDescription"),
+    reverseTitle: t("cash.movementDetail.reverseTitle"),
+    reviewReversal: t("cash.movementDetail.reviewReversal"),
+    time: t("cash.movementDetail.time"),
+    timeZone: t("cash.movementDetail.timeZone"),
+    title: t("cash.movementDetail.title"),
+  };
+
+  const overview = (businessName: string): CashScreenCopy => ({
+    ...boundary,
+    accountFilter: t("cash.overview.accountFilter"),
+    accountsTitle: t("cash.overview.accountsTitle"),
+    active: t("cash.overview.active"),
+    activeAccounts: t("cash.overview.activeAccounts"),
+    allAccounts: t("cash.overview.allAccounts"),
+    archived: t("cash.overview.archived"),
+    archivedAccounts: t("cash.overview.archivedAccounts"),
+    createAccount: t("cash.overview.createAccount"),
+    description: t("cash.overview.description", { business: businessName }),
+    emptyDescription: t("cash.overview.emptyDescription"),
+    emptyTitle: t("cash.overview.emptyTitle"),
+    eyebrow: t("cash.overview.eyebrow"),
+    loadMore: t("common.loadMore"),
+    loadingMore: t("common.loadingMore"),
+    movementActions,
+    movementsTitle: t("cash.overview.movementsTitle"),
+    mutationFailedTitle: review.failedTitle,
+    negativeAllowed: t("cash.overview.negativeAllowed"),
+    noMovements: t("cash.overview.noMovements"),
+    retrySameConfirmation: review.retrySameConfirmation,
+    title: t("cash.overview.title"),
+    uncertainDescription: review.uncertainDescription,
+    uncertainTitle: review.uncertainTitle,
+  });
+
+  return {
+    accountDetail,
+    accountEditor,
+    adjustment,
+    effects: {
+      adjustment: t("cash.effects.adjustment"),
+      createAccount: t("cash.effects.createAccount"),
+      editAccount: t("cash.effects.editAccount"),
+      transfer: t("cash.effects.transfer"),
+    },
+    kindOptions: (Object.entries(accountKinds) as [CashAccountKind, string][]).map(
+      ([value, label]) => ({ label, value }),
+    ),
+    movementDetail,
+    overview,
+    remote: {
+      mutationFallback: t("cash.remote.mutationFallback"),
+      offline: t("cash.remote.offline"),
+      staleMutation: t("remote.staleMutation"),
+      unavailable: t("cash.remote.unavailable"),
+    },
+    transfer,
+  };
+}
+
+export type CashCopy = ReturnType<typeof buildCashCopy>;

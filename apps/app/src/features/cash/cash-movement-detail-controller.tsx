@@ -1,16 +1,18 @@
 import type { CashMovement } from "@pisto/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "./api";
 import {
   CashMovementDetailScreen,
   type CashReversalDraft,
   type CashReversalErrors,
 } from "./cash-movement-detail-screen";
-import { cashErrorMessage, cashIssueMessage, cashMovementDetailCopy } from "./copy";
+import { buildCashCopy, cashIssueMessage } from "./copy";
 import { buildCashReversalCommand } from "./drafts";
 import { invalidateCashLedger } from "./invalidate";
 import { cashConfirmationState } from "./mutation-state";
@@ -37,6 +39,9 @@ export function CashMovementDetailController({
   timeZone,
 }: CashMovementDetailControllerProps) {
   const queryClient = useQueryClient();
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildCashCopy(t), [t]);
+  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const [stage, setStage] = useState<"detail" | "reverse-edit" | "reverse-review">("detail");
   const [draft, setDraft] = useState<CashReversalDraft>({
     localDate: "",
@@ -71,7 +76,7 @@ export function CashMovementDetailController({
     });
     setErrors(
       Object.fromEntries(
-        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(issue)]),
+        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(t, issue)]),
       ) as CashReversalErrors,
     );
     if (!result.command) return;
@@ -89,10 +94,14 @@ export function CashMovementDetailController({
       canManage={canManage && !isStale}
       canReverse={!alreadyReversed}
       confirmation={cashConfirmationState(mutation)}
-      copy={cashMovementDetailCopy}
-      errorMessage={mutation.error ? cashErrorMessage(mutation.error) : undefined}
+      copy={copy.movementDetail}
+      errorMessage={
+        mutation.error
+          ? productErrorMessage(mutation.error, copy.remote.mutationFallback, t)
+          : undefined
+      }
       formatMoney={(minorUnits, currency, fractionDigits) =>
-        formatMinorUnits(minorUnits, currency, fractionDigits, DEFAULT_LOCALE)
+        formatMinorUnits(minorUnits, currency, fractionDigits, locale)
       }
       isStale={isStale}
       movement={movement}
