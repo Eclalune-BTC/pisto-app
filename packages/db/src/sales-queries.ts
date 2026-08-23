@@ -1,6 +1,6 @@
 import type { SaleCorrection, SaleList, SaleListQuery, SaleStatusFilter } from "@pisto/contracts";
 import { saleListQuerySchema } from "@pisto/contracts";
-import { and, desc, eq, inArray, lt, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, inArray, lt, or, type SQL, sql } from "drizzle-orm";
 
 import { authorizeBusinessAction } from "./business-access.ts";
 import type { Database } from "./client.ts";
@@ -11,6 +11,8 @@ import { sale, saleCorrection } from "./schema/sales.ts";
 
 const base64UrlPattern = /^[A-Za-z0-9_-]+$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+/** PostgreSQL `timestamptz` text output, whose microseconds a JavaScript `Date` cannot hold. */
+const timestampTextPattern = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?\+00$/;
 
 export type SaleListCursor = {
   createdAt: string;
@@ -50,7 +52,7 @@ export function decodeSaleListCursor(
       parsed.version !== 1 ||
       !("createdAt" in parsed) ||
       typeof parsed.createdAt !== "string" ||
-      new Date(parsed.createdAt).toISOString() !== parsed.createdAt ||
+      !timestampTextPattern.test(parsed.createdAt) ||
       !("id" in parsed) ||
       typeof parsed.id !== "string" ||
       !uuidPattern.test(parsed.id) ||
@@ -81,16 +83,22 @@ export function createSalesQueryRepository(db: Database): SalesQueryRepository {
         const conditions: SQL[] = [eq(sale.businessId, access.businessId)];
         if (query.status !== "all") conditions.push(eq(sale.status, query.status));
         if (cursor) {
-          const createdAt = new Date(cursor.createdAt);
+          // Compared as `timestamptz` rather than through a JavaScript Date, which
+          // truncates PostgreSQL's microseconds and would silently drop any sale
+          // recorded in the same millisecond as the page boundary.
+          const boundary = sql`${cursor.createdAt}::timestamptz`;
           conditions.push(
             or(
-              lt(sale.createdAt, createdAt),
-              and(eq(sale.createdAt, createdAt), lt(sale.id, cursor.id)),
+              sql`${sale.createdAt} < ${boundary}`,
+              and(sql`${sale.createdAt} = ${boundary}`, lt(sale.id, cursor.id)),
             ) as SQL,
           );
         }
         const rows = await tx
-          .select()
+          .select({
+            ...getTableColumns(sale),
+            createdAtExact: sql<string>`${sale.createdAt}::text`,
+          })
           .from(sale)
           .where(and(...conditions))
           .orderBy(desc(sale.createdAt), desc(sale.id))
@@ -136,7 +144,7 @@ export function createSalesQueryRepository(db: Database): SalesQueryRepository {
           nextCursor:
             rows.length > query.limit && last
               ? encodeSaleListCursor({
-                  createdAt: last.createdAt.toISOString(),
+                  createdAt: last.createdAtExact,
                   filterFingerprint,
                   id: last.id,
                   version: 1,

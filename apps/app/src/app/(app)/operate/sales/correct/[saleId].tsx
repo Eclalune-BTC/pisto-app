@@ -79,7 +79,8 @@ export default function CorrectSaleScreen() {
   ) {
     return <OfflineState />;
   }
-  if (businesses.isPending || saleResult.isPending) {
+  // A failed business read leaves the sale query disabled, so it stays pending forever.
+  if (businesses.isPending || (business !== undefined && saleResult.isPending)) {
     return (
       <View className="flex-1 items-start justify-center px-5 sm:px-8 lg:px-10">
         <ActivityIndicator color="#237A55" size="large" />

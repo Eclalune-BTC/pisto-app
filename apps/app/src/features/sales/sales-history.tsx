@@ -128,12 +128,11 @@ export function SalesHistory({
         </Text>
       </View>
 
-      <View
-        accessibilityLabel={copy.filterLabel}
-        className="flex-row flex-wrap border-b border-line dark:border-[#304239]"
-      >
+      <View className="flex-row flex-wrap border-b border-line dark:border-[#304239]">
         {saleStatusFilters.map((value) => (
           <Pressable
+            // A label on the group is dropped by both platforms, so each tab carries it.
+            accessibilityLabel={`${copy.filterLabel}: ${filterLabels[value]}`}
             accessibilityRole="button"
             accessibilityState={{ selected: filter === value }}
             className={`min-h-11 justify-center border-b-2 px-4 ${

@@ -8,6 +8,7 @@ import {
   localDateSchema,
   localTimeSchema,
   minorUnitsSchema,
+  opaqueCursorSchema,
   positiveMinorUnitsSchema,
   timestampSchema,
   timeZoneSchema,
@@ -289,11 +290,7 @@ export const saleCorrectionResponseSchema = z.object({
   }),
 });
 
-export const saleCursorSchema = z
-  .string()
-  .min(1)
-  .max(256)
-  .regex(/^[A-Za-z0-9_-]+$/);
+export const saleCursorSchema = opaqueCursorSchema.regex(/^[A-Za-z0-9_-]+$/);
 
 export const saleStatusFilterSchema = z.enum(["posted", "voided", "all"]);
 

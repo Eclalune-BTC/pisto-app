@@ -657,6 +657,7 @@ describe("sale history list on PostgreSQL 18", () => {
   let expiredActor: ProductActor;
   let postedIds: string[];
   let tiedIds: string[];
+  let microsecondIds: string[];
   let otherSaleId: string;
 
   async function collectIds(
@@ -779,13 +780,32 @@ describe("sale history list on PostgreSQL 18", () => {
       )
       .returning({ id: sale.id });
     tiedIds = tied.map(({ id }) => id).sort((left, right) => (left < right ? 1 : -1));
+
+    // Real rows come from now(), which carries microseconds a JavaScript Date cannot
+    // hold. These three share one millisecond so a truncating cursor drops the later two.
+    const microsecond = await database.db.execute<{ id: string }>(sql`
+      insert into ${sale}
+        (business_id, gross_minor_units, currency, currency_minor_unit_digits, occurred_at,
+         occurred_local_date, occurred_local_time, time_zone, description, created_by_user_id,
+         created_at)
+      select ${listBusinessId}, 30, 'USD', 2, timestamptz '2026-01-03T04:05:06.500000Z',
+             ${occurredLocalDate}, '04:05', 'America/El_Salvador', 'Microsecond sale ' || suffix,
+             ${userIds[7] as string}, stamp
+      from (values
+        ('a', timestamptz '2026-01-03T04:05:06.500999Z'),
+        ('b', timestamptz '2026-01-03T04:05:06.500500Z'),
+        ('c', timestamptz '2026-01-03T04:05:06.500000Z')
+      ) as seeded(suffix, stamp)
+      returning id
+    `);
+    microsecondIds = microsecond.map(({ id }) => id);
   });
 
   test("pages one deterministic keyset without a duplicate or a gap", async () => {
     const single = await repository.listSales(ownerActor, { limit: 50, status: "all" });
     const paged = await collectIds(ownerActor, "all", 2);
 
-    expect(single.items).toHaveLength(7);
+    expect(single.items).toHaveLength(postedIds.length + tiedIds.length + microsecondIds.length);
     expect(single.nextCursor).toBeNull();
     expect(paged).toEqual(single.items.map(({ id }) => id));
     expect(new Set(paged).size).toBe(paged.length);
@@ -800,6 +820,16 @@ describe("sale history list on PostgreSQL 18", () => {
 
     expect(tail).toEqual(tiedIds);
     expect(pagedTail).toEqual(tiedIds);
+  });
+
+  test("pages sales that differ only in microseconds without dropping one", async () => {
+    const single = await repository.listSales(ownerActor, { limit: 50, status: "all" });
+    const paged = await collectIds(ownerActor, "all", 1);
+    const inSingle = single.items.map(({ id }) => id).filter((id) => microsecondIds.includes(id));
+    const inPaged = paged.filter((id) => microsecondIds.includes(id));
+
+    expect(inSingle).toHaveLength(microsecondIds.length);
+    expect(inPaged).toEqual(inSingle);
   });
 
   test("keeps a corrected sale visible and reports its correction truthfully", async () => {
@@ -837,7 +867,8 @@ describe("sale history list on PostgreSQL 18", () => {
     expect(voided.items.map(({ id }) => id)).toEqual([originalId]);
     expect(posted.items.map(({ id }) => id)).not.toContain(originalId);
     expect(posted.items.map(({ id }) => id)).toContain(replacementId);
-    expect(posted.items).toHaveLength(7);
+    // The original is voided and its replacement takes its place, so the count holds.
+    expect(posted.items).toHaveLength(postedIds.length + tiedIds.length + microsecondIds.length);
     expect(await collectIds(ownerActor, "posted", 2)).toEqual(posted.items.map(({ id }) => id));
   });
 

@@ -40,13 +40,14 @@ export function SalesHistoryController({ accessIsStale, business }: SalesHistory
     queries: canRead ? [sales] : [],
     unavailableMessage: messages.unavailable,
   });
-  const lastPage = sales.data?.pages.at(-1);
+  // The first page is the oldest read on screen, so it is the honest freshness claim.
+  const firstPage = sales.data?.pages[0];
   const state = salesHistoryState({
     canCorrect,
     hasMore: Boolean(sales.hasNextPage),
     items: sales.data?.pages.flatMap(({ items }) => items) ?? [],
     loadingMore: sales.isFetchingNextPage,
-    queriedAt: lastPage?.queriedAt,
+    queriedAt: firstPage?.queriedAt,
     remote,
     stale: accessIsStale || queryHasStaleData(sales),
   });

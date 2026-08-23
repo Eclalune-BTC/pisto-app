@@ -34,7 +34,8 @@ export default function SaleResultScreen() {
   }
   if (businesses.data && !business) return <Redirect href="/business" />;
 
-  if (businesses.isPending || result.isPending) {
+  // A failed business read leaves the sale query disabled, so it stays pending forever.
+  if (businesses.isPending || (business !== undefined && result.isPending)) {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
         <ActivityIndicator color="#237A55" size="large" />
@@ -55,7 +56,14 @@ export default function SaleResultScreen() {
           {t("sales.resultFailedDescription")}
         </Text>
         <View className="gap-3 sm:flex-row">
-          <Button label={t("common.retry")} onPress={() => result.refetch()} variant="secondary" />
+          <Button
+            label={t("common.retry")}
+            onPress={() => {
+              void businesses.refetch();
+              void result.refetch();
+            }}
+            variant="secondary"
+          />
           <Button label={t("sales.goToSales")} onPress={() => router.replace("/operate/sales")} />
         </View>
       </View>

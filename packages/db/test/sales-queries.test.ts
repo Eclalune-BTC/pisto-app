@@ -8,7 +8,8 @@ import {
 } from "../src/sales-queries.ts";
 
 const saleId = "5312a3e6-7c91-486a-9233-0cf4d9d3dcc7";
-const createdAt = "2026-08-22T20:30:00.000Z";
+// PostgreSQL `timestamptz` text, whose microseconds a JavaScript Date would truncate.
+const createdAt = "2026-08-22 20:30:00.123456+00";
 
 function encode(payload: unknown): string {
   return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
@@ -32,8 +33,14 @@ describe("sale list cursor", () => {
       encode("a bare string"),
       Buffer.from("{not json", "utf8").toString("base64url"),
       encode({ createdAt, filterFingerprint, id: saleId, version: 2 }),
-      encode({ createdAt: "2026-08-22 20:30:00", filterFingerprint, id: saleId, version: 1 }),
+      encode({ createdAt: "2026-08-22T20:30:00.123Z", filterFingerprint, id: saleId, version: 1 }),
       encode({ createdAt: "not-a-date", filterFingerprint, id: saleId, version: 1 }),
+      encode({
+        createdAt: "2026-08-22 20:30:00.123456+05",
+        filterFingerprint,
+        id: saleId,
+        version: 1,
+      }),
       encode({ createdAt, filterFingerprint, id: "not-a-uuid", version: 1 }),
       encode({ createdAt, id: saleId, version: 1 }),
     ];
