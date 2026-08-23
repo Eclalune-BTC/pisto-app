@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import type { OperatingReport } from "@pisto/contracts";
 import { eq, inArray } from "drizzle-orm";
 
 import { authorizeBusinessAction } from "../src/business-access.ts";
@@ -16,7 +17,7 @@ import {
 import { createReceivablesRepository } from "../src/receivables.ts";
 import { createReportsRepository, REPORT_TRANSACTION_CONFIG } from "../src/reports.ts";
 import { businessSettings } from "../src/schema/business.ts";
-import { cashMovement, cashOperationReceipt, expense } from "../src/schema/cash.ts";
+import { cashMovement, cashOperationReceipt, cashTransfer, expense } from "../src/schema/cash.ts";
 import { cashAccount } from "../src/schema/cash-account.ts";
 import { catalogOperation, catalogProduct, inventoryMovement } from "../src/schema/catalog.ts";
 import {
@@ -41,6 +42,7 @@ const userIds = {
   ownerA: `reports-owner-a-${runId}`,
   ownerB: `reports-owner-b-${runId}`,
   ownerEmpty: `reports-owner-empty-${runId}`,
+  ownerTransfer: `reports-owner-transfer-${runId}`,
 };
 const sessionIds = {
   admin: `reports-session-admin-${runId}`,
@@ -48,15 +50,19 @@ const sessionIds = {
   ownerA: `reports-session-owner-a-${runId}`,
   ownerB: `reports-session-owner-b-${runId}`,
   ownerEmpty: `reports-session-owner-empty-${runId}`,
+  ownerTransfer: `reports-session-owner-transfer-${runId}`,
 };
 
 const businessIds: string[] = [];
 let businessA = "";
 let businessB = "";
 let businessEmpty = "";
+let businessTransfer = "";
 let activeAccountId = "";
 let archivedAccountId = "";
 let foreignAccountId = "";
+let transferFromAccountId = "";
+let transferToAccountId = "";
 
 const marchRange = { startLocalDate: "2026-03-01", endLocalDate: "2026-03-31" };
 
@@ -348,6 +354,48 @@ async function seedBusinessB(): Promise<void> {
   });
 }
 
+async function seedBusinessTransfer(): Promise<void> {
+  const owner = actor("ownerTransfer", businessTransfer);
+  const drawer = await cash.createAccount(owner, {
+    idempotencyKey: key(),
+    name: "Transfer drawer",
+    kind: "cash",
+    allowNegativeBalance: false,
+    currency: "USD",
+    opening: null,
+  });
+  transferFromAccountId = drawer.account.id;
+  const bank = await cash.createAccount(owner, {
+    idempotencyKey: key(),
+    name: "Transfer bank",
+    kind: "bank",
+    allowNegativeBalance: false,
+    currency: "USD",
+    opening: null,
+  });
+  transferToAccountId = bank.account.id;
+  await cash.recordAdjustment(owner, {
+    idempotencyKey: key(),
+    accountId: transferFromAccountId,
+    direction: "in",
+    amountMinorUnits: "5000",
+    currency: "USD",
+    reason: "Cash the business received",
+    occurredLocalDate: "2026-03-05",
+    occurredLocalTime: "09:00",
+  });
+  await cash.recordAdjustment(owner, {
+    idempotencyKey: key(),
+    accountId: transferFromAccountId,
+    direction: "out",
+    amountMinorUnits: "1200",
+    currency: "USD",
+    reason: "Cash the business paid out",
+    occurredLocalDate: "2026-03-06",
+    occurredLocalTime: "10:00",
+  });
+}
+
 beforeAll(async () => {
   await database.db.insert(user).values(
     Object.entries(userIds).map(([name, id]) => ({
@@ -381,10 +429,16 @@ beforeAll(async () => {
     currency: "USD",
     timeZone: "America/El_Salvador",
   });
+  const createdTransfer = await product.createBusiness(actor("ownerTransfer", ""), {
+    name: `Reports Store Transfer ${runId.slice(0, 8)}`,
+    currency: "USD",
+    timeZone: "America/El_Salvador",
+  });
   businessA = createdA.business.id;
   businessB = createdB.business.id;
   businessEmpty = createdEmpty.business.id;
-  businessIds.push(businessA, businessB, businessEmpty);
+  businessTransfer = createdTransfer.business.id;
+  businessIds.push(businessA, businessB, businessEmpty, businessTransfer);
 
   await database.db.insert(member).values([
     { id: crypto.randomUUID(), organizationId: businessA, userId: userIds.admin, role: "admin" },
@@ -399,11 +453,13 @@ beforeAll(async () => {
 
   await seedBusinessA();
   await seedBusinessB();
+  await seedBusinessTransfer();
 });
 
 afterAll(async () => {
   if (businessIds.length > 0) {
     await database.db.delete(cashMovement).where(inArray(cashMovement.businessId, businessIds));
+    await database.db.delete(cashTransfer).where(inArray(cashTransfer.businessId, businessIds));
     await database.db
       .delete(receivableOperation)
       .where(inArray(receivableOperation.businessId, businessIds));
@@ -549,6 +605,54 @@ describe("operating reports repository on PostgreSQL 18", () => {
       lowStockProductCount: "1",
     });
     expect(reportB.receivables.outstandingMinorUnits).toBe("777777");
+  });
+
+  test("moves account figures but not business gross when cash is transferred internally", async () => {
+    const owner = actor("ownerTransfer", businessTransfer);
+    const accountFacts = (report: OperatingReport, accountId: string) =>
+      report.cash.accounts.find((account) => account.accountId === accountId);
+
+    const before = await repository.getOperatingReport(owner, marchRange);
+    expect(before.cash.inflowMinorUnits).toBe("5000");
+    expect(before.cash.outflowMinorUnits).toBe("1200");
+    expect(before.cash.netMovementMinorUnits).toBe("3800");
+
+    await cash.transfer(owner, {
+      idempotencyKey: key(),
+      fromAccountId: transferFromAccountId,
+      toAccountId: transferToAccountId,
+      amountMinorUnits: "2000",
+      currency: "USD",
+      occurredLocalDate: "2026-03-12",
+      occurredLocalTime: "10:00",
+      note: "Deposit the drawer into the bank",
+    });
+    const after = await repository.getOperatingReport(owner, marchRange);
+
+    expect(after.cash.inflowMinorUnits).toBe(before.cash.inflowMinorUnits);
+    expect(after.cash.outflowMinorUnits).toBe(before.cash.outflowMinorUnits);
+    expect(after.cash.netMovementMinorUnits).toBe(before.cash.netMovementMinorUnits);
+
+    expect(accountFacts(before, transferFromAccountId)).toMatchObject({
+      inflowMinorUnits: "5000",
+      outflowMinorUnits: "1200",
+      netMovementMinorUnits: "3800",
+    });
+    expect(accountFacts(after, transferFromAccountId)).toMatchObject({
+      inflowMinorUnits: "5000",
+      outflowMinorUnits: "3200",
+      netMovementMinorUnits: "1800",
+    });
+    expect(accountFacts(before, transferToAccountId)).toMatchObject({
+      inflowMinorUnits: "0",
+      outflowMinorUnits: "0",
+      netMovementMinorUnits: "0",
+    });
+    expect(accountFacts(after, transferToAccountId)).toMatchObject({
+      inflowMinorUnits: "2000",
+      outflowMinorUnits: "0",
+      netMovementMinorUnits: "2000",
+    });
   });
 
   test("returns real zeros for a business that has no records", async () => {

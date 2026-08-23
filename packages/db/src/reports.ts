@@ -49,9 +49,8 @@ async function resolveReportBounds(
     position_as_of_local_date: string;
     start_utc: Date | string;
   };
-  // PostgreSQL resolves a local midnight boundary against the zone's own rules,
-  // which a JavaScript wall-clock conversion cannot do without rejecting the
-  // daylight-saving gap days that are legitimate report boundaries.
+  // A local midnight can fall in a daylight-saving gap, which only the zone's
+  // own rules resolve.
   const [row] = await transaction.execute<BoundsRow>(sql`
     select
       (${query.startLocalDate}::date::timestamp at time zone ${access.timeZone}) as start_utc,
@@ -129,11 +128,15 @@ export function createReportsRepository(db: Database): ReportsRepository {
           }),
         );
 
+        // A transfer moves money between two accounts of one business, so its pair
+        // of legs is account movement but not business inflow or outflow.
         type CashAccountRow = {
           account_id: string;
           account_kind: string;
           account_name: string;
           account_status: string;
+          external_inflow_minor_units: string;
+          external_outflow_minor_units: string;
           inflow_minor_units: string;
           net_movement_minor_units: string;
           outflow_minor_units: string;
@@ -150,6 +153,14 @@ export function createReportsRepository(db: Database): ReportsRepository {
             coalesce(sum(${cashMovement.amountMinorUnits}) filter (
               where ${cashMovement.direction} = 'out'
             ), 0::numeric)::text as outflow_minor_units,
+            coalesce(sum(${cashMovement.amountMinorUnits}) filter (
+              where ${cashMovement.direction} = 'in'
+                and ${cashMovement.action} not in ('transfer_in', 'transfer_out')
+            ), 0::numeric)::text as external_inflow_minor_units,
+            coalesce(sum(${cashMovement.amountMinorUnits}) filter (
+              where ${cashMovement.direction} = 'out'
+                and ${cashMovement.action} not in ('transfer_in', 'transfer_out')
+            ), 0::numeric)::text as external_outflow_minor_units,
             coalesce(sum(${cashMovement.deltaMinorUnits}), 0::numeric)::text as net_movement_minor_units
           from ${cashAccount}
           left join ${cashMovement}
@@ -276,10 +287,10 @@ export function createReportsRepository(db: Database): ReportsRepository {
           },
           cash: {
             inflowMinorUnits: sumIntegerStrings(
-              cashAccounts.map(({ inflowMinorUnits }) => inflowMinorUnits),
+              cashAccountRows.map((row) => row.external_inflow_minor_units),
             ),
             outflowMinorUnits: sumIntegerStrings(
-              cashAccounts.map(({ outflowMinorUnits }) => outflowMinorUnits),
+              cashAccountRows.map((row) => row.external_outflow_minor_units),
             ),
             netMovementMinorUnits: sumIntegerStrings(
               cashAccounts.map(({ netMovementMinorUnits }) => netMovementMinorUnits),
