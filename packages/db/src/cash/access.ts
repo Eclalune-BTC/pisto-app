@@ -48,7 +48,7 @@ export const cashOperationLog: OperationLog = {
 };
 
 /** Authorizes the actor, takes the idempotency lock, and reads any stored replay. */
-export function beginCashOperation(
+export async function beginCashOperation(
   tx: CashTransaction,
   actor: ProductActor,
   permissions: readonly BusinessPermission[],
@@ -62,7 +62,7 @@ export function beginCashOperation(
   identity: OperationCommandIdentity<CashOperationAction>;
   replay: unknown | null;
 }> {
-  return beginOperation(tx, {
+  const { access, identity, replay } = await beginOperation(tx, {
     action: command.action,
     actor,
     commandFingerprint: command.commandFingerprint,
@@ -71,6 +71,7 @@ export function beginCashOperation(
     log: cashOperationLog,
     permissions,
   });
+  return { access, identity, replay: replay === null ? null : replay.result };
 }
 
 export async function saveReceipt(

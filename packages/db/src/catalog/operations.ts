@@ -52,7 +52,11 @@ export async function beginCatalogOperation(
     permissions: [permission],
   });
   // The caller validates the stored snapshot against its public contract.
-  return { access, identity, replay: replay as Record<string, unknown> | null };
+  return {
+    access,
+    identity,
+    replay: replay === null ? null : (replay.result as Record<string, unknown>),
+  };
 }
 
 export async function saveOperation(

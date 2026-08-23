@@ -68,7 +68,7 @@ export async function beginReceivableOperation<T>(
         ? null
         : parseReplaySnapshot(
             command.schema,
-            replay,
+            replay.result,
             "Stored receivables operation snapshot is invalid",
           ),
   };

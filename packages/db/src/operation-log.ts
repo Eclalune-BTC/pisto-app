@@ -88,6 +88,16 @@ export async function lockSemanticKey(
 }
 
 /**
+ * A committed receipt for an exactly matching command. The wrapper keeps "no receipt
+ * exists" distinguishable from whatever the receipt stored, so a capability that
+ * validates its snapshot still fails loudly on a corrupt one instead of replaying
+ * the command.
+ */
+export interface OperationReplay {
+  result: unknown;
+}
+
+/**
  * Returns the stored result when the same actor already committed this exact command,
  * and fails closed when the key was reused for a different action or payload.
  */
@@ -95,7 +105,7 @@ export async function findOperationReplay(
   tx: DatabaseTransaction,
   log: OperationLog,
   identity: OperationCommandIdentity,
-): Promise<unknown | null> {
+): Promise<OperationReplay | null> {
   const [receipt] = await tx
     .select({
       action: log.action,
@@ -118,7 +128,7 @@ export async function findOperationReplay(
   ) {
     throw new ProductError("IDEMPOTENCY_CONFLICT", log.conflictMessage);
   }
-  return receipt.result;
+  return { result: receipt.result };
 }
 
 /**
@@ -141,7 +151,7 @@ export async function beginOperation<Action extends string>(
 ): Promise<{
   access: AuthorizedBusinessContext;
   identity: OperationCommandIdentity<Action>;
-  replay: unknown | null;
+  replay: OperationReplay | null;
 }> {
   const access = await authorizeBusinessAction(tx, input.actor, input.permissions, input.lock);
   const identity: OperationCommandIdentity<Action> = {
