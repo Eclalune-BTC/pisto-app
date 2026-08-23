@@ -4,10 +4,11 @@ import {
   productListQuerySchema,
   stockListQuerySchema,
 } from "@pisto/contracts";
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { ProductError } from "../product.ts";
+import { likePattern } from "../product-core.ts";
 import { catalogCategory, catalogProduct, inventoryMovement } from "../schema/catalog.ts";
 import { authorizeCatalogAction } from "./access.ts";
 import {
@@ -37,7 +38,9 @@ export function createCatalogQueries(db: Database): CatalogQueries {
             and(
               eq(catalogCategory.businessId, access.businessId),
               query.status === "all" ? undefined : eq(catalogCategory.status, query.status),
-              query.search ? ilike(catalogCategory.name, `%${query.search}%`) : undefined,
+              query.search
+                ? sql`${catalogCategory.name} ilike ${likePattern(query.search)} escape '\'`
+                : undefined,
               cursorCondition(catalogCategory, cursor),
             ),
           )
@@ -73,8 +76,8 @@ export function createCatalogQueries(db: Database): CatalogQueries {
               query.categoryId ? eq(catalogProduct.categoryId, query.categoryId) : undefined,
               query.search
                 ? or(
-                    ilike(catalogProduct.name, `%${query.search}%`),
-                    ilike(catalogProduct.sku, `%${query.search}%`),
+                    sql`${catalogProduct.name} ilike ${likePattern(query.search)} escape '\'`,
+                    sql`${catalogProduct.sku} ilike ${likePattern(query.search)} escape '\'`,
                   )
                 : undefined,
               cursorCondition(catalogProduct, cursor),
@@ -152,8 +155,8 @@ export function createCatalogQueries(db: Database): CatalogQueries {
               eq(catalogProduct.tracked, true),
               query.search
                 ? or(
-                    ilike(catalogProduct.name, `%${query.search}%`),
-                    ilike(catalogProduct.sku, `%${query.search}%`),
+                    sql`${catalogProduct.name} ilike ${likePattern(query.search)} escape '\'`,
+                    sql`${catalogProduct.sku} ilike ${likePattern(query.search)} escape '\'`,
                   )
                 : undefined,
               query.lowStockOnly ? lowStockCondition : undefined,

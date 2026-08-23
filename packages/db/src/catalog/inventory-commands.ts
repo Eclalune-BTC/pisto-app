@@ -184,7 +184,12 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         const [existingReversal] = await transaction
           .select({ id: inventoryMovement.id })
           .from(inventoryMovement)
-          .where(eq(inventoryMovement.reversesMovementId, original.id))
+          .where(
+            and(
+              eq(inventoryMovement.businessId, access.businessId),
+              eq(inventoryMovement.reversesMovementId, original.id),
+            ),
+          )
           .limit(1);
         if (existingReversal) {
           throw new ProductError("CONFLICT", "The inventory movement was already reversed");

@@ -283,7 +283,9 @@ export function createProductCommands(db: Database): ProductCommands {
         const [updated] = await transaction
           .update(catalogProduct)
           .set({ status: "archived", updatedAt: new Date() })
-          .where(eq(catalogProduct.id, productId))
+          .where(
+            and(eq(catalogProduct.businessId, access.businessId), eq(catalogProduct.id, productId)),
+          )
           .returning();
         if (!updated) throw new Error("Product archive returned no record");
         const product = toProduct(updated);

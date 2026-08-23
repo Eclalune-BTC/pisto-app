@@ -60,8 +60,13 @@ export function createApp(input: {
     }),
   );
 
+  const unsafeMethods = new Set(["POST", "PATCH", "PUT", "DELETE"]);
+
   app.use("/v1/*", async (context, next) => {
-    if (context.req.method === "POST") {
+    // Every method that can mutate has to clear the same gate. CORS preflight
+    // happens to block a cross-site PATCH from a browser, but docs/security.md
+    // is explicit that CORS response headers are not the CSRF control.
+    if (unsafeMethods.has(context.req.method)) {
       const origin = context.req.header("origin");
       if (origin && !input.config.corsOrigins.includes(origin)) {
         throw new ApiError(403, "FORBIDDEN", "Request origin is not allowed");

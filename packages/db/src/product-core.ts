@@ -123,6 +123,12 @@ export function resolveLocalDateTime(input: {
   return new Date(earliest.epochMilliseconds);
 }
 
+// PostgreSQL treats % and _ as wildcards inside LIKE/ILIKE, so an unescaped
+// user search of "%" matches every row. Callers must pair this with `escape '\'`.
+export function likePattern(search: string): string {
+  return `%${search.replace(/[%_]/g, "$&")}%`;
+}
+
 export async function fingerprintValue(value: unknown): Promise<string> {
   const canonical = JSON.stringify(value);
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));

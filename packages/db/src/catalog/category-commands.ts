@@ -173,7 +173,12 @@ export function createCategoryCommands(db: Database): CategoryCommands {
         const [updated] = await transaction
           .update(catalogCategory)
           .set({ status: "archived", updatedAt: new Date() })
-          .where(eq(catalogCategory.id, categoryId))
+          .where(
+            and(
+              eq(catalogCategory.businessId, access.businessId),
+              eq(catalogCategory.id, categoryId),
+            ),
+          )
           .returning();
         if (!updated) throw new Error("Category archive returned no record");
         const category = toCategory(updated);

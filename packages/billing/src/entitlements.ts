@@ -18,10 +18,13 @@ function normalizeStatus(value: string): EntitlementContract["status"] {
     : "unknown";
 }
 
-function normalizeSource(value: string): EntitlementContract["source"] {
+// "manual" is reserved for an audited server-side override, so an unrecognized
+// source must never be relabelled as one. A grant whose provenance we cannot
+// name is not trustworthy enough to project, so it is dropped instead.
+export function recognizedSource(value: string): EntitlementContract["source"] | null {
   return allowedSources.has(value as EntitlementContract["source"])
     ? (value as EntitlementContract["source"])
-    : "manual";
+    : null;
 }
 
 export async function listEntitlements(
@@ -46,15 +49,21 @@ export async function listEntitlements(
     )
     .orderBy(asc(entitlement.key));
 
-  return rows.map((row) => ({
-    key: row.key,
-    status: normalizeStatus(row.status),
-    source: normalizeSource(row.source),
-    productId: row.productId,
-    validFrom: row.validFrom?.toISOString() ?? null,
-    validUntil: row.validUntil?.toISOString() ?? null,
-    metadata: row.metadata,
-  }));
+  return rows.flatMap((row) => {
+    const source = recognizedSource(row.source);
+    if (!source) return [];
+    return [
+      {
+        key: row.key,
+        status: normalizeStatus(row.status),
+        source,
+        productId: row.productId,
+        validFrom: row.validFrom?.toISOString() ?? null,
+        validUntil: row.validUntil?.toISOString() ?? null,
+        metadata: row.metadata,
+      },
+    ];
+  });
 }
 
 export function isEntitlementEffective(

@@ -303,6 +303,28 @@ describe("Pisto API", () => {
     expect(repositoryCalled).toBe(false);
   });
 
+  test("applies the unsafe-method gate to PATCH, not only POST", async () => {
+    const app = testApp({ authenticated: true, polarEnabled: true });
+    const productId = "11111111-1111-4111-8111-111111111111";
+
+    const plainText = await app.request(`/v1/catalog/products/${productId}`, {
+      method: "PATCH",
+      headers: { "content-type": "text/plain" },
+      body: "{}",
+    });
+    const foreignOrigin = await app.request(`/v1/catalog/products/${productId}`, {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://untrusted.example.test",
+      },
+      body: "{}",
+    });
+
+    expect(plainText.status).toBe(415);
+    expect(foreignOrigin.status).toBe(403);
+  });
+
   test("uses one explicit malformed-JSON failure contract across API routes", async () => {
     const app = testApp({ authenticated: true, polarEnabled: true });
     const sale = await app.request("/v1/sales", {
