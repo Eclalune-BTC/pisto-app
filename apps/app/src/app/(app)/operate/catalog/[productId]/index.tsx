@@ -2,22 +2,22 @@ import type { ArchiveProductRequest } from "@pisto/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { catalogApi } from "@/features/catalog/api";
-import { catalogInventoryCopy } from "@/features/catalog/copy";
+import { buildCatalogCopy } from "@/features/catalog/copy";
 import { ProductDetailScreen, type ProductDetailState } from "@/features/catalog/product-detail";
 import { useCategoriesQuery, useProductQuery } from "@/features/catalog/queries";
 import { catalogInventoryQueryKeys, flattenPages } from "@/features/catalog/query-keys";
-import {
-  isDeniedError,
-  isNotFoundError,
-  mutationErrorMessage,
-  mutationUiState,
-} from "@/features/catalog/state";
+import { isDeniedError, isNotFoundError, mutationUiState } from "@/features/catalog/state";
+import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 
 export default function ProductDetailRoute() {
   const router = useRouter();
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildCatalogCopy(t), [t]);
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{ productId?: string | string[] }>();
   const productId = Array.isArray(params.productId) ? params.productId[0] : params.productId;
@@ -86,8 +86,8 @@ export default function ProductDetailRoute() {
         archiveState="idle"
         canManage={false}
         categoryName={null}
-        copy={catalogInventoryCopy.productDetail}
-        locale={catalogInventoryCopy.locale}
+        copy={copy.productDetail}
+        locale={i18n.resolvedLanguage ?? DEFAULT_LOCALE}
         onArchive={() => undefined}
         onBack={() => router.replace("/operate/catalog")}
         onCancelArchive={() => undefined}
@@ -157,13 +157,18 @@ export default function ProductDetailRoute() {
       archiveReview={archiveCommand !== null}
       archiveState={archiveState}
       canManage={roleCanManage && accessCurrent}
-      categoryName={
-        categoryId ? (categoryName ?? catalogInventoryCopy.productDetail.categoryUnavailable) : null
-      }
-      copy={catalogInventoryCopy.productDetail}
-      locale={catalogInventoryCopy.locale}
+      categoryName={categoryId ? (categoryName ?? copy.productDetail.categoryUnavailable) : null}
+      copy={copy.productDetail}
+      locale={i18n.resolvedLanguage ?? DEFAULT_LOCALE}
       mutationMessage={
-        archive.error ? mutationErrorMessage(archive.error, "archiveProduct") : undefined
+        archive.error
+          ? productErrorMessage(
+              archive.error,
+              copy.errorFallbacks.archiveProduct,
+              t,
+              "archiveProduct",
+            )
+          : undefined
       }
       onArchive={confirmArchive}
       onBack={() => router.replace("/operate/catalog")}

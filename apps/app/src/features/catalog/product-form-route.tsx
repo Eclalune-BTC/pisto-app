@@ -8,17 +8,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
+import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
 import { catalogApi } from "./api";
-import { catalogInventoryCopy } from "./copy";
+import { buildCatalogCopy, type CatalogCopy } from "./copy";
 import { buildProductCommand, productToDraft } from "./product-draft";
 import { type ProductDraftErrors, type ProductDraftFields, ProductEditor } from "./product-editor";
 import { useCategoriesQuery, useProductQuery } from "./queries";
 import { catalogInventoryQueryKeys, flattenPages } from "./query-keys";
 import { CapabilityRouteState } from "./route-state";
-import { isDeniedError, isNotFoundError, mutationErrorMessage, mutationUiState } from "./state";
+import { isDeniedError, isNotFoundError, mutationUiState } from "./state";
 
 const emptyDraft: ProductDraftFields = {
   categoryId: null,
@@ -33,8 +36,10 @@ const emptyDraft: ProductDraftFields = {
 
 type ProductCommand = CreateProductRequest | UpdateProductRequest;
 
-function localizeDraftErrors(errors: ProductDraftErrors): ProductDraftErrors {
-  const copy = catalogInventoryCopy.productEditor.validation;
+function localizeDraftErrors(
+  errors: ProductDraftErrors,
+  copy: CatalogCopy["productEditorValidation"],
+): ProductDraftErrors {
   return {
     ...(errors.form ? { form: copy.noChanges } : {}),
     ...(errors.lowStockThreshold ? { lowStockThreshold: copy.threshold } : {}),
@@ -83,6 +88,9 @@ export function ProductFormRoute({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildCatalogCopy(t), [t]);
+  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
   const canManage = business?.access.permissions.includes("catalog:manage") ?? false;
@@ -162,40 +170,40 @@ export function ProductFormRoute({
     const categoryName = fields.categoryId
       ? categoryItems.find(({ id }) => id === fields.categoryId)?.name
       : null;
-    const copy = catalogInventoryCopy.productEditor;
+    const fieldCopy = copy.productEditorFields;
     const price =
       fields.sellingPriceMinorUnits === null
-        ? copy.reviewFields.noPrice
+        ? fieldCopy.noPrice
         : formatMinorUnits(
             fields.sellingPriceMinorUnits,
             business.currency,
             business.currencyMinorUnitDigits,
-            catalogInventoryCopy.locale,
+            locale,
           );
     const threshold =
       fields.lowStockThresholdMinorUnits === null
-        ? copy.reviewFields.noThreshold
+        ? fieldCopy.noThreshold
         : formatQuantityMinorUnits(fields.lowStockThresholdMinorUnits, fields.quantityPrecision);
     return [
-      { label: copy.reviewFields.name, value: fields.name },
-      { label: copy.reviewFields.sku, value: fields.sku ?? copy.reviewFields.noSku },
-      { label: copy.reviewFields.price, value: price },
+      { label: fieldCopy.name, value: fields.name },
+      { label: fieldCopy.sku, value: fields.sku ?? fieldCopy.noSku },
+      { label: fieldCopy.price, value: price },
       {
-        label: copy.reviewFields.category,
-        value: categoryName ?? copy.noCategory,
+        label: fieldCopy.category,
+        value: categoryName ?? copy.productEditor.noCategory,
       },
       {
-        label: copy.reviewFields.unit,
+        label: fieldCopy.unit,
         value: copy.unitLabels[fields.unitKind as ProductUnitKind],
       },
-      { label: copy.reviewFields.precision, value: String(fields.quantityPrecision) },
+      { label: fieldCopy.precision, value: String(fields.quantityPrecision) },
       {
-        label: copy.reviewFields.tracked,
-        value: fields.tracked ? catalogInventoryCopy.common.yes : catalogInventoryCopy.common.no,
+        label: fieldCopy.tracked,
+        value: fields.tracked ? t("common.yes") : t("common.no"),
       },
-      { label: copy.reviewFields.threshold, value: threshold },
+      { label: fieldCopy.threshold, value: threshold },
     ];
-  }, [business, categoryItems, command, mode, product]);
+  }, [business, categoryItems, command, copy, locale, mode, product, t]);
 
   if (businesses.fetchStatus === "paused") {
     return <CapabilityRouteState kind="offline" />;
@@ -209,7 +217,7 @@ export function ProductFormRoute({
     return (
       <CapabilityRouteState
         back={{
-          label: catalogInventoryCopy.remote.backToCatalog,
+          label: copy.remote.backToCatalog,
           onPress: () => router.replace("/operate/catalog"),
         }}
         kind="denied"
@@ -223,7 +231,7 @@ export function ProductFormRoute({
     return (
       <CapabilityRouteState
         back={{
-          label: catalogInventoryCopy.remote.backToCatalog,
+          label: copy.remote.backToCatalog,
           onPress: () => router.replace("/operate/catalog"),
         }}
         kind="offline"
@@ -237,7 +245,7 @@ export function ProductFormRoute({
     return (
       <CapabilityRouteState
         back={{
-          label: catalogInventoryCopy.remote.backToCatalog,
+          label: copy.remote.backToCatalog,
           onPress: () => router.replace("/operate/catalog"),
         }}
         kind="notFound"
@@ -251,7 +259,7 @@ export function ProductFormRoute({
     return (
       <CapabilityRouteState
         back={{
-          label: catalogInventoryCopy.remote.backToCatalog,
+          label: copy.remote.backToCatalog,
           onPress: () => router.replace("/operate/catalog"),
         }}
         kind="error"
@@ -266,7 +274,7 @@ export function ProductFormRoute({
     return (
       <CapabilityRouteState
         back={{
-          label: catalogInventoryCopy.remote.backToCatalog,
+          label: copy.remote.backToCatalog,
           onPress: () => router.replace("/operate/catalog"),
         }}
         kind="unavailable"
@@ -279,7 +287,7 @@ export function ProductFormRoute({
 
   const prepareReview = () => {
     if (draft.categoryId && !categoryItems.some(({ id }) => id === draft.categoryId)) {
-      setErrors({ form: catalogInventoryCopy.productEditor.categoriesUnavailable });
+      setErrors({ form: copy.productEditor.categoriesUnavailable });
       return;
     }
     const result = buildProductCommand({
@@ -290,7 +298,7 @@ export function ProductFormRoute({
       original: mode === "edit" ? product : undefined,
     });
     if ("errors" in result) {
-      setErrors(localizeDraftErrors(result.errors));
+      setErrors(localizeDraftErrors(result.errors, copy.productEditorValidation));
       return;
     }
     setErrors({});
@@ -308,12 +316,16 @@ export function ProductFormRoute({
       categoriesError={categories.isError}
       categoriesHasNextPage={Boolean(categories.hasNextPage)}
       categoriesLoadingMore={categories.isFetchingNextPage}
-      copy={catalogInventoryCopy.productEditor}
+      copy={copy.productEditor}
       currency={business.currency}
       draft={draft}
       errors={errors}
       mode={mode}
-      mutationMessage={mutation.error ? mutationErrorMessage(mutation.error, "product") : undefined}
+      mutationMessage={
+        mutation.error
+          ? productErrorMessage(mutation.error, copy.errorFallbacks.product, t, "product")
+          : undefined
+      }
       mutationState={mutationState}
       onBack={() =>
         mode === "edit" && productId

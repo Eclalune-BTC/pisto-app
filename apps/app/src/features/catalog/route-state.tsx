@@ -1,10 +1,12 @@
 import { AlertTriangle, Info, WifiOff } from "lucide-react-native";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 
-import { catalogInventoryCopy } from "./copy";
+import { catalogRemoteCopy } from "./copy";
 
 export type CapabilityRouteStateKind =
   | "denied"
@@ -23,7 +25,8 @@ export function CapabilityRouteState({
   kind: CapabilityRouteStateKind;
   onRetry?: () => void;
 }) {
-  const copy = catalogInventoryCopy.remote;
+  const { t } = useTranslation();
+  const copy = useMemo(() => catalogRemoteCopy(t), [t]);
   if (kind === "loading") {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
@@ -81,12 +84,13 @@ export function CapabilityRouteState({
 }
 
 export function ReadOnlyNotice({ description }: { description: string }) {
+  const { t } = useTranslation();
   return (
     <View className="flex-row items-start gap-3 border-l-4 border-positive bg-[#EAF5ED] p-4 dark:bg-[#18352A]">
       <Info color="#237A55" size={19} />
       <View className="min-w-0 flex-1 gap-1">
         <Text className="font-bold text-ink dark:text-white">
-          {catalogInventoryCopy.remote.readOnlyTitle}
+          {t("catalog.remote.readOnlyTitle")}
         </Text>
         <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">{description}</Text>
       </View>

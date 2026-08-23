@@ -254,7 +254,7 @@ export default function CorrectSaleScreen() {
               <Text accessibilityRole="alert" className="min-w-0 flex-1 text-sm text-danger">
                 {ambiguousFailure
                   ? t("sales.correction.uncertain")
-                  : productErrorMessage(correction.error, t("sales.correction.failed"), t)}
+                  : productErrorMessage(correction.error, t("sales.correction.failed"), t, "sale")}
               </Text>
             </View>
           ) : null}

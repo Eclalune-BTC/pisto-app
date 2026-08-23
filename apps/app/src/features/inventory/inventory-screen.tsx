@@ -195,7 +195,7 @@ export function InventoryScreen({
                     {product.name}
                   </Text>
                   <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
-                    {product.sku ?? product.unitKind}
+                    {product.sku ?? copy.unitLabels[product.unitKind]}
                   </Text>
                 </View>
                 <View className="gap-1 sm:min-w-[220px] sm:items-end">

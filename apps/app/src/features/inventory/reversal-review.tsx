@@ -18,7 +18,7 @@ export interface ReversalReviewCopy {
   failedDescription: string;
   uncertainTitle: string;
   uncertainDescription: string;
-  resolveUncertain: string;
+  retrySameConfirmation: string;
 }
 
 export function ReversalReview({
@@ -79,7 +79,11 @@ export function ReversalReview({
       ) : null}
       <View className="gap-3 sm:flex-row">
         {mutationState === "uncertain" ? (
-          <Button label={copy.resolveUncertain} onPress={onResolveUncertain} variant="secondary" />
+          <Button
+            label={copy.retrySameConfirmation}
+            onPress={onResolveUncertain}
+            variant="secondary"
+          />
         ) : (
           <>
             <Button

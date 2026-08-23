@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
-import { catalogInventoryCopy } from "@/features/catalog/copy";
+import { buildCatalogCopy } from "@/features/catalog/copy";
 import { useProductQuery } from "@/features/catalog/queries";
 import { flattenPages } from "@/features/catalog/query-keys";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
@@ -12,6 +14,8 @@ import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/busines
 
 export default function InventoryHistoryRoute() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCatalogCopy(t), [t]);
   const params = useLocalSearchParams<{ productId?: string | string[] }>();
   const productId = Array.isArray(params.productId) ? params.productId[0] : params.productId;
   const businesses = useQuery(businessesQueryOptions);
@@ -32,7 +36,7 @@ export default function InventoryHistoryRoute() {
   });
 
   const back = {
-    label: catalogInventoryCopy.remote.backToInventory,
+    label: copy.remote.backToInventory,
     onPress: () => router.replace("/operate/inventory"),
   };
 
@@ -102,7 +106,7 @@ export default function InventoryHistoryRoute() {
   return (
     <MovementHistory
       canManage={canManage}
-      copy={catalogInventoryCopy.movementHistory}
+      copy={copy.movementHistory}
       onAddMovement={() =>
         router.push({
           pathname: "/operate/inventory/[productId]/new",

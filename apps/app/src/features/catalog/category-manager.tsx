@@ -66,7 +66,7 @@ export interface CategoryManagerCopy {
   failedTitle: string;
   uncertainTitle: string;
   uncertainDescription: string;
-  resolveUncertain: string;
+  retrySameConfirmation: string;
   readOnlyTitle: string;
   readOnlyDescription: string;
 }
@@ -225,7 +225,7 @@ export function CategoryManager({
             <View className="gap-3 sm:flex-row">
               {editor.mutationState === "uncertain" ? (
                 <Button
-                  label={copy.resolveUncertain}
+                  label={copy.retrySameConfirmation}
                   onPress={onResolveEditor}
                   variant="secondary"
                 />
@@ -281,7 +281,7 @@ export function CategoryManager({
           <View className="gap-3 sm:flex-row">
             {archiveView.mutationState === "uncertain" ? (
               <Button
-                label={copy.resolveUncertain}
+                label={copy.retrySameConfirmation}
                 onPress={onResolveArchive}
                 variant="secondary"
               />

@@ -211,7 +211,7 @@ export default function BusinessSetupScreen() {
               <Text accessibilityRole="alert" className="text-sm text-danger dark:text-[#FFBABA]">
                 {uncertainCreation
                   ? t("business.uncertain")
-                  : productErrorMessage(creation.error, t("business.createFailed"), t)}
+                  : productErrorMessage(creation.error, t("business.createFailed"), t, "business")}
               </Text>
             ) : null}
           </View>

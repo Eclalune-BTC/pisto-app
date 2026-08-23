@@ -155,7 +155,12 @@ export default function NewSaleScreen() {
                 <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
                   {ambiguousFailure
                     ? t("sales.uncertainDescription")
-                    : productErrorMessage(confirmation.error, t("sales.failedDescription"), t)}
+                    : productErrorMessage(
+                        confirmation.error,
+                        t("sales.failedDescription"),
+                        t,
+                        "sale",
+                      )}
                 </Text>
               </View>
             </View>

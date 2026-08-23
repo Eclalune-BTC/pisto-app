@@ -7,11 +7,12 @@ import type {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { catalogApi } from "@/features/catalog/api";
 import { buildCategoryCommand } from "@/features/catalog/category-draft";
 import { type CategoryCollectionState, CategoryManager } from "@/features/catalog/category-manager";
-import { catalogInventoryCopy } from "@/features/catalog/copy";
+import { buildCatalogCopy } from "@/features/catalog/copy";
 import { useCategoriesQuery } from "@/features/catalog/queries";
 import {
   type CatalogStatusFilter,
@@ -19,7 +20,8 @@ import {
   flattenPages,
 } from "@/features/catalog/query-keys";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { isDeniedError, mutationErrorMessage, mutationUiState } from "@/features/catalog/state";
+import { isDeniedError, mutationUiState } from "@/features/catalog/state";
+import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 
 type CategoryWriteCommand = CreateCategoryRequest | UpdateCategoryRequest;
@@ -38,6 +40,8 @@ type ArchiveState = {
 };
 
 export default function CategoriesRoute() {
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCatalogCopy(t), [t]);
   const router = useRouter();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -137,7 +141,7 @@ export default function CategoriesRoute() {
       name: editor.name,
     });
     if ("error" in result) {
-      setEditor({ ...editor, error: catalogInventoryCopy.categories.nameValidation });
+      setEditor({ ...editor, error: copy.categories.nameValidation });
       return;
     }
     categoryMutation.reset();
@@ -164,21 +168,31 @@ export default function CategoriesRoute() {
           ? {
               category: archive.category,
               mutationMessage: archiveMutation.error
-                ? mutationErrorMessage(archiveMutation.error, "category")
+                ? productErrorMessage(
+                    archiveMutation.error,
+                    copy.errorFallbacks.category,
+                    t,
+                    "category",
+                  )
                 : undefined,
               mutationState: archiveMutationState,
             }
           : null
       }
       canManage={canManage}
-      copy={catalogInventoryCopy.categories}
+      copy={copy.categories}
       editor={
         editor
           ? {
               error: editor.error,
               mode: editor.mode,
               mutationMessage: categoryMutation.error
-                ? mutationErrorMessage(categoryMutation.error, "category")
+                ? productErrorMessage(
+                    categoryMutation.error,
+                    copy.errorFallbacks.category,
+                    t,
+                    "category",
+                  )
                 : undefined,
               mutationState: editorMutationState,
               name: editor.name,

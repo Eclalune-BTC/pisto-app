@@ -2,23 +2,20 @@ import type { ReverseInventoryMovementRequest } from "@pisto/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { catalogInventoryCopy } from "@/features/catalog/copy";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { buildCatalogCopy, type CatalogCopy } from "@/features/catalog/copy";
 import { useProductQuery } from "@/features/catalog/queries";
 import { catalogInventoryQueryKeys, flattenPages } from "@/features/catalog/query-keys";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
-import {
-  isDeniedError,
-  isNotFoundError,
-  mutationErrorMessage,
-  mutationUiState,
-} from "@/features/catalog/state";
+import { isDeniedError, isNotFoundError, mutationUiState } from "@/features/catalog/state";
 import { inventoryApi } from "@/features/inventory/api";
 import { useMovementsQuery } from "@/features/inventory/queries";
 import type { ReversalDraft, ReversalDraftErrors } from "@/features/inventory/reversal-draft";
 import { buildReversalCommand } from "@/features/inventory/reversal-draft";
 import { ReversalEditor } from "@/features/inventory/reversal-editor";
 import { currentLocalDateTime } from "@/lib/money";
+import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 
 const emptyDraft: ReversalDraft = {
@@ -27,8 +24,10 @@ const emptyDraft: ReversalDraft = {
   reason: "",
 };
 
-function localizedErrors(errors: ReversalDraftErrors): ReversalDraftErrors {
-  const copy = catalogInventoryCopy.reversal.validation;
+function localizedErrors(
+  errors: ReversalDraftErrors,
+  copy: CatalogCopy["reversalValidation"],
+): ReversalDraftErrors {
   return {
     ...(errors.occurredLocalDate ? { occurredLocalDate: copy.date } : {}),
     ...(errors.occurredLocalTime ? { occurredLocalTime: copy.time } : {}),
@@ -38,6 +37,8 @@ function localizedErrors(errors: ReversalDraftErrors): ReversalDraftErrors {
 
 export default function ReverseInventoryMovementRoute() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCatalogCopy(t), [t]);
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{
     movementId?: string | string[];
@@ -122,7 +123,7 @@ export default function ReverseInventoryMovementRoute() {
   });
 
   const back = {
-    label: catalogInventoryCopy.remote.backToInventory,
+    label: copy.remote.backToInventory,
     onPress: () =>
       productId
         ? router.replace({ pathname: "/operate/inventory/[productId]", params: { productId } })
@@ -191,7 +192,7 @@ export default function ReverseInventoryMovementRoute() {
   const prepareReview = () => {
     const result = buildReversalCommand({ draft, idempotencyKey: Crypto.randomUUID() });
     if ("errors" in result) {
-      setErrors(localizedErrors(result.errors));
+      setErrors(localizedErrors(result.errors, copy.reversalValidation));
       return;
     }
     setErrors({});
@@ -206,12 +207,14 @@ export default function ReverseInventoryMovementRoute() {
   return (
     <ReversalEditor
       command={command}
-      copy={catalogInventoryCopy.reversal}
+      copy={copy.reversal}
       draft={draft}
       errors={errors}
       movement={movement}
       mutationMessage={
-        mutation.error ? mutationErrorMessage(mutation.error, "reversal") : undefined
+        mutation.error
+          ? productErrorMessage(mutation.error, copy.errorFallbacks.reversal, t, "reversal")
+          : undefined
       }
       mutationState={mutationState}
       onBack={back.onPress}
