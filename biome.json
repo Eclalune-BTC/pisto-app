@@ -10,6 +10,7 @@
       "!!**/build",
       "!!**/coverage",
       "!!**/drizzle",
+      "!!**/migrations/meta",
       "!!**/expo-env.d.ts",
       "!!**/.generated"
     ]

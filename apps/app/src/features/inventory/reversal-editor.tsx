@@ -1,16 +1,15 @@
-import { AlertTriangle, ArrowLeft, Check } from "lucide-react-native";
-import { Text, View } from "react-native";
-
-import { DetailList } from "@/components/detail-list";
-import { Page } from "@/components/page";
-import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
 import type {
   InventoryMovement,
   InventoryMovementAction,
   ReverseInventoryMovementRequest,
 } from "@pisto/contracts";
+import { AlertTriangle, ArrowLeft, Check } from "lucide-react-native";
+import { Text, View } from "react-native";
+import { DetailList } from "@/components/detail-list";
+import { Page } from "@/components/page";
+import { ScreenHeader } from "@/components/screen-header";
+import { Button, ButtonText } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 
 import { formatQuantityMinorUnits } from "./quantity";
 import type { ReversalDraft, ReversalDraftErrors } from "./reversal-draft";

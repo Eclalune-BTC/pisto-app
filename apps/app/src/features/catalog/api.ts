@@ -1,4 +1,3 @@
-import { apiRequest } from "@/lib/api-client";
 import type {
   ArchiveCategoryRequest,
   ArchiveProductRequest,
@@ -27,6 +26,7 @@ import {
   updateCategoryRequestSchema,
   updateProductRequestSchema,
 } from "@pisto/contracts";
+import { apiRequest } from "@/lib/api-client";
 
 function queryString(query: Record<string, boolean | number | string | undefined>): string {
   const params = new URLSearchParams();

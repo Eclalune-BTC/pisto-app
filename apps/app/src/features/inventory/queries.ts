@@ -1,5 +1,5 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
 import type { InventoryMovementListResponse, StockListResponse } from "@pisto/contracts";
+import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { catalogInventoryQueryKeys } from "../catalog/query-keys";
 import { inventoryApi } from "./api";

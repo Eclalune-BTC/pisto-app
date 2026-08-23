@@ -1,3 +1,4 @@
+import type { ReverseInventoryMovementRequest } from "@pisto/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
@@ -19,7 +20,6 @@ import { buildReversalCommand } from "@/features/inventory/reversal-draft";
 import { ReversalEditor } from "@/features/inventory/reversal-editor";
 import { currentLocalDateTime } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import type { ReverseInventoryMovementRequest } from "@pisto/contracts";
 
 const emptyDraft: ReversalDraft = {
   occurredLocalDate: "",

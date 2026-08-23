@@ -1,4 +1,4 @@
-import type { Business } from "@pisto/contracts";
+import type { Business, Customer, PostReceivableRequest } from "@pisto/contracts";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { ArrowLeft } from "lucide-react-native";
@@ -12,7 +12,6 @@ import { CustomerPicker } from "@/features/customers/customer-picker";
 import { customerDetailQueryOptions, customersQueryOptions } from "@/features/customers/queries";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
-import type { Customer, PostReceivableRequest } from "@pisto/contracts";
 
 import { receivablesApi } from "./api";
 import {

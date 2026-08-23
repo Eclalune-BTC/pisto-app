@@ -1,9 +1,9 @@
+import type { InventoryMovement, Product, ProductStock, ProductUnitKind } from "@pisto/contracts";
 import { AlertTriangle, ArrowLeft, Plus } from "lucide-react-native";
 import { ActivityIndicator, Text, View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
-import type { InventoryMovement, Product, ProductStock, ProductUnitKind } from "@pisto/contracts";
 import { ReadOnlyNotice } from "../catalog/route-state";
 import { formatQuantityMinorUnits } from "./quantity";
 

@@ -7,8 +7,8 @@ import {
   currencyMinorUnitDigitsSchema,
   localDateSchema,
   signedAggregateIntegerSchema,
-  timeZoneSchema,
   timestampSchema,
+  timeZoneSchema,
   uuidSchema,
 } from "./primitives";
 

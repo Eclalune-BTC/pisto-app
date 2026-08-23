@@ -1,9 +1,8 @@
+import type { Customer } from "@pisto/contracts";
 import { Check, RefreshCw, Search } from "lucide-react-native";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
-
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import type { Customer } from "@pisto/contracts";
 
 import { customersReceivablesCopy as copy } from "./copy";
 

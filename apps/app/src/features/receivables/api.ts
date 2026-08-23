@@ -1,4 +1,3 @@
-import { apiRequest } from "@/lib/api-client";
 import type {
   ApplyReceivablePaymentRequest,
   ListReceivablesQuery,
@@ -23,6 +22,7 @@ import {
   reverseReceivablePaymentRequestSchema,
   voidReceivableRequestSchema,
 } from "@pisto/contracts";
+import { apiRequest } from "@/lib/api-client";
 
 function encodeQuery(query: ListReceivablesQuery): string {
   const parsed = listReceivablesQuerySchema.parse(query);

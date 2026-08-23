@@ -1,4 +1,8 @@
-import type { Business } from "@pisto/contracts";
+import type {
+  Business,
+  ReceivablePayment,
+  ReverseReceivablePaymentRequest,
+} from "@pisto/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { ArrowLeft } from "lucide-react-native";
@@ -10,7 +14,6 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { customersReceivablesCopy as copy } from "@/features/customers/copy";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
-import type { ReceivablePayment, ReverseReceivablePaymentRequest } from "@pisto/contracts";
 
 import { receivablesApi } from "./api";
 import {

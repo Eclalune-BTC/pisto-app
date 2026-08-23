@@ -1,15 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import * as Crypto from "expo-crypto";
-import { Redirect, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { formatMinorUnits } from "@/lib/money";
-import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import type {
   CreateProductRequest,
   Product,
   ProductUnitKind,
   UpdateProductRequest,
 } from "@pisto/contracts";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Crypto from "expo-crypto";
+import { Redirect, useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
+import { formatMinorUnits } from "@/lib/money";
+import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
 import { catalogApi } from "./api";
 import { catalogInventoryCopy } from "./copy";

@@ -1,3 +1,4 @@
+import type { CreateCustomerRequest, Customer, UpdateCustomerRequest } from "@pisto/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { ArrowLeft } from "lucide-react-native";
@@ -6,7 +7,6 @@ import { Text } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
-import type { CreateCustomerRequest, Customer, UpdateCustomerRequest } from "@pisto/contracts";
 
 import { customersApi } from "./api";
 import { customersReceivablesCopy as copy } from "./copy";

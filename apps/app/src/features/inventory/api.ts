@@ -1,4 +1,3 @@
-import { apiRequest } from "@/lib/api-client";
 import type {
   InventoryMovementListQuery,
   InventoryMovementListResponse,
@@ -15,6 +14,7 @@ import {
   reverseInventoryMovementRequestSchema,
   stockListResponseSchema,
 } from "@pisto/contracts";
+import { apiRequest } from "@/lib/api-client";
 
 function queryString(query: Record<string, boolean | number | string | undefined>): string {
   const params = new URLSearchParams();

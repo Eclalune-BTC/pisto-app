@@ -1,3 +1,4 @@
+import type { ArchiveProductRequest } from "@pisto/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
@@ -14,7 +15,6 @@ import {
   mutationUiState,
 } from "@/features/catalog/state";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import type { ArchiveProductRequest } from "@pisto/contracts";
 
 export default function ProductDetailRoute() {
   const router = useRouter();

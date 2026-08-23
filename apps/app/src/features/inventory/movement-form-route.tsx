@@ -1,11 +1,10 @@
+import type { RecordInventoryMovementRequest } from "@pisto/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { currentLocalDateTime } from "@/lib/money";
-
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import type { RecordInventoryMovementRequest } from "@pisto/contracts";
 import { catalogInventoryCopy } from "../catalog/copy";
 import { useProductQuery } from "../catalog/queries";
 import { catalogInventoryQueryKeys } from "../catalog/query-keys";

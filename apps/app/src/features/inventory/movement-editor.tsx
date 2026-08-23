@@ -1,3 +1,4 @@
+import type { RecordInventoryMovementRequest } from "@pisto/contracts";
 import { AlertTriangle, ArrowLeft, Check } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 import { DetailList } from "@/components/detail-list";
@@ -5,7 +6,6 @@ import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import type { RecordInventoryMovementRequest } from "@pisto/contracts";
 
 export type InventoryDraftAction = Exclude<RecordInventoryMovementRequest["action"], "reverse">;
 

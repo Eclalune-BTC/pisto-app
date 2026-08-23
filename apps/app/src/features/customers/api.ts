@@ -1,4 +1,3 @@
-import { apiRequest } from "@/lib/api-client";
 import type {
   ArchiveCustomerRequest,
   CreateCustomerRequest,
@@ -17,6 +16,7 @@ import {
   listCustomersQuerySchema,
   updateCustomerRequestSchema,
 } from "@pisto/contracts";
+import { apiRequest } from "@/lib/api-client";
 
 function encodeQuery(query: ListCustomersQuery): string {
   const parsed = listCustomersQuerySchema.parse(query);

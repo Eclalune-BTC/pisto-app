@@ -1,6 +1,5 @@
-import { describe, expect, test } from "vitest";
-
 import type { Customer } from "@pisto/contracts";
+import { describe, expect, test } from "vitest";
 import { buildCreateCustomerCommand, buildUpdateCustomerCommand, customerValues } from "./draft";
 
 const customer: Customer = {
