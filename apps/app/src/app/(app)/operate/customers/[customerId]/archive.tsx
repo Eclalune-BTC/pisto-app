@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
@@ -9,7 +10,7 @@ import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/c
 import { ActionUnavailable } from "@/features/customers/action-unavailable";
 import { customersApi } from "@/features/customers/api";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
-import { customersReceivablesCopy as copy } from "@/features/customers/copy";
+import { buildCustomersCopy } from "@/features/customers/copy";
 import { CustomerArchiveReview } from "@/features/customers/customer-archive-review";
 import { customerMutationState } from "@/features/customers/mutation-state";
 import { customerDetailQueryOptions, customerQueryKeys } from "@/features/customers/queries";
@@ -17,6 +18,8 @@ import { RecordBoundary, type RecordBoundaryState } from "@/features/customers/r
 import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
 
 export default function ArchiveCustomerRoute() {
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{ customerId?: string | string[] }>();
@@ -74,7 +77,7 @@ export default function ArchiveCustomerRoute() {
               <CustomerArchiveReview
                 copy={copy.customers.form}
                 customerName={customer.data.customer.name}
-                mutation={customerMutationState(mutation)}
+                mutation={customerMutationState(t, mutation)}
                 onCancel={goBack}
                 onConfirm={() => mutation.mutate()}
                 onRetrySameRequest={() => mutation.mutate()}

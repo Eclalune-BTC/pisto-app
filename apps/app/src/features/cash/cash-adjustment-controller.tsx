@@ -1,17 +1,19 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "./api";
 import {
   type CashAdjustmentDraft,
   type CashAdjustmentErrors,
   CashAdjustmentScreen,
 } from "./cash-adjustment-screen";
-import { cashAdjustmentCopy, cashErrorMessage, cashIssueMessage, cashUiCopy } from "./copy";
+import { buildCashCopy, cashIssueMessage } from "./copy";
 import { buildCashAdjustmentCommand } from "./drafts";
 import { invalidateCashLedger } from "./invalidate";
 import { cashConfirmationState } from "./mutation-state";
@@ -24,6 +26,9 @@ export function CashAdjustmentController() {
   const initialAccountId = Array.isArray(params.accountId) ? params.accountId[0] : params.accountId;
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildCashCopy(t), [t]);
+  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const {
     business,
     businesses,
@@ -84,13 +89,13 @@ export function CashAdjustmentController() {
   let remoteState = featureRemoteState({
     businessPending: businesses.isPending,
     canRead,
-    offlineMessage: cashUiCopy.offline,
+    offlineMessage: copy.remote.offline,
     queries: [businesses, ...(canRead ? [accountsQuery] : [])],
-    unavailableMessage: cashUiCopy.unavailable,
+    unavailableMessage: copy.remote.unavailable,
   });
   const stale = accessIsStale || queryHasStaleData(accountsQuery);
   if (remoteState.kind === "ready" && stale) {
-    remoteState = { kind: "error", message: cashUiCopy.staleMutation };
+    remoteState = { kind: "error", message: copy.remote.staleMutation };
   }
 
   const prepareReview = () => {
@@ -101,7 +106,7 @@ export function CashAdjustmentController() {
     });
     setErrors(
       Object.fromEntries(
-        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(issue)]),
+        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(t, issue)]),
       ) as CashAdjustmentErrors,
     );
     if (!result.command) return;
@@ -115,10 +120,14 @@ export function CashAdjustmentController() {
       canManage={canManage && !stale}
       command={command}
       confirmation={cashConfirmationState(mutation)}
-      copy={cashAdjustmentCopy}
+      copy={copy.adjustment}
       draft={draft}
-      effect={cashUiCopy.adjustmentEffect}
-      errorMessage={mutation.error ? cashErrorMessage(mutation.error) : undefined}
+      effect={copy.effects.adjustment}
+      errorMessage={
+        mutation.error
+          ? productErrorMessage(mutation.error, copy.remote.mutationFallback, t)
+          : undefined
+      }
       errors={errors}
       formatMoney={(minorUnits, currency) =>
         formatMinorUnits(
@@ -127,7 +136,7 @@ export function CashAdjustmentController() {
           accounts.find(({ id }) => id === command?.accountId)?.currencyMinorUnitDigits ??
             business?.currencyMinorUnitDigits ??
             2,
-          DEFAULT_LOCALE,
+          locale,
         )
       }
       hasMoreAccounts={Boolean(accountsQuery.hasNextPage)}

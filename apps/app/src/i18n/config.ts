@@ -2,6 +2,7 @@ import { getLocales } from "expo-localization";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import { DEFAULT_LOCALE, resolveSupportedLocale, SUPPORTED_LOCALES } from "@/i18n/locale";
+import { resolveMissingTranslation } from "@/i18n/missing-key";
 import { esSV } from "@/i18n/resources/es-SV";
 
 export const resources = {
@@ -15,6 +16,7 @@ void i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
   lng: resolveSupportedLocale(getLocales()),
   load: "currentOnly",
+  parseMissingKeyHandler: resolveMissingTranslation,
   resources,
   returnEmptyString: false,
   returnNull: false,

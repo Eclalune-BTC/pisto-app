@@ -39,7 +39,7 @@ export interface ReversalEditorCopy {
   failedDescription: string;
   uncertainTitle: string;
   uncertainDescription: string;
-  resolveUncertain: string;
+  retrySameConfirmation: string;
   actions: Record<InventoryMovementAction, string>;
 }
 
@@ -148,7 +148,7 @@ export function ReversalEditor({
           <View className="gap-3 sm:flex-row">
             {mutationState === "uncertain" ? (
               <Button
-                label={copy.resolveUncertain}
+                label={copy.retrySameConfirmation}
                 onPress={onResolveUncertain}
                 variant="secondary"
               />

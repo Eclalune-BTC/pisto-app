@@ -62,7 +62,7 @@ export interface ProductDetailCopy {
   archiveFailedDescription: string;
   uncertainTitle: string;
   uncertainDescription: string;
-  resolveUncertain: string;
+  retrySameConfirmation: string;
   readOnlyTitle: string;
   readOnlyDescription: string;
 }
@@ -237,7 +237,7 @@ export function ProductDetailScreen({
           <View className="gap-3 sm:flex-row">
             {archiveState === "uncertain" ? (
               <Button
-                label={copy.resolveUncertain}
+                label={copy.retrySameConfirmation}
                 onPress={onResolveUncertain}
                 variant="secondary"
               />

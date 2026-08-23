@@ -1,10 +1,11 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
-import { customersReceivablesCopy as copy } from "@/features/customers/copy";
+import { buildCustomersCopy } from "@/features/customers/copy";
 import { CustomerDetailScreen } from "@/features/customers/customer-detail-screen";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
@@ -15,8 +16,9 @@ import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 
 export default function CustomerDetailRoute() {
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
-  const { i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const params = useLocalSearchParams<{ customerId?: string | string[] }>();
   const customerId = Array.isArray(params.customerId) ? params.customerId[0] : params.customerId;

@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 
-import { customersReceivablesCopy as copy } from "./copy";
+import { buildCustomersCopy } from "./copy";
 
 export type CapabilityBoundaryState = "denied" | "error" | "loading" | "offline" | "ready";
 
@@ -15,6 +17,8 @@ type CapabilityBoundaryProps = {
 };
 
 export function CapabilityBoundary({ children, onRetry, state }: CapabilityBoundaryProps) {
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   if (state === "ready") return children;
   const content =
     state === "offline"

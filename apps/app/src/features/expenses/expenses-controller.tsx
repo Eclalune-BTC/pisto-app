@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
@@ -13,7 +14,7 @@ import {
 } from "../cash/queries";
 import { featureRemoteState, queryHasStaleData } from "../cash/remote-state";
 import { useCashAccess } from "../cash/use-cash-access";
-import { expenseCategoryOptions, expensesOverviewCopy, expensesUiCopy } from "./copy";
+import { buildExpensesCopy } from "./copy";
 import type { ExpenseFiltersValue, ExpensePeriodValue } from "./expense-filters";
 import { ExpensesScreen, type ExpensesScreenState } from "./expenses-screen";
 
@@ -24,6 +25,9 @@ function currentMonthPeriod(timeZone: string): ExpensePeriodValue {
 
 export function ExpensesController() {
   const router = useRouter();
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildExpensesCopy(t), [t]);
+  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const {
     business,
     businesses,
@@ -87,9 +91,9 @@ export function ExpensesController() {
   const remoteState = featureRemoteState({
     businessPending: businesses.isPending,
     canRead,
-    offlineMessage: expensesUiCopy.offline,
+    offlineMessage: copy.remote.offline,
     queries: [businesses, ...(canRead ? [expenses, accounts, summary] : [])],
-    unavailableMessage: expensesUiCopy.unavailable,
+    unavailableMessage: copy.remote.unavailable,
   });
   const stale =
     accessIsStale ||
@@ -111,7 +115,6 @@ export function ExpensesController() {
             summary: summary.data.summary,
           }
         : { kind: "loading" };
-  const locale = DEFAULT_LOCALE;
 
   const applyPeriod = () => {
     if (
@@ -119,7 +122,7 @@ export function ExpensesController() {
       !isValidCashLocalDate(period.endLocalDate) ||
       period.startLocalDate > period.endLocalDate
     ) {
-      setPeriodError(expensesUiCopy.invalidPeriod);
+      setPeriodError(copy.remote.invalidPeriod);
       return;
     }
     setPeriodError(undefined);
@@ -138,8 +141,8 @@ export function ExpensesController() {
   return (
     <ExpensesScreen
       accounts={accountItems}
-      categoryOptions={expenseCategoryOptions}
-      copy={expensesOverviewCopy(business?.name ?? "este negocio")}
+      categoryOptions={copy.categoryOptions}
+      copy={copy.overview(business?.name ?? t("common.thisBusiness"))}
       filters={filters}
       formatMoney={(minorUnits, currency, fractionDigits) =>
         formatMinorUnits(minorUnits, currency, fractionDigits, locale)

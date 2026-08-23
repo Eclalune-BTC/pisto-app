@@ -202,7 +202,7 @@ export default function BusinessSetupScreen() {
             <Button
               className="self-start"
               disabled={!acknowledged || name.trim().length < 2}
-              label={uncertainCreation ? t("business.retrySame") : t("business.create")}
+              label={uncertainCreation ? t("common.retrySameConfirmation") : t("business.create")}
               loading={creation.isPending}
               onPress={createBusiness}
               variant="accent"
@@ -211,7 +211,7 @@ export default function BusinessSetupScreen() {
               <Text accessibilityRole="alert" className="text-sm text-danger dark:text-[#FFBABA]">
                 {uncertainCreation
                   ? t("business.uncertain")
-                  : productErrorMessage(creation.error, t("business.createFailed"), t)}
+                  : productErrorMessage(creation.error, t("business.createFailed"), t, "business")}
               </Text>
             ) : null}
           </View>

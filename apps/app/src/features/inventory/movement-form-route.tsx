@@ -3,18 +3,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { currentLocalDateTime } from "@/lib/money";
+import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { catalogInventoryCopy } from "../catalog/copy";
+import { buildCatalogCopy, type CatalogCopy } from "../catalog/copy";
 import { useProductQuery } from "../catalog/queries";
 import { catalogInventoryQueryKeys } from "../catalog/query-keys";
 import { CapabilityRouteState } from "../catalog/route-state";
-import {
-  isDeniedError,
-  isNotFoundError,
-  mutationErrorMessage,
-  mutationUiState,
-} from "../catalog/state";
+import { isDeniedError, isNotFoundError, mutationUiState } from "../catalog/state";
 import { inventoryApi } from "./api";
 import { buildMovementCommand } from "./movement-draft";
 import {
@@ -32,8 +29,10 @@ const emptyDraft: InventoryMovementDraft = {
   reason: "",
 };
 
-function localizeErrors(errors: InventoryMovementErrors): InventoryMovementErrors {
-  const copy = catalogInventoryCopy.movementEditor.validation;
+function localizeErrors(
+  errors: InventoryMovementErrors,
+  copy: CatalogCopy["movementValidation"],
+): InventoryMovementErrors {
   return {
     ...(errors.occurredLocalDate ? { occurredLocalDate: copy.date } : {}),
     ...(errors.occurredLocalTime ? { occurredLocalTime: copy.time } : {}),
@@ -45,6 +44,8 @@ function localizeErrors(errors: InventoryMovementErrors): InventoryMovementError
 export function MovementFormRoute({ productId }: { productId: string | undefined }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCatalogCopy(t), [t]);
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
   const canReadCatalog = business?.access.permissions.includes("catalog:read") ?? false;
@@ -95,25 +96,25 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
 
   const reviewItems = useMemo(() => {
     if (!command || !business || !product.data) return null;
-    const copy = catalogInventoryCopy.movementEditor;
+    const fieldCopy = copy.movementEditorFields;
     return [
-      { label: copy.reviewFields.action, value: copy.actions[command.action] },
+      { label: fieldCopy.action, value: copy.movementEditor.actions[command.action] },
       {
-        label: copy.reviewFields.quantity,
+        label: fieldCopy.quantity,
         value: formatQuantityMinorUnits(
           command.quantityMinorUnits,
           product.data.product.quantityPrecision,
         ),
       },
-      { label: copy.reviewFields.reason, value: command.reason },
-      { label: copy.reviewFields.date, value: command.occurredLocalDate },
-      { label: copy.reviewFields.time, value: command.occurredLocalTime },
-      { label: copy.reviewFields.timeZone, value: business.timeZone },
+      { label: fieldCopy.reason, value: command.reason },
+      { label: fieldCopy.date, value: command.occurredLocalDate },
+      { label: fieldCopy.time, value: command.occurredLocalTime },
+      { label: fieldCopy.timeZone, value: business.timeZone },
     ];
-  }, [business, command, product.data]);
+  }, [business, command, copy, product.data]);
 
   const back = {
-    label: catalogInventoryCopy.remote.backToInventory,
+    label: copy.remote.backToInventory,
     onPress: () =>
       productId
         ? router.replace({ pathname: "/operate/inventory/[productId]", params: { productId } })
@@ -159,7 +160,7 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
       quantityPrecision: product.data.product.quantityPrecision,
     });
     if ("errors" in result) {
-      setErrors(localizeErrors(result.errors));
+      setErrors(localizeErrors(result.errors, copy.movementValidation));
       return;
     }
     setErrors({});
@@ -173,11 +174,13 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
 
   return (
     <MovementEditor
-      copy={catalogInventoryCopy.movementEditor}
+      copy={copy.movementEditor}
       draft={draft}
       errors={errors}
       mutationMessage={
-        mutation.error ? mutationErrorMessage(mutation.error, "movement") : undefined
+        mutation.error
+          ? productErrorMessage(mutation.error, copy.errorFallbacks.movement, t, "movement")
+          : undefined
       }
       mutationState={mutationState}
       onBack={back.onPress}

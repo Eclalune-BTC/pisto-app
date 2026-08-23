@@ -2,12 +2,12 @@ import type { ApplyReceivablePaymentRequest, Business, Receivable } from "@pisto
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { ArrowLeft } from "lucide-react-native";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
-import { customersReceivablesCopy as copy } from "@/features/customers/copy";
+import { buildCustomersCopy, type CustomersReceivablesCopy } from "@/features/customers/copy";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 
@@ -31,7 +31,10 @@ type PaymentErrors = Partial<
   Record<"amount" | "cashAccount" | "date" | "reference" | "time", string>
 >;
 
-function issueMessage(issue: ReceivableDraftIssue | undefined): string | undefined {
+function issueMessage(
+  copy: CustomersReceivablesCopy,
+  issue: ReceivableDraftIssue | undefined,
+): string | undefined {
   if (!issue) return undefined;
   const validation = copy.receivables.validation;
   if (issue === "cash-account") return validation.cashAccount;
@@ -43,8 +46,9 @@ function issueMessage(issue: ReceivableDraftIssue | undefined): string | undefin
 }
 
 export function PaymentEditor({ business, onBack, onConfirmed, receivable }: PaymentEditorProps) {
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const queryClient = useQueryClient();
-  const { i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const now = currentLocalDateTime(business.timeZone);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -87,11 +91,11 @@ export function PaymentEditor({ business, onBack, onConfirmed, receivable }: Pay
       Crypto.randomUUID(),
     );
     setErrors({
-      amount: issueMessage(result.issues.amount),
-      cashAccount: issueMessage(result.issues.cashAccount),
-      date: issueMessage(result.issues.date),
-      reference: issueMessage(result.issues.reference),
-      time: issueMessage(result.issues.time),
+      amount: issueMessage(copy, result.issues.amount),
+      cashAccount: issueMessage(copy, result.issues.cashAccount),
+      date: issueMessage(copy, result.issues.date),
+      reference: issueMessage(copy, result.issues.reference),
+      time: issueMessage(copy, result.issues.time),
     });
     if (!("command" in result)) return;
     setCommand(result.command);
@@ -142,7 +146,7 @@ export function PaymentEditor({ business, onBack, onConfirmed, receivable }: Pay
           )}
           cashAccountName={selectedAccount.name}
           copy={copy.receivables.review}
-          mutation={financialMutationState(mutation)}
+          mutation={financialMutationState(t, mutation)}
           occurrence={`${command.occurredLocalDate} ${command.occurredLocalTime}`}
           onCancel={() => {
             setCommand(null);

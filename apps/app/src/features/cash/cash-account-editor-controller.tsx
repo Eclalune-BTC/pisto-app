@@ -2,22 +2,18 @@ import type { CreateCashAccountRequest, UpdateCashAccountRequest } from "@pisto/
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "./api";
 import {
   type CashAccountEditorDraft,
   type CashAccountEditorErrors,
   CashAccountEditorScreen,
 } from "./cash-account-editor-screen";
-import {
-  cashAccountEditorCopy,
-  cashErrorMessage,
-  cashIssueMessage,
-  cashKindOptions,
-  cashUiCopy,
-} from "./copy";
+import { buildCashCopy, cashIssueMessage } from "./copy";
 import { buildCashAccountCommand } from "./drafts";
 import { invalidateCashLedger } from "./invalidate";
 import { cashConfirmationState } from "./mutation-state";
@@ -44,6 +40,9 @@ type CashAccountEditorControllerProps = {
 export function CashAccountEditorController({ accountId, mode }: CashAccountEditorControllerProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildCashCopy(t), [t]);
+  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const {
     business,
     businesses,
@@ -107,13 +106,13 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
   let remoteState = featureRemoteState({
     businessPending: businesses.isPending,
     canRead,
-    offlineMessage: cashUiCopy.offline,
+    offlineMessage: copy.remote.offline,
     queries: [businesses, ...(canRead && mode === "update" ? [accountQuery] : [])],
-    unavailableMessage: cashUiCopy.unavailable,
+    unavailableMessage: copy.remote.unavailable,
   });
   const stale = accessIsStale || (mode === "update" && queryHasStaleData(accountQuery));
   if (remoteState.kind === "ready" && stale) {
-    remoteState = { kind: "error", message: cashUiCopy.staleMutation };
+    remoteState = { kind: "error", message: copy.remote.staleMutation };
   }
 
   const prepareReview = () => {
@@ -128,7 +127,7 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
     });
     setErrors(
       Object.fromEntries(
-        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(issue)]),
+        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(t, issue)]),
       ) as CashAccountEditorErrors,
     );
     if (!result.command) return;
@@ -150,21 +149,20 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
       canManage={canManage && !stale}
       command={command}
       confirmation={cashConfirmationState(mutation)}
-      copy={cashAccountEditorCopy}
+      copy={copy.accountEditor}
       currency={business?.currency ?? ""}
       draft={draft}
-      effect={mode === "create" ? cashUiCopy.createAccountEffect : cashUiCopy.editAccountEffect}
-      errorMessage={mutation.error ? cashErrorMessage(mutation.error) : undefined}
+      effect={mode === "create" ? copy.effects.createAccount : copy.effects.editAccount}
+      errorMessage={
+        mutation.error
+          ? productErrorMessage(mutation.error, copy.remote.mutationFallback, t)
+          : undefined
+      }
       errors={errors}
       formatMoney={(minorUnits, currency) =>
-        formatMinorUnits(
-          minorUnits,
-          currency,
-          business?.currencyMinorUnitDigits ?? 2,
-          DEFAULT_LOCALE,
-        )
+        formatMinorUnits(minorUnits, currency, business?.currencyMinorUnitDigits ?? 2, locale)
       }
-      kindOptions={cashKindOptions}
+      kindOptions={copy.kindOptions}
       mode={mode}
       onCancel={cancel}
       onCheckStatus={() => command && mutation.mutate(command)}

@@ -1,10 +1,12 @@
 import type { Customer } from "@pisto/contracts";
 import { Check, RefreshCw, Search } from "lucide-react-native";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 
-import { customersReceivablesCopy as copy } from "./copy";
+import { buildCustomersCopy } from "./copy";
 
 type CustomerPickerProps = {
   hasNextPage: boolean;
@@ -37,6 +39,8 @@ export function CustomerPicker({
   search,
   selectedCustomerId,
 }: CustomerPickerProps) {
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   return (
     <View className="gap-6">
       <View className="gap-2">

@@ -53,7 +53,11 @@ export function CustomerArchiveReview({
           />
         ) : null}
         {action === "retry" ? (
-          <Button label={copy.retrySameRequest} onPress={onRetrySameRequest} variant="danger" />
+          <Button
+            label={copy.retrySameConfirmation}
+            onPress={onRetrySameRequest}
+            variant="danger"
+          />
         ) : action === "submit" || action === "waiting" ? (
           <Button
             label={copy.confirmArchive}

@@ -1,23 +1,28 @@
 import type { QueryClient } from "@tanstack/react-query";
+import type { TFunction } from "i18next";
 
-import { capabilityErrorMessage, customersReceivablesCopy } from "@/features/customers/copy";
 import { customerQueryKeys } from "@/features/customers/queries";
 import { isAmbiguousMutationError } from "@/lib/api-error";
+import { productErrorMessage } from "@/lib/product-errors";
 
 import { receivableQueryKeys } from "./queries";
 import type { FinancialMutationState } from "./types";
 
-export function financialMutationState(input: {
-  error: unknown;
-  isPending: boolean;
-  isSuccess: boolean;
-}): FinancialMutationState {
+export function financialMutationState(
+  t: TFunction,
+  input: {
+    error: unknown;
+    isPending: boolean;
+    isSuccess: boolean;
+  },
+): FinancialMutationState {
   if (input.isPending) return { kind: "submitting" };
   if (input.isSuccess) return { kind: "confirmed" };
   if (input.error) {
-    const message = capabilityErrorMessage(
+    const message = productErrorMessage(
       input.error,
-      customersReceivablesCopy.common.unavailableDescription,
+      t("relationships.common.unavailableDescription"),
+      t,
     );
     return isAmbiguousMutationError(input.error)
       ? { kind: "uncertain", message }

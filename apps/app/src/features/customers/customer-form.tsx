@@ -94,7 +94,11 @@ export function CustomerForm({
           variant="ghost"
         />
         {primaryAction === "retry" ? (
-          <Button label={copy.retrySameRequest} onPress={onRetrySameRequest} variant="accent" />
+          <Button
+            label={copy.retrySameConfirmation}
+            onPress={onRetrySameRequest}
+            variant="accent"
+          />
         ) : primaryAction === "submit" || primaryAction === "waiting" ? (
           <Button
             label={copy.save}

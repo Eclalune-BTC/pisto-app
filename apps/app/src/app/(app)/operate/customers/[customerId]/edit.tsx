@@ -1,16 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { ActionUnavailable } from "@/features/customers/action-unavailable";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
-import { customersReceivablesCopy as copy } from "@/features/customers/copy";
+import { buildCustomersCopy } from "@/features/customers/copy";
 import { CustomerEditor } from "@/features/customers/customer-editor";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { RecordBoundary, type RecordBoundaryState } from "@/features/customers/record-boundary";
 import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
 
 export default function EditCustomerRoute() {
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
   const params = useLocalSearchParams<{ customerId?: string | string[] }>();
   const customerId = Array.isArray(params.customerId) ? params.customerId[0] : params.customerId;

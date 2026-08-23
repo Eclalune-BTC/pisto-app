@@ -45,13 +45,33 @@ describe("product error presentation", () => {
   });
 
   test("uses caller-owned fallback copy for unknown and non-client errors", () => {
-    const fallback = "No pudimos completar la operaciÃ³n.";
-    const unknown = productErrorMessage(new ApiClientError("raw server detail", 500), fallback, t);
+    const fallback = "No pudimos completar la operación.";
+    const unknown = productErrorMessage(new ApiClientError("raw server detail", 422), fallback, t);
     const nonClient = productErrorMessage(new Error("raw local detail"), fallback, t);
 
     expect(unknown).toBe(fallback);
     expect(nonClient).toBe(fallback);
     expect(`${unknown} ${nonClient}`).not.toContain("raw");
+  });
+
+  test("reports an ambiguous server result instead of a decided outcome", () => {
+    const ambiguous = productErrorMessage(
+      new ApiClientError("raw server detail", 500),
+      "fallback",
+      t,
+    );
+
+    expect(ambiguous).toBe(esSV.productErrors.ambiguous);
+    expect(ambiguous).not.toContain("raw");
+  });
+
+  test("prefers context copy over the flat reason table when one exists", () => {
+    const conflict = new ApiClientError("raw server detail", 409, "CONFLICT");
+
+    expect(productErrorMessage(conflict, "fallback", t, "business")).toBe(
+      esSV.productErrors.contexts.business.conflict,
+    );
+    expect(productErrorMessage(conflict, "fallback", t, "sale")).toBe(esSV.productErrors.conflict);
   });
 });
 

@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 
-import { customersReceivablesCopy as copy } from "./copy";
+import { buildCustomersCopy } from "./copy";
 
 export type RecordBoundaryState = "denied" | "error" | "loading" | "notFound" | "offline" | "ready";
 
@@ -16,6 +18,8 @@ type RecordBoundaryProps = {
 };
 
 export function RecordBoundary({ children, onBack, onRetry, state }: RecordBoundaryProps) {
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   if (state === "ready") return children;
   if (state === "loading") {
     return (

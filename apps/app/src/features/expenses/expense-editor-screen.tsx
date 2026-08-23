@@ -51,7 +51,7 @@ export type ExpenseEditorCopy = FeatureBoundaryCopy & {
   failedTitle: string;
   uncertainTitle: string;
   uncertainDescription: string;
-  checkStatus: string;
+  retrySameConfirmation: string;
   currency: string;
   noPayee: string;
   loadMore: string;

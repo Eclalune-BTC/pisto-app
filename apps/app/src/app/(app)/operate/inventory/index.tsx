@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
-import { catalogInventoryCopy } from "@/features/catalog/copy";
+import { buildCatalogCopy } from "@/features/catalog/copy";
 import { flattenPages } from "@/features/catalog/query-keys";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { isDeniedError } from "@/features/catalog/state";
@@ -15,6 +16,8 @@ import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/busines
 
 export default function InventoryIndexRoute() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCatalogCopy(t), [t]);
   const [search, setSearch] = useState("");
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const businesses = useQuery(businessesQueryOptions);
@@ -61,7 +64,7 @@ export default function InventoryIndexRoute() {
 
   return (
     <InventoryScreen
-      copy={catalogInventoryCopy.inventory}
+      copy={copy.inventory}
       lowStockOnly={lowStockOnly}
       onLoadMore={() => void stock.fetchNextPage()}
       onLowStockOnlyChange={setLowStockOnly}

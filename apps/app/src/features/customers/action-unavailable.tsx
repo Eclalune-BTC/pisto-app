@@ -1,10 +1,12 @@
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 
-import { customersReceivablesCopy as copy } from "./copy";
+import { buildCustomersCopy } from "./copy";
 
 type ActionUnavailableProps = {
   description: string;
@@ -13,6 +15,8 @@ type ActionUnavailableProps = {
 };
 
 export function ActionUnavailable({ description, onBack, title }: ActionUnavailableProps) {
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   return (
     <Page width="form">
       <Button label={copy.common.back} onPress={onBack} variant="ghost" />

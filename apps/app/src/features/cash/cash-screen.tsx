@@ -34,7 +34,7 @@ export type CashScreenCopy = {
   mutationFailedTitle: string;
   uncertainTitle: string;
   uncertainDescription: string;
-  checkStatus: string;
+  retrySameConfirmation: string;
   movementActions: Record<CashMovementAction, string>;
   accountFilter: string;
   activeAccounts: string;
@@ -171,7 +171,7 @@ export function CashScreen({
           </Text>
           <Button
             className="self-start"
-            label={copy.checkStatus}
+            label={copy.retrySameConfirmation}
             onPress={onCheckMutationStatus}
             variant="secondary"
           />

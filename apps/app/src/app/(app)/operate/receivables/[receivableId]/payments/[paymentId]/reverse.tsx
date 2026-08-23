@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { ActionUnavailable } from "@/features/customers/action-unavailable";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
-import { customersReceivablesCopy as copy } from "@/features/customers/copy";
+import { buildCustomersCopy } from "@/features/customers/copy";
 import { RecordBoundary, type RecordBoundaryState } from "@/features/customers/record-boundary";
 import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
 import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-account-source";
@@ -12,6 +14,8 @@ import { PaymentReversalEditor } from "@/features/receivables/payment-reversal-e
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
 
 export default function ReversePaymentRoute() {
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
   const params = useLocalSearchParams<{
     paymentId?: string | string[];

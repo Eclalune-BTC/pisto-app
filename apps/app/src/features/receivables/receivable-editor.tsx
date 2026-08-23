@@ -2,12 +2,12 @@ import type { Business, Customer, PostReceivableRequest } from "@pisto/contracts
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { ArrowLeft } from "lucide-react-native";
-import { useDeferredValue, useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
-import { customersReceivablesCopy as copy } from "@/features/customers/copy";
+import { buildCustomersCopy, type CustomersReceivablesCopy } from "@/features/customers/copy";
 import { CustomerPicker } from "@/features/customers/customer-picker";
 import { customerDetailQueryOptions, customersQueryOptions } from "@/features/customers/queries";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
@@ -37,7 +37,10 @@ type DraftErrors = Partial<
 
 type SelectionSource = "initial" | "list" | null;
 
-function issueMessage(issue: ReceivableDraftIssue | undefined): string | undefined {
+function issueMessage(
+  copy: CustomersReceivablesCopy,
+  issue: ReceivableDraftIssue | undefined,
+): string | undefined {
   if (!issue) return undefined;
   const validation = copy.receivables.validation;
   if (issue === "customer") return validation.customer;
@@ -53,8 +56,9 @@ export function ReceivableEditor({
   onBack,
   onConfirmed,
 }: ReceivableEditorProps) {
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const queryClient = useQueryClient();
-  const { i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -125,11 +129,11 @@ export function ReceivableEditor({
       Crypto.randomUUID(),
     );
     setErrors({
-      amount: issueMessage(result.issues.amount),
-      customer: issueMessage(result.issues.customer),
-      description: issueMessage(result.issues.description),
-      dueDate: issueMessage(result.issues.dueDate),
-      postedDate: issueMessage(result.issues.postedDate),
+      amount: issueMessage(copy, result.issues.amount),
+      customer: issueMessage(copy, result.issues.customer),
+      description: issueMessage(copy, result.issues.description),
+      dueDate: issueMessage(copy, result.issues.dueDate),
+      postedDate: issueMessage(copy, result.issues.postedDate),
     });
     if (!("command" in result)) return;
     setCommand(result.command);
@@ -186,7 +190,7 @@ export function ReceivableEditor({
           customerName={selectedCustomer.name}
           description={command.description}
           dueDate={command.dueDate ?? null}
-          mutation={financialMutationState(mutation)}
+          mutation={financialMutationState(t, mutation)}
           onCancel={() => {
             setCommand(null);
             mutation.reset();

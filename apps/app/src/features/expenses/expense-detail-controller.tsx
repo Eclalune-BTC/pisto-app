@@ -1,23 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { ApiClientError } from "@/lib/api-error";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "../cash/api";
+import { cashIssueMessage } from "../cash/copy";
 import { invalidateExpensesAndCash } from "../cash/invalidate";
 import { cashConfirmationState } from "../cash/mutation-state";
 import { cashAccountQueryOptions, expenseQueryOptions } from "../cash/queries";
 import { featureRemoteState, queryHasStaleData } from "../cash/remote-state";
 import { useCashAccess } from "../cash/use-cash-access";
-import {
-  expenseDetailCopy,
-  expenseErrorMessage,
-  expenseIssueMessage,
-  expensesUiCopy,
-} from "./copy";
+import { buildExpensesCopy } from "./copy";
 import { buildVoidExpenseCommand } from "./drafts";
 import {
   ExpenseDetailScreen,
@@ -33,6 +31,9 @@ export function ExpenseDetailController() {
   const expenseId = Array.isArray(params.expenseId) ? params.expenseId[0] : params.expenseId;
   const action = Array.isArray(params.action) ? params.action[0] : params.action;
   const queryClient = useQueryClient();
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildExpensesCopy(t), [t]);
+  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const {
     business,
     businesses,
@@ -87,9 +88,9 @@ export function ExpenseDetailController() {
   let remoteState = featureRemoteState({
     businessPending: businesses.isPending,
     canRead,
-    offlineMessage: expensesUiCopy.offline,
+    offlineMessage: copy.remote.offline,
     queries: [businesses, ...(canRead ? [expenseQuery, ...(expense ? [accountQuery] : [])] : [])],
-    unavailableMessage: expensesUiCopy.unavailable,
+    unavailableMessage: copy.remote.unavailable,
   });
   if (
     expenseQuery.error instanceof ApiClientError &&
@@ -109,7 +110,7 @@ export function ExpenseDetailController() {
     });
     setVoidErrors(
       Object.fromEntries(
-        Object.entries(result.issues).map(([field, issue]) => [field, expenseIssueMessage(issue)]),
+        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(t, issue)]),
       ) as VoidExpenseDraftErrors,
     );
     if (!result.command) return;
@@ -127,11 +128,15 @@ export function ExpenseDetailController() {
       accountName={accountQuery.data?.account.name ?? "—"}
       canManage={canConfirm}
       confirmation={cashConfirmationState(mutation)}
-      copy={expenseDetailCopy}
-      errorMessage={mutation.error ? expenseErrorMessage(mutation.error) : undefined}
+      copy={copy.detail}
+      errorMessage={
+        mutation.error
+          ? productErrorMessage(mutation.error, copy.remote.mutationFallback, t)
+          : undefined
+      }
       expense={expense ?? null}
       formatMoney={(minorUnits, currency, fractionDigits) =>
-        formatMinorUnits(minorUnits, currency, fractionDigits, DEFAULT_LOCALE)
+        formatMinorUnits(minorUnits, currency, fractionDigits, locale)
       }
       isStale={stale}
       onBeginVoid={() => setStage("void-edit")}
