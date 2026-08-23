@@ -13,7 +13,7 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 
 import type { ApiConfig } from "./config.ts";
-import { ApiError } from "./errors.ts";
+import { ApiError, normalizeError } from "./errors.ts";
 import { requestContext } from "./middleware/request-context.ts";
 import { systemRoutes } from "./routes/system.ts";
 import { v1Routes } from "./routes/v1.ts";
@@ -133,13 +133,13 @@ export function createApp(input: {
     ),
   );
 
+  // The single error boundary. Routes throw their domain failure and let it
+  // travel here; they do not catch and re-map it, so one table decides every
+  // public status, code, and message.
   app.onError((error, context) => {
     const requestId = context.get("requestId") || crypto.randomUUID();
-    const apiError =
-      error instanceof ApiError
-        ? error
-        : new ApiError(500, "INTERNAL_ERROR", "An unexpected error occurred");
-    if (!(error instanceof ApiError)) {
+    const { apiError, unexpected } = normalizeError(error);
+    if (unexpected) {
       console.error(
         JSON.stringify({
           level: "error",
