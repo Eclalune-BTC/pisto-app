@@ -63,6 +63,13 @@ export const sale = pgTable(
       table.status,
       table.occurredAt,
     ),
+    index("sale_business_created_at_idx").on(table.businessId, table.createdAt, table.id),
+    index("sale_business_status_created_at_idx").on(
+      table.businessId,
+      table.status,
+      table.createdAt,
+      table.id,
+    ),
   ],
 );
 

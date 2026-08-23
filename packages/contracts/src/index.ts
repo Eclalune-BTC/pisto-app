@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   aggregateIntegerSchema,
+  boundedListLimitSchema,
   currencyCodeSchema,
   currencyMinorUnitDigitsSchema,
   localDateSchema,
@@ -288,6 +289,32 @@ export const saleCorrectionResponseSchema = z.object({
   }),
 });
 
+export const saleCursorSchema = z
+  .string()
+  .min(1)
+  .max(256)
+  .regex(/^[A-Za-z0-9_-]+$/);
+
+export const saleStatusFilterSchema = z.enum(["posted", "voided", "all"]);
+
+export const saleListQuerySchema = z
+  .object({
+    cursor: saleCursorSchema.optional(),
+    limit: boundedListLimitSchema,
+    status: saleStatusFilterSchema.default("all"),
+  })
+  .strict();
+
+export const saleListSchema = z
+  .object({
+    items: z.array(saleSchema),
+    nextCursor: saleCursorSchema.nullable(),
+    queriedAt: timestampSchema,
+  })
+  .strict();
+
+export const saleListResponseSchema = z.object({ data: saleListSchema }).strict();
+
 export const previousMonthSummarySchema = z.object({
   periodStartLocal: localDateSchema,
   periodEndLocalExclusive: localDateSchema,
@@ -334,5 +361,9 @@ export type SaleCorrection = z.infer<typeof saleCorrectionSchema>;
 export type VoidSaleRequest = z.infer<typeof voidSaleRequestSchema>;
 export type ReplaceSaleRequest = z.infer<typeof replaceSaleRequestSchema>;
 export type SaleCorrectionResponse = z.infer<typeof saleCorrectionResponseSchema>;
+export type SaleStatusFilter = z.infer<typeof saleStatusFilterSchema>;
+export type SaleListQuery = z.input<typeof saleListQuerySchema>;
+export type SaleList = z.infer<typeof saleListSchema>;
+export type SaleListResponse = z.infer<typeof saleListResponseSchema>;
 export type PreviousMonthSummary = z.infer<typeof previousMonthSummarySchema>;
 export type PreviousMonthSummaryResponse = z.infer<typeof previousMonthSummaryResponseSchema>;
