@@ -15,6 +15,7 @@ export * from "./cash";
 export * from "./catalog";
 export * from "./primitives";
 export * from "./receivables";
+export * from "./reports";
 
 export const apiVersion = "v1" as const;
 
