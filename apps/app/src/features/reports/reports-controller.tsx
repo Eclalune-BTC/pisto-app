@@ -8,7 +8,6 @@ import { resolveBusinessPermission } from "@/features/customers/access";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 
-import { featureRemoteState, queryHasStaleData } from "../cash/remote-state";
 import { buildReportsCopy } from "./copy";
 import {
   currentBusinessMonthRange,
@@ -16,7 +15,8 @@ import {
   validateReportRange,
 } from "./date-range";
 import { operatingReportQueryOptions } from "./queries";
-import { ReportsScreen, type ReportsScreenState } from "./reports-screen";
+import { ReportsScreen } from "./reports-screen";
+import { reportsScreenState } from "./state";
 
 const unseededRange: OperatingReportQuery = { endLocalDate: "", startLocalDate: "" };
 
@@ -53,20 +53,13 @@ export function ReportsController() {
 
   if (businesses.data && !business) return <Redirect href="/business" />;
 
-  const remoteState = featureRemoteState({
-    businessPending: businesses.isPending,
+  const state = reportsScreenState({
+    businesses,
     canRead,
     offlineMessage: copy.remote.offline,
-    queries: [businesses, ...(canRead ? [report] : [])],
+    report,
     unavailableMessage: copy.remote.unavailable,
   });
-  const stale = (businesses.isError && businesses.data !== undefined) || queryHasStaleData(report);
-  const state: ReportsScreenState =
-    remoteState.kind !== "ready"
-      ? remoteState
-      : report.data
-        ? { isStale: stale, kind: "ready", report: report.data.report }
-        : { kind: "loading" };
 
   const applyRange = () => {
     const validation = validateReportRange(draftRange);
