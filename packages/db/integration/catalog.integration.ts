@@ -285,6 +285,13 @@ describe("catalog and inventory repository on PostgreSQL 18", () => {
     );
     expect(received.stock.onHandMinorUnits).toBe("10000");
     expect(received.movement.quantityPrecision).toBe(3);
+    // The list derives on hand through a correlated subquery while the detail sums the
+    // movements directly. They must agree on a stocked product, or a reference that
+    // silently matches nothing reads as zero and marks everything low on stock.
+    const stocked = await repository.listStock(actor("owner"), { limit: 50 });
+    expect(
+      stocked.items.find((item) => item.product.id === product.product.id)?.stock.onHandMinorUnits,
+    ).toBe("10000");
     expect(
       (await repository.recordMovement(actor("owner"), product.product.id, receiveCommand))
         .replayed,
@@ -395,6 +402,7 @@ describe("catalog and inventory repository on PostgreSQL 18", () => {
       lowStockOnly: true,
     });
     expect(lowStock.items.some((item) => item.product.id === product.product.id)).toBe(true);
+
     const history = await repository.listMovements(actor("member"), product.product.id, {
       limit: 25,
     });

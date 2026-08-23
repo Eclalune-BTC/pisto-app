@@ -14,11 +14,18 @@ import {
   expenseListQuerySchema,
   expensePeriodQuerySchema,
 } from "@pisto/contracts";
-import { and, desc, eq, gte, lt, or, type SQL, sql } from "drizzle-orm";
+import { and, desc, eq, getTableName, gte, lt, or, type SQL, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { type ProductActor, ProductError, resolveLocalDateTime } from "../product.ts";
 import { cashAccount, cashMovement, expense } from "../schema/cash.ts";
+
+/**
+ * A column reference inside a select projection renders without its table, so a
+ * correlated subquery binds it to its own table and silently matches nothing.
+ */
+const accountTable = sql.identifier(getTableName(cashAccount));
+
 import { requireAccess } from "./access.ts";
 import { decodeCashCursor, encodeCashCursor, isCashResourceId, nextCalendarDate } from "./codec.ts";
 import { toCashAccount, toCashMovement, toExpense } from "./mappers.ts";
@@ -93,8 +100,8 @@ export async function listCashAccounts(
         balanceMinorUnits: sql<string>`coalesce((
           select sum(${cashMovement.deltaMinorUnits})
           from ${cashMovement}
-          where ${cashMovement.businessId} = ${cashAccount.businessId}
-            and ${cashMovement.accountId} = ${cashAccount.id}
+          where ${cashMovement.businessId} = ${accountTable}.business_id
+            and ${cashMovement.accountId} = ${accountTable}.id
         ), 0)::text`,
       })
       .from(cashAccount)

@@ -273,6 +273,12 @@ describe("expenses and cash repository on PostgreSQL 18", () => {
     expect(
       (await repository.getAccount(actors.ownerA, firstAccount.account.id)).balanceMinorUnits,
     ).toBe("10000");
+    // The list derives its balance through a correlated subquery while the detail sums
+    // movements directly. They must agree, or the accounts screen reports zero balances.
+    const listedAccounts = await repository.listAccounts(actors.ownerA, { limit: 50 });
+    expect(
+      listedAccounts.items.find(({ id }) => id === firstAccount.account.id)?.balanceMinorUnits,
+    ).toBe("10000");
     await expect(
       repository.recordAdjustment(actors.ownerA, {
         idempotencyKey: crypto.randomUUID(),

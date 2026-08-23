@@ -4,12 +4,20 @@ import {
   productListQuerySchema,
   stockListQuerySchema,
 } from "@pisto/contracts";
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, getTableName, or, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { ProductError } from "../product.ts";
 import { likePattern } from "../product-core.ts";
 import { catalogCategory, catalogProduct, inventoryMovement } from "../schema/catalog.ts";
+
+/**
+ * A column reference inside a select projection renders without its table, so a
+ * correlated subquery binds it to its own table and silently matches nothing.
+ */
+const productTable = sql.identifier(getTableName(catalogProduct));
+const movementTable = sql.identifier(getTableName(inventoryMovement));
+
 import { authorizeCatalogAction } from "./access.ts";
 import {
   cursorCondition,
@@ -63,8 +71,8 @@ export function createCatalogQueries(db: Database): CatalogQueries {
             balance: sql<string>`coalesce((
               select sum(m.delta_minor_units)
               from inventory_movement m
-              where m.business_id = ${catalogProduct.businessId}
-                and m.product_id = ${catalogProduct.id}
+              where m.business_id = ${productTable}.business_id
+                and m.product_id = ${productTable}.id
             ), 0)::text`,
             record: catalogProduct,
           })
@@ -108,8 +116,8 @@ export function createCatalogQueries(db: Database): CatalogQueries {
             balance: sql<string>`coalesce((
               select sum(m.delta_minor_units)
               from inventory_movement m
-              where m.business_id = ${catalogProduct.businessId}
-                and m.product_id = ${catalogProduct.id}
+              where m.business_id = ${productTable}.business_id
+                and m.product_id = ${productTable}.id
             ), 0)::text`,
             record: catalogProduct,
           })
@@ -133,16 +141,16 @@ export function createCatalogQueries(db: Database): CatalogQueries {
         const balanceExpression = sql<string>`coalesce((
           select sum(m.delta_minor_units)
           from inventory_movement m
-          where m.business_id = ${catalogProduct.businessId}
-            and m.product_id = ${catalogProduct.id}
+          where m.business_id = ${productTable}.business_id
+            and m.product_id = ${productTable}.id
         ), 0)::text`;
         const lowStockCondition = sql`(
           ${catalogProduct.lowStockThresholdMinorUnits} is not null
           and coalesce((
             select sum(m.delta_minor_units)
             from inventory_movement m
-            where m.business_id = ${catalogProduct.businessId}
-              and m.product_id = ${catalogProduct.id}
+            where m.business_id = ${productTable}.business_id
+              and m.product_id = ${productTable}.id
           ), 0) <= ${catalogProduct.lowStockThresholdMinorUnits}
         )`;
         const rows = await transaction
@@ -202,9 +210,9 @@ export function createCatalogQueries(db: Database): CatalogQueries {
             reversedByMovementId: sql<string | null>`(
               select reversal.id::text
               from inventory_movement reversal
-              where reversal.business_id = ${inventoryMovement.businessId}
-                and reversal.product_id = ${inventoryMovement.productId}
-                and reversal.reverses_movement_id = ${inventoryMovement.id}
+              where reversal.business_id = ${movementTable}.business_id
+                and reversal.product_id = ${movementTable}.product_id
+                and reversal.reverses_movement_id = ${movementTable}.id
               limit 1
             )`,
           })
