@@ -141,11 +141,15 @@ function Metadata({ copy, locale, report }: SectionProps) {
 }
 
 function PeriodFacts({ copy, locale, report }: SectionProps) {
+  // Business inflow and outflow exclude internal transfers, which still move the
+  // accounts listed below.
   const noPeriodFlows =
     report.sales.saleCount === "0" &&
     report.expenses.expenseCount === "0" &&
-    report.cash.inflowMinorUnits === "0" &&
-    report.cash.outflowMinorUnits === "0";
+    report.cash.accounts.every(
+      ({ inflowMinorUnits, outflowMinorUnits }) =>
+        inflowMinorUnits === "0" && outflowMinorUnits === "0",
+    );
   return (
     <View className="gap-5">
       <SectionHeading description={copy.period.description} title={copy.period.title} />
