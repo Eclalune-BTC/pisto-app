@@ -9,7 +9,9 @@ import { businessSettings } from "./schema/business.ts";
 
 export type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 export type BusinessDatabaseExecutor = Database | DatabaseTransaction;
-export type BusinessLockStrength = "share" | "update";
+// "none" exists for a `read only` transaction. PostgreSQL rejects every row lock
+// there with 25006, so a read-only snapshot cannot authorize with "share".
+export type BusinessLockStrength = "none" | "share" | "update";
 
 export interface AuthorizedBusinessContext {
   businessId: string;
@@ -34,7 +36,7 @@ export async function authorizeBusinessAction(
   lock: BusinessLockStrength = "share",
 ): Promise<AuthorizedBusinessContext> {
   const businessId = requireActiveBusiness(actor);
-  const [activeSession] = await executor
+  const sessionQuery = executor
     .select({ id: session.id })
     .from(session)
     .where(
@@ -45,13 +47,13 @@ export async function authorizeBusinessAction(
         sql`${session.expiresAt} > transaction_timestamp()`,
       ),
     )
-    .limit(1)
-    .for(lock);
+    .limit(1);
+  const [activeSession] = lock === "none" ? await sessionQuery : await sessionQuery.for(lock);
   if (!activeSession) {
     throw new ProductError("UNAUTHORIZED", "The authenticated session is no longer active");
   }
 
-  const [access] = await executor
+  const accessQuery = executor
     .select({
       businessId: businessSettings.businessId,
       currency: businessSettings.currency,
@@ -63,8 +65,8 @@ export async function authorizeBusinessAction(
     .from(member)
     .innerJoin(businessSettings, eq(businessSettings.businessId, member.organizationId))
     .where(and(eq(member.organizationId, businessId), eq(member.userId, actor.userId)))
-    .limit(1)
-    .for(lock);
+    .limit(1);
+  const [access] = lock === "none" ? await accessQuery : await accessQuery.for(lock);
   if (!access) {
     throw new ProductError("FORBIDDEN", "The active business membership is no longer valid");
   }
