@@ -47,6 +47,13 @@ export function featureRemoteState(input: {
   return { kind: "ready" };
 }
 
+/**
+ * Cached data that could not be refreshed. A paused query counts: the screen
+ * still renders balances, but they are as old as the last successful read, and
+ * confirming a financial operation against them would be a decision made on
+ * numbers nobody could verify.
+ */
 export function queryHasStaleData(query: RemoteQuery): boolean {
-  return query.isError && query.data !== undefined;
+  if (query.data === undefined) return false;
+  return query.isError || query.fetchStatus === "paused";
 }
