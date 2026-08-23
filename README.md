@@ -19,6 +19,36 @@ with [the documentation map](docs/README.md) and the
 [product capability architecture](docs/product-capability-architecture.md) before adding a module or
 changing navigation.
 
+## What it looks like
+
+Captured from a local development build against PostgreSQL, with a seeded demo business.
+Interface copy is the typed `es-SV` catalog. These images are refreshed by hand and can lag the
+code; the tests and `docs/production-capabilities.md` remain the authoritative statement of what
+works.
+
+### Wide web
+
+| Operate hub | Sale history with correction |
+| --- | --- |
+| ![The Operate hub grouping the authorized modules](docs/screenshots/operate-hub.png) | ![Sale history listing posted sales, each with a correction action](docs/screenshots/sales-history.png) |
+
+| Exact operating report | Cash accounts and movements |
+| --- | --- |
+| ![An operating report showing period flows and current positions](docs/screenshots/reports.png) | ![Cash accounts with derived balances and recent movements](docs/screenshots/cash-accounts.png) |
+
+| Inventory stock | Customer receivables |
+| --- | --- |
+| ![Inventory stock with a low-stock filter](docs/screenshots/inventory.png) | ![Receivables with outstanding and overdue balances](docs/screenshots/receivables.png) |
+
+### Compact web, at 390 CSS pixels
+
+| Operate hub | Sale history | Operating report |
+| --- | --- | --- |
+| ![The Operate hub at compact width](docs/screenshots/mobile-operate-hub.png) | ![Sale history at compact width](docs/screenshots/mobile-sales-history.png) | ![An operating report at compact width](docs/screenshots/mobile-reports.png) |
+
+The same routes render on iOS and Android from this codebase. No screenshot here is from a physical
+device, so nothing on this page is evidence of native behavior.
+
 ## Repository map
 
 - apps/app: universal Expo application and platform-specific adapters
