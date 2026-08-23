@@ -25,7 +25,8 @@ export function parseAmountToMinorUnits(
   // people and a decimal separator to others. "1,500" would mean 1500 or
   // 1.500 depending on the reader, and at a three-digit currency exponent
   // guessing wrong understates the amount by a thousand. Refuse instead.
-  if (/,\d{3}(?!\d)/.test(trimmed)) {
+  // A leading "0," never groups, so "0,001" is unambiguously one minor unit.
+  if (/,\d{3}(?!\d)/.test(trimmed) && !trimmed.startsWith("0,")) {
     return { error: "invalid-decimals" };
   }
   if ((trimmed.match(/[.,]/g) ?? []).length > 1) {

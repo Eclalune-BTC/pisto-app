@@ -49,9 +49,11 @@ describe("RevenueCat store environment", () => {
     expect(isRevenueCatEnvironmentAllowed("PRODUCTION", "SANDBOX")).toBe(false);
   });
 
-  test("treats an unnamed environment as production", () => {
-    expect(isRevenueCatEnvironmentAllowed(undefined, "PRODUCTION")).toBe(true);
-    expect(isRevenueCatEnvironmentAllowed("", "PRODUCTION")).toBe(true);
+  test("refuses an event that does not name its environment", () => {
+    expect(isRevenueCatEnvironmentAllowed(undefined, "PRODUCTION")).toBe(false);
+    expect(isRevenueCatEnvironmentAllowed("", "PRODUCTION")).toBe(false);
+    expect(isRevenueCatEnvironmentAllowed("   ", "PRODUCTION")).toBe(false);
+    expect(isRevenueCatEnvironmentAllowed("STAGING", "PRODUCTION")).toBe(false);
     expect(isRevenueCatEnvironmentAllowed(undefined, "SANDBOX")).toBe(false);
   });
 

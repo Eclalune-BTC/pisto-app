@@ -103,6 +103,12 @@ describe("money parsing", () => {
     expect(parseAmountToMinorUnits("1.234,56", 2)).toHaveProperty("error");
   });
 
+  test("still accepts a leading zero decimal, which never groups", () => {
+    expect(parseAmountToMinorUnits("0,001", 3)).toEqual({ value: "1" });
+    expect(parseAmountToMinorUnits("0.001", 3)).toEqual({ value: "1" });
+    expect(parseAmountToMinorUnits("0,500", 3)).toEqual({ value: "500" });
+  });
+
   test("rejects non-positive, over-scaled, and malformed amounts", () => {
     expect(parseAmountToMinorUnits("0", 2)).toEqual({ error: "non-positive" });
     expect(parseAmountToMinorUnits("0.00", 2)).toEqual({ error: "non-positive" });

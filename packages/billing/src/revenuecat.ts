@@ -67,14 +67,16 @@ function dateFromMilliseconds(value: number | null | undefined): Date | null {
 /**
  * A store sandbox purchase is free to generate and reaches this webhook with the
  * same shared secret as a real one, so projecting it would grant paid access to
- * anyone who can trigger one. An event that does not name its environment is
- * treated as production, matching RevenueCat's own default.
+ * anyone who can trigger one. An event that does not name its environment cannot
+ * be placed on either side of that line, so it is not projected.
  */
 export function isRevenueCatEnvironmentAllowed(
   eventEnvironment: string | undefined,
   allowed: "PRODUCTION" | "SANDBOX",
 ): boolean {
-  return (eventEnvironment?.trim().toUpperCase() || "PRODUCTION") === allowed;
+  const environment = eventEnvironment?.trim().toUpperCase();
+  if (environment !== "PRODUCTION" && environment !== "SANDBOX") return false;
+  return environment === allowed;
 }
 
 export function isRevenueCatEventProjectable(type: string): boolean {

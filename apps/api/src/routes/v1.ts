@@ -1,6 +1,5 @@
 import type { Auth } from "@pisto/auth";
 import type { BillingRuntime } from "@pisto/billing";
-import { RevenueCatWebhookError } from "@pisto/billing";
 import { billingCheckoutRequestSchema, billingPortalRequestSchema } from "@pisto/contracts";
 import type {
   CashRepository,
@@ -200,29 +199,12 @@ export function v1Routes(input: {
 
   routes.post("/webhooks/revenuecat", async (context) => {
     const rawBody = await context.req.text();
-    try {
-      const result = await input.billing.processRevenueCatWebhook({
-        authorization: context.req.header("authorization") ?? null,
-        signature: context.req.header("x-revenuecat-webhook-signature") ?? null,
-        rawBody,
-      });
-      return context.json({ received: true as const, ...result });
-    } catch (error) {
-      if (error instanceof RevenueCatWebhookError) {
-        throw new ApiError(
-          error.status,
-          error.status === 401
-            ? "UNAUTHORIZED"
-            : error.status === 409
-              ? "CONFLICT"
-              : error.status === 503
-                ? "BILLING_DISABLED"
-                : "BAD_REQUEST",
-          error.message,
-        );
-      }
-      throw error;
-    }
+    const result = await input.billing.processRevenueCatWebhook({
+      authorization: context.req.header("authorization") ?? null,
+      signature: context.req.header("x-revenuecat-webhook-signature") ?? null,
+      rawBody,
+    });
+    return context.json({ received: true as const, ...result });
   });
 
   return routes;

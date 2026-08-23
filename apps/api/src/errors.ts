@@ -1,3 +1,4 @@
+import { RevenueCatWebhookError } from "@pisto/billing";
 import type { ApiErrorCode } from "@pisto/contracts";
 import { ProductError, type ProductErrorCode } from "@pisto/db";
 
@@ -29,6 +30,13 @@ const productErrorStatuses: Record<ProductErrorCode, ApiError["status"]> = {
   VALIDATION_ERROR: 400,
 };
 
+const revenueCatWebhookCodes: Record<RevenueCatWebhookError["status"], ApiErrorCode> = {
+  400: "BAD_REQUEST",
+  401: "UNAUTHORIZED",
+  409: "CONFLICT",
+  503: "BILLING_DISABLED",
+};
+
 /**
  * Translate a thrown value into the public error envelope at the single error
  * boundary. `unexpected` marks the values that carry no reviewed public
@@ -38,6 +46,12 @@ const productErrorStatuses: Record<ProductErrorCode, ApiError["status"]> = {
 export function normalizeError(error: unknown): { apiError: ApiError; unexpected: boolean } {
   if (error instanceof ApiError) {
     return { apiError: error, unexpected: false };
+  }
+  if (error instanceof RevenueCatWebhookError) {
+    const code = revenueCatWebhookCodes[error.status];
+    if (code !== undefined) {
+      return { apiError: new ApiError(error.status, code, error.message), unexpected: false };
+    }
   }
   if (error instanceof ProductError) {
     // The Record type makes tsc reject an unmapped ProductErrorCode, but a
