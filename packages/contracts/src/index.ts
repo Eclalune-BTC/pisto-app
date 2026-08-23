@@ -8,7 +8,9 @@ import {
   localTimeSchema,
   minorUnitsSchema,
   positiveMinorUnitsSchema,
+  timestampSchema,
   timeZoneSchema,
+  uuidSchema,
 } from "./primitives";
 
 export * from "./cash";
@@ -48,13 +50,13 @@ export const apiErrorEnvelopeSchema = z.object({
 export const healthResponseSchema = z.object({
   status: z.literal("ok"),
   service: z.literal("pisto-api"),
-  timestamp: z.string().datetime({ offset: true }),
+  timestamp: timestampSchema,
 });
 
 export const readinessResponseSchema = z.object({
   status: z.enum(["ready", "not_ready"]),
   service: z.literal("pisto-api"),
-  timestamp: z.string().datetime({ offset: true }),
+  timestamp: timestampSchema,
   checks: z.object({
     database: z.enum(["ok", "error"]),
     billing: z.enum(["enabled", "disabled"]),
@@ -78,7 +80,7 @@ export const userSchema = z.object({
 
 export const sessionSummarySchema = z.object({
   id: z.string().min(1),
-  expiresAt: z.string().datetime({ offset: true }),
+  expiresAt: timestampSchema,
   activeOrganizationId: z.string().min(1).nullable(),
 });
 
@@ -115,8 +117,8 @@ export const entitlementSchema = z.object({
   status: z.enum(["active", "inactive", "pending", "revoked", "expired", "unknown"]),
   source: z.enum(["polar", "revenuecat", "manual"]),
   productId: z.string().min(1).nullable(),
-  validFrom: z.string().datetime({ offset: true }).nullable(),
-  validUntil: z.string().datetime({ offset: true }).nullable(),
+  validFrom: timestampSchema.nullable(),
+  validUntil: timestampSchema.nullable(),
   metadata: z.record(z.string(), z.unknown()),
 });
 
@@ -188,7 +190,7 @@ export const businessSchema = z.object({
   currency: currencyCodeSchema,
   currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
   timeZone: timeZoneSchema,
-  createdAt: z.string().datetime({ offset: true }),
+  createdAt: timestampSchema,
   access: businessAccessSchema,
 });
 
@@ -219,33 +221,33 @@ export const saleStatusSchema = z.enum(["posted", "voided"]);
 export const saleCorrectionKindSchema = z.enum(["void", "replacement"]);
 
 export const saleCorrectionSchema = z.object({
-  id: z.string().uuid(),
+  id: uuidSchema,
   kind: saleCorrectionKindSchema,
   reason: z.string().min(2).max(240),
-  originalSaleId: z.string().uuid(),
-  replacementSaleId: z.string().uuid().nullable(),
-  correctedAt: z.string().datetime({ offset: true }),
+  originalSaleId: uuidSchema,
+  replacementSaleId: uuidSchema.nullable(),
+  correctedAt: timestampSchema,
 });
 
 export const saleSchema = z.object({
-  id: z.string().uuid(),
+  id: uuidSchema,
   status: saleStatusSchema,
   entryMode: z.literal("total_only"),
   grossMinorUnits: positiveMinorUnitsSchema,
   currency: currencyCodeSchema,
   currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
-  occurredAt: z.string().datetime({ offset: true }),
+  occurredAt: timestampSchema,
   occurredLocalDate: localDateSchema,
   occurredLocalTime: localTimeSchema,
   timeZone: timeZoneSchema,
   description: z.string().min(1).max(240).nullable(),
   correction: saleCorrectionSchema.nullable(),
-  createdAt: z.string().datetime({ offset: true }),
+  createdAt: timestampSchema,
 });
 
 export const createSaleRequestSchema = z
   .object({
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: uuidSchema,
     grossMinorUnits: positiveMinorUnitsSchema,
     occurredLocalDate: localDateSchema,
     occurredLocalTime: localTimeSchema,
@@ -262,7 +264,7 @@ export const saleResponseSchema = z.object({
 
 export const voidSaleRequestSchema = z
   .object({
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: uuidSchema,
     reason: z.string().trim().min(2).max(240),
   })
   .strict();
@@ -271,7 +273,7 @@ const replacementSaleDraftSchema = createSaleRequestSchema.omit({ idempotencyKey
 
 export const replaceSaleRequestSchema = z
   .object({
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: uuidSchema,
     reason: z.string().trim().min(2).max(240),
     replacement: replacementSaleDraftSchema,
   })
@@ -289,15 +291,15 @@ export const saleCorrectionResponseSchema = z.object({
 export const previousMonthSummarySchema = z.object({
   periodStartLocal: localDateSchema,
   periodEndLocalExclusive: localDateSchema,
-  periodStartUtc: z.string().datetime({ offset: true }),
-  periodEndUtcExclusive: z.string().datetime({ offset: true }),
+  periodStartUtc: timestampSchema,
+  periodEndUtcExclusive: timestampSchema,
   timeZone: timeZoneSchema,
   currency: currencyCodeSchema,
   currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
   grossMinorUnits: aggregateIntegerSchema,
   saleCount: aggregateIntegerSchema,
   averageMinorUnits: minorUnitsSchema.nullable(),
-  queriedAt: z.string().datetime({ offset: true }),
+  queriedAt: timestampSchema,
 });
 
 export const previousMonthSummaryResponseSchema = z.object({

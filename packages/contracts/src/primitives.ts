@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const signedBigintMaximum = 9_223_372_036_854_775_807n;
 
-function isSignedBigint(value: string): boolean {
+function isNonNegativeSignedBigint(value: string): boolean {
   return /^(?:0|[1-9]\d{0,18})$/.test(value) && BigInt(value) <= signedBigintMaximum;
 }
 
@@ -23,10 +23,10 @@ export const signedAggregateIntegerSchema = z
 export const minorUnitsSchema = z
   .string()
   .regex(/^(?:0|[1-9]\d{0,18})$/, "Must be a canonical non-negative integer")
-  .refine(isSignedBigint, "Must fit in a signed 64-bit integer");
+  .refine(isNonNegativeSignedBigint, "Must fit in a signed 64-bit integer");
 
 export const positiveMinorUnitsSchema = minorUnitsSchema.refine(
-  (value) => isSignedBigint(value) && BigInt(value) > 0n,
+  (value) => isNonNegativeSignedBigint(value) && BigInt(value) > 0n,
   "Must be greater than zero",
 );
 
@@ -43,3 +43,32 @@ export const timestampSchema = z.string().datetime({ offset: true });
 export const uuidSchema = z.string().uuid();
 export const opaqueCursorSchema = z.string().min(1).max(512);
 export const boundedListLimitSchema = z.coerce.number().int().min(1).max(50).default(25);
+
+function isGregorianLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function lastDayOfMonth(year: number, month: number): number {
+  if (month === 2) return isGregorianLeapYear(year) ? 29 : 28;
+  return month === 4 || month === 6 || month === 9 || month === 11 ? 30 : 31;
+}
+
+function isCalendarLocalDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1) return false;
+  return day <= lastDayOfMonth(year, month);
+}
+
+/**
+ * A `YYYY-MM-DD` date that also exists in the proleptic Gregorian calendar, so `2026-02-30` and
+ * `2025-02-29` are rejected. Use it for a business-local date a user supplies; `localDateSchema`
+ * stays format-only for values already produced by a trusted calendar computation.
+ */
+export const calendarLocalDateSchema = localDateSchema.refine(
+  isCalendarLocalDate,
+  "Must be a real calendar date",
+);

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   aggregateIntegerSchema,
+  boundedListLimitSchema,
   currencyCodeSchema,
   currencyMinorUnitDigitsSchema,
   localDateSchema,
@@ -10,6 +11,7 @@ import {
   positiveMinorUnitsSchema,
   signedAggregateIntegerSchema,
   signedMinorUnitsSchema,
+  timestampSchema,
   timeZoneSchema,
   uuidSchema,
 } from "./primitives";
@@ -65,7 +67,7 @@ const optionalNoteSchema = z.string().trim().min(1).max(240).optional();
 
 export const cashAccountSchema = z
   .object({
-    id: z.string().uuid(),
+    id: uuidSchema,
     name: accountNameSchema,
     kind: cashAccountKindSchema,
     status: cashAccountStatusSchema,
@@ -73,57 +75,57 @@ export const cashAccountSchema = z
     currency: cashCurrencyCodeSchema,
     currencyMinorUnitDigits: cashCurrencyMinorUnitDigitsSchema,
     balanceMinorUnits: signedCashAggregateMinorUnitsSchema,
-    createdAt: z.string().datetime({ offset: true }),
-    updatedAt: z.string().datetime({ offset: true }),
+    createdAt: timestampSchema,
+    updatedAt: timestampSchema,
   })
   .strict();
 
 export const cashMovementSchema = z
   .object({
-    id: z.string().uuid(),
-    accountId: z.string().uuid(),
+    id: uuidSchema,
+    accountId: uuidSchema,
     direction: cashMovementDirectionSchema,
     action: cashMovementActionSchema,
     amountMinorUnits: cashPositiveMinorUnitsSchema,
     deltaMinorUnits: signedCashMinorUnitsSchema,
     currency: cashCurrencyCodeSchema,
     currencyMinorUnitDigits: cashCurrencyMinorUnitDigitsSchema,
-    occurredAt: z.string().datetime({ offset: true }),
+    occurredAt: timestampSchema,
     occurredLocalDate: cashLocalDateSchema,
     occurredLocalTime: cashLocalTimeSchema,
     timeZone: cashTimeZoneSchema,
     reason: z.string().min(1).max(240),
-    expenseId: z.string().uuid().nullable(),
-    transferId: z.string().uuid().nullable(),
-    receivablePaymentId: z.string().uuid().nullable(),
-    reversalOfMovementId: z.string().uuid().nullable(),
-    createdAt: z.string().datetime({ offset: true }),
+    expenseId: uuidSchema.nullable(),
+    transferId: uuidSchema.nullable(),
+    receivablePaymentId: uuidSchema.nullable(),
+    reversalOfMovementId: uuidSchema.nullable(),
+    createdAt: timestampSchema,
   })
   .strict();
 
 export const cashTransferSchema = z
   .object({
-    id: z.string().uuid(),
-    fromAccountId: z.string().uuid(),
-    toAccountId: z.string().uuid(),
+    id: uuidSchema,
+    fromAccountId: uuidSchema,
+    toAccountId: uuidSchema,
     amountMinorUnits: cashPositiveMinorUnitsSchema,
     currency: cashCurrencyCodeSchema,
     currencyMinorUnitDigits: cashCurrencyMinorUnitDigitsSchema,
-    occurredAt: z.string().datetime({ offset: true }),
+    occurredAt: timestampSchema,
     occurredLocalDate: cashLocalDateSchema,
     occurredLocalTime: cashLocalTimeSchema,
     timeZone: cashTimeZoneSchema,
     note: z.string().min(1).max(240).nullable(),
-    outMovementId: z.string().uuid(),
-    inMovementId: z.string().uuid(),
-    createdAt: z.string().datetime({ offset: true }),
+    outMovementId: uuidSchema,
+    inMovementId: uuidSchema,
+    createdAt: timestampSchema,
   })
   .strict();
 
 export const expenseSchema = z
   .object({
-    id: z.string().uuid(),
-    accountId: z.string().uuid(),
+    id: uuidSchema,
+    accountId: uuidSchema,
     status: expenseStatusSchema,
     category: expenseCategorySchema,
     amountMinorUnits: cashPositiveMinorUnitsSchema,
@@ -131,13 +133,13 @@ export const expenseSchema = z
     currencyMinorUnitDigits: cashCurrencyMinorUnitDigitsSchema,
     description: z.string().min(1).max(240),
     payee: z.string().min(1).max(120).nullable(),
-    occurredAt: z.string().datetime({ offset: true }),
+    occurredAt: timestampSchema,
     occurredLocalDate: cashLocalDateSchema,
     occurredLocalTime: cashLocalTimeSchema,
     timeZone: cashTimeZoneSchema,
-    voidedAt: z.string().datetime({ offset: true }).nullable(),
+    voidedAt: timestampSchema.nullable(),
     voidReason: z.string().min(1).max(240).nullable(),
-    createdAt: z.string().datetime({ offset: true }),
+    createdAt: timestampSchema,
   })
   .strict();
 
@@ -201,7 +203,7 @@ export const cashAccountDetailResponseSchema = z
 export const cashAccountListQuerySchema = z
   .object({
     cursor: cashCursorSchema.optional(),
-    limit: z.coerce.number().int().min(1).max(50).default(25),
+    limit: boundedListLimitSchema,
     status: z.enum(["active", "archived", "all"]).default("active"),
   })
   .strict();
@@ -210,7 +212,7 @@ export const cashAccountListSchema = z
   .object({
     items: z.array(cashAccountSchema),
     nextCursor: cashCursorSchema.nullable(),
-    queriedAt: z.string().datetime({ offset: true }),
+    queriedAt: timestampSchema,
   })
   .strict();
 
@@ -219,7 +221,7 @@ export const cashAccountListResponseSchema = z.object({ data: cashAccountListSch
 export const postExpenseRequestSchema = z
   .object({
     idempotencyKey: cashIdempotencyKeySchema,
-    accountId: z.string().uuid(),
+    accountId: uuidSchema,
     category: expenseCategorySchema,
     amountMinorUnits: cashPositiveMinorUnitsSchema,
     currency: cashCurrencyCodeSchema,
@@ -256,10 +258,10 @@ export const expenseDetailResponseSchema = z
 export const expenseListQuerySchema = z
   .object({
     cursor: cashCursorSchema.optional(),
-    limit: z.coerce.number().int().min(1).max(50).default(25),
+    limit: boundedListLimitSchema,
     status: z.enum(["posted", "voided", "all"]).default("posted"),
     category: expenseCategorySchema.optional(),
-    accountId: z.string().uuid().optional(),
+    accountId: uuidSchema.optional(),
   })
   .strict();
 
@@ -267,7 +269,7 @@ export const expenseListSchema = z
   .object({
     items: z.array(expenseSchema),
     nextCursor: cashCursorSchema.nullable(),
-    queriedAt: z.string().datetime({ offset: true }),
+    queriedAt: timestampSchema,
   })
   .strict();
 
@@ -292,15 +294,15 @@ export const expensePeriodSummarySchema = z
   .object({
     periodStartLocal: cashLocalDateSchema,
     periodEndLocalInclusive: cashLocalDateSchema,
-    periodStartUtc: z.string().datetime({ offset: true }),
-    periodEndUtcExclusive: z.string().datetime({ offset: true }),
+    periodStartUtc: timestampSchema,
+    periodEndUtcExclusive: timestampSchema,
     timeZone: cashTimeZoneSchema,
     currency: cashCurrencyCodeSchema,
     currencyMinorUnitDigits: cashCurrencyMinorUnitDigitsSchema,
     totalMinorUnits: cashAggregateIntegerSchema,
     expenseCount: cashAggregateIntegerSchema,
     categories: z.array(expenseCategoryTotalSchema),
-    queriedAt: z.string().datetime({ offset: true }),
+    queriedAt: timestampSchema,
   })
   .strict();
 
@@ -311,7 +313,7 @@ export const expensePeriodSummaryResponseSchema = z
 export const recordCashAdjustmentRequestSchema = z
   .object({
     idempotencyKey: cashIdempotencyKeySchema,
-    accountId: z.string().uuid(),
+    accountId: uuidSchema,
     direction: cashMovementDirectionSchema,
     amountMinorUnits: cashPositiveMinorUnitsSchema,
     currency: cashCurrencyCodeSchema,
@@ -341,8 +343,8 @@ export const cashMovementResponseSchema = z
 export const cashMovementListQuerySchema = z
   .object({
     cursor: cashCursorSchema.optional(),
-    limit: z.coerce.number().int().min(1).max(50).default(25),
-    accountId: z.string().uuid().optional(),
+    limit: boundedListLimitSchema,
+    accountId: uuidSchema.optional(),
   })
   .strict();
 
@@ -350,7 +352,7 @@ export const cashMovementListSchema = z
   .object({
     items: z.array(cashMovementSchema),
     nextCursor: cashCursorSchema.nullable(),
-    queriedAt: z.string().datetime({ offset: true }),
+    queriedAt: timestampSchema,
   })
   .strict();
 
@@ -359,8 +361,8 @@ export const cashMovementListResponseSchema = z.object({ data: cashMovementListS
 export const transferCashRequestSchema = z
   .object({
     idempotencyKey: cashIdempotencyKeySchema,
-    fromAccountId: z.string().uuid(),
-    toAccountId: z.string().uuid(),
+    fromAccountId: uuidSchema,
+    toAccountId: uuidSchema,
     amountMinorUnits: cashPositiveMinorUnitsSchema,
     currency: cashCurrencyCodeSchema,
     occurredLocalDate: cashLocalDateSchema,

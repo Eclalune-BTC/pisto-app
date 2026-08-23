@@ -2,30 +2,34 @@ import { z } from "zod";
 
 import {
   aggregateIntegerSchema,
+  boundedListLimitSchema,
   currencyCodeSchema,
   currencyMinorUnitDigitsSchema,
   localDateSchema,
   localTimeSchema,
+  opaqueCursorSchema,
   positiveMinorUnitsSchema,
+  timestampSchema,
   timeZoneSchema,
+  uuidSchema,
 } from "./primitives";
 
 const nullableTrimmedText = (maximum: number) => z.string().trim().min(1).max(maximum).nullable();
 
-export const pageCursorSchema = z.string().min(1).max(512);
-export const pageLimitSchema = z.coerce.number().int().min(1).max(50).default(25);
+export const pageCursorSchema = opaqueCursorSchema;
+export const pageLimitSchema = boundedListLimitSchema;
 
 export const customerStatusSchema = z.enum(["active", "archived"]);
 
 export const customerSchema = z.object({
-  id: z.string().uuid(),
+  id: uuidSchema,
   name: z.string().min(1).max(120),
   phone: z.string().min(1).max(40).nullable(),
   email: z.string().email().max(254).nullable(),
   notes: z.string().min(1).max(1_000).nullable(),
   status: customerStatusSchema,
-  createdAt: z.string().datetime({ offset: true }),
-  updatedAt: z.string().datetime({ offset: true }),
+  createdAt: timestampSchema,
+  updatedAt: timestampSchema,
 });
 
 export const customerBalanceSchema = z.object({
@@ -35,7 +39,7 @@ export const customerBalanceSchema = z.object({
   overdueMinorUnits: aggregateIntegerSchema,
   openReceivableCount: aggregateIntegerSchema,
   overdueReceivableCount: aggregateIntegerSchema,
-  queriedAt: z.string().datetime({ offset: true }),
+  queriedAt: timestampSchema,
 });
 
 export const customerDetailSchema = z.object({
@@ -45,7 +49,7 @@ export const customerDetailSchema = z.object({
 
 export const createCustomerRequestSchema = z
   .object({
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: uuidSchema,
     name: z.string().trim().min(1).max(120),
     phone: z.string().trim().min(1).max(40).optional(),
     email: z.string().trim().email().max(254).optional(),
@@ -55,7 +59,7 @@ export const createCustomerRequestSchema = z
 
 export const updateCustomerRequestSchema = z
   .object({
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: uuidSchema,
     name: z.string().trim().min(1).max(120).optional(),
     phone: nullableTrimmedText(40).optional(),
     email: z.string().trim().email().max(254).nullable().optional(),
@@ -68,9 +72,7 @@ export const updateCustomerRequestSchema = z
     { message: "At least one customer field must be supplied" },
   );
 
-export const archiveCustomerRequestSchema = z
-  .object({ idempotencyKey: z.string().uuid() })
-  .strict();
+export const archiveCustomerRequestSchema = z.object({ idempotencyKey: uuidSchema }).strict();
 
 export const listCustomersQuerySchema = z
   .object({
@@ -97,8 +99,8 @@ export const customersResponseSchema = z.object({
 export const receivableStateSchema = z.enum(["open", "paid", "overdue", "voided"]);
 
 export const receivableSchema = z.object({
-  id: z.string().uuid(),
-  customerId: z.string().uuid(),
+  id: uuidSchema,
+  customerId: uuidSchema,
   state: receivableStateSchema,
   originalMinorUnits: positiveMinorUnitsSchema,
   paidMinorUnits: aggregateIntegerSchema,
@@ -108,36 +110,36 @@ export const receivableSchema = z.object({
   description: z.string().min(1).max(240),
   postedDate: localDateSchema,
   dueDate: localDateSchema.nullable(),
-  voidedAt: z.string().datetime({ offset: true }).nullable(),
+  voidedAt: timestampSchema.nullable(),
   voidReason: z.string().min(1).max(240).nullable(),
-  createdAt: z.string().datetime({ offset: true }),
-  updatedAt: z.string().datetime({ offset: true }),
+  createdAt: timestampSchema,
+  updatedAt: timestampSchema,
 });
 
 export const receivablePaymentKindSchema = z.enum(["payment", "reversal"]);
 
 export const receivablePaymentSchema = z.object({
-  id: z.string().uuid(),
-  receivableId: z.string().uuid(),
-  customerId: z.string().uuid(),
+  id: uuidSchema,
+  receivableId: uuidSchema,
+  customerId: uuidSchema,
   kind: receivablePaymentKindSchema,
   amountMinorUnits: positiveMinorUnitsSchema,
   currency: currencyCodeSchema,
   currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
-  occurredAt: z.string().datetime({ offset: true }),
+  occurredAt: timestampSchema,
   occurredLocalDate: localDateSchema,
   occurredLocalTime: localTimeSchema,
   timeZone: timeZoneSchema,
-  cashAccountId: z.string().uuid(),
+  cashAccountId: uuidSchema,
   reference: z.string().min(1).max(120).nullable(),
-  reversesPaymentId: z.string().uuid().nullable(),
-  createdAt: z.string().datetime({ offset: true }),
+  reversesPaymentId: uuidSchema.nullable(),
+  createdAt: timestampSchema,
 });
 
 export const postReceivableRequestSchema = z
   .object({
-    idempotencyKey: z.string().uuid(),
-    customerId: z.string().uuid(),
+    idempotencyKey: uuidSchema,
+    customerId: uuidSchema,
     originalMinorUnits: positiveMinorUnitsSchema,
     description: z.string().trim().min(1).max(240),
     postedDate: localDateSchema,
@@ -151,25 +153,25 @@ export const postReceivableRequestSchema = z
 
 export const voidReceivableRequestSchema = z
   .object({
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: uuidSchema,
     reason: z.string().trim().min(1).max(240),
   })
   .strict();
 
 export const applyReceivablePaymentRequestSchema = z
   .object({
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: uuidSchema,
     amountMinorUnits: positiveMinorUnitsSchema,
     occurredLocalDate: localDateSchema,
     occurredLocalTime: localTimeSchema,
-    cashAccountId: z.string().uuid(),
+    cashAccountId: uuidSchema,
     reference: z.string().trim().min(1).max(120).optional(),
   })
   .strict();
 
 export const reverseReceivablePaymentRequestSchema = z
   .object({
-    idempotencyKey: z.string().uuid(),
+    idempotencyKey: uuidSchema,
     occurredLocalDate: localDateSchema,
     occurredLocalTime: localTimeSchema,
     reference: z.string().trim().min(1).max(120).optional(),
@@ -179,7 +181,7 @@ export const reverseReceivablePaymentRequestSchema = z
 export const listReceivablesQuerySchema = z
   .object({
     cursor: pageCursorSchema.optional(),
-    customerId: z.string().uuid().optional(),
+    customerId: uuidSchema.optional(),
     limit: pageLimitSchema,
     state: z.enum(["open", "paid", "overdue", "voided", "all"]).default("all"),
   })
@@ -220,7 +222,7 @@ export const receivablesSummarySchema = z.object({
   overdueReceivableCount: aggregateIntegerSchema,
   businessLocalDate: localDateSchema,
   timeZone: timeZoneSchema,
-  queriedAt: z.string().datetime({ offset: true }),
+  queriedAt: timestampSchema,
 });
 
 export const receivablesSummaryResponseSchema = z.object({

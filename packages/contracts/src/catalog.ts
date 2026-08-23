@@ -12,6 +12,7 @@ import {
   positiveMinorUnitsSchema,
   signedMinorUnitsSchema,
   timestampSchema,
+  timeZoneSchema,
   uuidSchema,
 } from "./primitives";
 
@@ -241,7 +242,7 @@ export const inventoryMovementSchema = z.object({
   occurredAt: timestampSchema,
   occurredLocalDate: localDateSchema,
   occurredLocalTime: localTimeSchema,
-  timeZone: z.string().trim().min(1).max(64),
+  timeZone: timeZoneSchema,
   createdByUserId: z.string().min(1),
   reversesMovementId: uuidSchema.nullable(),
   reversedByMovementId: uuidSchema.nullable(),

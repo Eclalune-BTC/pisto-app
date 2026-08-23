@@ -1,5 +1,6 @@
-import { operatingReportQuerySchema, operatingReportResponseSchema } from "@pisto/contracts";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
+
+import { operatingReportQuerySchema, operatingReportResponseSchema } from "../src/index.ts";
 
 describe("operating report contracts", () => {
   test("accepts one inclusive calendar year, including leap day", () => {
