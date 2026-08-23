@@ -120,6 +120,46 @@ See [AI assistant architecture](ai-assistant.md),
 [Voice architecture](voice-architecture.md), and the
 [approved product brief](product-briefs/pisto-ai-business-assistant.md) for the complete policy.
 
+### What is and is not audited
+
+Know the exact boundary before answering an incident question or promising an audit capability.
+
+**Audited.** Five append-only operation-receipt tables are the complete who-did-what record for
+financial and inventory mutations. Each row binds the actor's user ID, the business, the action, the
+caller-created idempotency key, the SHA-256 command fingerprint, and the creation time:
+
+| Table | Covers |
+| --- | --- |
+| `sale_operation` | Posting a sale |
+| `sale_correction` | Voiding or replacing a sale, with the actor's stated reason |
+| `catalog_operation` | Category, product, and inventory-movement commands |
+| `cash_operation_receipt` | Cash account, expense, adjustment, reversal, and transfer commands |
+| `receivable_operation` | Customer, charge, payment, reversal, and void commands |
+
+The canonical ledgers reinforce this: `sale`, `expense`, `cash_movement`, `inventory_movement`, and
+`receivable_payment` each carry their own `created_by_user_id`, and restrictive foreign keys mean an
+actor cannot be deleted out from under the history. Nothing in the product API hard-deletes a
+financial or inventory record; correction is a void plus an appended reversing entry.
+
+**Not audited.** There is no audit log for any of the following, and none of them can be reconstructed
+from the tables above:
+
+- **Authentication events.** Sign-in, sign-out, failed sign-in, password change, and session
+  revocation are not recorded. The `session` table holds live sessions, not a history.
+- **Session and device activity.** No record of which device or address used a session, beyond what
+  transient request logs happen to retain.
+- **Role and membership changes.** No role-change history exists — partly because no role-change path
+  exists. Business onboarding writes the only membership row and hardcodes `owner`.
+- **Business settings changes.** Currency, exponent, and time zone are create-once, so there is no
+  change history to keep; a future mutable setting needs its own audit decision.
+- **Billing and entitlement decisions.** `billing_webhook_event` retains a provider payload keyed by
+  `(provider, event_key)` for deduplication and evidence, but it records the provider's event, not a
+  Pisto actor. No table records who was granted, denied, or revoked an entitlement, or why.
+
+Before claiming an audit capability to a user, reviewer, or auditor, check it against this list. If
+an incident requires authentication, session, role, or billing history, say that it is unavailable
+rather than inferring it from request logs.
+
 ## Billing and webhook controls
 
 - Accept an internal allowlisted product slug, not client-supplied amount, price, currency, or arbitrary
@@ -242,7 +282,13 @@ control.
 
 - [ ] Threat/trust boundaries changed? Update this document and an ADR when architectural.
 - [ ] New environment keys classified public/server-secret and added to the right example.
-- [ ] New route has schema, auth rule, size/rate limit, error mapping, and tests.
+- [ ] New route has schema, auth rule, body-size limit, error mapping, and tests.
+- [ ] Rate limit — **known gap, do not tick.** No `/v1` route has a rate limit. The Better Auth
+  PostgreSQL-backed limiter covers `/api/auth` routes only; the app-wide Hono `bodyLimit` covers
+  request size, not request rate. Every product route added since this checklist was written has
+  silently failed this item. Until the bounded cross-instance product limiter in
+  [Production capabilities](production-capabilities.md) exists, record the exposure for the new route
+  instead of marking it satisfied.
 - [ ] AI tool is narrow, tenant-scoped, injection-resistant, bounded, and tested for denial/failure.
 - [ ] Financial mutation binds confirmation, authorization, deterministic money, idempotency,
   transaction, audit, and correction behavior.

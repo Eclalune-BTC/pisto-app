@@ -302,4 +302,4 @@ that the conversational slice is complete, and nothing here is pushed, deployed,
 
 - [Treinta sales reports and statistics](https://treinta.co/app-para-reportes-de-ventas-y-estadisticas-de-tu-negocio)
 - [Treinta inventory and sales](https://treinta.co/software-inventario-ventas)
-- [Treinta feature overview](https://treinta.co/funcionalidades)
+- [Treinta current feature overview](https://treinta.co/mx/funcionalidades)

@@ -165,6 +165,27 @@ summary for a later submission; read the live documents and enrolled-program ter
 | Admin operations require a reviewed, audited interface | [Better Auth admin plugin](https://better-auth.com/docs/plugins/admin) | Support/admin feature |
 | Backup capability requires configured backups and restore evidence | [Cloud SQL backups](https://cloud.google.com/sql/docs/postgres/backup-recovery/backups) | Environment launch/DR change |
 
+## Triggered reviews evaluated on 2026-08-23
+
+The operating-core work on the current branch fired seven event-based review triggers in the tables
+above. Each was evaluated and none changed its decision, so the research date on this index stands
+and no re-browsing was required. These are internal architecture decisions whose external facts —
+PostgreSQL, Drizzle, Hono, Expo Router, and Better Auth behavior — did not change; a fired trigger
+obliges a review, not a ceremonial visit to a source that has not moved.
+
+| Fired trigger | What fired it | Outcome |
+| --- | --- | --- |
+| Every schema change | Migration `0003_worried_weapon_omega.sql` added 14 tables | Unchanged. The migration is code-first, reviewed, and additive |
+| Financial schema or amount-range change | New `bigint` minor-unit money columns in cash, expenses, and receivables | Unchanged. Constrained `bigint` minor units and composite tenant foreign keys were reused verbatim |
+| Mutation, idempotency, or concurrency change | Four new capabilities with operation receipts and advisory locks | Unchanged. The same atomic command-plus-receipt and lock-before-replay pattern was extended; the shared primitive is documented in [PostgreSQL and Drizzle](database-drizzle.md#shared-operation-log-primitive) |
+| Navigation/SDK change | The `/operate` module hub replaced the sales-only Operate area | Unchanged. Still one typed destination model with two durable shell destinations; no new navigation dependency |
+| Organization model, product tenancy, roles, or deletion policy change | `sales:correct` and the operating-core permissions | Unchanged. Better Auth organization identity still backs `businessId` and active organization remains a selector |
+| Organization, role, permission, or invitation work | The same permission additions | Unchanged. Invitations and role administration remain blocked; ADR 0014 was amended in place to record the omitted `sales:correct` row |
+| Client origin, cookie, cache, or mutation topology change | Roughly forty new `/v1` routes, most of them mutations | Unchanged. Every one inherits the existing exact-Origin, JSON-required, and `Cache-Control: no-store` gate. The absence of a `/v1` rate limit is a recorded gap, not a changed decision |
+
+Record a triggered review this way rather than leaving the trigger silently unevaluated. If a future
+review does change a decision, add or supersede an ADR instead of editing the row.
+
 ## Repeat the audit
 
 Run the commands and checklist in

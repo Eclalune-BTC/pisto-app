@@ -118,6 +118,7 @@ Expo can open web from its terminal UI. Android emulators can usually reach the 
 | `REVENUECAT_WEBHOOK_AUTHORIZATION` | Required server-side webhook Authorization value when enabled |
 | `REVENUECAT_WEBHOOK_SIGNING_SECRET` | Optional HMAC signing secret; verification uses the raw request body |
 | `REVENUECAT_SIGNATURE_TOLERANCE_SECONDS` | HMAC timestamp tolerance, 30 through 3,600 seconds |
+| `REVENUECAT_ALLOWED_ENVIRONMENT` | `PRODUCTION` or `SANDBOX`; defaults to `PRODUCTION`. Only events from this store environment are projected into entitlements, so a sandbox purchase cannot grant production access |
 | `REVENUECAT_ENTITLEMENT_MAP_JSON` | Non-empty RevenueCat-to-internal-entitlement object |
 
 The root `.env.example` is the canonical exact-name reference. A production setting being
