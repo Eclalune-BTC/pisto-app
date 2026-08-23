@@ -60,8 +60,7 @@ function createTestApp(
   } as unknown as Auth;
   const app = new Hono<AppEnv>();
   app.route("/v1", reportsRoutes({ auth, reports: { getOperatingReport } }));
-  // Mirrors the single boundary in src/app.ts so a router mounted on its own
-  // still translates a domain failure exactly as the composed application does.
+  // Mirrors the error boundary in src/app.ts.
   app.onError((error, context) => {
     const { apiError } = normalizeError(error);
     return context.json(
