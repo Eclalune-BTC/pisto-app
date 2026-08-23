@@ -1,9 +1,20 @@
 # Operating core V1 capability contracts
 
-- Status: **approved for implementation**
+- Status: **partly delivered.** The catalog/inventory, expenses/cash, and customers/receivables
+  slices are implemented, locally validated, and integrated into local `main` — not pushed to
+  `origin/main`, not deployed, not released. The reports, assistant, and voice slices below remain
+  approved contracts with no implementation; reports has a transport contract only.
 - Owner: **repository owner and integration lead**
-- Last reviewed: **2026-08-22**
+- Last reviewed: **2026-08-23**
 - Applies to: catalog, inventory, expenses, cash, customers, receivables, reports, assistant, and voice
+
+| Slice | State | Delivery record |
+| --- | --- | --- |
+| Catalog and inventory | Implemented and locally validated | [Catalog and inventory V1](catalog-inventory-v1.md) |
+| Expenses and cash | Implemented and locally validated | [Expenses and cash V1](expenses-cash-v1.md) |
+| Customers and receivables | Implemented and locally validated | [Customers and receivables V1](customers-receivables-v1.md) |
+| Reports | Contract only, in `packages/contracts/src/reports.ts` | None |
+| Assistant and voice | Not implemented; no AI or audio dependency exists | None |
 
 This milestone turns Pisto from one sales increment into a useful modular operating product. It is
 still one Expo client, one Hono API, and one PostgreSQL database. Each capability owns its records,
@@ -54,9 +65,10 @@ commands, queries, and failure behavior; applications compose those capabilities
 
 ### Product composition
 
-- Compact navigation has the durable destinations `Operate`, `Assistant`, and `Account`. Wide web
-  may show nested links for the real Operate modules. Modules do not receive one permanent bottom tab
-  each and no generic plugin registry self-registers routes, tools, or permissions.
+- Compact navigation currently has two durable destinations, `Operate` and `Account`. `Assistant`
+  joins them only when the assistant slice exists; it is not in the shell today. Wide web may show
+  nested links for the real Operate modules. Modules do not receive one permanent bottom tab each and
+  no generic plugin registry self-registers routes, tools, or permissions.
 - Structured screens remain fully usable when AI or voice is disabled. Assistant tools call the same
   authorized commands and queries.
 - Pisto keeps the ink/lime/cream palette. Screens use typography, spacing, alignment, dividers, and
@@ -205,8 +217,10 @@ Reports never call gross revenue or revenue minus recorded expenses `profit`. Pr
 complete accounting model do not yet exist. A successful no-record query returns real zeros; a query
 failure is an error and never becomes zero data.
 
-The structured surface is `/operate/reports`. The assistant consumes the same report query through a
-narrow read tool. CSV export, tax reports, forecasts, and invented trends are non-goals.
+The structured surface will be `/operate/reports`. No such route, repository, or query exists yet;
+only the transport contract in `packages/contracts/src/reports.ts` is committed, and `reports:read`
+gates nothing. The assistant will consume the same report query through a narrow read tool. CSV
+export, tax reports, forecasts, and invented trends are non-goals.
 
 ## Assistant and voice slice
 

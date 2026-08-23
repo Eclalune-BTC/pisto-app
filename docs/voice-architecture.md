@@ -15,7 +15,9 @@ session is installed or selected today.
 ## Decision summary
 
 - The first possible voice slice is bounded push-to-talk transcription that returns editable text to
-  the existing assistant composer. It never submits or executes automatically.
+  an assistant composer. No such composer exists: there is no assistant route, package, or UI in the
+  repository, so this slice has no surface to attach to and cannot begin as an independent feature.
+  Voice is blocked behind stage 1 below. It never submits or executes automatically.
 - Pisto owns separate provider-neutral aliases/ports for batch transcription, speech output, and any
   later realtime conversation. One `voiceEnabled` flag must not collapse these risk levels.
 - ElevenLabs is a credible candidate. If a voice brief is approved, evaluate first whether AI SDK
@@ -55,9 +57,13 @@ Expo push-to-talk recorder
   -> byte, type, duration, rate, concurrency, and cost controls
   -> Pisto TranscriptionPort / transcription.primary
   -> evaluated server provider adapter
-  -> editable transcript in the existing text composer
+  -> editable transcript in the text composer delivered by the assistant slice
   -> normal typed draft, authorization, confirmation, and domain flow
 ```
+
+The third-from-last step has no implementation to receive it. The text composer is delivered by the
+assistant slice, which does not exist; this diagram describes the target, not a wiring task that can
+start today.
 
 The current generic app client serializes JSON only. Keep it that way. A voice slice adds a narrow
 authenticated raw-binary upload adapter that reuses the platform's existing session-cookie behavior;

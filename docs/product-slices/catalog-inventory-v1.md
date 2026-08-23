@@ -161,9 +161,10 @@ Integration is complete. The shared edits the original checklist assigned are do
 
 1. `catalog.ts` is exported from the contract and database barrels;
 2. `catalog_category`, `catalog_product`, `inventory_movement`, and `catalog_operation` are in the
-   shared Drizzle schema and ship in migration `0003_worried_weapon_omega.sql`, which creates the
-   composite unique indexes on the category, product, and movement tenant keys before the foreign
-   keys that reference them — PostgreSQL requires the referenced uniqueness to exist first;
+   shared Drizzle schema and ship in migration `0003_worried_weapon_omega.sql`, which declares the
+   composite tenant uniqueness on the category, product, and movement tables inline in their
+   `CREATE TABLE` statements, ahead of the foreign keys that reference those columns — PostgreSQL
+   requires the referenced uniqueness to exist first;
 3. `createCatalogRepository` is instantiated at the API composition root and `catalogRoutes` is
    mounted under `/v1`;
 4. Expo Router wrappers, `/operate` hub entries, typed `es-SV` resources, and React Query controllers

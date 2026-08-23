@@ -16,29 +16,77 @@ without that requirement. See [Web deployment](web-deployment.md#when-to-add-app
 
 ## Route model
 
-The application shell is organized around these user journeys:
+`apps/app/src/app` currently contains 42 navigable routes plus a catch-all. The `Access` column names
+the Pisto permission the API enforces for that screen's data; the screen hides or disables the action
+when the resolved business access lacks it. The complete route inventory is:
+
+### Public and account
 
 | Route | Access | Purpose |
 | --- | --- | --- |
 | `/` | Public | Product introduction and welcome actions |
 | `/sign-in` | Public | Email/password sign-in, intended for signed-out users |
 | `/sign-up` | Public | Account creation, intended for signed-out users |
-| `/dashboard` | Authenticated | Compatibility redirect to `/operate/sales` |
-| `/business` | Authenticated | One owner business create/select and settings confirmation |
-| `/operate/sales` | Authenticated owner | Previous-calendar-month sales summary |
-| `/operate/sales/new` | Authenticated owner | Total-only sale entry and review |
-| `/operate/sales/:saleId` | Authenticated owner | Canonical sale result |
+| `/dashboard` | Authenticated | Compatibility redirect to `/operate` |
+| `/business` | Authenticated; `business:configure` to create | One owner business create/select and settings confirmation |
 | `/billing` | Authenticated | Plan, entitlement state, purchase/restore actions |
 | `/billing/success` | Authenticated | Refresh entitlement state after returning from web checkout |
 | `/settings` | Authenticated | Account, session, support identity, and sign-out |
+| `+not-found` | Any | Unmatched path |
+
+### Operate
+
+| Route | Access | Purpose |
+| --- | --- | --- |
+| `/operate` | Authenticated | Module hub; lists only modules the current role can read |
+| `/operate/sales` | `sales:summary:read` | Previous-calendar-month sales summary |
+| `/operate/sales/new` | `sales:create` | Total-only sale entry and review |
+| `/operate/sales/:saleId` | `sales:read` | Canonical sale result |
+| `/operate/sales/correct/:saleId` | `sales:correct` | Void or replacement review and confirmation |
+| `/operate/expenses` | `expenses:read` | Expense period summary and list |
+| `/operate/expenses/new` | `expenses:manage` and `cash:manage` | Paid-expense entry and review |
+| `/operate/expenses/:expenseId` | `expenses:read`; void needs `expenses:manage` and `cash:manage` | Expense detail and void review |
+| `/operate/cash` | `cash:read` | Accounts, derived balances, and movement history |
+| `/operate/cash/accounts/new` | `cash:manage` | Account creation with an optional opening movement |
+| `/operate/cash/accounts/:accountId` | `cash:read` | Account detail and archive review |
+| `/operate/cash/accounts/:accountId/edit` | `cash:manage` | Account reference update |
+| `/operate/cash/adjustments/new` | `cash:manage` | Manual adjustment entry and review |
+| `/operate/cash/transfers/new` | `cash:manage` | Paired transfer entry and review |
+| `/operate/catalog` | `catalog:read` | Product search, category filter, and stock summary |
+| `/operate/catalog/new` | `catalog:manage` | Product creation and review |
+| `/operate/catalog/categories` | `catalog:read`; mutations need `catalog:manage` | Category list, create, rename, archive |
+| `/operate/catalog/:productId` | `catalog:read` | Product detail and archive review |
+| `/operate/catalog/:productId/edit` | `catalog:manage` | Product update and review |
+| `/operate/inventory` | `inventory:read` | Derived stock and low-stock filter |
+| `/operate/inventory/:productId` | `inventory:read` | Signed movement history |
+| `/operate/inventory/:productId/new` | `inventory:manage` | Receive or adjust entry and review |
+| `/operate/inventory/:productId/reverse/:movementId` | `inventory:manage` | One-time movement reversal review |
+| `/operate/customers` | `customers:read` | Customer search and list |
+| `/operate/customers/new` | `customers:manage` | Customer creation |
+| `/operate/customers/:customerId` | `customers:read` | Customer detail, contact, and receivable history |
+| `/operate/customers/:customerId/edit` | `customers:manage` | Customer update |
+| `/operate/customers/:customerId/archive` | `customers:manage` | Archive review |
+| `/operate/receivables` | `receivables:read` | Business totals and state-filtered list |
+| `/operate/receivables/new` | `receivables:manage` | Charge entry and review |
+| `/operate/receivables/:receivableId` | `receivables:read` | Charge detail and payment history |
+| `/operate/receivables/:receivableId/payment` | `receivables:manage` and `cash:manage` | Payment entry and review |
+| `/operate/receivables/:receivableId/void` | `receivables:manage` | Void review |
+| `/operate/receivables/:receivableId/payments/:paymentId/reverse` | `receivables:manage` and `cash:manage` | Payment reversal review |
 
 Route groups and layouts may add file-system parentheses without changing these public paths. Keep
 authentication gating in a layout/provider and enforce the same requirement on the API; client-side
-redirects are usability, not authorization.
+redirects and permission-derived visibility are usability, not authorization.
 
-The generic planning dashboard has been removed. Product navigation exposes `Operar` and `Cuenta`;
-billing remains secondary account context. Do not infer future records, tabs, or workflows from the
-long-term capability map.
+`owner`, `admin`, and `member` can all reach the sales routes except correction; `member` lacks
+`sales:correct`. `member` can also read catalog and stock but holds no expense, cash, customer, or
+receivable permission, so the `/operate` hub does not list those modules for it. See
+[ADR 0014](adrs/0014-static-current-operation-permissions.md) for the full matrix, including why
+`admin` and `member` have no reachable actor today.
+
+The generic planning dashboard has been removed; `/dashboard` is a five-line redirect kept only for
+old links. Product navigation exposes `Operar` and `Cuenta`; `Operar` opens the `/operate` hub and
+billing remains secondary account context. There is no Assistant or Reports destination. Do not infer
+future records, tabs, or workflows from the long-term capability map.
 
 ## Responsive shell
 
@@ -87,8 +135,9 @@ fork feature screens or business logic merely to change navigation chrome. See
 [ADR 0011](adrs/0011-modular-capabilities-and-app-owned-composition.md).
 
 The current route composition is a session guard, required business setup/selection, a workspace
-layout containing only approved destinations, Sales routes under Operate, and secondary
-account/billing routes. Home and Assistant are added only with real approved content.
+layout containing only approved destinations, the `/operate` hub with its sales, expenses, cash,
+catalog, inventory, customers, and receivables routes, and secondary account/billing routes. Home,
+Reports, and Assistant are added only with real approved content, and none of the three exists.
 
 ## Screen and action contract
 
@@ -244,8 +293,9 @@ store sandbox; Expo Go preview alone is not purchase acceptance evidence.
 For material shell or route work, verify compact and wide web plus required native targets. Include
 nested-route active state, keyboard order, visible focus, one page heading, semantic landmarks,
 screen-reader names/states, safe-area behavior, and the documented loading/empty/error/disabled
-states. The current scaffold does not yet satisfy all of these checks; treat them as implementation
-acceptance criteria, not as shipped claims.
+states. The implemented screens have automated component and state coverage, but no rendered
+responsive, physical-device, or screen-reader evidence is recorded for them. Treat these checks as
+outstanding implementation acceptance criteria, not as shipped claims.
 
 ## Official sources
 

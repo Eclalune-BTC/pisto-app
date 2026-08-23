@@ -1,9 +1,15 @@
 # Copy-ready handoff for the next Codex session
 
 - Snapshot date: **2026-08-23**
-- Latest implementation commit at snapshot time: **`b528485d6426512a2f306fd125cacb48f18d8b8b`**
+- Latest implementation commit at snapshot time: **`3e4d83c`**
+  (`fix(db): close the replay and archive gaps an independent review found`)
 - Authoritative continuation branch: **`fix/audit-remediation`**
 - Authoritative continuation worktree: **`C:\Users\ADMIN\Desktop\pisto-app`**
+
+This file is a dated handoff, not a durable contract. It records one session's view of the repository
+at one commit. Where it disagrees with `AGENTS.md`, the domain guides, the accepted ADRs, or the code
+itself, those win. It should be rewritten or deleted once its continuation sequence is complete
+rather than maintained as a standing document.
 
 This handoff replaces the earlier prompt that asked the next agent to implement sale correction.
 Sale correction and the structured operating modules are already present. Repository evidence always
@@ -75,11 +81,11 @@ unowned buttons, fake metrics, fake activity, and success-shaped fallbacks.
 
 GIT TRUTH AT THIS SNAPSHOT
 
-- `C:\Users\ADMIN\Desktop\pisto-app` was clean on `fix/audit-remediation` at `b528485`.
+- `C:\Users\ADMIN\Desktop\pisto-app` was clean on `fix/audit-remediation` at `3e4d83c`.
 - Local `main` was checked out separately in `C:\Users\ADMIN\Desktop\pisto-wt-base` at `3aa0175`.
 - Remote `origin/main` was `d51c438`; GitHub reported the private repository
   `Eclalune-BTC/pisto-app` with default branch `main`.
-- `fix/audit-remediation` was 34 commits ahead of local `main` and 51 commits ahead of
+- `fix/audit-remediation` was 36 commits ahead of local `main` and 53 commits ahead of
   `origin/main`, with no commits behind either. It had no upstream and was not pushed.
 - Repository Git identity and the authenticated GitHub CLI user were
   `wkatir <wilmerhenrysalazarmartinez@gmail.com>` and `wkatir` respectively. Recheck both the CLI
@@ -169,7 +175,9 @@ session owns them and cleanup is explicitly authorized.
 
 VALIDATION EVIDENCE RECORDED ON 2026-08-23
 
-The following passed on implementation HEAD `b528485` before this handoff document was changed:
+These gates were run on `b528485`, which is two commits BEHIND the snapshot SHA `3e4d83c` above. They
+are not evidence for `3e4d83c`, and `3e4d83c` itself changes database replay and archive behavior.
+Rerun the full sequence on the current HEAD before relying on any of it.
 
 - `bun.cmd run doctor`: 0 failures and 0 warnings; no services started.
 - `bun.cmd run check`: lint/docs/typechecks and 298 script/workspace tests passed.

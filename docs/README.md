@@ -59,8 +59,10 @@ mean deployed or production-ready.
    conversational sale/report slice.
 3. [Product capability architecture](product-capability-architecture.md) defines how future modules,
    navigation, UI actions, assistant/voice channels, and delivery ownership compose without a flat UI.
-4. [Operating core V1 contracts](product-slices/operating-core-v1.md) freeze the active catalog,
-   inventory, expense, cash, customer, receivable, report, assistant, and voice capability slices.
+4. [Operating core V1 contracts](product-slices/operating-core-v1.md) freeze the catalog, inventory,
+   expense, cash, customer, receivable, report, assistant, and voice capability contracts. Freezing a
+   contract is not delivering it: its status table says which slices are implemented, which is a
+   transport contract only, and which do not exist.
 5. [Sales Increment 1](sales-increment-1.md) records the implemented product flow, contracts,
    persistence, failure behavior, evidence, and explicit limitations.
 6. [Engineering workflow](engineering-workflow.md) defines research, reuse, architecture, review,
