@@ -1,3 +1,4 @@
+/// <reference types="temporal-spec/global" />
 import type { BusinessAccess, BusinessPermission } from "@pisto/contracts";
 
 import { resolveBusinessAccess } from "./product-access.ts";
@@ -45,19 +46,6 @@ function getFormatter(timeZone: string): Intl.DateTimeFormat {
   });
   localFormatters.set(timeZone, formatter);
   return formatter;
-}
-
-function localParts(instant: Date, timeZone: string) {
-  const values = Object.fromEntries(
-    getFormatter(timeZone)
-      .formatToParts(instant)
-      .filter(({ type }) => ["year", "month", "day", "hour", "minute"].includes(type))
-      .map(({ type, value }) => [type, value]),
-  );
-  return {
-    date: `${values.year}-${values.month}-${values.day}`,
-    time: `${values.hour}:${values.minute}`,
-  };
 }
 
 export function isSupportedCurrency(currency: string): boolean {
@@ -110,38 +98,29 @@ export function resolveLocalDateTime(input: {
   ) {
     throw new ProductError("VALIDATION_ERROR", "The sale date and time are invalid");
   }
-  const naiveUtc = Date.UTC(year, month - 1, day, hour, minute);
-  const canonical = new Date(naiveUtc);
-  if (
-    canonical.getUTCFullYear() !== year ||
-    canonical.getUTCMonth() !== month - 1 ||
-    canonical.getUTCDate() !== day ||
-    canonical.getUTCHours() !== hour ||
-    canonical.getUTCMinutes() !== minute
-  ) {
+  let plain: Temporal.PlainDateTime;
+  try {
+    plain = Temporal.PlainDateTime.from({ year, month, day, hour, minute }, { overflow: "reject" });
+  } catch {
     throw new ProductError("VALIDATION_ERROR", "The sale date and time are invalid");
   }
 
-  const matches: Date[] = [];
-  const searchStart = naiveUtc - 14 * 60 * 60_000;
-  const searchEnd = naiveUtc + 14 * 60 * 60_000;
-  for (let timestamp = searchStart; timestamp <= searchEnd; timestamp += 60_000) {
-    const candidate = new Date(timestamp);
-    const candidateParts = localParts(candidate, input.timeZone);
-    if (candidateParts.date === input.date && candidateParts.time === input.time) {
-      matches.push(candidate);
-      if (matches.length > 1) break;
-    }
-  }
-  if (matches.length !== 1) {
+  // A wall-clock minute maps to exactly one instant unless a daylight-saving
+  // transition removes it (a gap) or repeats it (an overlap). Resolving the same
+  // minute with both disambiguation policies detects either case in constant time:
+  // the two results diverge only across a transition, and the requested local time
+  // survives the round trip only when it genuinely exists twice.
+  const earliest = plain.toZonedDateTime(input.timeZone, { disambiguation: "earlier" });
+  const latest = plain.toZonedDateTime(input.timeZone, { disambiguation: "later" });
+  if (earliest.epochMilliseconds !== latest.epochMilliseconds) {
     throw new ProductError(
       "VALIDATION_ERROR",
-      matches.length === 0
-        ? "That local time does not exist in the business time zone"
-        : "That local time is ambiguous in the business time zone",
+      latest.toPlainDateTime().equals(plain)
+        ? "That local time is ambiguous in the business time zone"
+        : "That local time does not exist in the business time zone",
     );
   }
-  return matches[0] as Date;
+  return new Date(earliest.epochMilliseconds);
 }
 
 export async function fingerprintValue(value: unknown): Promise<string> {
