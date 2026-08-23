@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 
 import { cn } from "@/lib/cn";
@@ -8,8 +9,10 @@ type BrandProps = {
 };
 
 export function Brand({ compact = false, inverse = false }: BrandProps) {
+  const { t } = useTranslation();
+
   return (
-    <View accessibilityLabel="Pisto" className="flex-row items-center gap-3">
+    <View accessibilityLabel={t("common.appName")} className="flex-row items-center gap-3">
       <View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
         <Text className="text-xl font-black text-ink">P</Text>
       </View>

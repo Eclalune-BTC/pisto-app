@@ -1264,6 +1264,12 @@ export const esSV = {
         "El estado actual del cliente, cargo o pago ya no permite confirmar esta operación.",
     },
   },
+  notFound: {
+    title: "No encontramos esta pantalla",
+    description:
+      "El enlace que abriste no corresponde a ninguna pantalla de Pisto. Ningún registro cambió.",
+    action: "Ir al inicio",
+  },
   productErrors: {
     businessRequired: "Selecciona o crea un negocio antes de continuar.",
     conflict: "La operación entra en conflicto con el estado actual. Actualiza y revisa de nuevo.",
