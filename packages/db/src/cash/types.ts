@@ -20,7 +20,7 @@ import type {
   TransferCashRequest,
   UpdateCashAccountRequest,
   VoidExpenseRequest,
-} from "../../../contracts/src/cash.ts";
+} from "@pisto/contracts";
 
 import type { Database } from "../client.ts";
 import type { ProductActor } from "../product.ts";

@@ -1,6 +1,12 @@
 import type { Auth } from "@pisto/auth";
 import type { BillingRuntime } from "@pisto/billing";
-import type { DatabaseHandle, ProductRepository } from "@pisto/db";
+import type {
+  CashRepository,
+  CatalogRepository,
+  DatabaseHandle,
+  ProductRepository,
+  ReceivablesRepository,
+} from "@pisto/db";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
@@ -18,8 +24,11 @@ export function createApp(input: {
   authConfig: { baseUrl: string };
   auth: Auth;
   billing: BillingRuntime;
+  cash: CashRepository;
+  catalog: CatalogRepository;
   database: DatabaseHandle;
   product: ProductRepository;
+  receivables: ReceivablesRepository;
 }) {
   const app = new Hono<AppEnv>();
 
@@ -29,7 +38,7 @@ export function createApp(input: {
     cors({
       origin: input.config.corsOrigins,
       credentials: true,
-      allowMethods: ["GET", "POST", "OPTIONS"],
+      allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
       allowHeaders: [
         "Content-Type",
         "Authorization",
@@ -98,8 +107,11 @@ export function createApp(input: {
       auth: input.auth,
       authBaseUrl: input.authConfig.baseUrl,
       billing: input.billing,
+      cash: input.cash,
+      catalog: input.catalog,
       db: input.database.db,
       product: input.product,
+      receivables: input.receivables,
     }),
   );
 

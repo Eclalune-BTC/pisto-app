@@ -1,4 +1,3 @@
-import { and, desc, eq, lt, or, type SQL, sql } from "drizzle-orm";
 import {
   type CashAccount,
   type CashAccountList,
@@ -14,7 +13,8 @@ import {
   type ExpensePeriodSummary,
   expenseListQuerySchema,
   expensePeriodQuerySchema,
-} from "../../../contracts/src/cash.ts";
+} from "@pisto/contracts";
+import { and, desc, eq, gte, lt, or, type SQL, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { type ProductActor, ProductError, resolveLocalDateTime } from "../product.ts";
@@ -208,8 +208,8 @@ export async function getExpensePeriodSummary(
         and(
           eq(expense.businessId, access.businessId),
           eq(expense.status, "posted"),
-          sql`${expense.occurredAt} >= ${periodStartUtc}`,
-          sql`${expense.occurredAt} < ${periodEndUtcExclusive}`,
+          gte(expense.occurredAt, periodStartUtc),
+          lt(expense.occurredAt, periodEndUtcExclusive),
         ),
       )
       .groupBy(expense.category)

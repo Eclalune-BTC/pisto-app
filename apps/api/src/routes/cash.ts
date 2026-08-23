@@ -1,6 +1,4 @@
 import type { Auth } from "@pisto/auth";
-import { Hono } from "hono";
-import { z } from "zod";
 import {
   archiveCashAccountRequestSchema,
   cashAccountListQuerySchema,
@@ -14,9 +12,11 @@ import {
   transferCashRequestSchema,
   updateCashAccountRequestSchema,
   voidExpenseRequestSchema,
-} from "../../../../packages/contracts/src/cash.ts";
-import type { CashRepository } from "../../../../packages/db/src/cash.ts";
-import { ProductError } from "../../../../packages/db/src/product.ts";
+} from "@pisto/contracts";
+import type { CashRepository } from "@pisto/db";
+import { ProductError } from "@pisto/db";
+import { Hono } from "hono";
+import { z } from "zod";
 
 import { ApiError } from "../errors.ts";
 import { parseJsonBody } from "../http.ts";

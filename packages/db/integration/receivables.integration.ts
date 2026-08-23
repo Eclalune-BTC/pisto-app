@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 
 import {
+  createCashRepository,
   createDatabase,
   createProductRepository,
   member,
@@ -11,6 +12,7 @@ import {
   user,
 } from "../src/index.ts";
 import { createReceivablesRepository } from "../src/receivables.ts";
+import { cashAccount, cashMovement, cashOperationReceipt } from "../src/schema/cash.ts";
 import {
   customer,
   receivable,
@@ -20,6 +22,7 @@ import {
 
 const database = createDatabase({ ...parseDatabaseConfig(process.env), maxConnections: 8 });
 const product = createProductRepository(database.db);
+const cash = createCashRepository(database.db);
 const repository = createReceivablesRepository(database.db);
 const runId = crypto.randomUUID();
 const userIds = {
@@ -39,6 +42,7 @@ const sessionIds = {
 const businessIds: string[] = [];
 let businessA = "";
 let businessB = "";
+let cashAccountAId = "";
 
 const actor = (key: keyof typeof userIds, businessId: string) => ({
   userId: userIds[key],
@@ -104,10 +108,20 @@ beforeAll(async () => {
       .set({ activeOrganizationId: businessA })
       .where(eq(session.id, sessionIds[key]));
   }
+  const cashAccountResult = await cash.createAccount(actor("ownerA", businessA), {
+    idempotencyKey: crypto.randomUUID(),
+    name: `Receivables cash ${runId.slice(0, 8)}`,
+    kind: "cash",
+    allowNegativeBalance: false,
+    currency: "USD",
+    opening: null,
+  });
+  cashAccountAId = cashAccountResult.account.id;
 });
 
 afterAll(async () => {
   if (businessIds.length > 0) {
+    await database.db.delete(cashMovement).where(inArray(cashMovement.businessId, businessIds));
     await database.db
       .delete(receivableOperation)
       .where(inArray(receivableOperation.businessId, businessIds));
@@ -116,6 +130,10 @@ afterAll(async () => {
       .where(inArray(receivablePayment.businessId, businessIds));
     await database.db.delete(receivable).where(inArray(receivable.businessId, businessIds));
     await database.db.delete(customer).where(inArray(customer.businessId, businessIds));
+    await database.db
+      .delete(cashOperationReceipt)
+      .where(inArray(cashOperationReceipt.businessId, businessIds));
+    await database.db.delete(cashAccount).where(inArray(cashAccount.businessId, businessIds));
   }
   await database.db.delete(member).where(inArray(member.userId, Object.values(userIds)));
   await database.db.delete(session).where(inArray(session.id, Object.values(sessionIds)));
@@ -226,13 +244,12 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
     ).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
     expect(posted.receivable.state).toBe("overdue");
 
-    const cashAccountId = crypto.randomUUID();
     const paymentCommands = [crypto.randomUUID(), crypto.randomUUID()].map((idempotencyKey) => ({
       idempotencyKey,
       amountMinorUnits: "700",
       occurredLocalDate: "2026-08-22",
       occurredLocalTime: "10:00",
-      cashAccountId,
+      cashAccountId: cashAccountAId,
     }));
     const concurrent = await Promise.allSettled(
       paymentCommands.map((command) =>
@@ -254,6 +271,16 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
     const successfulPayment = fulfilled[0];
     if (!successfulPayment) throw new Error("Concurrent payment test returned no result");
     expect(successfulPayment.value.receivable.outstandingMinorUnits).toBe("300");
+    const [paymentMovement] = await database.db
+      .select()
+      .from(cashMovement)
+      .where(eq(cashMovement.receivablePaymentId, successfulPayment.value.payment.id));
+    expect(paymentMovement).toMatchObject({
+      accountId: cashAccountAId,
+      action: "receivable_payment",
+      deltaMinorUnits: 700n,
+    });
+    if (!paymentMovement) throw new Error("Receivable payment cash movement was not created");
 
     const operation = await database.db
       .select({ idempotencyKey: receivableOperation.idempotencyKey })
@@ -270,6 +297,11 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
     );
     expect(paymentReplay.payment.id).toBe(successfulPayment.value.payment.id);
     expect(paymentReplay.replayed).toBe(true);
+    const replayedCashMovements = await database.db
+      .select({ id: cashMovement.id })
+      .from(cashMovement)
+      .where(eq(cashMovement.receivablePaymentId, successfulPayment.value.payment.id));
+    expect(replayedCashMovements).toHaveLength(1);
 
     const reversalKey = crypto.randomUUID();
     const reversalCommand = {
@@ -290,6 +322,15 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
     );
     expect(reversalReplay).toEqual({ ...reversed, replayed: true });
     expect(reversed.receivable.outstandingMinorUnits).toBe("1000");
+    const [reversalMovement] = await database.db
+      .select()
+      .from(cashMovement)
+      .where(eq(cashMovement.reversalOfMovementId, paymentMovement.id));
+    expect(reversalMovement).toMatchObject({
+      accountId: cashAccountAId,
+      action: "reverse",
+      deltaMinorUnits: -700n,
+    });
     await expect(
       repository.reversePayment(actor("ownerA", businessA), successfulPayment.value.payment.id, {
         ...reversalCommand,
@@ -323,7 +364,7 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
         amountMinorUnits: "500",
         occurredLocalDate: "2026-08-22",
         occurredLocalTime: "11:00",
-        cashAccountId: crypto.randomUUID(),
+        cashAccountId: cashAccountAId,
       },
     );
     await expect(

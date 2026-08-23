@@ -1,10 +1,10 @@
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import {
   categoryListQuerySchema,
   inventoryMovementListQuerySchema,
   productListQuerySchema,
   stockListQuerySchema,
-} from "../../../contracts/src/catalog.ts";
+} from "@pisto/contracts";
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { ProductError } from "../product.ts";

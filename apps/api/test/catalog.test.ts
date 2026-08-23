@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
+import type { CatalogRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
 import { Hono } from "hono";
-import type { CatalogRepository } from "../../../packages/db/src/catalog.ts";
 
 import { ApiError } from "../src/errors.ts";
 import { catalogRoutes } from "../src/routes/catalog.ts";

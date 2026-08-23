@@ -1,9 +1,4 @@
-import type {
-  CashAccount,
-  CashMovement,
-  CashTransfer,
-  Expense,
-} from "../../../contracts/src/cash.ts";
+import type { CashAccount, CashMovement, CashTransfer, Expense } from "@pisto/contracts";
 
 import type {
   CashAccountRecord,

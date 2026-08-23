@@ -11,7 +11,7 @@ import {
   expenseCommandResultSchema,
   type UpdateCashAccountRequest,
   updateCashAccountRequestSchema,
-} from "../../../contracts/src/cash.ts";
+} from "@pisto/contracts";
 
 import { ProductError } from "../product.ts";
 import type { CashCursorPayload, CashOperationAction } from "./types.ts";

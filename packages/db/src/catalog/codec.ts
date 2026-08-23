@@ -1,12 +1,7 @@
+import type { Category, InventoryMovement, Product, ProductStock } from "@pisto/contracts";
 import { and, eq, lt, or } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { z } from "zod";
-import type {
-  Category,
-  InventoryMovement,
-  Product,
-  ProductStock,
-} from "../../../contracts/src/catalog.ts";
 
 import { ProductError } from "../product.ts";
 import type {

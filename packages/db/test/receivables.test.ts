@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { getTableColumns, getTableName } from "drizzle-orm";
+import { getTableConfig } from "drizzle-orm/pg-core";
 import { deriveReceivableBalance } from "../src/receivables.ts";
+import { cashMovement } from "../src/schema/cash.ts";
 import {
   customer,
   receivable,
@@ -36,6 +38,12 @@ describe("customers and receivables schema", () => {
     expect(paymentColumns).toHaveProperty("cashAccountId");
     expect(paymentColumns).toHaveProperty("reversesPaymentId");
     expect(getTableColumns(receivableOperation)).toHaveProperty("resultSnapshot");
+    expect(getTableConfig(receivablePayment).foreignKeys.map((key) => key.getName())).toContain(
+      "receivable_payment_business_cash_account_fk",
+    );
+    expect(getTableConfig(cashMovement).foreignKeys.map((key) => key.getName())).toContain(
+      "cash_movement_business_receivable_payment_fk",
+    );
   });
 
   test("derives open, overdue, paid, and voided state from authoritative amounts and local date", () => {

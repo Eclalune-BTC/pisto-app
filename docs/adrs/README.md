@@ -22,6 +22,7 @@ changes, add a new ADR that supersedes the old one instead of rewriting the old 
 | [0013](0013-es-sv-localization-boundary.md) | Accepted | Typed `es-SV` localization separates product copy from application logic |
 | [0014](0014-static-current-operation-permissions.md) | Accepted | Static Pisto permissions authorize current business and sales operations |
 | [0015](0015-business-owned-currency-and-money-snapshots.md) | Accepted | Business-owned currency and immutable money snapshots prevent global defaults and history rewrites |
+| [0016](0016-owner-ports-for-cross-capability-transactions.md) | Accepted | Narrow owner ports keep cross-capability financial writes atomic without hiding ownership |
 
 ## Status values
 

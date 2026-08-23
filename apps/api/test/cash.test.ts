@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
 
-import type { CashRepository } from "../../../packages/db/src/cash.ts";
-import { ProductError } from "../../../packages/db/src/product.ts";
+import type { CashRepository } from "@pisto/db";
+import { ProductError } from "@pisto/db";
 import { ApiError } from "../src/errors.ts";
 import { cashRoutes } from "../src/routes/cash.ts";
 

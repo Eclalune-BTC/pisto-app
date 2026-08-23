@@ -1,7 +1,4 @@
 import type { Auth } from "@pisto/auth";
-import { ProductError } from "@pisto/db";
-import { Hono } from "hono";
-import { z } from "zod";
 import {
   applyReceivablePaymentRequestSchema,
   archiveCustomerRequestSchema,
@@ -12,8 +9,11 @@ import {
   reverseReceivablePaymentRequestSchema,
   updateCustomerRequestSchema,
   voidReceivableRequestSchema,
-} from "../../../../packages/contracts/src/receivables.ts";
-import type { ReceivablesRepository } from "../../../../packages/db/src/receivables.ts";
+} from "@pisto/contracts";
+import type { ReceivablesRepository } from "@pisto/db";
+import { ProductError } from "@pisto/db";
+import { Hono } from "hono";
+import { z } from "zod";
 
 import { ApiError } from "../errors.ts";
 import { parseJsonBody } from "../http.ts";

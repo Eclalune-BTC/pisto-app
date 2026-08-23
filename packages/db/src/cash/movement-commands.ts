@@ -1,4 +1,3 @@
-import { and, eq, inArray } from "drizzle-orm";
 import {
   type CashMovementCommandResult,
   type CashTransferCommandResult,
@@ -8,7 +7,8 @@ import {
   reverseCashMovementRequestSchema,
   type TransferCashRequest,
   transferCashRequestSchema,
-} from "../../../contracts/src/cash.ts";
+} from "@pisto/contracts";
+import { and, eq, inArray } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { type ProductActor, ProductError, resolveLocalDateTime } from "../product.ts";

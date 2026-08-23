@@ -1,9 +1,9 @@
-import { and, eq } from "drizzle-orm";
 import {
   inventoryMutationResponseSchema,
   recordInventoryMovementRequestSchema,
   reverseInventoryMovementRequestSchema,
-} from "../../../contracts/src/catalog.ts";
+} from "@pisto/contracts";
+import { and, eq } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { ProductError, resolveLocalDateTime } from "../product.ts";

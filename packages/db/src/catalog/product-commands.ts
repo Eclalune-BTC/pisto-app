@@ -1,10 +1,10 @@
-import { and, eq, ne, sql } from "drizzle-orm";
 import {
   archiveProductRequestSchema,
   createProductRequestSchema,
   productMutationResponseSchema,
   updateProductRequestSchema,
-} from "../../../contracts/src/catalog.ts";
+} from "@pisto/contracts";
+import { and, eq, ne, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { ProductError } from "../product.ts";

@@ -1,9 +1,8 @@
 import type { BusinessPermission } from "@pisto/contracts";
 import { and, eq, sql } from "drizzle-orm";
+
+import { authorizeBusinessAction, requireActiveBusiness } from "../business-access.ts";
 import { type ProductActor, ProductError } from "../product.ts";
-import { hasBusinessPermission } from "../product-access.ts";
-import { member, session } from "../schema/auth.ts";
-import { businessSettings } from "../schema/business.ts";
 import { cashAccount, cashMovement, cashOperationReceipt } from "../schema/cash.ts";
 import type {
   AuthorizedBusiness,
@@ -12,59 +11,14 @@ import type {
   CashTransaction,
 } from "./types.ts";
 
-export function requireActiveBusiness(actor: ProductActor): string {
-  if (!actor.activeBusinessId) {
-    throw new ProductError("BUSINESS_REQUIRED", "Select or create a business before continuing");
-  }
-  return actor.activeBusinessId;
-}
+export { requireActiveBusiness };
 
 export async function requireAccess(
   tx: CashTransaction,
   actor: ProductActor,
   permissions: readonly BusinessPermission[],
 ): Promise<AuthorizedBusiness> {
-  const businessId = requireActiveBusiness(actor);
-  const [activeSession] = await tx
-    .select({ id: session.id })
-    .from(session)
-    .where(
-      and(
-        eq(session.id, actor.sessionId),
-        eq(session.userId, actor.userId),
-        eq(session.activeOrganizationId, businessId),
-        sql`${session.expiresAt} > transaction_timestamp()`,
-      ),
-    )
-    .limit(1)
-    .for("share");
-  if (!activeSession) {
-    throw new ProductError("UNAUTHORIZED", "The authenticated session is no longer active");
-  }
-
-  const [access] = await tx
-    .select({
-      businessId: businessSettings.businessId,
-      currency: businessSettings.currency,
-      currencyMinorUnitDigits: businessSettings.currencyMinorUnitDigits,
-      queriedAt: sql<Date>`transaction_timestamp()`,
-      role: member.role,
-      timeZone: businessSettings.timeZone,
-    })
-    .from(member)
-    .innerJoin(businessSettings, eq(businessSettings.businessId, member.organizationId))
-    .where(and(eq(member.organizationId, businessId), eq(member.userId, actor.userId)))
-    .limit(1)
-    .for("share");
-  if (!access) {
-    throw new ProductError("FORBIDDEN", "The active business membership is no longer valid");
-  }
-  for (const permission of permissions) {
-    if (!hasBusinessPermission(access.role, permission)) {
-      throw new ProductError("FORBIDDEN", "The business membership does not permit this action");
-    }
-  }
-  return access;
+  return authorizeBusinessAction(tx, actor, permissions, "share");
 }
 
 export function requireCurrency(access: AuthorizedBusiness, currency: string): void {

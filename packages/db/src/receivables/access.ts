@@ -1,58 +1,20 @@
 import type { BusinessPermission } from "@pisto/contracts";
 import { and, eq, sql } from "drizzle-orm";
 import type { ZodType } from "zod";
+
+import { authorizeBusinessAction } from "../business-access.ts";
 import { type ProductActor, ProductError } from "../product.ts";
-import { hasBusinessPermission } from "../product-access.ts";
-import { member, session } from "../schema/auth.ts";
-import { businessSettings } from "../schema/business.ts";
 import { receivable, receivableOperation, receivablePayment } from "../schema/receivables.ts";
 import { toReceivable } from "./mappers.ts";
 import type { AccessContext, DatabaseTransaction, ReceivableRecord } from "./types.ts";
 
-function requireActiveBusiness(actor: ProductActor): string {
-  if (!actor.activeBusinessId) {
-    throw new ProductError("BUSINESS_REQUIRED", "Select or create a business before continuing");
-  }
-  return actor.activeBusinessId;
-}
-
 export async function authorize(
   tx: DatabaseTransaction,
   actor: ProductActor,
-  permission: BusinessPermission,
+  permission: BusinessPermission | readonly BusinessPermission[],
 ): Promise<AccessContext> {
-  const businessId = requireActiveBusiness(actor);
-  const [activeSession] = await tx
-    .select({ id: session.id })
-    .from(session)
-    .where(
-      and(
-        eq(session.id, actor.sessionId),
-        eq(session.userId, actor.userId),
-        sql`${session.expiresAt} > transaction_timestamp()`,
-      ),
-    )
-    .limit(1)
-    .for("share");
-  if (!activeSession) {
-    throw new ProductError("UNAUTHORIZED", "The authenticated session is no longer active");
-  }
-  const [access] = await tx
-    .select({
-      currency: businessSettings.currency,
-      currencyMinorUnitDigits: businessSettings.currencyMinorUnitDigits,
-      role: member.role,
-      timeZone: businessSettings.timeZone,
-    })
-    .from(member)
-    .innerJoin(businessSettings, eq(businessSettings.businessId, member.organizationId))
-    .where(and(eq(member.organizationId, businessId), eq(member.userId, actor.userId)))
-    .limit(1)
-    .for("share");
-  if (!access || !hasBusinessPermission(access.role, permission)) {
-    throw new ProductError("FORBIDDEN", "The business membership does not permit this action");
-  }
-  return { businessId, ...access };
+  const permissions = Array.isArray(permission) ? permission : [permission];
+  return authorizeBusinessAction(tx, actor, permissions, "share");
 }
 
 export async function lockIdempotencyKey(

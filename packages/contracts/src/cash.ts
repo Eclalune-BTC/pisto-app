@@ -1,46 +1,36 @@
 import { z } from "zod";
 
-const signedBigintMaximum = 9_223_372_036_854_775_807n;
+import {
+  aggregateIntegerSchema,
+  currencyCodeSchema,
+  currencyMinorUnitDigitsSchema,
+  localDateSchema,
+  localTimeSchema,
+  minorUnitsSchema,
+  positiveMinorUnitsSchema,
+  signedAggregateIntegerSchema,
+  signedMinorUnitsSchema,
+  timeZoneSchema,
+  uuidSchema,
+} from "./primitives";
 
-function fitsSignedBigintMagnitude(value: string): boolean {
-  const magnitude = value.startsWith("-") ? value.slice(1) : value;
-  return BigInt(magnitude) <= signedBigintMaximum;
-}
-
-export const cashCurrencyCodeSchema = z.string().regex(/^[A-Z]{3}$/);
-export const cashCurrencyMinorUnitDigitsSchema = z.number().int().min(0).max(4);
-export const cashLocalDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-export const cashLocalTimeSchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
-export const cashTimeZoneSchema = z.string().trim().min(1).max(64);
-export const cashIdempotencyKeySchema = z.string().uuid();
+export const cashCurrencyCodeSchema = currencyCodeSchema;
+export const cashCurrencyMinorUnitDigitsSchema = currencyMinorUnitDigitsSchema;
+export const cashLocalDateSchema = localDateSchema;
+export const cashLocalTimeSchema = localTimeSchema;
+export const cashTimeZoneSchema = timeZoneSchema;
+export const cashIdempotencyKeySchema = uuidSchema;
 export const cashCursorSchema = z
   .string()
   .min(1)
   .max(256)
   .regex(/^[A-Za-z0-9_-]+$/);
 
-export const cashMinorUnitsSchema = z
-  .string()
-  .regex(/^(?:0|[1-9]\d{0,18})$/, "Must be a canonical non-negative integer")
-  .refine(fitsSignedBigintMagnitude, "Must fit in a signed 64-bit integer");
-
-export const cashPositiveMinorUnitsSchema = cashMinorUnitsSchema.refine(
-  (value) => BigInt(value) > 0n,
-  "Must be greater than zero",
-);
-
-export const signedCashMinorUnitsSchema = z
-  .string()
-  .regex(/^(?:0|-?[1-9]\d{0,18})$/, "Must be a canonical signed integer")
-  .refine(fitsSignedBigintMagnitude, "Must fit in a signed 64-bit integer");
-
-export const signedCashAggregateMinorUnitsSchema = z
-  .string()
-  .regex(/^(?:0|-?[1-9]\d*)$/, "Must be a canonical signed integer");
-
-export const cashAggregateIntegerSchema = z
-  .string()
-  .regex(/^(?:0|[1-9]\d*)$/, "Must be a canonical non-negative integer");
+export const cashMinorUnitsSchema = minorUnitsSchema;
+export const cashPositiveMinorUnitsSchema = positiveMinorUnitsSchema;
+export const signedCashMinorUnitsSchema = signedMinorUnitsSchema;
+export const signedCashAggregateMinorUnitsSchema = signedAggregateIntegerSchema;
+export const cashAggregateIntegerSchema = aggregateIntegerSchema;
 
 export const cashAccountKindSchema = z.enum(["cash", "bank", "mobile_money", "other"]);
 export const cashAccountStatusSchema = z.enum(["active", "archived"]);

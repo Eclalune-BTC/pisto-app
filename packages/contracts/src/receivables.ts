@@ -8,7 +8,7 @@ import {
   localTimeSchema,
   positiveMinorUnitsSchema,
   timeZoneSchema,
-} from "./index";
+} from "./primitives";
 
 const nullableTrimmedText = (maximum: number) => z.string().trim().min(1).max(maximum).nullable();
 

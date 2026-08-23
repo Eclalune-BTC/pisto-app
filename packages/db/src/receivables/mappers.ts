@@ -1,8 +1,4 @@
-import type {
-  Customer,
-  Receivable,
-  ReceivablePayment,
-} from "../../../contracts/src/receivables.ts";
+import type { Customer, Receivable, ReceivablePayment } from "@pisto/contracts";
 
 import type { CustomerRecord, PaymentRecord, ReceivableRecord } from "./types.ts";
 

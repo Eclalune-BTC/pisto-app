@@ -1,10 +1,10 @@
-import { and, eq, sql } from "drizzle-orm";
 import {
   archiveCashAccountRequestSchema,
   type CashAccountCommandResult,
   type CreateCashAccountRequest,
   type UpdateCashAccountRequest,
-} from "../../../contracts/src/cash.ts";
+} from "@pisto/contracts";
+import { and, eq, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { type ProductActor, ProductError, resolveLocalDateTime } from "../product.ts";

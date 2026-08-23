@@ -1,5 +1,5 @@
+import { listCustomersQuerySchema } from "@pisto/contracts";
 import { and, desc, eq, lt, or, sql } from "drizzle-orm";
-import { listCustomersQuerySchema } from "../../../contracts/src/receivables.ts";
 
 import type { Database } from "../client.ts";
 import { ProductError } from "../product.ts";

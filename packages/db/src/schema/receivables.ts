@@ -16,6 +16,7 @@ import {
 
 import { user } from "./auth.ts";
 import { businessSettings } from "./business.ts";
+import { cashAccount } from "./cash-account.ts";
 
 export const customer = pgTable(
   "customer",
@@ -235,6 +236,11 @@ export const receivablePayment = pgTable(
         businessSettings.currencyMinorUnitDigits,
       ],
       name: "receivable_payment_business_currency_digits_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.businessId, table.cashAccountId],
+      foreignColumns: [cashAccount.businessId, cashAccount.id],
+      name: "receivable_payment_business_cash_account_fk",
     }).onDelete("restrict"),
     index("receivable_payment_business_receivable_created_idx").on(
       table.businessId,

@@ -1,7 +1,4 @@
 import type { Auth } from "@pisto/auth";
-import { ProductError } from "@pisto/db";
-import { Hono } from "hono";
-import { z } from "zod";
 import {
   archiveCategoryRequestSchema,
   archiveProductRequestSchema,
@@ -15,8 +12,11 @@ import {
   stockListQuerySchema,
   updateCategoryRequestSchema,
   updateProductRequestSchema,
-} from "../../../../packages/contracts/src/catalog.ts";
-import type { CatalogRepository } from "../../../../packages/db/src/catalog.ts";
+} from "@pisto/contracts";
+import type { CatalogRepository } from "@pisto/db";
+import { ProductError } from "@pisto/db";
+import { Hono } from "hono";
+import { z } from "zod";
 
 import { ApiError } from "../errors.ts";
 import { parseJsonBody } from "../http.ts";

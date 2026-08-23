@@ -6,6 +6,12 @@ function isSignedBigint(value: string): boolean {
   return /^(?:0|[1-9]\d{0,18})$/.test(value) && BigInt(value) <= signedBigintMaximum;
 }
 
+function isCanonicalSignedBigint(value: string): boolean {
+  if (!/^(?:0|[1-9]\d{0,18}|-[1-9]\d{0,18})$/.test(value)) return false;
+  const parsed = BigInt(value);
+  return parsed >= -signedBigintMaximum && parsed <= signedBigintMaximum;
+}
+
 export const aggregateIntegerSchema = z
   .string()
   .regex(/^(?:0|[1-9]\d*)$/, "Must be a canonical non-negative integer");
@@ -23,6 +29,10 @@ export const positiveMinorUnitsSchema = minorUnitsSchema.refine(
   (value) => isSignedBigint(value) && BigInt(value) > 0n,
   "Must be greater than zero",
 );
+
+export const signedMinorUnitsSchema = z
+  .string()
+  .refine(isCanonicalSignedBigint, "Must be a canonical signed 64-bit integer");
 
 export const currencyCodeSchema = z.string().regex(/^[A-Z]{3}$/);
 export const currencyMinorUnitDigitsSchema = z.number().int().min(0).max(4);

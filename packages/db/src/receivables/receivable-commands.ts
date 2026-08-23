@@ -1,12 +1,15 @@
-import { and, eq } from "drizzle-orm";
 import {
   applyReceivablePaymentRequestSchema,
   postReceivableRequestSchema,
   receivableSchema,
   reverseReceivablePaymentRequestSchema,
   voidReceivableRequestSchema,
-} from "../../../contracts/src/receivables.ts";
-
+} from "@pisto/contracts";
+import { and, eq } from "drizzle-orm";
+import {
+  appendReceivablePaymentCashMovement,
+  reverseReceivablePaymentCashMovement,
+} from "../cash/receivable-ledger.ts";
 import type { Database } from "../client.ts";
 import { ProductError, resolveLocalDateTime } from "../product.ts";
 import { customer, receivable, receivablePayment } from "../schema/receivables.ts";
@@ -197,7 +200,7 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
       });
       const amountMinorUnits = parsePositiveMinorUnits(command.amountMinorUnits);
       return db.transaction(async (tx) => {
-        const access = await authorize(tx, actor, "receivables:manage");
+        const access = await authorize(tx, actor, ["receivables:manage", "cash:manage"]);
         await lockIdempotencyKey(tx, actor, access.businessId, command.idempotencyKey);
         const replay = await readOperationSnapshot({
           action,
@@ -258,6 +261,18 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
           })
           .returning();
         if (!record) throw new Error("Receivable payment insert returned no record");
+        await appendReceivablePaymentCashMovement(tx, {
+          access,
+          accountId: command.cashAccountId,
+          actorUserId: actor.userId,
+          amountMinorUnits,
+          currency: record.currency,
+          currencyMinorUnitDigits: record.currencyMinorUnitDigits,
+          occurredAt,
+          occurredLocalDate: command.occurredLocalDate,
+          occurredLocalTime: command.occurredLocalTime,
+          receivablePaymentId: record.id,
+        });
         const result = {
           payment: toPayment(record),
           receivable: await currentReceivable(tx, access, receivableRecord),
@@ -294,7 +309,7 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
         reference: command.reference ?? null,
       });
       return db.transaction(async (tx) => {
-        const access = await authorize(tx, actor, "receivables:manage");
+        const access = await authorize(tx, actor, ["receivables:manage", "cash:manage"]);
         await lockIdempotencyKey(tx, actor, access.businessId, command.idempotencyKey);
         const replay = await readOperationSnapshot({
           action,
@@ -360,6 +375,14 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
           })
           .returning();
         if (!record) throw new Error("Receivable payment reversal insert returned no record");
+        await reverseReceivablePaymentCashMovement(tx, {
+          access,
+          actorUserId: actor.userId,
+          occurredAt,
+          occurredLocalDate: command.occurredLocalDate,
+          occurredLocalTime: command.occurredLocalTime,
+          originalReceivablePaymentId: original.id,
+        });
         const result = {
           payment: toPayment(record),
           receivable: await currentReceivable(tx, access, receivableRecord),

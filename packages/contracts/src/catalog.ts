@@ -1,23 +1,19 @@
 import { z } from "zod";
 
-const signedBigintMaximum = 9_223_372_036_854_775_807n;
-
-function isSignedBigint(value: string): boolean {
-  return /^(?:0|[1-9]\d{0,18})$/.test(value) && BigInt(value) <= signedBigintMaximum;
-}
-
-function isSignedBigintWithSign(value: string): boolean {
-  if (!/^-?(?:0|[1-9]\d{0,18})$/.test(value)) return false;
-  const parsed = BigInt(value);
-  return parsed >= -signedBigintMaximum && parsed <= signedBigintMaximum;
-}
-
-const uuidSchema = z.string().uuid();
-const timestampSchema = z.string().datetime({ offset: true });
-const currencySchema = z.string().regex(/^[A-Z]{3}$/);
-const currencyDigitsSchema = z.number().int().min(0).max(4);
-const localDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const localTimeSchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
+import {
+  aggregateIntegerSchema,
+  boundedListLimitSchema,
+  currencyCodeSchema,
+  currencyMinorUnitDigitsSchema,
+  localDateSchema,
+  localTimeSchema,
+  minorUnitsSchema,
+  opaqueCursorSchema,
+  positiveMinorUnitsSchema,
+  signedMinorUnitsSchema,
+  timestampSchema,
+  uuidSchema,
+} from "./primitives";
 
 export const catalogRecordStatusSchema = z.enum(["active", "archived"]);
 export const productUnitKindSchema = z.enum([
@@ -30,26 +26,13 @@ export const productUnitKindSchema = z.enum([
 ]);
 export const quantityPrecisionSchema = z.number().int().min(0).max(3);
 
-export const quantityMinorUnitsSchema = z
-  .string()
-  .regex(/^(?:0|[1-9]\d{0,18})$/, "Must be a canonical non-negative integer")
-  .refine(isSignedBigint, "Must fit in a signed 64-bit integer");
+export const quantityMinorUnitsSchema = minorUnitsSchema;
+export const positiveQuantityMinorUnitsSchema = positiveMinorUnitsSchema;
+export const signedQuantityMinorUnitsSchema = signedMinorUnitsSchema;
+export const aggregateQuantityMinorUnitsSchema = aggregateIntegerSchema;
 
-export const positiveQuantityMinorUnitsSchema = quantityMinorUnitsSchema.refine(
-  (value) => BigInt(value) > 0n,
-  "Must be greater than zero",
-);
-
-export const signedQuantityMinorUnitsSchema = z
-  .string()
-  .refine(isSignedBigintWithSign, "Must be a canonical signed 64-bit integer");
-
-export const aggregateQuantityMinorUnitsSchema = z
-  .string()
-  .regex(/^(?:0|[1-9]\d*)$/, "Must be a canonical non-negative integer");
-
-export const catalogCursorSchema = z.string().min(1).max(512);
-export const catalogListLimitSchema = z.coerce.number().int().min(1).max(50).default(25);
+export const catalogCursorSchema = opaqueCursorSchema;
+export const catalogListLimitSchema = boundedListLimitSchema;
 
 export const categorySchema = z.object({
   id: uuidSchema,
@@ -104,8 +87,8 @@ export const productSchema = z
     name: z.string().trim().min(1).max(120),
     sku: z.string().trim().min(1).max(64).nullable(),
     sellingPriceMinorUnits: quantityMinorUnitsSchema.nullable(),
-    sellingPriceCurrency: currencySchema.nullable(),
-    sellingPriceCurrencyMinorUnitDigits: currencyDigitsSchema.nullable(),
+    sellingPriceCurrency: currencyCodeSchema.nullable(),
+    sellingPriceCurrencyMinorUnitDigits: currencyMinorUnitDigitsSchema.nullable(),
     unitKind: productUnitKindSchema,
     quantityPrecision: quantityPrecisionSchema,
     tracked: z.boolean(),

@@ -1,5 +1,5 @@
+import { receivablePaymentSchema, receivableSchema } from "@pisto/contracts";
 import { type ZodType, z } from "zod";
-import { receivablePaymentSchema, receivableSchema } from "../../../contracts/src/receivables.ts";
 
 import { ProductError } from "../product.ts";
 import type { PageCursor } from "./types.ts";

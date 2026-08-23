@@ -1,9 +1,18 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
 import type { BillingRuntime } from "@pisto/billing";
+import type { CashRepository, CatalogRepository, ReceivablesRepository } from "@pisto/db";
 import { type DatabaseHandle, ProductError, type ProductRepository } from "@pisto/db";
 
 import { createApp } from "../src/app.ts";
+
+function unavailableRepository<T extends object>(name: string): T {
+  return new Proxy({} as T, {
+    get: () => async () => {
+      throw new Error(`${name} is not configured in this test`);
+    },
+  });
+}
 
 function testApp(
   options: {
@@ -106,8 +115,11 @@ function testApp(
     authConfig: { baseUrl: "https://api.example.test" },
     auth,
     billing,
+    cash: unavailableRepository<CashRepository>("Cash repository"),
+    catalog: unavailableRepository<CatalogRepository>("Catalog repository"),
     database,
     product,
+    receivables: unavailableRepository<ReceivablesRepository>("Receivables repository"),
   });
 }
 
@@ -356,5 +368,23 @@ describe("Pisto API", () => {
     expect(invalidVoid.status).toBe(400);
     expect(invalidReplacement.status).toBe(400);
     expect(repositoryCalled).toBe(false);
+  });
+
+  test("mounts every operating capability behind authentication and permits PATCH preflight", async () => {
+    const app = testApp();
+    for (const path of ["/v1/catalog/products", "/v1/cash/accounts", "/v1/customers"]) {
+      const response = await app.request(path);
+      expect(response.status).toBe(401);
+    }
+
+    const preflight = await app.request("/v1/catalog/products/example", {
+      method: "OPTIONS",
+      headers: {
+        Origin: "https://app.example.test",
+        "Access-Control-Request-Method": "PATCH",
+      },
+    });
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get("access-control-allow-methods")).toContain("PATCH");
   });
 });

@@ -1,9 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
+import type { ReceivablesRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
 import { Hono } from "hono";
-
-import type { ReceivablesRepository } from "../../../packages/db/src/receivables.ts";
 import { ApiError } from "../src/errors.ts";
 import { receivablesRoutes } from "../src/routes/receivables.ts";
 import type { AppEnv } from "../src/types.ts";

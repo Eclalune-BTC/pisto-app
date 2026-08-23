@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
-  boolean,
   check,
   foreignKey,
   index,
@@ -10,67 +9,17 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
 import { user } from "./auth.ts";
 import { businessSettings } from "./business.ts";
+import { cashAccount } from "./cash-account.ts";
+import { receivablePayment } from "./receivables.ts";
 
-export const cashAccount = pgTable(
-  "cash_account",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    businessId: text("business_id").notNull(),
-    name: text("name").notNull(),
-    kind: text("kind").notNull(),
-    status: text("status").default("active").notNull(),
-    allowNegativeBalance: boolean("allow_negative_balance").default(false).notNull(),
-    currency: text("currency").notNull(),
-    currencyMinorUnitDigits: smallint("currency_minor_unit_digits").notNull(),
-    createdByUserId: text("created_by_user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "restrict" }),
-    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    check("cash_account_name_length_check", sql`char_length(${table.name}) between 1 and 80`),
-    check(
-      "cash_account_kind_check",
-      sql`${table.kind} in ('cash', 'bank', 'mobile_money', 'other')`,
-    ),
-    check("cash_account_status_check", sql`${table.status} in ('active', 'archived')`),
-    check("cash_account_currency_check", sql`${table.currency} ~ '^[A-Z]{3}$'`),
-    check(
-      "cash_account_currency_digits_check",
-      sql`${table.currencyMinorUnitDigits} between 0 and 4`,
-    ),
-    uniqueIndex("cash_account_business_id_id_unique").on(table.businessId, table.id),
-    uniqueIndex("cash_account_business_name_unique").on(
-      table.businessId,
-      sql`lower(${table.name})`,
-    ),
-    foreignKey({
-      columns: [table.businessId, table.currency, table.currencyMinorUnitDigits],
-      foreignColumns: [
-        businessSettings.businessId,
-        businessSettings.currency,
-        businessSettings.currencyMinorUnitDigits,
-      ],
-      name: "cash_account_business_currency_digits_fk",
-    }).onDelete("restrict"),
-    index("cash_account_business_status_created_idx").on(
-      table.businessId,
-      table.status,
-      table.createdAt,
-      table.id,
-    ),
-  ],
-);
+export { cashAccount } from "./cash-account.ts";
 
 export const expense = pgTable(
   "expense",
@@ -137,7 +86,7 @@ export const expense = pgTable(
         and char_length(${table.voidReason}) between 1 and 240
       )`,
     ),
-    uniqueIndex("expense_business_id_id_unique").on(table.businessId, table.id),
+    unique("expense_business_id_id_unique").on(table.businessId, table.id),
     foreignKey({
       columns: [table.businessId, table.accountId],
       foreignColumns: [cashAccount.businessId, cashAccount.id],
@@ -216,7 +165,7 @@ export const cashTransfer = pgTable(
       "cash_transfer_note_length_check",
       sql`${table.note} is null or char_length(${table.note}) between 1 and 240`,
     ),
-    uniqueIndex("cash_transfer_business_id_id_unique").on(table.businessId, table.id),
+    unique("cash_transfer_business_id_id_unique").on(table.businessId, table.id),
     foreignKey({
       columns: [table.businessId, table.fromAccountId],
       foreignColumns: [cashAccount.businessId, cashAccount.id],
@@ -338,7 +287,7 @@ export const cashMovement = pgTable(
         and ${table.reversalOfMovementId} is null
       )`,
     ),
-    uniqueIndex("cash_movement_business_id_id_unique").on(table.businessId, table.id),
+    unique("cash_movement_business_id_id_unique").on(table.businessId, table.id),
     uniqueIndex("cash_movement_expense_unique").on(table.businessId, table.expenseId),
     uniqueIndex("cash_movement_transfer_action_unique").on(
       table.businessId,
@@ -360,6 +309,11 @@ export const cashMovement = pgTable(
       columns: [table.businessId, table.transferId],
       foreignColumns: [cashTransfer.businessId, cashTransfer.id],
       name: "cash_movement_business_transfer_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.businessId, table.receivablePaymentId],
+      foreignColumns: [receivablePayment.businessId, receivablePayment.id],
+      name: "cash_movement_business_receivable_payment_fk",
     }).onDelete("restrict"),
     foreignKey({
       columns: [table.businessId, table.reversalOfMovementId],
@@ -389,9 +343,7 @@ export const cashOperationReceipt = pgTable(
   "cash_operation_receipt",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    businessId: text("business_id")
-      .notNull()
-      .references(() => businessSettings.businessId, { onDelete: "restrict" }),
+    businessId: text("business_id").notNull(),
     actorUserId: text("actor_user_id")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
@@ -411,6 +363,11 @@ export const cashOperationReceipt = pgTable(
       "cash_operation_receipt_fingerprint_check",
       sql`${table.commandFingerprint} ~ '^[a-f0-9]{64}$'`,
     ),
+    foreignKey({
+      columns: [table.businessId],
+      foreignColumns: [businessSettings.businessId],
+      name: "cash_operation_business_fk",
+    }).onDelete("restrict"),
     uniqueIndex("cash_operation_receipt_actor_key_unique").on(
       table.businessId,
       table.actorUserId,

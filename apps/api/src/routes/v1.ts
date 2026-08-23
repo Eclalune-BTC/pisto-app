@@ -2,7 +2,13 @@ import type { Auth } from "@pisto/auth";
 import type { BillingRuntime } from "@pisto/billing";
 import { RevenueCatWebhookError } from "@pisto/billing";
 import { billingCheckoutRequestSchema, billingPortalRequestSchema } from "@pisto/contracts";
-import type { Database, ProductRepository } from "@pisto/db";
+import type {
+  CashRepository,
+  CatalogRepository,
+  Database,
+  ProductRepository,
+  ReceivablesRepository,
+} from "@pisto/db";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -10,7 +16,10 @@ import { ApiError } from "../errors.ts";
 import { callAuthEndpoint, parseJsonBody, parseOptionalJsonBody } from "../http.ts";
 import { requireSession, resolveBillingScope } from "../session.ts";
 import type { AppEnv } from "../types.ts";
+import { cashRoutes } from "./cash.ts";
+import { catalogRoutes } from "./catalog.ts";
 import { productRoutes } from "./product.ts";
+import { receivablesRoutes } from "./receivables.ts";
 
 const providerRedirectSchema = z.object({
   url: z.string().url(),
@@ -33,8 +42,11 @@ export function v1Routes(input: {
   auth: Auth;
   authBaseUrl: string;
   billing: BillingRuntime;
+  cash: CashRepository;
+  catalog: CatalogRepository;
   db: Database;
   product: ProductRepository;
+  receivables: ReceivablesRepository;
 }) {
   const routes = new Hono<AppEnv>();
 
@@ -43,6 +55,9 @@ export function v1Routes(input: {
   );
 
   routes.route("/", productRoutes({ auth: input.auth, product: input.product }));
+  routes.route("/", catalogRoutes({ auth: input.auth, catalog: input.catalog }));
+  routes.route("/", cashRoutes({ auth: input.auth, cash: input.cash }));
+  routes.route("/", receivablesRoutes({ auth: input.auth, receivables: input.receivables }));
 
   routes.get("/me", async (context) => {
     const authSession = await requireSession(input.auth, context.req.raw.headers);

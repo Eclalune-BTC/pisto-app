@@ -16,7 +16,7 @@ import type {
   StockListQuery,
   UpdateCategoryRequest,
   UpdateProductRequest,
-} from "../../../contracts/src/catalog.ts";
+} from "@pisto/contracts";
 
 import type { Database } from "../client.ts";
 import type { ProductActor } from "../product.ts";

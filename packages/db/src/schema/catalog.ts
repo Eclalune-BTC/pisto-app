@@ -10,6 +10,7 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -38,7 +39,7 @@ export const catalogCategory = pgTable(
       sql`char_length(${table.name}) between 1 and 80 and btrim(${table.name}) = ${table.name}`,
     ),
     check("catalog_category_status_check", sql`${table.status} in ('active', 'archived')`),
-    uniqueIndex("catalog_category_business_id_id_unique").on(table.businessId, table.id),
+    unique("catalog_category_business_id_id_unique").on(table.businessId, table.id),
     uniqueIndex("catalog_category_business_name_ci_unique").on(
       table.businessId,
       sql`lower(${table.name})`,
@@ -128,7 +129,7 @@ export const catalogProduct = pgTable(
       ],
       name: "catalog_product_business_price_currency_fk",
     }).onDelete("restrict"),
-    uniqueIndex("catalog_product_business_id_id_unique").on(table.businessId, table.id),
+    unique("catalog_product_business_id_id_unique").on(table.businessId, table.id),
     uniqueIndex("catalog_product_business_sku_ci_unique")
       .on(table.businessId, sql`lower(${table.sku})`)
       .where(sql`${table.sku} is not null`),
@@ -210,7 +211,7 @@ export const inventoryMovement = pgTable(
       foreignColumns: [table.businessId, table.productId, table.id],
       name: "inventory_movement_reversal_fk",
     }).onDelete("restrict"),
-    uniqueIndex("inventory_movement_business_product_id_unique").on(
+    unique("inventory_movement_business_product_id_unique").on(
       table.businessId,
       table.productId,
       table.id,
