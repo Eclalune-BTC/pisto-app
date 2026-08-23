@@ -61,11 +61,19 @@ describe("money formatting", () => {
     expect(formatMinorUnits("1250", "EGP", 2, "ar-EG")).not.toMatch(/[0-9]/);
   });
 
-  test("refuses to render an amount it cannot render exactly", () => {
-    const largestExact = (2n ** 52n).toString();
-    expect(formatMinorUnits(largestExact, "USD", 2, "en-US")).toBe("$45,035,996,273,704.96");
-    expect(() => formatMinorUnits((2n ** 52n + 1n).toString(), "USD", 2, "en-US")).toThrow(
-      RangeError,
+  test("renders every amount the parser and contracts accept, exactly", () => {
+    // Anything parseAmountToMinorUnits will produce must be renderable, or a
+    // legitimate entry crashes the screen that displays it back.
+    const beyondDouble = parseAmountToMinorUnits("45035996273704.97", 2);
+    expect(beyondDouble).toEqual({ value: "4503599627370497" });
+    expect(formatMinorUnits("4503599627370497", "USD", 2, "en-US")).toBe("$45,035,996,273,704.97");
+    // The contracts accept signed int64; rendering must stay exact there too,
+    // which routing the value through a double would not.
+    expect(formatMinorUnits("9223372036854775807", "USD", 2, "en-US")).toBe(
+      "$92,233,720,368,547,758.07",
+    );
+    expect(formatMinorUnits("-9223372036854775807", "USD", 2, "en-US")).toBe(
+      "-$92,233,720,368,547,758.07",
     );
   });
 

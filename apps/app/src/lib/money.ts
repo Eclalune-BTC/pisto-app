@@ -1,11 +1,5 @@
 const maximumMinorUnits = 9_223_372_036_854_775_807n;
 
-// Intl renders through a double, so a minor-unit magnitude above 2^52 can no
-// longer round-trip exactly. That is about 45 trillion at two digits. Refusing
-// to render past it is the only honest option: the alternative is a money
-// figure that is quietly wrong in its low digits.
-const maximumDisplayMinorUnits = 2n ** 52n;
-
 const canonicalMinorUnits = /^-?(?:0|[1-9]\d*)$/;
 
 export type AmountParseError =
@@ -79,20 +73,19 @@ export function formatMinorUnits(
   locale: string,
 ): string {
   const decimal = toDecimalString(minorUnits, fractionDigits);
-  const value = BigInt(minorUnits);
-  const magnitude = value < 0n ? -value : value;
-  if (magnitude > maximumDisplayMinorUnits) {
-    throw new RangeError(`Amount is outside the exactly displayable range: ${minorUnits}`);
-  }
-  // Hand Intl a number and let it own every presentation decision: the digits
-  // of the locale's numbering system, the position of the sign, and the
-  // currency placement. Splicing formatted parts together breaks all three.
+  // Intl formats a decimal *string* exactly, with no double in between, so every
+  // amount the contracts accept up to int64 renders correctly and this function
+  // never throws on a value the parser was willing to produce. Passing a number
+  // instead would round above 2^53, and splicing formatted parts together
+  // corrupts both the digits of a non-Latin numbering system and the sign.
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
-  }).format(Number(decimal));
+    // toDecimalString guarantees a canonical numeric literal; the DOM lib types
+    // that overload as a template-literal type no plain string can satisfy.
+  }).format(decimal as Intl.StringNumericLiteral);
 }
 
 export function currentLocalDateTime(timeZone: string): { date: string; time: string } {
