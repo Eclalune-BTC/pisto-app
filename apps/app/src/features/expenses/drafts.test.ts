@@ -1,5 +1,5 @@
+import type { CashAccount } from "@pisto/contracts";
 import { describe, expect, test } from "vitest";
-import type { CashAccount } from "../../../../../packages/contracts/src/cash.ts";
 
 import { buildExpenseCommand, buildVoidExpenseCommand } from "./drafts";
 

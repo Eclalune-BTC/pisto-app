@@ -1,4 +1,4 @@
-import type { ExpenseCategory } from "../../../../../packages/contracts/src/cash.ts";
+import type { ExpenseCategory } from "@pisto/contracts";
 
 import { cashErrorMessage, cashIssueMessage, cashUiCopy } from "../cash/copy";
 import type { CashDraftIssue } from "../cash/drafts";

@@ -1,12 +1,9 @@
+import type { ExpenseCategory, PostExpenseRequest } from "@pisto/contracts";
 import { Text, View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import type {
-  ExpenseCategory,
-  PostExpenseRequest,
-} from "../../../../../packages/contracts/src/cash.ts";
 import { ChoiceList, type ChoiceOption } from "../cash/choice-list";
 import {
   FeatureBoundary,

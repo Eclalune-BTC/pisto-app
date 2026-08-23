@@ -1,6 +1,6 @@
+import type { CashAccount } from "@pisto/contracts";
 import { describe, expect, test } from "vitest";
 import { ApiClientError } from "@/lib/api-error";
-import type { CashAccount } from "../../../../../packages/contracts/src/cash.ts";
 import {
   buildCashAccountCommand,
   buildCashAdjustmentCommand,

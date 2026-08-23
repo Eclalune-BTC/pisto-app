@@ -1,8 +1,5 @@
+import type { ExpenseCategory, ExpensePeriodSummary } from "@pisto/contracts";
 import { Text, View } from "react-native";
-import type {
-  ExpenseCategory,
-  ExpensePeriodSummary,
-} from "../../../../../packages/contracts/src/cash.ts";
 
 type ExpenseSummaryProps = {
   summary: ExpensePeriodSummary;

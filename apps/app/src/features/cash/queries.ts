@@ -1,9 +1,5 @@
+import type { CashAccountStatus, ExpenseCategory, ExpenseStatus } from "@pisto/contracts";
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
-import type {
-  CashAccountStatus,
-  ExpenseCategory,
-  ExpenseStatus,
-} from "../../../../../packages/contracts/src/cash.ts";
 
 import { cashApi } from "./api";
 

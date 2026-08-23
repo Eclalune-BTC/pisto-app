@@ -1,4 +1,3 @@
-import { parseAmountToMinorUnits } from "@/lib/money";
 import type {
   CashAccount,
   CashAccountKind,
@@ -8,7 +7,8 @@ import type {
   ReverseCashMovementRequest,
   TransferCashRequest,
   UpdateCashAccountRequest,
-} from "../../../../../packages/contracts/src/cash.ts";
+} from "@pisto/contracts";
+import { parseAmountToMinorUnits } from "@/lib/money";
 
 export type CashDraftIssue =
   | "required"

@@ -1,4 +1,4 @@
-import type { PostExpenseRequest } from "../../../../../packages/contracts/src/cash.ts";
+import type { PostExpenseRequest } from "@pisto/contracts";
 
 import { CashOperationReview, type CashOperationReviewCopy } from "../cash/cash-operation-review";
 import type { CashConfirmationState } from "../cash/state";

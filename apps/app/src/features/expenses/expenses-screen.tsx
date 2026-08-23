@@ -1,10 +1,10 @@
+import type { CashAccount, ExpenseCategory } from "@pisto/contracts";
 import type { ReactNode } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
-import type { CashAccount, ExpenseCategory } from "../../../../../packages/contracts/src/cash.ts";
 import {
   ExpenseFilters,
   type ExpenseFiltersCopy,

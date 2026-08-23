@@ -1,3 +1,8 @@
+import type {
+  CashMovement,
+  CashMovementAction,
+  ReverseCashMovementRequest,
+} from "@pisto/contracts";
 import { Text, View } from "react-native";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
@@ -5,11 +10,6 @@ import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import type {
-  CashMovement,
-  CashMovementAction,
-  ReverseCashMovementRequest,
-} from "../../../../../packages/contracts/src/cash.ts";
 import { CashOperationReview, type CashOperationReviewCopy } from "./cash-operation-review";
 import {
   FeatureBoundary,

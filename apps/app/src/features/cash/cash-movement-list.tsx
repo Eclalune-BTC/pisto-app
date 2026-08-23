@@ -1,8 +1,5 @@
+import type { CashMovement, CashMovementAction } from "@pisto/contracts";
 import { Pressable, Text, View } from "react-native";
-import type {
-  CashMovement,
-  CashMovementAction,
-} from "../../../../../packages/contracts/src/cash.ts";
 
 type CashMovementListProps = {
   movements: CashMovement[];

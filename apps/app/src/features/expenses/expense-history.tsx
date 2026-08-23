@@ -1,6 +1,6 @@
+import type { Expense, ExpenseCategory } from "@pisto/contracts";
 import { Text, View } from "react-native";
 import { Button } from "@/components/ui/button";
-import type { Expense, ExpenseCategory } from "../../../../../packages/contracts/src/cash.ts";
 
 type ExpenseHistoryProps = {
   expenses: Expense[];

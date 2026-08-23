@@ -1,11 +1,7 @@
+import type { CashAccount, ExpenseCategory, ExpenseStatus } from "@pisto/contracts";
 import { Text, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import type {
-  CashAccount,
-  ExpenseCategory,
-  ExpenseStatus,
-} from "../../../../../packages/contracts/src/cash.ts";
 import { ChoiceList, type ChoiceOption } from "../cash/choice-list";
 
 export type ExpenseFiltersValue = {

@@ -1,8 +1,8 @@
+import type { CashAccountStatus } from "@pisto/contracts";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
 import { useState } from "react";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
-import type { CashAccountStatus } from "../../../../../packages/contracts/src/cash.ts";
 import { CashScreen, type CashScreenState } from "./cash-screen";
 import { cashOverviewCopy, cashUiCopy } from "./copy";
 import { formatCashMinorUnits } from "./format";

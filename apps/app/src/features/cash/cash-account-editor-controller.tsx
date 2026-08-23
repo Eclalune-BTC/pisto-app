@@ -1,13 +1,10 @@
+import type { CreateCashAccountRequest, UpdateCashAccountRequest } from "@pisto/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime } from "@/lib/money";
-import type {
-  CreateCashAccountRequest,
-  UpdateCashAccountRequest,
-} from "../../../../../packages/contracts/src/cash.ts";
 import { cashApi } from "./api";
 import {
   type CashAccountEditorDraft,

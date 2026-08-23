@@ -1,16 +1,16 @@
-import { Text, View } from "react-native";
-import { DetailList } from "@/components/detail-list";
-import { Page } from "@/components/page";
-import { StaleNotice } from "@/components/remote-state";
-import { ScreenHeader } from "@/components/screen-header";
-import { Button } from "@/components/ui/button";
 import type {
   ArchiveCashAccountRequest,
   CashAccount,
   CashAccountKind,
   CashMovement,
   CashMovementAction,
-} from "../../../../../packages/contracts/src/cash.ts";
+} from "@pisto/contracts";
+import { Text, View } from "react-native";
+import { DetailList } from "@/components/detail-list";
+import { Page } from "@/components/page";
+import { StaleNotice } from "@/components/remote-state";
+import { ScreenHeader } from "@/components/screen-header";
+import { Button } from "@/components/ui/button";
 import { CashMovementList } from "./cash-movement-list";
 import { CashOperationReview, type CashOperationReviewCopy } from "./cash-operation-review";
 import {

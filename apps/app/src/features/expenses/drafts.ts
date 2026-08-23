@@ -1,10 +1,10 @@
-import { parseAmountToMinorUnits } from "@/lib/money";
 import type {
   CashAccount,
   ExpenseCategory,
   PostExpenseRequest,
   VoidExpenseRequest,
-} from "../../../../../packages/contracts/src/cash.ts";
+} from "@pisto/contracts";
+import { parseAmountToMinorUnits } from "@/lib/money";
 import { type CashDraftIssue, isValidCashLocalDate } from "../cash/drafts";
 
 export type ExpenseDraftValues = {

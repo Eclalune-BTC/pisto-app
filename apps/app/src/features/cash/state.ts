@@ -1,4 +1,4 @@
-import type { CashAccount, CashMovement } from "../../../../../packages/contracts/src/cash.ts";
+import type { CashAccount, CashMovement } from "@pisto/contracts";
 
 export type CashConfirmationState = "idle" | "pending" | "failed" | "uncertain";
 

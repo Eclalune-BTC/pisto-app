@@ -1,4 +1,4 @@
-import type { Expense, ExpensePeriodSummary } from "../../../../../packages/contracts/src/cash.ts";
+import type { Expense, ExpensePeriodSummary } from "@pisto/contracts";
 
 import type { CashConfirmationState } from "../cash/state";
 

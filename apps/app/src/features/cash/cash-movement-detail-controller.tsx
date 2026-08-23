@@ -1,9 +1,9 @@
+import type { CashMovement } from "@pisto/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { useEffect, useState } from "react";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime } from "@/lib/money";
-import type { CashMovement } from "../../../../../packages/contracts/src/cash.ts";
 import { cashApi } from "./api";
 import {
   CashMovementDetailScreen,

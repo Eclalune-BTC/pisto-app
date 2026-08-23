@@ -1,13 +1,10 @@
+import type { CashAccountStatus, CashMovementAction } from "@pisto/contracts";
 import type { ReactNode } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
-import type {
-  CashAccountStatus,
-  CashMovementAction,
-} from "../../../../../packages/contracts/src/cash.ts";
 import { CashAccountList } from "./cash-account-list";
 import { CashMovementList } from "./cash-movement-list";
 import { ChoiceList } from "./choice-list";

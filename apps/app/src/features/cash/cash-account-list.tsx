@@ -1,5 +1,5 @@
+import type { CashAccount } from "@pisto/contracts";
 import { Pressable, Text, View } from "react-native";
-import type { CashAccount } from "../../../../../packages/contracts/src/cash.ts";
 
 type CashAccountListProps = {
   accounts: CashAccount[];

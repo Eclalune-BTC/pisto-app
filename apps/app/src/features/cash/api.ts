@@ -1,6 +1,3 @@
-import type { ZodType, z } from "zod";
-import { apiRequest } from "@/lib/api-client";
-import { ApiClientError } from "@/lib/api-error";
 import type {
   ArchiveCashAccountRequest,
   CashAccountListQuery,
@@ -14,7 +11,7 @@ import type {
   TransferCashRequest,
   UpdateCashAccountRequest,
   VoidExpenseRequest,
-} from "../../../../../packages/contracts/src/cash";
+} from "@pisto/contracts";
 import {
   archiveCashAccountRequestSchema,
   cashAccountDetailResponseSchema,
@@ -34,7 +31,10 @@ import {
   transferCashRequestSchema,
   updateCashAccountRequestSchema,
   voidExpenseRequestSchema,
-} from "../../../../../packages/contracts/src/cash";
+} from "@pisto/contracts";
+import type { ZodType, z } from "zod";
+import { apiRequest } from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-error";
 
 type CashAccountResponse = z.infer<typeof cashAccountResponseSchema>;
 type CashAccountDetailResponse = z.infer<typeof cashAccountDetailResponseSchema>;

@@ -1,9 +1,5 @@
-import type { ApiErrorCode } from "@pisto/contracts";
+import type { ApiErrorCode, CashAccountKind, CashMovementAction } from "@pisto/contracts";
 import { ApiClientError } from "@/lib/api-error";
-import type {
-  CashAccountKind,
-  CashMovementAction,
-} from "../../../../../packages/contracts/src/cash.ts";
 
 import type { CashAccountDetailCopy } from "./cash-account-detail-screen";
 import type { CashAccountEditorCopy } from "./cash-account-editor-screen";
