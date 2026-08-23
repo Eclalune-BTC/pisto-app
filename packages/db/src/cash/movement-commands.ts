@@ -50,7 +50,7 @@ export async function recordCashAdjustment(
       commandFingerprint,
       idempotencyKey,
     });
-    if (replay) return replayMovementResult(replay);
+    if (replay) return replayMovementResult(replay.result);
     requireCurrency(access, command.currency);
     const account = await lockAccount(tx, businessId, command.accountId, true);
     if (command.direction === "out") {
@@ -122,7 +122,7 @@ export async function reverseCashAdjustment(
       commandFingerprint,
       idempotencyKey,
     });
-    if (replay) return replayMovementResult(replay);
+    if (replay) return replayMovementResult(replay.result);
     const [original] = await tx
       .select()
       .from(cashMovement)
@@ -211,7 +211,7 @@ export async function transferCash(
       commandFingerprint,
       idempotencyKey,
     });
-    if (replay) return replayTransferResult(replay);
+    if (replay) return replayTransferResult(replay.result);
     requireCurrency(access, command.currency);
     const accounts = await tx
       .select()

@@ -219,6 +219,39 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
     ).rejects.toMatchObject({ code: "CONFLICT" });
   });
 
+  test("refuses to archive a customer who still owes money", async () => {
+    const created = await repository.createCustomer(actor("ownerA", businessA), {
+      idempotencyKey: crypto.randomUUID(),
+      name: "Indebted Customer",
+    });
+    const posted = await repository.postReceivable(actor("ownerA", businessA), {
+      idempotencyKey: crypto.randomUUID(),
+      customerId: created.customer.id,
+      originalMinorUnits: "900",
+      description: "Open balance blocking archive",
+      postedDate: "2026-08-01",
+    });
+    await expect(
+      repository.archiveCustomer(actor("ownerA", businessA), created.customer.id, {
+        idempotencyKey: crypto.randomUUID(),
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+
+    await repository.applyPayment(actor("ownerA", businessA), posted.receivable.id, {
+      idempotencyKey: crypto.randomUUID(),
+      amountMinorUnits: "900",
+      occurredLocalDate: "2026-08-02",
+      occurredLocalTime: "09:00",
+      cashAccountId: cashAccountAId,
+    });
+    const archived = await repository.archiveCustomer(
+      actor("ownerA", businessA),
+      created.customer.id,
+      { idempotencyKey: crypto.randomUUID() },
+    );
+    expect(archived.customer.status).toBe("archived");
+  });
+
   test("serializes payments, replays exactly, derives overdue locally, and reverses once", async () => {
     const createdCustomer = await repository.createCustomer(actor("ownerA", businessA), {
       idempotencyKey: crypto.randomUUID(),

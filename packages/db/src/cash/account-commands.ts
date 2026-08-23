@@ -44,7 +44,7 @@ export async function createCashAccount(
       commandFingerprint,
       idempotencyKey,
     });
-    if (replay) return replayAccountResult(replay);
+    if (replay) return replayAccountResult(replay.result);
     requireCurrency(access, command.currency);
     if (command.opening?.direction === "out" && !command.allowNegativeBalance) {
       throw new ProductError(
@@ -148,7 +148,7 @@ export async function updateCashAccount(
       commandFingerprint,
       idempotencyKey,
     });
-    if (replay) return replayAccountResult(replay);
+    if (replay) return replayAccountResult(replay.result);
     const current = await lockAccount(tx, businessId, accountId, true);
     if (
       command.name !== undefined &&
@@ -224,7 +224,7 @@ export async function archiveCashAccount(
       commandFingerprint,
       idempotencyKey: command.idempotencyKey,
     });
-    if (replay) return replayAccountResult(replay);
+    if (replay) return replayAccountResult(replay.result);
     const current = await lockAccount(tx, businessId, accountId, false);
     if (current.status === "archived") {
       throw new ProductError("CONFLICT", "Cash account is already archived");

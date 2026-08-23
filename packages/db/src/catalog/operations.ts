@@ -5,6 +5,7 @@ import {
   beginOperation,
   type OperationCommandIdentity,
   type OperationLog,
+  type OperationReplay,
   operationIdentityValues,
 } from "../operation-log.ts";
 import { type ProductActor, ProductError } from "../product.ts";
@@ -35,9 +36,9 @@ export async function beginCatalogOperation(
 ): Promise<{
   access: AuthorizedBusiness;
   identity: OperationCommandIdentity<OperationAction>;
-  replay: Record<string, unknown> | null;
+  replay: OperationReplay<Record<string, unknown>> | null;
 }> {
-  const { access, identity, replay } = await beginOperation(transaction, {
+  return beginOperation(transaction, {
     action: command.action,
     actor,
     commandFingerprint: command.commandFingerprint,
@@ -46,7 +47,6 @@ export async function beginCatalogOperation(
     log: catalogOperationLog,
     permissions: [permission],
   });
-  return { access, identity, replay: replay === null ? null : replay.result };
 }
 
 export async function saveOperation(

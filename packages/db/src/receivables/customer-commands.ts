@@ -4,11 +4,11 @@ import {
   customerSchema,
   updateCustomerRequestSchema,
 } from "@pisto/contracts";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { ProductError } from "../product.ts";
-import { customer } from "../schema/receivables.ts";
+import { customer, receivable, receivablePayment } from "../schema/receivables.ts";
 import { beginReceivableOperation, insertOperation } from "./access.ts";
 import { commandFingerprint, uuidPattern, validate } from "./codec.ts";
 import { toCustomer } from "./mappers.ts";
@@ -164,6 +164,35 @@ export function createCustomerCommands(db: Database): CustomerCommands {
         if (!existing) throw new ProductError("NOT_FOUND", "Customer was not found");
         if (existing.status === "archived") {
           throw new ProductError("CONFLICT", "The customer is already archived");
+        }
+        // Archived customers reject payments, so archiving with debt strands it.
+        const [debt] = await tx.execute<{ owes: boolean }>(sql`
+          select exists (
+            select 1
+            from ${receivable}
+            left join (
+              select
+                ${receivablePayment.receivableId} as receivable_id,
+                coalesce(sum(case
+                  when ${receivablePayment.kind} = 'payment' then ${receivablePayment.amountMinorUnits}
+                  else -${receivablePayment.amountMinorUnits}
+                end), 0::numeric) as paid
+              from ${receivablePayment}
+              where ${receivablePayment.businessId} = ${access.businessId}
+              group by ${receivablePayment.receivableId}
+            ) payment_totals on payment_totals.receivable_id = ${receivable.id}
+            where ${receivable.businessId} = ${access.businessId}
+              and ${receivable.customerId} = ${customerId}
+              and ${receivable.status} = 'posted'
+              and ${receivable.originalMinorUnits} - coalesce(payment_totals.paid, 0::numeric) > 0
+          ) as owes
+        `);
+        if (!debt) throw new Error("Customer outstanding-balance query returned no row");
+        if (debt.owes) {
+          throw new ProductError(
+            "CONFLICT",
+            "The customer still has an outstanding balance and cannot be archived",
+          );
         }
         const [record] = await tx
           .update(customer)

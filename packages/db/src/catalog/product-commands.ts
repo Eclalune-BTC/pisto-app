@@ -46,7 +46,9 @@ export function createProductCommands(db: Database): ProductCommands {
           "catalog:manage",
           { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
         );
-        if (replay) return parseMutationReplay(productMutationResponseSchema.shape.data, replay);
+        if (replay) {
+          return parseMutationReplay(productMutationResponseSchema.shape.data, replay.result);
+        }
         if (command.categoryId) {
           await requireActiveCategory(transaction, access.businessId, command.categoryId);
         }
@@ -124,7 +126,9 @@ export function createProductCommands(db: Database): ProductCommands {
           "catalog:manage",
           { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
         );
-        if (replay) return parseMutationReplay(productMutationResponseSchema.shape.data, replay);
+        if (replay) {
+          return parseMutationReplay(productMutationResponseSchema.shape.data, replay.result);
+        }
         const [existing] = await transaction
           .select()
           .from(catalogProduct)
@@ -246,7 +250,9 @@ export function createProductCommands(db: Database): ProductCommands {
           "catalog:manage",
           { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
         );
-        if (replay) return parseMutationReplay(productMutationResponseSchema.shape.data, replay);
+        if (replay) {
+          return parseMutationReplay(productMutationResponseSchema.shape.data, replay.result);
+        }
         const [existing] = await transaction
           .select()
           .from(catalogProduct)

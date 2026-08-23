@@ -52,7 +52,7 @@ export async function postPaidExpense(
         idempotencyKey,
       },
     );
-    if (replay) return replayExpenseResult(replay);
+    if (replay) return replayExpenseResult(replay.result);
     requireCurrency(access, command.currency);
     const account = await lockAccount(tx, businessId, command.accountId, true);
     requireCurrency(access, account.currency);
@@ -146,7 +146,7 @@ export async function voidPaidExpense(
         idempotencyKey,
       },
     );
-    if (replay) return replayExpenseResult(replay);
+    if (replay) return replayExpenseResult(replay.result);
     const [current] = await tx
       .select()
       .from(expense)

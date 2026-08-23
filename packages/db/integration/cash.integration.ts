@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { createCashRepository } from "../src/cash.ts";
 import { createDatabase } from "../src/client.ts";
@@ -161,6 +161,37 @@ afterAll(async () => {
 });
 
 describe("expenses and cash repository on PostgreSQL 18", () => {
+  test("treats a JSON-null receipt as a corrupt snapshot instead of an absent one", async () => {
+    const idempotencyKey = crypto.randomUUID();
+    const command = {
+      idempotencyKey,
+      name: `Caja receipt ${idempotencyKey.slice(0, 8)}`,
+      kind: "cash" as const,
+      allowNegativeBalance: false,
+      currency: "USD",
+      opening: null,
+    };
+    const created = await repository.createAccount(actors.admin, command);
+    await database.db
+      .update(cashOperationReceipt)
+      .set({ result: sql`'null'::jsonb` })
+      .where(
+        and(
+          eq(cashOperationReceipt.businessId, businessA),
+          eq(cashOperationReceipt.idempotencyKey, idempotencyKey),
+        ),
+      );
+
+    await expect(repository.createAccount(actors.admin, command)).rejects.toThrow(
+      "Stored cash account operation result is invalid",
+    );
+    const accounts = await database.db
+      .select({ id: cashAccount.id })
+      .from(cashAccount)
+      .where(and(eq(cashAccount.businessId, businessA), eq(cashAccount.name, command.name)));
+    expect(accounts).toEqual([{ id: created.account.id }]);
+  });
+
   test("preserves exact tenant, ledger, replay, rollback, permission, and time invariants", async () => {
     const accountKey = crypto.randomUUID();
     const accountCommand = {

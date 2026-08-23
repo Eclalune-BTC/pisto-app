@@ -31,7 +31,7 @@ export function createCategoryCommands(db: Database): CategoryCommands {
           { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
         );
         if (replay) {
-          return parseMutationReplay(categoryMutationResponseSchema.shape.data, replay);
+          return parseMutationReplay(categoryMutationResponseSchema.shape.data, replay.result);
         }
         await lockSemanticKey(transaction, "category-name", access.businessId, command.name);
         const [duplicate] = await transaction
@@ -74,7 +74,9 @@ export function createCategoryCommands(db: Database): CategoryCommands {
           "catalog:manage",
           { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
         );
-        if (replay) return parseMutationReplay(categoryMutationResponseSchema.shape.data, replay);
+        if (replay) {
+          return parseMutationReplay(categoryMutationResponseSchema.shape.data, replay.result);
+        }
         const [existing] = await transaction
           .select()
           .from(catalogCategory)
@@ -138,7 +140,9 @@ export function createCategoryCommands(db: Database): CategoryCommands {
           "catalog:manage",
           { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
         );
-        if (replay) return parseMutationReplay(categoryMutationResponseSchema.shape.data, replay);
+        if (replay) {
+          return parseMutationReplay(categoryMutationResponseSchema.shape.data, replay.result);
+        }
         const [existing] = await transaction
           .select()
           .from(catalogCategory)

@@ -73,11 +73,8 @@ export function formatMinorUnits(
   locale: string,
 ): string {
   const decimal = toDecimalString(minorUnits, fractionDigits);
-  // Intl formats a decimal *string* exactly, with no double in between, so every
-  // amount the contracts accept up to int64 renders correctly and this function
-  // never throws on a value the parser was willing to produce. Passing a number
-  // instead would round above 2^53, and splicing formatted parts together
-  // corrupts both the digits of a non-Latin numbering system and the sign.
+  // A decimal string formats exactly; a number rounds above 2^53. Exactness past
+  // 2^53 is verified on web/Bun, not on Hermes, whose Intl is its own implementation.
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,

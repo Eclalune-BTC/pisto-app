@@ -42,7 +42,9 @@ export function createInventoryCommands(db: Database): InventoryCommands {
           "inventory:manage",
           { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
         );
-        if (replay) return parseMutationReplay(inventoryMutationResponseSchema.shape.data, replay);
+        if (replay) {
+          return parseMutationReplay(inventoryMutationResponseSchema.shape.data, replay.result);
+        }
         const [product] = await transaction
           .select()
           .from(catalogProduct)
@@ -119,7 +121,9 @@ export function createInventoryCommands(db: Database): InventoryCommands {
           "inventory:manage",
           { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
         );
-        if (replay) return parseMutationReplay(inventoryMutationResponseSchema.shape.data, replay);
+        if (replay) {
+          return parseMutationReplay(inventoryMutationResponseSchema.shape.data, replay.result);
+        }
         const [initial] = await transaction
           .select({ productId: inventoryMovement.productId })
           .from(inventoryMovement)
