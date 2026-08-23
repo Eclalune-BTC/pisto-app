@@ -21,6 +21,7 @@ const boundaryCopy = {
   deniedDescription: "Tu rol actual no permite consultar ni registrar gastos del negocio.",
   deniedTitle: "No tienes acceso a los gastos",
   loading: "Cargando gastos…",
+  offlineTitle: "Sin conexión",
   retry: "Intentar de nuevo",
   unavailableTitle: "No pudimos cargar los gastos",
 } as const;
@@ -61,6 +62,7 @@ export const expensesOverviewCopy = (businessName: string): ExpensesScreenCopy =
   loading: boundaryCopy.loading,
   mutationFailedTitle: reviewCopy.failedTitle,
   noCategoryData: "No hay gastos registrados en este período.",
+  offlineTitle: boundaryCopy.offlineTitle,
   periodTotal: "Total del período",
   periodScope: "El período actualiza el resumen; los filtros actualizan el historial.",
   posted: "Registrado",

@@ -4,6 +4,7 @@ import type { CashConfirmationState } from "../cash/state";
 
 export type ExpensesScreenState =
   | { kind: "loading" }
+  | { kind: "offline"; message: string }
   | { kind: "denied" }
   | { kind: "error"; message: string }
   | {
@@ -28,7 +29,9 @@ export function expensesScreenPresentation(state: ExpensesScreenState): Expenses
     showCreate: state.kind === "ready" && state.canManage && state.confirmation !== "uncertain",
     showHistory: state.kind === "ready" && state.expenses.length > 0,
     showRetry:
-      state.kind === "error" || (state.kind === "ready" && state.confirmation === "failed"),
+      state.kind === "error" ||
+      state.kind === "offline" ||
+      (state.kind === "ready" && state.confirmation === "failed"),
     blocksDuplicateMutation: state.kind === "ready" && state.confirmation === "uncertain",
   };
 }

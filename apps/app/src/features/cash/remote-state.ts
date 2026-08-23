@@ -34,6 +34,11 @@ export function featureRemoteState(input: {
           : input.unavailableMessage,
     };
   }
+  // A query paused for connectivity never reports an error, so it has to be
+  // discriminated before the pending check or it renders as a spinner forever.
+  if (queries.some(({ fetchStatus, data }) => fetchStatus === "paused" && data === undefined)) {
+    return { kind: "offline", message: input.offlineMessage };
+  }
   if (input.businessPending) return { kind: "loading" };
   if (!input.canRead) return { kind: "denied" };
   if (queries.some(({ isPending, data }) => isPending && data === undefined)) {

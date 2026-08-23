@@ -19,6 +19,7 @@ export type CashScreenCopy = {
   loading: string;
   retry: string;
   deniedTitle: string;
+  offlineTitle: string;
   deniedDescription: string;
   unavailableTitle: string;
   emptyTitle: string;
@@ -119,13 +120,13 @@ export function CashScreen({
     );
   }
 
-  if (state.kind === "error") {
+  if (state.kind === "offline" || state.kind === "error") {
     return (
       <Page>
         <StateMessage
           action={<Button label={copy.retry} onPress={onRetry} variant="secondary" />}
           description={state.message}
-          title={copy.unavailableTitle}
+          title={state.kind === "offline" ? copy.offlineTitle : copy.unavailableTitle}
         />
       </Page>
     );

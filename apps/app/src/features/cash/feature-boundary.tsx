@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export type FeatureRemoteState =
   | { kind: "loading" }
+  | { kind: "offline"; message: string }
   | { kind: "denied" }
   | { kind: "error"; message: string }
   | { kind: "ready" };
@@ -14,6 +15,7 @@ export type FeatureBoundaryCopy = {
   loading: string;
   deniedTitle: string;
   deniedDescription: string;
+  offlineTitle: string;
   unavailableTitle: string;
   retry: string;
 };
@@ -57,12 +59,12 @@ export function FeatureBoundary({ state, copy, children, onRetry }: FeatureBound
       </Page>
     );
   }
-  if (state.kind === "error") {
+  if (state.kind === "offline" || state.kind === "error") {
     return (
       <Page>
         <View className="min-h-56 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
           <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
-            {copy.unavailableTitle}
+            {state.kind === "offline" ? copy.offlineTitle : copy.unavailableTitle}
           </Text>
           <Text className="max-w-[560px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
             {state.message}

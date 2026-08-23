@@ -24,6 +24,7 @@ export type ExpensesScreenCopy = ExpenseFiltersCopy & {
   loading: string;
   retry: string;
   deniedTitle: string;
+  offlineTitle: string;
   deniedDescription: string;
   unavailableTitle: string;
   registerExpense: string;
@@ -135,13 +136,13 @@ export function ExpensesScreen({
       </Page>
     );
   }
-  if (state.kind === "error") {
+  if (state.kind === "offline" || state.kind === "error") {
     return (
       <Page>
         <MessageState
           action={<Button label={copy.retry} onPress={onRetry} variant="secondary" />}
           description={state.message}
-          title={copy.unavailableTitle}
+          title={state.kind === "offline" ? copy.offlineTitle : copy.unavailableTitle}
         />
       </Page>
     );

@@ -1,5 +1,5 @@
 import type { ComponentProps, PropsWithChildren } from "react";
-import { ScrollView } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 
 import { cn } from "@/lib/cn";
 
@@ -22,22 +22,33 @@ export function Page({
   children,
   className,
   contentContainerClassName,
+  keyboardDismissMode = "on-drag",
+  keyboardShouldPersistTaps = "handled",
   showsVerticalScrollIndicator = false,
   width = "content",
   ...props
 }: PageProps) {
   return (
-    <ScrollView
-      {...props}
-      className={cn("flex-1", className)}
-      contentContainerClassName={cn(
-        "w-full gap-8 px-5 pb-12 pt-7 sm:px-8 sm:pt-10 lg:px-10 xl:px-12",
-        widthClasses[width],
-        contentContainerClassName,
-      )}
-      showsVerticalScrollIndicator={showsVerticalScrollIndicator}
+    // Android resizes the window for the keyboard on its own; adding a behavior
+    // there would offset the content twice.
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      className="flex-1"
     >
-      {children}
-    </ScrollView>
+      <ScrollView
+        {...props}
+        className={cn("flex-1", className)}
+        contentContainerClassName={cn(
+          "w-full gap-8 px-5 pb-12 pt-7 sm:px-8 sm:pt-10 lg:px-10 xl:px-12",
+          widthClasses[width],
+          contentContainerClassName,
+        )}
+        keyboardDismissMode={keyboardDismissMode}
+        keyboardShouldPersistTaps={keyboardShouldPersistTaps}
+        showsVerticalScrollIndicator={showsVerticalScrollIndicator}
+      >
+        {children}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

@@ -4,6 +4,7 @@ export type CashConfirmationState = "idle" | "pending" | "failed" | "uncertain";
 
 export type CashScreenState =
   | { kind: "loading" }
+  | { kind: "offline"; message: string }
   | { kind: "denied" }
   | { kind: "error"; message: string }
   | {
@@ -28,7 +29,9 @@ export function cashScreenPresentation(state: CashScreenState): CashScreenPresen
     showAccounts: state.kind === "ready" && state.accounts.length > 0,
     showCreate: state.kind === "ready" && state.canManage && state.confirmation !== "uncertain",
     showRetry:
-      state.kind === "error" || (state.kind === "ready" && state.confirmation === "failed"),
+      state.kind === "error" ||
+      state.kind === "offline" ||
+      (state.kind === "ready" && state.confirmation === "failed"),
     blocksDuplicateMutation: state.kind === "ready" && state.confirmation === "uncertain",
   };
 }

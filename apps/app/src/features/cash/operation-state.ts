@@ -1,7 +1,7 @@
 import type { CashConfirmationState } from "./state";
 
 export type CashOperationPresentationInput = {
-  remoteKind: "loading" | "denied" | "error" | "ready";
+  remoteKind: "loading" | "offline" | "denied" | "error" | "ready";
   canManage: boolean;
   confirmation: CashConfirmationState;
 };

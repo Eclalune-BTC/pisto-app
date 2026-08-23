@@ -31,6 +31,7 @@ const boundaryCopy = {
   deniedDescription: "Tu rol actual no permite consultar ni cambiar el efectivo del negocio.",
   deniedTitle: "No tienes acceso al efectivo",
   loading: "Cargando efectivo y cuentas…",
+  offlineTitle: "Sin conexión",
   retry: "Intentar de nuevo",
   unavailableTitle: "No pudimos cargar el efectivo",
 } as const;
