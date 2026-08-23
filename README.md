@@ -48,7 +48,7 @@ ones. Run bun run doctor whenever a local tool or service appears misconfigured.
 
 ## Validation
 
-- bun run check validates formatting, lint rules, types, and tests.
+- bun run check validates formatting, lint rules, types, tests, and the Expo web export.
 - bun run build builds all packages and applications.
 - bun run verify adds environment diagnostics before the full validation.
 
