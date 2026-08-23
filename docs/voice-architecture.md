@@ -51,7 +51,7 @@ privacy duties, native dependencies, and costs. Implement and release them separ
 
 ```text
 Expo push-to-talk recorder
-  -> narrow authenticated multipart upload
+  -> narrow authenticated raw-binary upload
   -> byte, type, duration, rate, concurrency, and cost controls
   -> Pisto TranscriptionPort / transcription.primary
   -> evaluated server provider adapter
@@ -60,13 +60,15 @@ Expo push-to-talk recorder
 ```
 
 The current generic app client serializes JSON only. Keep it that way. A voice slice adds a narrow
-authenticated `FormData` upload adapter that reuses the platform's existing session-cookie behavior;
+authenticated raw-binary upload adapter that reuses the platform's existing session-cookie behavior;
 it does not make the whole API client accept arbitrary bodies.
 
 The current API default body limit is 1 MiB and is configurable only up to 10 MiB. A 30-second clip
-using Expo's documented 128 kbps high-quality preset is roughly 480 KB before multipart overhead, so
-30 seconds below the existing default is a useful spike hypothesis—not an approved product limit.
-The voice brief must settle the exact time, byte, and cost budgets from device/provider evidence.
+at the 16 kHz mono 32 kbps preset recommended below is roughly 120 KB, comfortably under the existing
+default. Expo's documented 128 kbps stereo high-quality preset would be roughly 480 KB for the same
+clip; it is the wrong basis to plan around, because bitrate is the largest single lever on perceived
+upload latency for a user on a slow mobile network. The voice brief must still settle the exact time,
+byte, and cost budgets from device/provider evidence.
 
 ### Transport and recording constraints
 
@@ -74,7 +76,20 @@ The voice brief must settle the exact time, byte, and cost budgets from device/p
   recording disabled.
 - Record in Expo's cache, not durable document storage. Delete after successful transcription,
   discard, expiry, or best-effort cancellation and clean orphan cache files on a later launch.
-- Use multipart binary upload, not base64 JSON.
+- Use a raw binary request body with a non-simple `Content-Type` such as `audio/mp4`. Not base64
+  JSON, and **not** `multipart/form-data`: multipart is a CORS-simple content type, so a cross-origin
+  multipart POST triggers no preflight. `apps/api/src/app.ts` requires `application/json` on unsafe
+  `/v1` methods precisely as its CSRF control, and `docs/security.md` is explicit that CORS response
+  headers are not that control. Allow `audio/mp4` on the transcription path only, and on that path
+  require an allowlisted `Origin` rather than accepting a missing one.
+- Do not use `RecordingPresets.LOW_QUALITY` on Android: it silently selects AMR-NB, an 8 kHz
+  narrowband telephony codec, which is the worst available input for accented Spanish carrying
+  numbers in a noisy room. Use a custom preset instead — M4A, mpeg4/AAC, 16 kHz, mono, ~32 kbps —
+  since speech models are trained at 16 kHz and 44.1 kHz stereo is wasted uplink.
+- On-device speech recognition is closed for this stack today. `@react-native-voice/voice` is
+  deprecated on npm in favour of `expo-speech-recognition`, and `expo-speech-recognition` has no
+  SDK 57 release. Revisit only if that changes and offline `es` models are confirmed on target
+  hardware.
 - Accept only container/MIME combinations observed in the target matrix. Expo's documented high
   quality preset uses native M4A/AAC and web `audio/webm`; do not enable a provider's entire format
   catalog by default.
