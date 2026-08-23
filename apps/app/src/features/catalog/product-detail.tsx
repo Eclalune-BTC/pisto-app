@@ -5,7 +5,7 @@ import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { formatMinorUnits } from "@/lib/money";
-import type { ProductDetail, ProductUnitKind } from "../../../../../packages/contracts/src/catalog";
+import type { ProductDetail, ProductUnitKind } from "@pisto/contracts";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
 import { ReadOnlyNotice } from "./route-state";
 

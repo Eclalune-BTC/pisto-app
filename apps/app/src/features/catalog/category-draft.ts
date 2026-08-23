@@ -1,11 +1,5 @@
-import type {
-  CreateCategoryRequest,
-  UpdateCategoryRequest,
-} from "../../../../../packages/contracts/src/catalog";
-import {
-  createCategoryRequestSchema,
-  updateCategoryRequestSchema,
-} from "../../../../../packages/contracts/src/catalog";
+import type { CreateCategoryRequest, UpdateCategoryRequest } from "@pisto/contracts";
+import { createCategoryRequestSchema, updateCategoryRequestSchema } from "@pisto/contracts";
 
 export type CategoryDraftResult =
   | { error: "invalid-name" }

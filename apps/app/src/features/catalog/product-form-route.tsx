@@ -9,7 +9,7 @@ import type {
   Product,
   ProductUnitKind,
   UpdateProductRequest,
-} from "../../../../../packages/contracts/src/catalog";
+} from "@pisto/contracts";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
 import { catalogApi } from "./api";
 import { catalogInventoryCopy } from "./copy";

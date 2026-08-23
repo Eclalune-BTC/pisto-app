@@ -1,8 +1,4 @@
-import type {
-  Customer,
-  CustomerDetail,
-  Receivable,
-} from "../../../../../packages/contracts/src/receivables";
+import type { Customer, CustomerDetail, Receivable } from "@pisto/contracts";
 
 export type CustomersLoadState =
   | { kind: "loading" }

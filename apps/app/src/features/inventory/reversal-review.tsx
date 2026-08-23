@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 import { DetailList } from "@/components/detail-list";
 import { Button } from "@/components/ui/button";
-import type { InventoryMovement } from "../../../../../packages/contracts/src/catalog";
+import type { InventoryMovement } from "@pisto/contracts";
 import { formatQuantityMinorUnits } from "./quantity";
 
 export interface ReversalReviewCopy {

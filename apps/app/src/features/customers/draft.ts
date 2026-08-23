@@ -1,12 +1,5 @@
-import type {
-  CreateCustomerRequest,
-  Customer,
-  UpdateCustomerRequest,
-} from "../../../../../packages/contracts/src/receivables";
-import {
-  createCustomerRequestSchema,
-  updateCustomerRequestSchema,
-} from "../../../../../packages/contracts/src/receivables";
+import type { CreateCustomerRequest, Customer, UpdateCustomerRequest } from "@pisto/contracts";
+import { createCustomerRequestSchema, updateCustomerRequestSchema } from "@pisto/contracts";
 
 export type CustomerDraftValues = {
   email: string;

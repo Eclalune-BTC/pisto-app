@@ -6,7 +6,7 @@ import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import type { Category } from "../../../../../packages/contracts/src/catalog";
+import type { Category } from "@pisto/contracts";
 
 import type { CatalogStatusFilter } from "./query-keys";
 import { ReadOnlyNotice } from "./route-state";

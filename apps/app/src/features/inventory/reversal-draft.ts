@@ -1,5 +1,7 @@
-import type { ReverseInventoryMovementRequest } from "../../../../../packages/contracts/src/catalog";
-import { reverseInventoryMovementRequestSchema } from "../../../../../packages/contracts/src/catalog";
+import {
+  type ReverseInventoryMovementRequest,
+  reverseInventoryMovementRequestSchema,
+} from "@pisto/contracts";
 
 import { isValidCalendarDate, isValidLocalTime } from "./movement-draft";
 

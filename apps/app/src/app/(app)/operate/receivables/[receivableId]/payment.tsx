@@ -8,8 +8,6 @@ import { customersReceivablesCopy as copy } from "@/features/customers/copy";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { RecordBoundary, type RecordBoundaryState } from "@/features/customers/record-boundary";
 import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
-import { receivablePaymentsEnabled } from "@/features/receivables/capabilities";
-import { PaymentCapabilityBoundary } from "@/features/receivables/payment-capability-boundary";
 import { PaymentEditor } from "@/features/receivables/payment-editor";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
 
@@ -70,35 +68,31 @@ export default function ApplyPaymentRoute() {
 
   return (
     <CapabilityBoundary onRetry={() => access.refetch()} state={boundaryState}>
-      {!receivablePaymentsEnabled() ? (
-        <PaymentCapabilityBoundary onBack={goBack} />
-      ) : (
-        <RecordBoundary
-          onBack={goBack}
-          onRetry={() => {
-            void detail.refetch();
-            void customer.refetch();
-          }}
-          state={recordState}
-        >
-          {access.business && receivable ? (
-            actionAllowed ? (
-              <PaymentEditor
-                business={access.business}
-                onBack={goBack}
-                onConfirmed={goBack}
-                receivable={receivable}
-              />
-            ) : (
-              <ActionUnavailable
-                description={copy.receivables.route.actionUnavailableDescription}
-                onBack={goBack}
-                title={copy.receivables.route.actionUnavailableTitle}
-              />
-            )
-          ) : null}
-        </RecordBoundary>
-      )}
+      <RecordBoundary
+        onBack={goBack}
+        onRetry={() => {
+          void detail.refetch();
+          void customer.refetch();
+        }}
+        state={recordState}
+      >
+        {access.business && receivable ? (
+          actionAllowed ? (
+            <PaymentEditor
+              business={access.business}
+              onBack={goBack}
+              onConfirmed={goBack}
+              receivable={receivable}
+            />
+          ) : (
+            <ActionUnavailable
+              description={copy.receivables.route.actionUnavailableDescription}
+              onBack={goBack}
+              title={copy.receivables.route.actionUnavailableTitle}
+            />
+          )
+        ) : null}
+      </RecordBoundary>
     </CapabilityBoundary>
   );
 }

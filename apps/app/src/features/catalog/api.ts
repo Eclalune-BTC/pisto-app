@@ -13,7 +13,7 @@ import type {
   ProductMutationResponse,
   UpdateCategoryRequest,
   UpdateProductRequest,
-} from "../../../../../packages/contracts/src/catalog";
+} from "@pisto/contracts";
 import {
   archiveCategoryRequestSchema,
   archiveProductRequestSchema,
@@ -26,7 +26,7 @@ import {
   productMutationResponseSchema,
   updateCategoryRequestSchema,
   updateProductRequestSchema,
-} from "../../../../../packages/contracts/src/catalog";
+} from "@pisto/contracts";
 
 function queryString(query: Record<string, boolean | number | string | undefined>): string {
   const params = new URLSearchParams();

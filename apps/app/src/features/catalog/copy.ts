@@ -1,7 +1,4 @@
-import type {
-  InventoryMovementAction,
-  ProductUnitKind,
-} from "../../../../../packages/contracts/src/catalog";
+import type { InventoryMovementAction, ProductUnitKind } from "@pisto/contracts";
 
 const unitLabels: Record<ProductUnitKind, string> = {
   unit: "unidad",

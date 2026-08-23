@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import type { Customer } from "../../../../../packages/contracts/src/receivables";
+import type { Customer } from "@pisto/contracts";
 
 import { customersReceivablesCopy as copy } from "./copy";
 

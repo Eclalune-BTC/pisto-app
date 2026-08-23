@@ -20,7 +20,7 @@ import type {
   Category,
   CreateCategoryRequest,
   UpdateCategoryRequest,
-} from "../../../../../../../packages/contracts/src/catalog";
+} from "@pisto/contracts";
 
 type CategoryWriteCommand = CreateCategoryRequest | UpdateCategoryRequest;
 

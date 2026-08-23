@@ -19,7 +19,7 @@ import { buildReversalCommand } from "@/features/inventory/reversal-draft";
 import { ReversalEditor } from "@/features/inventory/reversal-editor";
 import { currentLocalDateTime } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import type { ReverseInventoryMovementRequest } from "../../../../../../../../../packages/contracts/src/catalog";
+import type { ReverseInventoryMovementRequest } from "@pisto/contracts";
 
 const emptyDraft: ReversalDraft = {
   occurredLocalDate: "",

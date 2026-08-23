@@ -1,5 +1,7 @@
-import type { RecordInventoryMovementRequest } from "../../../../../packages/contracts/src/catalog";
-import { recordInventoryMovementRequestSchema } from "../../../../../packages/contracts/src/catalog";
+import {
+  type RecordInventoryMovementRequest,
+  recordInventoryMovementRequestSchema,
+} from "@pisto/contracts";
 
 import type { InventoryMovementDraft, InventoryMovementErrors } from "./movement-editor";
 import { parseQuantityToMinorUnits } from "./quantity";

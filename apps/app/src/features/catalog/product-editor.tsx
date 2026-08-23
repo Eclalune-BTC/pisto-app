@@ -5,7 +5,7 @@ import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import type { Category, ProductUnitKind } from "../../../../../packages/contracts/src/catalog";
+import type { Category, ProductUnitKind } from "@pisto/contracts";
 
 export interface ProductDraftFields {
   categoryId: string | null;

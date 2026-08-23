@@ -6,11 +6,7 @@ import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { formatMinorUnits } from "@/lib/money";
-import type {
-  Category,
-  ProductDetail,
-  ProductUnitKind,
-} from "../../../../../packages/contracts/src/catalog";
+import type { Category, ProductDetail, ProductUnitKind } from "@pisto/contracts";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
 import type { CatalogStatusFilter } from "./query-keys";
 import { ReadOnlyNotice } from "./route-state";

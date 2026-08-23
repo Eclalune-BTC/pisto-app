@@ -3,12 +3,7 @@ import { ActivityIndicator, Text, View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
-import type {
-  InventoryMovement,
-  Product,
-  ProductStock,
-  ProductUnitKind,
-} from "../../../../../packages/contracts/src/catalog";
+import type { InventoryMovement, Product, ProductStock, ProductUnitKind } from "@pisto/contracts";
 import { ReadOnlyNotice } from "../catalog/route-state";
 import { formatQuantityMinorUnits } from "./quantity";
 

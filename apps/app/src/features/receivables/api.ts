@@ -10,7 +10,7 @@ import type {
   ReceivablesSummaryResponse,
   ReverseReceivablePaymentRequest,
   VoidReceivableRequest,
-} from "../../../../../packages/contracts/src/receivables";
+} from "@pisto/contracts";
 import {
   applyReceivablePaymentRequestSchema,
   listReceivablesQuerySchema,
@@ -22,7 +22,7 @@ import {
   receivablesSummaryResponseSchema,
   reverseReceivablePaymentRequestSchema,
   voidReceivableRequestSchema,
-} from "../../../../../packages/contracts/src/receivables";
+} from "@pisto/contracts";
 
 function encodeQuery(query: ListReceivablesQuery): string {
   const parsed = listReceivablesQuerySchema.parse(query);

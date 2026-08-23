@@ -7,7 +7,7 @@ import type {
   CustomersResponse,
   ListCustomersQuery,
   UpdateCustomerRequest,
-} from "../../../../../packages/contracts/src/receivables";
+} from "@pisto/contracts";
 import {
   archiveCustomerRequestSchema,
   createCustomerRequestSchema,
@@ -16,7 +16,7 @@ import {
   customersResponseSchema,
   listCustomersQuerySchema,
   updateCustomerRequestSchema,
-} from "../../../../../packages/contracts/src/receivables";
+} from "@pisto/contracts";
 
 function encodeQuery(query: ListCustomersQuery): string {
   const parsed = listCustomersQuerySchema.parse(query);

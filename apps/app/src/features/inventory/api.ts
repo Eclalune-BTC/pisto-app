@@ -7,14 +7,14 @@ import type {
   ReverseInventoryMovementRequest,
   StockListQuery,
   StockListResponse,
-} from "../../../../../packages/contracts/src/catalog";
+} from "@pisto/contracts";
 import {
   inventoryMovementListResponseSchema,
   inventoryMutationResponseSchema,
   recordInventoryMovementRequestSchema,
   reverseInventoryMovementRequestSchema,
   stockListResponseSchema,
-} from "../../../../../packages/contracts/src/catalog";
+} from "@pisto/contracts";
 
 function queryString(query: Record<string, boolean | number | string | undefined>): string {
   const params = new URLSearchParams();

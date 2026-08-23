@@ -5,13 +5,13 @@ import type {
   PostReceivableRequest,
   ReverseReceivablePaymentRequest,
   VoidReceivableRequest,
-} from "../../../../../packages/contracts/src/receivables";
+} from "@pisto/contracts";
 import {
   applyReceivablePaymentRequestSchema,
   postReceivableRequestSchema,
   reverseReceivablePaymentRequestSchema,
   voidReceivableRequestSchema,
-} from "../../../../../packages/contracts/src/receivables";
+} from "@pisto/contracts";
 
 import type { CashAccountChoice } from "./cash-account-source";
 

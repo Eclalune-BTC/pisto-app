@@ -10,7 +10,7 @@ import type {
   InventoryMovement,
   InventoryMovementAction,
   ReverseInventoryMovementRequest,
-} from "../../../../../packages/contracts/src/catalog";
+} from "@pisto/contracts";
 
 import { formatQuantityMinorUnits } from "./quantity";
 import type { ReversalDraft, ReversalDraftErrors } from "./reversal-draft";

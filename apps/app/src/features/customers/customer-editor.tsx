@@ -6,11 +6,7 @@ import { Text } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
-import type {
-  CreateCustomerRequest,
-  Customer,
-  UpdateCustomerRequest,
-} from "../../../../../packages/contracts/src/receivables";
+import type { CreateCustomerRequest, Customer, UpdateCustomerRequest } from "@pisto/contracts";
 
 import { customersApi } from "./api";
 import { customersReceivablesCopy as copy } from "./copy";

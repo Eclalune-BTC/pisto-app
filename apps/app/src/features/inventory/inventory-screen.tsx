@@ -4,10 +4,7 @@ import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import type {
-  ProductUnitKind,
-  StockListResponse,
-} from "../../../../../packages/contracts/src/catalog";
+import type { ProductUnitKind, StockListResponse } from "@pisto/contracts";
 import { ReadOnlyNotice } from "../catalog/route-state";
 import { formatQuantityMinorUnits } from "./quantity";
 

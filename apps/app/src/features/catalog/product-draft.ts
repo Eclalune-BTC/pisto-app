@@ -1,12 +1,5 @@
-import type {
-  CreateProductRequest,
-  Product,
-  UpdateProductRequest,
-} from "../../../../../packages/contracts/src/catalog";
-import {
-  createProductRequestSchema,
-  updateProductRequestSchema,
-} from "../../../../../packages/contracts/src/catalog";
+import type { CreateProductRequest, Product, UpdateProductRequest } from "@pisto/contracts";
+import { createProductRequestSchema, updateProductRequestSchema } from "@pisto/contracts";
 import { parseQuantityToMinorUnits } from "../inventory/quantity";
 import type { ProductDraftErrors, ProductDraftFields } from "./product-editor";
 

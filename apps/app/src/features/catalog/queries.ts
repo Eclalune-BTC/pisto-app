@@ -1,8 +1,5 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import type {
-  CategoryListResponse,
-  ProductListResponse,
-} from "../../../../../packages/contracts/src/catalog";
+import type { CategoryListResponse, ProductListResponse } from "@pisto/contracts";
 
 import { catalogApi } from "./api";
 import { type CatalogStatusFilter, catalogInventoryQueryKeys } from "./query-keys";

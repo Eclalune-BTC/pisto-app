@@ -1,8 +1,4 @@
-import type {
-  Receivable,
-  ReceivablePayment,
-  ReceivablesSummary,
-} from "../../../../../packages/contracts/src/receivables";
+import type { Receivable, ReceivablePayment, ReceivablesSummary } from "@pisto/contracts";
 
 export type ReceivablesLoadState =
   | { kind: "loading" }

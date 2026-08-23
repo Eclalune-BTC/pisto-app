@@ -7,9 +7,7 @@ import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { customersReceivablesCopy as copy } from "@/features/customers/copy";
 import { RecordBoundary, type RecordBoundaryState } from "@/features/customers/record-boundary";
 import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
-import { receivablePaymentsEnabled } from "@/features/receivables/capabilities";
 import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-account-source";
-import { PaymentCapabilityBoundary } from "@/features/receivables/payment-capability-boundary";
 import { PaymentReversalEditor } from "@/features/receivables/payment-reversal-editor";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
 
@@ -77,36 +75,32 @@ export default function ReversePaymentRoute() {
 
   return (
     <CapabilityBoundary onRetry={() => access.refetch()} state={boundaryState}>
-      {!receivablePaymentsEnabled() ? (
-        <PaymentCapabilityBoundary onBack={goBack} />
-      ) : (
-        <RecordBoundary
-          onBack={goBack}
-          onRetry={() => {
-            void detail.refetch();
-            void account.refetch();
-          }}
-          state={recordState}
-        >
-          {access.business && detail.data && payment && account.data ? (
-            actionAllowed ? (
-              <PaymentReversalEditor
-                business={access.business}
-                cashAccountName={account.data.account.name}
-                onBack={goBack}
-                onConfirmed={goBack}
-                payment={payment}
-              />
-            ) : (
-              <ActionUnavailable
-                description={copy.receivables.route.actionUnavailableDescription}
-                onBack={goBack}
-                title={copy.receivables.route.actionUnavailableTitle}
-              />
-            )
-          ) : null}
-        </RecordBoundary>
-      )}
+      <RecordBoundary
+        onBack={goBack}
+        onRetry={() => {
+          void detail.refetch();
+          void account.refetch();
+        }}
+        state={recordState}
+      >
+        {access.business && detail.data && payment && account.data ? (
+          actionAllowed ? (
+            <PaymentReversalEditor
+              business={access.business}
+              cashAccountName={account.data.account.name}
+              onBack={goBack}
+              onConfirmed={goBack}
+              payment={payment}
+            />
+          ) : (
+            <ActionUnavailable
+              description={copy.receivables.route.actionUnavailableDescription}
+              onBack={goBack}
+              title={copy.receivables.route.actionUnavailableTitle}
+            />
+          )
+        ) : null}
+      </RecordBoundary>
     </CapabilityBoundary>
   );
 }

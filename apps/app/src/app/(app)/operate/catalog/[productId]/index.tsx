@@ -14,7 +14,7 @@ import {
   mutationUiState,
 } from "@/features/catalog/state";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import type { ArchiveProductRequest } from "../../../../../../../../packages/contracts/src/catalog";
+import type { ArchiveProductRequest } from "@pisto/contracts";
 
 export default function ProductDetailRoute() {
   const router = useRouter();

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { currentLocalDateTime } from "@/lib/money";
 
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import type { RecordInventoryMovementRequest } from "../../../../../packages/contracts/src/catalog";
+import type { RecordInventoryMovementRequest } from "@pisto/contracts";
 import { catalogInventoryCopy } from "../catalog/copy";
 import { useProductQuery } from "../catalog/queries";
 import { catalogInventoryQueryKeys } from "../catalog/query-keys";

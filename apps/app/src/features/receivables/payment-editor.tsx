@@ -10,10 +10,7 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { customersReceivablesCopy as copy } from "@/features/customers/copy";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
-import type {
-  ApplyReceivablePaymentRequest,
-  Receivable,
-} from "../../../../../packages/contracts/src/receivables";
+import type { ApplyReceivablePaymentRequest, Receivable } from "@pisto/contracts";
 
 import { receivablesApi } from "./api";
 import { CashAccountPicker } from "./cash-account-picker";

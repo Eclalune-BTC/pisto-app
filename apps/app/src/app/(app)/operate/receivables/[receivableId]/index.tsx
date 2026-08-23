@@ -8,7 +8,6 @@ import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { customersReceivablesCopy as copy } from "@/features/customers/copy";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
-import { receivablePaymentsEnabled } from "@/features/receivables/capabilities";
 import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-account-source";
 import { formatBusinessLocalDate, uniqueValues } from "@/features/receivables/presentation";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
@@ -85,7 +84,6 @@ export default function ReceivableDetailRoute() {
     state = { kind: "error" };
   }
 
-  const paymentsEnabled = receivablePaymentsEnabled();
   return (
     <CapabilityBoundary onRetry={() => access.refetch()} state={boundaryState}>
       <ReceivableDetailScreen
@@ -131,8 +129,6 @@ export default function ReceivableDetailRoute() {
             params: { receivableId: receivableId ?? "" },
           })
         }
-        paymentsDisabledReason={copy.receivables.list.paymentsUnavailableDescription}
-        paymentsEnabled={paymentsEnabled}
         state={state}
       />
     </CapabilityBoundary>

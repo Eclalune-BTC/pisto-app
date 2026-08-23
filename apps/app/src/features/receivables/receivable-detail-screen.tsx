@@ -20,8 +20,6 @@ type ReceivableDetailScreenProps = {
   onRetry: () => void;
   onReversePayment: (paymentId: string) => void;
   onVoid: () => void;
-  paymentsDisabledReason: string;
-  paymentsEnabled: boolean;
   state: ReceivableDetailLoadState;
 };
 
@@ -38,8 +36,6 @@ export function ReceivableDetailScreen({
   onRetry,
   onReversePayment,
   onVoid,
-  paymentsDisabledReason,
-  paymentsEnabled,
   state,
 }: ReceivableDetailScreenProps) {
   if (state.kind === "loading") {
@@ -108,13 +104,7 @@ export function ReceivableDetailScreen({
           canManage && item.state !== "voided" ? (
             <View className="flex-row gap-2">
               {customerActive && item.outstandingMinorUnits !== "0" ? (
-                <Button
-                  accessibilityHint={paymentsEnabled ? undefined : paymentsDisabledReason}
-                  disabled={!paymentsEnabled}
-                  label={copy.applyPayment}
-                  onPress={onApplyPayment}
-                  variant="accent"
-                />
+                <Button label={copy.applyPayment} onPress={onApplyPayment} variant="accent" />
               ) : null}
               {item.paidMinorUnits === "0" ? (
                 <Button label={copy.void} onPress={onVoid} variant="ghost" />
@@ -128,16 +118,6 @@ export function ReceivableDetailScreen({
       {state.stale ? (
         <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
           <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
-        </View>
-      ) : null}
-      {canManage && !paymentsEnabled ? (
-        <View className="gap-1 border-l-4 border-warning bg-[#FFF6E8] p-4 dark:bg-[#3A2A18]">
-          <Text className="font-bold text-ink dark:text-white">
-            {copy.paymentsUnavailableTitle}
-          </Text>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#D5C8B8]">
-            {paymentsDisabledReason}
-          </Text>
         </View>
       ) : null}
       <View className="gap-5 border-y border-line py-6 lg:flex-row dark:border-[#304239]">
@@ -203,8 +183,6 @@ export function ReceivableDetailScreen({
                     </Text>
                     {canManage && payment.kind === "payment" && !alreadyReversed ? (
                       <Button
-                        accessibilityHint={paymentsEnabled ? undefined : paymentsDisabledReason}
-                        disabled={!paymentsEnabled}
                         onPress={() => onReversePayment(payment.id)}
                         size="sm"
                         variant="ghost"
