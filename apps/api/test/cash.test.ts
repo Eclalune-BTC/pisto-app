@@ -3,7 +3,7 @@ import type { Auth } from "@pisto/auth";
 
 import type { CashRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
-import { ApiError } from "../src/errors.ts";
+import { normalizeError } from "../src/errors.ts";
 import { cashRoutes } from "../src/routes/cash.ts";
 
 const accountId = "71402e0c-b17d-4d8c-83ae-8d163d10d51d";
@@ -32,11 +32,10 @@ function testRoutes(options: { authenticated?: boolean; cash: CashRepository }) 
     },
   } as unknown as Auth;
   const routes = cashRoutes({ auth, cash: options.cash });
+  // Mirrors the single boundary in src/app.ts so a router mounted on its own
+  // still translates a domain failure exactly as the composed application does.
   routes.onError((error, context) => {
-    const apiError =
-      error instanceof ApiError
-        ? error
-        : new ApiError(500, "INTERNAL_ERROR", "An unexpected error occurred");
+    const { apiError } = normalizeError(error);
     return context.json(
       { error: { code: apiError.code, message: apiError.message, requestId: "test-request" } },
       apiError.status,

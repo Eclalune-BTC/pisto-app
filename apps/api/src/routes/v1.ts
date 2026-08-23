@@ -13,7 +13,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 import { ApiError } from "../errors.ts";
-import { callAuthEndpoint, parseJsonBody, parseOptionalJsonBody } from "../http.ts";
+import { callAuthEndpoint, parseJsonBody, parseOptionalJsonBody, parseRequest } from "../http.ts";
 import { requireSession, resolveBillingScope } from "../session.ts";
 import type { AppEnv } from "../types.ts";
 import { cashRoutes } from "./cash.ts";
@@ -54,6 +54,10 @@ export function v1Routes(input: {
     context.json({ data: { version: "v1" as const, service: "pisto-api" as const } }),
   );
 
+  // These routers must not register an onError of their own. Hono's route()
+  // rewires a mounted sub-app's handlers to its own error handler when it has
+  // one, which would bypass the single translation boundary in app.ts and turn
+  // every domain failure in that router into a 500.
   routes.route("/", productRoutes({ auth: input.auth, product: input.product }));
   routes.route("/", catalogRoutes({ auth: input.auth, catalog: input.catalog }));
   routes.route("/", cashRoutes({ auth: input.auth, cash: input.cash }));
@@ -147,16 +151,12 @@ export function v1Routes(input: {
     }
     const session = await requireSession(input.auth, context.req.raw.headers);
     const scope = await resolveBillingScope({ db: input.db, session });
-    const body = billingCheckoutRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) {
-      throw new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        "Checkout request is invalid",
-        body.error.flatten(),
-      );
-    }
-    if (!input.billing.config.polar.products.some(({ slug }) => slug === body.data.slug)) {
+    const command = parseRequest(
+      billingCheckoutRequestSchema,
+      await parseJsonBody(context),
+      "Checkout request is invalid",
+    );
+    if (!input.billing.config.polar.products.some(({ slug }) => slug === command.slug)) {
       throw new ApiError(404, "NOT_FOUND", "Billing product was not found");
     }
     const payload = await callAuthEndpoint({
@@ -166,7 +166,7 @@ export function v1Routes(input: {
       method: "POST",
       headers: context.req.raw.headers,
       body: {
-        slug: body.data.slug,
+        slug: command.slug,
         ...(scope.type === "organization" ? { referenceId: scope.id } : {}),
         redirect: false,
       },
@@ -179,16 +179,11 @@ export function v1Routes(input: {
       throw new ApiError(503, "BILLING_DISABLED", "Polar customer portal is disabled");
     }
     await requireSession(input.auth, context.req.raw.headers);
-    const rawBody = await parseOptionalJsonBody(context);
-    const body = billingPortalRequestSchema.safeParse(rawBody);
-    if (!body.success) {
-      throw new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        "Portal request is invalid",
-        body.error.flatten(),
-      );
-    }
+    parseRequest(
+      billingPortalRequestSchema,
+      await parseOptionalJsonBody(context),
+      "Portal request is invalid",
+    );
     const payload = await callAuthEndpoint({
       auth: input.auth,
       baseUrl: input.authBaseUrl,

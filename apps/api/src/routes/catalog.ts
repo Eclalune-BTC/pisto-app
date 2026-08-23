@@ -14,321 +14,164 @@ import {
   updateProductRequestSchema,
 } from "@pisto/contracts";
 import type { CatalogRepository } from "@pisto/db";
-import { ProductError } from "@pisto/db";
 import { Hono } from "hono";
-import { z } from "zod";
 
-import { ApiError } from "../errors.ts";
-import { parseJsonBody } from "../http.ts";
-import { requireSession, toProductActor } from "../session.ts";
+import { commandStatus, parseJsonBody, parseRequest, requireRecordId } from "../http.ts";
+import { requireActor } from "../session.ts";
 import type { AppEnv } from "../types.ts";
 
-const recordIdSchema = z.string().uuid();
-
-function mapCatalogError(error: unknown): never {
-  if (!(error instanceof ProductError)) throw error;
-  switch (error.code) {
-    case "BUSINESS_REQUIRED":
-      throw new ApiError(409, "BUSINESS_REQUIRED", error.message);
-    case "IDEMPOTENCY_CONFLICT":
-      throw new ApiError(409, "IDEMPOTENCY_CONFLICT", error.message);
-    case "CONFLICT":
-      throw new ApiError(409, "CONFLICT", error.message);
-    case "FORBIDDEN":
-      throw new ApiError(403, "FORBIDDEN", error.message);
-    case "NOT_FOUND":
-      throw new ApiError(404, "NOT_FOUND", error.message);
-    case "UNAUTHORIZED":
-      throw new ApiError(401, "UNAUTHORIZED", error.message);
-    case "VALIDATION_ERROR":
-      throw new ApiError(400, "VALIDATION_ERROR", error.message);
-  }
-}
-
-function parseRecordId(value: string, message: string): string {
-  const result = recordIdSchema.safeParse(value);
-  if (!result.success) throw new ApiError(404, "NOT_FOUND", message);
-  return result.data;
-}
-
+// Hono's context.req.query() is NOT equivalent to this: it keeps the FIRST of a
+// duplicated key rather than the last, drops an empty-name parameter instead of
+// forwarding it into the strict() schema, and does not strip a fragment. These
+// routes have always read the query this way, so unifying them onto the accessor
+// cash uses would have changed real statuses and result pages. The three query
+// idioms in this package are therefore deliberately NOT consolidated.
 function queryObject(url: string): Record<string, string> {
   return Object.fromEntries(new URL(url).searchParams.entries());
 }
+
+const categoryNotFound = "Category was not found";
+const productNotFound = "Product was not found";
+const movementNotFound = "Inventory movement was not found";
 
 export function catalogRoutes(input: { auth: Auth; catalog: CatalogRepository }) {
   const routes = new Hono<AppEnv>();
 
   routes.get("/catalog/categories", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const query = categoryListQuerySchema.safeParse(queryObject(context.req.url));
-    if (!query.success) {
-      throw new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        "Category query is invalid",
-        query.error.flatten(),
-      );
-    }
-    try {
-      return context.json({
-        data: await input.catalog.listCategories(toProductActor(authSession), query.data),
-      });
-    } catch (error) {
-      return mapCatalogError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const query = parseRequest(
+      categoryListQuerySchema,
+      queryObject(context.req.url),
+      "Category query is invalid",
+    );
+    return context.json({ data: await input.catalog.listCategories(actor, query) });
   });
 
   routes.post("/catalog/categories", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const body = createCategoryRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) {
-      throw new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        "Category command is invalid",
-        body.error.flatten(),
-      );
-    }
-    try {
-      const result = await input.catalog.createCategory(toProductActor(authSession), body.data);
-      return context.json({ data: result }, result.replayed ? 200 : 201);
-    } catch (error) {
-      return mapCatalogError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const command = parseRequest(
+      createCategoryRequestSchema,
+      await parseJsonBody(context),
+      "Category command is invalid",
+    );
+    const result = await input.catalog.createCategory(actor, command);
+    return context.json({ data: result }, commandStatus(result));
   });
 
   routes.patch("/catalog/categories/:categoryId", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const categoryId = parseRecordId(context.req.param("categoryId"), "Category was not found");
-    const body = updateCategoryRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) {
-      throw new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        "Category command is invalid",
-        body.error.flatten(),
-      );
-    }
-    try {
-      const result = await input.catalog.updateCategory(
-        toProductActor(authSession),
-        categoryId,
-        body.data,
-      );
-      return context.json({ data: result });
-    } catch (error) {
-      return mapCatalogError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const categoryId = requireRecordId(context.req.param("categoryId"), categoryNotFound);
+    const command = parseRequest(
+      updateCategoryRequestSchema,
+      await parseJsonBody(context),
+      "Category command is invalid",
+    );
+    return context.json({ data: await input.catalog.updateCategory(actor, categoryId, command) });
   });
 
   routes.post("/catalog/categories/:categoryId/archive", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const categoryId = parseRecordId(context.req.param("categoryId"), "Category was not found");
-    const body = archiveCategoryRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) {
-      throw new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        "Category archive command is invalid",
-        body.error.flatten(),
-      );
-    }
-    try {
-      const result = await input.catalog.archiveCategory(
-        toProductActor(authSession),
-        categoryId,
-        body.data,
-      );
-      return context.json({ data: result });
-    } catch (error) {
-      return mapCatalogError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const categoryId = requireRecordId(context.req.param("categoryId"), categoryNotFound);
+    const command = parseRequest(
+      archiveCategoryRequestSchema,
+      await parseJsonBody(context),
+      "Category archive command is invalid",
+    );
+    return context.json({ data: await input.catalog.archiveCategory(actor, categoryId, command) });
   });
 
   routes.get("/catalog/products", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const query = productListQuerySchema.safeParse(queryObject(context.req.url));
-    if (!query.success) {
-      throw new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        "Product query is invalid",
-        query.error.flatten(),
-      );
-    }
-    try {
-      return context.json({
-        data: await input.catalog.listProducts(toProductActor(authSession), query.data),
-      });
-    } catch (error) {
-      return mapCatalogError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const query = parseRequest(
+      productListQuerySchema,
+      queryObject(context.req.url),
+      "Product query is invalid",
+    );
+    return context.json({ data: await input.catalog.listProducts(actor, query) });
   });
 
   routes.post("/catalog/products", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const body = createProductRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) {
-      throw new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        "Product command is invalid",
-        body.error.flatten(),
-      );
-    }
-    try {
-      const result = await input.catalog.createProduct(toProductActor(authSession), body.data);
-      return context.json({ data: result }, result.replayed ? 200 : 201);
-    } catch (error) {
-      return mapCatalogError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const command = parseRequest(
+      createProductRequestSchema,
+      await parseJsonBody(context),
+      "Product command is invalid",
+    );
+    const result = await input.catalog.createProduct(actor, command);
+    return context.json({ data: result }, commandStatus(result));
   });
 
   routes.get("/catalog/products/:productId", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const productId = parseRecordId(context.req.param("productId"), "Product was not found");
-    try {
-      return context.json({
-        data: await input.catalog.getProduct(toProductActor(authSession), productId),
-      });
-    } catch (error) {
-      return mapCatalogError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const productId = requireRecordId(context.req.param("productId"), productNotFound);
+    return context.json({ data: await input.catalog.getProduct(actor, productId) });
   });
 
   routes.patch("/catalog/products/:productId", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const productId = parseRecordId(context.req.param("productId"), "Product was not found");
-    const body = updateProductRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) {
-      throw new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        "Product command is invalid",
-        body.error.flatten(),
-      );
-    }
-    try {
-      const result = await input.catalog.updateProduct(
-        toProductActor(authSession),
-        productId,
-        body.data,
-      );
-      return context.json({ data: result });
-    } catch (error) {
-      return mapCatalogError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const productId = requireRecordId(context.req.param("productId"), productNotFound);
+    const command = parseRequest(
+      updateProductRequestSchema,
+      await parseJsonBody(context),
+      "Product command is invalid",
+    );
+    return context.json({ data: await input.catalog.updateProduct(actor, productId, command) });
   });
 
   routes.post("/catalog/products/:productId/archive", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const productId = parseRecordId(context.req.param("productId"), "Product was not found");
-    const body = archiveProductRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) {
-      throw new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        "Product archive command is invalid",
-        body.error.flatten(),
-      );
-    }
-    try {
-      const result = await input.catalog.archiveProduct(
-        toProductActor(authSession),
-        productId,
-        body.data,
-      );
-      return context.json({ data: result });
-    } catch (error) {
-      return mapCatalogError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const productId = requireRecordId(context.req.param("productId"), productNotFound);
+    const command = parseRequest(
+      archiveProductRequestSchema,
+      await parseJsonBody(context),
+      "Product archive command is invalid",
+    );
+    return context.json({ data: await input.catalog.archiveProduct(actor, productId, command) });
   });
 
   routes.get("/inventory/stock", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const query = stockListQuerySchema.safeParse(queryObject(context.req.url));
-    if (!query.success) {
-      throw new ApiError(400, "VALIDATION_ERROR", "Stock query is invalid", query.error.flatten());
-    }
-    try {
-      return context.json({
-        data: await input.catalog.listStock(toProductActor(authSession), query.data),
-      });
-    } catch (error) {
-      return mapCatalogError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const query = parseRequest(
+      stockListQuerySchema,
+      queryObject(context.req.url),
+      "Stock query is invalid",
+    );
+    return context.json({ data: await input.catalog.listStock(actor, query) });
   });
 
   routes.get("/inventory/products/:productId/movements", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const productId = parseRecordId(context.req.param("productId"), "Product was not found");
-    const query = inventoryMovementListQuerySchema.safeParse(queryObject(context.req.url));
-    if (!query.success) {
-      throw new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        "Movement query is invalid",
-        query.error.flatten(),
-      );
-    }
-    try {
-      return context.json({
-        data: await input.catalog.listMovements(toProductActor(authSession), productId, query.data),
-      });
-    } catch (error) {
-      return mapCatalogError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const productId = requireRecordId(context.req.param("productId"), productNotFound);
+    const query = parseRequest(
+      inventoryMovementListQuerySchema,
+      queryObject(context.req.url),
+      "Movement query is invalid",
+    );
+    return context.json({ data: await input.catalog.listMovements(actor, productId, query) });
   });
 
   routes.post("/inventory/products/:productId/movements", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const productId = parseRecordId(context.req.param("productId"), "Product was not found");
-    const body = recordInventoryMovementRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) {
-      throw new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        "Movement command is invalid",
-        body.error.flatten(),
-      );
-    }
-    try {
-      const result = await input.catalog.recordMovement(
-        toProductActor(authSession),
-        productId,
-        body.data,
-      );
-      return context.json({ data: result }, result.replayed ? 200 : 201);
-    } catch (error) {
-      return mapCatalogError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const productId = requireRecordId(context.req.param("productId"), productNotFound);
+    const command = parseRequest(
+      recordInventoryMovementRequestSchema,
+      await parseJsonBody(context),
+      "Movement command is invalid",
+    );
+    const result = await input.catalog.recordMovement(actor, productId, command);
+    return context.json({ data: result }, commandStatus(result));
   });
 
   routes.post("/inventory/movements/:movementId/reverse", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const movementId = parseRecordId(
-      context.req.param("movementId"),
-      "Inventory movement was not found",
+    const actor = await requireActor(input.auth, context);
+    const movementId = requireRecordId(context.req.param("movementId"), movementNotFound);
+    const command = parseRequest(
+      reverseInventoryMovementRequestSchema,
+      await parseJsonBody(context),
+      "Reversal command is invalid",
     );
-    const body = reverseInventoryMovementRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) {
-      throw new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        "Reversal command is invalid",
-        body.error.flatten(),
-      );
-    }
-    try {
-      const result = await input.catalog.reverseMovement(
-        toProductActor(authSession),
-        movementId,
-        body.data,
-      );
-      return context.json({ data: result }, result.replayed ? 200 : 201);
-    } catch (error) {
-      return mapCatalogError(error);
-    }
+    const result = await input.catalog.reverseMovement(actor, movementId, command);
+    return context.json({ data: result }, commandStatus(result));
   });
 
   return routes;

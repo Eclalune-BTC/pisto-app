@@ -4,6 +4,8 @@ import { and, eq } from "drizzle-orm";
 
 import { ApiError } from "./errors.ts";
 
+type SessionRequestContext = { req: { raw: Request } };
+
 export async function requireSession(auth: Auth, headers: Headers) {
   const session = await auth.api.getSession({
     headers,
@@ -15,7 +17,7 @@ export async function requireSession(auth: Auth, headers: Headers) {
   return session;
 }
 
-export function toProductActor(
+function toProductActor(
   authSession: NonNullable<Awaited<ReturnType<Auth["api"]["getSession"]>>>,
 ): ProductActor {
   const sessionRecord = authSession.session as typeof authSession.session & {
@@ -26,6 +28,18 @@ export function toProductActor(
     sessionId: sessionRecord.id,
     activeBusinessId: sessionRecord.activeOrganizationId ?? null,
   };
+}
+
+/**
+ * Resolve the acting subject and its business from fresh server session state.
+ * Every protected domain handler starts with this call, so tenancy is never read
+ * from a request body, query, or path.
+ */
+export async function requireActor(
+  auth: Auth,
+  context: SessionRequestContext,
+): Promise<ProductActor> {
+  return toProductActor(await requireSession(auth, context.req.raw.headers));
 }
 
 export async function resolveBillingScope(input: {

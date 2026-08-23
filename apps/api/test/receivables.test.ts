@@ -3,7 +3,7 @@ import type { Auth } from "@pisto/auth";
 import type { ReceivablesRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
 import { Hono } from "hono";
-import { ApiError } from "../src/errors.ts";
+import { normalizeError } from "../src/errors.ts";
 import { receivablesRoutes } from "../src/routes/receivables.ts";
 import type { AppEnv } from "../src/types.ts";
 
@@ -29,20 +29,19 @@ function createTestApp(repository: Partial<ReceivablesRepository>, authenticated
   } as unknown as Auth;
   const app = new Hono<AppEnv>();
   app.route("/v1", receivablesRoutes({ auth, receivables: repository as ReceivablesRepository }));
+  // Mirrors the single boundary in src/app.ts so a router mounted on its own
+  // still translates a domain failure exactly as the composed application does.
   app.onError((error, context) => {
-    const normalized =
-      error instanceof ApiError
-        ? error
-        : new ApiError(500, "INTERNAL_ERROR", "An unexpected error occurred");
+    const { apiError } = normalizeError(error);
     return context.json(
       {
         error: {
-          code: normalized.code,
-          message: normalized.message,
+          code: apiError.code,
+          message: apiError.message,
           requestId: "request_test",
         },
       },
-      normalized.status,
+      apiError.status,
     );
   });
   return app;

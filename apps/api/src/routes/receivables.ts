@@ -11,253 +11,153 @@ import {
   voidReceivableRequestSchema,
 } from "@pisto/contracts";
 import type { ReceivablesRepository } from "@pisto/db";
-import { ProductError } from "@pisto/db";
 import { Hono } from "hono";
-import { z } from "zod";
 
-import { ApiError } from "../errors.ts";
-import { parseJsonBody } from "../http.ts";
-import { requireSession, toProductActor } from "../session.ts";
+import { commandStatus, parseJsonBody, parseRequest, requireRecordId } from "../http.ts";
+import { requireActor } from "../session.ts";
 import type { AppEnv } from "../types.ts";
 
-const recordIdSchema = z.string().uuid();
-
-function mapProductError(error: unknown): never {
-  if (!(error instanceof ProductError)) throw error;
-  switch (error.code) {
-    case "BUSINESS_REQUIRED":
-      throw new ApiError(409, "BUSINESS_REQUIRED", error.message);
-    case "IDEMPOTENCY_CONFLICT":
-      throw new ApiError(409, "IDEMPOTENCY_CONFLICT", error.message);
-    case "CONFLICT":
-      throw new ApiError(409, "CONFLICT", error.message);
-    case "FORBIDDEN":
-      throw new ApiError(403, "FORBIDDEN", error.message);
-    case "NOT_FOUND":
-      throw new ApiError(404, "NOT_FOUND", error.message);
-    case "UNAUTHORIZED":
-      throw new ApiError(401, "UNAUTHORIZED", error.message);
-    case "VALIDATION_ERROR":
-      throw new ApiError(400, "VALIDATION_ERROR", error.message);
-  }
-}
-
-function invalidBody(message: string, details: unknown): never {
-  throw new ApiError(400, "VALIDATION_ERROR", message, details);
-}
-
-function parseRecordId(value: string, message: string): string {
-  const parsed = recordIdSchema.safeParse(value);
-  if (!parsed.success) throw new ApiError(404, "NOT_FOUND", message);
-  return parsed.data;
-}
+const customerNotFound = "Customer was not found";
+const receivableNotFound = "Receivable was not found";
+const paymentNotFound = "Receivable payment was not found";
 
 export function receivablesRoutes(input: { auth: Auth; receivables: ReceivablesRepository }) {
   const routes = new Hono<AppEnv>();
 
   routes.get("/customers", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const query = listCustomersQuerySchema.safeParse({
-      cursor: context.req.query("cursor"),
-      limit: context.req.query("limit"),
-      query: context.req.query("query"),
-      status: context.req.query("status"),
-    });
-    if (!query.success) {
-      return invalidBody("Customer list filters are invalid", query.error.flatten());
-    }
-    try {
-      const result = await input.receivables.listCustomers(toProductActor(authSession), query.data);
-      return context.json({ data: result });
-    } catch (error) {
-      return mapProductError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    // These two list routes read named parameters instead of the whole query
+    // record. Their contracts are strict, so forwarding every parameter would
+    // turn an unrelated tracking parameter into a 400 the clients do not expect.
+    const query = parseRequest(
+      listCustomersQuerySchema,
+      {
+        cursor: context.req.query("cursor"),
+        limit: context.req.query("limit"),
+        query: context.req.query("query"),
+        status: context.req.query("status"),
+      },
+      "Customer list filters are invalid",
+    );
+    return context.json({ data: await input.receivables.listCustomers(actor, query) });
   });
 
   routes.post("/customers", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const body = createCustomerRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) return invalidBody("Customer details are invalid", body.error.flatten());
-    try {
-      const result = await input.receivables.createCustomer(toProductActor(authSession), body.data);
-      return context.json({ data: result }, result.replayed ? 200 : 201);
-    } catch (error) {
-      return mapProductError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const command = parseRequest(
+      createCustomerRequestSchema,
+      await parseJsonBody(context),
+      "Customer details are invalid",
+    );
+    const result = await input.receivables.createCustomer(actor, command);
+    return context.json({ data: result }, commandStatus(result));
   });
 
   routes.get("/customers/:customerId", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const customerId = parseRecordId(context.req.param("customerId"), "Customer was not found");
-    try {
-      const result = await input.receivables.getCustomer(toProductActor(authSession), customerId);
-      return context.json({ data: result });
-    } catch (error) {
-      return mapProductError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const customerId = requireRecordId(context.req.param("customerId"), customerNotFound);
+    return context.json({ data: await input.receivables.getCustomer(actor, customerId) });
   });
 
   routes.post("/customers/:customerId/update", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const customerId = parseRecordId(context.req.param("customerId"), "Customer was not found");
-    const body = updateCustomerRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) return invalidBody("Customer changes are invalid", body.error.flatten());
-    try {
-      const result = await input.receivables.updateCustomer(
-        toProductActor(authSession),
-        customerId,
-        body.data,
-      );
-      return context.json({ data: result });
-    } catch (error) {
-      return mapProductError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const customerId = requireRecordId(context.req.param("customerId"), customerNotFound);
+    const command = parseRequest(
+      updateCustomerRequestSchema,
+      await parseJsonBody(context),
+      "Customer changes are invalid",
+    );
+    return context.json({
+      data: await input.receivables.updateCustomer(actor, customerId, command),
+    });
   });
 
   routes.post("/customers/:customerId/archive", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const customerId = parseRecordId(context.req.param("customerId"), "Customer was not found");
-    const body = archiveCustomerRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) {
-      return invalidBody("Customer archive confirmation is invalid", body.error.flatten());
-    }
-    try {
-      const result = await input.receivables.archiveCustomer(
-        toProductActor(authSession),
-        customerId,
-        body.data,
-      );
-      return context.json({ data: result });
-    } catch (error) {
-      return mapProductError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const customerId = requireRecordId(context.req.param("customerId"), customerNotFound);
+    const command = parseRequest(
+      archiveCustomerRequestSchema,
+      await parseJsonBody(context),
+      "Customer archive confirmation is invalid",
+    );
+    return context.json({
+      data: await input.receivables.archiveCustomer(actor, customerId, command),
+    });
   });
 
   routes.get("/receivables/summary", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    try {
-      const summary = await input.receivables.getSummary(toProductActor(authSession));
-      return context.json({ data: { summary } });
-    } catch (error) {
-      return mapProductError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const summary = await input.receivables.getSummary(actor);
+    return context.json({ data: { summary } });
   });
 
   routes.get("/receivables", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const query = listReceivablesQuerySchema.safeParse({
-      cursor: context.req.query("cursor"),
-      customerId: context.req.query("customerId"),
-      limit: context.req.query("limit"),
-      state: context.req.query("state"),
-    });
-    if (!query.success) {
-      return invalidBody("Receivable list filters are invalid", query.error.flatten());
-    }
-    try {
-      const result = await input.receivables.listReceivables(
-        toProductActor(authSession),
-        query.data,
-      );
-      return context.json({ data: result });
-    } catch (error) {
-      return mapProductError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const query = parseRequest(
+      listReceivablesQuerySchema,
+      {
+        cursor: context.req.query("cursor"),
+        customerId: context.req.query("customerId"),
+        limit: context.req.query("limit"),
+        state: context.req.query("state"),
+      },
+      "Receivable list filters are invalid",
+    );
+    return context.json({ data: await input.receivables.listReceivables(actor, query) });
   });
 
   routes.post("/receivables", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const body = postReceivableRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) return invalidBody("Receivable details are invalid", body.error.flatten());
-    try {
-      const result = await input.receivables.postReceivable(toProductActor(authSession), body.data);
-      return context.json({ data: result }, result.replayed ? 200 : 201);
-    } catch (error) {
-      return mapProductError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const command = parseRequest(
+      postReceivableRequestSchema,
+      await parseJsonBody(context),
+      "Receivable details are invalid",
+    );
+    const result = await input.receivables.postReceivable(actor, command);
+    return context.json({ data: result }, commandStatus(result));
   });
 
   routes.get("/receivables/:receivableId", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const receivableId = parseRecordId(
-      context.req.param("receivableId"),
-      "Receivable was not found",
-    );
-    try {
-      const result = await input.receivables.getReceivable(
-        toProductActor(authSession),
-        receivableId,
-      );
-      return context.json({ data: result });
-    } catch (error) {
-      return mapProductError(error);
-    }
+    const actor = await requireActor(input.auth, context);
+    const receivableId = requireRecordId(context.req.param("receivableId"), receivableNotFound);
+    return context.json({ data: await input.receivables.getReceivable(actor, receivableId) });
   });
 
   routes.post("/receivables/:receivableId/void", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const receivableId = parseRecordId(
-      context.req.param("receivableId"),
-      "Receivable was not found",
+    const actor = await requireActor(input.auth, context);
+    const receivableId = requireRecordId(context.req.param("receivableId"), receivableNotFound);
+    const command = parseRequest(
+      voidReceivableRequestSchema,
+      await parseJsonBody(context),
+      "Receivable void confirmation is invalid",
     );
-    const body = voidReceivableRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) {
-      return invalidBody("Receivable void confirmation is invalid", body.error.flatten());
-    }
-    try {
-      const result = await input.receivables.voidReceivable(
-        toProductActor(authSession),
-        receivableId,
-        body.data,
-      );
-      return context.json({ data: result });
-    } catch (error) {
-      return mapProductError(error);
-    }
+    return context.json({
+      data: await input.receivables.voidReceivable(actor, receivableId, command),
+    });
   });
 
   routes.post("/receivables/:receivableId/payments", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const receivableId = parseRecordId(
-      context.req.param("receivableId"),
-      "Receivable was not found",
+    const actor = await requireActor(input.auth, context);
+    const receivableId = requireRecordId(context.req.param("receivableId"), receivableNotFound);
+    const command = parseRequest(
+      applyReceivablePaymentRequestSchema,
+      await parseJsonBody(context),
+      "Receivable payment confirmation is invalid",
     );
-    const body = applyReceivablePaymentRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) {
-      return invalidBody("Receivable payment confirmation is invalid", body.error.flatten());
-    }
-    try {
-      const result = await input.receivables.applyPayment(
-        toProductActor(authSession),
-        receivableId,
-        body.data,
-      );
-      return context.json({ data: result }, result.replayed ? 200 : 201);
-    } catch (error) {
-      return mapProductError(error);
-    }
+    const result = await input.receivables.applyPayment(actor, receivableId, command);
+    return context.json({ data: result }, commandStatus(result));
   });
 
   routes.post("/receivable-payments/:paymentId/reverse", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
-    const paymentId = parseRecordId(
-      context.req.param("paymentId"),
-      "Receivable payment was not found",
+    const actor = await requireActor(input.auth, context);
+    const paymentId = requireRecordId(context.req.param("paymentId"), paymentNotFound);
+    const command = parseRequest(
+      reverseReceivablePaymentRequestSchema,
+      await parseJsonBody(context),
+      "Payment reversal confirmation is invalid",
     );
-    const body = reverseReceivablePaymentRequestSchema.safeParse(await parseJsonBody(context));
-    if (!body.success) {
-      return invalidBody("Payment reversal confirmation is invalid", body.error.flatten());
-    }
-    try {
-      const result = await input.receivables.reversePayment(
-        toProductActor(authSession),
-        paymentId,
-        body.data,
-      );
-      return context.json({ data: result }, result.replayed ? 200 : 201);
-    } catch (error) {
-      return mapProductError(error);
-    }
+    const result = await input.receivables.reversePayment(actor, paymentId, command);
+    return context.json({ data: result }, commandStatus(result));
   });
 
   return routes;

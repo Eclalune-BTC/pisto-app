@@ -4,7 +4,7 @@ import type { CatalogRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
 import { Hono } from "hono";
 
-import { ApiError } from "../src/errors.ts";
+import { normalizeError } from "../src/errors.ts";
 import { catalogRoutes } from "../src/routes/catalog.ts";
 
 const actorSession = {
@@ -52,21 +52,21 @@ function createRepository(overrides: Partial<CatalogRepository> = {}): CatalogRe
 function createApp(repository: CatalogRepository) {
   const app = new Hono();
   app.route("/v1", catalogRoutes({ auth: createAuth(), catalog: repository }));
+  // Mirrors the single boundary in src/app.ts so a router mounted on its own
+  // still translates a domain failure exactly as the composed application does.
   app.onError((error, context) => {
-    if (error instanceof ApiError) {
-      return context.json(
-        {
-          error: {
-            code: error.code,
-            message: error.message,
-            requestId: "catalog-test",
-            details: error.details,
-          },
+    const { apiError } = normalizeError(error);
+    return context.json(
+      {
+        error: {
+          code: apiError.code,
+          message: apiError.message,
+          requestId: "catalog-test",
+          details: apiError.details,
         },
-        error.status,
-      );
-    }
-    return context.json({ error: { code: "INTERNAL_ERROR" } }, 500);
+      },
+      apiError.status,
+    );
   });
   return app;
 }
@@ -161,6 +161,47 @@ describe("catalog HTTP routes", () => {
       body,
     });
     expect(replay.status).toBe(200);
+  });
+
+  // These pin the query-reading contract that predates the route consolidation.
+  // Hono's context.req.query() would keep the first duplicate and silently drop
+  // an empty-name parameter, flipping both of these results.
+  test("reads the last value of a duplicated query parameter", async () => {
+    let received: unknown;
+    const app = createApp(
+      createRepository({
+        listProducts: async (_actor, query) => {
+          received = query;
+          return { items: [], nextCursor: null };
+        },
+      }),
+    );
+
+    const rejected = await app.request("/v1/catalog/products?limit=5&limit=99");
+    expect(rejected.status).toBe(400);
+    expect(received).toBeUndefined();
+
+    const accepted = await app.request("/v1/catalog/products?limit=99&limit=5");
+    expect(accepted.status).toBe(200);
+    expect(received).toMatchObject({ limit: 5 });
+  });
+
+  test("still rejects an empty-name query parameter against the strict contract", async () => {
+    let called = false;
+    const app = createApp(
+      createRepository({
+        listProducts: async () => {
+          called = true;
+          return { items: [], nextCursor: null };
+        },
+      }),
+    );
+
+    const response = await app.request("/v1/catalog/products?=oops&limit=5");
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.code).toBe("VALIDATION_ERROR");
+    expect(called).toBe(false);
   });
 
   test("maps domain conflicts and invalid undisclosed identifiers", async () => {
