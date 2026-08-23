@@ -8,6 +8,7 @@ import type {
   Database,
   ProductRepository,
   ReceivablesRepository,
+  ReportsRepository,
 } from "@pisto/db";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -20,6 +21,7 @@ import { cashRoutes } from "./cash.ts";
 import { catalogRoutes } from "./catalog.ts";
 import { productRoutes } from "./product.ts";
 import { receivablesRoutes } from "./receivables.ts";
+import { reportsRoutes } from "./reports.ts";
 
 const providerRedirectSchema = z.object({
   url: z.string().url(),
@@ -47,6 +49,7 @@ export function v1Routes(input: {
   db: Database;
   product: ProductRepository;
   receivables: ReceivablesRepository;
+  reports: ReportsRepository;
 }) {
   const routes = new Hono<AppEnv>();
 
@@ -62,6 +65,7 @@ export function v1Routes(input: {
   routes.route("/", catalogRoutes({ auth: input.auth, catalog: input.catalog }));
   routes.route("/", cashRoutes({ auth: input.auth, cash: input.cash }));
   routes.route("/", receivablesRoutes({ auth: input.auth, receivables: input.receivables }));
+  routes.route("/", reportsRoutes({ auth: input.auth, reports: input.reports }));
 
   routes.get("/me", async (context) => {
     const authSession = await requireSession(input.auth, context.req.raw.headers);

@@ -6,6 +6,7 @@ import {
   createDatabase,
   createProductRepository,
   createReceivablesRepository,
+  createReportsRepository,
   parseDatabaseConfig,
 } from "@pisto/db";
 
@@ -22,6 +23,7 @@ export function createRuntime(env: Record<string, string | undefined>) {
   const catalog = createCatalogRepository(database.db);
   const product = createProductRepository(database.db);
   const receivables = createReceivablesRepository(database.db);
+  const reports = createReportsRepository(database.db);
   const auth = createAuth({ config: authConfig, db: database.db, billing });
   const app = createApp({
     config,
@@ -33,6 +35,7 @@ export function createRuntime(env: Record<string, string | undefined>) {
     database,
     product,
     receivables,
+    reports,
   });
 
   return { app, auth, billing, database, config };

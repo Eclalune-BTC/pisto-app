@@ -1,7 +1,12 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
 import type { BillingRuntime } from "@pisto/billing";
-import type { CashRepository, CatalogRepository, ReceivablesRepository } from "@pisto/db";
+import type {
+  CashRepository,
+  CatalogRepository,
+  ReceivablesRepository,
+  ReportsRepository,
+} from "@pisto/db";
 import { type DatabaseHandle, ProductError, type ProductRepository } from "@pisto/db";
 
 import { createApp } from "../src/app.ts";
@@ -128,6 +133,10 @@ function testApp(
     product,
     receivables: unavailableRepository<ReceivablesRepository>(
       "Receivables repository",
+      options.onRepositoryCall,
+    ),
+    reports: unavailableRepository<ReportsRepository>(
+      "Reports repository",
       options.onRepositoryCall,
     ),
   });
@@ -529,6 +538,7 @@ describe("Pisto API", () => {
     ["POST", `/v1/receivables/${recordId}/void`],
     ["POST", `/v1/receivables/${recordId}/payments`],
     ["POST", `/v1/receivable-payments/${recordId}/reverse`],
+    ["GET", "/v1/reports/operating?startLocalDate=2026-08-01&endLocalDate=2026-08-22"],
   ];
 
   test("resolves a session before every domain handler touches a repository", async () => {
@@ -552,7 +562,12 @@ describe("Pisto API", () => {
 
   test("mounts every operating capability behind authentication and permits PATCH preflight", async () => {
     const app = testApp();
-    for (const path of ["/v1/catalog/products", "/v1/cash/accounts", "/v1/customers"]) {
+    for (const path of [
+      "/v1/catalog/products",
+      "/v1/cash/accounts",
+      "/v1/customers",
+      "/v1/reports/operating?startLocalDate=2026-08-01&endLocalDate=2026-08-22",
+    ]) {
       const response = await app.request(path);
       expect(response.status).toBe(401);
     }
