@@ -9,6 +9,7 @@ import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { buildBusinessCommand } from "@/features/business/business-draft";
 import { api, isAmbiguousMutationError } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
 import { productErrorMessage } from "@/lib/product-errors";
@@ -29,7 +30,7 @@ export default function BusinessSetupScreen() {
   const queryClient = useQueryClient();
   const businesses = useQuery(businessesQueryOptions);
   const [name, setName] = useState("");
-  const [currency, setCurrency] = useState("USD");
+  const [currency, setCurrency] = useState("");
   const [timeZone, setTimeZone] = useState(detectedTimeZone);
   const [acknowledged, setAcknowledged] = useState(false);
   const [errors, setErrors] = useState<BusinessErrors>({});
@@ -39,7 +40,7 @@ export default function BusinessSetupScreen() {
       businesses.data?.activeBusinessId &&
       businesses.data.items.some(({ id }) => id === businesses.data?.activeBusinessId)
     ) {
-      router.replace("/operate/sales");
+      router.replace("/operate");
     }
   }, [businesses.data, router]);
 
@@ -47,21 +48,15 @@ export default function BusinessSetupScreen() {
     mutationFn: selectActiveBusiness,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: businessesQueryKey });
-      router.replace("/operate/sales");
+      router.replace("/operate");
     },
   });
 
   const creation = useMutation({
-    mutationFn: async () => {
-      return api.businesses.create({
-        name: name.trim(),
-        currency: currency.toUpperCase(),
-        timeZone: timeZone.trim(),
-      });
-    },
+    mutationFn: api.businesses.create,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: businessesQueryKey });
-      router.replace("/operate/sales");
+      router.replace("/operate");
     },
     onError: async (error) => {
       if (isAmbiguousMutationError(error)) await businesses.refetch();
@@ -70,27 +65,14 @@ export default function BusinessSetupScreen() {
   const uncertainCreation = isAmbiguousMutationError(creation.error);
 
   const createBusiness = () => {
-    const nextErrors: BusinessErrors = {};
-    const normalizedName = name.trim();
-    const normalizedCurrency = currency.toUpperCase();
-    const normalizedTimeZone = timeZone.trim();
-    if (normalizedName.length < 2 || normalizedName.length > 80) {
-      nextErrors.name = t("business.validation.name");
-    }
-    if (!/^[A-Z]{3}$/.test(normalizedCurrency)) {
-      nextErrors.currency = t("business.validation.currency");
-    }
-    if (normalizedTimeZone.length < 1 || normalizedTimeZone.length > 64) {
-      nextErrors.timeZone = t("business.validation.timeZone");
-    } else {
-      try {
-        new Intl.DateTimeFormat("es", { timeZone: normalizedTimeZone }).format();
-      } catch {
-        nextErrors.timeZone = t("business.validation.timeZone");
-      }
-    }
+    const result = buildBusinessCommand({ currency, name, timeZone });
+    const nextErrors = result.ok
+      ? {}
+      : Object.fromEntries(
+          result.fields.map((field) => [field, t(`business.validation.${field}`)]),
+        );
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length === 0) creation.mutate();
+    if (result.ok) creation.mutate(result.command);
   };
 
   if (businesses.fetchStatus === "paused" && !businesses.data) return <OfflineState />;

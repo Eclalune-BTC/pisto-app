@@ -105,7 +105,7 @@ export const esSV = {
     eyebrow: "Primer paso",
     title: "Configura tu negocio",
     description:
-      "Estos datos definen cómo Pisto registra fechas y dinero. Revísalos antes de continuar.",
+      "Elige la moneda y la zona horaria de este negocio. Pisto no usa una moneda global ni la decide por ti.",
     loadFailed: "No pudimos consultar tus negocios.",
     continue: "Continuar con este negocio",
     continueFailed: "No pudimos seleccionar este negocio. Vuelve a intentarlo.",
@@ -116,18 +116,63 @@ export const esSV = {
     timeZone: "Zona horaria (IANA)",
     timeZonePlaceholder: "America/El_Salvador",
     acknowledgment:
-      "Confirmo que la moneda y la zona horaria son correctas. En este incremento no se pueden cambiar después de registrar ventas.",
+      "Confirmo que la moneda y la zona horaria son correctas. La moneda no se puede cambiar después de crear registros financieros.",
     create: "Crear negocio",
     retrySame: "Reintentar los mismos datos",
     uncertain:
       "No sabemos si el negocio se creó. Conservamos estos datos para reintentarlos sin crear otro negocio.",
     createFailed: "No pudimos crear el negocio.",
     incrementNote:
-      "Incremento 1 registra ventas por total. Todavía no descuenta inventario ni calcula utilidad.",
+      "Cada negocio define su propia moneda. Los registros guardan esa moneda para conservar su significado histórico.",
     validation: {
       name: "Escribe un nombre de 2 a 80 caracteres.",
       currency: "Usa un código ISO 4217 de tres letras, por ejemplo USD.",
       timeZone: "Escribe una zona horaria IANA válida.",
+    },
+  },
+  operate: {
+    loading: "Consultando los módulos de tu negocio…",
+    unavailableTitle: "No pudimos abrir las operaciones",
+    unavailableDescription:
+      "No mostramos módulos ni permisos inventados. Comprueba tu conexión y vuelve a intentarlo.",
+    description: "Elige una tarea para registrar o consultar información de este negocio.",
+    noAccessTitle: "No tienes módulos disponibles",
+    noAccessDescription:
+      "Tu membresía no incluye permisos de lectura para estas operaciones. Pídele acceso a una persona administradora del negocio.",
+    groups: {
+      money: "Dinero",
+      stock: "Productos y existencias",
+      relationships: "Clientes y cobros",
+    },
+    modules: {
+      sales: {
+        label: "Ventas",
+        description: "Registra ingresos y consulta el historial de ventas.",
+      },
+      expenses: {
+        label: "Gastos",
+        description: "Registra egresos revisados y consulta sus categorías.",
+      },
+      cash: {
+        label: "Caja y cuentas",
+        description: "Controla saldos, movimientos, ajustes y transferencias.",
+      },
+      catalog: {
+        label: "Catálogo",
+        description: "Administra productos, precios y categorías.",
+      },
+      inventory: {
+        label: "Inventario",
+        description: "Consulta existencias y registra movimientos verificables.",
+      },
+      customers: {
+        label: "Clientes",
+        description: "Mantén los datos y el historial de cada cliente.",
+      },
+      receivables: {
+        label: "Cuentas por cobrar",
+        description: "Controla saldos pendientes, pagos y vencimientos.",
+      },
     },
   },
   sales: {

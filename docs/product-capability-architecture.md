@@ -115,27 +115,28 @@ agents.
 
 ## Product shell and information architecture
 
-Top-level navigation represents durable user jobs, not every module. The current
-`Home / Billing / Settings` shell is working scaffold navigation, not the final Pisto information
-architecture.
+Top-level navigation represents durable user jobs, not every module. The accepted shell starts with
+**Operate** and **Account**. **Assistant** earns a durable destination when its real conversation
+history, text composer, and failure states ship; it is not an empty placeholder. A future Home route
+must first own real orientation or attention data, so the current dashboard redirects to Operate
+instead of inventing metrics.
 
-One small information-architecture hypothesis to validate with real product slices is:
+`/operate` is the daily-work hub. It reads the active business and server-returned membership
+permissions, shows that business's currency and time zone, and exposes only authorized capability
+routes. Its explicit product-owned module map groups:
 
-- **Home:** business status, attention, and the next useful action backed by real data;
-- **Operate:** sales, purchases, inventory, customers, suppliers, and other daily structured work;
-- **Assistant:** text and voice entry plus reviewable history of assistant requests/results;
-- **Account access:** business switcher, team, settings, billing, and security outside the daily-work
-  destinations.
+- money: sales, expenses, and cash;
+- products and stock: catalog and inventory; and
+- relationships: customers and receivables.
 
-This is a candidate composition model, not final copy or approval for empty destinations. Before
-changing labels or route topology, validate that users can find the real jobs and that every primary
-destination has owned content. The approved first slice requires Operate/Sales and Assistant entry;
-Home earns a slot only after a brief defines real orientation, attention, or next-action content. Do
-not invent dashboard metrics or planning content to fill it. Surface the previous-month summary
-contextually from Assistant and Sales/Operate. Promote Reports only after an approved brief proves
-multiple recurring report jobs and direct-entry value. On compact native and web layouts, keep no
-more than three to five durable destinations; fewer are valid. Wide web may expose nested module
-links and contextual secondary navigation without changing product meaning.
+The module map is a static composition list, not a plugin registry. Adding a capability requires an
+owned route, a named read permission, typed localized copy, failure states, and a navigation test.
+Removing a module from the list does not remove server authorization or its canonical records.
+
+Compact native and web layouts keep only durable destinations in bottom navigation. Wide web may
+show the authorized Operate modules as secondary navigation without changing their route meaning.
+Billing remains reachable through Account. Reports will join Operate only with its implemented exact
+query and structured surface; it does not receive a placeholder button.
 
 The manual increment uses neutral Latin American Spanish copy with Salvadoran `es-SV` money/date
 formatting as its explicit initial product choice. Validate it with Salvadoran terminology and users
@@ -146,6 +147,30 @@ preference synchronization remain separately briefed capabilities. See [ADR 0013
 Do not place one permanent tab per capability. Do not turn Home into a grid of feature cards. New
 capabilities enter the shell only when they introduce a durable user job; otherwise they live inside
 an existing area, contextual action, record detail, search result, or assistant tool.
+
+## Current physical composition
+
+The modular monolith uses the same explicit shape for every implemented capability:
+
+| Boundary | Location | Responsibility |
+| --- | --- | --- |
+| Transport meaning | `packages/contracts/src/<capability>.ts` | Strict public schemas and provider-neutral types |
+| Persistence owner | `packages/db/src/<capability>/` and `packages/db/src/schema/` | Invariants, exact queries, transactions, ledgers, and Drizzle tables |
+| HTTP adapter | `apps/api/src/routes/<capability>.ts` | Authentication, validated transport, status mapping, and repository calls |
+| Product UI | `apps/app/src/features/<capability>/` | Screen state, reviewed drafts, query keys, formatting, and reusable capability components |
+| Route composition | `apps/app/src/app/(app)/operate/` | Thin Expo Router entries that bind URLs to owned feature screens |
+| Shell composition | `apps/app/src/features/operate/navigation.ts` | Explicit authorized module order and grouping |
+
+Dependency direction stays one way: the app depends on public contracts; the API depends on
+contracts and database owners; database owners depend on shared contract primitives; contracts do
+not depend on an app, HTTP framework, ORM, or provider. Cross-capability writes use a named owner port
+inside one explicit PostgreSQL transaction as defined by
+[ADR 0016](adrs/0016-owner-ports-for-cross-capability-transactions.md). They do not reach through
+another capability's tables from route code.
+
+A new module should extend this shape only where it has real behavior. It must not add a generic
+service layer, self-registering runtime, catch-all repository, speculative package, or duplicated
+money/time/tenant policy merely to resemble the other folders.
 
 Billing and settings are important but not primary daily work. They remain reachable from account or
 business context and may stay directly addressable by URL.

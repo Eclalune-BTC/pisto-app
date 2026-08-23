@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { type Href, Link, usePathname } from "expo-router";
 import { LogOut, ReceiptText, UserRound } from "lucide-react-native";
 import type { ComponentType, PropsWithChildren } from "react";
@@ -6,8 +7,10 @@ import { Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Brand } from "@/components/brand";
+import { getVisibleOperateModules } from "@/features/operate/navigation";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { cn } from "@/lib/cn";
+import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 
 type NavItem = {
   href: Href;
@@ -18,7 +21,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   {
-    href: "/operate/sales",
+    href: "/operate",
     icon: ReceiptText,
     labelKey: "common.operate",
     matchPrefix: "/operate",
@@ -36,6 +39,9 @@ export function AppShell({ children, email, name }: AppShellProps) {
   const pathname = usePathname();
   const isWeb = Platform.OS === "web";
   const signOutAction = useSignOut();
+  const businesses = useQuery(businessesQueryOptions);
+  const activeBusiness = getActiveBusiness(businesses.data);
+  const operateModules = getVisibleOperateModules(activeBusiness?.access.permissions);
 
   return (
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#0F1D18]" edges={["top", "left", "right"]}>
@@ -57,25 +63,59 @@ export function AppShell({ children, email, name }: AppShellProps) {
                   const Icon = item.icon;
 
                   return (
-                    <Link key={item.labelKey} href={item.href} asChild>
-                      <Pressable
-                        accessibilityState={{ selected: active }}
-                        className={cn(
-                          "min-h-12 flex-row items-center gap-3 border-l-2 px-4 active:opacity-80",
-                          active ? "border-accent bg-accent" : "border-transparent bg-transparent",
-                        )}
-                      >
-                        <Icon color={active ? "#14241D" : "#B9C6BF"} size={20} strokeWidth={2.2} />
-                        <Text
+                    <View className="gap-1" key={item.labelKey}>
+                      <Link href={item.href} asChild>
+                        <Pressable
+                          accessibilityState={{ selected: active }}
                           className={cn(
-                            "text-[15px] font-bold",
-                            active ? "text-ink" : "text-[#D3DDD7]",
+                            "min-h-12 flex-row items-center gap-3 border-l-2 px-4 active:opacity-80",
+                            active
+                              ? "border-accent bg-accent"
+                              : "border-transparent bg-transparent",
                           )}
                         >
-                          {t(item.labelKey)}
-                        </Text>
-                      </Pressable>
-                    </Link>
+                          <Icon
+                            color={active ? "#14241D" : "#B9C6BF"}
+                            size={20}
+                            strokeWidth={2.2}
+                          />
+                          <Text
+                            className={cn(
+                              "text-[15px] font-bold",
+                              active ? "text-ink" : "text-[#D3DDD7]",
+                            )}
+                          >
+                            {t(item.labelKey)}
+                          </Text>
+                        </Pressable>
+                      </Link>
+
+                      {item.matchPrefix === "/operate" && pathname.startsWith("/operate") ? (
+                        <View className="gap-0.5 pl-7">
+                          {operateModules.map((module) => {
+                            const moduleActive =
+                              pathname === module.href || pathname.startsWith(`${module.href}/`);
+                            return (
+                              <Link href={module.href} asChild key={module.id}>
+                                <Pressable
+                                  accessibilityState={{ selected: moduleActive }}
+                                  className="min-h-9 justify-center border-l border-[#466055] px-4 active:opacity-70"
+                                >
+                                  <Text
+                                    className={cn(
+                                      "text-[13px] font-semibold",
+                                      moduleActive ? "text-white" : "text-[#AFC0B6]",
+                                    )}
+                                  >
+                                    {t(module.labelKey)}
+                                  </Text>
+                                </Pressable>
+                              </Link>
+                            );
+                          })}
+                        </View>
+                      ) : null}
+                    </View>
                   );
                 })}
               </View>

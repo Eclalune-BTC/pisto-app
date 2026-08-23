@@ -72,6 +72,54 @@ monolith: applications compose explicit routes, commands, queries, tools, and pl
 A capability earns a focused package, asynchronous boundary, or service only from demonstrated
 ownership, consumer, scale, reliability, or deployment pressure.
 
+## Product modularity and business-owned settings
+
+Pisto isolates change by business capability, not by creating a service or generic abstraction for
+every screen. An implemented capability follows the same explicit path:
+
+```text
+Expo route
+  -> capability-owned screen and draft state
+  -> public transport contract
+  -> authenticated Hono route
+  -> capability-owned command/query
+  -> PostgreSQL transaction and canonical record
+```
+
+The route is composition only. Business validation does not live in React components, HTTP handlers,
+AI prompts, or provider adapters. Cross-capability writes use a named owner port and one explicit
+transaction; they do not update another module's tables directly. The concrete directory ownership
+and dependency direction are normative in
+[Product capability architecture](product-capability-architecture.md#current-physical-composition).
+
+Currency and time-zone configuration belong to each business:
+
+- the user enters a supported ISO 4217 currency and IANA time zone during business creation;
+- there is no deployment-wide, device-derived, session-derived, or provider-derived currency;
+- the server resolves and freezes the currency's minor-unit digits instead of trusting a client;
+- every persisted money record snapshots its currency and exponent, and relevant records snapshot
+  their confirmed local date, local minute, time zone, and resolved instant; and
+- new modules reuse the public money/time primitives and fresh `business_settings` policy without a
+  mutable global `currentCurrency` or duplicated defaults.
+
+V1 deliberately blocks an operating-currency change after financial history exists. A future
+currency transition is a separate data migration and product decision with an effective instant;
+it cannot rewrite old records or silently convert amounts. This protects module independence and
+historical meaning while still allowing different businesses in the same deployment to choose
+different currencies. See
+[ADR 0015](adrs/0015-business-owned-currency-and-money-snapshots.md).
+
+Typical changes stay inside these boundaries:
+
+| Change | Expected owner and impact |
+| --- | --- |
+| Add or change one business workflow | Its contract, persistence owner, API adapter, feature UI, and thin route |
+| Add a module to Operate | The completed module plus the explicit authorized navigation map; no self-registration |
+| Change an AI, billing, speech, or storage provider | Its edge adapter and configuration; canonical domain records do not change |
+| Change presentation locale or responsive layout | Typed resources, formatters, tokens, or a real platform adapter; stored money does not change |
+| Compose one atomic cross-module operation | One application transaction through named owner ports, with rollback and replay tests |
+| Change operating-currency policy | A dedicated ADR, migration, compatibility plan, and multi-capability integrity tests |
+
 One Pisto business workspace uses one Better Auth organization identifier as its `businessId`.
 Organization/session state selects a candidate workspace; the API reloads membership and applies
 Pisto action policy before every domain operation. Typed business settings and financial records stay
