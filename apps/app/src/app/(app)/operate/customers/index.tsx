@@ -1,16 +1,19 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
 import { useDeferredValue, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
-import { customersReceivablesCopy as copy } from "@/features/customers/copy";
+import { buildCustomersCopy } from "@/features/customers/copy";
 import { type CustomerStatusFilter, CustomersScreen } from "@/features/customers/customers-screen";
 import { customersQueryOptions } from "@/features/customers/queries";
 import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
 import type { CustomersLoadState } from "@/features/customers/types";
 
 export default function CustomersRoute() {
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
   const access = useCapabilityAccess("customers:read", "customers:manage");
   const [search, setSearch] = useState("");

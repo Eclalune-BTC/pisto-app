@@ -2,14 +2,15 @@ import type { CreateCustomerRequest, Customer, UpdateCustomerRequest } from "@pi
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { ArrowLeft } from "lucide-react-native";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Text } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 
 import { customersApi } from "./api";
-import { customersReceivablesCopy as copy } from "./copy";
+import { buildCustomersCopy, type CustomersReceivablesCopy } from "./copy";
 import { CustomerForm } from "./customer-form";
 import { CustomerReview, type CustomerReviewField } from "./customer-review";
 import {
@@ -32,6 +33,7 @@ type CustomerEditorProps = {
 };
 
 function issueMessages(
+  copy: CustomersReceivablesCopy,
   issues: CustomerDraftIssues,
 ): Partial<Record<keyof CustomerDraftValues, string>> {
   return {
@@ -42,7 +44,10 @@ function issueMessages(
   };
 }
 
-function reviewFields(command: CustomerCommand): CustomerReviewField[] {
+function reviewFields(
+  copy: CustomersReceivablesCopy,
+  command: CustomerCommand,
+): CustomerReviewField[] {
   const fields: CustomerReviewField[] = [];
   if (command.name !== undefined) {
     fields.push({ label: copy.customers.list.name, value: command.name });
@@ -64,6 +69,8 @@ function reviewFields(command: CustomerCommand): CustomerReviewField[] {
 }
 
 export function CustomerEditor({ businessId, customer, onBack, onConfirmed }: CustomerEditorProps) {
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const queryClient = useQueryClient();
   const editing = Boolean(customer);
   const [values, setValues] = useState<CustomerDraftValues>(() => customerValues(customer));
@@ -81,14 +88,14 @@ export function CustomerEditor({ businessId, customer, onBack, onConfirmed }: Cu
       onConfirmed(confirmedCustomer.id);
     },
   });
-  const mutationState = customerMutationState(mutation);
+  const mutationState = customerMutationState(t, mutation);
 
   const prepareReview = () => {
     const idempotencyKey = Crypto.randomUUID();
     const result = customer
       ? buildUpdateCustomerCommand(customer, values, idempotencyKey)
       : buildCreateCustomerCommand(values, idempotencyKey);
-    setErrors(issueMessages(result.issues));
+    setErrors(issueMessages(copy, result.issues));
     setFormError(result.issues.form === "no-changes" ? copy.customers.editor.noChanges : undefined);
     if (!("command" in result)) return;
     setCommand(result.command as CustomerCommand);
@@ -112,7 +119,7 @@ export function CustomerEditor({ businessId, customer, onBack, onConfirmed }: Cu
           confirmLabel={
             editing ? copy.customers.editor.confirmEdit : copy.customers.editor.confirmCreate
           }
-          fields={reviewFields(command)}
+          fields={reviewFields(copy, command)}
           mutation={mutationState}
           onConfirm={() => mutation.mutate(command)}
           onEdit={() => {

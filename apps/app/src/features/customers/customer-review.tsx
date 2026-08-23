@@ -1,8 +1,10 @@
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 
 import { Button } from "@/components/ui/button";
 
-import { customersReceivablesCopy as copy } from "./copy";
+import { buildCustomersCopy } from "./copy";
 import { customerPrimaryAction, type MutationState } from "./types";
 
 export type CustomerReviewField = { label: string; value: string };
@@ -26,6 +28,8 @@ export function CustomerReview({
   onRetrySameRequest,
   title,
 }: CustomerReviewProps) {
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const action = customerPrimaryAction(mutation);
   return (
     <View className="gap-6">
@@ -72,7 +76,7 @@ export function CustomerReview({
         ) : null}
         {action === "retry" ? (
           <Button
-            label={copy.customers.form.retrySameRequest}
+            label={copy.customers.form.retrySameConfirmation}
             onPress={onRetrySameRequest}
             variant="accent"
           />

@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
-import { customersReceivablesCopy as copy } from "@/features/customers/copy";
+import { buildCustomersCopy } from "@/features/customers/copy";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
 import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-account-source";
@@ -17,8 +17,9 @@ import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 
 export default function ReceivableDetailRoute() {
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
-  const { i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const params = useLocalSearchParams<{ receivableId?: string | string[] }>();
   const receivableId = Array.isArray(params.receivableId)

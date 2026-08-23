@@ -1,8 +1,10 @@
 import { Check, RefreshCw } from "lucide-react-native";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { Button, ButtonText } from "@/components/ui/button";
-import { customersReceivablesCopy as copy } from "@/features/customers/copy";
+import { buildCustomersCopy } from "@/features/customers/copy";
 
 import type { CashAccountChoice } from "./cash-account-source";
 
@@ -33,6 +35,8 @@ export function CashAccountPicker({
   onSelect,
   selectedAccountId,
 }: CashAccountPickerProps) {
+  const { t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   return (
     <View className="gap-6">
       <View className="gap-2">

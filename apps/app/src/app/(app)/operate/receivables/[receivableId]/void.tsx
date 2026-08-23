@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Page } from "@/components/page";
@@ -9,7 +9,7 @@ import { ScreenHeader } from "@/components/screen-header";
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { ActionUnavailable } from "@/features/customers/action-unavailable";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
-import { customersReceivablesCopy as copy } from "@/features/customers/copy";
+import { buildCustomersCopy } from "@/features/customers/copy";
 import { RecordBoundary, type RecordBoundaryState } from "@/features/customers/record-boundary";
 import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
 import { receivablesApi } from "@/features/receivables/api";
@@ -27,9 +27,10 @@ import { formatMinorUnits } from "@/lib/money";
 type VoidReceivableRequest = Parameters<typeof receivablesApi.void>[1];
 
 export default function VoidReceivableRoute() {
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const params = useLocalSearchParams<{ receivableId?: string | string[] }>();
   const receivableId = Array.isArray(params.receivableId)
@@ -115,7 +116,7 @@ export default function VoidReceivableRoute() {
                   )}
                   copy={copy.receivables.review}
                   description={receivable.description}
-                  mutation={financialMutationState(mutation)}
+                  mutation={financialMutationState(t, mutation)}
                   onCancel={() => {
                     setCommand(null);
                     mutation.reset();

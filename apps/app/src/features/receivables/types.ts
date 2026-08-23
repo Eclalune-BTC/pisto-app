@@ -89,7 +89,7 @@ export type ConfirmationCopy = {
   confirm: string;
   confirming: string;
   errorTitle: string;
-  retrySameCommand: string;
+  retrySameConfirmation: string;
   reviewTitle: string;
   uncertainDescription: string;
   uncertainTitle: string;

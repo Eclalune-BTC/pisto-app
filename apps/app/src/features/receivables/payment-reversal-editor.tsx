@@ -6,12 +6,12 @@ import type {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { ArrowLeft } from "lucide-react-native";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
-import { customersReceivablesCopy as copy } from "@/features/customers/copy";
+import { buildCustomersCopy, type CustomersReceivablesCopy } from "@/features/customers/copy";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 
@@ -35,7 +35,10 @@ type PaymentReversalEditorProps = {
 
 type ReversalErrors = Partial<Record<"date" | "reference" | "time", string>>;
 
-function issueMessage(issue: ReceivableDraftIssue | undefined): string | undefined {
+function issueMessage(
+  copy: CustomersReceivablesCopy,
+  issue: ReceivableDraftIssue | undefined,
+): string | undefined {
   if (!issue) return undefined;
   if (issue === "date") return copy.receivables.validation.date;
   if (issue === "time") return copy.receivables.validation.time;
@@ -49,8 +52,9 @@ export function PaymentReversalEditor({
   onConfirmed,
   payment,
 }: PaymentReversalEditorProps) {
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const queryClient = useQueryClient();
-  const { i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const now = currentLocalDateTime(business.timeZone);
   const [draft, setDraft] = useState<PaymentReversalDraft>({
@@ -76,9 +80,9 @@ export function PaymentReversalEditor({
   const prepareReview = () => {
     const result = buildPaymentReversalCommand(draft, Crypto.randomUUID());
     setErrors({
-      date: issueMessage(result.issues.date),
-      reference: issueMessage(result.issues.reference),
-      time: issueMessage(result.issues.time),
+      date: issueMessage(copy, result.issues.date),
+      reference: issueMessage(copy, result.issues.reference),
+      time: issueMessage(copy, result.issues.time),
     });
     if (!("command" in result)) return;
     setCommand(result.command);
@@ -105,7 +109,7 @@ export function PaymentReversalEditor({
           )}
           cashAccountName={cashAccountName}
           copy={copy.receivables.review}
-          mutation={financialMutationState(mutation)}
+          mutation={financialMutationState(t, mutation)}
           occurrence={`${command.occurredLocalDate} ${command.occurredLocalTime}`}
           onCancel={() => {
             setCommand(null);

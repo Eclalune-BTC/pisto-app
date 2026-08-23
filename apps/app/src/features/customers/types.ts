@@ -92,7 +92,7 @@ export type CustomerFormCopy = {
   notesPlaceholder: string;
   phone: string;
   phonePlaceholder: string;
-  retrySameRequest: string;
+  retrySameConfirmation: string;
   save: string;
   uncertainTitle: string;
 };

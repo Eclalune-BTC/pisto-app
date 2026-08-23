@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
-import { customersReceivablesCopy as copy } from "@/features/customers/copy";
+import { buildCustomersCopy } from "@/features/customers/copy";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
 import { formatBusinessLocalDate, uniqueValues } from "@/features/receivables/presentation";
@@ -21,8 +21,9 @@ import { formatMinorUnits } from "@/lib/money";
 type ReceivableFilter = "all" | "open" | "overdue" | "paid" | "voided";
 
 export default function ReceivablesRoute() {
+  const { i18n, t } = useTranslation();
+  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
-  const { i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
   const [filter, setFilter] = useState<ReceivableFilter>("all");

@@ -75,7 +75,11 @@ export function ConfirmationPanel({
           />
         ) : null}
         {action === "retry" ? (
-          <Button label={copy.retrySameCommand} onPress={onRetrySameCommand} variant="accent" />
+          <Button
+            label={copy.retrySameConfirmation}
+            onPress={onRetrySameCommand}
+            variant="accent"
+          />
         ) : action === "confirm" || action === "waiting" ? (
           <Button
             label={action === "waiting" ? copy.confirming : copy.confirm}
