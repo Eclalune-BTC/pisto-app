@@ -1,28 +1,44 @@
-import { AlertTriangle, Plus, Search } from "lucide-react-native";
+import { AlertTriangle, FolderCog, Plus, Search } from "lucide-react-native";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
+
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { formatMinorUnits } from "@/lib/money";
-import type { Category, ProductDetail } from "../../../../../packages/contracts/src/catalog";
+import type {
+  Category,
+  ProductDetail,
+  ProductUnitKind,
+} from "../../../../../packages/contracts/src/catalog";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
+import type { CatalogStatusFilter } from "./query-keys";
+import { ReadOnlyNotice } from "./route-state";
 
 export type CatalogCollectionState =
   | { status: "loading" }
   | { status: "offline" }
   | { status: "denied" }
   | { status: "error" }
-  | { status: "ready"; items: ProductDetail[]; stale?: boolean };
+  | {
+      status: "ready";
+      hasNextPage: boolean;
+      items: ProductDetail[];
+      loadingMore: boolean;
+      stale?: boolean;
+    };
 
 export interface CatalogScreenCopy {
   title: string;
   description: string;
   eyebrow: string;
   createProduct: string;
+  manageCategories: string;
   searchLabel: string;
   searchPlaceholder: string;
   allCategories: string;
+  statusLabel: string;
+  statuses: Record<CatalogStatusFilter, string>;
   loading: string;
   offlineTitle: string;
   offlineDescription: string;
@@ -40,22 +56,41 @@ export interface CatalogScreenCopy {
   stockNotTracked: string;
   lowStock: string;
   onHand: string;
+  loadMore: string;
+  loadingMore: string;
+  loadMoreCategories: string;
+  categoriesLoading: string;
+  categoriesUnavailable: string;
+  readOnlyTitle: string;
+  readOnlyDescription: string;
+  unitLabels: Record<ProductUnitKind, string>;
   openProduct: (name: string) => string;
 }
 
 interface CatalogScreenProps {
   canManage: boolean;
   categories: Category[];
+  categoriesError: boolean;
+  categoriesHasNextPage: boolean;
+  categoriesLoading: boolean;
+  categoriesLoadingMore: boolean;
   categoryId: string | null;
   copy: CatalogScreenCopy;
   locale: string;
   onCategoryChange: (categoryId: string | null) => void;
   onCreateProduct: () => void;
+  onLoadMore: () => void;
+  onLoadMoreCategories: () => void;
+  onManageCategories: () => void;
   onOpenProduct: (productId: string) => void;
   onRetry: () => void;
+  onRetryCategories: () => void;
   onSearchChange: (value: string) => void;
+  onStatusChange: (status: CatalogStatusFilter) => void;
   search: string;
+  showReadOnlyNotice: boolean;
   state: CatalogCollectionState;
+  status: CatalogStatusFilter;
 }
 
 function StatusState({
@@ -110,47 +145,89 @@ function StatusState({
 export function CatalogScreen({
   canManage,
   categories,
+  categoriesError,
+  categoriesHasNextPage,
+  categoriesLoading,
+  categoriesLoadingMore,
   categoryId,
   copy,
   locale,
   onCategoryChange,
   onCreateProduct,
+  onLoadMore,
+  onLoadMoreCategories,
+  onManageCategories,
   onOpenProduct,
   onRetry,
+  onRetryCategories,
   onSearchChange,
+  onStatusChange,
   search,
+  showReadOnlyNotice,
   state,
+  status,
 }: CatalogScreenProps) {
   return (
     <Page contentContainerClassName="gap-8">
       <ScreenHeader
         action={
-          canManage ? (
-            <Button onPress={onCreateProduct} variant="accent">
-              <Plus color="#14241D" size={18} strokeWidth={2.6} />
-              <ButtonText variant="accent">{copy.createProduct}</ButtonText>
+          <View className="gap-3 sm:flex-row">
+            <Button onPress={onManageCategories} variant="secondary">
+              <FolderCog color="#237A55" size={18} />
+              <ButtonText variant="secondary">{copy.manageCategories}</ButtonText>
             </Button>
-          ) : undefined
+            {canManage ? (
+              <Button onPress={onCreateProduct} variant="accent">
+                <Plus color="#14241D" size={18} strokeWidth={2.6} />
+                <ButtonText variant="accent">{copy.createProduct}</ButtonText>
+              </Button>
+            ) : null}
+          </View>
         }
         description={copy.description}
         eyebrow={copy.eyebrow}
         title={copy.title}
       />
 
-      <View className="gap-4 border-y border-line py-5 dark:border-[#304239] lg:flex-row lg:items-end">
-        <View className="min-w-0 flex-1">
-          <Field
-            accessibilityLabel={copy.searchLabel}
-            label={copy.searchLabel}
-            onChangeText={onSearchChange}
-            placeholder={copy.searchPlaceholder}
-            trailing={<Search color="#617168" size={18} />}
-            value={search}
-          />
+      {showReadOnlyNotice ? <ReadOnlyNotice description={copy.readOnlyDescription} /> : null}
+
+      <View className="gap-5 border-y border-line py-5 dark:border-[#304239]">
+        <View className="gap-4 lg:flex-row lg:items-end">
+          <View className="min-w-0 flex-1">
+            <Field
+              accessibilityLabel={copy.searchLabel}
+              label={copy.searchLabel}
+              onChangeText={onSearchChange}
+              placeholder={copy.searchPlaceholder}
+              trailing={<Search color="#617168" size={18} />}
+              value={search}
+            />
+          </View>
+          <View className="gap-1 lg:max-w-[48%]">
+            <Text className="text-xs font-semibold text-ink-muted dark:text-[#AAB8B0]">
+              {copy.statusLabel}
+            </Text>
+            <View accessibilityRole="tablist" className="flex-row flex-wrap gap-x-5 gap-y-1">
+              {(["active", "archived", "all"] as const).map((value) => (
+                <Pressable
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: status === value }}
+                  className={status === value ? "border-b-2 border-positive py-2" : "py-2"}
+                  key={value}
+                  onPress={() => onStatusChange(value)}
+                >
+                  <Text className="font-semibold text-ink dark:text-white">
+                    {copy.statuses[value]}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
         </View>
+
         <View
           accessibilityRole="tablist"
-          className="flex-row flex-wrap gap-x-5 gap-y-2 lg:max-w-[48%]"
+          className="flex-row flex-wrap items-center gap-x-5 gap-y-2"
         >
           <Pressable
             accessibilityRole="tab"
@@ -173,7 +250,29 @@ export function CatalogScreen({
                 <Text className="font-semibold text-ink dark:text-white">{category.name}</Text>
               </Pressable>
             ))}
+          {categoriesLoading ? (
+            <Text className="py-2 text-sm text-ink-muted dark:text-[#AAB8B0]">
+              {copy.categoriesLoading}
+            </Text>
+          ) : null}
+          {categoriesHasNextPage ? (
+            <Button
+              label={copy.loadMoreCategories}
+              loading={categoriesLoadingMore}
+              onPress={onLoadMoreCategories}
+              size="sm"
+              variant="ghost"
+            />
+          ) : null}
         </View>
+        {categoriesError ? (
+          <View className="gap-2 border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18] sm:flex-row sm:items-center sm:justify-between">
+            <Text accessibilityRole="alert" className="text-sm text-ink dark:text-[#F2E4D2]">
+              {copy.categoriesUnavailable}
+            </Text>
+            <Button label={copy.retry} onPress={onRetryCategories} size="sm" variant="secondary" />
+          </View>
+        ) : null}
       </View>
 
       {state.status !== "ready" ? (
@@ -248,13 +347,22 @@ export function CatalogScreen({
                       ? `${copy.onHand}: ${formatQuantityMinorUnits(
                           stock.onHandMinorUnits,
                           stock.quantityPrecision,
-                        )}${stock.lowStock ? ` · ${copy.lowStock}` : ""}`
+                        )} ${copy.unitLabels[product.unitKind]}${stock.lowStock ? ` · ${copy.lowStock}` : ""}`
                       : copy.stockNotTracked}
                   </Text>
                 </View>
               </Pressable>
             ))
           )}
+          {state.hasNextPage ? (
+            <Button
+              className="mt-6 self-start"
+              label={state.loadingMore ? copy.loadingMore : copy.loadMore}
+              loading={state.loadingMore}
+              onPress={onLoadMore}
+              variant="secondary"
+            />
+          ) : null}
         </View>
       )}
     </Page>

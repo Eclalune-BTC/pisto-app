@@ -13,6 +13,23 @@ const base = {
   unitKind: "kilogram" as const,
 };
 
+const original = {
+  id: "07b5c93e-3374-40e1-956e-c344cd48712a",
+  categoryId: null,
+  lowStockThresholdMinorUnits: "2500",
+  name: "Coffee",
+  quantityPrecision: 3 as const,
+  sellingPriceCurrency: "USD",
+  sellingPriceCurrencyMinorUnitDigits: 2,
+  sellingPriceMinorUnits: "125",
+  sku: "COF-1",
+  status: "active" as const,
+  tracked: true,
+  unitKind: "kilogram" as const,
+  createdAt: "2026-08-22T10:00:00.000Z",
+  updatedAt: "2026-08-22T10:00:00.000Z",
+};
+
 describe("product draft command", () => {
   test("snapshots no currency client-side and emits exact price/quantity minor units", () => {
     const result = buildProductCommand({
@@ -61,5 +78,34 @@ describe("product draft command", () => {
         mode: "create",
       }),
     ).toEqual({ errors: { sellingPrice: "invalid" } });
+  });
+
+  test("updates only changed fields so an unchanged archived category is not revalidated", () => {
+    expect(
+      buildProductCommand({
+        currencyMinorUnitDigits: 2,
+        draft: { ...base, name: "Coffee premium" },
+        idempotencyKey: "9810dcfb-767a-4b66-a018-acb626e83734",
+        mode: "edit",
+        original,
+      }),
+    ).toEqual({
+      command: {
+        idempotencyKey: "9810dcfb-767a-4b66-a018-acb626e83734",
+        name: "Coffee premium",
+      },
+    });
+  });
+
+  test("does not create an update receipt when nothing changed", () => {
+    expect(
+      buildProductCommand({
+        currencyMinorUnitDigits: 2,
+        draft: base,
+        idempotencyKey: "9810dcfb-767a-4b66-a018-acb626e83734",
+        mode: "edit",
+        original,
+      }),
+    ).toEqual({ errors: { form: "no-changes" } });
   });
 });

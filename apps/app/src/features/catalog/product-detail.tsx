@@ -5,13 +5,15 @@ import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { formatMinorUnits } from "@/lib/money";
-import type { ProductDetail } from "../../../../../packages/contracts/src/catalog";
+import type { ProductDetail, ProductUnitKind } from "../../../../../packages/contracts/src/catalog";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
+import { ReadOnlyNotice } from "./route-state";
 
 export type ProductDetailState =
   | { status: "loading" }
   | { status: "offline" }
   | { status: "denied" }
+  | { status: "notFound" }
   | { status: "error" }
   | { status: "ready"; detail: ProductDetail; stale?: boolean };
 
@@ -29,12 +31,15 @@ export interface ProductDetailCopy {
   price: string;
   noPrice: string;
   unit: string;
+  unitLabels: Record<ProductUnitKind, string>;
   precision: string;
   category: string;
   noCategory: string;
+  categoryUnavailable: string;
   tracked: string;
   yes: string;
   no: string;
+  notTracked: string;
   onHand: string;
   lowStockThreshold: string;
   noThreshold: string;
@@ -43,6 +48,8 @@ export interface ProductDetailCopy {
   offlineDescription: string;
   deniedTitle: string;
   deniedDescription: string;
+  notFoundTitle: string;
+  notFoundDescription: string;
   errorTitle: string;
   errorDescription: string;
   retry: string;
@@ -56,6 +63,8 @@ export interface ProductDetailCopy {
   uncertainTitle: string;
   uncertainDescription: string;
   resolveUncertain: string;
+  readOnlyTitle: string;
+  readOnlyDescription: string;
 }
 
 interface ProductDetailProps {
@@ -65,6 +74,7 @@ interface ProductDetailProps {
   categoryName: string | null;
   copy: ProductDetailCopy;
   locale: string;
+  mutationMessage?: string;
   onArchive: () => void;
   onBack: () => void;
   onCancelArchive: () => void;
@@ -72,6 +82,7 @@ interface ProductDetailProps {
   onRequestArchive: () => void;
   onResolveUncertain: () => void;
   onRetry: () => void;
+  showReadOnlyNotice: boolean;
   state: ProductDetailState;
 }
 
@@ -82,6 +93,7 @@ export function ProductDetailScreen({
   categoryName,
   copy,
   locale,
+  mutationMessage,
   onArchive,
   onBack,
   onCancelArchive,
@@ -89,6 +101,7 @@ export function ProductDetailScreen({
   onRequestArchive,
   onResolveUncertain,
   onRetry,
+  showReadOnlyNotice,
   state,
 }: ProductDetailProps) {
   if (state.status === "loading") {
@@ -103,15 +116,19 @@ export function ProductDetailScreen({
     const title =
       state.status === "denied"
         ? copy.deniedTitle
-        : state.status === "offline"
-          ? copy.offlineTitle
-          : copy.errorTitle;
+        : state.status === "notFound"
+          ? copy.notFoundTitle
+          : state.status === "offline"
+            ? copy.offlineTitle
+            : copy.errorTitle;
     const description =
       state.status === "denied"
         ? copy.deniedDescription
-        : state.status === "offline"
-          ? copy.offlineDescription
-          : copy.errorDescription;
+        : state.status === "notFound"
+          ? copy.notFoundDescription
+          : state.status === "offline"
+            ? copy.offlineDescription
+            : copy.errorDescription;
     return (
       <View className="flex-1 items-start justify-center gap-4 px-5 sm:px-8 lg:px-10">
         <Text accessibilityRole="alert" className="text-xl font-black text-ink dark:text-white">
@@ -164,14 +181,14 @@ export function ProductDetailScreen({
                   ),
           },
           { label: copy.category, value: categoryName ?? copy.noCategory },
-          { label: copy.unit, value: product.unitKind },
+          { label: copy.unit, value: copy.unitLabels[product.unitKind] },
           { label: copy.precision, value: String(product.quantityPrecision) },
           { label: copy.tracked, value: product.tracked ? copy.yes : copy.no },
           {
             label: copy.onHand,
             value: stock
               ? formatQuantityMinorUnits(stock.onHandMinorUnits, stock.quantityPrecision)
-              : copy.no,
+              : copy.notTracked,
           },
           {
             label: copy.lowStockThreshold,
@@ -212,7 +229,7 @@ export function ProductDetailScreen({
                 <Text className="text-sm text-ink-muted dark:text-[#C9D4CE]">
                   {archiveState === "uncertain"
                     ? copy.uncertainDescription
-                    : copy.archiveFailedDescription}
+                    : (mutationMessage ?? copy.archiveFailedDescription)}
                 </Text>
               </View>
             </View>
@@ -242,6 +259,8 @@ export function ProductDetailScreen({
           <Button label={copy.edit} onPress={onEdit} variant="accent" />
           <Button label={copy.archive} onPress={onRequestArchive} variant="danger" />
         </View>
+      ) : showReadOnlyNotice && product.status === "active" ? (
+        <ReadOnlyNotice description={copy.readOnlyDescription} />
       ) : null}
     </Page>
   );

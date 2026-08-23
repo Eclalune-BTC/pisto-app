@@ -1,5 +1,6 @@
 import type {
   CreateProductRequest,
+  Product,
   UpdateProductRequest,
 } from "../../../../../packages/contracts/src/catalog";
 import {
@@ -28,6 +29,7 @@ export function buildProductCommand(input: {
   draft: ProductDraftFields;
   idempotencyKey: string;
   mode: "create" | "edit";
+  original?: Product;
 }): { errors: ProductDraftErrors } | { command: CreateProductRequest | UpdateProductRequest } {
   const errors: ProductDraftErrors = {};
   const name = input.draft.name.trim();
@@ -58,11 +60,71 @@ export function buildProductCommand(input: {
     tracked: input.draft.tracked,
     unitKind: input.draft.unitKind,
   };
-  const candidate = { idempotencyKey: input.idempotencyKey, ...fields };
+  const candidate =
+    input.mode === "create"
+      ? { idempotencyKey: input.idempotencyKey, ...fields }
+      : buildChangedProductFields(input.idempotencyKey, fields, input.original);
+  if (input.mode === "edit" && Object.keys(candidate).length === 1) {
+    return { errors: { form: "no-changes" } };
+  }
   const parsed =
     input.mode === "create"
       ? createProductRequestSchema.safeParse(candidate)
       : updateProductRequestSchema.safeParse(candidate);
   if (!parsed.success) return { errors: { name: "invalid" } };
   return { command: parsed.data };
+}
+
+function buildChangedProductFields(
+  idempotencyKey: string,
+  fields: Omit<CreateProductRequest, "idempotencyKey">,
+  original: Product | undefined,
+): Record<string, unknown> {
+  if (!original) return { idempotencyKey, ...fields };
+  return {
+    idempotencyKey,
+    ...(fields.categoryId !== original.categoryId ? { categoryId: fields.categoryId } : {}),
+    ...(fields.lowStockThresholdMinorUnits !== original.lowStockThresholdMinorUnits
+      ? { lowStockThresholdMinorUnits: fields.lowStockThresholdMinorUnits }
+      : {}),
+    ...(fields.name !== original.name ? { name: fields.name } : {}),
+    ...(fields.quantityPrecision !== original.quantityPrecision
+      ? { quantityPrecision: fields.quantityPrecision }
+      : {}),
+    ...(fields.sellingPriceMinorUnits !== original.sellingPriceMinorUnits
+      ? { sellingPriceMinorUnits: fields.sellingPriceMinorUnits }
+      : {}),
+    ...(fields.sku !== original.sku ? { sku: fields.sku } : {}),
+    ...(fields.tracked !== original.tracked ? { tracked: fields.tracked } : {}),
+    ...(fields.unitKind !== original.unitKind ? { unitKind: fields.unitKind } : {}),
+  };
+}
+
+export function formatMinorUnitsForInput(value: string, fractionDigits: number): string {
+  if (fractionDigits === 0) return value;
+  const padded = value.padStart(fractionDigits + 1, "0");
+  return `${padded.slice(0, -fractionDigits)}.${padded.slice(-fractionDigits)}`;
+}
+
+export function productToDraft(product: Product): ProductDraftFields {
+  return {
+    categoryId: product.categoryId,
+    lowStockThreshold:
+      product.lowStockThresholdMinorUnits === null
+        ? ""
+        : formatMinorUnitsForInput(product.lowStockThresholdMinorUnits, product.quantityPrecision),
+    name: product.name,
+    quantityPrecision: product.quantityPrecision as 0 | 1 | 2 | 3,
+    sellingPrice:
+      product.sellingPriceMinorUnits === null ||
+      product.sellingPriceCurrencyMinorUnitDigits === null
+        ? ""
+        : formatMinorUnitsForInput(
+            product.sellingPriceMinorUnits,
+            product.sellingPriceCurrencyMinorUnitDigits,
+          ),
+    sku: product.sku ?? "",
+    tracked: product.tracked,
+    unitKind: product.unitKind,
+  };
 }

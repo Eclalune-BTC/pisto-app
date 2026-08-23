@@ -4,7 +4,7 @@ import { recordInventoryMovementRequestSchema } from "../../../../../packages/co
 import type { InventoryMovementDraft, InventoryMovementErrors } from "./movement-editor";
 import { parseQuantityToMinorUnits } from "./quantity";
 
-function isValidCalendarDate(value: string): boolean {
+export function isValidCalendarDate(value: string): boolean {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return false;
   const year = Number(match[1]);
@@ -14,6 +14,10 @@ function isValidCalendarDate(value: string): boolean {
   return (
     date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
   );
+}
+
+export function isValidLocalTime(value: string): boolean {
+  return /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
 export function buildMovementCommand(input: {
@@ -29,7 +33,7 @@ export function buildMovementCommand(input: {
   if (!isValidCalendarDate(input.draft.occurredLocalDate)) {
     errors.occurredLocalDate = "invalid";
   }
-  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(input.draft.occurredLocalTime)) {
+  if (!isValidLocalTime(input.draft.occurredLocalTime)) {
     errors.occurredLocalTime = "invalid";
   }
   if (Object.keys(errors).length > 0 || "error" in quantity) return { errors };

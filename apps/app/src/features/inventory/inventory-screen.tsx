@@ -4,7 +4,11 @@ import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import type { StockListResponse } from "../../../../../packages/contracts/src/catalog";
+import type {
+  ProductUnitKind,
+  StockListResponse,
+} from "../../../../../packages/contracts/src/catalog";
+import { ReadOnlyNotice } from "../catalog/route-state";
 import { formatQuantityMinorUnits } from "./quantity";
 
 type StockItem = StockListResponse["data"]["items"][number];
@@ -14,7 +18,13 @@ export type InventoryCollectionState =
   | { status: "offline" }
   | { status: "denied" }
   | { status: "error" }
-  | { status: "ready"; items: StockItem[]; stale?: boolean };
+  | {
+      status: "ready";
+      hasNextPage: boolean;
+      items: StockItem[];
+      loadingMore: boolean;
+      stale?: boolean;
+    };
 
 export interface InventoryScreenCopy {
   title: string;
@@ -39,17 +49,24 @@ export interface InventoryScreenCopy {
   threshold: string;
   noThreshold: string;
   onHand: string;
+  loadMore: string;
+  loadingMore: string;
+  readOnlyTitle: string;
+  readOnlyDescription: string;
+  unitLabels: Record<ProductUnitKind, string>;
   openHistory: (name: string) => string;
 }
 
 interface InventoryScreenProps {
   copy: InventoryScreenCopy;
   lowStockOnly: boolean;
+  onLoadMore: () => void;
   onLowStockOnlyChange: (enabled: boolean) => void;
   onOpenHistory: (productId: string) => void;
   onRetry: () => void;
   onSearchChange: (value: string) => void;
   search: string;
+  showReadOnlyNotice: boolean;
   state: InventoryCollectionState;
 }
 
@@ -105,16 +122,20 @@ function InventoryFailure({
 export function InventoryScreen({
   copy,
   lowStockOnly,
+  onLoadMore,
   onLowStockOnlyChange,
   onOpenHistory,
   onRetry,
   onSearchChange,
   search,
+  showReadOnlyNotice,
   state,
 }: InventoryScreenProps) {
   return (
     <Page contentContainerClassName="gap-8">
       <ScreenHeader description={copy.description} eyebrow={copy.eyebrow} title={copy.title} />
+
+      {showReadOnlyNotice ? <ReadOnlyNotice description={copy.readOnlyDescription} /> : null}
 
       <View className="gap-4 border-y border-line py-5 dark:border-[#304239] lg:flex-row lg:items-end lg:justify-between">
         <View className="min-w-0 flex-1 lg:max-w-[620px]">
@@ -182,7 +203,10 @@ export function InventoryScreen({
                 </View>
                 <View className="gap-1 sm:min-w-[220px] sm:items-end">
                   <Text className="text-2xl font-black text-ink dark:text-white">
-                    {formatQuantityMinorUnits(stock.onHandMinorUnits, stock.quantityPrecision)}
+                    {formatQuantityMinorUnits(stock.onHandMinorUnits, stock.quantityPrecision)}{" "}
+                    <Text className="text-base font-semibold text-ink-muted dark:text-[#AAB8B0]">
+                      {copy.unitLabels[product.unitKind]}
+                    </Text>
                   </Text>
                   <Text
                     className={
@@ -205,6 +229,15 @@ export function InventoryScreen({
               </Pressable>
             ))
           )}
+          {state.hasNextPage ? (
+            <Button
+              className="mt-6 self-start"
+              label={state.loadingMore ? copy.loadingMore : copy.loadMore}
+              loading={state.loadingMore}
+              onPress={onLoadMore}
+              variant="secondary"
+            />
+          ) : null}
         </View>
       )}
     </Page>

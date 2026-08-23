@@ -19,7 +19,7 @@ export interface ProductDraftFields {
 }
 
 export type ProductDraftErrors = Partial<
-  Record<"lowStockThreshold" | "name" | "sellingPrice" | "sku", string>
+  Record<"form" | "lowStockThreshold" | "name" | "sellingPrice" | "sku", string>
 >;
 
 export interface ProductEditorCopy {
@@ -38,6 +38,7 @@ export interface ProductEditorCopy {
   pricePlaceholder: string;
   category: string;
   noCategory: string;
+  archivedCategory: string;
   unit: string;
   unitLabels: Record<ProductUnitKind, string>;
   precision: string;
@@ -56,21 +57,30 @@ export interface ProductEditorCopy {
   uncertainTitle: string;
   uncertainDescription: string;
   resolveUncertain: string;
+  loadMoreCategories: string;
+  retryCategories: string;
+  categoriesUnavailable: string;
 }
 
 interface ProductEditorProps {
   categories: Category[];
+  categoriesError: boolean;
+  categoriesHasNextPage: boolean;
+  categoriesLoadingMore: boolean;
   copy: ProductEditorCopy;
   currency: string;
   draft: ProductDraftFields;
   errors: ProductDraftErrors;
   mode: "create" | "edit";
+  mutationMessage?: string;
   mutationState: "idle" | "pending" | "error" | "uncertain";
   onBack: () => void;
   onConfirm: () => void;
   onDraftChange: (draft: ProductDraftFields) => void;
   onEditReview: () => void;
+  onLoadMoreCategories: () => void;
   onResolveUncertain: () => void;
+  onRetryCategories: () => void;
   onReview: () => void;
   reviewItems: { label: string; value: string }[] | null;
 }
@@ -102,17 +112,23 @@ function Choice({
 
 export function ProductEditor({
   categories,
+  categoriesError,
+  categoriesHasNextPage,
+  categoriesLoadingMore,
   copy,
   currency,
   draft,
   errors,
   mode,
+  mutationMessage,
   mutationState,
   onBack,
   onConfirm,
   onDraftChange,
   onEditReview,
+  onLoadMoreCategories,
   onResolveUncertain,
+  onRetryCategories,
   onReview,
   reviewItems,
 }: ProductEditorProps) {
@@ -153,7 +169,7 @@ export function ProductEditor({
                 <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
                   {mutationState === "uncertain"
                     ? copy.uncertainDescription
-                    : copy.failedDescription}
+                    : (mutationMessage ?? copy.failedDescription)}
                 </Text>
               </View>
             </View>
@@ -180,6 +196,13 @@ export function ProductEditor({
         </View>
       ) : (
         <View className="gap-7 border-y border-line py-7 dark:border-[#304239]">
+          {errors.form ? (
+            <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
+              <Text accessibilityRole="alert" className="text-sm text-ink dark:text-[#F2E4D2]">
+                {errors.form}
+              </Text>
+            </View>
+          ) : null}
           <Field
             error={errors.name}
             label={copy.name}
@@ -220,16 +243,45 @@ export function ProductEditor({
                 selected={draft.categoryId === null}
               />
               {categories
-                .filter((category) => category.status === "active")
+                .filter(
+                  (category) => category.status === "active" || category.id === draft.categoryId,
+                )
                 .map((category) => (
                   <Choice
                     key={category.id}
-                    label={category.name}
+                    label={
+                      category.status === "archived"
+                        ? `${category.name} · ${copy.archivedCategory}`
+                        : category.name
+                    }
                     onPress={() => onDraftChange({ ...draft, categoryId: category.id })}
                     selected={draft.categoryId === category.id}
                   />
                 ))}
             </View>
+            {categoriesHasNextPage ? (
+              <Button
+                className="self-start"
+                label={copy.loadMoreCategories}
+                loading={categoriesLoadingMore}
+                onPress={onLoadMoreCategories}
+                size="sm"
+                variant="ghost"
+              />
+            ) : null}
+            {categoriesError ? (
+              <View className="gap-2 border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18] sm:flex-row sm:items-center sm:justify-between">
+                <Text accessibilityRole="alert" className="text-sm text-ink dark:text-[#F2E4D2]">
+                  {copy.categoriesUnavailable}
+                </Text>
+                <Button
+                  label={copy.retryCategories}
+                  onPress={onRetryCategories}
+                  size="sm"
+                  variant="secondary"
+                />
+              </View>
+            ) : null}
           </View>
 
           <View className="gap-2">

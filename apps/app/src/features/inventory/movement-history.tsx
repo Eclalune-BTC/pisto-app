@@ -7,7 +7,9 @@ import type {
   InventoryMovement,
   Product,
   ProductStock,
+  ProductUnitKind,
 } from "../../../../../packages/contracts/src/catalog";
+import { ReadOnlyNotice } from "../catalog/route-state";
 import { formatQuantityMinorUnits } from "./quantity";
 
 export type MovementHistoryState =
@@ -15,7 +17,13 @@ export type MovementHistoryState =
   | { status: "offline" }
   | { status: "denied" }
   | { status: "error" }
-  | { status: "ready"; items: InventoryMovement[]; stale?: boolean };
+  | {
+      status: "ready";
+      hasNextPage: boolean;
+      items: InventoryMovement[];
+      loadingMore: boolean;
+      stale?: boolean;
+    };
 
 export interface MovementHistoryCopy {
   back: string;
@@ -41,6 +49,11 @@ export interface MovementHistoryCopy {
   reversed: string;
   reverses: string;
   reverse: string;
+  loadMore: string;
+  loadingMore: string;
+  readOnlyTitle: string;
+  readOnlyDescription: string;
+  unitLabels: Record<ProductUnitKind, string>;
   occurrence: (date: string, time: string, timeZone: string) => string;
 }
 
@@ -49,9 +62,11 @@ interface MovementHistoryProps {
   copy: MovementHistoryCopy;
   onAddMovement: () => void;
   onBack: () => void;
+  onLoadMore: () => void;
   onRetry: () => void;
   onReverse: (movement: InventoryMovement) => void;
   product: Product;
+  showReadOnlyNotice: boolean;
   state: MovementHistoryState;
   stock: ProductStock;
 }
@@ -110,9 +125,11 @@ export function MovementHistory({
   copy,
   onAddMovement,
   onBack,
+  onLoadMore,
   onRetry,
   onReverse,
   product,
+  showReadOnlyNotice,
   state,
   stock,
 }: MovementHistoryProps) {
@@ -138,13 +155,18 @@ export function MovementHistory({
         title={copy.title}
       />
 
+      {showReadOnlyNotice ? <ReadOnlyNotice description={copy.readOnlyDescription} /> : null}
+
       <View className="gap-2 border-y border-line py-6 dark:border-[#304239] sm:flex-row sm:items-end sm:justify-between">
         <View className="gap-1">
           <Text className="text-sm font-semibold text-ink-muted dark:text-[#AAB8B0]">
             {copy.onHand}
           </Text>
           <Text className="text-[38px] font-black leading-[44px] text-ink dark:text-white">
-            {formatQuantityMinorUnits(stock.onHandMinorUnits, stock.quantityPrecision)}
+            {formatQuantityMinorUnits(stock.onHandMinorUnits, stock.quantityPrecision)}{" "}
+            <Text className="text-base font-semibold text-ink-muted dark:text-[#AAB8B0]">
+              {copy.unitLabels[product.unitKind]}
+            </Text>
           </Text>
         </View>
         <View className="gap-1 sm:items-end">
@@ -250,6 +272,15 @@ export function MovementHistory({
               );
             })
           )}
+          {state.hasNextPage ? (
+            <Button
+              className="mt-6 self-start"
+              label={state.loadingMore ? copy.loadingMore : copy.loadMore}
+              loading={state.loadingMore}
+              onPress={onLoadMore}
+              variant="secondary"
+            />
+          ) : null}
         </View>
       )}
     </Page>
