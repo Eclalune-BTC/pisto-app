@@ -6,10 +6,9 @@ import type {
   VoidSaleRequest,
 } from "@pisto/contracts";
 
-import { fingerprintValue, ProductError } from "./product-core.ts";
+import { fingerprintValue, maximumMinorUnits } from "./operation-log.ts";
+import { ProductError } from "./product-core.ts";
 import type { sale, saleCorrection } from "./schema/sales.ts";
-
-const maximumMinorUnits = 9_223_372_036_854_775_807n;
 
 export type SaleRecord = typeof sale.$inferSelect;
 export type SaleCorrectionRecord = typeof saleCorrection.$inferSelect;

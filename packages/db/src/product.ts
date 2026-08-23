@@ -11,6 +11,7 @@ import type {
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 import type { Database } from "./client.ts";
+import { lockCommandKey } from "./operation-log.ts";
 import {
   hasBusinessPermission,
   resolveBusinessAccess,
@@ -322,9 +323,11 @@ export function createProductRepository(db: Database): ProductRepository {
       const commandFingerprint = await saleFingerprint(command);
 
       return db.transaction(async (tx) => {
-        await tx.execute(
-          sql`select pg_advisory_xact_lock(hashtextextended(${`${businessId}:${actor.userId}:${command.idempotencyKey}`}, 0))`,
-        );
+        await lockCommandKey(tx, {
+          actorUserId: actor.userId,
+          businessId,
+          idempotencyKey: command.idempotencyKey,
+        });
         const [activeSession] = await tx
           .select({ id: session.id })
           .from(session)

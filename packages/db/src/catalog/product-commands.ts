@@ -7,6 +7,7 @@ import {
 import { and, eq, ne, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
+import { lockSemanticKey } from "../operation-log.ts";
 import { ProductError } from "../product.ts";
 import { catalogProduct, inventoryMovement } from "../schema/catalog.ts";
 import { authorizeCatalogAction } from "./access.ts";
@@ -18,12 +19,7 @@ import {
   recordSnapshot,
   toProduct,
 } from "./codec.ts";
-import {
-  lockOperation,
-  lockSemanticKey,
-  requireActiveCategory,
-  saveOperation,
-} from "./operations.ts";
+import { lockOperation, requireActiveCategory, saveOperation } from "./operations.ts";
 import type { ProductCommands } from "./types.ts";
 
 export function createProductCommands(db: Database): ProductCommands {

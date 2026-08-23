@@ -13,10 +13,9 @@ import {
   updateCashAccountRequestSchema,
 } from "@pisto/contracts";
 
+import { fingerprintCommand, maximumMinorUnits } from "../operation-log.ts";
 import { ProductError } from "../product.ts";
 import type { CashCursorPayload, CashOperationAction } from "./types.ts";
-
-const maximumMinorUnits = 9_223_372_036_854_775_807n;
 
 export function parseCashMinorUnits(value: string): bigint {
   if (!/^[1-9]\d{0,18}$/.test(value)) {
@@ -29,13 +28,11 @@ export function parseCashMinorUnits(value: string): bigint {
   return parsed;
 }
 
-export async function fingerprintCashCommand(
+export function fingerprintCashCommand(
   action: CashOperationAction,
   payload: object,
 ): Promise<string> {
-  const canonical = JSON.stringify({ version: 1, action, payload });
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return fingerprintCommand(action, payload);
 }
 
 export function isCashResourceId(value: unknown): value is string {

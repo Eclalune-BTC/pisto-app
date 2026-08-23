@@ -2,6 +2,7 @@ import type { BusinessPermission } from "@pisto/contracts";
 import { and, eq, sql } from "drizzle-orm";
 
 import { authorizeBusinessAction, requireActiveBusiness } from "../business-access.ts";
+import { lockCommandKey } from "../operation-log.ts";
 import { type ProductActor, ProductError } from "../product.ts";
 import { cashAccount, cashMovement, cashOperationReceipt } from "../schema/cash.ts";
 import type {
@@ -36,9 +37,7 @@ export async function lockIdempotencyKey(
   actorUserId: string,
   idempotencyKey: string,
 ): Promise<void> {
-  await tx.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${`${businessId}:${actorUserId}:${idempotencyKey}`}, 0))`,
-  );
+  await lockCommandKey(tx, { actorUserId, businessId, idempotencyKey });
 }
 
 export async function findReplay(

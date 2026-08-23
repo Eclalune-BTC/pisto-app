@@ -7,11 +7,12 @@ import {
 import { and, eq, ne, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
+import { lockSemanticKey } from "../operation-log.ts";
 import { ProductError } from "../product.ts";
 import { catalogCategory } from "../schema/catalog.ts";
 import { authorizeCatalogAction } from "./access.ts";
 import { fingerprint, parseMutationReplay, recordSnapshot, toCategory } from "./codec.ts";
-import { lockOperation, lockSemanticKey, saveOperation } from "./operations.ts";
+import { lockOperation, saveOperation } from "./operations.ts";
 import type { CategoryCommands } from "./types.ts";
 
 export function createCategoryCommands(db: Database): CategoryCommands {

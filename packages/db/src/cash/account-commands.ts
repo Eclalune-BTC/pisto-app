@@ -7,6 +7,7 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
+import { lockSemanticKey } from "../operation-log.ts";
 import { type ProductActor, ProductError, resolveLocalDateTime } from "../product.ts";
 import { cashAccount, cashMovement } from "../schema/cash.ts";
 import {
@@ -57,9 +58,7 @@ export async function createCashAccount(
         "An outgoing opening balance requires the explicit negative-balance setting",
       );
     }
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${`cash-account-name:${businessId}:${command.name.toLocaleLowerCase("en-US")}`}, 0))`,
-    );
+    await lockSemanticKey(tx, "cash-account-name", businessId, command.name);
     const [duplicate] = await tx
       .select({ id: cashAccount.id })
       .from(cashAccount)
@@ -170,9 +169,7 @@ export async function updateCashAccount(
       command.name !== undefined &&
       command.name.toLocaleLowerCase("en-US") !== current.name.toLocaleLowerCase("en-US")
     ) {
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtextextended(${`cash-account-name:${businessId}:${command.name.toLocaleLowerCase("en-US")}`}, 0))`,
-      );
+      await lockSemanticKey(tx, "cash-account-name", businessId, command.name);
       const [duplicate] = await tx
         .select({ id: cashAccount.id })
         .from(cashAccount)

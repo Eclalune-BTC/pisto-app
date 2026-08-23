@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import type { ZodType } from "zod";
 
 import { authorizeBusinessAction } from "../business-access.ts";
+import { lockCommandKey } from "../operation-log.ts";
 import { type ProductActor, ProductError } from "../product.ts";
 import { receivable, receivableOperation, receivablePayment } from "../schema/receivables.ts";
 import { toReceivable } from "./mappers.ts";
@@ -23,9 +24,7 @@ export async function lockIdempotencyKey(
   businessId: string,
   idempotencyKey: string,
 ): Promise<void> {
-  await tx.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${`${businessId}:${actor.userId}:${idempotencyKey}`}, 0))`,
-  );
+  await lockCommandKey(tx, { actorUserId: actor.userId, businessId, idempotencyKey });
 }
 
 export async function readOperationSnapshot<T>(input: {

@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 
+import { lockCommandKey } from "../operation-log.ts";
 import { type ProductActor, ProductError } from "../product.ts";
 import { catalogCategory, catalogOperation, inventoryMovement } from "../schema/catalog.ts";
 import type { DatabaseExecutor, DatabaseTransaction, OperationAction } from "./types.ts";
@@ -11,9 +12,7 @@ export async function lockOperation(
   idempotencyKey: string,
   commandFingerprint: string,
 ): Promise<Record<string, unknown> | null> {
-  await transaction.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${`${businessId}:${actor.userId}:${idempotencyKey}`}, 0))`,
-  );
+  await lockCommandKey(transaction, { actorUserId: actor.userId, businessId, idempotencyKey });
   const [existing] = await transaction
     .select({
       commandFingerprint: catalogOperation.commandFingerprint,
@@ -63,17 +62,6 @@ export async function saveOperation(
     productId: input.productId ?? null,
     resultSnapshot: input.resultSnapshot,
   });
-}
-
-export async function lockSemanticKey(
-  transaction: DatabaseTransaction,
-  namespace: string,
-  businessId: string,
-  value: string,
-) {
-  await transaction.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${`${namespace}:${businessId}:${value.toLocaleLowerCase("en-US")}`}, 0))`,
-  );
 }
 
 export async function requireActiveCategory(
