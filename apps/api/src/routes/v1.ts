@@ -54,6 +54,10 @@ export function v1Routes(input: {
     context.json({ data: { version: "v1" as const, service: "pisto-api" as const } }),
   );
 
+  // These routers must not register an onError of their own. Hono's route()
+  // rewires a mounted sub-app's handlers to its own error handler when it has
+  // one, which would bypass the single translation boundary in app.ts and turn
+  // every domain failure in that router into a 500.
   routes.route("/", productRoutes({ auth: input.auth, product: input.product }));
   routes.route("/", catalogRoutes({ auth: input.auth, catalog: input.catalog }));
   routes.route("/", cashRoutes({ auth: input.auth, cash: input.cash }));

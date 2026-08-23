@@ -40,11 +40,15 @@ export function normalizeError(error: unknown): { apiError: ApiError; unexpected
     return { apiError: error, unexpected: false };
   }
   if (error instanceof ProductError) {
-    const code: ApiErrorCode = error.code;
-    return {
-      apiError: new ApiError(productErrorStatuses[error.code], code, error.message),
-      unexpected: false,
-    };
+    // The Record type makes tsc reject an unmapped ProductErrorCode, but a
+    // ProductError can still be constructed from untyped JavaScript. Reading the
+    // status as possibly-absent keeps an unknown code failing closed as a 500
+    // rather than reaching context.json with an undefined status.
+    const status = productErrorStatuses[error.code] as ApiError["status"] | undefined;
+    if (status !== undefined) {
+      const code: ApiErrorCode = error.code;
+      return { apiError: new ApiError(status, code, error.message), unexpected: false };
+    }
   }
   return {
     apiError: new ApiError(500, "INTERNAL_ERROR", "An unexpected error occurred"),

@@ -20,6 +20,16 @@ import { commandStatus, parseJsonBody, parseRequest, requireRecordId } from "../
 import { requireActor } from "../session.ts";
 import type { AppEnv } from "../types.ts";
 
+// Hono's context.req.query() is NOT equivalent to this: it keeps the FIRST of a
+// duplicated key rather than the last, drops an empty-name parameter instead of
+// forwarding it into the strict() schema, and does not strip a fragment. These
+// routes have always read the query this way, so unifying them onto the accessor
+// cash uses would have changed real statuses and result pages. The three query
+// idioms in this package are therefore deliberately NOT consolidated.
+function queryObject(url: string): Record<string, string> {
+  return Object.fromEntries(new URL(url).searchParams.entries());
+}
+
 const categoryNotFound = "Category was not found";
 const productNotFound = "Product was not found";
 const movementNotFound = "Inventory movement was not found";
@@ -31,7 +41,7 @@ export function catalogRoutes(input: { auth: Auth; catalog: CatalogRepository })
     const actor = await requireActor(input.auth, context);
     const query = parseRequest(
       categoryListQuerySchema,
-      context.req.query(),
+      queryObject(context.req.url),
       "Category query is invalid",
     );
     return context.json({ data: await input.catalog.listCategories(actor, query) });
@@ -74,7 +84,7 @@ export function catalogRoutes(input: { auth: Auth; catalog: CatalogRepository })
     const actor = await requireActor(input.auth, context);
     const query = parseRequest(
       productListQuerySchema,
-      context.req.query(),
+      queryObject(context.req.url),
       "Product query is invalid",
     );
     return context.json({ data: await input.catalog.listProducts(actor, query) });
@@ -121,7 +131,11 @@ export function catalogRoutes(input: { auth: Auth; catalog: CatalogRepository })
 
   routes.get("/inventory/stock", async (context) => {
     const actor = await requireActor(input.auth, context);
-    const query = parseRequest(stockListQuerySchema, context.req.query(), "Stock query is invalid");
+    const query = parseRequest(
+      stockListQuerySchema,
+      queryObject(context.req.url),
+      "Stock query is invalid",
+    );
     return context.json({ data: await input.catalog.listStock(actor, query) });
   });
 
@@ -130,7 +144,7 @@ export function catalogRoutes(input: { auth: Auth; catalog: CatalogRepository })
     const productId = requireRecordId(context.req.param("productId"), productNotFound);
     const query = parseRequest(
       inventoryMovementListQuerySchema,
-      context.req.query(),
+      queryObject(context.req.url),
       "Movement query is invalid",
     );
     return context.json({ data: await input.catalog.listMovements(actor, productId, query) });
