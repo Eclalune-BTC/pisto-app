@@ -103,6 +103,9 @@ function testApp(
           getSale: async () => {
             throw new ProductError("NOT_FOUND", "Sale was not found");
           },
+          listSales: async () => {
+            throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
+          },
           getPreviousMonthSummary: async () => {
             throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
           },
@@ -485,6 +488,7 @@ describe("Pisto API", () => {
   const protectedRoutes: ReadonlyArray<readonly [string, string]> = [
     ["GET", "/v1/businesses"],
     ["POST", "/v1/businesses"],
+    ["GET", "/v1/sales"],
     ["POST", "/v1/sales"],
     ["GET", "/v1/sales/summary/previous-month"],
     ["POST", `/v1/sales/${recordId}/void`],

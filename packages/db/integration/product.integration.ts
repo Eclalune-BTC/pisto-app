@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import {
   businessSettings,
@@ -7,6 +7,7 @@ import {
   createProductRepository,
   member,
   organization,
+  type ProductActor,
   ProductError,
   parseDatabaseConfig,
   sale,
@@ -30,6 +31,9 @@ const userIds = [
   `integration-admin-${runId}`,
   `integration-member-${runId}`,
   `integration-unsupported-role-${runId}`,
+  `integration-list-owner-${runId}`,
+  `integration-list-other-${runId}`,
+  `integration-list-auditor-${runId}`,
 ];
 const sessionIds = [
   `integration-session-a-${runId}`,
@@ -38,6 +42,10 @@ const sessionIds = [
   `integration-session-admin-${runId}`,
   `integration-session-member-${runId}`,
   `integration-session-unsupported-role-${runId}`,
+  `integration-session-list-owner-${runId}`,
+  `integration-session-list-other-${runId}`,
+  `integration-session-list-auditor-${runId}`,
+  `integration-session-list-expired-${runId}`,
 ];
 const businessIds: string[] = [];
 
@@ -85,6 +93,24 @@ beforeAll(async () => {
       email: `unsupported-role-${runId}@example.test`,
       emailVerified: true,
     },
+    {
+      id: userIds[7] as string,
+      name: "Integration List Owner",
+      email: `list-owner-${runId}@example.test`,
+      emailVerified: true,
+    },
+    {
+      id: userIds[8] as string,
+      name: "Integration List Other Owner",
+      email: `list-other-${runId}@example.test`,
+      emailVerified: true,
+    },
+    {
+      id: userIds[9] as string,
+      name: "Integration List Auditor",
+      email: `list-auditor-${runId}@example.test`,
+      emailVerified: true,
+    },
   ]);
   await database.db.insert(session).values([
     {
@@ -122,6 +148,30 @@ beforeAll(async () => {
       token: `integration-token-unsupported-role-${runId}`,
       userId: userIds[6] as string,
       expiresAt: new Date(Date.now() + 60_000),
+    },
+    {
+      id: sessionIds[6] as string,
+      token: `integration-token-list-owner-${runId}`,
+      userId: userIds[7] as string,
+      expiresAt: new Date(Date.now() + 600_000),
+    },
+    {
+      id: sessionIds[7] as string,
+      token: `integration-token-list-other-${runId}`,
+      userId: userIds[8] as string,
+      expiresAt: new Date(Date.now() + 600_000),
+    },
+    {
+      id: sessionIds[8] as string,
+      token: `integration-token-list-auditor-${runId}`,
+      userId: userIds[9] as string,
+      expiresAt: new Date(Date.now() + 600_000),
+    },
+    {
+      id: sessionIds[9] as string,
+      token: `integration-token-list-expired-${runId}`,
+      userId: userIds[7] as string,
+      expiresAt: new Date(Date.now() - 1_000),
     },
   ]);
 });
@@ -593,5 +643,320 @@ describe("product repository on PostgreSQL 18", () => {
     await expect(repository.getPreviousMonthSummary(activeActor)).rejects.toMatchObject({
       code: "FORBIDDEN",
     });
+  });
+});
+
+describe("sale history list on PostgreSQL 18", () => {
+  const tiedCreatedAt = new Date("2026-01-02T03:04:05.000Z");
+  const occurredLocalDate = "2026-08-22";
+  let listBusinessId: string;
+  let otherBusinessId: string;
+  let ownerActor: ProductActor;
+  let otherActor: ProductActor;
+  let auditorActor: ProductActor;
+  let expiredActor: ProductActor;
+  let postedIds: string[];
+  let tiedIds: string[];
+  let microsecondIds: string[];
+  let otherSaleId: string;
+
+  async function collectIds(
+    actor: ProductActor,
+    status: "posted" | "voided" | "all",
+    limit: number,
+  ): Promise<string[]> {
+    const ids: string[] = [];
+    let cursor: string | undefined;
+    let pages = 0;
+    do {
+      const page = await repository.listSales(actor, { cursor, limit, status });
+      ids.push(...page.items.map(({ id }) => id));
+      cursor = page.nextCursor ?? undefined;
+      pages += 1;
+      if (pages > 20) throw new Error("Sale list paging did not terminate");
+    } while (cursor);
+    return ids;
+  }
+
+  beforeAll(async () => {
+    const created = await repository.createBusiness(
+      {
+        userId: userIds[7] as string,
+        sessionId: sessionIds[6] as string,
+        activeBusinessId: null,
+      },
+      {
+        name: `List Store ${runId.slice(0, 8)}`,
+        currency: "USD",
+        timeZone: "America/El_Salvador",
+      },
+    );
+    listBusinessId = created.business.id;
+    businessIds.push(listBusinessId);
+    ownerActor = {
+      userId: userIds[7] as string,
+      sessionId: sessionIds[6] as string,
+      activeBusinessId: listBusinessId,
+    };
+
+    const other = await repository.createBusiness(
+      {
+        userId: userIds[8] as string,
+        sessionId: sessionIds[7] as string,
+        activeBusinessId: null,
+      },
+      {
+        name: `Other List Store ${runId.slice(0, 8)}`,
+        currency: "USD",
+        timeZone: "America/El_Salvador",
+      },
+    );
+    otherBusinessId = other.business.id;
+    businessIds.push(otherBusinessId);
+    otherActor = {
+      userId: userIds[8] as string,
+      sessionId: sessionIds[7] as string,
+      activeBusinessId: otherBusinessId,
+    };
+
+    await database.db.insert(member).values({
+      id: crypto.randomUUID(),
+      organizationId: listBusinessId,
+      userId: userIds[9] as string,
+      role: "auditor",
+    });
+    await database.db
+      .update(session)
+      .set({ activeOrganizationId: listBusinessId })
+      .where(inArray(session.id, [sessionIds[8] as string, sessionIds[9] as string]));
+    auditorActor = {
+      userId: userIds[9] as string,
+      sessionId: sessionIds[8] as string,
+      activeBusinessId: listBusinessId,
+    };
+    expiredActor = {
+      userId: userIds[7] as string,
+      sessionId: sessionIds[9] as string,
+      activeBusinessId: listBusinessId,
+    };
+
+    postedIds = [];
+    for (const index of [1, 2, 3, 4, 5]) {
+      const posted = await repository.createSale(ownerActor, {
+        idempotencyKey: crypto.randomUUID(),
+        grossMinorUnits: `${index}00`,
+        occurredLocalDate,
+        occurredLocalTime: `10:0${index}`,
+        description: `List sale ${index}`,
+      });
+      postedIds.push(posted.sale.id);
+    }
+    otherSaleId = (
+      await repository.createSale(otherActor, {
+        idempotencyKey: crypto.randomUUID(),
+        grossMinorUnits: "900",
+        occurredLocalDate,
+        occurredLocalTime: "10:09",
+        description: "Other tenant sale",
+      })
+    ).sale.id;
+
+    const tied = await database.db
+      .insert(sale)
+      .values(
+        [1, 2].map((index) => ({
+          businessId: listBusinessId,
+          grossMinorUnits: BigInt(index * 10),
+          currency: "USD",
+          currencyMinorUnitDigits: 2,
+          occurredAt: tiedCreatedAt,
+          occurredLocalDate,
+          occurredLocalTime: "03:04",
+          timeZone: "America/El_Salvador",
+          description: `Same-instant sale ${index}`,
+          createdByUserId: userIds[7] as string,
+          createdAt: tiedCreatedAt,
+        })),
+      )
+      .returning({ id: sale.id });
+    tiedIds = tied.map(({ id }) => id).sort((left, right) => (left < right ? 1 : -1));
+
+    // Real rows come from now(), which carries microseconds a JavaScript Date cannot
+    // hold. These three share one millisecond so a truncating cursor drops the later two.
+    const microsecond = await database.db.execute<{ id: string }>(sql`
+      insert into ${sale}
+        (business_id, gross_minor_units, currency, currency_minor_unit_digits, occurred_at,
+         occurred_local_date, occurred_local_time, time_zone, description, created_by_user_id,
+         created_at)
+      select ${listBusinessId}, 30, 'USD', 2, timestamptz '2026-01-03T04:05:06.500000Z',
+             ${occurredLocalDate}, '04:05', 'America/El_Salvador', 'Microsecond sale ' || suffix,
+             ${userIds[7] as string}, stamp
+      from (values
+        ('a', timestamptz '2026-01-03T04:05:06.500999Z'),
+        ('b', timestamptz '2026-01-03T04:05:06.500500Z'),
+        ('c', timestamptz '2026-01-03T04:05:06.500000Z')
+      ) as seeded(suffix, stamp)
+      returning id
+    `);
+    microsecondIds = microsecond.map(({ id }) => id);
+  });
+
+  test("pages one deterministic keyset without a duplicate or a gap", async () => {
+    const single = await repository.listSales(ownerActor, { limit: 50, status: "all" });
+    const paged = await collectIds(ownerActor, "all", 2);
+
+    expect(single.items).toHaveLength(postedIds.length + tiedIds.length + microsecondIds.length);
+    expect(single.nextCursor).toBeNull();
+    expect(paged).toEqual(single.items.map(({ id }) => id));
+    expect(new Set(paged).size).toBe(paged.length);
+    expect(paged.slice(0, 5)).toEqual([...postedIds].reverse());
+    expect(single.queriedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  test("breaks a same-instant tie by identifier so no row is skipped", async () => {
+    const page = await repository.listSales(ownerActor, { limit: 50, status: "all" });
+    const tail = page.items.slice(-2).map(({ id }) => id);
+    const pagedTail = (await collectIds(ownerActor, "all", 1)).slice(-2);
+
+    expect(tail).toEqual(tiedIds);
+    expect(pagedTail).toEqual(tiedIds);
+  });
+
+  test("pages sales that differ only in microseconds without dropping one", async () => {
+    const single = await repository.listSales(ownerActor, { limit: 50, status: "all" });
+    const paged = await collectIds(ownerActor, "all", 1);
+    const inSingle = single.items.map(({ id }) => id).filter((id) => microsecondIds.includes(id));
+    const inPaged = paged.filter((id) => microsecondIds.includes(id));
+
+    expect(inSingle).toHaveLength(microsecondIds.length);
+    expect(inPaged).toEqual(inSingle);
+  });
+
+  test("keeps a corrected sale visible and reports its correction truthfully", async () => {
+    const originalId = postedIds[0] as string;
+    const replaced = await repository.replaceSale(ownerActor, originalId, {
+      idempotencyKey: crypto.randomUUID(),
+      reason: "Wrong amount",
+      replacement: {
+        grossMinorUnits: "1500",
+        occurredLocalDate,
+        occurredLocalTime: "11:00",
+        description: "Corrected list sale",
+      },
+    });
+    const replacementId = replaced.replacementSale?.id as string;
+
+    const all = await repository.listSales(ownerActor, { limit: 50, status: "all" });
+    const posted = await repository.listSales(ownerActor, { limit: 50, status: "posted" });
+    const voided = await repository.listSales(ownerActor, { limit: 50, status: "voided" });
+    const original = all.items.find(({ id }) => id === originalId);
+    const replacement = all.items.find(({ id }) => id === replacementId);
+    const untouched = all.items.find(({ id }) => id === postedIds[1]);
+
+    expect(original?.status).toBe("voided");
+    expect(original?.correction).toMatchObject({
+      id: replaced.correction.id,
+      kind: "replacement",
+      originalSaleId: originalId,
+      reason: "Wrong amount",
+      replacementSaleId: replacementId,
+    });
+    expect(replacement?.status).toBe("posted");
+    expect(replacement?.correction?.id).toBe(replaced.correction.id);
+    expect(untouched?.correction).toBeNull();
+    expect(voided.items.map(({ id }) => id)).toEqual([originalId]);
+    expect(posted.items.map(({ id }) => id)).not.toContain(originalId);
+    expect(posted.items.map(({ id }) => id)).toContain(replacementId);
+    // The original is voided and its replacement takes its place, so the count holds.
+    expect(posted.items).toHaveLength(postedIds.length + tiedIds.length + microsecondIds.length);
+    expect(await collectIds(ownerActor, "posted", 2)).toEqual(posted.items.map(({ id }) => id));
+  });
+
+  test("never serves another tenant's rows, even from a cursor that tenant minted", async () => {
+    const ownerPage = await repository.listSales(ownerActor, { limit: 1, status: "all" });
+    expect(ownerPage.nextCursor).not.toBeNull();
+
+    const replayed = await repository.listSales(otherActor, {
+      cursor: ownerPage.nextCursor as string,
+      limit: 50,
+      status: "all",
+    });
+    const otherOwn = await repository.listSales(otherActor, { limit: 50, status: "all" });
+
+    expect(otherOwn.items.map(({ id }) => id)).toEqual([otherSaleId]);
+    expect(replayed.items.map(({ id }) => id)).not.toContain(ownerPage.items[0]?.id);
+    for (const item of replayed.items)
+      expect(otherOwn.items.map(({ id }) => id)).toContain(item.id);
+  });
+
+  test("refuses a cursor minted for a different filter instead of dropping rows", async () => {
+    const allCursor = await repository.listSales(ownerActor, { limit: 1, status: "all" });
+
+    await expect(
+      repository.listSales(ownerActor, {
+        cursor: allCursor.nextCursor as string,
+        limit: 50,
+        status: "posted",
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(
+      repository.listSales(ownerActor, { cursor: "not base64url", limit: 50, status: "all" }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+
+  test("denies a role without sales:read and an expired session", async () => {
+    await expect(
+      repository.listSales(auditorActor, { limit: 25, status: "all" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      repository.listSales(expiredActor, { limit: 25, status: "all" }),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(
+      repository.listSales({ ...ownerActor, activeBusinessId: null }, { limit: 25, status: "all" }),
+    ).rejects.toMatchObject({ code: "BUSINESS_REQUIRED" });
+  });
+
+  test("bounds the page size in the repository, not only at the route", async () => {
+    await expect(
+      repository.listSales(ownerActor, { limit: 51, status: "all" }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(
+      repository.listSales(ownerActor, { limit: 0, status: "all" }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(
+      repository.listSales(ownerActor, { limit: 25, status: "corrected" } as never),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+
+  test("answers each status filter from a business index without sorting rows", async () => {
+    const plans = await database.db.transaction(async (tx) => {
+      // Both settings only discourage their node; a plan that still contains a
+      // Sort would mean the index cannot satisfy this ordering on its own.
+      await tx.execute(sql`set local enable_seqscan = off`);
+      await tx.execute(sql`set local enable_sort = off`);
+      const readPlan = async (statement: ReturnType<typeof sql>): Promise<string> => {
+        const rows = await tx.execute<{ "QUERY PLAN": string }>(statement);
+        return rows.map((row) => row["QUERY PLAN"]).join("\n");
+      };
+      return {
+        all: await readPlan(sql`
+          explain (costs off) select * from ${sale}
+          where ${sale.businessId} = ${listBusinessId}
+          order by ${sale.createdAt} desc, ${sale.id} desc
+          limit 26
+        `),
+        voided: await readPlan(sql`
+          explain (costs off) select * from ${sale}
+          where ${sale.businessId} = ${listBusinessId} and ${sale.status} = 'voided'
+          order by ${sale.createdAt} desc, ${sale.id} desc
+          limit 26
+        `),
+      };
+    });
+
+    expect(plans.all).toContain("sale_business_created_at_idx");
+    expect(plans.all).not.toContain("Sort");
+    expect(plans.voided).toContain("sale_business_status_created_at_idx");
+    expect(plans.voided).not.toContain("Sort");
   });
 });

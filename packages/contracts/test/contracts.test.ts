@@ -12,6 +12,9 @@ import {
   previousMonthSummarySchema,
   replaceSaleRequestSchema,
   saleCorrectionResponseSchema,
+  saleListQuerySchema,
+  saleListResponseSchema,
+  saleListSchema,
   voidSaleRequestSchema,
 } from "../src/index.ts";
 
@@ -196,5 +199,66 @@ describe("API contracts", () => {
         data: { correction, originalSale: sale, replacementSale: null, replayed: false },
       }).success,
     ).toBe(true);
+  });
+
+  test("bounds the sale list page and defaults to every status", () => {
+    expect(saleListQuerySchema.parse({})).toEqual({ limit: 25, status: "all" });
+    expect(saleListQuerySchema.parse({ limit: "50", status: "voided" })).toEqual({
+      limit: 50,
+      status: "voided",
+    });
+    expect(saleListQuerySchema.safeParse({ limit: 51 }).success).toBe(false);
+    expect(saleListQuerySchema.safeParse({ limit: 0 }).success).toBe(false);
+  });
+
+  test("rejects a filter the sale list does not own", () => {
+    expect(saleListQuerySchema.safeParse({ status: "corrected" }).success).toBe(false);
+    expect(saleListQuerySchema.safeParse({ businessId: "another-business" }).success).toBe(false);
+    expect(saleListQuerySchema.safeParse({ occurredLocalDate: "2026-08-22" }).success).toBe(false);
+  });
+
+  test("accepts only an opaque base64url cursor", () => {
+    expect(saleListQuerySchema.safeParse({ cursor: "eyJ2ZXJzaW9uIjoxfQ" }).success).toBe(true);
+    expect(saleListQuerySchema.safeParse({ cursor: "eyJ2ZXJzaW9uIjoxfQ==" }).success).toBe(false);
+    expect(saleListQuerySchema.safeParse({ cursor: "cursor with spaces" }).success).toBe(false);
+    expect(saleListQuerySchema.safeParse({ cursor: "" }).success).toBe(false);
+  });
+
+  test("keeps a corrected sale readable inside a page and rejects extra page fields", () => {
+    const correctedAt = "2026-08-22T20:30:00.000Z";
+    const originalSaleId = "5312a3e6-7c91-486a-9233-0cf4d9d3dcc7";
+    const replacementSaleId = "9f8c2b41-6d55-4f0a-a3ad-1c2b4e6f8a01";
+    const correction = {
+      id: "3ce0fe40-da34-4fc4-b8a6-0b9b3df52136",
+      kind: "replacement",
+      reason: "Wrong amount",
+      originalSaleId,
+      replacementSaleId,
+      correctedAt,
+    };
+    const voidedOriginal = {
+      id: originalSaleId,
+      status: "voided",
+      entryMode: "total_only",
+      grossMinorUnits: "1250",
+      currency: "USD",
+      currencyMinorUnitDigits: 2,
+      occurredAt: correctedAt,
+      occurredLocalDate: "2026-08-22",
+      occurredLocalTime: "14:30",
+      timeZone: "America/El_Salvador",
+      description: null,
+      correction,
+      createdAt: correctedAt,
+    };
+    const page = {
+      items: [{ ...voidedOriginal, id: replacementSaleId, status: "posted" }, voidedOriginal],
+      nextCursor: null,
+      queriedAt: correctedAt,
+    };
+
+    expect(saleListResponseSchema.safeParse({ data: page }).success).toBe(true);
+    expect(saleListSchema.safeParse({ ...page, total: 2 }).success).toBe(false);
+    expect(saleListSchema.safeParse({ items: [], nextCursor: null }).success).toBe(false);
   });
 });

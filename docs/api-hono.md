@@ -22,6 +22,7 @@ The baseline surface is:
 | `GET` | `/v1/me` | Yes | Normalized user and session summary |
 | `GET` | `/v1/businesses` | Yes, fresh session | Explicit memberships and active business selector |
 | `POST` | `/v1/businesses` | Yes, fresh session | Create or replay the one owner business and settings |
+| `GET` | `/v1/sales` | `sales:read`, fresh session | List active-business sales newest first with a status filter |
 | `POST` | `/v1/sales` | `sales:create`, fresh session | Confirm or replay one total-only sale |
 | `GET` | `/v1/sales/:saleId` | `sales:read`, fresh session | Read a canonical active-business sale |
 | `POST` | `/v1/sales/:saleId/void` | `sales:correct`, fresh session | Void or exactly replay one posted sale correction |

@@ -17,6 +17,7 @@ type ReceivableQueries = Pick<
 
 type ListRow = {
   created_at: Date | string;
+  created_at_exact: string;
   created_by_user_id: string;
   currency: string;
   currency_minor_unit_digits: number;
@@ -55,10 +56,12 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
         const customerFilter = query.customerId
           ? sql`and ${receivable.customerId} = ${query.customerId}`
           : sql``;
+        // Compared as `timestamptz` rather than through a JavaScript Date, which truncates
+        // PostgreSQL's microseconds and would drop rows sharing the boundary millisecond.
         const cursorFilter = cursor
           ? sql`and (
-              ${receivable.createdAt} < ${new Date(cursor.createdAt)}
-              or (${receivable.createdAt} = ${new Date(cursor.createdAt)} and ${receivable.id} < ${cursor.id})
+              ${receivable.createdAt} < ${cursor.createdAt}::timestamptz
+              or (${receivable.createdAt} = ${cursor.createdAt}::timestamptz and ${receivable.id} < ${cursor.id})
             )`
           : sql``;
         const stateFilter = query.state === "all" ? sql`` : sql`where state = ${query.state}`;
@@ -90,6 +93,7 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
               ${receivable.voidedAt} as voided_at,
               ${receivable.voidReason} as void_reason,
               ${receivable.createdAt} as created_at,
+              ${receivable.createdAt}::text as created_at_exact,
               ${receivable.updatedAt} as updated_at,
               to_char(transaction_timestamp() at time zone ${access.timeZone}, 'YYYY-MM-DD') as local_date,
               case
@@ -122,6 +126,7 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
             voided_at,
             void_reason,
             created_at,
+            created_at_exact,
             updated_at,
             local_date
           from derived
@@ -161,7 +166,7 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
           nextCursor:
             hasMore && last
               ? encodeCursor({
-                  createdAt: new Date(last.created_at).toISOString(),
+                  createdAt: last.created_at_exact,
                   filterFingerprint,
                   id: last.id,
                   version: 1,

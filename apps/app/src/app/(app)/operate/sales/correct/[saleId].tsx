@@ -13,6 +13,7 @@ import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { saleQueryKeys, saleQueryOptions } from "@/features/sales/queries";
 import {
   type SaleDraftIssues,
   type SaleDraftValues,
@@ -41,9 +42,8 @@ export default function CorrectSaleScreen() {
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
   const saleResult = useQuery({
-    enabled: Boolean(saleId),
-    queryFn: () => api.sales.get(saleId as string),
-    queryKey: ["sales", "detail", saleId],
+    ...saleQueryOptions(business?.id ?? "unselected", saleId ?? ""),
+    enabled: Boolean(saleId && business),
   });
   const [mode, setMode] = useState<CorrectionMode>("void");
   const [reason, setReason] = useState("");
@@ -62,16 +62,13 @@ export default function CorrectSaleScreen() {
       input.kind === "void"
         ? api.sales.void(saleId as string, input.command)
         : api.sales.replace(saleId as string, input.command),
-    onSuccess: async (result) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["sales", "summary"] }),
-        queryClient.invalidateQueries({ queryKey: ["sales", "detail", saleId] }),
-        result.replacementSale
-          ? queryClient.invalidateQueries({
-              queryKey: ["sales", "detail", result.replacementSale.id],
-            })
-          : Promise.resolve(),
-      ]);
+    onSuccess: async () => {
+      // A correction voids the original, may create a replacement, and changes
+      // both the summary and every history page, so the whole business-scoped
+      // sales cache is invalidated rather than the two records it names.
+      await queryClient.invalidateQueries({
+        queryKey: saleQueryKeys.all(business?.id ?? "unselected"),
+      });
       router.replace({ pathname: "/operate/sales/[saleId]", params: { saleId: saleId as string } });
     },
   });
@@ -82,7 +79,8 @@ export default function CorrectSaleScreen() {
   ) {
     return <OfflineState />;
   }
-  if (businesses.isPending || saleResult.isPending) {
+  // A failed business read leaves the sale query disabled, so it stays pending forever.
+  if (businesses.isPending || (business !== undefined && saleResult.isPending)) {
     return (
       <View className="flex-1 items-start justify-center px-5 sm:px-8 lg:px-10">
         <ActivityIndicator color="#237A55" size="large" />

@@ -3,6 +3,7 @@ import {
   createBusinessRequestSchema,
   createSaleRequestSchema,
   replaceSaleRequestSchema,
+  saleListQuerySchema,
   voidSaleRequestSchema,
 } from "@pisto/contracts";
 import type { ProductRepository } from "@pisto/db";
@@ -31,6 +32,23 @@ export function productRoutes(input: { auth: Auth; product: ProductRepository })
     );
     const result = await input.product.createBusiness(actor, command);
     return context.json({ data: result }, commandStatus(result));
+  });
+
+  routes.get("/sales", async (context) => {
+    const actor = await requireActor(input.auth, context);
+    // The list contract is strict, so only the filters it owns are forwarded.
+    // Passing the whole query record would turn an unrelated tracking parameter
+    // into a 400 the clients do not expect.
+    const query = parseRequest(
+      saleListQuerySchema,
+      {
+        cursor: context.req.query("cursor"),
+        limit: context.req.query("limit"),
+        status: context.req.query("status"),
+      },
+      "Sale list filters are invalid",
+    );
+    return context.json({ data: await input.product.listSales(actor, query) });
   });
 
   routes.post("/sales", async (context) => {

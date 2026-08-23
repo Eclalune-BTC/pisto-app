@@ -6,6 +6,8 @@ import type {
   PreviousMonthSummary,
   ReplaceSaleRequest,
   Sale,
+  SaleList,
+  SaleListQuery,
   VoidSaleRequest,
 } from "@pisto/contracts";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -28,6 +30,7 @@ import {
   resolveLocalDateTime,
 } from "./product-core.ts";
 import { createSalesCorrectionRepository, type SaleCorrectionResult } from "./sales-correction.ts";
+import { createSalesQueryRepository } from "./sales-queries.ts";
 import { parseSaleMinorUnits, saleFingerprint, toSale } from "./sales-records.ts";
 import { member, organization, session } from "./schema/auth.ts";
 import { businessSettings } from "./schema/business.ts";
@@ -67,6 +70,7 @@ export interface ProductRepository {
     command: ReplaceSaleRequest,
   ): Promise<SaleCorrectionResult>;
   getSale(actor: ProductActor, saleId: string): Promise<Sale>;
+  listSales(actor: ProductActor, query: SaleListQuery): Promise<SaleList>;
   getPreviousMonthSummary(actor: ProductActor): Promise<PreviousMonthSummary>;
 }
 
@@ -103,6 +107,7 @@ function businessSlug(name: string, id: string): string {
 
 export function createProductRepository(db: Database): ProductRepository {
   const corrections = createSalesCorrectionRepository(db);
+  const salesQueries = createSalesQueryRepository(db);
 
   return {
     async listBusinesses(actor) {
@@ -475,6 +480,10 @@ export function createProductRepository(db: Database): ProductRepository {
       if (!result) throw new ProductError("NOT_FOUND", "Sale was not found");
       requireBusinessPermission(result.role, "sales:read");
       return toSale(result.record, await corrections.findForSale(businessId, saleId));
+    },
+
+    listSales(actor, query) {
+      return salesQueries.listSales(actor, query);
     },
 
     async getPreviousMonthSummary(actor) {

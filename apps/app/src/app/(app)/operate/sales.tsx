@@ -7,9 +7,10 @@ import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { previousMonthSummaryQueryOptions } from "@/features/sales/queries";
+import { SalesHistoryController } from "@/features/sales/sales-history-controller";
 import { formatLocalizedDateTime, formatMonthYear } from "@/i18n/format";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
-import { api } from "@/lib/api-client";
 import { formatMinorUnits } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 
@@ -26,9 +27,8 @@ export default function SalesOverviewScreen() {
   const businesses = useQuery(businessesQueryOptions);
   const activeBusiness = getActiveBusiness(businesses.data);
   const summary = useQuery({
+    ...previousMonthSummaryQueryOptions(activeBusiness?.id ?? "unselected"),
     enabled: Boolean(activeBusiness),
-    queryFn: api.sales.previousMonthSummary,
-    queryKey: ["sales", "summary", "previous-month", activeBusiness?.id],
   });
 
   if (businesses.fetchStatus === "paused" && !businesses.data) return <OfflineState />;
@@ -184,6 +184,11 @@ export default function SalesOverviewScreen() {
           </View>
         </View>
       ) : null}
+
+      <SalesHistoryController
+        accessIsStale={businesses.isError && businesses.data !== undefined}
+        business={activeBusiness}
+      />
     </Page>
   );
 }
