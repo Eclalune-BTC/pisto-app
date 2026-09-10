@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { Eye, EyeOff } from "lucide-react-native";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -35,6 +35,42 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   const [formError, setFormError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
   const submissionInFlight = useRef(false);
+  const [expectedUserId, setExpectedUserId] = useState<string>();
+  const [sessionRefreshSettled, setSessionRefreshSettled] = useState(false);
+  const {
+    data: session,
+    error: sessionError,
+    isPending: sessionPending,
+    isRefetching: sessionRefetching,
+    refetch,
+  } = authClient.useSession();
+
+  useEffect(() => {
+    if (!expectedUserId) return;
+    if (!sessionRefreshSettled || sessionPending || sessionRefetching) return;
+    if (!sessionError && session?.user.id === expectedUserId) {
+      setExpectedUserId(undefined);
+      submissionInFlight.current = false;
+      setSubmitting(false);
+      queryClient.clear();
+      router.replace("/dashboard");
+    } else {
+      setExpectedUserId(undefined);
+      submissionInFlight.current = false;
+      setSubmitting(false);
+      setFormError(t("auth.errors.connection"));
+    }
+  }, [
+    expectedUserId,
+    session,
+    sessionError,
+    sessionPending,
+    sessionRefetching,
+    sessionRefreshSettled,
+    queryClient,
+    router,
+    t,
+  ]);
 
   const validate = () => {
     const nextErrors: FormErrors = {};
@@ -58,6 +94,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
 
     submissionInFlight.current = true;
     setSubmitting(true);
+    let awaitingSession = false;
     try {
       const result = isSignUp
         ? await authClient.signUp.email({
@@ -75,13 +112,29 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
         return;
       }
 
-      queryClient.clear();
-      router.replace("/dashboard");
+      if (!result.data?.user.id) throw new Error("Authentication returned no user identity.");
+      awaitingSession = true;
+      setSessionRefreshSettled(false);
+      setExpectedUserId(result.data.user.id);
+      // Better Auth schedules its session signal after the POST resolves. Keep
+      // the form mounted until the atom confirms this exact authenticated user.
+      void refetch({ query: { disableCookieCache: true } })
+        .catch(() => {
+          setExpectedUserId(undefined);
+          submissionInFlight.current = false;
+          setSubmitting(false);
+          setFormError(t("auth.errors.connection"));
+        })
+        .finally(() => setSessionRefreshSettled(true));
     } catch {
+      awaitingSession = false;
+      setExpectedUserId(undefined);
       setFormError(t("auth.errors.connection"));
     } finally {
-      submissionInFlight.current = false;
-      setSubmitting(false);
+      if (!awaitingSession) {
+        submissionInFlight.current = false;
+        setSubmitting(false);
+      }
     }
   };
 
