@@ -5,11 +5,13 @@ import {
   createDatabase,
   type Database,
   entitlement,
+  organization,
   parseDatabaseConfig,
   user,
 } from "@pisto/db";
 import { eq } from "drizzle-orm";
 
+import { listEntitlements } from "../src/entitlements.ts";
 import { createPolarWebhookProcessor } from "../src/polar.ts";
 import { createRevenueCatWebhookProcessor } from "../src/revenuecat.ts";
 
@@ -36,6 +38,122 @@ async function withFixture(run: (db: Database, userId: string) => Promise<void>)
     if (error !== rollback) throw error;
   }
 }
+
+describe("PostgreSQL entitlement resolution", () => {
+  const now = new Date("2026-09-10T12:00:00.000Z");
+  const before = new Date(now.getTime() - 1);
+  const after = new Date(now.getTime() + 1);
+
+  test("includes the start boundary, excludes the expiry boundary, and supports open intervals", () =>
+    withFixture(async (db, userId) => {
+      await db.insert(entitlement).values(
+        [
+          { key: "unbounded", validFrom: null, validUntil: null },
+          { key: "inside", validFrom: before, validUntil: after },
+          { key: "starts-now", validFrom: now, validUntil: after },
+          { key: "expires-now", validFrom: before, validUntil: now },
+          { key: "expired", validFrom: null, validUntil: before },
+          { key: "future", validFrom: after, validUntil: null },
+        ].map((grant) => ({
+          ...grant,
+          userId,
+          source: "polar",
+          sourceId: crypto.randomUUID(),
+          status: "active",
+          sourceEventAt: now,
+        })),
+      );
+
+      const grants = await listEntitlements(db, { type: "user", id: userId }, now);
+      expect(grants.map((grant) => grant.key)).toEqual(["inside", "starts-now", "unbounded"]);
+      expect(grants.find((grant) => grant.key === "starts-now")).toMatchObject({
+        validFrom: now.toISOString(),
+        validUntil: after.toISOString(),
+      });
+      expect(grants.find((grant) => grant.key === "unbounded")).toMatchObject({
+        validFrom: null,
+        validUntil: null,
+      });
+    }));
+
+  test("rejects every non-active stored status even without an expiry", () =>
+    withFixture(async (db, userId) => {
+      await db.insert(entitlement).values(
+        ["active", "inactive", "pending", "revoked", "expired", "unknown", "unexpected"].map(
+          (status) => ({
+            key: status,
+            userId,
+            source: "polar",
+            sourceId: crypto.randomUUID(),
+            status,
+            sourceEventAt: now,
+          }),
+        ),
+      );
+
+      const grants = await listEntitlements(db, { type: "user", id: userId }, now);
+      expect(grants.map((grant) => grant.key)).toEqual(["active"]);
+    }));
+
+  test("isolates users and organizations even when their identifiers match", () =>
+    withFixture(async (db, userId) => {
+      const otherUserId = `billing-integration-${crypto.randomUUID()}`;
+      const otherOrganizationId = crypto.randomUUID();
+      await db.insert(user).values({
+        id: otherUserId,
+        name: "Other Billing Test",
+        email: `${otherUserId}@example.test`,
+      });
+      await db.insert(organization).values(
+        [userId, otherOrganizationId].map((id) => ({
+          id,
+          name: "Billing Test Organization",
+          slug: `billing-integration-${id}`,
+        })),
+      );
+      await db.insert(entitlement).values(
+        [
+          { key: "user", userId, organizationId: null },
+          { key: "other-user", userId: otherUserId, organizationId: null },
+          { key: "organization", userId: null, organizationId: userId },
+          { key: "other-organization", userId: null, organizationId: otherOrganizationId },
+        ].map((grant) => ({
+          ...grant,
+          source: "polar",
+          sourceId: crypto.randomUUID(),
+          status: "active",
+          sourceEventAt: now,
+        })),
+      );
+
+      const userGrants = await listEntitlements(db, { type: "user", id: userId }, now);
+      const organizationGrants = await listEntitlements(
+        db,
+        { type: "organization", id: userId },
+        now,
+      );
+      expect(userGrants.map((grant) => grant.key)).toEqual(["user"]);
+      expect(organizationGrants.map((grant) => grant.key)).toEqual(["organization"]);
+    }));
+
+  test("retains recognized independent grants and drops unrecognized provenance", () =>
+    withFixture(async (db, userId) => {
+      await db.insert(entitlement).values(
+        ["polar", "revenuecat", "manual", "stripe", "", "POLAR"].map((source) => ({
+          key: "pro",
+          userId,
+          source,
+          sourceId: crypto.randomUUID(),
+          status: "active",
+          sourceEventAt: now,
+        })),
+      );
+
+      const grants = await listEntitlements(db, { type: "user", id: userId }, now);
+      expect(grants.map((grant) => grant.source).sort()).toEqual(["manual", "polar", "revenuecat"]);
+      expect(grants.every((grant) => grant.key === "pro" && grant.status === "active")).toBe(true);
+    }));
+});
 
 function polarFixture(db: Database, userId: string) {
   const subscriptionId = crypto.randomUUID();

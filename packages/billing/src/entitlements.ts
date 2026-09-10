@@ -65,18 +65,3 @@ export async function listEntitlements(
     ];
   });
 }
-
-export function isEntitlementEffective(
-  item: {
-    status: string;
-    validFrom: Date | null;
-    validUntil: Date | null;
-  },
-  now: Date,
-): boolean {
-  return (
-    item.status === "active" &&
-    (!item.validFrom || item.validFrom <= now) &&
-    (!item.validUntil || item.validUntil > now)
-  );
-}
