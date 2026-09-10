@@ -25,6 +25,7 @@ export function ChoiceList<T extends string>({
             <Pressable
               accessibilityRole="radio"
               accessibilityState={{ checked: selected }}
+              aria-checked={selected}
               className="min-h-12 flex-row items-center justify-between border-b border-line py-3 last:border-b-0 dark:border-[#304239]"
               key={option.value}
               onPress={() => onChange(option.value)}

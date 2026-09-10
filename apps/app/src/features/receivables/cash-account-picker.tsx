@@ -74,6 +74,7 @@ export function CashAccountPicker({
               <Pressable
                 accessibilityRole="radio"
                 accessibilityState={{ checked: selected }}
+                aria-checked={selected}
                 className="min-h-14 flex-row items-center justify-between gap-4 border-b border-line py-3 active:opacity-70 dark:border-[#304239]"
                 key={account.id}
                 onPress={() => onSelect(account)}

@@ -146,6 +146,7 @@ export function MovementEditor({
                 <Pressable
                   accessibilityRole="radio"
                   accessibilityState={{ checked: draft.action === action }}
+                  aria-checked={draft.action === action}
                   className={
                     draft.action === action
                       ? "min-h-11 justify-center border-b-2 border-positive py-2"

@@ -182,6 +182,7 @@ export default function BusinessSetupScreen() {
           <Pressable
             accessibilityRole="checkbox"
             accessibilityState={{ checked: acknowledged }}
+            aria-checked={acknowledged}
             className="flex-row items-start gap-3"
             onPress={() => setAcknowledged((value) => !value)}
           >

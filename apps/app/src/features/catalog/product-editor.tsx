@@ -98,6 +98,7 @@ function Choice({
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
+      aria-checked={selected}
       className={
         selected
           ? "min-h-11 justify-center border-b-2 border-positive px-1"
