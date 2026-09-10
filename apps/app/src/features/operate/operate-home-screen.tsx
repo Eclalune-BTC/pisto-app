@@ -19,6 +19,7 @@ import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { hasDeniedRead } from "@/features/customers/remote-state";
 import {
@@ -60,9 +61,7 @@ export default function OperateHomeScreen() {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
         <ActivityIndicator color="#237A55" size="large" />
-        <Text className="text-sm font-semibold text-ink-muted dark:text-[#AAB8B0]">
-          {t("operate.loading")}
-        </Text>
+        <Text className="text-sm text-muted-foreground">{t("operate.loading")}</Text>
       </View>
     );
   }
@@ -71,10 +70,8 @@ export default function OperateHomeScreen() {
     return (
       <View className="flex-1 items-start justify-center gap-4 px-5 sm:px-8 lg:px-10">
         <View className="max-w-[460px] gap-2">
-          <Text className="text-xl font-black text-ink dark:text-white">
-            {t("operate.unavailableTitle")}
-          </Text>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+          <Heading size="section">{t("operate.unavailableTitle")}</Heading>
+          <Text className="text-sm leading-5 text-muted-foreground">
             {t("operate.unavailableDescription")}
           </Text>
         </View>
@@ -93,7 +90,7 @@ export default function OperateHomeScreen() {
   const canCreateSale = activeBusiness.access.permissions.includes("sales:create");
 
   return (
-    <Page contentContainerClassName="gap-9">
+    <Page>
       <ScreenHeader
         action={
           canCreateSale ? (
@@ -110,59 +107,54 @@ export default function OperateHomeScreen() {
 
       {businesses.isError && businesses.data ? <StaleNotice /> : null}
 
-      <View className="flex-row flex-wrap items-center gap-x-4 gap-y-2 border-y border-line py-4 dark:border-[#304239]">
+      <View className="flex-row flex-wrap items-center gap-x-4 gap-y-2 border-y border-border py-3">
         <View className="flex-row items-baseline gap-2">
-          <Text className="text-xs font-bold uppercase tracking-[1px] text-ink-muted dark:text-[#91A198]">
-            {t("common.currency")}
-          </Text>
-          <Text className="font-black text-ink dark:text-white">{activeBusiness.currency}</Text>
+          <Text className="text-sm text-muted-foreground">{t("common.currency")}</Text>
+          <Text className="text-sm font-semibold text-foreground">{activeBusiness.currency}</Text>
         </View>
-        <View className="h-4 w-px bg-line dark:bg-[#304239]" />
         <View className="flex-row items-baseline gap-2">
-          <Text className="text-xs font-bold uppercase tracking-[1px] text-ink-muted dark:text-[#91A198]">
-            {t("common.timeZone")}
-          </Text>
-          <Text className="font-semibold text-ink dark:text-white">{activeBusiness.timeZone}</Text>
+          <Text className="text-sm text-muted-foreground">{t("common.timeZone")}</Text>
+          <Text className="text-sm font-semibold text-foreground">{activeBusiness.timeZone}</Text>
         </View>
       </View>
 
       {modules.length === 0 ? (
         <View className="max-w-[560px] gap-2 border-l-4 border-warning bg-[#FFF6E8] p-5 dark:bg-[#3A2A18]">
-          <Text className="font-black text-ink dark:text-white">{t("operate.noAccessTitle")}</Text>
+          <Heading level={2} size="section">
+            {t("operate.noAccessTitle")}
+          </Heading>
           <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
             {t("operate.noAccessDescription")}
           </Text>
         </View>
       ) : (
-        <View className="gap-9">
+        <View className="gap-7">
           {OPERATE_GROUPS.map((group) => {
             const groupModules = modules.filter((module) => module.group === group.id);
             if (groupModules.length === 0) return null;
 
             return (
               <View className="gap-3" key={group.id}>
-                <Text className="text-xs font-black uppercase tracking-[1.2px] text-ink-muted dark:text-[#91A198]">
+                <Heading level={2} size="section">
                   {t(group.labelKey)}
-                </Text>
-                <View className="border-y border-line dark:border-[#304239]">
+                </Heading>
+                <View className="border-y border-border">
                   {groupModules.map((module, index) => {
                     const Icon = moduleIcons[module.id];
                     return (
                       <Link href={module.href} asChild key={module.id}>
                         <Pressable
                           className={cn(
-                            "min-h-20 flex-row items-center gap-4 px-1 py-4 active:bg-[#EFF3EF] dark:active:bg-[#21352C]",
-                            index > 0 && "border-t border-line dark:border-[#304239]",
+                            "min-h-16 flex-row items-center gap-3 px-1 py-3 active:bg-muted",
+                            index > 0 && "border-t border-border",
                           )}
                         >
-                          <View className="h-10 w-10 items-center justify-center rounded-full bg-[#EAF0EB] dark:bg-[#23372E]">
-                            <Icon color="#237A55" size={20} strokeWidth={2.2} />
-                          </View>
+                          <Icon color="#237A55" size={20} strokeWidth={2} />
                           <View className="min-w-0 flex-1 gap-1">
-                            <Text className="text-base font-black text-ink dark:text-white">
+                            <Text className="text-base font-semibold text-foreground">
                               {t(module.labelKey)}
                             </Text>
-                            <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+                            <Text className="text-sm leading-5 text-muted-foreground">
                               {t(module.descriptionKey)}
                             </Text>
                           </View>
