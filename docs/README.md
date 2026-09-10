@@ -46,6 +46,9 @@ hosted artifact does not change the current local-only instruction.
 
 ## System map
 
+The [September 10 code audit](code-audit-2026-09-10.md) records the follow-up source review,
+reproduced defects, fixes, library decisions, and local verification after the component design work.
+
 | Area | Choice | Source of truth |
 | --- | --- | --- |
 | Runtime and package manager | Bun 1.4.0 | Root `package.json` and `bun.lock` |

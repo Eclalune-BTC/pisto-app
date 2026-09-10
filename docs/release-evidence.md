@@ -41,11 +41,12 @@ Do not start duplicate processes while these ports are already serving the app.
 ## Validation
 
 - Integrated `bun run check`: exit 0. Lint, documentation links, script tests, package typechecks,
-  package tests and Expo web export passed. This includes 203 app tests, 63 API tests and 35 script
+  package tests and Expo web export passed. This includes 229 app tests, 65 API tests and 36 script
   tests; additional contract/database/auth/billing tests also passed.
-- PostgreSQL integration: 44 passed, 327 assertions, seven files, against the local database.
+- PostgreSQL integration: 54 passed, 371 assertions, eight files, against the local database;
+  this now includes eight real billing webhook cases in the root integration command.
 - Local-configured Expo export for web, Android and iOS: exit 0, artifacts in the ignored
-  `.cache/local-platform-export` directory. The web entry links the generated 32 KB stylesheet;
+  `.cache/code-audit-platform-export` directory. The web entry links the generated 32 KB stylesheet;
   Android/iOS Hermes bundles are 8.2/8 MB. These are bundles, not signed binaries or device tests.
 - `bun run audit:ci`: passed, 752 packages checked with four documented existing exceptions.
   This is not a claim of zero known advisories; see the [security exception record](security.md#dependency-audit-snapshot).

@@ -83,8 +83,9 @@ product therefore serialize around the no-negative-stock invariant. An outbound 
 that would produce a negative tracked balance conflicts. Different idempotency keys cannot race past
 that check.
 
-Quantity precision and tracking cannot change after movement history exists because reinterpreting or
-hiding prior fixed-scale history would corrupt meaning. An archived product rejects updates and new
+Quantity unit and precision cannot change, and tracking cannot be disabled, after movement history
+exists because reinterpreting or hiding prior fixed-scale history would corrupt meaning. An archived
+product rejects updates and new
 inventory mutations. History and detail remain readable. Reversing a reversal is rejected rather than
 creating an unbounded correction chain.
 

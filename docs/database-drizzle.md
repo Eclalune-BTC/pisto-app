@@ -254,9 +254,17 @@ portability proof and current operational results. Minimize stored provider
 payloads, restrict access, define retention, and avoid credentials or unnecessary personal data in
 JSON evidence.
 
+The September 10 follow-up audit uses `FOR NO KEY UPDATE` for immutable cash-account rows.
+It still serializes balance-changing commands, while remaining compatible with the foreign-key
+key-share locks acquired by receivable payments. Cursor validation rejects impossible calendar
+dates and times before database casts without reducing the six-digit timestamp precision. Sale
+detail reads the sale and its correction in one statement; posting replays include later correction
+evidence. See [code audit](code-audit-2026-09-10.md) for regression evidence and scope.
+
 ## Official sources
 
 - [PostgreSQL 18 documentation](https://www.postgresql.org/docs/18/)
+- [PostgreSQL row-level lock modes](https://www.postgresql.org/docs/18/explicit-locking.html#LOCKING-ROWS)
 - [PostgreSQL 18.6 release](https://www.postgresql.org/docs/release/18.6/)
 - [Official PostgreSQL container image](https://hub.docker.com/_/postgres)
 - [Drizzle PostgreSQL guide](https://orm.drizzle.team/docs/get-started-postgresql)
