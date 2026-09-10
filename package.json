@@ -17,6 +17,7 @@
   "scripts": {
     "setup": "bun run scripts/pisto.ts init",
     "doctor": "bun run scripts/pisto.ts doctor",
+    "smoke:local": "bun run scripts/smoke-local.ts",
     "dev": "turbo run dev",
     "dev:app": "bun run --filter @pisto/app dev",
     "dev:api": "bun --env-file=.env --watch scripts/dev-api.ts",
