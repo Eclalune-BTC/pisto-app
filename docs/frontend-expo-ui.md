@@ -305,6 +305,11 @@ bun --filter @pisto/app test
 bun --filter @pisto/app build
 ```
 
+The app's `turbo.json` includes `.env*` files and the public Expo variables, app variant, and
+native identifiers in its build hash. Changes to these values invalidate the cached export;
+strict environment mode also passes the explicitly declared configuration to Expo. Keep new
+build-time variables in this package configuration when adding them.
+
 Before adding native modules, use `npx expo install <package>` (or the Bun-compatible Expo invocation)
 so versions match SDK 57. RevenueCat requires native code, so validate it in a development build and
 store sandbox; Expo Go preview alone is not purchase acceptance evidence.

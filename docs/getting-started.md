@@ -45,6 +45,10 @@ docker compose up -d postgres
 docker compose ps
 ```
 
+Compose publishes PostgreSQL on `127.0.0.1` only. Physical devices connect to the API's LAN
+address; they do not need direct database access. `POSTGRES_PORT` changes the local port while
+preserving the loopback binding.
+
 Apply committed migrations after PostgreSQL becomes healthy:
 
 ```sh

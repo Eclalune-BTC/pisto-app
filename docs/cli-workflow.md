@@ -87,6 +87,9 @@ Statuses:
 Doctor reads process environment variables before local file values. This lets CI inject secrets
 without writing them to disk. It reports variable names only.
 
+File parsing uses the runtime's `node:util.parseEnv`, including inline comments, quoted hashes,
+and multiline quoted values. It does not add another dotenv dependency or expand shell commands.
+
 ## `help`
 
 All of these are equivalent:
@@ -126,6 +129,7 @@ and remove only the temporary directories they created.
 
 - [Bun TypeScript runtime](https://bun.sh/docs/runtime)
 - [Bun environment loading](https://bun.sh/docs/runtime/environment-variables)
+- [Bun's built-in dotenv parser](https://bun.com/reference/node/util/parseEnv)
 - [Bun linker configuration](https://bun.sh/docs/pm/cli/install#installation-strategies)
 - [Expo monorepos and duplicate native packages](https://docs.expo.dev/guides/monorepos/)
 - [Node cryptographic random bytes](https://nodejs.org/api/crypto.html#cryptorandombytessize-callback)

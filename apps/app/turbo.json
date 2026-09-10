@@ -1,0 +1,10 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "env": ["APP_VARIANT", "EXPO_PUBLIC_*", "EXPO_IOS_BUNDLE_IDENTIFIER", "EXPO_ANDROID_PACKAGE"]
+    }
+  }
+}

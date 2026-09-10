@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { mkdir, open, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
+import { parseEnv as parseDotenv } from "node:util";
 
 const PROJECT_ROOT = resolve(import.meta.dir, "..");
 const MINIMUM_BUN_VERSION = "1.4.0";
@@ -235,30 +236,11 @@ export async function runInit(options: InitOptions = {}): Promise<number> {
 
 export function parseEnv(contents: string): Map<string, string> {
   const values = new Map<string, string>();
-
-  for (const originalLine of contents.split(/\r?\n/)) {
-    const line = originalLine.trim();
-    if (!line || line.startsWith("#")) {
-      continue;
+  for (const [key, value] of Object.entries(parseDotenv(contents))) {
+    if (value !== undefined) {
+      values.set(key, value);
     }
-
-    const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
-    if (!match) {
-      continue;
-    }
-
-    const [, key, rawValue] = match;
-    let value = rawValue.trim();
-    if (
-      value.length >= 2 &&
-      ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'")))
-    ) {
-      value = value.slice(1, -1);
-    }
-    values.set(key, value);
   }
-
   return values;
 }
 

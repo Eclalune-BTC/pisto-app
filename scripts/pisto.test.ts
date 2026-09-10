@@ -121,4 +121,14 @@ describe("Pisto CLI", () => {
     expect(isVersionAtLeast("1.10.0", "1.4.0")).toBe(true);
     expect(isVersionAtLeast("1.3.9", "1.4.0")).toBe(false);
   });
+
+  test("accepts inline comments while preserving quoted hashes and multiline values", () => {
+    const values = parseEnv(
+      'API_PORT=3015 # local API\nLABEL="a#b" # comment\nexport MULTILINE="first\nsecond"\n',
+    );
+
+    expect(values.get("API_PORT")).toBe("3015");
+    expect(values.get("LABEL")).toBe("a#b");
+    expect(values.get("MULTILINE")).toBe("first\nsecond");
+  });
 });
