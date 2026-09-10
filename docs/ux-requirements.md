@@ -59,7 +59,7 @@ Result refresh does not replace the page header or its query controls.
 | A successful query returns no records | Say which filter/search has no matches; do not manufacture records or financial zeros from a failure |
 | A financial mutation succeeds | Invalidate the owning record/list and all operating report periods for that business; retain other businesses' caches |
 | A confirmation is pending | Keep the action name visible and accessible, show progress, and prevent repeated activation |
-| A confirmation has an unknown outcome | Preserve the original reviewed payload and idempotency key; offer only the existing exact retry/recovery path |
+| A confirmation has an unknown outcome | While mounted, preserve the original reviewed payload and idempotency key; disable its edit/back/cancel controls and offer the existing exact retry/recovery path |
 | A business read refreshes | Preserve an expense period chosen for the same business; initialize it again only when the business/time-zone context changes |
 | A user opens billing | Keep Account active in both compact and wide navigation |
 | Space or text size changes | Wrap page heading actions and control text; keep controls reachable without horizontal page overflow |
@@ -107,7 +107,11 @@ An additional real QueryClient regression first caches an authorized customer re
 refresh with 401/403, and verifies that the UI chooses denied despite retained cache data or a
 pending companion query. Separate network/502/503/504 cases retain the labelled stale result.
 
-Before release, record real browser evidence at compact, intermediate, and wide widths, including
+Current local browser findings and the delayed real-request confirmation check are recorded in
+[local delivery evidence](release-evidence.md#browser-evidence). Durable command recovery after
+unmount/reload remains missing: the in-screen controls do not cover every navigation path.
+
+Before broad release, complete browser evidence at compact, intermediate, and wide widths, including
 slow-request search typing, failed-period recovery, empty search, denied access, visible keyboard
 focus, long labels, dark appearance, short desktop height, and billing navigation. Validate iOS and
 Android safe areas, keyboard behavior, VoiceOver/TalkBack names/state, and navigation separately.
@@ -115,9 +119,10 @@ Local typechecks, tests, and web export are necessary but do not prove deploymen
 
 ## Research and reuse evidence
 
-No production dependency is added. Existing React Native controls, React Native Web, React Query,
+This component/UX slice adds no production dependency. Existing React Native controls, React Native Web, React Query,
 the localization catalog, and Pisto tokens cover the exact slice. A new component library or form
 framework would add migration and native compatibility costs without addressing these defects.
+The separate Axios transport decision is recorded in the [repository audit](audit-2026-09-10.md).
 Component regression tests use the already installed `react-dom/server`; its matching
 `@types/react-dom` development dependency supplies the test compiler types. Vitest uses Vite's Oxc
 automatic JSX transform because Expo's source configuration leaves JSX for Metro.

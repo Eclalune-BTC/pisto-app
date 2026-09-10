@@ -53,6 +53,12 @@ bun run auth:schema:check
 Run database checks only after verifying the local connection target. Local check/build/export
 success is not a hosted deployment, native binary, device test, or store release.
 
+`bun run smoke:local` exercises the real local sign-up/business/sale/replay/void/sign-out workflow.
+It creates explicitly named QA records, revokes its session, and retains its voided sale as evidence.
+Set `SMOKE_API_URL` and `SMOKE_WEB_ORIGIN` for nondefault local ports; see the exact current command
+in [local delivery evidence](release-evidence.md#validation). It refuses remote origins, redirects
+and configured HTTP proxies; it is not a hosted acceptance command.
+
 `EXPO_PUBLIC_*` values become public bundle contents; never put credentials there. Changing the
 public API URL requires a new export. Keep `DATABASE_URL`, `BETTER_AUTH_SECRET`, private backups,
 and any retained provider credentials outside source control and client output. `.dockerignore`

@@ -6,7 +6,8 @@ future capabilities. Requirements describe acceptance, not proof that production
 
 ## Delivery contract
 
-The current delivery makes the existing manual core understandable, reliable and deployable. A user
+The current delivery reviews and improves the existing manual core for local operation. No hosting
+or publication is in scope. Expo, Bun/Hono and PostgreSQL run locally. A user
 signs in, creates or selects a business, records a reviewed operation, receives its canonical result,
 and can find, inspect and correct that record later. PostgreSQL owns business facts; the client owns
 drafts and presentation. AI and voice remain additional input channels with separate delivery gates.
@@ -54,12 +55,12 @@ performance, device behavior, email delivery or recovery.
 | NFR-06 | Accessible interaction | Target WCAG 2.2 AA on web; labelled controls, visible focus, keyboard operation, meaningful heading/landmarks, busy/disabled/error semantics, non-color-only status and at least 44-point primary hit targets. Manual screen-reader audit remains required. |
 | NFR-07 | Responsive layouts | No horizontal page overflow at 390, 768 and 1440 CSS px; short-height navigation remains reachable; native safe areas and keyboard never cover the confirmation action. Record screenshots and actual devices separately. |
 | NFR-08 | Performance | Proposed p95 API reads under 800 ms and writes under 1.5 s at an agreed 20 concurrent-user dataset; web p75 LCP under 2.5 s and INP under 200 ms. Measure before claiming these targets. Cold starts are reported separately. |
-| NFR-09 | Bounded failure | HTTP timeout 30 s in Axios; one retry only for transient reads; zero automatic mutation retries. Uncertain mutations retain their idempotency key and block edits until resolved. |
-| NFR-10 | Availability and recovery | Proposed 99.5% monthly API availability, RPO 24 h and RTO 4 h for beta. Requires monitoring and an actual off-provider backup/restore exercise; Neon free retention alone does not prove these targets. |
+| NFR-09 | Bounded failure | HTTP timeout 30 s in Axios; one retry only for transient reads; zero automatic mutation retries. While the review remains mounted, pending/uncertain mutations retain their command and block its edit/back controls. Durable recovery after reload/unmount is still required. |
+| NFR-10 | Availability and recovery | Future hosted targets, outside local scope: 99.5% monthly API availability, RPO 24 h and RTO 4 h. Require monitoring and measured recovery; a successful local restore alone does not prove an SLA. |
 | NFR-11 | Privacy and transport | TLS with certificate verification, secure HTTP-only session cookies, exact origins, private credential storage, no tokens/records/raw paths in application logs. No database/provider credential in Expo bundles. |
 | NFR-12 | Abuse protection | Default 300 reads and 60 writes per authenticated user per 60 s, shared atomically in PostgreSQL; 429 includes Retry-After; failed limiter storage denies execution. Auth has its own limiter. Edge unauthenticated abuse limits remain an operational gate. |
 | NFR-13 | Maintainability | Feature components share semantic primitives; Expo owns screens, Hono HTTP, contracts transport, Drizzle persistence. Tests cover behavior/invariants, not incidental markup. |
-| NFR-14 | Portability | Standard PostgreSQL dump/restore and SQL migrations; one Docker API; static Expo artifact; narrow hosting adapter; no Neon/Vercel SDK in domain code. Test the exit path before a provider move. |
+| NFR-14 | Portability | Standard PostgreSQL dump/restore and SQL migrations; one Docker API; ordinary Expo web artifact; no host-specific SDK or required cloud service. Hosting remains a future decision. |
 | NFR-15 | Supply chain | Exact reviewed dependencies and frozen lockfile; typecheck/tests/lint/build plus dependency audit, migration checks and container smoke before publishing. Exceptions list an advisory, reachability, owner and review date. |
 | NFR-16 | Release truth | Record commit, runtime/artifact, migration, host URL and smoke results. Distinguish implemented, built, locally tested, remotely deployed and store released. |
 
@@ -72,14 +73,17 @@ into an implemented feature.
 
 ## Prioritized remaining product work
 
-1. Validate the hosted owner lifecycle and manual financial loop; instrument availability and backup
-   recovery, then complete responsive and device acceptance.
-2. Deliver verified email/recovery and user-controlled session revocation before broad production use.
-3. Decide reversal behavior for archived cash accounts and voided receivables; ship explicit business
+1. Preserve and recover reviewed commands across shell/browser/native navigation and reload. The
+   current protection lasts while its screen remains mounted; leaving can lose the original key
+   even though the server may commit the request. Do not claim durable recovery or an offline queue.
+2. Complete physical-device, screen-reader and local responsiveness acceptance. Future availability
+   monitoring and recovery objectives apply only after a separately requested hosting decision.
+3. Deliver verified email/recovery and user-controlled session revocation before broad production use.
+4. Decide reversal behavior for archived cash accounts and voided receivables; ship explicit business
    rules plus transactional/UX tests, not silent exceptions.
-4. Add the bounded text assistant only with provider configuration, cost limits, Spanish evaluations
+5. Add the bounded text assistant only with provider configuration, cost limits, Spanish evaluations
    and confirmation/denial tests. Voice follows that proven workflow.
-5. Add invitations, catalog-linked sales and inventory deduction as separately coherent slices;
+6. Add invitations, catalog-linked sales and inventory deduction as separately coherent slices;
    define their permissions and accounting effects before schema expansion.
-6. Enable billing only after product-change entitlement reconciliation, provider sandbox and native
+7. Enable billing only after product-change entitlement reconciliation, provider sandbox and native
    purchase validation. Publish iOS/Android only with signing, store configuration and device evidence.
