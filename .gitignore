@@ -1,7 +1,6 @@
 # Dependencies and build caches
 node_modules/
 .turbo/
-.vercel/
 .expo/
 .expo-shared/
 .cache/
@@ -70,5 +69,4 @@ CLAUDE.local.md
 *.keystore
 *.mobileprovision
 
-.vercel
 .env*.local

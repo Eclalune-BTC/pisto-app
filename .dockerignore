@@ -16,6 +16,5 @@ apps/app/ios
 .terraform
 .cache
 .secrets
-.vercel
 **/.env
 **/.env.*
