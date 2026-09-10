@@ -14,9 +14,21 @@ import {
   expenseListQuerySchema,
   expensePeriodQuerySchema,
 } from "@pisto/contracts";
-import { and, desc, eq, getTableName, gte, lt, or, type SQL, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  getTableColumns,
+  getTableName,
+  gte,
+  lt,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 
 import type { Database } from "../client.ts";
+import { exactCursorTimestamp } from "../pagination.ts";
 import { type ProductActor, ProductError, resolveLocalDateTime } from "../product.ts";
 import { cashAccount, cashMovement, expense } from "../schema/cash.ts";
 
@@ -39,10 +51,9 @@ function cursorCondition(
   idColumn: typeof cashAccount.id | typeof expense.id | typeof cashMovement.id,
   cursor: CashCursorPayload,
 ): SQL {
-  const date = new Date(cursor.createdAt);
   return or(
-    lt(createdAtColumn, date),
-    and(eq(createdAtColumn, date), lt(idColumn, cursor.id)),
+    sql`${createdAtColumn} < ${cursor.createdAt}::timestamptz`,
+    and(sql`${createdAtColumn} = ${cursor.createdAt}::timestamptz`, lt(idColumn, cursor.id)),
   ) as SQL;
 }
 
@@ -97,6 +108,7 @@ export async function listCashAccounts(
     const rows = await tx
       .select({
         record: cashAccount,
+        createdAtExact: exactCursorTimestamp(cashAccount.createdAt),
         balanceMinorUnits: sql<string>`coalesce((
           select sum(${cashMovement.deltaMinorUnits})
           from ${cashMovement}
@@ -109,14 +121,14 @@ export async function listCashAccounts(
       .orderBy(desc(cashAccount.createdAt), desc(cashAccount.id))
       .limit(query.limit + 1);
     const visible = rows.slice(0, query.limit);
-    const last = visible.at(-1)?.record;
+    const last = visible.at(-1);
     return {
       items: visible.map(({ record, balanceMinorUnits }) =>
         toCashAccount(record, balanceMinorUnits),
       ),
       nextCursor:
         rows.length > query.limit && last
-          ? encodeCashCursor({ createdAt: last.createdAt.toISOString(), id: last.id })
+          ? encodeCashCursor({ createdAt: last.createdAtExact, id: last.record.id })
           : null,
       queriedAt: access.queriedAt.toISOString(),
     };
@@ -161,7 +173,10 @@ export async function listExpenses(
       );
     }
     const rows = await tx
-      .select()
+      .select({
+        ...getTableColumns(expense),
+        createdAtExact: exactCursorTimestamp(expense.createdAt),
+      })
       .from(expense)
       .where(and(...conditions))
       .orderBy(desc(expense.createdAt), desc(expense.id))
@@ -172,7 +187,7 @@ export async function listExpenses(
       items: visible.map(toExpense),
       nextCursor:
         rows.length > query.limit && last
-          ? encodeCashCursor({ createdAt: last.createdAt.toISOString(), id: last.id })
+          ? encodeCashCursor({ createdAt: last.createdAtExact, id: last.id })
           : null,
       queriedAt: access.queriedAt.toISOString(),
     };
@@ -268,7 +283,10 @@ export async function listCashMovements(
       );
     }
     const rows = await tx
-      .select()
+      .select({
+        ...getTableColumns(cashMovement),
+        createdAtExact: exactCursorTimestamp(cashMovement.createdAt),
+      })
       .from(cashMovement)
       .where(and(...conditions))
       .orderBy(desc(cashMovement.createdAt), desc(cashMovement.id))
@@ -279,7 +297,7 @@ export async function listCashMovements(
       items: visible.map(toCashMovement),
       nextCursor:
         rows.length > query.limit && last
-          ? encodeCashCursor({ createdAt: last.createdAt.toISOString(), id: last.id })
+          ? encodeCashCursor({ createdAt: last.createdAtExact, id: last.id })
           : null,
       queriedAt: access.queriedAt.toISOString(),
     };

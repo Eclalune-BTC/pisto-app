@@ -4,9 +4,10 @@ import {
   productListQuerySchema,
   stockListQuerySchema,
 } from "@pisto/contracts";
-import { and, desc, eq, getTableName, or, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, getTableName, or, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
+import { exactCursorTimestamp } from "../pagination.ts";
 import { ProductError } from "../product.ts";
 import { likePattern } from "../product-core.ts";
 import { catalogCategory, catalogProduct, inventoryMovement } from "../schema/catalog.ts";
@@ -40,7 +41,10 @@ export function createCatalogQueries(db: Database): CatalogQueries {
       return db.transaction(async (transaction) => {
         const access = await authorizeCatalogAction(transaction, actor, "catalog:read", "share");
         const rows = await transaction
-          .select()
+          .select({
+            ...getTableColumns(catalogCategory),
+            createdAtExact: exactCursorTimestamp(catalogCategory.createdAt),
+          })
           .from(catalogCategory)
           .where(
             and(
@@ -68,6 +72,7 @@ export function createCatalogQueries(db: Database): CatalogQueries {
         const access = await authorizeCatalogAction(transaction, actor, "catalog:read", "share");
         const rows = await transaction
           .select({
+            createdAtExact: exactCursorTimestamp(catalogProduct.createdAt),
             balance: sql<string>`coalesce((
               select sum(m.delta_minor_units)
               from inventory_movement m
@@ -94,7 +99,11 @@ export function createCatalogQueries(db: Database): CatalogQueries {
           .orderBy(desc(catalogProduct.createdAt), desc(catalogProduct.id))
           .limit(query.limit + 1);
         const page = pageRows(
-          rows.map(({ balance, record }) => ({ ...record, balance })),
+          rows.map(({ balance, record, createdAtExact }) => ({
+            ...record,
+            balance,
+            createdAtExact,
+          })),
           query.limit,
           "product",
         );
@@ -154,7 +163,11 @@ export function createCatalogQueries(db: Database): CatalogQueries {
           ), 0) <= ${catalogProduct.lowStockThresholdMinorUnits}
         )`;
         const rows = await transaction
-          .select({ balance: balanceExpression, record: catalogProduct })
+          .select({
+            balance: balanceExpression,
+            record: catalogProduct,
+            createdAtExact: exactCursorTimestamp(catalogProduct.createdAt),
+          })
           .from(catalogProduct)
           .where(
             and(
@@ -174,7 +187,11 @@ export function createCatalogQueries(db: Database): CatalogQueries {
           .orderBy(desc(catalogProduct.createdAt), desc(catalogProduct.id))
           .limit(query.limit + 1);
         const page = pageRows(
-          rows.map(({ balance, record }) => ({ ...record, balance })),
+          rows.map(({ balance, record, createdAtExact }) => ({
+            ...record,
+            balance,
+            createdAtExact,
+          })),
           query.limit,
           "stock",
         );
@@ -207,6 +224,7 @@ export function createCatalogQueries(db: Database): CatalogQueries {
         const rows = await transaction
           .select({
             record: inventoryMovement,
+            createdAtExact: exactCursorTimestamp(inventoryMovement.createdAt),
             reversedByMovementId: sql<string | null>`(
               select reversal.id::text
               from inventory_movement reversal
@@ -227,7 +245,11 @@ export function createCatalogQueries(db: Database): CatalogQueries {
           .orderBy(desc(inventoryMovement.createdAt), desc(inventoryMovement.id))
           .limit(query.limit + 1);
         const page = pageRows(
-          rows.map(({ record, reversedByMovementId }) => ({ ...record, reversedByMovementId })),
+          rows.map(({ record, reversedByMovementId, createdAtExact }) => ({
+            ...record,
+            reversedByMovementId,
+            createdAtExact,
+          })),
           query.limit,
           "movement",
         );

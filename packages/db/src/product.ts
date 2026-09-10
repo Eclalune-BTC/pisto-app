@@ -12,6 +12,7 @@ import type {
 } from "@pisto/contracts";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
+import { authorizeBusinessAction, authorizeSession } from "./business-access.ts";
 import type { Database } from "./client.ts";
 import { lockCommandKey } from "./operation-log.ts";
 import {
@@ -111,36 +112,39 @@ export function createProductRepository(db: Database): ProductRepository {
 
   return {
     async listBusinesses(actor) {
-      const records = await db
-        .select({
-          businessId: businessSettings.businessId,
-          createdAt: businessSettings.createdAt,
-          currency: businessSettings.currency,
-          currencyMinorUnitDigits: businessSettings.currencyMinorUnitDigits,
-          name: organization.name,
-          role: member.role,
-          timeZone: businessSettings.timeZone,
-        })
-        .from(member)
-        .innerJoin(organization, eq(organization.id, member.organizationId))
-        .innerJoin(businessSettings, eq(businessSettings.businessId, organization.id))
-        .where(
-          and(
-            eq(member.userId, actor.userId),
-            inArray(member.role, [...rolesWithBusinessPermission("business:read")]),
-          ),
-        )
-        .orderBy(businessSettings.createdAt);
-      const items = records.flatMap((record) => {
-        const access = resolveBusinessAccess(record.role);
-        return access ? [toBusiness({ ...record, access })] : [];
+      return db.transaction(async (tx) => {
+        await authorizeSession(tx, actor, "share");
+        const records = await tx
+          .select({
+            businessId: businessSettings.businessId,
+            createdAt: businessSettings.createdAt,
+            currency: businessSettings.currency,
+            currencyMinorUnitDigits: businessSettings.currencyMinorUnitDigits,
+            name: organization.name,
+            role: member.role,
+            timeZone: businessSettings.timeZone,
+          })
+          .from(member)
+          .innerJoin(organization, eq(organization.id, member.organizationId))
+          .innerJoin(businessSettings, eq(businessSettings.businessId, organization.id))
+          .where(
+            and(
+              eq(member.userId, actor.userId),
+              inArray(member.role, [...rolesWithBusinessPermission("business:read")]),
+            ),
+          )
+          .orderBy(businessSettings.createdAt);
+        const items = records.flatMap((record) => {
+          const access = resolveBusinessAccess(record.role);
+          return access ? [toBusiness({ ...record, access })] : [];
+        });
+        return {
+          activeBusinessId: items.some(({ id }) => id === actor.activeBusinessId)
+            ? actor.activeBusinessId
+            : null,
+          items,
+        };
       });
-      return {
-        activeBusinessId: items.some(({ id }) => id === actor.activeBusinessId)
-          ? actor.activeBusinessId
-          : null,
-        items,
-      };
     },
 
     async createBusiness(actor, command) {
@@ -155,6 +159,7 @@ export function createProductRepository(db: Database): ProductRepository {
         throw new ProductError("VALIDATION_ERROR", "Time zone is not a supported IANA identifier");
       }
       return db.transaction(async (tx) => {
+        await authorizeSession(tx, actor, "update");
         const [databaseTimeZone] = await tx.execute<{ supported: boolean }>(sql`
           select exists(
             select 1 from pg_timezone_names where name = ${command.timeZone}
@@ -178,7 +183,8 @@ export function createProductRepository(db: Database): ProductRepository {
           .innerJoin(organization, eq(organization.id, member.organizationId))
           .leftJoin(businessSettings, eq(businessSettings.businessId, organization.id))
           .where(eq(member.userId, actor.userId))
-          .limit(2);
+          .limit(2)
+          .for("update", { of: [member, organization] });
 
         if (existingMemberships.length > 1) {
           throw new ProductError(
@@ -328,47 +334,12 @@ export function createProductRepository(db: Database): ProductRepository {
       const commandFingerprint = await saleFingerprint(command);
 
       return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["sales:create"], "update");
         await lockCommandKey(tx, {
           actorUserId: actor.userId,
           businessId,
           idempotencyKey: command.idempotencyKey,
         });
-        const [activeSession] = await tx
-          .select({ id: session.id })
-          .from(session)
-          .where(
-            and(
-              eq(session.id, actor.sessionId),
-              eq(session.userId, actor.userId),
-              eq(session.activeOrganizationId, businessId),
-              sql`${session.expiresAt} > transaction_timestamp()`,
-            ),
-          )
-          .limit(1)
-          .for("update");
-        if (!activeSession) {
-          throw new ProductError("UNAUTHORIZED", "The authenticated session is no longer active");
-        }
-        const [access] = await tx
-          .select({
-            businessId: businessSettings.businessId,
-            currency: businessSettings.currency,
-            currencyMinorUnitDigits: businessSettings.currencyMinorUnitDigits,
-            name: organization.name,
-            role: member.role,
-            timeZone: businessSettings.timeZone,
-          })
-          .from(member)
-          .innerJoin(organization, eq(organization.id, member.organizationId))
-          .innerJoin(businessSettings, eq(businessSettings.businessId, organization.id))
-          .where(and(eq(member.organizationId, businessId), eq(member.userId, actor.userId)))
-          .limit(1)
-          .for("update");
-        if (!access) {
-          throw new ProductError("FORBIDDEN", "The active business membership is no longer valid");
-        }
-        requireBusinessPermission(access.role, "sales:create");
-
         const [existingCorrectionOperation] = await tx
           .select({ id: saleCorrection.id })
           .from(saleCorrection)

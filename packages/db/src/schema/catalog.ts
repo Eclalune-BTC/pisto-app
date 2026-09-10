@@ -93,7 +93,10 @@ export const catalogProduct = pgTable(
         and ${table.sellingPriceCurrency} is null
         and ${table.sellingPriceCurrencyMinorUnitDigits} is null
       ) or (
-        ${table.sellingPriceMinorUnits} >= 0
+        ${table.sellingPriceMinorUnits} is not null
+        and ${table.sellingPriceCurrency} is not null
+        and ${table.sellingPriceCurrencyMinorUnitDigits} is not null
+        and ${table.sellingPriceMinorUnits} >= 0
         and ${table.sellingPriceCurrency} ~ '^[A-Z]{3}$'
         and ${table.sellingPriceCurrencyMinorUnitDigits} between 0 and 4
       )`,

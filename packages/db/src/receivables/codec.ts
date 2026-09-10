@@ -2,12 +2,11 @@ import { receivablePaymentSchema, receivableSchema } from "@pisto/contracts";
 import { type ZodType, z } from "zod";
 
 import { fingerprintValue, maximumMinorUnits } from "../operation-log.ts";
+import { cursorTimestampPattern } from "../pagination.ts";
 import { ProductError } from "../product.ts";
 import type { PageCursor } from "./types.ts";
 export const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-/** PostgreSQL `timestamptz` text output, whose microseconds a JavaScript `Date` cannot hold. */
-const timestampTextPattern = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?\+00$/;
 
 export const paymentResultSchema = z.object({
   payment: receivablePaymentSchema,
@@ -68,7 +67,7 @@ export function decodeCursor(value: string, expectedFilterFingerprint: string): 
       parsed.version !== 1 ||
       !("createdAt" in parsed) ||
       typeof parsed.createdAt !== "string" ||
-      !timestampTextPattern.test(parsed.createdAt) ||
+      !cursorTimestampPattern.test(parsed.createdAt) ||
       !("id" in parsed) ||
       typeof parsed.id !== "string" ||
       !uuidPattern.test(parsed.id) ||

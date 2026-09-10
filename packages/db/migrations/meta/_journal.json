@@ -36,6 +36,13 @@
       "when": 1787505787201,
       "tag": "0004_sticky_microbe",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789050384074,
+      "tag": "0005_require_complete_record_snapshots",
+      "breakpoints": true
     }
   ]
 }

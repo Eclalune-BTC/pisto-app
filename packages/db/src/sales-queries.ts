@@ -5,14 +5,13 @@ import { and, desc, eq, getTableColumns, inArray, lt, or, type SQL, sql } from "
 import { authorizeBusinessAction } from "./business-access.ts";
 import type { Database } from "./client.ts";
 import { fingerprintValue } from "./operation-log.ts";
+import { cursorTimestampPattern, exactCursorTimestamp } from "./pagination.ts";
 import { type ProductActor, ProductError } from "./product-core.ts";
 import { toCorrection, toSale } from "./sales-records.ts";
 import { sale, saleCorrection } from "./schema/sales.ts";
 
 const base64UrlPattern = /^[A-Za-z0-9_-]+$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-/** PostgreSQL `timestamptz` text output, whose microseconds a JavaScript `Date` cannot hold. */
-const timestampTextPattern = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?\+00$/;
 
 export type SaleListCursor = {
   createdAt: string;
@@ -52,7 +51,7 @@ export function decodeSaleListCursor(
       parsed.version !== 1 ||
       !("createdAt" in parsed) ||
       typeof parsed.createdAt !== "string" ||
-      !timestampTextPattern.test(parsed.createdAt) ||
+      !cursorTimestampPattern.test(parsed.createdAt) ||
       !("id" in parsed) ||
       typeof parsed.id !== "string" ||
       !uuidPattern.test(parsed.id) ||
@@ -96,7 +95,7 @@ export function createSalesQueryRepository(db: Database): SalesQueryRepository {
         const rows = await tx
           .select({
             ...getTableColumns(sale),
-            createdAtExact: sql<string>`${sale.createdAt}::text`,
+            createdAtExact: exactCursorTimestamp(sale.createdAt),
           })
           .from(sale)
           .where(and(...conditions))

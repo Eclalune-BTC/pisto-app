@@ -36,22 +36,7 @@ export async function authorizeBusinessAction(
   lock: BusinessLockStrength = "share",
 ): Promise<AuthorizedBusinessContext> {
   const businessId = requireActiveBusiness(actor);
-  const sessionQuery = executor
-    .select({ id: session.id })
-    .from(session)
-    .where(
-      and(
-        eq(session.id, actor.sessionId),
-        eq(session.userId, actor.userId),
-        eq(session.activeOrganizationId, businessId),
-        sql`${session.expiresAt} > transaction_timestamp()`,
-      ),
-    )
-    .limit(1);
-  const [activeSession] = lock === "none" ? await sessionQuery : await sessionQuery.for(lock);
-  if (!activeSession) {
-    throw new ProductError("UNAUTHORIZED", "The authenticated session is no longer active");
-  }
+  await authorizeSession(executor, actor, lock, businessId);
 
   const accessQuery = executor
     .select({
@@ -74,4 +59,31 @@ export async function authorizeBusinessAction(
     throw new ProductError("FORBIDDEN", "The business membership does not permit this action");
   }
   return access;
+}
+
+/** Also protects onboarding and business discovery before an active business exists. */
+export async function authorizeSession(
+  executor: BusinessDatabaseExecutor,
+  actor: ProductActor,
+  lock: BusinessLockStrength,
+  expectedBusinessId?: string,
+): Promise<void> {
+  const sessionQuery = executor
+    .select({ id: session.id })
+    .from(session)
+    .where(
+      and(
+        eq(session.id, actor.sessionId),
+        eq(session.userId, actor.userId),
+        expectedBusinessId === undefined
+          ? undefined
+          : eq(session.activeOrganizationId, expectedBusinessId),
+        sql`${session.expiresAt} > transaction_timestamp()`,
+      ),
+    )
+    .limit(1);
+  const [activeSession] = lock === "none" ? await sessionQuery : await sessionQuery.for(lock);
+  if (!activeSession) {
+    throw new ProductError("UNAUTHORIZED", "The authenticated session is no longer active");
+  }
 }

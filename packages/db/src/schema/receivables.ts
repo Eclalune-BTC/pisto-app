@@ -117,6 +117,7 @@ export const receivable = pgTable(
         ${table.status} = 'voided'
         and ${table.voidedByUserId} is not null
         and ${table.voidedAt} is not null
+        and ${table.voidReason} is not null
         and char_length(${table.voidReason}) between 1 and 240
       )`,
     ),

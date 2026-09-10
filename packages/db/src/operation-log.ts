@@ -157,10 +157,9 @@ export async function findOperationReplay<
  * The order is deliberate — session, then business membership, then the command key
  * and the resource rows the caller locks next — and reordering it can deadlock.
  *
- * The sales paths in `product.ts` and `sales-correction.ts` deliberately take the
- * command-key lock BEFORE their session read and compose their own authorization.
- * Leave them as they are: moving them onto this prologue would change their lock
- * order, which is exactly the kind of edit that introduces a deadlock.
+ * Sales follow this same lock order but compose replay themselves because posting
+ * and correction share a key space across two receipt tables. Every command must
+ * acquire authorization rows before its command key, including across capabilities.
  */
 export async function beginOperation<
   Action extends string,

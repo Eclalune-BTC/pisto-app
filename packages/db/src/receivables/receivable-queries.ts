@@ -1,8 +1,10 @@
 import { listReceivablesQuerySchema } from "@pisto/contracts";
 import { and, desc, eq, sql } from "drizzle-orm";
 
+import { authorizeBusinessAction } from "../business-access.ts";
 import type { Database } from "../client.ts";
 import { fingerprintValue } from "../operation-log.ts";
+import { exactCursorTimestamp } from "../pagination.ts";
 import { ProductError } from "../product.ts";
 import { receivable, receivablePayment } from "../schema/receivables.ts";
 import { authorize, currentReceivable, loadReceivable } from "./access.ts";
@@ -93,7 +95,7 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
               ${receivable.voidedAt} as voided_at,
               ${receivable.voidReason} as void_reason,
               ${receivable.createdAt} as created_at,
-              ${receivable.createdAt}::text as created_at_exact,
+              ${exactCursorTimestamp(receivable.createdAt)} as created_at_exact,
               ${receivable.updatedAt} as updated_at,
               to_char(transaction_timestamp() at time zone ${access.timeZone}, 'YYYY-MM-DD') as local_date,
               case
@@ -180,24 +182,27 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
       if (!uuidPattern.test(receivableId)) {
         throw new ProductError("NOT_FOUND", "Receivable was not found");
       }
-      return db.transaction(async (tx) => {
-        const access = await authorize(tx, actor, "receivables:read");
-        const record = await loadReceivable(tx, access, receivableId);
-        const paymentRecords = await tx
-          .select()
-          .from(receivablePayment)
-          .where(
-            and(
-              eq(receivablePayment.businessId, access.businessId),
-              eq(receivablePayment.receivableId, receivableId),
-            ),
-          )
-          .orderBy(desc(receivablePayment.createdAt), desc(receivablePayment.id));
-        return {
-          receivable: await currentReceivable(tx, access, record),
-          payments: paymentRecords.map(toPayment),
-        };
-      });
+      return db.transaction(
+        async (tx) => {
+          const access = await authorizeBusinessAction(tx, actor, ["receivables:read"], "none");
+          const record = await loadReceivable(tx, access, receivableId);
+          const paymentRecords = await tx
+            .select()
+            .from(receivablePayment)
+            .where(
+              and(
+                eq(receivablePayment.businessId, access.businessId),
+                eq(receivablePayment.receivableId, receivableId),
+              ),
+            )
+            .orderBy(desc(receivablePayment.createdAt), desc(receivablePayment.id));
+          return {
+            receivable: await currentReceivable(tx, access, record),
+            payments: paymentRecords.map(toPayment),
+          };
+        },
+        { isolationLevel: "repeatable read", accessMode: "read only" },
+      );
     },
 
     async getSummary(actor) {

@@ -1,9 +1,10 @@
 import type { Category, InventoryMovement, Product, ProductStock } from "@pisto/contracts";
-import { and, eq, lt, or } from "drizzle-orm";
+import { and, lt, or, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { type ZodType, z } from "zod";
 
 import { fingerprintCommand, maximumMinorUnits, parseReplaySnapshot } from "../operation-log.ts";
+import { cursorTimestampPattern } from "../pagination.ts";
 import { ProductError } from "../product.ts";
 import type {
   CategoryRecord,
@@ -14,7 +15,7 @@ import type {
 } from "./types.ts";
 
 const cursorPayloadSchema = z.object({
-  createdAt: z.string().datetime({ offset: true }),
+  createdAt: z.string().regex(cursorTimestampPattern),
   id: z.string().uuid(),
   kind: z.enum(["category", "product", "movement", "stock"]),
 });
@@ -129,29 +130,29 @@ export function recordSnapshot(value: object): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function encodeCursor(kind: CursorKind, record: { createdAt: Date; id: string }): string {
+function encodeCursor(kind: CursorKind, record: { createdAtExact: string; id: string }): string {
   return Buffer.from(
-    JSON.stringify({ kind, createdAt: record.createdAt.toISOString(), id: record.id }),
+    JSON.stringify({ kind, createdAt: record.createdAtExact, id: record.id }),
   ).toString("base64url");
 }
 
 export function decodeCursor(
   cursor: string | undefined,
   kind: CursorKind,
-): { createdAt: Date; id: string } | null {
+): { createdAt: string; id: string } | null {
   if (!cursor) return null;
   try {
     const payload = cursorPayloadSchema.parse(
       JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")),
     );
     if (payload.kind !== kind) throw new Error("Cursor kind mismatch");
-    return { createdAt: new Date(payload.createdAt), id: payload.id };
+    return { createdAt: payload.createdAt, id: payload.id };
   } catch {
     throw new ProductError("VALIDATION_ERROR", "The pagination cursor is invalid");
   }
 }
 
-export function pageRows<T extends { createdAt: Date; id: string }>(
+export function pageRows<T extends { createdAtExact: string; id: string }>(
   rows: T[],
   limit: number,
   kind: CursorKind,
@@ -167,12 +168,12 @@ export function pageRows<T extends { createdAt: Date; id: string }>(
 
 export function cursorCondition(
   column: { createdAt: AnyPgColumn; id: AnyPgColumn },
-  cursor: { createdAt: Date; id: string } | null,
+  cursor: { createdAt: string; id: string } | null,
 ) {
   if (!cursor) return undefined;
   return or(
-    lt(column.createdAt, cursor.createdAt),
-    and(eq(column.createdAt, cursor.createdAt), lt(column.id, cursor.id)),
+    sql`${column.createdAt} < ${cursor.createdAt}::timestamptz`,
+    and(sql`${column.createdAt} = ${cursor.createdAt}::timestamptz`, lt(column.id, cursor.id)),
   );
 }
 

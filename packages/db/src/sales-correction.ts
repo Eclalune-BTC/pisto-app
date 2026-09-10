@@ -1,13 +1,13 @@
 import type { ReplaceSaleRequest, Sale, SaleCorrection, VoidSaleRequest } from "@pisto/contracts";
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 
+import { authorizeBusinessAction } from "./business-access.ts";
 import type { Database } from "./client.ts";
 import { lockCommandKey } from "./operation-log.ts";
 import {
   type ProductActor,
   ProductError,
   requireActiveBusiness,
-  requireBusinessPermission,
   resolveLocalDateTime,
 } from "./product-core.ts";
 import {
@@ -18,8 +18,6 @@ import {
   toCorrection,
   toSale,
 } from "./sales-records.ts";
-import { member, session } from "./schema/auth.ts";
-import { businessSettings } from "./schema/business.ts";
 import { sale, saleCorrection, saleOperation } from "./schema/sales.ts";
 
 export interface SaleCorrectionResult {
@@ -64,45 +62,12 @@ export function createSalesCorrectionRepository(db: Database): SalesCorrectionRe
     } as SaleCorrectionInput);
 
     return db.transaction(async (tx) => {
+      const access = await authorizeBusinessAction(tx, actor, ["sales:correct"], "update");
       await lockCommandKey(tx, {
         actorUserId: actor.userId,
         businessId,
         idempotencyKey: input.command.idempotencyKey,
       });
-
-      const [activeSession] = await tx
-        .select({ id: session.id })
-        .from(session)
-        .where(
-          and(
-            eq(session.id, actor.sessionId),
-            eq(session.userId, actor.userId),
-            eq(session.activeOrganizationId, businessId),
-            sql`${session.expiresAt} > transaction_timestamp()`,
-          ),
-        )
-        .limit(1)
-        .for("update");
-      if (!activeSession) {
-        throw new ProductError("UNAUTHORIZED", "The authenticated session is no longer active");
-      }
-
-      const [access] = await tx
-        .select({
-          currency: businessSettings.currency,
-          currencyMinorUnitDigits: businessSettings.currencyMinorUnitDigits,
-          role: member.role,
-          timeZone: businessSettings.timeZone,
-        })
-        .from(member)
-        .innerJoin(businessSettings, eq(businessSettings.businessId, member.organizationId))
-        .where(and(eq(member.organizationId, businessId), eq(member.userId, actor.userId)))
-        .limit(1)
-        .for("update");
-      if (!access) {
-        throw new ProductError("FORBIDDEN", "The active business membership is no longer valid");
-      }
-      requireBusinessPermission(access.role, "sales:correct");
 
       const [existingPostedOperation] = await tx
         .select({ id: saleOperation.id })
