@@ -19,6 +19,7 @@ type CashOperationReviewProps = {
   effect: string;
   state: CashConfirmationState;
   errorMessage?: string;
+  disabled?: boolean;
   copy: CashOperationReviewCopy;
   onConfirm: () => void;
   onEdit: () => void;
@@ -30,6 +31,7 @@ export function CashOperationReview({
   effect,
   state,
   errorMessage,
+  disabled = false,
   copy,
   onConfirm,
   onEdit,
@@ -50,6 +52,7 @@ export function CashOperationReview({
           </Text>
           <Button
             className="self-start"
+            disabled={disabled}
             label={copy.retrySameConfirmation}
             onPress={onCheckStatus}
             variant="secondary"
@@ -72,6 +75,7 @@ export function CashOperationReview({
         <View className="gap-3 sm:flex-row">
           <Button
             label={copy.confirm}
+            disabled={disabled}
             loading={state === "pending"}
             onPress={onConfirm}
             variant="accent"

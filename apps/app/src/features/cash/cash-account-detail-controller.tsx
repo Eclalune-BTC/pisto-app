@@ -93,6 +93,14 @@ export function CashAccountDetailController() {
         movement={selectedMovement}
         movements={movements}
         onBack={() => setSelectedMovementId(undefined)}
+        onRetry={() => {
+          void Promise.all([
+            businesses.refetch(),
+            accountQuery.refetch(),
+            movementsQuery.refetch(),
+          ]);
+        }}
+        remoteState={remoteState}
         timeZone={business.timeZone}
       />
     );

@@ -14,6 +14,7 @@ import {
 } from "./cash-movement-detail-screen";
 import { buildCashCopy, cashIssueMessage } from "./copy";
 import { buildCashReversalCommand } from "./drafts";
+import type { FeatureRemoteState } from "./feature-boundary";
 import { invalidateCashLedger } from "./invalidate";
 import { cashConfirmationState } from "./mutation-state";
 
@@ -25,6 +26,8 @@ type CashMovementDetailControllerProps = {
   movement: CashMovement;
   movements: CashMovement[];
   onBack: () => void;
+  onRetry: () => void;
+  remoteState: FeatureRemoteState;
   timeZone: string;
 };
 
@@ -36,6 +39,8 @@ export function CashMovementDetailController({
   movement,
   movements,
   onBack,
+  onRetry,
+  remoteState,
   timeZone,
 }: CashMovementDetailControllerProps) {
   const queryClient = useQueryClient();
@@ -70,6 +75,7 @@ export function CashMovementDetailController({
   });
 
   const prepareReview = () => {
+    if (!canManage || isStale || remoteState.kind !== "ready" || mutation.isPending) return;
     const result = buildCashReversalCommand({
       draft,
       idempotencyKey: Crypto.randomUUID(),
@@ -112,16 +118,22 @@ export function CashMovementDetailController({
         setCommand(null);
         mutation.reset();
       }}
-      onCheckStatus={() => command && mutation.mutate(command)}
-      onConfirmReversal={() => command && mutation.mutate(command)}
+      onCheckStatus={() => {
+        if (command && canManage && !isStale && remoteState.kind === "ready" && !mutation.isPending)
+          mutation.mutate(command);
+      }}
+      onConfirmReversal={() => {
+        if (command && canManage && !isStale && remoteState.kind === "ready" && !mutation.isPending)
+          mutation.mutate(command);
+      }}
       onEditReversal={() => {
         setStage("reverse-edit");
         mutation.reset();
       }}
       onPrepareReversalReview={prepareReview}
-      onRetry={() => undefined}
+      onRetry={onRetry}
       onReversalDraftChange={setDraft}
-      remoteState={{ kind: "ready" }}
+      remoteState={remoteState}
       reversalCommand={command}
       reversalDraft={draft}
       reversalErrors={errors}

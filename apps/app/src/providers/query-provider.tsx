@@ -1,64 +1,24 @@
-import {
-  focusManager,
-  MutationCache,
-  onlineManager,
-  QueryCache,
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query";
+import { focusManager, onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import * as Network from "expo-network";
-import { router } from "expo-router";
-import { type PropsWithChildren, useEffect, useState } from "react";
+import { type PropsWithChildren, useEffect, useMemo } from "react";
 import { AppState, Platform } from "react-native";
 
-import { ApiClientError } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
-import { shouldRetryQuery } from "@/lib/query-policy";
-
-let recoveringUnauthorizedSession = false;
-
-function recoverUnauthorizedSession(error: unknown, queryClient: QueryClient) {
-  if (
-    recoveringUnauthorizedSession ||
-    !(error instanceof ApiClientError) ||
-    error.code !== "UNAUTHORIZED"
-  ) {
-    return;
-  }
-  recoveringUnauthorizedSession = true;
-  void authClient
-    .signOut()
-    .catch(() => undefined)
-    .finally(() => {
-      queryClient.clear();
-      router.replace("/sign-in");
-      recoveringUnauthorizedSession = false;
-    });
-}
+import { createSessionQueryClient } from "@/lib/session-query-client";
 
 export function QueryProvider({ children }: PropsWithChildren) {
-  const [queryClient] = useState(() => {
-    let client: QueryClient;
-    const handleError = (error: unknown): void => recoverUnauthorizedSession(error, client);
-    client = new QueryClient({
-      mutationCache: new MutationCache({
-        onError: handleError,
-      }),
-      queryCache: new QueryCache({
-        onError: handleError,
-      }),
-      defaultOptions: {
-        queries: {
-          retry: shouldRetryQuery,
-          staleTime: 30_000,
-        },
-        mutations: {
-          retry: 0,
-        },
-      },
-    });
-    return client;
-  });
+  const { data: session, refetch } = authClient.useSession();
+  const identity = session?.user.id;
+  // Each identity owns a fresh cache; AuthenticatedLayout keys the account
+  // subtree too, while the root navigator remains mounted.
+  const scope = useMemo(
+    () => createSessionQueryClient(() => refetch({ query: { disableCookieCache: true } })),
+    [identity, refetch],
+  );
+  useEffect(() => {
+    scope.activate();
+    return scope.dispose;
+  }, [scope]);
 
   useEffect(
     () =>
@@ -93,5 +53,5 @@ export function QueryProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return <QueryClientProvider client={scope.client}>{children}</QueryClientProvider>;
 }

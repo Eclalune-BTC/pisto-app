@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { Eye, EyeOff } from "lucide-react-native";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -34,6 +34,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   const [errors, setErrors] = useState<FormErrors>({});
   const [formError, setFormError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
+  const submissionInFlight = useRef(false);
 
   const validate = () => {
     const nextErrors: FormErrors = {};
@@ -51,9 +52,11 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   };
 
   const submit = async () => {
+    if (submissionInFlight.current) return;
     setFormError(undefined);
     if (!validate()) return;
 
+    submissionInFlight.current = true;
     setSubmitting(true);
     try {
       const result = isSignUp
@@ -77,6 +80,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
     } catch {
       setFormError(t("auth.errors.connection"));
     } finally {
+      submissionInFlight.current = false;
       setSubmitting(false);
     }
   };

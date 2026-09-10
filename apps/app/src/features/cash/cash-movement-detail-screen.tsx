@@ -118,6 +118,7 @@ export function CashMovementDetailScreen({
         <Button
           className="self-start px-0"
           label={copy.backToAccount}
+          disabled={confirmation === "pending" || confirmation === "uncertain"}
           onPress={onBack}
           size="sm"
           variant="ghost"
@@ -141,6 +142,7 @@ export function CashMovementDetailScreen({
           </View>
         ) : reviewingReversal ? (
           <CashOperationReview
+            disabled={!canManage || isStale}
             copy={copy}
             effect={copy.reversalEffect}
             errorMessage={errorMessage}

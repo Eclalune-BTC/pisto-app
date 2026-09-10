@@ -45,7 +45,7 @@ export default function AuthenticatedLayout() {
   }
 
   return (
-    <AppShell email={session.user.email} name={session.user.name}>
+    <AppShell key={session.user.id} email={session.user.email} name={session.user.name}>
       <Slot />
     </AppShell>
   );
