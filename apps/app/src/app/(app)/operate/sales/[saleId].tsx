@@ -9,11 +9,11 @@ import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { hasDeniedRead } from "@/features/customers/remote-state";
 import { saleQueryOptions } from "@/features/sales/queries";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { hasDeniedRead } from "@/lib/query-state";
 
 export default function SaleResultScreen() {
   const { i18n, t } = useTranslation();

@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
+import { queryHasStaleData } from "@/lib/query-state";
 import { cashApi } from "./api";
 import {
   type CashAccountEditorDraft,
@@ -18,7 +19,7 @@ import { buildCashAccountCommand } from "./drafts";
 import { invalidateCashLedger } from "./invalidate";
 import { cashConfirmationState } from "./mutation-state";
 import { cashAccountQueryOptions } from "./queries";
-import { featureRemoteState, queryHasStaleData } from "./remote-state";
+import { featureRemoteState } from "./remote-state";
 import { useCashAccess } from "./use-cash-access";
 
 const emptyDraft: CashAccountEditorDraft = {

@@ -7,8 +7,8 @@ import { useTranslation } from "react-i18next";
 import { formatLocalizedDateTime } from "@/i18n/format";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
-
-import { featureRemoteState, queryHasStaleData } from "../cash/remote-state";
+import { queryHasStaleData } from "@/lib/query-state";
+import { featureRemoteState } from "../cash/remote-state";
 import { buildSalesHistoryCopy, buildSalesHistoryMessages } from "./copy";
 import { salesInfiniteOptions } from "./queries";
 import { SalesHistory } from "./sales-history";

@@ -5,10 +5,11 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
+import { queryHasStaleData } from "@/lib/query-state";
 import { CashScreen, type CashScreenState } from "./cash-screen";
 import { buildCashCopy } from "./copy";
 import { cashAccountsInfiniteOptions, cashMovementsInfiniteOptions, flattenPages } from "./queries";
-import { featureRemoteState, queryHasStaleData } from "./remote-state";
+import { featureRemoteState } from "./remote-state";
 import { useCashAccess } from "./use-cash-access";
 
 export function CashController() {

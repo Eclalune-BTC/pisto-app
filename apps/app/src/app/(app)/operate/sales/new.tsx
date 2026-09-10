@@ -12,7 +12,6 @@ import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { hasDeniedRead } from "@/features/customers/remote-state";
 import { reportsQueryKeys } from "@/features/reports/queries";
 import { saleQueryKeys } from "@/features/sales/queries";
 import {
@@ -26,6 +25,7 @@ import { api, isAmbiguousMutationError } from "@/lib/api-client";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { hasDeniedRead } from "@/lib/query-state";
 
 type DraftErrors = Partial<Record<keyof SaleDraftValues, string>>;
 

@@ -148,7 +148,6 @@ export function CustomerEditor({ businessId, customer, onBack, onConfirmed }: Cu
             copy={copy.customers.form}
             email={values.email}
             errors={errors}
-            mutation={{ kind: "idle" }}
             name={values.name}
             notes={values.notes}
             onCancel={onBack}
@@ -157,7 +156,6 @@ export function CustomerEditor({ businessId, customer, onBack, onConfirmed }: Cu
               setErrors((current) => ({ ...current, [field]: undefined }));
               setFormError(undefined);
             }}
-            onRetrySameRequest={() => undefined}
             onSubmit={prepareReview}
             phone={values.phone}
           />

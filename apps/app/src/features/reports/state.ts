@@ -1,7 +1,7 @@
 import type { OperatingReport } from "@pisto/contracts";
-
+import { queryHasStaleData } from "@/lib/query-state";
 import type { FeatureRemoteState } from "../cash/feature-boundary";
-import { featureRemoteState, queryHasStaleData } from "../cash/remote-state";
+import { featureRemoteState } from "../cash/remote-state";
 
 export type ReportsScreenState =
   | Exclude<FeatureRemoteState, { kind: "ready" }>

@@ -9,11 +9,12 @@ import { buildCatalogCopy } from "@/features/catalog/copy";
 import { ProductDetailScreen, type ProductDetailState } from "@/features/catalog/product-detail";
 import { useCategoriesQuery, useProductQuery } from "@/features/catalog/queries";
 import { catalogInventoryQueryKeys, flattenPages } from "@/features/catalog/query-keys";
-import { isDeniedError, isNotFoundError, mutationUiState } from "@/features/catalog/state";
+import { isNotFoundError, mutationUiState } from "@/features/catalog/state";
 import { reportsQueryKeys } from "@/features/reports/queries";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { isAccessDeniedError } from "@/lib/query-state";
 
 export default function ProductDetailRoute() {
   const router = useRouter();
@@ -107,7 +108,7 @@ export default function ProductDetailRoute() {
   if (!business && businesses.data) return <Redirect href="/business" />;
 
   let state: ProductDetailState;
-  if (isDeniedError(businesses.error)) {
+  if (isAccessDeniedError(businesses.error)) {
     state = { status: "denied" };
   } else if (businesses.fetchStatus === "paused" && !businesses.data) {
     state = { status: "offline" };
@@ -116,8 +117,8 @@ export default function ProductDetailRoute() {
   } else if (
     !business ||
     !roleCanRead ||
-    isDeniedError(product.error) ||
-    isDeniedError(categories.error)
+    isAccessDeniedError(product.error) ||
+    isAccessDeniedError(categories.error)
   ) {
     state = { status: "denied" };
   } else if (

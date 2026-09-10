@@ -21,7 +21,6 @@ import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { hasDeniedRead } from "@/features/customers/remote-state";
 import {
   getVisibleOperateModules,
   OPERATE_GROUPS,
@@ -29,6 +28,7 @@ import {
 } from "@/features/operate/navigation";
 import { cn } from "@/lib/cn";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { hasDeniedRead } from "@/lib/query-state";
 
 type OperateIcon = ComponentType<{
   color?: string;

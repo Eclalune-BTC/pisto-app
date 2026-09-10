@@ -9,9 +9,9 @@ import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { RecordBoundary, type RecordBoundaryState } from "@/features/customers/record-boundary";
-import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
 import { PaymentEditor } from "@/features/receivables/payment-editor";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
+import { isPausedWithoutData, readFailureKind } from "@/lib/query-state";
 
 export default function ApplyPaymentRoute() {
   const { t } = useTranslation();

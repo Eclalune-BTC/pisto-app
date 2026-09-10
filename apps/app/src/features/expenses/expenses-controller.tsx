@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { queryHasStaleData } from "@/lib/query-state";
 import { isValidCashLocalDate } from "../cash/drafts";
 import {
   cashAccountsInfiniteOptions,
@@ -12,7 +13,7 @@ import {
   expensesInfiniteOptions,
   flattenPages,
 } from "../cash/queries";
-import { featureRemoteState, queryHasStaleData } from "../cash/remote-state";
+import { featureRemoteState } from "../cash/remote-state";
 import { useCashAccess } from "../cash/use-cash-access";
 import { buildExpensesCopy } from "./copy";
 import type { ExpenseFiltersValue, ExpensePeriodValue } from "./expense-filters";

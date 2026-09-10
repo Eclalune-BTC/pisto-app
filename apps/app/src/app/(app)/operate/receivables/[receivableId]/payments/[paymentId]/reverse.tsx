@@ -8,10 +8,10 @@ import { ActionUnavailable } from "@/features/customers/action-unavailable";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { RecordBoundary, type RecordBoundaryState } from "@/features/customers/record-boundary";
-import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
 import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-account-source";
 import { PaymentReversalEditor } from "@/features/receivables/payment-reversal-editor";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
+import { isPausedWithoutData, readFailureKind } from "@/lib/query-state";
 
 export default function ReversePaymentRoute() {
   const { t } = useTranslation();

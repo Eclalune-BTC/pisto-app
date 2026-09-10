@@ -9,9 +9,9 @@ import { useCategoriesQuery, useProductsQuery } from "@/features/catalog/queries
 import type { CatalogStatusFilter } from "@/features/catalog/query-keys";
 import { flattenPages } from "@/features/catalog/query-keys";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { isDeniedError } from "@/features/catalog/state";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { isAccessDeniedError } from "@/lib/query-state";
 
 export default function CatalogIndexRoute() {
   const router = useRouter();
@@ -40,7 +40,7 @@ export default function CatalogIndexRoute() {
     status,
   });
 
-  if (isDeniedError(businesses.error)) return <CapabilityRouteState kind="denied" />;
+  if (isAccessDeniedError(businesses.error)) return <CapabilityRouteState kind="denied" />;
   if (businesses.fetchStatus === "paused" && !businesses.data) {
     return <CapabilityRouteState kind="offline" />;
   }
@@ -51,7 +51,7 @@ export default function CatalogIndexRoute() {
   if (!business) return <Redirect href="/business" />;
 
   let state: CatalogCollectionState;
-  if (!canRead || isDeniedError(products.error) || isDeniedError(categories.error)) {
+  if (!canRead || isAccessDeniedError(products.error) || isAccessDeniedError(categories.error)) {
     state = { status: "denied" };
   } else if (products.fetchStatus === "paused" && !products.data) {
     state = { status: "offline" };

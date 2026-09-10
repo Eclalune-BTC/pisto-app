@@ -1,5 +1,4 @@
 import { ApiClientError, isAmbiguousMutationError } from "@/lib/api-error";
-import { isAccessDeniedError } from "../customers/remote-state";
 
 export type MutationUiState = "error" | "idle" | "pending" | "uncertain";
 
@@ -7,10 +6,6 @@ export function mutationUiState(input: { error: unknown; isPending: boolean }): 
   if (input.isPending) return "pending";
   if (!input.error) return "idle";
   return isAmbiguousMutationError(input.error) ? "uncertain" : "error";
-}
-
-export function isDeniedError(error: unknown): boolean {
-  return isAccessDeniedError(error);
 }
 
 export function isNotFoundError(error: unknown): boolean {

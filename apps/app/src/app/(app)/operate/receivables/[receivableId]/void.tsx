@@ -11,7 +11,6 @@ import { ActionUnavailable } from "@/features/customers/action-unavailable";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { RecordBoundary, type RecordBoundaryState } from "@/features/customers/record-boundary";
-import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
 import { receivablesApi } from "@/features/receivables/api";
 import { buildVoidReceivableCommand } from "@/features/receivables/draft";
 import {
@@ -23,6 +22,7 @@ import { VoidReceivableReview } from "@/features/receivables/receivable-reviews"
 import { ReceivableVoidForm } from "@/features/receivables/receivable-void-form";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
+import { isPausedWithoutData, readFailureKind } from "@/lib/query-state";
 
 type VoidReceivableRequest = Parameters<typeof receivablesApi.void>[1];
 

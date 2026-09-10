@@ -9,6 +9,7 @@ import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { ApiClientError } from "@/lib/api-error";
 import { formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
+import { queryHasStaleData } from "@/lib/query-state";
 import { cashApi } from "./api";
 import { CashAccountDetailScreen } from "./cash-account-detail-screen";
 import { CashMovementDetailController } from "./cash-movement-detail-controller";
@@ -16,7 +17,7 @@ import { buildCashCopy } from "./copy";
 import { invalidateCashLedger } from "./invalidate";
 import { cashConfirmationState } from "./mutation-state";
 import { cashAccountQueryOptions, cashMovementsInfiniteOptions, flattenPages } from "./queries";
-import { featureRemoteState, queryHasStaleData } from "./remote-state";
+import { featureRemoteState } from "./remote-state";
 import { useCashAccess } from "./use-cash-access";
 
 export function CashAccountDetailController() {

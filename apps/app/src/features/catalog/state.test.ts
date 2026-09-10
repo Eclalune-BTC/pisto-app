@@ -4,8 +4,8 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { esSV } from "@/i18n/resources/es-SV";
 import { ApiClientError } from "@/lib/api-error";
 import { productErrorMessage } from "@/lib/product-errors";
-
-import { isDeniedError, mutationUiState } from "./state";
+import { isAccessDeniedError } from "@/lib/query-state";
+import { mutationUiState } from "./state";
 
 const translator = createInstance();
 let t: TFunction;
@@ -31,10 +31,12 @@ describe("catalog and inventory controller states", () => {
     const conflict = new ApiClientError("raw server detail", 409, "CONFLICT");
     const message = productErrorMessage(conflict, "fallback", t, "movement");
 
-    expect(isDeniedError(denied)).toBe(true);
-    expect(isDeniedError(new ApiClientError("Expired session", 401, "UNAUTHORIZED"))).toBe(true);
-    expect(isDeniedError(new ApiClientError("Proxy rejected access", 403))).toBe(true);
-    expect(isDeniedError(new ApiClientError("Connection lost", 0))).toBe(false);
+    expect(isAccessDeniedError(denied)).toBe(true);
+    expect(isAccessDeniedError(new ApiClientError("Expired session", 401, "UNAUTHORIZED"))).toBe(
+      true,
+    );
+    expect(isAccessDeniedError(new ApiClientError("Proxy rejected access", 403))).toBe(true);
+    expect(isAccessDeniedError(new ApiClientError("Connection lost", 0))).toBe(false);
     expect(message).toContain("existencia");
     expect(message).not.toContain("raw server detail");
   });

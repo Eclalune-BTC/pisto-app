@@ -6,13 +6,13 @@ import { useTranslation } from "react-i18next";
 import { buildCatalogCopy } from "@/features/catalog/copy";
 import { flattenPages } from "@/features/catalog/query-keys";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { isDeniedError } from "@/features/catalog/state";
 import {
   type InventoryCollectionState,
   InventoryScreen,
 } from "@/features/inventory/inventory-screen";
 import { useStockQuery } from "@/features/inventory/queries";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { isAccessDeniedError } from "@/lib/query-state";
 
 export default function InventoryIndexRoute() {
   const router = useRouter();
@@ -31,7 +31,7 @@ export default function InventoryIndexRoute() {
     search,
   });
 
-  if (isDeniedError(businesses.error)) return <CapabilityRouteState kind="denied" />;
+  if (isAccessDeniedError(businesses.error)) return <CapabilityRouteState kind="denied" />;
   if (businesses.fetchStatus === "paused" && !businesses.data) {
     return <CapabilityRouteState kind="offline" />;
   }
@@ -42,7 +42,7 @@ export default function InventoryIndexRoute() {
   if (!business) return <Redirect href="/business" />;
 
   let state: InventoryCollectionState;
-  if (!canRead || isDeniedError(stock.error)) {
+  if (!canRead || isAccessDeniedError(stock.error)) {
     state = { status: "denied" };
   } else if (stock.fetchStatus === "paused" && !stock.data) {
     state = { status: "offline" };

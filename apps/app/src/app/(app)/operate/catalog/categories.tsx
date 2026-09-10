@@ -20,9 +20,10 @@ import {
   flattenPages,
 } from "@/features/catalog/query-keys";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { isDeniedError, mutationUiState } from "@/features/catalog/state";
+import { mutationUiState } from "@/features/catalog/state";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { isAccessDeniedError } from "@/lib/query-state";
 
 type CategoryWriteCommand = CreateCategoryRequest | UpdateCategoryRequest;
 
@@ -93,7 +94,7 @@ export default function CategoriesRoute() {
     },
   });
 
-  if (isDeniedError(businesses.error)) return <CapabilityRouteState kind="denied" />;
+  if (isAccessDeniedError(businesses.error)) return <CapabilityRouteState kind="denied" />;
   if (businesses.fetchStatus === "paused" && !businesses.data) {
     return <CapabilityRouteState kind="offline" />;
   }
@@ -104,7 +105,7 @@ export default function CategoriesRoute() {
   if (!business) return <Redirect href="/business" />;
 
   let collectionState: CategoryCollectionState;
-  if (!canRead || isDeniedError(categories.error)) {
+  if (!canRead || isAccessDeniedError(categories.error)) {
     collectionState = { status: "denied" };
   } else if (categories.fetchStatus === "paused" && !categories.data) {
     collectionState = { status: "offline" };

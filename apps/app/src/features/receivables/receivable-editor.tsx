@@ -11,10 +11,10 @@ import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { buildCustomersCopy, type CustomersReceivablesCopy } from "@/features/customers/copy";
 import { CustomerPicker } from "@/features/customers/customer-picker";
 import { customerDetailQueryOptions, customersQueryOptions } from "@/features/customers/queries";
-import { hasDeniedRead } from "@/features/customers/remote-state";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { isAmbiguousMutationError } from "@/lib/api-client";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { hasDeniedRead } from "@/lib/query-state";
 
 import { receivablesApi } from "./api";
 import {

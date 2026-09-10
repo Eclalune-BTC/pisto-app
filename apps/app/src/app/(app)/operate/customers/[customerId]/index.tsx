@@ -8,16 +8,12 @@ import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { CustomerDetailScreen } from "@/features/customers/customer-detail-screen";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
-import {
-  hasDeniedRead,
-  isPausedWithoutData,
-  readFailureKind,
-} from "@/features/customers/remote-state";
 import type { CustomerDetailLoadState } from "@/features/customers/types";
 import { formatBusinessLocalDate } from "@/features/receivables/presentation";
 import { receivablesQueryOptions } from "@/features/receivables/queries";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
+import { hasDeniedRead, isPausedWithoutData, readFailureKind } from "@/lib/query-state";
 
 export default function CustomerDetailRoute() {
   const { i18n, t } = useTranslation();

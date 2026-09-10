@@ -2,9 +2,8 @@ import type { Business, BusinessPermission } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
 
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-
+import { isAccessDeniedError } from "@/lib/query-state";
 import type { CapabilityBoundaryState } from "./capability-boundary";
-import { isAccessDeniedError } from "./remote-state";
 
 export type CapabilityAccess = {
   business: Business | undefined;

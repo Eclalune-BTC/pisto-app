@@ -1,10 +1,12 @@
 import { describe, expect, test } from "vitest";
-
-import { featureRemoteState, queryHasStaleData } from "./remote-state";
+import { queryHasStaleData } from "@/lib/query-state";
+import { featureRemoteState } from "./remote-state";
 
 const messages = { offlineMessage: "sin conexión", unavailableMessage: "no disponible" };
 
-function query(overrides: Partial<Parameters<typeof queryHasStaleData>[0]> = {}) {
+type QueryState = NonNullable<Parameters<typeof featureRemoteState>[0]["queries"]>[number];
+
+function query(overrides: Partial<QueryState> = {}) {
   return {
     data: undefined as unknown,
     error: null as unknown,

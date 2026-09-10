@@ -2,9 +2,8 @@ import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, test } from "vitest";
 
 import { ApiClientError } from "@/lib/api-error";
-
-import { featureRemoteState, queryHasStaleData } from "../cash/remote-state";
-import { hasDeniedRead, readFailureKind } from "./remote-state";
+import { hasDeniedRead, queryHasStaleData, readFailureKind } from "@/lib/query-state";
+import { featureRemoteState } from "../cash/remote-state";
 
 describe("cached access rejection", () => {
   test.each([

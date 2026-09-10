@@ -8,13 +8,13 @@ import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { hasDeniedRead } from "@/features/customers/remote-state";
 import { previousMonthSummaryQueryOptions } from "@/features/sales/queries";
 import { SalesHistoryController } from "@/features/sales/sales-history-controller";
 import { formatLocalizedDateTime, formatMonthYear } from "@/i18n/format";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { hasDeniedRead } from "@/lib/query-state";
 
 function periodLabel(periodStartLocal: string, locale: string): string {
   const [year, month] = periodStartLocal.split("-");

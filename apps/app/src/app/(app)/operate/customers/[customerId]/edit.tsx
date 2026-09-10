@@ -10,7 +10,7 @@ import { buildCustomersCopy } from "@/features/customers/copy";
 import { CustomerEditor } from "@/features/customers/customer-editor";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { RecordBoundary, type RecordBoundaryState } from "@/features/customers/record-boundary";
-import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
+import { isPausedWithoutData, readFailureKind } from "@/lib/query-state";
 
 export default function EditCustomerRoute() {
   const { t } = useTranslation();

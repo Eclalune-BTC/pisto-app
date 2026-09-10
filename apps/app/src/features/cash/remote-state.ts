@@ -1,4 +1,4 @@
-import { hasDeniedRead } from "../customers/remote-state";
+import { hasDeniedRead } from "@/lib/query-state";
 
 import type { FeatureRemoteState } from "./feature-boundary";
 
@@ -41,15 +41,4 @@ export function featureRemoteState(input: {
     return { kind: "loading" };
   }
   return { kind: "ready" };
-}
-
-/**
- * Cached data that could not be refreshed. A paused query counts: the screen
- * still renders balances, but they are as old as the last successful read, and
- * confirming a financial operation against them would be a decision made on
- * numbers nobody could verify.
- */
-export function queryHasStaleData(query: RemoteQuery): boolean {
-  if (query.data === undefined) return false;
-  return query.isError || query.fetchStatus === "paused";
 }

@@ -2,17 +2,10 @@ import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import { queryHasStaleData } from "@/features/cash/remote-state";
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
-import {
-  hasDeniedRead,
-  isPausedWithoutData,
-  readFailureKind,
-} from "@/features/customers/remote-state";
 import { formatBusinessLocalDate, uniqueValues } from "@/features/receivables/presentation";
 import {
   receivablesQueryOptions,
@@ -22,6 +15,12 @@ import { ReceivablesScreen } from "@/features/receivables/receivables-screen";
 import type { ReceivablesLoadState } from "@/features/receivables/types";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
+import {
+  hasDeniedRead,
+  isPausedWithoutData,
+  queryHasStaleData,
+  readFailureKind,
+} from "@/lib/query-state";
 
 type ReceivableFilter = "all" | "open" | "overdue" | "paid" | "voided";
 

@@ -15,7 +15,7 @@ import { CustomerArchiveReview } from "@/features/customers/customer-archive-rev
 import { customerMutationState } from "@/features/customers/mutation-state";
 import { customerDetailQueryOptions, customerQueryKeys } from "@/features/customers/queries";
 import { RecordBoundary, type RecordBoundaryState } from "@/features/customers/record-boundary";
-import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
+import { isPausedWithoutData, readFailureKind } from "@/lib/query-state";
 
 export default function ArchiveCustomerRoute() {
   const { t } = useTranslation();

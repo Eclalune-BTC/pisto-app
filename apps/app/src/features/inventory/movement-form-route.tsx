@@ -8,11 +8,12 @@ import { reportsQueryKeys } from "@/features/reports/queries";
 import { currentLocalDateTime } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { isAccessDeniedError } from "@/lib/query-state";
 import { buildCatalogCopy, type CatalogCopy } from "../catalog/copy";
 import { useProductQuery } from "../catalog/queries";
 import { catalogInventoryQueryKeys } from "../catalog/query-keys";
 import { CapabilityRouteState } from "../catalog/route-state";
-import { isDeniedError, isNotFoundError, mutationUiState } from "../catalog/state";
+import { isNotFoundError, mutationUiState } from "../catalog/state";
 import { inventoryApi } from "./api";
 import { buildMovementCommand } from "./movement-draft";
 import {
@@ -135,7 +136,7 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
     );
   }
   if (!business) return <Redirect href="/business" />;
-  if (!canManage || !canReadCatalog || isDeniedError(product.error)) {
+  if (!canManage || !canReadCatalog || isAccessDeniedError(product.error)) {
     return <CapabilityRouteState back={back} kind="denied" />;
   }
   if (product.fetchStatus === "paused") {

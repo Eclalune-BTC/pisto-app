@@ -7,10 +7,11 @@ import { buildCatalogCopy } from "@/features/catalog/copy";
 import { useProductQuery } from "@/features/catalog/queries";
 import { flattenPages } from "@/features/catalog/query-keys";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { isDeniedError, isNotFoundError } from "@/features/catalog/state";
+import { isNotFoundError } from "@/features/catalog/state";
 import { MovementHistory, type MovementHistoryState } from "@/features/inventory/movement-history";
 import { useMovementsQuery } from "@/features/inventory/queries";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { isAccessDeniedError } from "@/lib/query-state";
 
 export default function InventoryHistoryRoute() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function InventoryHistoryRoute() {
     onPress: () => router.replace("/operate/inventory"),
   };
 
-  if (isDeniedError(businesses.error)) return <CapabilityRouteState kind="denied" />;
+  if (isAccessDeniedError(businesses.error)) return <CapabilityRouteState kind="denied" />;
   if (businesses.fetchStatus === "paused" && !businesses.data) {
     return <CapabilityRouteState back={back} kind="offline" />;
   }
@@ -54,8 +55,8 @@ export default function InventoryHistoryRoute() {
   if (
     !canReadCatalog ||
     !canReadInventory ||
-    isDeniedError(product.error) ||
-    isDeniedError(movements.error)
+    isAccessDeniedError(product.error) ||
+    isAccessDeniedError(movements.error)
   ) {
     return <CapabilityRouteState back={back} kind="denied" />;
   }

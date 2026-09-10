@@ -7,11 +7,6 @@ import { capabilityBoundaryState, useCapabilityAccess } from "@/features/custome
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
-import {
-  hasDeniedRead,
-  isPausedWithoutData,
-  readFailureKind,
-} from "@/features/customers/remote-state";
 import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-account-source";
 import { formatBusinessLocalDate, uniqueValues } from "@/features/receivables/presentation";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
@@ -19,6 +14,7 @@ import { ReceivableDetailScreen } from "@/features/receivables/receivable-detail
 import type { ReceivableDetailLoadState } from "@/features/receivables/types";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
+import { hasDeniedRead, isPausedWithoutData, readFailureKind } from "@/lib/query-state";
 
 export default function ReceivableDetailRoute() {
   const { i18n, t } = useTranslation();

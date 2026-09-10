@@ -2,7 +2,7 @@ import type { BusinessPermission } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
 
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { queryHasStaleData } from "./remote-state";
+import { queryHasStaleData } from "@/lib/query-state";
 
 type Capability = "cash" | "expenses";
 

@@ -14,6 +14,7 @@ import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { isAccessDeniedError } from "@/lib/query-state";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
 import { catalogApi } from "./api";
 import { buildCatalogCopy, type CatalogCopy } from "./copy";
@@ -22,7 +23,7 @@ import { type ProductDraftErrors, type ProductDraftFields, ProductEditor } from 
 import { useCategoriesQuery, useProductQuery } from "./queries";
 import { catalogInventoryQueryKeys, flattenPages } from "./query-keys";
 import { CapabilityRouteState } from "./route-state";
-import { isDeniedError, isNotFoundError, mutationUiState } from "./state";
+import { isNotFoundError, mutationUiState } from "./state";
 
 const emptyDraft: ProductDraftFields = {
   categoryId: null,
@@ -217,7 +218,11 @@ export function ProductFormRoute({
     return <CapabilityRouteState kind="error" onRetry={() => void businesses.refetch()} />;
   }
   if (!business) return <Redirect href="/business" />;
-  if (!canManage || isDeniedError(productQuery.error) || isDeniedError(categories.error)) {
+  if (
+    !canManage ||
+    isAccessDeniedError(productQuery.error) ||
+    isAccessDeniedError(categories.error)
+  ) {
     return (
       <CapabilityRouteState
         back={{

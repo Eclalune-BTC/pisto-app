@@ -8,7 +8,7 @@ import { buildCatalogCopy, type CatalogCopy } from "@/features/catalog/copy";
 import { useProductQuery } from "@/features/catalog/queries";
 import { catalogInventoryQueryKeys, flattenPages } from "@/features/catalog/query-keys";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { isDeniedError, isNotFoundError, mutationUiState } from "@/features/catalog/state";
+import { isNotFoundError, mutationUiState } from "@/features/catalog/state";
 import { inventoryApi } from "@/features/inventory/api";
 import { useMovementsQuery } from "@/features/inventory/queries";
 import type { ReversalDraft, ReversalDraftErrors } from "@/features/inventory/reversal-draft";
@@ -18,6 +18,7 @@ import { reportsQueryKeys } from "@/features/reports/queries";
 import { currentLocalDateTime } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { isAccessDeniedError } from "@/lib/query-state";
 
 const emptyDraft: ReversalDraft = {
   occurredLocalDate: "",
@@ -147,7 +148,7 @@ export default function ReverseInventoryMovementRoute() {
   if (!canReadCatalog || !canReadInventory || !canManage) {
     return <CapabilityRouteState back={back} kind="denied" />;
   }
-  if (isDeniedError(product.error) || isDeniedError(movements.error)) {
+  if (isAccessDeniedError(product.error) || isAccessDeniedError(movements.error)) {
     return <CapabilityRouteState back={back} kind="denied" />;
   }
   if (product.fetchStatus === "paused" || movements.fetchStatus === "paused") {
