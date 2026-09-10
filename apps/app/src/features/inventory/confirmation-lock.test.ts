@@ -111,6 +111,7 @@ describe("reviewed inventory confirmation", () => {
         copy,
         draft,
         errors: {},
+        isStale: false,
         mutationState: mutation.isPending ? "pending" : mutation.isError ? "uncertain" : "idle",
         onBack: discard,
         onConfirm: submit,

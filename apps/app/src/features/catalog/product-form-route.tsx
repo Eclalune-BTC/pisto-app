@@ -14,7 +14,7 @@ import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { isAccessDeniedError } from "@/lib/query-state";
+import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
 import { catalogApi } from "./api";
 import { buildCatalogCopy, type CatalogCopy } from "./copy";
@@ -210,19 +210,18 @@ export function ProductFormRoute({
     ];
   }, [business, categoryItems, command, copy, locale, mode, product, t]);
 
-  if (businesses.fetchStatus === "paused") {
+  if (hasDeniedRead([businesses, categories, ...(mode === "edit" ? [productQuery] : [])])) {
+    return <CapabilityRouteState kind="denied" />;
+  }
+  if (businesses.fetchStatus === "paused" && !businesses.data) {
     return <CapabilityRouteState kind="offline" />;
   }
   if (businesses.isPending) return <CapabilityRouteState kind="loading" />;
-  if (businesses.isError) {
+  if (businesses.isError && !businesses.data) {
     return <CapabilityRouteState kind="error" onRetry={() => void businesses.refetch()} />;
   }
   if (!business) return <Redirect href="/business" />;
-  if (
-    !canManage ||
-    isAccessDeniedError(productQuery.error) ||
-    isAccessDeniedError(categories.error)
-  ) {
+  if (!canManage) {
     return (
       <CapabilityRouteState
         back={{
@@ -234,8 +233,8 @@ export function ProductFormRoute({
     );
   }
   if (
-    categories.fetchStatus === "paused" ||
-    (mode === "edit" && productQuery.fetchStatus === "paused")
+    (categories.fetchStatus === "paused" && !categories.data) ||
+    (mode === "edit" && productQuery.fetchStatus === "paused" && !productQuery.data)
   ) {
     return (
       <CapabilityRouteState
@@ -294,7 +293,13 @@ export function ProductFormRoute({
     return <CapabilityRouteState kind="loading" />;
   }
 
+  const isStale =
+    queryHasStaleData(businesses) ||
+    queryHasStaleData(categories) ||
+    (mode === "edit" && queryHasStaleData(productQuery));
+
   const prepareReview = () => {
+    if (isStale || mutationState === "pending" || mutationState === "uncertain") return;
     if (draft.categoryId && !categoryItems.some(({ id }) => id === draft.categoryId)) {
       setErrors({ form: copy.productEditor.categoriesUnavailable });
       return;
@@ -316,7 +321,9 @@ export function ProductFormRoute({
   };
 
   const confirm = () => {
-    if (command) mutation.mutate(command);
+    if (!command || mutationState === "pending" || (isStale && mutationState !== "uncertain"))
+      return;
+    mutation.mutate(command);
   };
 
   return (
@@ -329,6 +336,7 @@ export function ProductFormRoute({
       currency={business.currency}
       draft={draft}
       errors={errors}
+      isStale={isStale}
       mode={mode}
       mutationMessage={
         mutation.error
@@ -346,11 +354,12 @@ export function ProductFormRoute({
       }
       onConfirm={confirm}
       onDraftChange={(nextDraft) => {
+        if (mutationState === "pending" || mutationState === "uncertain") return;
         setDraft(nextDraft);
         setErrors({});
       }}
       onEditReview={() => {
-        if (mutationState === "uncertain") return;
+        if (mutationState === "pending" || mutationState === "uncertain") return;
         setCommand(null);
         mutation.reset();
       }}

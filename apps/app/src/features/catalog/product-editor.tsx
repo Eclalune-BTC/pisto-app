@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowLeft, Check } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
+import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -72,6 +73,7 @@ interface ProductEditorProps {
   draft: ProductDraftFields;
   errors: ProductDraftErrors;
   mode: "create" | "edit";
+  isStale: boolean;
   mutationMessage?: string;
   mutationState: "idle" | "pending" | "error" | "uncertain";
   onBack: () => void;
@@ -121,6 +123,7 @@ export function ProductEditor({
   draft,
   errors,
   mode,
+  isStale,
   mutationMessage,
   mutationState,
   onBack,
@@ -160,6 +163,8 @@ export function ProductEditor({
         title={review ? copy.reviewTitle : mode === "create" ? copy.createTitle : copy.editTitle}
       />
 
+      {isStale ? <StaleNotice /> : null}
+
       {review ? (
         <View className="gap-7">
           <DetailList items={reviewItems} />
@@ -191,8 +196,9 @@ export function ProductEditor({
             ) : (
               <>
                 <Button
+                  disabled={isStale}
                   loading={mutationState === "pending"}
-                  onPress={mutationState === "pending" ? undefined : onConfirm}
+                  onPress={mutationState === "pending" || isStale ? undefined : onConfirm}
                   variant="accent"
                 >
                   <Check color="#14241D" size={18} strokeWidth={2.8} />
@@ -353,7 +359,17 @@ export function ProductEditor({
             />
           ) : null}
 
-          <Button className="self-start" label={copy.review} onPress={onReview} variant="accent" />
+          <Button
+            className="self-start"
+            disabled={isStale || mutationState === "pending" || mutationState === "uncertain"}
+            label={copy.review}
+            onPress={
+              isStale || mutationState === "pending" || mutationState === "uncertain"
+                ? undefined
+                : onReview
+            }
+            variant="accent"
+          />
         </View>
       )}
     </Page>

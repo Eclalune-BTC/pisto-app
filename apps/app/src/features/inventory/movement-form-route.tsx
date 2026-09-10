@@ -8,7 +8,7 @@ import { reportsQueryKeys } from "@/features/reports/queries";
 import { currentLocalDateTime } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { isAccessDeniedError } from "@/lib/query-state";
+import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
 import { buildCatalogCopy, type CatalogCopy } from "../catalog/copy";
 import { useProductQuery } from "../catalog/queries";
 import { catalogInventoryQueryKeys } from "../catalog/query-keys";
@@ -126,20 +126,23 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
         : router.replace("/operate/inventory"),
   };
 
-  if (businesses.fetchStatus === "paused") {
+  if (hasDeniedRead([businesses, product])) {
+    return <CapabilityRouteState back={back} kind="denied" />;
+  }
+  if (businesses.fetchStatus === "paused" && !businesses.data) {
     return <CapabilityRouteState back={back} kind="offline" />;
   }
   if (businesses.isPending) return <CapabilityRouteState kind="loading" />;
-  if (businesses.isError) {
+  if (businesses.isError && !businesses.data) {
     return (
       <CapabilityRouteState back={back} kind="error" onRetry={() => void businesses.refetch()} />
     );
   }
   if (!business) return <Redirect href="/business" />;
-  if (!canManage || !canReadCatalog || isAccessDeniedError(product.error)) {
+  if (!canManage || !canReadCatalog) {
     return <CapabilityRouteState back={back} kind="denied" />;
   }
-  if (product.fetchStatus === "paused") {
+  if (product.fetchStatus === "paused" && !product.data) {
     return <CapabilityRouteState back={back} kind="offline" />;
   }
   if (product.isPending) return <CapabilityRouteState kind="loading" />;
@@ -158,7 +161,11 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
   }
   if (initializedBusiness !== business.id) return <CapabilityRouteState kind="loading" />;
 
+  const isStale = queryHasStaleData(businesses) || queryHasStaleData(product);
+  const mutationState = mutationUiState({ error: mutation.error, isPending: mutation.isPending });
+
   const prepareReview = () => {
+    if (isStale || mutationState === "pending" || mutationState === "uncertain") return;
     const result = buildMovementCommand({
       draft,
       idempotencyKey: Crypto.randomUUID(),
@@ -173,15 +180,16 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
     mutation.reset();
   };
   const confirm = () => {
-    if (command) mutation.mutate(command);
+    if (!command || mutationState === "pending" || (isStale && mutationState !== "uncertain"))
+      return;
+    mutation.mutate(command);
   };
-  const mutationState = mutationUiState({ error: mutation.error, isPending: mutation.isPending });
-
   return (
     <MovementEditor
       copy={copy.movementEditor}
       draft={draft}
       errors={errors}
+      isStale={isStale}
       mutationMessage={
         mutation.error
           ? productErrorMessage(mutation.error, copy.errorFallbacks.movement, t, "movement")
@@ -191,11 +199,12 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
       onBack={back.onPress}
       onConfirm={confirm}
       onDraftChange={(nextDraft) => {
+        if (mutationState === "pending" || mutationState === "uncertain") return;
         setDraft(nextDraft);
         setErrors({});
       }}
       onEditReview={() => {
-        if (mutationState === "uncertain") return;
+        if (mutationState === "pending" || mutationState === "uncertain") return;
         setCommand(null);
         mutation.reset();
       }}
