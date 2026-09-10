@@ -28,11 +28,7 @@ export async function parseOptionalJsonBody(context: JsonBodyContext): Promise<u
   }
 }
 
-/**
- * Validate one external field group against its public contract. Every route
- * boundary uses this single idiom so a rejected body, query, or param always
- * produces the same 400 VALIDATION_ERROR envelope with flattened details.
- */
+/** Invalid fields return 400 VALIDATION_ERROR with flattened contract details. */
 export function parseRequest<Schema extends z.ZodType>(
   schema: Schema,
   value: unknown,
@@ -47,11 +43,7 @@ export function parseRequest<Schema extends z.ZodType>(
 
 const recordIdSchema = z.string().uuid();
 
-/**
- * A path identifier that is not a UUID cannot name a record this actor may see,
- * so it is answered as an absent resource rather than a validation failure. That
- * keeps a malformed identifier indistinguishable from an undisclosed one.
- */
+/** Malformed identifiers receive the same 404 response as undisclosed records. */
 export function requireRecordId(value: string, notFoundMessage: string): string {
   const parsed = recordIdSchema.safeParse(value);
   if (!parsed.success) throw new ApiError(404, "NOT_FOUND", notFoundMessage);

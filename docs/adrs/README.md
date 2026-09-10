@@ -14,7 +14,7 @@ changes, add a new ADR that supersedes the old one instead of rewriting the old 
 | [0005](0005-better-auth.md) | Accepted | Centralized Better Auth with Hono and Expo adapters |
 | [0006](0006-split-billing-channels.md) | Accepted | Polar web billing and RevenueCat/native store billing |
 | [0007](0007-provider-neutral-entitlements.md) | Accepted | Internal entitlements are the authorization boundary |
-| [0008](0008-google-cloud-managed-runtime.md) | Accepted | Cloud Run and managed Google Cloud supporting services |
+| [0008](0008-google-cloud-managed-runtime.md) | Superseded by 0017 | Cloud Run and managed Google Cloud supporting services; retained as an optional reference |
 | [0009](0009-provider-neutral-ai-assistant.md) | Accepted | Provider-neutral AI orchestration with deterministic business tools |
 | [0010](0010-organization-backed-business-tenancy.md) | Accepted | Better Auth organization IDs back Pisto business tenant boundaries |
 | [0011](0011-modular-capabilities-and-app-owned-composition.md) | Accepted | Product capabilities compose explicitly inside a modular monolith |
@@ -23,6 +23,7 @@ changes, add a new ADR that supersedes the old one instead of rewriting the old 
 | [0014](0014-static-current-operation-permissions.md) | Accepted | Static Pisto permissions authorize current business and sales operations |
 | [0015](0015-business-owned-currency-and-money-snapshots.md) | Accepted | Business-owned currency and immutable money snapshots prevent global defaults and history rewrites |
 | [0016](0016-owner-ports-for-cross-capability-transactions.md) | Accepted | Narrow owner ports keep cross-capability financial writes atomic without hiding ownership |
+| [0017](0017-portable-postgres-and-hosting.md) | Accepted, revised | Local Expo, Bun/Hono, and PostgreSQL; future hosting remains undecided |
 
 ## Status values
 

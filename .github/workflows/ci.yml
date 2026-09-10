@@ -61,7 +61,7 @@ jobs:
       - name: Apply and exercise PostgreSQL migrations
         run: |
           bun run db:migrate
-          bun run --filter @pisto/db test:integration
+          bun run test:integration
 
       - name: Reject new dependency advisories
         run: bun run audit:ci

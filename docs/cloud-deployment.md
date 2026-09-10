@@ -1,9 +1,9 @@
 # Portable API deployment and the Cloud Run reference
 
-The selected managed database is **Neon PostgreSQL**, reached through the existing standard
-PostgreSQL driver. The Bun API remains a portable Docker image. Cloud Run is a maintained deployment
-reference; using Neon does not require Cloud Run, a Neon SDK, or a provider-specific data API. See
-[Neon deployment](neon-deployment.md) for database setup, privileges, capacity, recovery, and exit.
+The current environment is local Expo, Bun/Hono, and PostgreSQL 18. Hosting is undecided under
+[ADR 0017](adrs/0017-portable-postgres-and-hosting.md). The Bun API remains a portable Docker image;
+Cloud Run is an optional deployment reference. [Neon deployment](neon-deployment.md) describes an
+optional future database setup, privileges, capacity, recovery, and exit path.
 
 Configuration in this repository is not evidence that resources exist or traffic is released. The
 Expo web export is a separate artifact; [Web deployment](web-deployment.md) describes its requirements.

@@ -1,8 +1,9 @@
 # Optional Cloud Run deployment reference
 
-The API runs as a portable Bun container with **Neon PostgreSQL** through a standard TLS database
-URL. No Cloud SQL instance, socket, connector, or Cloud SQL IAM role is required. The application
-does not depend on a Neon SDK or proprietary database API.
+The active environment uses local PostgreSQL 18 and Bun/Hono. This optional hosting reference is
+conditional on a future decision under [ADR 0017](../../docs/adrs/0017-portable-postgres-and-hosting.md).
+The portable Bun container uses a standard PostgreSQL URL. No Cloud SQL connector, Neon SDK, or
+proprietary database API is required.
 
 Read [the cloud runbook](../../docs/cloud-deployment.md) and
 [Neon setup](../../docs/neon-deployment.md) before configuring a target.

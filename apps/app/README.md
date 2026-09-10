@@ -7,13 +7,13 @@ Expo SDK 57 application for iOS, Android, and the web. The app uses Expo Router,
 Install the monorepo once from its root:
 
 ```bash
-bun install
+bun install --frozen-lockfile
 ```
 
-Copy the public environment example and adjust values for your machine:
+Create missing local configuration without overwriting existing files:
 
 ```bash
-cp apps/app/.env.example apps/app/.env.local
+bun run setup
 ```
 
 `EXPO_PUBLIC_API_URL` defaults to `http://localhost:3001` in development. Better Auth is mounted at `/api/auth`, so the client resolves `http://localhost:3001/api/auth` locally. Production config requires an explicit HTTPS API origin.
@@ -41,10 +41,14 @@ Run these from `apps/app`, or use the matching root workspace scripts.
 - `/` — welcome
 - `/sign-in` — email and password sign-in
 - `/sign-up` — email and password registration
-- `/dashboard` — signed-in overview
+- `/dashboard` — compatibility redirect to `/operate`
+- `/business` — business creation and selection
+- `/operate` — authorized sales, catalog, inventory, cash, expense, customer, receivable, and report workflows
 - `/billing` — current access and platform-appropriate billing controls
 - `/billing/success` — post-checkout return that refreshes server-backed entitlements
-- `/settings` — account, appearance, notification, and session controls
+- `/settings` — account identity, appearance, billing access, and sign-out
+
+The complete route and permission inventory is in [the frontend guide](../../docs/frontend-expo-ui.md#route-model).
 
 Signed-in routes use a shared responsive shell: a sidebar on wide web layouts and bottom navigation on native and compact web layouts.
 
@@ -58,7 +62,7 @@ Billing uses platform-specific adapters:
 
 ## Build identifiers
 
-Local development uses obvious placeholders in `app.json`:
+Local development uses explicit defaults in `app.config.ts`:
 
 - scheme: `pisto`
 - iOS bundle identifier: `com.example.pisto`
@@ -68,8 +72,8 @@ Set `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_APP_SCHEME`, `EXPO_IOS_BUNDLE_IDENTIFIER
 
 ## Key package versions
 
-- Expo `57.0.15`, Expo Router `57.0.15`
-- React `19.2.3`, React Native `0.86.2`, React Native Web `0.21.x`
+- Expo `57.0.21`, Expo Router `57.0.20`
+- React `19.2.3`, React Native `0.86.3`, React Native Web `0.21.x`
 - Uniwind `1.11.0`, Tailwind CSS `4.3.3`
 - Better Auth and `@better-auth/expo` `1.7.1`
 - TanStack Query `5.101.4`

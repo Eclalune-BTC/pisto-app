@@ -33,8 +33,12 @@ Targets:
 
 | Target | Template | Behavior |
 | --- | --- | --- |
-| `.env` | `.env.example`, or a safe built-in fallback | Inserts a fresh 32-byte Better Auth secret |
-| `apps/app/.env.local` | `apps/app/.env.example`, or a public-only fallback | Copies public local configuration |
+| `.env` | `.env.example` | Inserts a fresh 32-byte Better Auth secret |
+| `apps/app/.env.local` | `apps/app/.env.example` | Copies public local configuration |
+
+The checked-in examples are the only templates. If a required template is missing, initialization
+reports its path and exits before creating either target. Restore the template from Git and retry.
+Existing targets do not require a template and remain untouched.
 
 An existing target is reported as `PRESERVED` and is not opened for writing. The Better Auth secret
 is generated with the operating system cryptographic random source and encoded as base64url. A value

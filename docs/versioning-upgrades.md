@@ -12,7 +12,7 @@ remain the exact installed source of truth.
 | Expo | 57.x | Upgrade one SDK at a time with Expo tooling |
 | EAS CLI contract | `>=22.2.0` in `apps/app/eas.json` | Recheck build-profile schema and remote version behavior |
 | React Native / React / RN Web | 0.86 / 19.2.3 / 0.21 | Keep Expo-supported matrix together |
-| Hono | 4.13.3 | Exact direct dependency; review middleware/runtime changes |
+| Hono | 4.13.5 (verified 2026-09-10) | Exact direct dependency; review middleware/runtime changes |
 | PostgreSQL | 18 (current community patch 18.6) | Test migrations and backups before major upgrade |
 | Drizzle ORM / Kit | 0.45.2 / 0.31.10 | Review generated SQL and release notes |
 | Better Auth / Expo adapter / `auth` CLI | 1.7.1 / 1.7.1 / 1.7.1 | Keep the synchronized release train aligned; regenerate/review auth schema |
@@ -107,12 +107,11 @@ docker compose version
 docker compose config --quiet
 bun install --frozen-lockfile
 bun run doctor
-bun outdated
+bun outdated --recursive
 bun run audit:ci
 bun audit
 bun audit fix --dry-run
 bun run check
-bun run build
 bun run db:check
 bun run auth:schema:check
 bunx expo-doctor@latest apps/app
@@ -136,10 +135,11 @@ Then complete and attach this checklist to the upgrade/release record:
 - [ ] Record build/image digest, EAS IDs, migration result, canary metrics, and rollback compatibility.
 - [ ] Update the baseline date/table, source index, and affected ADR if the decision changed.
 
-`bun outdated` and `bun audit` are signals, not automatic authorization to update or proof that every
-risk is absent. Review official advisories and actual reachability. Until compatible upstream fixes
-land, the audit commands return nonzero for the explicitly reviewed transitive toolchain findings in
-[Security](security.md#dependency-audit-snapshot); do not silently suppress them.
+Use `--recursive` to include workspace dependencies; plain `bun outdated` only reports the root.
+Outdated versions and audit results require review of compatibility, advisories, and actual
+reachability. Raw `bun audit` reports the four reviewed transitive findings in
+[Security](security.md#dependency-audit-snapshot). `bun run audit:ci` passes only when findings remain
+within that explicit exception set; it does not establish a vulnerability-free dependency graph.
 
 ## Policy-drift audit
 

@@ -121,8 +121,8 @@ until its structured proposal/query flow exists. Reports earns a permanent desti
 approved brief proves multiple recurring report jobs and direct-entry value. Home remains absent
 until it has approved real orientation/attention content rather than invented dashboard filler.
 
-- Keep three to five durable compact destinations; wide web may reveal nested links without changing
-  their meaning.
+- Keep only implemented durable compact destinations; wide web may reveal nested links without
+  changing their meaning.
 - Keep one typed destination model and let platform shells render it. Active state must match nested
   routes intentionally (for example, a billing return route remains inside Billing) rather than
   relying only on exact path equality.
@@ -279,6 +279,27 @@ server features.
 Store rules have regional and program exceptions and can change. The conservative default above is
 mandatory until a release-specific policy review explicitly approves another path. See
 [Billing and entitlements](billing-entitlements.md#store-policy-and-regional-exceptions).
+
+## Styling and server-state ownership
+
+Tailwind CSS 4.3.3 is integrated through Uniwind 1.11.0. `metro.config.js` wraps Expo's Metro
+configuration with `withUniwindConfig`; `src/global.css` imports Tailwind and Uniwind and owns the
+theme tokens. All styled application code lives under `src`, within that CSS entry's scan scope.
+Keep `src/uniwind-types.d.ts` for typechecking before Metro generates its ignored `.expo` output.
+This Metro integration needs no standalone Tailwind CLI, PostCSS configuration, or NativeWind Babel
+preset. Recheck source discovery if styled code moves outside `src`.
+
+TanStack Query owns server data. `providers/query-provider.tsx` creates a cache per authenticated
+identity, connects Expo Network to `onlineManager`, and connects native AppState to `focusManager`.
+Feature query modules own business-scoped keys, request cancellation, and mutation invalidation.
+`lib/query-state.ts` owns shared denial, missing-data, and failed-refresh predicates; feature modules
+translate those into their screen states. Draft fields and reviewed commands remain local UI state.
+Queries retry selected transient failures once; financial mutations require explicit retries with
+the same idempotency key and are never queued for automatic offline replay.
+
+These integration choices were checked against the [Uniwind quickstart](https://docs.uniwind.dev/quickstart)
+and [TanStack Query React Native guide](https://tanstack.com/query/latest/docs/framework/react/react-native)
+on 2026-09-10. Recheck them when upgrading the styling, query, or Expo integration.
 
 ## State conventions
 

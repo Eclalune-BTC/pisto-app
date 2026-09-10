@@ -1,7 +1,9 @@
 # Neon PostgreSQL deployment
 
-The owner selected Neon as the managed PostgreSQL provider on **2026-09-10**. Pisto keeps the
-existing `postgres` driver, Drizzle schema/migrations, and standard PostgreSQL connection URL.
+Pisto currently uses local PostgreSQL 18. Neon is an optional future hosting preference under
+[ADR 0017](adrs/0017-portable-postgres-and-hosting.md), not the active database. This runbook applies
+only after a separate hosting decision. Pisto keeps the existing `postgres` driver, Drizzle
+schema/migrations, and standard PostgreSQL connection URL.
 No Neon SDK, Neon Auth, provider data API, or proprietary query path is introduced. Application
 code and the container remain usable with another compatible PostgreSQL host.
 

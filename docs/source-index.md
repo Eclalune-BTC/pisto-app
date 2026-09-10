@@ -46,14 +46,16 @@ can drift.
 | VoiceOver/TalkBack semantics | [React Native accessibility](https://reactnative.dev/docs/accessibility) | Component system/release |
 | Build and submit store binaries | [EAS Build](https://docs.expo.dev/build/introduction/), [distribution](https://docs.expo.dev/distribution/introduction/) | Mobile release workflow |
 | Incremental SDK upgrades | [Expo upgrade walkthrough](https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/) | Expo upgrade |
+| Tailwind 4 through Uniwind's Metro integration; verified 2026-09-10 | [Uniwind quickstart](https://docs.uniwind.dev/quickstart), [source discovery](https://docs.uniwind.dev/monorepos) | Styling upgrade or styled code moved outside `src` |
+| TanStack Query owns server state with native focus/network integration; verified 2026-09-10 | [TanStack Query React Native](https://tanstack.com/query/latest/docs/framework/react/react-native), [query cancellation](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation) | Query/Expo upgrade or cache ownership change |
 
 ## Web export and hosting
 
 | Decision | Primary official source | Review trigger |
 | --- | --- | --- |
 | Expo static export is a separate deployable artifact | [Expo web publishing/output modes](https://docs.expo.dev/guides/publishing-websites/) | Web output/build change |
-| Firebase Hosting is the default static HTTPS/CDN target | [Firebase Hosting use cases](https://firebase.google.com/docs/hosting/use-cases), [rewrites/headers](https://firebase.google.com/docs/hosting/full-config) | Hosting/provider/route change |
-| EAS Hosting is the simpler Expo-managed alternative | [Expo web deployment](https://docs.expo.dev/deploy/web/) | Hosting-provider evaluation |
+| Local export is current; Firebase is only a future hosting reference under [ADR 0017](adrs/0017-portable-postgres-and-hosting.md) | [Firebase Hosting use cases](https://firebase.google.com/docs/hosting/use-cases), [rewrites/headers](https://firebase.google.com/docs/hosting/full-config) | Explicit future hosting decision |
+| EAS Hosting is a reference for future Expo hosting evaluation | [Expo web deployment](https://docs.expo.dev/deploy/web/) | Explicit future hosting decision |
 | Cloud Storage custom-domain HTTPS requires a load balancer | [Cloud Storage static website](https://cloud.google.com/storage/docs/hosting-static-website) | Google Cloud static-host design |
 | Fingerprinted asset caching is distinct from HTML revalidation | [Cloud CDN caching](https://cloud.google.com/cdn/docs/caching) | Cache/deploy strategy change |
 
@@ -84,7 +86,7 @@ can drift.
 | Local audio deletion does not prove provider deletion; provider selection requires exact-account retention and residency evidence | [ElevenLabs Zero Retention Mode](https://elevenlabs.io/docs/eleven-api/resources/zero-retention-mode), [data residency](https://elevenlabs.io/docs/overview/administration/data-residency) | Provider account, privacy terms, residency, or production approval change |
 | Optional TTS deterministically formats canonical money/date/quantity text and evaluates financial pronunciation before choosing a model | [AI SDK speech](https://ai-sdk.dev/docs/ai-sdk-core/speech), [ElevenLabs models and number normalization](https://elevenlabs.io/docs/overview/models) | TTS brief, provider/model, locale, or pricing change |
 | Transactional product questions use relational queries; keyword search escalates from PostgreSQL full-text only with evidence | [PostgreSQL full-text search](https://www.postgresql.org/docs/18/textsearch.html) | Search corpus/job or database upgrade |
-| pgvector requires a labeled semantic-retrieval evaluation and target Cloud SQL version check | [pgvector](https://github.com/pgvector/pgvector), [Cloud SQL extensions](https://cloud.google.com/sql/docs/postgres/extensions) | Approved unstructured corpus or retrieval benchmark |
+| pgvector requires a labeled semantic-retrieval evaluation and a version check in the approved PostgreSQL environment | [pgvector](https://github.com/pgvector/pgvector) | Approved unstructured corpus or retrieval benchmark |
 | Neo4j/GraphRAG requires proven variable-depth graph or cross-document questions and a second-datastore operations plan | [Neo4j graph concepts](https://neo4j.com/docs/getting-started/graph-database/), [Neo4j GraphRAG requirements](https://neo4j.com/docs/neo4j-graphrag-python/current/) | Representative graph benchmark or retrieval architecture change |
 | Treinta is product-market context for entrepreneur sales, inventory, purchases/suppliers, reports, permissions, barcodes, receipts, and synchronized mobile/web workflows—not implementation evidence | [Treinta reports](https://treinta.co/app-para-reportes-de-ventas-y-estadisticas-de-tu-negocio), [inventory and sales](https://treinta.co/software-inventario-ventas), [current features](https://treinta.co/mx/funcionalidades) | Competitive/product-scope research refresh |
 

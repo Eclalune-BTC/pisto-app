@@ -15,11 +15,6 @@ export class ApiError extends Error {
   }
 }
 
-// Every ProductErrorCode is also a public ApiErrorCode, so a domain failure keeps
-// its own code and only gains a status. The `code: ApiErrorCode` annotation in
-// normalizeError is what proves that subset relationship at compile time: adding
-// a ProductErrorCode without a matching public code fails `tsc`, it does not
-// silently fall through to INTERNAL_ERROR at runtime.
 const productErrorStatuses: Record<ProductErrorCode, ApiError["status"]> = {
   BUSINESS_REQUIRED: 409,
   CONFLICT: 409,
@@ -37,12 +32,7 @@ const revenueCatWebhookCodes: Record<RevenueCatWebhookError["status"], ApiErrorC
   503: "BILLING_DISABLED",
 };
 
-/**
- * Translate a thrown value into the public error envelope at the single error
- * boundary. `unexpected` marks the values that carry no reviewed public
- * contract; the caller logs those by stable type only and reports
- * INTERNAL_ERROR.
- */
+/** Unknown failures expose INTERNAL_ERROR and are logged by type only. */
 export function normalizeError(error: unknown): { apiError: ApiError; unexpected: boolean } {
   if (error instanceof ApiError) {
     return { apiError: error, unexpected: false };
@@ -60,10 +50,7 @@ export function normalizeError(error: unknown): { apiError: ApiError; unexpected
     }
   }
   if (error instanceof ProductError) {
-    // The Record type makes tsc reject an unmapped ProductErrorCode, but a
-    // ProductError can still be constructed from untyped JavaScript. Reading the
-    // status as possibly-absent keeps an unknown code failing closed as a 500
-    // rather than reaching context.json with an undefined status.
+    // Untyped callers can supply an unknown code; keep it on the 500 path.
     const status = productErrorStatuses[error.code] as ApiError["status"] | undefined;
     if (status !== undefined) {
       const code: ApiErrorCode = error.code;

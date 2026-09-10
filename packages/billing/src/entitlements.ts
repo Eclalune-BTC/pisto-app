@@ -2,25 +2,9 @@ import type { BillingScope, Entitlement as EntitlementContract } from "@pisto/co
 import { type Database, entitlement } from "@pisto/db";
 import { and, asc, eq, gt, isNull, lte, or } from "drizzle-orm";
 
-const allowedStatuses = new Set<EntitlementContract["status"]>([
-  "active",
-  "inactive",
-  "pending",
-  "revoked",
-  "expired",
-  "unknown",
-]);
 const allowedSources = new Set<EntitlementContract["source"]>(["polar", "revenuecat", "manual"]);
 
-function normalizeStatus(value: string): EntitlementContract["status"] {
-  return allowedStatuses.has(value as EntitlementContract["status"])
-    ? (value as EntitlementContract["status"])
-    : "unknown";
-}
-
-// "manual" is reserved for an audited server-side override, so an unrecognized
-// source must never be relabelled as one. A grant whose provenance we cannot
-// name is not trustworthy enough to project, so it is dropped instead.
+// Unknown sources cannot inherit the reserved manual-override provenance.
 export function recognizedSource(value: string): EntitlementContract["source"] | null {
   return allowedSources.has(value as EntitlementContract["source"])
     ? (value as EntitlementContract["source"])
@@ -55,7 +39,7 @@ export async function listEntitlements(
     return [
       {
         key: row.key,
-        status: normalizeStatus(row.status),
+        status: "active" as const,
         source,
         productId: row.productId,
         validFrom: row.validFrom?.toISOString() ?? null,

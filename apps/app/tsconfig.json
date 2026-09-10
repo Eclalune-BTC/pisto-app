@@ -6,7 +6,6 @@
     "paths": {
       "@/*": ["./src/*"],
       "@pisto/contracts": ["../../packages/contracts/src/index.ts"],
-      "zod": ["./node_modules/zod/index.d.ts"],
       "@/assets/*": ["./assets/*"]
     }
   },

@@ -23,16 +23,17 @@ From a configured checkout:
 ```sh
 bun run doctor
 bun run check
+bun run test:integration
 bun run audit:ci
-bun run build
 bun run db:check
 bun run auth:schema:check
 ```
 
 The root `check` runs Biome, the documentation validator, all CLI/docs script tests, workspace
-typechecks/tests, and the workspace build, whose Expo web export is the gate that renders every
-route. It does not run the dependency audit or the database and Better Auth schema checks, so those
-remain explicit commands above; the `build` above repeats a cached step and republishes artifacts. `audit:ci` allows only the four reviewed transitive
+typechecks/tests, and workspace builds including the Expo web export. An export bundles route modules;
+it does not render or exercise them in a browser or on a device and does not publish anything.
+Database integration, dependency audit, and schema checks remain explicit commands above.
+`audit:ci` allows only the four reviewed transitive
 toolchain advisories registered in [Security](security.md#dependency-audit-snapshot) and fails on an
 additional advisory. A release records exact command output, commit, Bun/Node versions, and artifact
 digest/build IDs.
@@ -170,7 +171,7 @@ The included `.github/workflows/ci.yml` currently:
 3. installs from `bun.lock` with `--frozen-lockfile`;
 4. runs `bun run check`;
 5. applies committed migrations and runs the database repository integration suites against the
-   PostgreSQL 18 service through `bun run --filter @pisto/db test:integration`;
+   PostgreSQL 18 service, including billing webhook integration tests, through `bun run test:integration`;
 6. runs `bun run audit:ci` to reject advisories outside the reviewed exception set;
 7. runs `db:check`, `auth:schema:check`, credential-free release-script tests, and Bash syntax checks;
 8. builds the portable API Docker image, replays bundled migrations, and checks readiness, liveness,
@@ -198,8 +199,9 @@ Do not inject production provider credentials into pull-request jobs from untrus
 
 ## API and database release
 
-Use [Neon deployment](neon-deployment.md) for the selected PostgreSQL provider and
-[Cloud deployment](cloud-deployment.md) for the optional Cloud Run reference. Other container hosts
+The current environment is local under [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
+For a future approved release, [Neon deployment](neon-deployment.md) and
+[Cloud deployment](cloud-deployment.md) remain optional provider references. Other container hosts
 must demonstrate the equivalent image, secret, migration, health, IAM, promotion, and rollback
 properties. Do not infer serverless-function compatibility from the portable container.
 

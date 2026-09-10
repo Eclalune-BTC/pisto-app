@@ -112,6 +112,9 @@ The component system and restrained screen hierarchy are documented in
 
 ## Primary references
 
+The repository cleanup below supplements the earlier audit evidence; its dependency changes and
+validation apply to the later working tree.
+
 - [PostgreSQL row-level locks](https://www.postgresql.org/docs/18/explicit-locking.html#LOCKING-ROWS)
 - [Turborepo environment variables and dotenv inputs](https://turborepo.dev/docs/crafting-your-repository/using-environment-variables)
 - [Docker port publishing](https://docs.docker.com/engine/network/port-publishing/)
@@ -121,3 +124,75 @@ The component system and restrained screen hierarchy are documented in
 - [Polar subscription cancellation sequences](https://polar.sh/docs/integrate/webhooks/events)
 - [RevenueCat billing-issue event flows](https://www.revenuecat.com/docs/integrations/webhooks/event-flows)
 - [RevenueCat event fields and renewal timing](https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields)
+
+## Repository cleanup follow-up
+
+The owner requested a project-wide cleanup and an installation/architecture review. Three subagents
+audited the frontend, dependencies, and backend/tooling. Implementations used isolated Git worktrees;
+other agents reviewed the resulting changes. The starting revision was `72f5fdd`.
+
+| Finding | Resolution |
+| --- | --- |
+| Unused inventory reversal component | Deleted `reversal-review.tsx`; the actual route uses `ReversalEditor`. Import analysis and reference search found no consumer |
+| Unreachable customer form mutation UI | Removed idle-only mutation props, unused states, and a no-op retry callback; the review component owns confirmation |
+| Shared query predicates owned by individual features | Moved them into `lib/query-state.ts` and removed a wrapper that only renamed the denial predicate |
+| Sales screens implemented inside the route tree | Moved create, detail, and correction screens into `features/sales`; route files now expose the screens |
+| Failed or paused source refresh could leave financial editors actionable | Block new review/confirmation while source data is stale, preserve drafts and reviewed commands, and expose in-place source retry; uncertain mutation retries retain their original idempotency key |
+| Duplicate configuration templates | Removed the CLI's embedded fallback copies; checked-in examples are required before any missing target is created |
+| Undeclared/unused dependency | Moved the existing Zod 4.4.3 declaration from auth to database, where runtime codecs import it |
+| Invalid TypeScript alias | Removed the Zod alias to an absent app-local installation; normal workspace resolution applies |
+| Unused entitlement predicate and status normalization | Removed both; new integration tests exercise actual SQL validity, scope, status, and source filtering |
+| CI integration gap and repeated build | CI now runs both database and billing suites; `verify` no longer builds twice |
+| Excessive comments | Shortened narration while preserving query semantics, privacy, locking, and other non-obvious invariants |
+| Documentation drift | Reconciled report implementation, local-only hosting, ADR supersession, app routes, and styling/query ownership |
+| Concurrent limiter response could report 61 seconds for a 60-second window | Calculate the response delay with the database clock after the UPSERT lock wait; retain the original budget accounting |
+
+The limiter regression uses a controlled row lock to reproduce the failure before the fix. The
+response now uses `clock_timestamp()` because `statement_timestamp()` precedes lock acquisition.
+See [PostgreSQL current-time functions](https://www.postgresql.org/docs/18/functions-datetime.html#FUNCTIONS-DATETIME-CURRENT).
+
+### Dependency verification
+
+Tailwind 4.3.3 was already current and correctly integrated with Uniwind 1.11.0 through Metro. The
+installation matches the [Uniwind quickstart](https://docs.uniwind.dev/quickstart); this application
+does not need a standalone Tailwind CLI or NativeWind setup. TanStack Query remains the server-state
+owner, using the [documented native focus/network integration](https://tanstack.com/query/latest/docs/framework/react/react-native).
+Newer Query/Uniwind releases alone did not justify changing these working integrations.
+
+Expo CLI identified eight SDK 57 patch mismatches. `expo install --fix --bun` selected Expo 57.0.21,
+Router 57.0.20, React Native 0.86.3, and the compatible constants/crypto/linking/secure-store/splash
+patches. Manifests and the generated lockfile are committed sources of truth. No new library was
+introduced. Two redundant same-version `expo-constants` directories left by the incremental install
+were removed from `node_modules`; frozen installation then preserved one native copy and Expo Doctor
+passed all 21 checks. See the [Expo upgrade workflow](https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/).
+
+The shell initially resolved Bun 1.3.14, which cannot read the committed lockfile format and failed
+the existing proxy-environment test. Validation uses the already available official Bun 1.4.0 binary
+at `.cache/tooling/bun-1.4.0/bun-windows-x64/bun.exe`, matching the repository pin. The same test passes
+under that version without modification. The user's global Bun installation was not changed.
+
+### Follow-up validation and limits
+
+- `bun run check`: exit 0, including 504 unit/component/script tests, workspace typechecks,
+  documentation validation, and builds with Expo web export. Log: `.cache/project-audit-check.log`.
+- `bun run test:integration`: exit 0 against local PostgreSQL, 47 database and 12 billing tests
+  with 384 assertions. Log: `.cache/project-audit-integration.log`.
+- `bun run smoke:local`: exit 0, 23 real HTTP requests, synthetic sale voided and session signed
+  out. Log: `.cache/project-audit-smoke.log`.
+- Expo CLI export for web, iOS, and Android: exit 0. Artifacts are in ignored
+  `.cache/project-audit-platform-export`; log: `.cache/project-audit-platform-export.log`.
+  These are web assets and native Hermes bundles, not signed applications or device validation.
+- Frozen installation, project doctor, Expo Doctor (21/21), `db:check`, and `auth:schema:check`
+  passed. `audit:ci` passes with the same four documented transitive advisories. The raw audit still
+  reports them; `bun audit fix --dry-run` found no compatible automatic remediation. Logs:
+  `.cache/project-audit-expo-doctor.log`, `.cache/project-audit-security.log`, and
+  `.cache/project-audit-remediation.log`.
+- Independent review caught and resolved the missing in-place source retry, the PostgreSQL
+  statistics snapshot in the lock-wait regression, and an incomplete Settings route description.
+  Re-review found no remaining blocker in the changed paths.
+- This follow-up could not repeat rendered browser acceptance because the available computer-use
+  surface exposed no browser. Physical-device acceptance also remains unverified. Earlier browser
+  evidence above belongs to the preceding audit and does not validate these later changes.
+
+The task keeps code, comments, tests, and documentation in English. The approved Spanish product
+catalog remains unchanged. No hosting, provider activation, push, or release is part of this work.

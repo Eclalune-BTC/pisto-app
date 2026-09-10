@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -20,6 +20,13 @@ async function temporaryDirectory(): Promise<string> {
   const path = await mkdtemp(join(tmpdir(), "pisto-cli-"));
   temporaryDirectories.push(path);
   return path;
+}
+
+async function copyTemplates(root: string) {
+  await mkdir(join(root, "apps", "app"), { recursive: true });
+  for (const file of [".env.example", "apps/app/.env.example"]) {
+    await copyFile(join(import.meta.dir, "..", file), join(root, file));
+  }
 }
 
 afterEach(async () => {
@@ -56,8 +63,9 @@ describe("Pisto CLI", () => {
 
   test("init is repeatable and never overwrites local environment files", async () => {
     const root = await temporaryDirectory();
+    await copyTemplates(root);
 
-    await runInit({ logger: silentLogger, root });
+    expect(await runInit({ logger: silentLogger, root })).toBe(0);
     const serverPath = join(root, ".env");
     const clientPath = join(root, "apps", "app", ".env.local");
     const original = await readFile(serverPath, "utf8");
@@ -66,6 +74,8 @@ describe("Pisto CLI", () => {
     expect(original).toContain("BETTER_AUTH_SECRETS=");
     expect(original).toContain("POLAR_PRODUCTS_JSON=");
     expect(original).toContain("REVENUECAT_ENTITLEMENT_MAP_JSON=");
+    expect(original).toContain("REVENUECAT_ALLOWED_ENVIRONMENT=");
+    expect(original).toContain("PRODUCT_WRITES_ENABLED=");
     expect(originalClient).toContain("EXPO_PUBLIC_API_URL=http://localhost:3001");
     expect(originalClient).not.toContain("EXPO_PUBLIC_POLAR_CHECKOUT_URL");
     await writeFile(serverPath, `${original}LOCAL_SENTINEL=keep\n`, "utf8");
@@ -78,6 +88,7 @@ describe("Pisto CLI", () => {
 
   test("init dry run reports targets without creating files", async () => {
     const root = await temporaryDirectory();
+    await copyTemplates(root);
     const messages: string[] = [];
 
     await runInit({
@@ -92,6 +103,34 @@ describe("Pisto CLI", () => {
     expect(await Bun.file(join(root, ".env")).exists()).toBe(false);
     expect(await Bun.file(join(root, "apps", "app", ".env.local")).exists()).toBe(false);
     expect(messages).toContain("No files were written.");
+  });
+
+  test.each([".env.example", "apps/app/.env.example"])(
+    "init fails before writing when %s is missing",
+    async (missing) => {
+      const root = await temporaryDirectory();
+      await copyTemplates(root);
+      await rm(join(root, missing));
+      const messages: string[] = [];
+      const logger = { log() {}, error: (message: string) => messages.push(message) };
+
+      expect(await runInit({ logger, root })).toBe(1);
+      expect(messages).toContain(`Missing template: ${missing}. Restore it from Git.`);
+      expect(await Bun.file(join(root, ".env")).exists()).toBe(false);
+      expect(await Bun.file(join(root, "apps", "app", ".env.local")).exists()).toBe(false);
+    },
+  );
+
+  test("init preserves configured files even when templates are absent", async () => {
+    const root = await temporaryDirectory();
+    await createFileExclusive(join(root, ".env"), "LOCAL_SENTINEL=keep\n");
+    await createFileExclusive(join(root, "apps", "app", ".env.local"), "CLIENT_SENTINEL=keep\n");
+
+    expect(await runInit({ logger: silentLogger, root })).toBe(0);
+    expect(await readFile(join(root, ".env"), "utf8")).toBe("LOCAL_SENTINEL=keep\n");
+    expect(await readFile(join(root, "apps", "app", ".env.local"), "utf8")).toBe(
+      "CLIENT_SENTINEL=keep\n",
+    );
   });
 
   test("help succeeds and unknown commands return usage errors", async () => {

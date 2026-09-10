@@ -1,6 +1,6 @@
 # ADR 0008: Google Cloud managed runtime
 
-- Status: Accepted
+- Status: Superseded by [ADR 0017](0017-portable-postgres-and-hosting.md); retained as an optional deployment reference
 - Date: 2026-08-22
 - Owners: platform and API maintainers
 - Supersedes: none

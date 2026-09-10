@@ -20,12 +20,8 @@ import { commandStatus, parseJsonBody, parseRequest, requireRecordId } from "../
 import { requireActor } from "../session.ts";
 import type { AppEnv } from "../types.ts";
 
-// Hono's context.req.query() is NOT equivalent to this: it keeps the FIRST of a
-// duplicated key rather than the last, drops an empty-name parameter instead of
-// forwarding it into the strict() schema, and does not strip a fragment. These
-// routes have always read the query this way, so unifying them onto the accessor
-// cash uses would have changed real statuses and result pages. The three query
-// idioms in this package are therefore deliberately NOT consolidated.
+// Preserve last-value duplicate keys, strict validation of empty keys, and fragment
+// stripping. Hono's req.query() handles these differently.
 function queryObject(url: string): Record<string, string> {
   return Object.fromEntries(new URL(url).searchParams.entries());
 }

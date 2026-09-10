@@ -6,7 +6,7 @@
 middleware, mounts Better Auth, validates public contracts, calls domain/repository functions, and
 maps expected failures to stable error envelopes. Business logic belongs in its owning package.
 
-The local listener defaults to `0.0.0.0:3001`. Production must prefer Cloud Run's injected `PORT`
+The local listener defaults to `0.0.0.0:3001`. A container host can inject `PORT`
 while continuing to bind `0.0.0.0`.
 
 ## Public surface
@@ -28,6 +28,7 @@ The baseline surface is:
 | `POST` | `/v1/sales/:saleId/void` | `sales:correct`, fresh session | Void or exactly replay one posted sale correction |
 | `POST` | `/v1/sales/:saleId/replace` | `sales:correct`, fresh session | Atomically void and replace or exactly replay one sale |
 | `GET` | `/v1/sales/summary/previous-month` | `sales:summary:read`, fresh session | Calculate the previous business-local calendar month |
+| `GET` | `/v1/reports/operating` | `reports:read`, fresh session | Exact period flows and current positions in one repeatable-read transaction |
 | `GET` | `/v1/billing/catalog` | No | Allowlisted public web product catalog |
 | `GET` | `/v1/billing/state` | Yes | Current provider and normalized entitlement state |
 | `GET` | `/v1/billing/entitlements` | Yes | Internal entitlement projection |

@@ -70,6 +70,7 @@ describe("shared product limiter", () => {
         let blocked = false;
         const deadline = performance.now() + 2_000;
         while (performance.now() < deadline) {
+          await tx.execute(sql`select pg_stat_clear_snapshot()`);
           const [state] = await tx.execute<{ blocked: boolean }>(sql`
             select exists (
               select 1 from pg_stat_activity

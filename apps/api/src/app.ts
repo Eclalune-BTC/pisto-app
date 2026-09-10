@@ -149,9 +149,6 @@ export function createApp(input: {
     ),
   );
 
-  // The single error boundary. Routes throw their domain failure and let it
-  // travel here; they do not catch and re-map it, so one table decides every
-  // public status, code, and message.
   app.onError((error, context) => {
     const requestId = context.get("requestId") || crypto.randomUUID();
     const { apiError, unexpected } = normalizeError(error);

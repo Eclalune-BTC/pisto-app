@@ -50,6 +50,7 @@ apps/app --------> packages/contracts
 apps/api --------> packages/auth, packages/billing, packages/contracts, packages/db
 packages/auth ---> packages/billing, packages/db
 packages/billing -> packages/contracts, packages/db
+packages/db ------> packages/contracts
 
 No package imports either application workspace.
 ```

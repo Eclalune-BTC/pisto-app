@@ -61,10 +61,9 @@ financial records merely because the provider recognizes it.
   replacement and is withheld from `member`, so a member can post and read sales but cannot undo or
   restate one. Applying or reversing a receivable payment requires `receivables:manage` **and**
   `cash:manage`, because that one command writes in both ledgers.
-- `reports:read` and `assistant:use` are defined in the contract and granted by this matrix, but no
-  route or screen consults either one today. Exact reports exist only as the transport contract in
-  `packages/contracts/src/reports.ts`, and no assistant capability exists. Treat both as reserved
-  vocabulary until their capability lands; a granted permission is not evidence of a feature.
+- As verified on 2026-09-10, `reports:read` protects the implemented operating-report repository,
+  `GET /v1/reports/operating`, and `/operate/reports` screen. `assistant:use` remains reserved:
+  no assistant capability exists, and a granted permission is not evidence of a feature.
 - `admin` and `member` are complete, tested policy branches with no reachable actor. Business
   onboarding in `packages/db/src/product.ts` is the only code path that writes a `member` row and it
   hardcodes `role: "owner"`, and `apps/api/src/app.ts` returns `404` for every Better Auth

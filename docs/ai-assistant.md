@@ -9,7 +9,7 @@
 Pisto will use the current stable Vercel AI SDK 7 family as a thin server-side orchestration layer for
 streaming, typed tools, structured output, approvals, transcription, and provider adapters. The exact
 patch and first provider package are selected and pinned only after the implementation spike validates
-the current APIs against Bun, Hono, Cloud Run, Expo web, iOS, and Android.
+the current APIs against Bun, Hono, the portable API container, Expo web, iOS, and Android.
 
 PostgreSQL remains the only authoritative business datastore. The assistant calls narrow Pisto-owned
 commands and queries. It never owns accounting rules, executes arbitrary SQL, trusts generated totals,
@@ -51,19 +51,21 @@ the operation.
 
 ## Planned ownership
 
-No new package in this section exists yet. Create it only with the first approved implementation.
+The assistant package does not exist yet. Create it only with the first approved implementation;
+existing product commands remain in their current capability owners.
 
 | Owner | Responsibility | Prohibited ownership |
 | --- | --- | --- |
 | `apps/app` | Conversation UI, approval surface, stream state, short-recording adapter | Provider keys, prompts, business authorization |
 | `apps/api` | HTTP/stream composition, auth resolution, rate and size limits | Generated business rules or provider-specific domain types |
 | `packages/contracts` | Pisto-owned public turn, draft, approval, result, and error schemas | Raw provider responses or database rows |
-| future `packages/sales` | Sale invariants, money calculations, commands, queries, audit policy | AI SDK, Hono, React, or provider clients |
-| `packages/db` | Drizzle schema, migrations, and repositories | Prompts, tool selection, or UI state |
+| `packages/db` capability modules | Product invariants, exact queries, commands, audit, schema, and transactions | AI SDK, prompts, tool selection, or UI state |
 | future `packages/assistant` | AI SDK configuration, prompt versions, tool registry, bounded orchestration | SQL, canonical financial calculations, or authorization policy |
 
 The API is the composition root. The assistant package receives authorized product capabilities; the
-product domain does not depend on the assistant.
+product domain does not depend on the assistant. A separate sales package requires the ownership
+evidence in [Repository layout](repository-layout.md); exposing existing commands as tools does not
+require that extraction.
 
 ## Provider and model boundary
 
@@ -206,8 +208,8 @@ retention, state, accessibility, cost, evaluation, and provider-selection gates.
    a separate Python ingestion runtime.
 
 Approximate vector indexes trade recall for speed. Begin with exact search at small scale and add HNSW
-only after corpus size and measured latency require it. Verify the actual pgvector version available
-in the target Cloud SQL instance before relying on a feature.
+only after corpus size and measured latency require it. Verify the actual pgvector version in the
+approved PostgreSQL environment before relying on a feature; no hosted provider is currently selected.
 
 ## Testing and evaluation contract
 
@@ -245,7 +247,7 @@ account setting.
 | AI SDK or provider dependency | Not installed |
 | Assistant route, package, prompt, tools, UI, or schema | Not implemented |
 | Sales, catalog, inventory, expense, cash, customer, and receivable product data | Implemented and locally validated; not pushed, deployed, or released |
-| Operating reports the assistant would read | Contract only in `packages/contracts/src/reports.ts`; no repository, route, or screen |
+| Operating reports the assistant would read | Implemented PostgreSQL repository, `GET /v1/reports/operating`, and `/operate/reports`; no assistant tool yet |
 | Narrow read or mutation tools over that product data | Not implemented |
 | Voice recording or transcription | Not implemented |
 | Conversation persistence or long-term memory | Not implemented |
