@@ -40,7 +40,7 @@ describe("cash domain primitives", () => {
 
   test("round-trips an opaque deterministic cursor and rejects tampering", () => {
     const payload = {
-      createdAt: "2026-08-22T15:00:00.000Z",
+      createdAt: "2026-08-22 15:00:00.000001+00",
       id: "71402e0c-b17d-4d8c-83ae-8d163d10d51d",
     };
     const cursor = encodeCashCursor(payload);

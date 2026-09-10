@@ -4,7 +4,7 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { type ZodType, z } from "zod";
 
 import { fingerprintCommand, maximumMinorUnits, parseReplaySnapshot } from "../operation-log.ts";
-import { cursorTimestampPattern } from "../pagination.ts";
+import { isCursorTimestamp } from "../pagination.ts";
 import { ProductError } from "../product.ts";
 import type {
   CategoryRecord,
@@ -15,7 +15,7 @@ import type {
 } from "./types.ts";
 
 const cursorPayloadSchema = z.object({
-  createdAt: z.string().regex(cursorTimestampPattern),
+  createdAt: z.string().refine(isCursorTimestamp),
   id: z.string().uuid(),
   kind: z.enum(["category", "product", "movement", "stock"]),
 });

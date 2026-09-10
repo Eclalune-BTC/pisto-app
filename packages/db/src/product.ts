@@ -10,7 +10,7 @@ import type {
   SaleListQuery,
   VoidSaleRequest,
 } from "@pisto/contracts";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 
 import { authorizeBusinessAction, authorizeSession } from "./business-access.ts";
 import type { Database } from "./client.ts";
@@ -32,7 +32,7 @@ import {
 } from "./product-core.ts";
 import { createSalesCorrectionRepository, type SaleCorrectionResult } from "./sales-correction.ts";
 import { createSalesQueryRepository } from "./sales-queries.ts";
-import { parseSaleMinorUnits, saleFingerprint, toSale } from "./sales-records.ts";
+import { parseSaleMinorUnits, saleFingerprint, toCorrection, toSale } from "./sales-records.ts";
 import { member, organization, session } from "./schema/auth.ts";
 import { businessSettings } from "./schema/business.ts";
 import { sale, saleCorrection, saleOperation } from "./schema/sales.ts";
@@ -362,11 +362,19 @@ export function createProductRepository(db: Database): ProductRepository {
           .select({
             commandFingerprint: saleOperation.commandFingerprint,
             record: sale,
+            correction: saleCorrection,
           })
           .from(saleOperation)
           .innerJoin(
             sale,
             and(eq(sale.id, saleOperation.saleId), eq(sale.businessId, saleOperation.businessId)),
+          )
+          .leftJoin(
+            saleCorrection,
+            and(
+              eq(saleCorrection.businessId, sale.businessId),
+              eq(saleCorrection.originalSaleId, sale.id),
+            ),
           )
           .where(
             and(
@@ -383,7 +391,13 @@ export function createProductRepository(db: Database): ProductRepository {
               "That confirmation key was already used for a different sale",
             );
           }
-          return { sale: toSale(existingOperation.record), replayed: true };
+          return {
+            sale: toSale(
+              existingOperation.record,
+              existingOperation.correction ? toCorrection(existingOperation.correction) : null,
+            ),
+            replayed: true,
+          };
         }
 
         const occurredAt = resolveLocalDateTime({
@@ -430,7 +444,7 @@ export function createProductRepository(db: Database): ProductRepository {
     async getSale(actor, saleId) {
       const businessId = requireActiveBusiness(actor);
       const [result] = await db
-        .select({ record: sale, role: member.role })
+        .select({ record: sale, role: member.role, correction: saleCorrection })
         .from(sale)
         .innerJoin(businessSettings, eq(businessSettings.businessId, sale.businessId))
         .innerJoin(
@@ -446,11 +460,21 @@ export function createProductRepository(db: Database): ProductRepository {
             sql`${session.expiresAt} > transaction_timestamp()`,
           ),
         )
+        .leftJoin(
+          saleCorrection,
+          and(
+            eq(saleCorrection.businessId, sale.businessId),
+            or(
+              eq(saleCorrection.originalSaleId, sale.id),
+              eq(saleCorrection.replacementSaleId, sale.id),
+            ),
+          ),
+        )
         .where(and(eq(sale.businessId, businessId), eq(sale.id, saleId)))
         .limit(1);
       if (!result) throw new ProductError("NOT_FOUND", "Sale was not found");
       requireBusinessPermission(result.role, "sales:read");
-      return toSale(result.record, await corrections.findForSale(businessId, saleId));
+      return toSale(result.record, result.correction ? toCorrection(result.correction) : null);
     },
 
     listSales(actor, query) {

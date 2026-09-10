@@ -104,7 +104,9 @@ export async function lockAccount(
     .from(cashAccount)
     .where(and(eq(cashAccount.businessId, businessId), eq(cashAccount.id, accountId)))
     .limit(1)
-    .for("update");
+    // Account identity is immutable. This still serializes balance changes while
+    // allowing the FK key-share lock taken by a receivable payment before its cash post.
+    .for("no key update");
   if (!record) throw new ProductError("NOT_FOUND", "Cash account was not found");
   if (requireActive && record.status !== "active") {
     throw new ProductError("CONFLICT", "Cash account is archived");

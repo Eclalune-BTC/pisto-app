@@ -162,7 +162,180 @@ async function collectIds<T>(
   return result;
 }
 
+/** Both payment INSERTs must complete their FK checks before either cash lock. */
+function synchronizePaymentInserts(db: Database): Database {
+  let arrivals = 0;
+  let release!: () => void;
+  const barrier = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return new Proxy(db, {
+    get(target, property) {
+      if (property !== "transaction") return Reflect.get(target, property);
+      return (callback: (tx: DatabaseTransaction) => Promise<unknown>) =>
+        target.transaction((tx) =>
+          callback(
+            new Proxy(tx, {
+              get(transaction, name) {
+                if (name !== "insert") {
+                  const value = Reflect.get(transaction, name);
+                  return typeof value === "function" ? value.bind(transaction) : value;
+                }
+                return (table: Parameters<DatabaseTransaction["insert"]>[0]) => {
+                  const insert = transaction.insert(table);
+                  if (table !== receivablePayment) return insert;
+                  return new Proxy(insert, {
+                    get(builder, method) {
+                      if (method !== "values") return Reflect.get(builder, method);
+                      return (values: Parameters<typeof builder.values>[0]) => {
+                        const statement = builder.values(values);
+                        return new Proxy(statement, {
+                          get(query, operation) {
+                            if (operation !== "returning") return Reflect.get(query, operation);
+                            return async () => {
+                              const rows = await query.returning();
+                              if (++arrivals === 2) release();
+                              await barrier;
+                              return rows;
+                            };
+                          },
+                        });
+                      };
+                    },
+                  });
+                };
+              },
+            }),
+          ),
+        );
+    },
+  });
+}
+
+/** Commit a correction after the first actual SELECT, before its result reaches the caller. */
+function afterFirstSelect(db: Database, after: () => Promise<void>): Database {
+  let intercepted = false;
+  function wrap<T extends object>(builder: T): T {
+    return new Proxy(builder, {
+      get(target, property) {
+        const value = Reflect.get(target, property);
+        if (property === "then") {
+          return (resolve: (rows: unknown) => unknown, reject: (error: unknown) => unknown) =>
+            Promise.resolve(target)
+              .then(async (rows) => {
+                if (!intercepted) {
+                  intercepted = true;
+                  await after();
+                }
+                return rows;
+              })
+              .then(resolve, reject);
+        }
+        if (typeof value !== "function") return value;
+        return (...args: unknown[]) => {
+          const result = value.apply(target, args);
+          return result && typeof result === "object" ? wrap(result) : result;
+        };
+      },
+    });
+  }
+  return new Proxy(db, {
+    get(target, property) {
+      if (property !== "select") return Reflect.get(target, property);
+      return (...args: Parameters<Database["select"]>) => wrap(target.select(...args));
+    },
+  });
+}
+
 describe("data integrity regressions on PostgreSQL", () => {
+  test("serializes payments and reversals on separate charges sharing one cash account", async () => {
+    const account = await cash.createAccount(actor, {
+      idempotencyKey: key(),
+      name: "Concurrent payments",
+      kind: "cash",
+      currency: "USD",
+      allowNegativeBalance: false,
+      opening: null,
+    });
+    const contact = await receivables.createCustomer(actor, {
+      idempotencyKey: key(),
+      name: "Concurrent payer",
+    });
+    const charges = [];
+    for (let index = 0; index < 2; index++) {
+      charges.push(
+        (
+          await receivables.postReceivable(actor, {
+            idempotencyKey: key(),
+            customerId: contact.customer.id,
+            description: "Concurrent charge",
+            postedDate: "2026-09-10",
+            originalMinorUnits: "100",
+          })
+        ).receivable,
+      );
+    }
+    const concurrent = createReceivablesRepository(synchronizePaymentInserts(database.db));
+    const payments = await Promise.all(
+      charges.map((charge) =>
+        concurrent.applyPayment(actor, charge.id, {
+          idempotencyKey: key(),
+          cashAccountId: account.account.id,
+          amountMinorUnits: "10",
+          occurredLocalDate: "2026-09-10",
+          occurredLocalTime: "12:00",
+        }),
+      ),
+    );
+    expect(payments.map((payment) => payment.receivable.outstandingMinorUnits)).toEqual([
+      "90",
+      "90",
+    ]);
+    expect((await cash.getAccount(actor, account.account.id)).balanceMinorUnits).toBe("20");
+    const reversing = createReceivablesRepository(synchronizePaymentInserts(database.db));
+    const reversals = await Promise.all(
+      payments.map((payment) =>
+        reversing.reversePayment(actor, payment.payment.id, {
+          idempotencyKey: key(),
+          occurredLocalDate: "2026-09-10",
+          occurredLocalTime: "12:01",
+        }),
+      ),
+    );
+    expect(reversals.map((reversal) => reversal.receivable.outstandingMinorUnits)).toEqual([
+      "100",
+      "100",
+    ]);
+    expect((await cash.getAccount(actor, account.account.id)).balanceMinorUnits).toBe("0");
+  });
+
+  test("reads sale status and correction from one snapshot and includes correction on posting replay", async () => {
+    const command = {
+      idempotencyKey: key(),
+      grossMinorUnits: "100",
+      occurredLocalDate: "2026-09-10",
+      occurredLocalTime: "12:00",
+    };
+    const created = await product.createSale(actor, command);
+    const reading = createProductRepository(
+      afterFirstSelect(database.db, async () => {
+        await product.voidSale(actor, created.sale.id, {
+          idempotencyKey: key(),
+          reason: "Concurrent correction",
+        });
+      }),
+    );
+    const before = await reading.getSale(actor, created.sale.id);
+    expect(before.status).toBe("posted");
+    expect(before.correction).toBeNull();
+    const after = await product.getSale(actor, created.sale.id);
+    expect(after.status).toBe("voided");
+    expect(after.correction?.kind).toBe("void");
+    const replay = await product.createSale(actor, command);
+    expect(replay.replayed).toBe(true);
+    expect(replay.sale).toEqual(after);
+  });
+
   test("rejects expired onboarding and stale business discovery without creating a workspace", async () => {
     const expiredActor = {
       userId: expiredUserId,
@@ -368,7 +541,13 @@ describe("data integrity regressions on PostgreSQL", () => {
         .where(eq(table.businessId, businessId));
     }
     const contacts = await collectIds(
-      (cursor) => receivables.listCustomers(actor, { cursor, limit: 1, status: "all" }),
+      (cursor) =>
+        receivables.listCustomers(actor, {
+          cursor,
+          limit: 1,
+          status: "all",
+          query: "Pagination contact",
+        }),
       ({ id }) => id,
     );
     const categories = await collectIds(

@@ -14,6 +14,7 @@ import {
 } from "@pisto/contracts";
 
 import { fingerprintCommand, maximumMinorUnits, parseReplaySnapshot } from "../operation-log.ts";
+import { isCursorTimestamp } from "../pagination.ts";
 import { ProductError } from "../product.ts";
 import type { CashCursorPayload, CashOperationAction } from "./types.ts";
 
@@ -55,7 +56,7 @@ export function decodeCashCursor(cursor: string): CashCursorPayload {
       !("createdAt" in parsed) ||
       !("id" in parsed) ||
       typeof parsed.createdAt !== "string" ||
-      !Number.isFinite(Date.parse(parsed.createdAt)) ||
+      !isCursorTimestamp(parsed.createdAt) ||
       !isCashResourceId(parsed.id)
     ) {
       throw new Error("invalid cursor payload");

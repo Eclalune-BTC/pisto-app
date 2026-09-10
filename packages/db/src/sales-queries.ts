@@ -5,7 +5,7 @@ import { and, desc, eq, getTableColumns, inArray, lt, or, type SQL, sql } from "
 import { authorizeBusinessAction } from "./business-access.ts";
 import type { Database } from "./client.ts";
 import { fingerprintValue } from "./operation-log.ts";
-import { cursorTimestampPattern, exactCursorTimestamp } from "./pagination.ts";
+import { exactCursorTimestamp, isCursorTimestamp } from "./pagination.ts";
 import { type ProductActor, ProductError } from "./product-core.ts";
 import { toCorrection, toSale } from "./sales-records.ts";
 import { sale, saleCorrection } from "./schema/sales.ts";
@@ -51,7 +51,7 @@ export function decodeSaleListCursor(
       parsed.version !== 1 ||
       !("createdAt" in parsed) ||
       typeof parsed.createdAt !== "string" ||
-      !cursorTimestampPattern.test(parsed.createdAt) ||
+      !isCursorTimestamp(parsed.createdAt) ||
       !("id" in parsed) ||
       typeof parsed.id !== "string" ||
       !uuidPattern.test(parsed.id) ||

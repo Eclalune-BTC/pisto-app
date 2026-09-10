@@ -355,6 +355,15 @@ describe("catalog and inventory repository on PostgreSQL 18", () => {
       }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
     await expect(
+      repository.updateProduct(actor("owner"), product.product.id, {
+        idempotencyKey: crypto.randomUUID(),
+        unitKind: "gram",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    const unchanged = await repository.getProduct(actor("owner"), product.product.id);
+    expect(unchanged.product.unitKind).toBe("kilogram");
+    expect(unchanged.stock?.onHandMinorUnits).toBe("10000");
+    await expect(
       repository.recordMovement(actor("member"), product.product.id, {
         ...receiveCommand,
         idempotencyKey: crypto.randomUUID(),

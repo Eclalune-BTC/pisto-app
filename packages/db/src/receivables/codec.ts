@@ -2,7 +2,7 @@ import { receivablePaymentSchema, receivableSchema } from "@pisto/contracts";
 import { type ZodType, z } from "zod";
 
 import { fingerprintValue, maximumMinorUnits } from "../operation-log.ts";
-import { cursorTimestampPattern } from "../pagination.ts";
+import { isCursorTimestamp } from "../pagination.ts";
 import { ProductError } from "../product.ts";
 import type { PageCursor } from "./types.ts";
 export const uuidPattern =
@@ -67,7 +67,7 @@ export function decodeCursor(value: string, expectedFilterFingerprint: string): 
       parsed.version !== 1 ||
       !("createdAt" in parsed) ||
       typeof parsed.createdAt !== "string" ||
-      !cursorTimestampPattern.test(parsed.createdAt) ||
+      !isCursorTimestamp(parsed.createdAt) ||
       !("id" in parsed) ||
       typeof parsed.id !== "string" ||
       !uuidPattern.test(parsed.id) ||

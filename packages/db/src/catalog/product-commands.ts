@@ -164,7 +164,9 @@ export function createProductCommands(db: Database): ProductCommands {
           command.quantityPrecision !== undefined &&
           command.quantityPrecision !== existing.quantityPrecision;
         const disablesTracking = command.tracked === false && existing.tracked;
-        if (precisionChanges || disablesTracking) {
+        const unitChanges =
+          command.unitKind !== undefined && command.unitKind !== existing.unitKind;
+        if (precisionChanges || disablesTracking || unitChanges) {
           const [movement] = await transaction
             .select({ id: inventoryMovement.id })
             .from(inventoryMovement)
@@ -178,9 +180,11 @@ export function createProductCommands(db: Database): ProductCommands {
           if (movement) {
             throw new ProductError(
               "CONFLICT",
-              precisionChanges
-                ? "Quantity precision cannot change after inventory history exists"
-                : "Inventory tracking cannot be disabled after inventory history exists",
+              unitChanges
+                ? "Quantity unit cannot change after inventory history exists"
+                : precisionChanges
+                  ? "Quantity precision cannot change after inventory history exists"
+                  : "Inventory tracking cannot be disabled after inventory history exists",
             );
           }
         }
