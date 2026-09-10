@@ -48,8 +48,10 @@ export function createProductRateLimiter(
         returning count, last_request
       )
       select count,
-        greatest(1, ceil((last_request + ${windowMs} - clock.now_ms) / 1000.0))::text as retry_after
-      from consumed cross join clock
+        -- A lock wait can let a later statement establish the window first.
+        greatest(1, ceil((last_request + ${windowMs}
+          - floor(extract(epoch from clock_timestamp()) * 1000)) / 1000.0))::text as retry_after
+      from consumed
     `);
     const row = rows[0];
     if (!row) throw new Error("Product rate limit result is missing");
