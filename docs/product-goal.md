@@ -41,8 +41,9 @@ and composition follows [Product capability architecture](product-capability-arc
 - Fresh-session checks, consistent command lock ordering, exact timestamp cursors, and migration
   `0005` strengthen the existing data model. Product requests share a PostgreSQL-backed rate budget,
   and `PRODUCT_WRITES_ENABLED=false` pauses business changes while reads remain available.
-- The owner selected Neon using standard PostgreSQL, postgres-js, and Drizzle. The initial publishing
-  adapter uses Vercel and an Expo single-page export; the portable Bun/Hono container remains. See
+- The owner's latest instruction is local-only: Expo and Bun/Hono use local PostgreSQL 18 through
+  postgres-js and Drizzle. Neon is an optional future preference; hosting is undecided and no
+  publication is authorized. The portable web export and Bun/Hono container remain. See
   [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
 - The web, native, authentication, billing, data, and cloud foundations have documented invariants
   and primary-source references.
@@ -93,12 +94,14 @@ The catalog/inventory, expenses/cash, and customers/receivables contracts in
 [Operating core V1](product-slices/operating-core-v1.md) were implemented in isolated capability
 branches and integrated through the explicit app/API composition roots. Sale history and exact
 operating reports are also implemented. Complete the manual-core audit, usability, data-integrity,
-and hosting acceptance work before introducing the provider-neutral text assistant and then bounded
+and local runtime acceptance work before introducing the provider-neutral text assistant and then bounded
 push-to-talk voice.
 
-The owner has authorized the web deployment work under ADR 0017. Its actual validation, push,
-deployment, and release status belongs in [Release evidence](release-evidence.md); this goal does
-not assert a successful deployment. Store submission, email delivery, team workflows, RAG/graphs,
+The latest owner instruction withdraws hosting/publication work and requires everything to run
+locally under the revised ADR 0017. [Release evidence](release-evidence.md) records local validation
+and verification of withdrawal of the earlier unwanted publication; this goal does not claim that
+remote resources have been removed. Future hosting requires an explicit new decision. Store
+submission, email delivery, team workflows, RAG/graphs,
 silent provider fallback, and AI/voice completion require their own remaining implementation and
 acceptance gates.
 

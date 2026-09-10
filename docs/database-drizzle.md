@@ -2,10 +2,11 @@
 
 ## Baseline
 
-Local development uses the official `postgres:18-alpine` image. The owner selected Neon PostgreSQL
-for the initial deployment, using the existing postgres-js driver, Drizzle, and standard PostgreSQL
-SQL. No Neon SDK or proprietary data API is required. Cloud SQL remains an alternative reference;
-[ADR 0017](adrs/0017-portable-postgres-and-hosting.md) supersedes its mandatory production target.
+The active database is local PostgreSQL 18 using the official `postgres:18-alpine` image. The
+owner's latest instruction is local-only. Neon remains an optional future preference through the
+existing postgres-js driver, Drizzle, and standard PostgreSQL SQL; it is not the active runtime
+database. No Neon SDK or proprietary data API is required. Cloud SQL is an optional reference, not
+a mandatory target. [ADR 0017](adrs/0017-portable-postgres-and-hosting.md) records the corrected scope.
 `@pisto/db` owns Drizzle schema, SQL migration artifacts, database connection creation, repositories,
 and transaction helpers. [Data model](data-model.md) records normalization, snapshots, constraints,
 read models, and the portable migration plan.
@@ -192,8 +193,9 @@ consumption, but does not isolate cleanup ownership.
 
 ## Connections
 
-Code uses `DATABASE_URL`, bounded by `DATABASE_MAX_CONNECTIONS`. Across serverless instances or
-container replicas, total possible connections are approximately:
+Local code uses the local `DATABASE_URL`, bounded by `DATABASE_MAX_CONNECTIONS`. Do not point local
+startup or test configuration at the earlier remote database. Across multiple local processes or any
+future authorized deployment, total possible connections are approximately:
 
 ```text
 maximum active API instances × per-instance pool maximum
@@ -201,8 +203,9 @@ maximum active API instances × per-instance pool maximum
 
 Keep that result below the selected database connection budget with headroom for migrations,
 operations, and failover. A high HTTP concurrency setting does not justify one database connection
-per request. Use Neon's direct connection URL for migrations and backup/restore tools; a pooled
-runtime URL requires the transaction and connection tests described in ADR 0017.
+per request. Local migrations and backup/restore tools use a direct local connection. If Neon is
+explicitly selected for future use, prefer its direct connection URL for those operations and
+validate pooled runtime connections against the existing transaction tests first.
 
 Set production TLS/network behavior deliberately through `DATABASE_SSL` and the selected PostgreSQL
 connection path. Do not disable certificate verification globally. A provider move changes connection
@@ -242,11 +245,12 @@ migration execution are separate validation gates.
 
 ## Backup and privacy
 
-Configure backups, point-in-time recovery, retention, and restore access for the selected Neon
-environment; verify the actual account's available features and recovery window. Keep a tested
-standard `pg_dump`/`pg_restore` exit path. Cloud SQL deployments must satisfy the same recovery
-objectives using their own controls. A configured provider is not a successful restore drill;
-[Release evidence](release-evidence.md) owns actual operational results. Minimize stored provider
+The local Docker volume persists data, but is not a backup. Keep private backups and a tested
+standard `pg_dump`/`pg_restore` path; restore into an isolated database rather than overwriting the
+active local database. Any future hosted environment needs explicitly selected backups/PITR,
+retention, restore access, and verified recovery objectives. Neon and Cloud SQL remain optional
+future choices with their own controls. [Release evidence](release-evidence.md) owns the historical
+portability proof and current operational results. Minimize stored provider
 payloads, restrict access, define retention, and avoid credentials or unnecessary personal data in
 JSON evidence.
 

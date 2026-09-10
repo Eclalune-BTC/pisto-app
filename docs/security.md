@@ -4,6 +4,11 @@ Security controls are part of the architecture, not a deployment afterthought. T
 to local design, CI, staging, and production; production adds stricter identity, network, logging,
 backup, and monitoring controls.
 
+The current authorized environment is local Expo, Bun/Hono, and PostgreSQL 18. Hosting is undecided
+and publication is outside the current scope. The controls for future shared/production environments
+below remain design requirements, not authorization to provision or publish; see
+[ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
+
 ## Trust boundaries
 
 Treat all of these as untrusted until verified at their boundary:
@@ -27,7 +32,7 @@ The API, not the client, makes authorization and entitlement decisions.
 | Internal | Request IDs, non-sensitive feature configuration, internal product slug | Do not expose unnecessarily |
 | Sensitive personal | Email, account/provider identifiers, support history | Minimize, authorize, redact, retain deliberately |
 | Sensitive business | Sales, prices, inventory, expenses, customer/supplier data, prompts, transcripts, and tool inputs/results | Tenant-scope, minimize, encrypt in transit/at rest, redact telemetry, retain/delete deliberately |
-| Secret | Better Auth secret, DB password, Polar token/webhook secret, RevenueCat webhook auth/HMAC secret, model/transcription provider credential | Server only; restricted secret/environment configuration in the selected host; Secret Manager for the Google Cloud reference |
+| Secret | Better Auth secret, DB password, Polar token/webhook secret, RevenueCat webhook auth/HMAC secret, model/transcription provider credential | Server only; private ignored local configuration now, restricted secret configuration for any future shared environment |
 | High impact | Migration/deployer credentials, signing keys, service-account impersonation | Separate identity, least privilege, audit, rotation |
 
 `EXPO_PUBLIC_*` is always public. A misleading variable name does not make client-bundled data
@@ -216,9 +221,12 @@ See [Billing and entitlements](billing-entitlements.md) for the full model.
 ## Database controls
 
 - Use a dedicated application role with only runtime permissions and a separate migration role.
-- Use TLS and restricted roles on the selected Neon PostgreSQL deployment, with direct migration
-  connections and a bounded runtime pool. No Neon-specific SDK or proprietary data API is required.
-  Private Cloud SQL connectivity remains an alternative reference; see
+- Local runtime and integration tests use the intended local PostgreSQL instance. Verify database
+  targets before migrations or restore tests; never let retained remote credentials silently select
+  a hosted database. Keep runtime pools bounded and backup files private.
+- Any future hosted database requires reviewed TLS, restricted runtime roles, and direct migration
+  connections. Neon is an optional future preference through standard PostgreSQL, not a current
+  runtime dependency. Private Cloud SQL connectivity remains an alternative reference; see
   [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
 - Keep pools bounded and timeouts finite.
 - Enforce subject, uniqueness, and foreign-key invariants in PostgreSQL.

@@ -1,29 +1,48 @@
-# Web deployment
+# Local web workflow and future hosting boundary
 
-## Current target and portable artifacts
+## Current local workflow
 
-The owner's 2026-09-10 instruction selects Neon PostgreSQL and avoids provider coupling.
-[ADR 0017](adrs/0017-portable-postgres-and-hosting.md) records the decision. The initial publishing
-adapter is Vercel; actual deployment status and checks live in [release evidence](release-evidence.md).
+The owner's latest instruction is local-only: Expo, Bun/Hono, and PostgreSQL 18 run on the local
+machine. Hosting is undecided and publication is not authorized. Neon remains an optional future
+PostgreSQL preference, not an active runtime dependency. See
+[ADR 0017](adrs/0017-portable-postgres-and-hosting.md) and
+[release evidence](release-evidence.md) for the corrected scope, local validation, and withdrawal
+status of the earlier unwanted publication. A local code cleanup does not prove remote deletion.
 
-- `apps/app/dist`: ordinary Expo web files, using `web.output: "single"`.
-- `apps/api/Dockerfile`: portable Bun/Hono server plus a separate bundled migration entrypoint.
-- `api/server.ts`: minimal Vercel Bun entrypoint invoking the same API runtime.
-- `api/tsconfig.json`: explicit Bun compiler settings and emitted relative-import rewriting;
-  the function also retains package source files referenced by workspace TypeScript exports.
-- `vercel.json`: routing, build, region, response headers and function duration for that adapter.
-- `packages/db/migrations`: standard SQL/Drizzle history, using the existing `postgres` driver.
-
-There is no Neon or Vercel SDK in domain code. Rehosting needs a static server and reverse proxy,
-the API container, and a PostgreSQL URL; it does not require rewriting business features. The API
-container does not serve the frontend itself. The GCP reference under `infra/gcp` remains optional.
-
-## Configuration and build
-
-Use Node 24.19 and Bun 1.4.0 with the committed lockfile and `patches` directory:
+Use the committed Bun version and local setup workflow:
 
 ```sh
 bun install --frozen-lockfile
+bun run setup
+bun run doctor
+docker compose up -d postgres
+bun run db:migrate
+bun run dev
+```
+
+Setup creates missing environment files without replacing existing ones. Review local targets before
+starting services or migrating: the API's `DATABASE_URL` must point to the intended local PostgreSQL
+instance, and `EXPO_PUBLIC_API_URL` must point to the local API. The normal API development origin is
+`http://localhost:3001`; use the local Expo URL printed at startup. When another local database already
+uses a port, keep the chosen Compose project and host-port mapping explicit instead of stopping or
+replacing that database. The current verified mapping is recorded in release evidence.
+
+For a physical device, a reviewed reachable local-network API address may replace `localhost`.
+Keep the API/client origins and native scheme consistent. Do not add remote services merely to test
+a local UI. Native device acceptance remains separate from web or bundle verification.
+
+## Portable artifacts and local validation
+
+- `apps/app/dist`: ordinary Expo web files using `web.output: single`.
+- `apps/api/Dockerfile`: portable Bun/Hono API and separate bundled migration entrypoint.
+- `packages/db/migrations`: standard PostgreSQL/Drizzle migration history.
+- `infra/gcp`: optional deployment reference, outside the current operational scope.
+
+No Vercel entrypoint, Vercel publishing configuration, or host SDK is required. The API container does
+not serve web files. The exported client remains independent of API hosting and can be inspected
+with a local static server that implements SPA deep links and correct asset responses.
+
+```sh
 bun run check
 bun run test:integration
 bun run audit:ci
@@ -31,101 +50,84 @@ bun run db:check
 bun run auth:schema:check
 ```
 
-Set `APP_VARIANT=production`, `EXPO_PUBLIC_API_URL` to the exact HTTPS product origin, the private
-app scheme and explicit native identifiers before exporting. `EXPO_PUBLIC_*` values become public
-bundle contents: never put credentials there. Changing them requires a new web export. Set
-`BETTER_AUTH_URL`, `CORS_ORIGINS` and `TRUSTED_ORIGINS` to the intended same-origin HTTPS endpoint;
-also allow the explicit native scheme in trusted origins. Preview domains must be enrolled explicitly.
+Run database checks only after verifying the local connection target. Local check/build/export
+success is not a hosted deployment, native binary, device test, or store release.
 
-Server-only secrets are `DATABASE_URL`, `BETTER_AUTH_SECRET` and any enabled provider credentials.
-Runtime uses a pooled Neon connection, `DATABASE_SSL=verify-full`, a bounded connection budget,
-and the restricted `pisto_app` role. Migrations use a separately held direct connection and owner role.
-Apply migrations before traffic; do not run DDL during a function startup or a web build.
+`EXPO_PUBLIC_*` values become public bundle contents; never put credentials there. Changing the
+public API URL requires a new export. Keep `DATABASE_URL`, `BETTER_AUTH_SECRET`, private backups,
+and any retained provider credentials outside source control and client output. `.dockerignore`
+and explicit Docker COPY rules protect the container build context; private tooling and environment
+files must remain excluded from any future publishing workflow too.
 
-Keep billing disabled until its separate delivery gates pass. `PISTO_PRODUCT_WRITES_ENABLED=false`
-pauses authenticated operating writes while preserving reads; apply that setting through a new
-deployment when using immutable function environments. Read/write request budgets remain shared
-across instances in PostgreSQL. Their window must stay 60 seconds because the auth limiter owns
-cleanup of the shared operational table.
+Keep billing disabled until separately accepted. `PRODUCT_WRITES_ENABLED=false` pauses authenticated
+business writes while preserving reads. Restart the local API after changing server configuration.
+Read/write budgets remain in local PostgreSQL, with the same 60-second window as Better Auth's
+cleanup of the shared operational rate-limit table.
 
-## Routing and cookies
+## Future hosting conditions
 
-The browser uses one origin for web files and the API. Route `/v1`, `/v1/(.*)`, `/api/auth/(.*)`,
-`/health` and `/ready` to the API function before applying the SPA fallback. Vercel named captures
-are forwarded as query parameters; use anonymous captures so strict API query schemas do not
-receive an invented `path` parameter. Verify the runtime receives the original path and query.
+The following checklist is retained for a later explicitly approved hosting decision. It does not
+select a provider, authorize provisioning, or call for publishing the current branch.
 
-Remaining application paths resolve to `/index.html`, including deep record/correction routes.
-Existing assets are served directly. Missing `/_expo`, `/assets`, and file-extension paths must
-return 404, not HTML. Unknown application routes reach Expo's not-found screen. No session or
-private business data is embedded in the web export.
+### Routing and cookies
 
-Same-origin HTTPS keeps Better Auth cookies host-only and avoids third-party-cookie dependence.
-Native continues using the official SecureStore cookie adapter against the same API. Verify
-sign-up, sign-in, authenticated reads, sign-out and expired-session behavior on the deployed host.
+A standard static server and reverse proxy can place the web files and API behind one HTTPS origin.
+Route `/v1`, `/v1/(.*)`, `/api/auth/(.*)`, `/health`, and `/ready` to the API before the SPA fallback.
+The proxy must preserve original paths and query parameters; never inject routing-capture fields
+into strict application query schemas.
 
-## Headers and caching
+Application deep links resolve to `/index.html` and Expo Router. Existing assets are served directly.
+Missing asset/file-extension paths return 404, not HTML. Unknown application routes reach Expo's
+not-found screen. Never embed sessions or private business records in exported HTML.
 
-| Resource | Policy |
+A same-origin HTTPS topology can keep host-only cookies without third-party-cookie dependence.
+Separate-origin hosting requires an explicit cookie/CORS/trusted-origin review. Native retains the
+SecureStore cookie adapter. Set exact public/server origins and test sign-in, renewal, sign-out,
+expired-session behavior, and deep links in the selected environment before accepting a future host.
+
+### Headers and caching
+
+| Resource | Future-host requirement |
 | --- | --- |
-| Fingerprinted `/_expo/static` assets | One year, immutable |
-| HTML and other route metadata | Revalidation; never immutable |
+| Fingerprinted `/_expo/static` assets | Long-lived immutable cache |
+| HTML and route metadata | Revalidation; never immutable |
 | Financial/authenticated API responses | `Cache-Control: no-store`, including failures |
 | Missing files | Real 404 and correct content type |
 
-The host adds `nosniff`, referrer policy, frame denial, and disables currently unused microphone,
-camera and geolocation permissions. Revisit the last policy as part of an actual voice feature.
-Verify CDN response headers rather than assuming configuration proves their delivery. The core
-application has no offline mutation queue; an uncertain save must be reconciled before retrying.
+Review security headers and currently unused browser permissions with the actual feature set.
+Verify delivered response headers, not just a host configuration file. There is no offline mutation
+queue; reconcile an uncertain save before retrying.
 
-## Release and rollback
+### Migration, acceptance, and rollback
 
-1. Review changes, migration impact, runtime budgets, dependency exceptions and secrets separately.
-2. Validate source, SQL integration, auth schema and the portable container; export native bundles
-   when dependencies affect Expo Router or cross-platform behavior.
-3. Apply forward migrations using the migration identity. Confirm runtime cannot create schema or
-   delete financial records, and can perform the documented authenticated operating paths.
-4. Deploy the reviewed source with its immutable lockfile and production environment. Keep the
-   deployment ID, URL, commit and validation results in release evidence.
-5. Smoke-test the public API and SPA, including authenticated strict-query lists and deep routes.
-6. If necessary, restore the previous compatible application deployment. SQL constraints are forward
-   migrations; application rollback must remain compatible with the current database. Never delete
-   financial evidence or roll back a database just to undo a frontend release.
+1. Obtain the explicit hosting decision and record its scope before provisioning or publishing.
+2. Review secrets, budgets, dependencies, migrations, origins, and operational ownership.
+3. Validate the portable artifacts and database upgrade; use a separate migration identity and a
+   direct connection for a future shared database. Runtime startup must not run DDL.
+4. Record the approved artifact, environment, release ID, local checks, hosted checks, and remaining
+   gates independently in release evidence.
+5. Verify health/readiness, auth, strict-query lists, mutation confirmation/replay, deep routes,
+   missing assets, responsive layouts, keyboard access, and truthful error states.
+6. Keep a compatible application rollback path. Database correction uses reviewed forward migrations;
+   never delete financial evidence simply to undo a frontend release.
 
-Migration scripts, private backups, `.env` files and local tooling must never enter the web output or
-uploaded build context. `.vercelignore`, `.dockerignore` and explicit runtime COPY rules enforce this.
-Do not enable purchases, change account plans or automatically promote the optional GCP candidate.
+A production-configured artifact requires an exact HTTPS public API origin and explicit app
+identifiers. Those requirements do not replace the current local development configuration.
 
-## Required live smoke checks
+## PostgreSQL portability
 
-- `/health`, `/ready`, `/v1`, unauthenticated `/v1/me`, auth session endpoint, and malformed/unknown API paths.
-- Register a clearly named QA account/business; perform a manual sale, retrieve it, and verify
-  idempotent replay, history, permissions and sign-out. Keep production QA data clearly identified.
-- Authenticated catalog listing with a real `search`/`limit` query, and rejection of unknown query keys.
-- Fresh direct loads of `/sign-in`, `/business`, `/operate/reports`, `/operate/sales/new`,
-  `/operate/sales/<id>`, and `/operate/receivables/<id>/payments/<id>/reverse`.
-- Actual JS/CSS content types, missing-asset 404, HTML/API cache behavior and credentialed CORS.
-- Compact and desktop web layouts, visible errors/loading states, keyboard access and confirmation.
-- Bundle configuration for accidental localhost URLs or secrets. Native exports are build evidence;
-  physical device tests and signed store releases remain separate gates.
-
-## Moving providers
-
-Export the PostgreSQL database with `pg_dump`, restore with `pg_restore`, recreate least-privilege
-roles, then verify constraints, migration history and ledger totals before cutover. Deploy the
-same container and web files behind a same-origin proxy. Update private/public origins and rebuild
-the web artifact. Test cookie renewal and existing sessions, restore, and rollback before moving
-real traffic. A backup/restore test is evidence; a configured backup switch alone is not.
+Use standard `pg_dump` and `pg_restore`, retain private backups, and restore into an isolated target.
+Recreate least-privilege roles and verify constraints, migration history, and ledger totals before a
+future database move. The prior export/restore proof is historical evidence in the release record;
+it does not select Neon for current local use or establish a recovery SLA.
 
 ## Public website boundary
 
 The Expo app is the authenticated product. Add `apps/site` only when public editorial/SEO content
-requires its own rendering, CMS or release lifecycle; do not add another frontend preemptively.
+requires its own rendering, CMS, or release lifecycle; do not add another frontend preemptively.
 
-## Official sources reviewed 2026-09-10
+## Official sources
 
 - [Expo web publishing and output modes](https://docs.expo.dev/guides/publishing-websites/)
-- [Vercel Bun runtime](https://vercel.com/docs/functions/runtimes/bun)
-- [Vercel routing configuration](https://vercel.com/docs/project-configuration/vercel-json)
-- [Neon pooling](https://neon.com/docs/connect/connection-pooling)
-- [PostgreSQL backup and restore](https://www.postgresql.org/docs/current/backup-dump.html)
+- [PostgreSQL backup and restore](https://www.postgresql.org/docs/18/backup-dump.html)
+- [Drizzle migration fundamentals](https://orm.drizzle.team/docs/migrations)

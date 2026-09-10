@@ -299,9 +299,11 @@ purchases remain incomplete or release-gated. The exact implemented boundary and
 [Sales Increment 1](../sales-increment-1.md) and the
 [operating core slice records](../product-slices/operating-core-v1.md). This approved brief remains
 the acceptance contract for the larger first slice; a passing manual operating core is not evidence
-that the conversational slice is complete. The owner selected portable Neon PostgreSQL and the
-initial Vercel web/API adapter in [ADR 0017](../adrs/0017-portable-postgres-and-hosting.md).
-[Release evidence](../release-evidence.md) owns the actual build, push, deployment, and release status.
+that the conversational slice is complete. The owner's latest instruction requires local Expo,
+Bun/Hono, and PostgreSQL 18 only. Neon is an optional future preference; hosting and publication
+are outside the current scope. [ADR 0017](../adrs/0017-portable-postgres-and-hosting.md) records this
+correction, and [Release evidence](../release-evidence.md) owns local validation and the withdrawal
+status of the earlier unwanted publication.
 
 ## Primary market sources
 

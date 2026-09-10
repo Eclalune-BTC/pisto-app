@@ -14,10 +14,10 @@ flowchart LR
   User[User]
   Web[Expo web app]
   Native[Expo iOS and Android app]
-  API[Hono API / Vercel adapter or portable container]
+  API[Local Bun/Hono API]
   Auth[Better Auth]
   Billing[Billing and entitlement domain]
-  DB[(PostgreSQL / Neon)]
+  DB[(Local PostgreSQL 18)]
   Polar[Polar web billing]
   Stores[Apple App Store and Google Play]
   RC[RevenueCat]
@@ -195,30 +195,34 @@ qualification.
 No queue, task handler, user-file feature, or object-storage adapter is included. A future slice must
 select and validate its provider boundary. The existing Google Cloud reference describes private
 OIDC-authenticated task handlers and short-lived signed object URLs; it does not require Google
-services for the selected Vercel/Neon deployment. API requests should not proxy large files unless a
+services for the current local environment. API requests should not proxy large files unless a
 security requirement demands it.
 
 ## Runtime topology
 
-- Local: Bun processes plus PostgreSQL 18 in Docker Compose.
-- Initial web/API target: one Vercel origin serves the Expo single-page export and the same Hono
-  runtime through the narrow `api/server.ts` adapter. `vercel.json` owns host routing and limits.
-- Selected data provider: Neon PostgreSQL through postgres-js and Drizzle, without a Neon SDK or
-  proprietary data API. Runtime connections use bounded pools; direct connections run migrations.
+- Current environment: local Expo and Bun/Hono processes plus local PostgreSQL 18 in Docker Compose.
+  The local API uses the local database URL; no hosted database is required for development or tests.
+- Hosting: undecided and not authorized under the owner's latest local-only instruction. No Vercel
+  entrypoint or other provider-specific runtime adapter is required.
+- Database portability: postgres-js, Drizzle, and standard PostgreSQL migrations remain the boundary.
+  Neon is an optional future preference, not the current runtime database. Runtime pools stay bounded
+  and migrations use a direct connection.
 - Portable API artifact: the Bun/Hono Linux container listens on `0.0.0.0` and the injected `PORT`.
   Another host can serve the Expo export and proxy API paths to this container.
-- Secrets: server-only environment configuration in the selected host, with restricted runtime
-  credentials and a separate migration identity. No client bundle contains provider credentials.
+- Secrets: local server-only environment files stay ignored and private. Future shared environments
+  require restricted runtime credentials and a separate migration identity. No client bundle contains
+  database or provider credentials.
 - Alternative deployment reference: Cloud Build/Cloud Run/Cloud SQL and Secret Manager configuration
-  remains documented. ADR 0017 supersedes mandatory Cloud SQL; this reference is not provisioning
-  evidence or a required dependency for the selected host.
+  remains documented. ADR 0017 removes mandatory hosted targets; this reference is not provisioning
+  authorization or a required dependency for local operation.
 - Background work, object storage, email delivery, AI/voice, and native purchases remain separate
   implementation and release gates.
 
 The API remains stateless between requests. Host-local disk is not a source of truth. See
 [ADR 0017](adrs/0017-portable-postgres-and-hosting.md) for the hosting boundary and exit path,
 [Production capabilities](production-capabilities.md) for capability gates, and
-[Release evidence](release-evidence.md) for actual build/deployment validation.
+[Release evidence](release-evidence.md) for local validation and the withdrawal status of the earlier
+unwanted publication. Prior hosted artifacts do not establish an accepted remote product.
 
 ## Reliability invariants
 

@@ -3,9 +3,10 @@
 Pisto Stack is a Bun and TypeScript monorepo for a universal Expo application, a Hono API,
 PostgreSQL persistence, Better Auth, and provider-neutral paid access. The browser checkout uses
 Polar. Native iOS and Android purchases must use the platform stores through RevenueCat once that
-release-gated SDK integration is installed; the baseline native adapter is disabled. The production
-target selected by the owner is Neon PostgreSQL with Vercel for the initial web/API publication.
-The existing Bun/Hono container remains a portable deployment artifact; see
+release-gated SDK integration is installed; the baseline native adapter is disabled. The current
+environment is local Expo, Bun/Hono, and PostgreSQL 18. The owner's latest instruction is local-only:
+hosting is undecided and publication is not authorized. Neon is an optional future PostgreSQL
+preference, not the active database. The Bun/Hono container remains portable; see
 [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
 
 The approved product direction is Pisto: an AI-native operating assistant for Spanish-speaking
@@ -40,7 +41,8 @@ verification/recovery delivery, invitations/role administration/domain-specific 
 purchases, and production operational acceptance remain incomplete or release-gated; see
 [Production capabilities](production-capabilities.md). Implemented and locally validated does not
 mean deployed or production-ready. [Release evidence](release-evidence.md) owns the current build,
-push, deployment, smoke-test, and release status.
+local verification and the withdrawal status of the earlier unwanted publication. A historical
+hosted artifact does not change the current local-only instruction.
 
 ## System map
 
@@ -55,7 +57,8 @@ push, deployment, smoke-test, and release status.
 | Billing and access | Polar for web; native stores through RevenueCat | `packages/billing` |
 | AI assistant | AI SDK 7 target, provider-neutral Pisto tools; not installed | `docs/ai-assistant.md` and ADR 0009 |
 | Voice | Push-to-talk first; ElevenLabs evaluated but not selected or installed | `docs/voice-architecture.md` |
-| Initial hosting | Vercel adapter for the same Hono API and Expo single-page export; Neon PostgreSQL | ADR 0017, `vercel.json`, `api/server.ts`, and release evidence |
+| Current environment | Local Expo, Bun/Hono API, and Docker PostgreSQL 18 | Local configuration, `compose.yaml`, and release evidence |
+| Future hosting | Undecided; publication is not authorized | ADR 0017 and a future explicit hosting decision |
 | Portable runtime | Bun/Hono Docker image; Cloud Run remains a reference deployment | Dockerfile and reviewed deployment configuration |
 
 ## Reading order

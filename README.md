@@ -13,7 +13,8 @@ mature platform or library capabilities.
 The active product direction is an AI-native operating assistant for Spanish-speaking entrepreneurs.
 What exists today is the structured manual path: sales with void/replacement correction, catalog,
 inventory movements, expenses, cash accounts and movements, and customers and receivables, all
-reachable from an `/operate` module hub. No AI dependency is installed in any manifest, so there is
+reachable from an `/operate` module hub, alongside sale history and exact operating reports.
+No AI dependency is installed in any manifest, so there is
 no conversational or voice sale path yet, and `/dashboard` is only a redirect into `/operate`. Start
 with [the documentation map](docs/README.md) and the
 [product capability architecture](docs/product-capability-architecture.md) before adding a module or
@@ -21,9 +22,12 @@ changing navigation.
 
 The 2026-09-10 delivery audit documents the [functional and nonfunctional requirements](docs/product-requirements.md),
 [view/component specifications](docs/ux-requirements.md), and [normalized data model](docs/data-model.md).
-The selected deployment uses standard PostgreSQL on Neon and a narrow web/API hosting adapter;
-the Docker API and ordinary Expo web artifacts remain portable. See the [audit](docs/audit-2026-09-10.md)
-and [release evidence](docs/release-evidence.md) for actual validation, published URLs and remaining gates.
+The current environment is local only: Expo, Bun/Hono, and PostgreSQL 18 in Docker. Hosting is
+undecided and publication is not authorized. Neon remains an optional future PostgreSQL preference;
+the application does not need it to run. The Docker API and ordinary Expo web artifacts remain
+portable. See [ADR 0017](docs/adrs/0017-portable-postgres-and-hosting.md), the
+[audit](docs/audit-2026-09-10.md), and [release evidence](docs/release-evidence.md) for local validation,
+the withdrawal status of the earlier unwanted publication, and remaining gates.
 
 ## What it looks like
 

@@ -154,18 +154,21 @@ second maintained value, reconciliation, and recovery obligations; current evide
 that change. No generic read-model package, background projection worker, or materialized view is
 added by this audit.
 
-## PostgreSQL portability and Neon
+## Local PostgreSQL and portability
 
-Neon is the selected managed PostgreSQL host. Keep `postgres`/postgres-js and Drizzle as the runtime
-and schema boundary. The domain depends on PostgreSQL transactions, constraints, SQL, and
-transaction-scoped advisory locks, not a Neon SDK, HTTP database API, branch API, or identity service.
-Use a direct database endpoint for migrations and a separately configured runtime connection with
-TLS and a bounded pool. Pooler compatibility, restore evidence, timeout behavior, and connection
-budgets must be verified for the actual environment before deployment.
+The active runtime and tests use local PostgreSQL 18. The owner's latest instruction is local-only;
+Neon is an optional future database preference, not the selected runtime. Keep postgres-js and
+Drizzle as the runtime/schema boundary. The domain depends on PostgreSQL transactions, constraints,
+SQL, and transaction-scoped advisory locks, not a Neon SDK, HTTP database API, branch API, or identity
+service. [ADR 0017](adrs/0017-portable-postgres-and-hosting.md) records the corrected scope.
 
-Committed SQL migrations and standard PostgreSQL backup/restore are the exit path. Neon projects,
+Committed SQL migrations and standard PostgreSQL backup/restore preserve the exit path. Local
+migrations use a direct local endpoint and tests must verify the target before mutating it. Any
+future shared database requires a separate runtime connection with TLS and a bounded pool, tested
+pooler behavior, restore evidence, and reviewed timeouts/connection budgets. Provider projects,
 branches, and credentials remain operational configuration; provider IDs do not enter canonical
-business tables. Local PostgreSQL integration tests remain required even when Neon is the host.
+business tables. The prior Neon-to-local restore is historical portability evidence in
+[Release evidence](release-evidence.md), not authorization to use Neon for current work.
 
 ## Next bounded changes and unresolved rules
 

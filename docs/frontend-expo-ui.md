@@ -14,10 +14,12 @@ marketing/content has materially different SEO, CMS, server-rendering, content-d
 needs; do not force the product client to become a general content site or add a second frontend
 without that requirement. See [Web deployment](web-deployment.md#public-website-boundary).
 
-The selected web adapter exports this same client as an Expo single-page application
-(`web.output: single`). Vercel routing serves deep links through Expo Router and sends API/auth
-requests to the shared Hono runtime under one browser origin. No second frontend or Vercel domain
-SDK is introduced; see [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
+The client runs locally with Expo and the local Bun/Hono API. Its portable web export is a
+single-page application (`web.output: single`); an export is not a publication. A future static host
+would need deep-link routing through Expo Router and correct asset responses, but no hosting provider
+or provider-specific runtime adapter is selected or required. See
+[ADR 0017](adrs/0017-portable-postgres-and-hosting.md) and the
+[local web workflow](web-deployment.md#current-local-workflow).
 
 ## Route model
 

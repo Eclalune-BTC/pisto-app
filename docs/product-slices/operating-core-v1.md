@@ -268,10 +268,12 @@ conversation remain separate future capabilities.
   responsive loading/empty/error/denied states, keyboard/accessibility checks, and independent review.
 - `bun run check`, build, migration consistency, PostgreSQL 18 integration, web browser, and available
   native checks must be recorded separately. Local validation does not establish device or hosted
-  acceptance. The owner authorized the initial portable Neon/Vercel deployment in
-  [ADR 0017](../adrs/0017-portable-postgres-and-hosting.md); actual results belong in
-  [Release evidence](../release-evidence.md). Store submission and completion of the assistant/voice
-  acceptance contract remain separate gates.
+  acceptance. The owner's latest instruction requires local Expo, Bun/Hono, and PostgreSQL 18 only;
+  hosting is undecided and publication is not authorized. The revised
+  [ADR 0017](../adrs/0017-portable-postgres-and-hosting.md) records this scope, and
+  [Release evidence](../release-evidence.md) owns local results and withdrawal of the earlier
+  unwanted publication. Store submission and completion of the assistant/voice acceptance contract
+  remain separate gates.
 
 ## Sources
 
