@@ -415,6 +415,8 @@ export const esSV = {
     },
     remote: {
       unavailable: "No pudimos consultar la información del efectivo. Intenta nuevamente.",
+      requestedAccountUnavailable:
+        "La cuenta indicada no existe o está archivada. Regresa a Efectivo para elegir otra cuenta.",
       mutationFallback: "Revisa los datos e intenta nuevamente.",
     },
     effects: {

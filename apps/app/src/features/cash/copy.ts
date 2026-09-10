@@ -256,6 +256,7 @@ export function buildCashCopy(t: TFunction) {
       offline: t("remote.offlineLoad"),
       staleMutation: t("remote.staleMutation"),
       unavailable: t("cash.remote.unavailable"),
+      requestedAccountUnavailable: t("cash.remote.requestedAccountUnavailable"),
     },
     transfer,
   };

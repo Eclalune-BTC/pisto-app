@@ -101,6 +101,10 @@ describe("operating report screen state", () => {
   });
 
   test("marks a report that could not be refreshed as stale", () => {
+    expect(screenState({ businesses: businessesQuery({ fetchStatus: "paused" }) })).toMatchObject({
+      isStale: true,
+      kind: "ready",
+    });
     expect(screenState({ report: reportQuery({ data: { report }, isError: true }) })).toEqual({
       isStale: true,
       kind: "ready",

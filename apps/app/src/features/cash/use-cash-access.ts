@@ -2,6 +2,7 @@ import type { BusinessPermission } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
 
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { queryHasStaleData } from "./remote-state";
 
 type Capability = "cash" | "expenses";
 
@@ -21,6 +22,6 @@ export function useCashAccess(capability: Capability) {
     businesses,
     canManage: effectivePermissions.includes(capabilityPermissions.manage),
     canRead: effectivePermissions.includes(capabilityPermissions.read),
-    isStale: businesses.isError && businesses.data !== undefined,
+    isStale: queryHasStaleData(businesses),
   };
 }

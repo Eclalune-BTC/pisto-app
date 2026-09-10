@@ -12,7 +12,10 @@ export function QueryProvider({ children }: PropsWithChildren) {
   // Each identity owns a fresh cache; AuthenticatedLayout keys the account
   // subtree too, while the root navigator remains mounted.
   const scope = useMemo(
-    () => createSessionQueryClient(() => refetch({ query: { disableCookieCache: true } })),
+    () => ({
+      identity,
+      ...createSessionQueryClient(() => refetch({ query: { disableCookieCache: true } })),
+    }),
     [identity, refetch],
   );
   useEffect(() => {

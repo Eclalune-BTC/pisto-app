@@ -32,9 +32,7 @@ export function reportsScreenState(input: {
   if (remoteState.kind !== "ready") return remoteState;
   if (!input.report.data) return { kind: "loading" };
   return {
-    isStale:
-      (input.businesses.isError && input.businesses.data !== undefined) ||
-      queryHasStaleData(input.report),
+    isStale: queryHasStaleData(input.businesses) || queryHasStaleData(input.report),
     kind: "ready",
     report: input.report.data.report,
   };

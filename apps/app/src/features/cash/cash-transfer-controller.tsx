@@ -1,12 +1,12 @@
 import type { CashAccount } from "@pisto/contracts";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
-import { isAmbiguousMutationError } from "@/lib/api-error";
+import { ApiClientError, isAmbiguousMutationError } from "@/lib/api-error";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "./api";
@@ -19,7 +19,11 @@ import { buildCashCopy, cashIssueMessage } from "./copy";
 import { buildCashTransferCommand } from "./drafts";
 import { invalidateCashLedger } from "./invalidate";
 import { cashConfirmationState } from "./mutation-state";
-import { activeCashAccountsInfiniteOptions, flattenPages } from "./queries";
+import {
+  activeCashAccountsInfiniteOptions,
+  cashAccountQueryOptions,
+  flattenPages,
+} from "./queries";
 import { featureRemoteState, queryHasStaleData } from "./remote-state";
 import { useCashAccess } from "./use-cash-access";
 
@@ -45,7 +49,17 @@ export function CashTransferController() {
     ...activeCashAccountsInfiniteOptions(businessId),
     enabled: Boolean(business && canRead),
   });
-  const accounts = flattenPages(accountsQuery.data);
+  const requestedAccount = useQuery({
+    ...cashAccountQueryOptions(businessId, requestedFromAccount ?? "missing"),
+    enabled: Boolean(business && canRead && requestedFromAccount),
+  });
+  const listedAccounts = flattenPages(accountsQuery.data);
+  const accounts = requestedAccount.data
+    ? [
+        requestedAccount.data.account,
+        ...listedAccounts.filter(({ id }) => id !== requestedFromAccount),
+      ]
+    : listedAccounts;
   const [draft, setDraft] = useState<CashTransferDraft>({
     amount: "",
     fromAccountId: requestedFromAccount ?? "",
@@ -74,9 +88,7 @@ export function CashTransferController() {
     if (command) return;
     const first = accounts[0];
     if (!first) return;
-    const from = accounts.some(({ id }) => id === draft.fromAccountId)
-      ? draft.fromAccountId
-      : first.id;
+    const from = draft.fromAccountId || first.id;
     const to = accounts.some(({ id }) => id === draft.toAccountId && id !== from)
       ? draft.toAccountId
       : (accounts.find(({ id }) => id !== from)?.id ?? "");
@@ -100,12 +112,28 @@ export function CashTransferController() {
     businessPending: businesses.isPending,
     canRead,
     offlineMessage: copy.remote.offline,
-    queries: [businesses, ...(canRead ? [accountsQuery] : [])],
+    queries: [
+      businesses,
+      ...(canRead ? [accountsQuery, ...(requestedFromAccount ? [requestedAccount] : [])] : []),
+    ],
     unavailableMessage: copy.remote.unavailable,
   });
-  const stale = accessIsStale || queryHasStaleData(accountsQuery);
+  const stale =
+    accessIsStale ||
+    queryHasStaleData(accountsQuery) ||
+    (Boolean(requestedFromAccount) && queryHasStaleData(requestedAccount));
   if (remoteState.kind === "ready" && stale) {
     remoteState = { kind: "error", message: copy.remote.staleMutation };
+  }
+  if (
+    remoteState.kind !== "denied" &&
+    !command &&
+    requestedFromAccount &&
+    (requestedAccount.data?.account.status === "archived" ||
+      (requestedAccount.error instanceof ApiClientError &&
+        requestedAccount.error.code === "NOT_FOUND"))
+  ) {
+    remoteState = { kind: "error", message: copy.remote.requestedAccountUnavailable };
   }
 
   const prepareReview = () => {
@@ -178,7 +206,13 @@ export function CashTransferController() {
       }}
       onLoadMoreAccounts={() => void accountsQuery.fetchNextPage()}
       onPrepareReview={prepareReview}
-      onRetry={() => void Promise.all([businesses.refetch(), accountsQuery.refetch()])}
+      onRetry={() =>
+        void Promise.all([
+          businesses.refetch(),
+          accountsQuery.refetch(),
+          ...(requestedFromAccount ? [requestedAccount.refetch()] : []),
+        ])
+      }
       remoteState={remoteState}
       reviewAccounts={reviewAccounts}
       stage={command ? "review" : "edit"}

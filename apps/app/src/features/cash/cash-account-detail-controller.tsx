@@ -1,3 +1,4 @@
+import type { CashMovement } from "@pisto/contracts";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
@@ -43,7 +44,11 @@ export function CashAccountDetailController() {
     enabled: Boolean(business && canRead && accountId),
   });
   const movements = flattenPages(movementsQuery.data);
-  const [selectedMovementId, setSelectedMovementId] = useState<string>();
+  const [selection, setSelection] = useState<{
+    accountId: string;
+    businessId: string;
+    movement: CashMovement;
+  }>();
   const [stage, setStage] = useState<"detail" | "archive-review">("detail");
   const [archiveCommand, setArchiveCommand] = useState<
     Parameters<typeof cashApi.accounts.archive>[1] | null
@@ -81,7 +86,10 @@ export function CashAccountDetailController() {
   const stale =
     accessIsStale || queryHasStaleData(accountQuery) || queryHasStaleData(movementsQuery);
   const account = accountQuery.data?.account ?? null;
-  const selectedMovement = movements.find(({ id }) => id === selectedMovementId);
+  const selectedMovement =
+    selection?.businessId === businessId && selection.accountId === accountId
+      ? selection.movement
+      : undefined;
 
   if (selectedMovement && account && business) {
     return (
@@ -92,7 +100,7 @@ export function CashAccountDetailController() {
         isStale={stale}
         movement={selectedMovement}
         movements={movements}
-        onBack={() => setSelectedMovementId(undefined)}
+        onBack={() => setSelection(undefined)}
         onRetry={() => {
           void Promise.all([
             businesses.refetch(),
@@ -149,7 +157,10 @@ export function CashAccountDetailController() {
         })
       }
       onLoadMoreMovements={() => void movementsQuery.fetchNextPage()}
-      onOpenMovement={setSelectedMovementId}
+      onOpenMovement={(movementId) => {
+        const movement = movements.find(({ id }) => id === movementId);
+        if (movement && accountId) setSelection({ businessId, accountId, movement });
+      }}
       onRecordAdjustment={() =>
         router.push({ pathname: "/operate/cash/adjustments/new", params: { accountId } })
       }
