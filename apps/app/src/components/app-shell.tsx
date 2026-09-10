@@ -60,9 +60,10 @@ export function AppShell({ children, email, name }: AppShellProps) {
         {isWeb ? (
           <ScrollView
             accessibilityLabel={t("shell.primaryNavigation")}
-            className="hidden w-[272px] shrink-0 grow-0 bg-ink lg:flex"
+            className="hidden bg-ink lg:flex"
             contentContainerClassName="min-h-full justify-between gap-8 px-6 py-7"
             role="navigation"
+            style={{ width: 272, flexGrow: 0, flexShrink: 0 }}
           >
             <View className="gap-10">
               <View className="px-2">
