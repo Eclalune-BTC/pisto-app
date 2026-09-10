@@ -16,13 +16,16 @@ export function useCategoriesQuery(input: {
     enabled: input.enabled,
     getNextPageParam: (lastPage: CategoryListResponse["data"]) => lastPage.nextCursor,
     initialPageParam: null as string | null,
-    queryFn: ({ pageParam }): Promise<CategoryListResponse["data"]> =>
-      catalogApi.categories.list({
-        ...(pageParam ? { cursor: pageParam } : {}),
-        ...(search ? { search } : {}),
-        limit: input.limit ?? 25,
-        status: input.status,
-      }),
+    queryFn: ({ pageParam, signal }): Promise<CategoryListResponse["data"]> =>
+      catalogApi.categories.list(
+        {
+          ...(pageParam ? { cursor: pageParam } : {}),
+          ...(search ? { search } : {}),
+          limit: input.limit ?? 25,
+          status: input.status,
+        },
+        signal,
+      ),
     queryKey: catalogInventoryQueryKeys.categories(input.businessId, {
       search,
       status: input.status,
@@ -43,14 +46,17 @@ export function useProductsQuery(input: {
     enabled: input.enabled,
     getNextPageParam: (lastPage: ProductListResponse["data"]) => lastPage.nextCursor,
     initialPageParam: null as string | null,
-    queryFn: ({ pageParam }): Promise<ProductListResponse["data"]> =>
-      catalogApi.products.list({
-        ...(input.categoryId ? { categoryId: input.categoryId } : {}),
-        ...(pageParam ? { cursor: pageParam } : {}),
-        ...(search ? { search } : {}),
-        limit: input.limit ?? 25,
-        status: input.status,
-      }),
+    queryFn: ({ pageParam, signal }): Promise<ProductListResponse["data"]> =>
+      catalogApi.products.list(
+        {
+          ...(input.categoryId ? { categoryId: input.categoryId } : {}),
+          ...(pageParam ? { cursor: pageParam } : {}),
+          ...(search ? { search } : {}),
+          limit: input.limit ?? 25,
+          status: input.status,
+        },
+        signal,
+      ),
     queryKey: catalogInventoryQueryKeys.products(input.businessId, {
       categoryId: input.categoryId,
       search,
@@ -66,7 +72,7 @@ export function useProductQuery(input: {
 }) {
   return useQuery({
     enabled: input.enabled && Boolean(input.productId),
-    queryFn: () => catalogApi.products.get(input.productId as string),
+    queryFn: ({ signal }) => catalogApi.products.get(input.productId as string, signal),
     queryKey: catalogInventoryQueryKeys.product(input.businessId, input.productId),
   });
 }

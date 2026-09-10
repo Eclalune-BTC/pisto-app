@@ -39,19 +39,19 @@ export const receivableCashAccountKeys = {
 };
 
 export const receivableCashAccountSource = {
-  list: (input: { cursor?: string; status: "active" | "all" }) => {
+  list: (input: { cursor?: string; status: "active" | "all" }, signal?: AbortSignal) => {
     const params = new URLSearchParams({ limit: "50", status: input.status });
     if (input.cursor) params.set("cursor", input.cursor);
     return apiRequest<CashAccountChoicesResponse, CashAccountChoicesResponse["data"]>(
       `/v1/cash/accounts?${params.toString()}`,
-      { authenticated: true },
+      { authenticated: true, signal },
       cashAccountChoicesResponseSchema,
     );
   },
-  get: (accountId: string) =>
+  get: (accountId: string, signal?: AbortSignal) =>
     apiRequest<CashAccountChoiceDetailResponse, CashAccountChoiceDetailResponse["data"]>(
       `/v1/cash/accounts/${encodeURIComponent(accountId)}`,
-      { authenticated: true },
+      { authenticated: true, signal },
       cashAccountChoiceDetailResponseSchema,
     ),
 } as const;
@@ -59,7 +59,7 @@ export const receivableCashAccountSource = {
 export function cashAccountDetailQueryOptions(businessId: string, accountId: string) {
   return queryOptions({
     queryKey: receivableCashAccountKeys.detail(businessId, accountId),
-    queryFn: () => receivableCashAccountSource.get(accountId),
+    queryFn: ({ signal }) => receivableCashAccountSource.get(accountId, signal),
   });
 }
 
@@ -70,8 +70,8 @@ export function cashAccountChoicesQueryOptions(
   return infiniteQueryOptions({
     initialPageParam: null as string | null,
     queryKey: receivableCashAccountKeys.list(businessId, status),
-    queryFn: ({ pageParam }) =>
-      receivableCashAccountSource.list({ cursor: pageParam ?? undefined, status }),
+    queryFn: ({ pageParam, signal }) =>
+      receivableCashAccountSource.list({ cursor: pageParam ?? undefined, status }, signal),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 }

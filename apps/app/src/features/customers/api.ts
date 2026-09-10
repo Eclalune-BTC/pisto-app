@@ -29,16 +29,16 @@ function encodeQuery(query: ListCustomersQuery): string {
 }
 
 export const customersApi = {
-  list: (query: ListCustomersQuery) =>
+  list: (query: ListCustomersQuery, signal?: AbortSignal) =>
     apiRequest<CustomersResponse, CustomersResponse["data"]>(
       `/v1/customers?${encodeQuery(query)}`,
-      { authenticated: true },
+      { authenticated: true, signal },
       customersResponseSchema,
     ),
-  get: (customerId: string) =>
+  get: (customerId: string, signal?: AbortSignal) =>
     apiRequest<CustomerDetailResponse, CustomerDetailResponse["data"]>(
       `/v1/customers/${encodeURIComponent(customerId)}`,
-      { authenticated: true },
+      { authenticated: true, signal },
       customerDetailResponseSchema,
     ),
   create: (command: CreateCustomerRequest) =>

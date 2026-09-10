@@ -20,7 +20,8 @@ export const saleQueryKeys = {
 export function salesInfiniteOptions(businessId: string, status: SaleStatusFilter) {
   return infiniteQueryOptions({
     initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => api.sales.list({ cursor: pageParam, limit: pageSize, status }),
+    queryFn: ({ pageParam, signal }) =>
+      api.sales.list({ cursor: pageParam, limit: pageSize, status }, signal),
     queryKey: saleQueryKeys.list(businessId, status),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
@@ -28,14 +29,14 @@ export function salesInfiniteOptions(businessId: string, status: SaleStatusFilte
 
 export function saleQueryOptions(businessId: string, saleId: string) {
   return queryOptions({
-    queryFn: () => api.sales.get(saleId),
+    queryFn: ({ signal }) => api.sales.get(saleId, signal),
     queryKey: saleQueryKeys.detail(businessId, saleId),
   });
 }
 
 export function previousMonthSummaryQueryOptions(businessId: string) {
   return queryOptions({
-    queryFn: api.sales.previousMonthSummary,
+    queryFn: ({ signal }) => api.sales.previousMonthSummary(signal),
     queryKey: saleQueryKeys.previousMonthSummary(businessId),
   });
 }

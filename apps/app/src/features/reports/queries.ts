@@ -12,7 +12,7 @@ export const reportsQueryKeys = {
 
 export function operatingReportQueryOptions(businessId: string, range: OperatingReportQuery) {
   return queryOptions({
-    queryFn: () => reportsApi.operating(range),
+    queryFn: ({ signal }) => reportsApi.operating(range, signal),
     queryKey: reportsQueryKeys.operatingRange(businessId, range),
   });
 }

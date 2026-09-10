@@ -21,13 +21,16 @@ export function receivablesQueryOptions(businessId: string, filters: ReceivableL
   return infiniteQueryOptions({
     initialPageParam: null as string | null,
     queryKey: receivableQueryKeys.list(businessId, filters),
-    queryFn: ({ pageParam }) =>
-      receivablesApi.list({
-        cursor: pageParam ?? undefined,
-        customerId: filters.customerId,
-        limit: 25,
-        state: filters.state,
-      }),
+    queryFn: ({ pageParam, signal }) =>
+      receivablesApi.list(
+        {
+          cursor: pageParam ?? undefined,
+          customerId: filters.customerId,
+          limit: 25,
+          state: filters.state,
+        },
+        signal,
+      ),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 }
@@ -35,13 +38,13 @@ export function receivablesQueryOptions(businessId: string, filters: ReceivableL
 export function receivableDetailQueryOptions(businessId: string, receivableId: string) {
   return queryOptions({
     queryKey: receivableQueryKeys.detail(businessId, receivableId),
-    queryFn: () => receivablesApi.get(receivableId),
+    queryFn: ({ signal }) => receivablesApi.get(receivableId, signal),
   });
 }
 
 export function receivablesSummaryQueryOptions(businessId: string) {
   return queryOptions({
     queryKey: receivableQueryKeys.summary(businessId),
-    queryFn: receivablesApi.summary,
+    queryFn: ({ signal }) => receivablesApi.summary(signal),
   });
 }

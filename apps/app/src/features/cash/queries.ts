@@ -45,7 +45,8 @@ export function cashAccountsInfiniteOptions(
 ) {
   return infiniteQueryOptions({
     initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => cashApi.accounts.list({ cursor: pageParam, limit, status }),
+    queryFn: ({ pageParam, signal }) =>
+      cashApi.accounts.list({ cursor: pageParam, limit, status }, signal),
     queryKey: cashQueryKeys.accountList(businessId, status),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
@@ -57,7 +58,7 @@ export function activeCashAccountsInfiniteOptions(businessId: string) {
 
 export function cashAccountQueryOptions(businessId: string, accountId: string) {
   return queryOptions({
-    queryFn: () => cashApi.accounts.get(accountId),
+    queryFn: ({ signal }) => cashApi.accounts.get(accountId, signal),
     queryKey: cashQueryKeys.account(businessId, accountId),
   });
 }
@@ -65,8 +66,8 @@ export function cashAccountQueryOptions(businessId: string, accountId: string) {
 export function cashMovementsInfiniteOptions(businessId: string, accountId?: string) {
   return infiniteQueryOptions({
     initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) =>
-      cashApi.movements.list({ accountId, cursor: pageParam, limit: pageSize }),
+    queryFn: ({ pageParam, signal }) =>
+      cashApi.movements.list({ accountId, cursor: pageParam, limit: pageSize }, signal),
     queryKey: cashQueryKeys.movementList(businessId, accountId),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
@@ -82,8 +83,8 @@ export function expensesInfiniteOptions(
 ) {
   return infiniteQueryOptions({
     initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) =>
-      cashApi.expenses.list({ ...filters, cursor: pageParam, limit: pageSize }),
+    queryFn: ({ pageParam, signal }) =>
+      cashApi.expenses.list({ ...filters, cursor: pageParam, limit: pageSize }, signal),
     queryKey: expenseQueryKeys.list(businessId, filters),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
@@ -91,7 +92,7 @@ export function expensesInfiniteOptions(
 
 export function expenseQueryOptions(businessId: string, expenseId: string) {
   return queryOptions({
-    queryFn: () => cashApi.expenses.get(expenseId),
+    queryFn: ({ signal }) => cashApi.expenses.get(expenseId, signal),
     queryKey: expenseQueryKeys.detail(businessId, expenseId),
   });
 }
@@ -102,7 +103,7 @@ export function expenseSummaryQueryOptions(
   endLocalDate: string,
 ) {
   return queryOptions({
-    queryFn: () => cashApi.expenses.summary({ startLocalDate, endLocalDate }),
+    queryFn: ({ signal }) => cashApi.expenses.summary({ startLocalDate, endLocalDate }, signal),
     queryKey: expenseQueryKeys.summary(businessId, startLocalDate, endLocalDate),
   });
 }

@@ -16,13 +16,16 @@ export function useStockQuery(input: {
     enabled: input.enabled,
     getNextPageParam: (lastPage: StockListResponse["data"]) => lastPage.nextCursor,
     initialPageParam: null as string | null,
-    queryFn: ({ pageParam }): Promise<StockListResponse["data"]> =>
-      inventoryApi.listStock({
-        ...(pageParam ? { cursor: pageParam } : {}),
-        ...(search ? { search } : {}),
-        limit: input.limit ?? 25,
-        lowStockOnly: input.lowStockOnly,
-      }),
+    queryFn: ({ pageParam, signal }): Promise<StockListResponse["data"]> =>
+      inventoryApi.listStock(
+        {
+          ...(pageParam ? { cursor: pageParam } : {}),
+          ...(search ? { search } : {}),
+          limit: input.limit ?? 25,
+          lowStockOnly: input.lowStockOnly,
+        },
+        signal,
+      ),
     queryKey: catalogInventoryQueryKeys.stock(input.businessId, {
       lowStockOnly: input.lowStockOnly,
       search,
@@ -40,11 +43,15 @@ export function useMovementsQuery(input: {
     enabled: input.enabled && Boolean(input.productId),
     getNextPageParam: (lastPage: InventoryMovementListResponse["data"]) => lastPage.nextCursor,
     initialPageParam: null as string | null,
-    queryFn: ({ pageParam }): Promise<InventoryMovementListResponse["data"]> =>
-      inventoryApi.listMovements(input.productId as string, {
-        ...(pageParam ? { cursor: pageParam } : {}),
-        limit: input.limit ?? 25,
-      }),
+    queryFn: ({ pageParam, signal }): Promise<InventoryMovementListResponse["data"]> =>
+      inventoryApi.listMovements(
+        input.productId as string,
+        {
+          ...(pageParam ? { cursor: pageParam } : {}),
+          limit: input.limit ?? 25,
+        },
+        signal,
+      ),
     queryKey: catalogInventoryQueryKeys.movements(input.businessId, input.productId),
   });
 }

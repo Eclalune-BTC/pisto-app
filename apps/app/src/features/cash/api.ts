@@ -65,16 +65,16 @@ function pathWithQuery(path: `/${string}`, query: Record<string, unknown>): `/${
 
 export const cashApi = {
   accounts: {
-    list: (query: CashAccountListQuery = {}) =>
+    list: (query: CashAccountListQuery = {}, signal?: AbortSignal) =>
       apiRequest<CashAccountListResponse, CashAccountListResponse["data"]>(
         pathWithQuery("/v1/cash/accounts", query),
-        { authenticated: true },
+        { authenticated: true, signal },
         cashAccountListResponseSchema,
       ),
-    get: (accountId: string) =>
+    get: (accountId: string, signal?: AbortSignal) =>
       apiRequest<CashAccountDetailResponse, CashAccountDetailResponse["data"]>(
         `/v1/cash/accounts/${encodeURIComponent(accountId)}`,
-        { authenticated: true },
+        { authenticated: true, signal },
         cashAccountDetailResponseSchema,
       ),
     create: (command: CreateCashAccountRequest) =>
@@ -109,10 +109,10 @@ export const cashApi = {
       ),
   },
   movements: {
-    list: (query: CashMovementListQuery = {}) =>
+    list: (query: CashMovementListQuery = {}, signal?: AbortSignal) =>
       apiRequest<CashMovementListResponse, CashMovementListResponse["data"]>(
         pathWithQuery("/v1/cash/movements", query),
-        { authenticated: true },
+        { authenticated: true, signal },
         cashMovementListResponseSchema,
       ),
     recordAdjustment: (command: RecordCashAdjustmentRequest) =>
@@ -147,22 +147,22 @@ export const cashApi = {
       ),
   },
   expenses: {
-    list: (query: ExpenseListQuery = {}) =>
+    list: (query: ExpenseListQuery = {}, signal?: AbortSignal) =>
       apiRequest<ExpenseListResponse, ExpenseListResponse["data"]>(
         pathWithQuery("/v1/expenses", query),
-        { authenticated: true },
+        { authenticated: true, signal },
         expenseListResponseSchema,
       ),
-    get: (expenseId: string) =>
+    get: (expenseId: string, signal?: AbortSignal) =>
       apiRequest<ExpenseDetailResponse, ExpenseDetailResponse["data"]>(
         `/v1/expenses/${encodeURIComponent(expenseId)}`,
-        { authenticated: true },
+        { authenticated: true, signal },
         expenseDetailResponseSchema,
       ),
-    summary: (query: ExpensePeriodQuery) =>
+    summary: (query: ExpensePeriodQuery, signal?: AbortSignal) =>
       apiRequest<ExpensePeriodSummaryResponse, ExpensePeriodSummaryResponse["data"]>(
         pathWithQuery("/v1/expenses/summary", query),
-        { authenticated: true },
+        { authenticated: true, signal },
         expensePeriodSummaryResponseSchema,
       ),
     post: (command: PostExpenseRequest) =>

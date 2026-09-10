@@ -35,22 +35,22 @@ function encodeQuery(query: ListReceivablesQuery): string {
 }
 
 export const receivablesApi = {
-  list: (query: ListReceivablesQuery) =>
+  list: (query: ListReceivablesQuery, signal?: AbortSignal) =>
     apiRequest<ReceivablesResponse, ReceivablesResponse["data"]>(
       `/v1/receivables?${encodeQuery(query)}`,
-      { authenticated: true },
+      { authenticated: true, signal },
       receivablesResponseSchema,
     ),
-  summary: () =>
+  summary: (signal?: AbortSignal) =>
     apiRequest<ReceivablesSummaryResponse, ReceivablesSummaryResponse["data"]>(
       "/v1/receivables/summary",
-      { authenticated: true },
+      { authenticated: true, signal },
       receivablesSummaryResponseSchema,
     ),
-  get: (receivableId: string) =>
+  get: (receivableId: string, signal?: AbortSignal) =>
     apiRequest<ReceivableDetailResponse, ReceivableDetailResponse["data"]>(
       `/v1/receivables/${encodeURIComponent(receivableId)}`,
-      { authenticated: true },
+      { authenticated: true, signal },
       receivableDetailResponseSchema,
     ),
   post: (command: PostReceivableRequest) =>

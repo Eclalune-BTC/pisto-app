@@ -20,13 +20,16 @@ export function customersQueryOptions(businessId: string, filters: CustomerListF
   return infiniteQueryOptions({
     initialPageParam: null as string | null,
     queryKey: customerQueryKeys.list(businessId, filters),
-    queryFn: ({ pageParam }) =>
-      customersApi.list({
-        cursor: pageParam ?? undefined,
-        limit: 25,
-        query: filters.query || undefined,
-        status: filters.status,
-      }),
+    queryFn: ({ pageParam, signal }) =>
+      customersApi.list(
+        {
+          cursor: pageParam ?? undefined,
+          limit: 25,
+          query: filters.query || undefined,
+          status: filters.status,
+        },
+        signal,
+      ),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 }
@@ -34,6 +37,6 @@ export function customersQueryOptions(businessId: string, filters: CustomerListF
 export function customerDetailQueryOptions(businessId: string, customerId: string) {
   return queryOptions({
     queryKey: customerQueryKeys.detail(businessId, customerId),
-    queryFn: () => customersApi.get(customerId),
+    queryFn: ({ signal }) => customersApi.get(customerId, signal),
   });
 }

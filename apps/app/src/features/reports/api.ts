@@ -3,10 +3,10 @@ import { operatingReportResponseSchema } from "@pisto/contracts";
 import { apiRequest } from "@/lib/api-client";
 
 export const reportsApi = {
-  operating: (query: OperatingReportQuery) =>
+  operating: (query: OperatingReportQuery, signal?: AbortSignal) =>
     apiRequest<OperatingReportResponse, OperatingReportResponse["data"]>(
       `/v1/reports/operating?startLocalDate=${encodeURIComponent(query.startLocalDate)}&endLocalDate=${encodeURIComponent(query.endLocalDate)}`,
-      { authenticated: true },
+      { authenticated: true, signal },
       operatingReportResponseSchema,
     ),
 } as const;

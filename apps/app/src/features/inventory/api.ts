@@ -26,16 +26,16 @@ function queryString(query: Record<string, boolean | number | string | undefined
 }
 
 export const inventoryApi = {
-  listStock: (query: StockListQuery) =>
+  listStock: (query: StockListQuery, signal?: AbortSignal) =>
     apiRequest<StockListResponse, StockListResponse["data"]>(
       `/v1/inventory/stock${queryString(query)}`,
-      { authenticated: true },
+      { authenticated: true, signal },
       stockListResponseSchema,
     ),
-  listMovements: (productId: string, query: InventoryMovementListQuery) =>
+  listMovements: (productId: string, query: InventoryMovementListQuery, signal?: AbortSignal) =>
     apiRequest<InventoryMovementListResponse, InventoryMovementListResponse["data"]>(
       `/v1/inventory/products/${encodeURIComponent(productId)}/movements${queryString(query)}`,
-      { authenticated: true },
+      { authenticated: true, signal },
       inventoryMovementListResponseSchema,
     ),
   recordMovement: (productId: string, command: RecordInventoryMovementRequest) =>

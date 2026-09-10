@@ -39,10 +39,10 @@ function queryString(query: Record<string, boolean | number | string | undefined
 
 export const catalogApi = {
   categories: {
-    list: (query: CategoryListQuery) =>
+    list: (query: CategoryListQuery, signal?: AbortSignal) =>
       apiRequest<CategoryListResponse, CategoryListResponse["data"]>(
         `/v1/catalog/categories${queryString(query)}`,
-        { authenticated: true },
+        { authenticated: true, signal },
         categoryListResponseSchema,
       ),
     create: (command: CreateCategoryRequest) =>
@@ -77,16 +77,16 @@ export const catalogApi = {
       ),
   },
   products: {
-    list: (query: ProductListQuery) =>
+    list: (query: ProductListQuery, signal?: AbortSignal) =>
       apiRequest<ProductListResponse, ProductListResponse["data"]>(
         `/v1/catalog/products${queryString(query)}`,
-        { authenticated: true },
+        { authenticated: true, signal },
         productListResponseSchema,
       ),
-    get: (productId: string) =>
+    get: (productId: string, signal?: AbortSignal) =>
       apiRequest<ProductDetailResponse, ProductDetailResponse["data"]>(
         `/v1/catalog/products/${encodeURIComponent(productId)}`,
-        { authenticated: true },
+        { authenticated: true, signal },
         productDetailResponseSchema,
       ),
     create: (command: CreateProductRequest) =>
