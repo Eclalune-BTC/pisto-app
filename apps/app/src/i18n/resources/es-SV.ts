@@ -34,12 +34,11 @@ export const esSV = {
     createAccount: "Crear cuenta",
     eyebrow: "Control para negocios que están creciendo",
     title: "Registra lo que vendes. Entiende lo que pasó.",
-    description:
-      "Pisto empieza por una operación esencial: guardar ventas con contexto y convertirlas en un resumen mensual que sí puedes comprobar.",
+    description: "Registra las ventas de tu negocio y consulta un resumen mensual de sus ingresos.",
     setupBusiness: "Configurar mi negocio",
     existingAccount: "Ya tengo una cuenta",
     availableNow:
-      "Disponible ahora: ventas con corrección e historial, catálogo e inventario, gastos y efectivo, clientes y cuentas por cobrar, y reportes exactos. La utilidad, la voz y la IA todavía no forman parte de este incremento.",
+      "Lleva tus ventas, gastos y caja; organiza clientes e inventario y consulta reportes del negocio.",
     capabilities: {
       businessContext: {
         title: "Contexto de negocio",
@@ -106,8 +105,7 @@ export const esSV = {
   },
   remote: {
     offlineTitle: "Sin conexión",
-    offlineDescription:
-      "Conéctate a internet para consultar información actualizada. No mostramos datos inventados.",
+    offlineDescription: "Conéctate a internet para consultar información actualizada.",
     offlineLoad: "No hay conexión para cargar esta información.",
     stale: "Mostramos la última información disponible; no pudimos actualizarla todavía.",
     staleMutation:
@@ -143,12 +141,12 @@ export const esSV = {
     },
   },
   operate: {
-    loading: "Consultando los módulos de tu negocio…",
+    loading: "Consultando las operaciones de tu negocio…",
     unavailableTitle: "No pudimos abrir las operaciones",
     unavailableDescription:
-      "No mostramos módulos ni permisos inventados. Comprueba tu conexión y vuelve a intentarlo.",
+      "No pudimos comprobar tu acceso a las operaciones. Revisa tu conexión y vuelve a intentarlo.",
     description: "Elige una tarea para registrar o consultar información de este negocio.",
-    noAccessTitle: "No tienes módulos disponibles",
+    noAccessTitle: "No tienes acceso a estas operaciones",
     noAccessDescription:
       "Tu membresía no incluye permisos de lectura para estas operaciones. Pídele acceso a una persona administradora del negocio.",
     groups: {
@@ -195,7 +193,7 @@ export const esSV = {
   sales: {
     loading: "Consultando tus ventas…",
     unavailableTitle: "No pudimos consultar tus ventas",
-    unavailableDescription: "No mostramos cifras parciales ni inventadas. Vuelve a intentarlo.",
+    unavailableDescription: "No pudimos cargar los datos de tus ventas. Vuelve a intentarlo.",
     register: "Registrar venta",
     headerDescription: "Registra los ingresos de {{business}} y consulta resultados reales.",
     staleTitle: "Resumen sin actualizar",
@@ -213,7 +211,7 @@ export const esSV = {
     back: "Volver a ventas",
     newTitle: "Nueva venta",
     newDescription:
-      "Registra el total bruto de la venta. Los productos y el inventario no cambian en este incremento.",
+      "Registra el total bruto de la venta. Esta venta no modifica las existencias del inventario.",
     reviewEyebrow: "Revisión",
     reviewTitle: "Revisa antes de registrar",
     reviewDescription: "Confirma que el total y el momento de la venta sean correctos.",
@@ -239,7 +237,7 @@ export const esSV = {
       "El registro no se modificó. Vuelve a ventas o intenta consultar de nuevo.",
     goToSales: "Ir a ventas",
     resultEyebrow: "Venta registrada",
-    resultDescription: "Este es el registro canónico guardado por Pisto.",
+    resultDescription: "La venta se guardó correctamente.",
     posted: "Registrada",
     voided: "Anulada",
     registerAnother: "Registrar otra venta",
@@ -260,7 +258,7 @@ export const esSV = {
       replacementTotal: "Nuevo total",
       replacementIdentifier: "Venta de reemplazo",
       replacementTimeNote:
-        "Escribe la fecha y hora del reemplazo de forma explícita; Pisto no copiará silenciosamente las del registro original.",
+        "Indica la fecha y hora de la venta de reemplazo; pueden ser distintas de las del registro original.",
       review: "Revisar corrección",
       reviewTitle: "Revisa la corrección",
       reviewDescription:
@@ -271,7 +269,7 @@ export const esSV = {
       failed: "No pudimos guardar la corrección. El registro original no cambió.",
       unavailableTitle: "Esta venta no se puede corregir",
       unavailableDescription:
-        "Solo owner y admin pueden corregir una venta registrada, y cada venta puede corregirse una sola vez.",
+        "Solo las personas propietarias y administradoras pueden corregir una venta registrada. Cada venta puede corregirse una sola vez.",
     },
     list: {
       title: "Historial de ventas",
@@ -284,12 +282,11 @@ export const esSV = {
       loading: "Consultando el historial…",
       emptyTitle: "No hay ventas con este filtro",
       emptyDescription:
-        "La consulta funcionó y devolvió cero ventas. Cambia el filtro o registra una venta.",
+        "No hay ventas con el estado seleccionado. Cambia el filtro o registra una venta.",
       deniedTitle: "No puedes consultar el historial",
       deniedDescription: "Tu rol en este negocio no permite leer las ventas registradas.",
       unavailableTitle: "No pudimos cargar el historial",
-      unavailableDescription:
-        "No mostramos una lista vacía cuando la consulta falla. Vuelve a intentarlo.",
+      unavailableDescription: "No pudimos cargar las ventas. Vuelve a intentarlo.",
       voidReason: "Motivo",
       queriedAt: "Historial consultado el {{date}}",
     },
@@ -332,7 +329,7 @@ export const esSV = {
     title: "Acceso y pagos",
     description: "Consulta tu acceso y las opciones de compra disponibles para esta plataforma.",
     accessTitle: "Acceso actual",
-    accessChecking: "Pisto está comprobando el acceso guardado en el servidor.",
+    accessChecking: "Pisto está comprobando el acceso de tu cuenta.",
     accessError: "No pudimos verificar tu acceso. Pisto no asumirá que un plan está activo.",
     accessCount_one: "Encontramos un acceso activo para tu cuenta.",
     accessCount_other: "Encontramos {{count}} accesos activos para tu cuenta.",
@@ -346,7 +343,7 @@ export const esSV = {
     manage: "Administrar facturación",
     manageUnavailable: "Administración no disponible",
     webSubscription: "Suscripción web",
-    nativeAccess: "Acceso nativo",
+    nativeAccess: "Acceso en la app",
     unavailable: "Facturación no disponible",
     loadingPlan: "Consultando el plan",
     planUnavailable: "No pudimos consultar el plan",
@@ -354,23 +351,20 @@ export const esSV = {
     notConfigured: "Los pagos no están configurados",
     catalogError:
       "Pisto no pudo verificar el catálogo actual. Vuelve a intentarlo antes de tomar una decisión de compra.",
-    noPurchasablePlan: "El servidor no devolvió un plan que se pueda comprar.",
-    checkoutDisabled:
-      "El checkout web seguirá deshabilitado hasta configurar el catálogo de facturación.",
+    noPurchasablePlan: "No hay un plan que puedas comprar en este momento.",
+    checkoutDisabled: "Las compras desde la web no están disponibles en este momento.",
     retryPlan: "Volver a consultar",
     continueCheckout: "Continuar al pago seguro",
-    noCheckoutAction: "No hay una acción de compra disponible con el catálogo actual.",
-    checkoutSecurity:
-      "Pisto solo abre el checkout después de crear una sesión autenticada en el servidor.",
-    nativeDisabledTitle: "Las compras nativas no están habilitadas",
-    nativeDisabledDescription:
-      "Esta versión no abre un checkout externo. Primero debe conectarse un adaptador de App Store o Google Play.",
-    unresolvedTitle: "No se pudo resolver el adaptador de esta plataforma",
+    noCheckoutAction: "No hay una opción de compra disponible en este momento.",
+    checkoutSecurity: "Necesitas iniciar sesión para abrir el pago seguro de tu cuenta.",
+    nativeDisabledTitle: "Compras no disponibles en esta app",
+    nativeDisabledDescription: "Puedes consultar tu acceso, pero no realizar compras desde la app.",
+    unresolvedTitle: "Facturación no disponible en este dispositivo",
     unresolvedDescription:
-      "Las acciones de facturación permanecen deshabilitadas hasta corregir la configuración del build.",
+      "No puedes comprar ni administrar la facturación desde este dispositivo en este momento.",
     howTitle: "Cómo funciona la facturación",
     howDescription:
-      "En web, la API autenticada crea las sesiones de checkout o del portal. En iOS y Android, esta versión solo muestra un estado neutral hasta configurar compras dentro de la app.",
+      "Desde la web puedes consultar tu plan y, si están disponibles, abrir el pago o administrar la facturación. En iOS y Android puedes consultar tu acceso.",
     purchaseError:
       "No pudimos abrir el pago. Vuelve a intentarlo cuando la facturación esté disponible.",
     purchaseUnavailable: "Las compras todavía no están disponibles en esta plataforma.",
@@ -387,13 +381,12 @@ export const esSV = {
     returnDescription: {
       active: "El acceso más reciente ya está asociado con tu cuenta.",
       error:
-        "El checkout regresó de forma segura, pero no pudimos consultar los accesos. Pisto no asumirá que la compra fue exitosa.",
+        "Volviste del pago, pero no pudimos verificar tu acceso. Actualiza el estado antes de dar la compra por confirmada.",
       inactive:
-        "El servidor todavía no informa un acceso activo. Actualiza de nuevo o vuelve a facturación.",
-      pending:
-        "El checkout regresó de forma segura. Pisto está actualizando el estado guardado en el servidor.",
+        "Tu cuenta aún no tiene un acceso activo. Actualiza el estado o vuelve a facturación.",
+      pending: "Pisto está comprobando el estado de tu acceso después del pago.",
     },
-    returnReference: "Recibimos una referencia de regreso del checkout para esta actualización.",
+    returnReference: "Recibimos la referencia del pago para comprobar el estado de tu acceso.",
     back: "Volver a facturación",
     refresh: "Actualizar estado",
   },
@@ -539,7 +532,7 @@ export const esSV = {
       eyebrow: "Efectivo",
       title: "Transferir dinero",
       description:
-        "Mueve dinero entre dos cuentas del negocio como un par de movimientos atómicos.",
+        "Mueve dinero entre dos cuentas del negocio. La salida y la entrada se registran juntas.",
       reviewTitle: "Revisar transferencia",
       reviewDescription: "Comprueba ambas cuentas, el monto y la fecha antes de confirmar.",
       accountsUnavailableTitle: "Faltan cuentas activas",
@@ -774,7 +767,7 @@ export const esSV = {
     categories: {
       title: "Categorías",
       description:
-        "Organiza el catálogo sin borrar referencias históricas. Archivar no reactiva ni libera el mismo nombre en esta versión.",
+        "Organiza el catálogo y conserva su historial. Al archivar una categoría, su nombre sigue reservado y no puedes reactivarla.",
       create: "Nueva categoría",
       searchLabel: "Buscar categorías",
       searchPlaceholder: "Nombre de la categoría",
@@ -806,7 +799,7 @@ export const esSV = {
       confirmUpdate: "Confirmar cambio",
       archiveTitle: "Archivar categoría",
       archiveDescription:
-        "“{{name}}” dejará de estar disponible para productos nuevos. Los productos y referencias existentes se conservarán. No se puede reactivar en esta versión.",
+        "“{{name}}” dejará de estar disponible para productos nuevos. Los productos y referencias existentes se conservarán. No se puede reactivar.",
       confirmArchive: "Confirmar archivo",
       failedTitle: "No se guardó la categoría",
       uncertainDescription:
@@ -872,7 +865,7 @@ export const esSV = {
     },
     productDetail: {
       title: "Producto",
-      description: "Este es el registro canónico y su existencia derivada del historial.",
+      description: "Revisa los datos del producto y sus existencias registradas.",
       edit: "Editar producto",
       archive: "Archivar producto",
       status: "Estado",
@@ -899,7 +892,7 @@ export const esSV = {
       errorDescription: "No mostramos datos parciales como si fueran el registro actual.",
       archiveTitle: "Archivar este producto",
       archiveDescription:
-        "Dejará de aparecer en las listas activas y no aceptará cambios ni movimientos nuevos. Su historial se conservará. No se puede reactivar en esta versión.",
+        "Dejará de aparecer en las listas activas y no aceptará cambios ni movimientos nuevos. Su historial se conservará. No se puede reactivar.",
       confirmArchive: "Confirmar archivo",
       archiveFailedTitle: "No se archivó el producto",
       archiveFailedDescription:
@@ -1177,7 +1170,7 @@ export const esSV = {
       paymentHistory: "Historial de pagos",
       paymentsUnavailableTitle: "Pagos temporalmente deshabilitados",
       paymentsUnavailableDescription:
-        "Pisto habilitará pagos y reversiones cuando cada operación pueda actualizar la cuenta de efectivo de forma atómica. Los cargos y anulaciones siguen disponibles.",
+        "Los pagos y sus reversiones no están disponibles en este momento. Puedes registrar o anular cargos.",
       postedDate: "Fecha del cargo",
       reverse: "Revertir pago",
       reversedPayment: "Reversión de pago",
@@ -1252,8 +1245,7 @@ export const esSV = {
       activeCustomersTitle: "Selecciona un cliente activo",
       activeCustomersDescription: "Busca y elige el cliente que recibirá este cargo.",
       activeAccountsTitle: "Selecciona la cuenta que recibió el dinero",
-      activeAccountsDescription:
-        "Solo puedes elegir una cuenta de efectivo activa obtenida del servidor.",
+      activeAccountsDescription: "Solo puedes elegir una cuenta de efectivo activa.",
       loadMoreAccounts: "Cargar más cuentas",
       noAccounts: "No hay cuentas de efectivo activas disponibles.",
       noCustomers: "No hay clientes activos que coincidan con la búsqueda.",
