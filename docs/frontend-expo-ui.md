@@ -14,9 +14,14 @@ marketing/content has materially different SEO, CMS, server-rendering, content-d
 needs; do not force the product client to become a general content site or add a second frontend
 without that requirement. See [Web deployment](web-deployment.md#when-to-add-appssite).
 
+The selected web adapter exports this same client as an Expo single-page application
+(`web.output: single`). Vercel routing serves deep links through Expo Router and sends API/auth
+requests to the shared Hono runtime under one browser origin. No second frontend or Vercel domain
+SDK is introduced; see [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
+
 ## Route model
 
-`apps/app/src/app` currently contains 42 navigable routes plus a catch-all. The `Access` column names
+`apps/app/src/app` currently contains 43 navigable routes plus a catch-all. The `Access` column names
 the Pisto permission the API enforces for that screen's data; the screen hides or disables the action
 when the resolved business access lacks it. The complete route inventory is:
 
@@ -39,10 +44,11 @@ when the resolved business access lacks it. The complete route inventory is:
 | Route | Access | Purpose |
 | --- | --- | --- |
 | `/operate` | Authenticated | Module hub; lists only modules the current role can read |
-| `/operate/sales` | `sales:summary:read` | Previous-calendar-month sales summary |
+| `/operate/sales` | `sales:summary:read` for summary; `sales:read` for history | Previous-calendar-month summary and bounded, status-filtered sale history |
 | `/operate/sales/new` | `sales:create` | Total-only sale entry and review |
 | `/operate/sales/:saleId` | `sales:read` | Canonical sale result |
 | `/operate/sales/correct/:saleId` | `sales:correct` | Void or replacement review and confirmation |
+| `/operate/reports` | `reports:read` | Exact date-range operating facts and separately labeled current positions |
 | `/operate/expenses` | `expenses:read` | Expense period summary and list |
 | `/operate/expenses/new` | `expenses:manage` and `cash:manage` | Paid-expense entry and review |
 | `/operate/expenses/:expenseId` | `expenses:read`; void needs `expenses:manage` and `cash:manage` | Expense detail and void review |
@@ -79,13 +85,14 @@ redirects and permission-derived visibility are usability, not authorization.
 
 `owner`, `admin`, and `member` can all reach the sales routes except correction; `member` lacks
 `sales:correct`. `member` can also read catalog and stock but holds no expense, cash, customer, or
-receivable permission, so the `/operate` hub does not list those modules for it. See
+receivable or full-report permission, so the `/operate` hub does not list those modules for it. See
 [ADR 0014](adrs/0014-static-current-operation-permissions.md) for the full matrix, including why
 `admin` and `member` have no reachable actor today.
 
 The generic planning dashboard has been removed; `/dashboard` is a five-line redirect kept only for
 old links. Product navigation exposes `Operar` and `Cuenta`; `Operar` opens the `/operate` hub and
-billing remains secondary account context. There is no Assistant or Reports destination. Do not infer
+billing remains secondary account context. Reports is an Operate module at `/operate/reports`;
+Assistant has no destination. Do not infer
 future records, tabs, or workflows from the long-term capability map.
 
 ## Responsive shell
@@ -136,8 +143,9 @@ fork feature screens or business logic merely to change navigation chrome. See
 
 The current route composition is a session guard, required business setup/selection, a workspace
 layout containing only approved destinations, the `/operate` hub with its sales, expenses, cash,
-catalog, inventory, customers, and receivables routes, and secondary account/billing routes. Home,
-Reports, and Assistant are added only with real approved content, and none of the three exists.
+catalog, inventory, customers, receivables, and reports routes, and secondary account/billing routes.
+Home and Assistant remain absent until their approved content is implemented. Reports reuses the
+Operate navigation instead of adding a permanent top-level tab.
 
 ## Screen and action contract
 
@@ -237,6 +245,8 @@ validation alone does not prove the intended service was deployed.
   management. Include the application scheme (`pisto://`) in the server's exact trusted-origin list.
 - Clear account-specific caches when identity changes. Never let one user's billing state appear for
   another user after sign-out/sign-in.
+- Treat `RATE_LIMITED` and `WRITES_PAUSED` as explicit server failures. Do not show a committed result
+  or automatically replay a business mutation because the server paused or throttled it.
 
 ## Billing UI boundary
 
@@ -293,9 +303,9 @@ store sandbox; Expo Go preview alone is not purchase acceptance evidence.
 For material shell or route work, verify compact and wide web plus required native targets. Include
 nested-route active state, keyboard order, visible focus, one page heading, semantic landmarks,
 screen-reader names/states, safe-area behavior, and the documented loading/empty/error/disabled
-states. The implemented screens have automated component and state coverage, but no rendered
-responsive, physical-device, or screen-reader evidence is recorded for them. Treat these checks as
-outstanding implementation acceptance criteria, not as shipped claims.
+states. Automated component/state coverage does not establish rendered or device acceptance.
+[Release evidence](release-evidence.md) records the current browser checks and remaining physical-device
+and screen-reader checks; do not infer deployed behavior or platform parity from a successful build.
 
 ## Official sources
 

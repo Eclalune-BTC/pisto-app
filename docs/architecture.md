@@ -14,15 +14,15 @@ flowchart LR
   User[User]
   Web[Expo web app]
   Native[Expo iOS and Android app]
-  API[Hono API on Cloud Run]
+  API[Hono API / Vercel adapter or portable container]
   Auth[Better Auth]
   Billing[Billing and entitlement domain]
-  DB[(PostgreSQL / Cloud SQL)]
+  DB[(PostgreSQL / Neon)]
   Polar[Polar web billing]
   Stores[Apple App Store and Google Play]
   RC[RevenueCat]
-  Tasks[Cloud Tasks integration seam]
-  Storage[Cloud Storage integration seam]
+  Tasks[Future bounded-work adapter]
+  Storage[Future private-object adapter]
 
   User --> Web
   User --> Native
@@ -58,12 +58,12 @@ API owns authorization. A client assertion such as `isPro: true` is never truste
 Dependencies point inward toward contracts and domain packages. The API composes packages; packages
 do not import the API. The app may import public contracts, but never server implementations.
 
-The approved assistant architecture adds future sales and assistant domain packages only with the
-first implementation slice. The sales domain owns money rules, commands, queries, and audit without
-depending on AI SDK, Hono, or React. The assistant domain owns prompt versions, the provider/model
-registry, narrow tool selection, and bounded orchestration without owning SQL or business rules.
-The API remains their composition root. See [AI assistant architecture](ai-assistant.md); none of
-these future packages or capabilities exists in the current codebase.
+The implemented domain commands, queries, and audit live in `packages/db`, with public money and
+transport rules in `packages/contracts`. They do not depend on AI SDK, Hono, or React. A future
+assistant boundary will own prompt versions, provider/model selection, narrow tools, and bounded
+orchestration without owning SQL or business rules. The API remains the composition root. See
+[AI assistant architecture](ai-assistant.md); no assistant package or capability exists today, and
+an additional sales package is not required merely to expose existing commands to a future tool.
 
 All later product domains follow the capability slice contract in
 [Product capability architecture](product-capability-architecture.md) and
@@ -133,17 +133,20 @@ in Pisto-owned tables rather than auth metadata. See
 1. The client sends its Better Auth session using the platform-appropriate cookie mechanism.
 2. Hono applies request ID, logging, secure headers, CORS, and body-size controls.
 3. Better Auth resolves the session at `/api/auth/*` or an API auth guard resolves it for `/v1/*`.
-4. The route validates input using shared contracts.
-5. A repository performs bounded database work.
+4. Product middleware charges a server-resolved user budget in PostgreSQL and rejects business
+   writes when `PRODUCT_WRITES_ENABLED=false`; account/provider endpoints retain separate policy.
+5. The route validates input using shared contracts, and the repository rechecks the live session,
+   membership, and action permission before bounded database work.
 6. The API returns a typed response without internal exceptions, credentials, or provider payloads.
 
 ### Sale and report
 
 The structured total-only path through onboarding, review, confirmation, canonical result,
 previous-month summary, and transactional void/replacement correction is implemented in
-[Sales Increment 1](sales-increment-1.md). No sale list route exists yet, so correction is reachable
-only while a client still holds the sale identifier. The conversational path below remains approved
-but unimplemented.
+[Sales Increment 1](sales-increment-1.md). The bounded `GET /v1/sales` history exposes past sales and
+correction actions in `/operate/sales`. `GET /v1/reports/operating` supplies `/operate/reports` with
+exact period flows and current positions from one authorized read-only repeatable-read transaction.
+The conversational path below remains approved but unimplemented.
 
 1. The authenticated app submits text to a bounded assistant route; the API resolves the user and
    business instead of trusting either identifier from the client or model.
@@ -189,29 +192,33 @@ qualification.
 
 ### Asynchronous work and objects (integration seams)
 
-No Cloud Tasks queue, task handler, user-file feature, or Cloud Storage bucket is included. When
-those capabilities are added, the intended design is bounded idempotent work delivered to a private
-Cloud Run handler with Google OIDC, and direct object transfer using short-lived narrowly scoped
-signed URLs. API requests should not proxy large files unless a security requirement demands it.
+No queue, task handler, user-file feature, or object-storage adapter is included. A future slice must
+select and validate its provider boundary. The existing Google Cloud reference describes private
+OIDC-authenticated task handlers and short-lived signed object URLs; it does not require Google
+services for the selected Vercel/Neon deployment. API requests should not proxy large files unless a
+security requirement demands it.
 
 ## Runtime topology
 
 - Local: Bun processes plus PostgreSQL 18 in Docker Compose.
-- Target production API: one immutable Linux container revision on Cloud Run, listening on
-  `0.0.0.0` and the injected `PORT`; the repository has reference configuration but no deployment
-  evidence.
-- Target production data: Cloud SQL for PostgreSQL, accessed through bounded connection pools; not
-  provisioned by this repository.
-- Target secrets: Secret Manager references attached to the Cloud Run revision; not provisioned by
-  this repository.
-- Included deployment reference: Cloud Build configures and waits for a one-task Cloud Run migration
-  job with a distinct identity before API deployment; no successful cloud execution is claimed.
-- Target background seam: Cloud Tasks with OIDC-authenticated HTTP targets; not provisioned here.
-- Target object seam: private Cloud Storage with uniform access and signed URLs; not provisioned here.
+- Initial web/API target: one Vercel origin serves the Expo single-page export and the same Hono
+  runtime through the narrow `api/server.ts` adapter. `vercel.json` owns host routing and limits.
+- Selected data provider: Neon PostgreSQL through postgres-js and Drizzle, without a Neon SDK or
+  proprietary data API. Runtime connections use bounded pools; direct connections run migrations.
+- Portable API artifact: the Bun/Hono Linux container listens on `0.0.0.0` and the injected `PORT`.
+  Another host can serve the Expo export and proxy API paths to this container.
+- Secrets: server-only environment configuration in the selected host, with restricted runtime
+  credentials and a separate migration identity. No client bundle contains provider credentials.
+- Alternative deployment reference: Cloud Build/Cloud Run/Cloud SQL and Secret Manager configuration
+  remains documented. ADR 0017 supersedes mandatory Cloud SQL; this reference is not provisioning
+  evidence or a required dependency for the selected host.
+- Background work, object storage, email delivery, AI/voice, and native purchases remain separate
+  implementation and release gates.
 
-The API remains stateless between requests. Local disk on Cloud Run is ephemeral and is not a source
-of truth. See the [Production capabilities matrix](production-capabilities.md) before treating any
-target service as shipped.
+The API remains stateless between requests. Host-local disk is not a source of truth. See
+[ADR 0017](adrs/0017-portable-postgres-and-hosting.md) for the hosting boundary and exit path,
+[Production capabilities](production-capabilities.md) for capability gates, and
+[Release evidence](release-evidence.md) for actual build/deployment validation.
 
 ## Reliability invariants
 
@@ -229,6 +236,10 @@ target service as shipped.
   server authorization and deterministic validation and is idempotent and auditable.
 - PostgreSQL is authoritative for transactional facts. RAG, vector search, and graphs do not replace
   domain queries or financial records.
+- Shared product budgets use an atomic PostgreSQL upsert and fail closed when the store fails. Their
+  60-second window must remain compatible with Better Auth's cleanup of the shared `rateLimit` table.
+- Command locks follow session, membership, then idempotency key across capabilities. The
+  [data model](data-model.md) records the database invariants and exact cursor/read-snapshot rules.
 
 ## Official sources
 

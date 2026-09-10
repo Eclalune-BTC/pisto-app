@@ -2,9 +2,9 @@
 
 - Status: **operating core V1 partly delivered: catalog/inventory, expenses/cash, and
   customers/receivables are implemented and locally validated alongside sales and sale correction;
-  reports, assistant, and voice are not implemented**
+  bounded sale history and exact operating reports are implemented; assistant and voice remain absent**
 - Owner: **repository owner**
-- Last reviewed: **2026-08-23**
+- Last reviewed: **2026-09-10**
 
 ## Goal
 
@@ -13,8 +13,9 @@ through the shared web, iOS, and Android architecture.
 
 The milestone adds catalog/inventory, expenses/cash, customers/receivables, exact reports,
 provider-neutral text assistance with narrow tools, and bounded push-to-talk transcription around
-the manual sales foundation. The first three are implemented and locally validated; exact reports,
-the assistant, and voice are not. Each capability keeps a complete structured path, and AI remains an
+the manual sales foundation. The manual capabilities, including sale history and exact reports, are
+implemented and locally validated; the assistant and voice are not. Each capability keeps a complete
+structured path, and AI remains an
 interface over deterministic commands and queries rather than a source of truth.
 
 The frozen data/action contracts and exclusions for this milestone are in
@@ -28,13 +29,21 @@ and composition follows [Product capability architecture](product-capability-arc
   PostgreSQL/Drizzle persistence, Better Auth, provider-neutral entitlements, and deployment seams.
 - [Sales Increment 1](sales-increment-1.md) implements one organization-backed owner business,
   total-only manual sale review/confirmation, canonical result, previous-month summary, and
-  transactional void/replacement correction. No `GET /v1/sales` list exists, so correction cannot be
-  reached for a sale the user has navigated away from.
+  transactional void/replacement correction. The bounded `GET /v1/sales` history and its status
+  filter make past sales and their correction actions reachable from `/operate/sales`.
 - The [catalog/inventory](product-slices/catalog-inventory-v1.md),
   [expenses/cash](product-slices/expenses-cash-v1.md), and
   [customers/receivables](product-slices/customers-receivables-v1.md) slices are implemented, mounted
   under `/v1`, reachable from the `/operate` module hub, and covered by the PostgreSQL integration
   suites. Their schema ships in migration `0003_worried_weapon_omega.sql`.
+- Exact operating reports are implemented at `GET /v1/reports/operating` and `/operate/reports`.
+  One authorized repeatable-read transaction separates period flows from current positions.
+- Fresh-session checks, consistent command lock ordering, exact timestamp cursors, and migration
+  `0005` strengthen the existing data model. Product requests share a PostgreSQL-backed rate budget,
+  and `PRODUCT_WRITES_ENABLED=false` pauses business changes while reads remain available.
+- The owner selected Neon using standard PostgreSQL, postgres-js, and Drizzle. The initial publishing
+  adapter uses Vercel and an Expo single-page export; the portable Bun/Hono container remains. See
+  [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
 - The web, native, authentication, billing, data, and cloud foundations have documented invariants
   and primary-source references.
 - Included scaffolding or a configured provider is not evidence that a complete product flow has been
@@ -82,16 +91,16 @@ The milestone is complete only when:
 
 The catalog/inventory, expenses/cash, and customers/receivables contracts in
 [Operating core V1](product-slices/operating-core-v1.md) were implemented in isolated capability
-branches and integrated through the explicit app/API composition roots. What remains, in order:
+branches and integrated through the explicit app/API composition roots. Sale history and exact
+operating reports are also implemented. Complete the manual-core audit, usability, data-integrity,
+and hosting acceptance work before introducing the provider-neutral text assistant and then bounded
+push-to-talk voice.
 
-1. `GET /v1/sales` and the screen that uses it, so the implemented correction flow becomes reachable
-   for a past sale;
-2. exact operating reports behind the existing `packages/contracts/src/reports.ts` contract;
-3. the provider-neutral text assistant; then
-4. bounded push-to-talk voice.
-
-Deployment, store submission, RAG/graphs, silent provider fallback, and a production-release claim
-remain excluded. Nothing in this milestone is pushed to `origin/main`, deployed, or released.
+The owner has authorized the web deployment work under ADR 0017. Its actual validation, push,
+deployment, and release status belongs in [Release evidence](release-evidence.md); this goal does
+not assert a successful deployment. Store submission, email delivery, team workflows, RAG/graphs,
+silent provider fallback, and AI/voice completion require their own remaining implementation and
+acceptance gates.
 
 ## Related sources
 

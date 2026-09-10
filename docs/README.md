@@ -4,7 +4,9 @@ Pisto Stack is a Bun and TypeScript monorepo for a universal Expo application, a
 PostgreSQL persistence, Better Auth, and provider-neutral paid access. The browser checkout uses
 Polar. Native iOS and Android purchases must use the platform stores through RevenueCat once that
 release-gated SDK integration is installed; the baseline native adapter is disabled. The production
-target is Google Cloud Run with Cloud SQL and explicitly provisioned supporting managed services.
+target selected by the owner is Neon PostgreSQL with Vercel for the initial web/API publication.
+The existing Bun/Hono container remains a portable deployment artifact; see
+[ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
 
 The approved product direction is Pisto: an AI-native operating assistant for Spanish-speaking
 entrepreneurs. It will turn conversational text and later short voice notes into reviewable business
@@ -27,15 +29,18 @@ available only when configured.
 Catalog, inventory, customers, receivables, cash accounts, expenses, the bounded sale history behind
 `GET /v1/sales`, and void/replacement sale correction are implemented, mounted under `/v1`, and
 covered by the PostgreSQL integration suite. Migration `0003` carries their schema and `0004` adds
-the sale history indexes.
+the sale history indexes. Exact operating reports also have a PostgreSQL repository,
+`GET /v1/reports/operating`, and the permission-gated `/operate/reports` screen. Migration `0005`
+strengthens nullable record constraints without adding tables. The
+[data model](data-model.md) explains canonical records, snapshots, derived facts, and query ownership.
 
-Still absent: obligations, goals, AI/voice, retrieval, graph, and general activity history. Reports
-exist only as a contract in `packages/contracts/src/reports.ts`
-with no route, repository, or screen. Entitlements are projected but gate no product route. Email
+Still absent: obligations, goals, AI/voice, retrieval, graph, and general activity history.
+Entitlements are projected but gate no product route. Email
 verification/recovery delivery, invitations/role administration/domain-specific team roles, native
-purchases, and provisioned production cloud resources remain incomplete or release-gated; see
+purchases, and production operational acceptance remain incomplete or release-gated; see
 [Production capabilities](production-capabilities.md). Implemented and locally validated does not
-mean deployed or production-ready.
+mean deployed or production-ready. [Release evidence](release-evidence.md) owns the current build,
+push, deployment, smoke-test, and release status.
 
 ## System map
 
@@ -50,7 +55,8 @@ mean deployed or production-ready.
 | Billing and access | Polar for web; native stores through RevenueCat | `packages/billing` |
 | AI assistant | AI SDK 7 target, provider-neutral Pisto tools; not installed | `docs/ai-assistant.md` and ADR 0009 |
 | Voice | Push-to-talk first; ElevenLabs evaluated but not selected or installed | `docs/voice-architecture.md` |
-| Production runtime | Docker image on Cloud Run | Deployment configuration and immutable image digest |
+| Initial hosting | Vercel adapter for the same Hono API and Expo single-page export; Neon PostgreSQL | ADR 0017, `vercel.json`, `api/server.ts`, and release evidence |
+| Portable runtime | Bun/Hono Docker image; Cloud Run remains a reference deployment | Dockerfile and reviewed deployment configuration |
 
 ## Reading order
 
@@ -61,8 +67,8 @@ mean deployed or production-ready.
    navigation, UI actions, assistant/voice channels, and delivery ownership compose without a flat UI.
 4. [Operating core V1 contracts](product-slices/operating-core-v1.md) freeze the catalog, inventory,
    expense, cash, customer, receivable, report, assistant, and voice capability contracts. Freezing a
-   contract is not delivering it: its status table says which slices are implemented, which is a
-   transport contract only, and which do not exist.
+   contract is not delivering it: its status table separates implemented manual capabilities from
+   the unimplemented assistant and voice slices.
 5. [Sales Increment 1](sales-increment-1.md) records the implemented product flow, contracts,
    persistence, failure behavior, evidence, and explicit limitations.
 6. [Engineering workflow](engineering-workflow.md) defines research, reuse, architecture, review,
@@ -84,13 +90,15 @@ mean deployed or production-ready.
 18. [PostgreSQL and Drizzle](database-drizzle.md) defines schema and migration policy.
 19. [Better Auth](authentication.md) defines sessions, origins, and secret handling.
 20. [Billing and entitlements](billing-entitlements.md) is the normative purchase and access model.
-21. [Google Cloud deployment](cloud-deployment.md) describes the production topology.
+21. [Google Cloud deployment](cloud-deployment.md) preserves the alternative container deployment reference.
 22. [Production capabilities](production-capabilities.md) separates included code from future seams.
 23. [Security](security.md) is the security baseline and review checklist.
 24. [Testing and release](testing-release.md) defines evidence required before release.
 25. [Versioning and upgrades](versioning-upgrades.md) defines dependency and migration policy.
 26. [Official source index](source-index.md) maps every major decision to primary documentation.
 27. [Architecture decision records](adrs/README.md) preserve the reasoning behind the design.
+28. [Data model](data-model.md) records normalization, invariants, read models, and migration decisions.
+29. [Release evidence](release-evidence.md) distinguishes local verification from deployed behavior.
 
 ## Non-negotiable invariants
 
@@ -106,6 +114,8 @@ mean deployed or production-ready.
   not run migrations during startup.
 - Model output never becomes an authoritative business fact. Financial mutations require typed
   confirmation, fresh server authorization, deterministic validation, idempotency, and audit.
+- Product routes use an authenticated cross-instance PostgreSQL request budget. The server write
+  switch can pause business mutations while preserving reads, authentication, and billing callbacks.
 - Transactional questions use authorized relational queries. RAG, pgvector, Neo4j, GraphRAG, and
   silent provider fallback are excluded until their documented evidence gates are met.
 - Product capabilities compose explicitly inside the modular monolith. Navigation follows a few

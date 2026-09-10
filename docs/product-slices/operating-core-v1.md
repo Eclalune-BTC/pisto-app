@@ -1,11 +1,11 @@
 # Operating core V1 capability contracts
 
-- Status: **partly delivered.** The catalog/inventory, expenses/cash, and customers/receivables
-  slices are implemented, locally validated, and integrated into local `main` — not pushed to
-  `origin/main`, not deployed, not released. The reports, assistant, and voice slices below remain
-  approved contracts with no implementation; reports has a transport contract only.
+- Status: **manual capabilities implemented and locally validated.** Catalog/inventory,
+  expenses/cash, customers/receivables, sale history/correction, and exact operating reports exist.
+  Assistant and voice remain approved contracts without implementation. Current build, push,
+  deployment, and release status is recorded in [Release evidence](../release-evidence.md).
 - Owner: **repository owner and integration lead**
-- Last reviewed: **2026-08-23**
+- Last reviewed: **2026-09-10**
 - Applies to: catalog, inventory, expenses, cash, customers, receivables, reports, assistant, and voice
 
 | Slice | State | Delivery record |
@@ -13,7 +13,8 @@
 | Catalog and inventory | Implemented and locally validated | [Catalog and inventory V1](catalog-inventory-v1.md) |
 | Expenses and cash | Implemented and locally validated | [Expenses and cash V1](expenses-cash-v1.md) |
 | Customers and receivables | Implemented and locally validated | [Customers and receivables V1](customers-receivables-v1.md) |
-| Reports | Contract only, in `packages/contracts/src/reports.ts` | None |
+| Sales history and correction | Implemented with bounded keyset history and transactional correction | [Sales Increment 1](../sales-increment-1.md) |
+| Reports | Implemented repository, route, screen, and PostgreSQL integration coverage | [Data model and read models](../data-model.md), [release evidence](../release-evidence.md) |
 | Assistant and voice | Not implemented; no AI or audio dependency exists | None |
 
 This milestone turns Pisto from one sales increment into a useful modular operating product. It is
@@ -51,6 +52,11 @@ commands, queries, and failure behavior; applications compose those capabilities
 - Every persisted financial or inventory command uses a caller-created UUID idempotency key, strict
   unknown-field rejection, fresh permission checks, deterministic validation, one transaction, and
   an append-only operation receipt. Exact replay returns the original result; changed input conflicts.
+- Session and membership locks precede the command-key advisory lock across capabilities, including
+  sales posting and correction. Business discovery/onboarding also reject expired sessions.
+- Authenticated product requests share per-user PostgreSQL budgets: by default 300 reads and 60
+  writes per 60 seconds. `PRODUCT_WRITES_ENABLED=false` pauses business mutations while reads,
+  authentication, and billing/provider callbacks retain their own behavior.
 - Deletes do not erase business history. Mutable reference records can be updated or archived;
   ledgers are corrected with explicit reversing entries or domain-specific void commands.
 
@@ -58,8 +64,8 @@ commands, queries, and failure behavior; applications compose those capabilities
 
 - Domain routes live under `/v1` and return `{ data: ... }`; errors use the existing stable envelope.
 - List queries use an optional opaque cursor and a bounded `limit` from 1 through 50, default 25.
-  Results are ordered deterministically by creation time and ID. Invalid cursors are validation
-  errors, not empty results.
+  Results are ordered deterministically by creation time and ID. Cursors preserve PostgreSQL
+  microseconds and encode UTC explicitly. Invalid cursors are validation errors, not empty results.
 - Every list distinguishes successful empty data from denied, unavailable, malformed, and network
   states. Every `/v1` response remains `Cache-Control: no-store`.
 
@@ -95,8 +101,9 @@ state plus an append-only stock movement, not a directly editable quantity.
   positive quantity expressed as exact fixed-scale minor quantity units, signed derived delta,
   reason, occurrence snapshots, actor, optional reversal link, and creation time.
 - Inventory operation: actor/business/idempotency identity, command fingerprint, action, movement.
-- Quantity on hand is `sum(delta)` for non-reversed history. An outbound command that would make a
-  tracked product negative conflicts while holding the product's transaction lock.
+- Quantity on hand is `sum(delta)` over all movement rows, including originals and their reversing
+  entries. An outbound command that would make a tracked product negative conflicts while holding
+  the product's transaction lock.
 
 ### Commands and queries
 
@@ -176,7 +183,7 @@ customer's outstanding balance and overdue state are derived from charges and pa
 
 - Customer: business-scoped UUID, name, optional phone/email/notes, active/archived state, timestamps.
 - Receivable: business/customer IDs, positive original amount, currency snapshots, description,
-  posted date, optional due date, open/voided state, actor, timestamps.
+  posted date, optional due date, posted/voided authority state, actor, timestamps.
 - Receivable payment: business/receivable/customer, positive amount, occurrence snapshots, optional
   reference, selected cash account, actor, timestamps, and optional reversal link.
 - The outstanding amount is original amount minus non-reversed payments. Payment cannot exceed the
@@ -211,16 +218,23 @@ payables, and contact syncing are excluded.
 An owner or admin chooses a valid business-local inclusive date range and sees exact facts from
 posted records: gross sales revenue and count, recorded paid expenses and category breakdown, cash
 inflow/outflow/net movement by account, current stock/low-stock counts, and outstanding/overdue
-receivables. Daily series use half-open UTC bounds derived from the business time zone.
+receivables. The inclusive date range is bounded to 366 days and converted to half-open UTC bounds
+using the business time zone. Current stock and receivable positions are labeled with their own
+as-of date and do not pretend to be historical balances at the selected period end. The current
+contract contains aggregate facts, not a daily-series response.
 
 Reports never call gross revenue or revenue minus recorded expenses `profit`. Product cost and a
 complete accounting model do not yet exist. A successful no-record query returns real zeros; a query
 failure is an error and never becomes zero data.
 
-The structured surface will be `/operate/reports`. No such route, repository, or query exists yet;
-only the transport contract in `packages/contracts/src/reports.ts` is committed, and `reports:read`
-gates nothing. The assistant will consume the same report query through a narrow read tool. CSV
-export, tax reports, forecasts, and invented trends are non-goals.
+The structured surface is `/operate/reports`, backed by `GET /v1/reports/operating`, the contract in
+`packages/contracts/src/reports.ts`, and `packages/db/src/reports.ts`. The repository checks a live
+session and `reports:read` inside a read-only repeatable-read transaction; all sections and the
+query timestamp share that snapshot. Owner/admin can read the report and member cannot. The screen
+distinguishes empty, invalid-range, denied, loading, offline/stale, and failed-query states. PostgreSQL
+integration tests cover authorization, period boundaries, derived totals, and snapshot consistency.
+A future assistant will consume this same query through a narrow read tool. CSV export, tax reports,
+forecasts, and invented trends remain non-goals.
 
 ## Assistant and voice slice
 
@@ -253,8 +267,11 @@ conversation remain separate future capabilities.
   changed-input conflict, transaction rollback, precision/time-zone boundaries, ledger concurrency,
   responsive loading/empty/error/denied states, keyboard/accessibility checks, and independent review.
 - `bun run check`, build, migration consistency, PostgreSQL 18 integration, web browser, and available
-  native checks must pass before the milestone is called locally validated. This milestone excludes
-  deployment, store submission, and a production-release claim.
+  native checks must be recorded separately. Local validation does not establish device or hosted
+  acceptance. The owner authorized the initial portable Neon/Vercel deployment in
+  [ADR 0017](../adrs/0017-portable-postgres-and-hosting.md); actual results belong in
+  [Release evidence](../release-evidence.md). Store submission and completion of the assistant/voice
+  acceptance contract remain separate gates.
 
 ## Sources
 

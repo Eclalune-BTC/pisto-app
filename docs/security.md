@@ -27,7 +27,7 @@ The API, not the client, makes authorization and entitlement decisions.
 | Internal | Request IDs, non-sensitive feature configuration, internal product slug | Do not expose unnecessarily |
 | Sensitive personal | Email, account/provider identifiers, support history | Minimize, authorize, redact, retain deliberately |
 | Sensitive business | Sales, prices, inventory, expenses, customer/supplier data, prompts, transcripts, and tool inputs/results | Tenant-scope, minimize, encrypt in transit/at rest, redact telemetry, retain/delete deliberately |
-| Secret | Better Auth secret, DB password, Polar token/webhook secret, RevenueCat webhook auth/HMAC secret, model/transcription provider credential | Server only; Secret Manager in production |
+| Secret | Better Auth secret, DB password, Polar token/webhook secret, RevenueCat webhook auth/HMAC secret, model/transcription provider credential | Server only; restricted secret/environment configuration in the selected host; Secret Manager for the Google Cloud reference |
 | High impact | Migration/deployer credentials, signing keys, service-account impersonation | Separate identity, least privilege, audit, rotation |
 
 `EXPO_PUBLIC_*` is always public. A misleading variable name does not make client-bundled data
@@ -43,7 +43,7 @@ secret.
 - Better Auth deliberately refuses an untrusted comma-separated forwarded-IP chain; when no client
   address resolves, all clients share one per-path rate-limit bucket. This prevents trivial
   leftmost-IP spoofing but can cause collateral throttling.
-- Before production traffic, verify the exact Cloud Run/client-IP header shape and spoofing behavior.
+- Before production traffic, verify the selected host's exact client-IP header shape and spoofing behavior.
   If deployment needs `advanced.ipAddress.ipAddressHeaders` or `trustedProxies`, add and test that
   explicit code configuration only for a header/proxy the edge overwrites or sanitizes.
 - Do not confuse `AUTH_TRUSTED_PROXY_HEADERS` (forwarded host/protocol URL inference) with a trusted
@@ -52,7 +52,8 @@ secret.
 - Keep development `exp://` wildcard origins strictly out of production.
 - Rotate using Better Auth's documented secret set so supported encrypted data can transition safely.
 - Treat active organization as a workspace selector, not authorization proof. Reload membership and
-  Pisto action policy before every protected business operation.
+  Pisto action policy before every protected business operation. Business discovery and onboarding
+  also check a live, unexpired database session rather than accepting cached session state alone.
 - Disable or intercept organization deletion before financial records exist; no auth endpoint may
   cascade-delete canonical business history without an approved retention/export/audit policy.
 - Restrict organization creation to the approved onboarding rule, and deny invitation/member
@@ -75,6 +76,34 @@ secret.
 - Use explicit outbound timeouts; retry mutations only with idempotency.
 - Distinguish authentication (`401`) from authorization (`403`) without disclosing hidden resources.
 
+### Product request budgets and write pause
+
+`productAccess` protects `/v1` routes by default after the JSON/origin guard. It resolves the
+authenticated subject before consuming a database budget and covers every business capability,
+including `POST /v1/receivable-payments/:paymentId/reverse`. The version root, `/v1/me`, billing paths,
+and the RevenueCat webhook use explicit separate policy; `/api/auth` retains Better Auth controls.
+
+`PRODUCT_READ_LIMIT_PER_MINUTE` defaults to 300 and `PRODUCT_WRITE_LIMIT_PER_MINUTE` to 60. Both use a
+60-second fixed window per server-resolved user, shared across API instances through an atomic
+PostgreSQL upsert. Exhaustion returns `429 RATE_LIMITED` and `Retry-After`; store failure denies the
+request instead of bypassing the budget. Row IDs are independent random UUIDs while the stable
+namespaced key is the upsert conflict target, preventing competing first requests from racing on a
+second unique index.
+
+The product namespace is `pisto:product:<read|write>:<userId>` in the existing `rateLimit` table.
+Better Auth's installed database implementation removes expired rows from the entire table using
+its longest configured window, currently 60 seconds. Product windows must remain no longer than that
+cleanup window. Review this invariant on dependency or policy changes; the namespace isolates
+consumption but not cleanup. These counters are operational controls, not durable business audit or
+billing usage.
+
+`PRODUCT_WRITES_ENABLED=false` rejects product mutations with `503 WRITES_PAUSED` before command
+execution. GET/HEAD/OPTIONS are treated as reads; normal CORS preflight runs earlier. The switch
+preserves authenticated reads and leaves authentication, account, billing, and provider callbacks
+under their existing policy. It does not authorize retries or replace tenant/action checks inside
+the repository. PostgreSQL concurrency tests and middleware denial tests validate the local control;
+deployed pause/resume, proxy, and rate behavior must be recorded in [Release evidence](release-evidence.md).
+
 ## Financial-operation controls, and AI controls when introduced
 
 The implemented financial and inventory paths — total-only sales, void/replacement sale correction,
@@ -83,9 +112,11 @@ receivables, payments, and payment reversals — apply server-resolved tenancy, 
 authorization, minor-unit money, IANA time-zone validation, transactional idempotency/audit, and
 canonical reads. Sale correction reloads the session and membership inside its own transaction,
 checks `sales:correct`, voids the original and writes any replacement in that same transaction, and
-appends an immutable `sale_correction` receipt. The assistant, voice, and exact reports remain
-unimplemented. The controls below are mandatory for the implemented paths and for the assistant and
-voice paths as they are introduced:
+appends an immutable `sale_correction` receipt. Sale history makes those records reachable for later
+review. Exact operating reports check `reports:read` and query one read-only repeatable-read snapshot;
+the assistant and voice remain unimplemented. All command paths acquire session and membership locks
+before the idempotency-key lock, including sales posting/correction. The controls below are mandatory
+for implemented paths and for assistant/voice paths as they are introduced:
 
 - Keep provider credentials, prompts, tool implementations, and provider-specific options on the
   server. The client receives only Pisto-owned contracts and safe stream events.
@@ -185,9 +216,15 @@ See [Billing and entitlements](billing-entitlements.md) for the full model.
 ## Database controls
 
 - Use a dedicated application role with only runtime permissions and a separate migration role.
-- Prefer private Cloud SQL connectivity and enforce the selected TLS/connector security model.
+- Use TLS and restricted roles on the selected Neon PostgreSQL deployment, with direct migration
+  connections and a bounded runtime pool. No Neon-specific SDK or proprietary data API is required.
+  Private Cloud SQL connectivity remains an alternative reference; see
+  [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
 - Keep pools bounded and timeouts finite.
 - Enforce subject, uniqueness, and foreign-key invariants in PostgreSQL.
+- Nullable CHECK predicates must explicitly reject partial values. Migration `0005` requires a
+  complete optional price snapshot and a non-null reason for voided expenses/receivables. Review
+  existing invalid rows before applying it; never fabricate repair values.
 - Encrypt backups through the managed platform baseline and enable appropriate PITR/backups.
 - Test restore. A backup that has never restored is not recovery evidence.
 - Restrict and audit production human access; do not use shared database accounts.
@@ -283,12 +320,9 @@ control.
 - [ ] Threat/trust boundaries changed? Update this document and an ADR when architectural.
 - [ ] New environment keys classified public/server-secret and added to the right example.
 - [ ] New route has schema, auth rule, body-size limit, error mapping, and tests.
-- [ ] Rate limit — **known gap, do not tick.** No `/v1` route has a rate limit. The Better Auth
-  PostgreSQL-backed limiter covers `/api/auth` routes only; the app-wide Hono `bodyLimit` covers
-  request size, not request rate. Every product route added since this checklist was written has
-  silently failed this item. Until the bounded cross-instance product limiter in
-  [Production capabilities](production-capabilities.md) exists, record the exposure for the new route
-  instead of marking it satisfied.
+- [ ] Route inherits the product budget/write guard or has an explicit separate policy. Verify
+  authentication before consumption, cross-instance atomicity, `Retry-After`, fail-closed storage,
+  pause/resume behavior, and the shared 60-second Better Auth cleanup invariant.
 - [ ] AI tool is narrow, tenant-scoped, injection-resistant, bounded, and tested for denial/failure.
 - [ ] Financial mutation binds confirmation, authorization, deterministic money, idempotency,
   transaction, audit, and correction behavior.
@@ -300,7 +334,7 @@ control.
 - [ ] Migration constraints, privileges, data retention, and rollback are reviewed.
 - [ ] Logs and analytics are tested for secret/personal-data leakage.
 - [ ] Dependency/container changes are audited and locked.
-- [ ] Production IAM and Secret Manager access remain least privilege.
+- [ ] Production host access, runtime/migration roles, and secret configuration remain least privilege.
 
 ## Incident response minimum
 

@@ -280,23 +280,28 @@ gates, capability slice contract, product shell, and shared UI/action rules are 
 
 ## Current repository truth
 
-As of 2026-08-23, the repository implements and locally validates a manual structured operating core:
+As reviewed on 2026-09-10, the repository implements and locally validates a manual structured operating core:
 owner-only business onboarding; static current-operation permissions for exact
 `owner`/`admin`/`member` memberships; a reviewed total-only sale with idempotent canonical
 persistence and a deterministic previous-calendar-month summary; transactional void and replacement
 sale correction; catalog categories and products; append-only inventory movements and one-time
 reversals; paid expenses; cash accounts, adjustments, transfers, and movement history; and customers,
-receivable charges, payments, payment reversals, and voids. Each capability is reachable through the
-`/operate` module hub under `/v1` routes.
+receivable charges, payments, payment reversals, and voids. Bounded sale history at `GET /v1/sales`
+makes past-sale correction reachable from `/operate/sales`. Exact operating reports at
+`GET /v1/reports/operating` and `/operate/reports` query authorized canonical records in a
+repeatable-read transaction and distinguish period flows from current positions. Each capability
+is reachable through the `/operate` module hub under `/v1` routes. Product requests use a shared
+PostgreSQL rate budget and a server switch can pause business writes while preserving reads.
 
 It does not implement conversational text extraction, clarification, AI SDK orchestration, voice, or
-retrieval. Exact reports exist only as the contract in `packages/contracts/src/reports.ts`. There is
-also no `GET /v1/sales` list, so the implemented correction path cannot be reached for a sale the
-user has navigated away from. The exact implemented boundary and evidence are in
+retrieval. Email verification/recovery delivery, invitations and team administration, and native
+purchases remain incomplete or release-gated. The exact implemented boundary and evidence are in
 [Sales Increment 1](../sales-increment-1.md) and the
 [operating core slice records](../product-slices/operating-core-v1.md). This approved brief remains
 the acceptance contract for the larger first slice; a passing manual operating core is not evidence
-that the conversational slice is complete, and nothing here is pushed, deployed, or released.
+that the conversational slice is complete. The owner selected portable Neon PostgreSQL and the
+initial Vercel web/API adapter in [ADR 0017](../adrs/0017-portable-postgres-and-hosting.md).
+[Release evidence](../release-evidence.md) owns the actual build, push, deployment, and release status.
 
 ## Primary market sources
 

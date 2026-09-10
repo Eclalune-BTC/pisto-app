@@ -2,9 +2,13 @@
 
 ## Baseline
 
-Local development uses the official `postgres:18-alpine` image. Production uses Cloud SQL for
-PostgreSQL. `@pisto/db` owns Drizzle schema, SQL migration artifacts, database connection creation,
-repositories, and transaction helpers.
+Local development uses the official `postgres:18-alpine` image. The owner selected Neon PostgreSQL
+for the initial deployment, using the existing postgres-js driver, Drizzle, and standard PostgreSQL
+SQL. No Neon SDK or proprietary data API is required. Cloud SQL remains an alternative reference;
+[ADR 0017](adrs/0017-portable-postgres-and-hosting.md) supersedes its mandatory production target.
+`@pisto/db` owns Drizzle schema, SQL migration artifacts, database connection creation, repositories,
+and transaction helpers. [Data model](data-model.md) records normalization, snapshots, constraints,
+read models, and the portable migration plan.
 
 PostgreSQL 18+ official images changed the declared data-volume layout. The Compose named volume is
 mounted at `/var/lib/postgresql`, not the legacy `/var/lib/postgresql/data` target used by older
@@ -44,7 +48,8 @@ Never edit an already-applied migration. Add a forward migration.
 ## Current domain shape
 
 - Better Auth tables persist users, sessions, accounts, verifications, organizations, members,
-  invitations, and the PostgreSQL-backed `rateLimit` counters.
+  invitations, and the PostgreSQL-backed `rateLimit` counters. Product request budgets reuse that
+  operational table with an isolated `pisto:product:<read|write>:<userId>` key namespace.
 - Billing receipt tables retain deduplication keys and provider payload evidence.
 - Provider customer/subscription records are projections, not authorization by themselves.
 - Entitlements have exactly one subject: a user or an organization.
@@ -92,7 +97,9 @@ Never edit an already-applied migration. Add a forward migration.
 The Drizzle schema object in `packages/db/src/schema/index.ts` is the authoritative inventory: 29
 tables, of which 8 are Better Auth, 4 are billing, and 17 are Pisto business tables. Migration
 `0001` created `business_settings`, `sale`, and `sale_operation`; migration `0003` created the other
-14.
+14. Migration `0004` adds sale-history indexes. Migration `0005` strengthens complete optional-price
+and void-record constraints without adding tables. Reports use relational read models over these
+records and add no reporting ledger or materialized balance.
 
 Raw JSON is evidence and forward-compatibility data. Queryable authorization fields remain typed
 columns with indexes; code does not scan provider JSON to authorize each request.
@@ -110,9 +117,16 @@ columns with indexes; code does not scan provider JSON to authorize each request
 - A sale and its operation receipt commit in one short transaction after fresh `sales:create` access is loaded.
   Exact command/key replay returns the original record; changed input conflicts. Previous-month
   summaries derive half-open business-local bounds from one database timestamp.
-- Protected sale reads and summaries compose an unexpired session plus an exact recognized membership
-  with the required Pisto permission into the same SQL statement that reads financial data, avoiding
-  an authorization/read gap.
+- Canonical sale lookup and previous-month summary queries compose an unexpired session and current
+  membership with the financial read, then enforce the required recognized-role permission. Sale
+  history holds shared authorization locks while reading its bounded page and correction links.
+- Business discovery and onboarding also verify a live, unexpired session in the database; a cached
+  auth response cannot authorize a new business or replay after session expiry.
+- Multi-query operating reports and customer/receivable details use a read-only repeatable-read
+  transaction so their records, histories, and totals share one snapshot. Authorization is checked
+  within that snapshot.
+- Opaque timestamp cursors preserve PostgreSQL microseconds and encode UTC explicitly. Do not
+  round a cursor through JavaScript `Date` milliseconds or rely on a connection's `TimeZone` setting.
 
 ## Shared operation-log primitive
 
@@ -152,36 +166,47 @@ session and membership first, then takes the idempotency lock, then reads the re
 
 `createSale` in `packages/db/src/product.ts` and the correction commands in
 `packages/db/src/sales-correction.ts` deliberately do **not** call `beginOperation`. They use
-`lockCommandKey` and compose their own authorization. Leave them that way. Two reasons:
+`authorizeBusinessAction` and `lockCommandKey` with the same global lock order as other commands:
+live session, membership, then command-key advisory lock. Sales retain `for update` authorization
+locks; the shared prologue uses shared authorization locks. Taking the command key first in either
+sales path would reintroduce the cross-capability deadlock covered by the PostgreSQL regression suite.
 
-1. **Lock order.** `beginOperation` locks the session and membership rows before taking the
-   command-key advisory lock. Both sales paths take the command-key advisory lock *first*, then lock
-   the session and membership rows `for update`. Moving them onto the shared prologue would invert
-   that order relative to the paths that keep it, which is exactly the kind of edit that introduces a
-   deadlock.
-2. **Two receipt tables, one key space.** Sales share one `(business_id, actor_user_id,
-   idempotency_key)` key space across `sale_operation` and `sale_correction`. A key used to post a
-   sale must conflict when it is replayed as a correction, and the reverse. Each path therefore reads
-   both tables. `findOperationReplay` is single-table by construction and cannot express that.
+The separate replay code remains necessary because sales share one `(business_id, actor_user_id,
+idempotency_key)` space across `sale_operation` and `sale_correction`. A key used to post a sale must
+conflict when reused for a correction, and the reverse. Each path therefore reads both tables.
+`findOperationReplay` is single-table by construction and cannot express that contract.
 
-This divergence is intentional and load-bearing. If it looks like an inconsistency worth tidying up,
-read this section first and change the lock order only with concurrency tests that prove the new
-order is safe.
+### Shared request-budget storage
+
+`product-rate-limit.ts` atomically consumes a per-user read or write budget using PostgreSQL's
+statement clock. Defaults are 300 reads and 60 writes per 60-second fixed window; API configuration
+can bound the counts. A fresh random row ID avoids a second unique-index conflict during concurrent
+first use, while the unique key is the upsert conflict target. Denied traffic caps the stored count
+at the limit plus one. Counters are operational data, not business audit or billing usage records.
+
+Both this product window and the configured Better Auth window are 60 seconds. The installed Better
+Auth database limiter removes expired rows across the whole table using its longest configured
+window; it does not filter the product namespace. Keep the product window no longer than that cleanup
+window, and recheck this behavior on Better Auth upgrades or policy changes. The namespace separates
+consumption, but does not isolate cleanup ownership.
 
 ## Connections
 
-Local code uses `DATABASE_URL`, bounded by `DATABASE_MAX_CONNECTIONS`. In Cloud Run, total possible
-connections are approximately:
+Code uses `DATABASE_URL`, bounded by `DATABASE_MAX_CONNECTIONS`. Across serverless instances or
+container replicas, total possible connections are approximately:
 
 ```text
-maximum Cloud Run instances × per-instance pool maximum
+maximum active API instances × per-instance pool maximum
 ```
 
-Keep that result below the Cloud SQL connection budget with headroom for migrations, operations, and
-failover. A high HTTP concurrency setting does not justify one database connection per request.
+Keep that result below the selected database connection budget with headroom for migrations,
+operations, and failover. A high HTTP concurrency setting does not justify one database connection
+per request. Use Neon's direct connection URL for migrations and backup/restore tools; a pooled
+runtime URL requires the transaction and connection tests described in ADR 0017.
 
-Set production TLS/network behavior deliberately through `DATABASE_SSL` and the selected Cloud SQL
-connection path. Do not disable certificate verification globally.
+Set production TLS/network behavior deliberately through `DATABASE_SSL` and the selected PostgreSQL
+connection path. Do not disable certificate verification globally. A provider move changes connection
+configuration and operational controls, not domain queries or the migration format.
 
 ## Production migration policy
 
@@ -198,21 +223,32 @@ Each `CREATE TABLE` declares its composite `(business_id, id)` uniqueness inline
 referenced uniqueness to exist first. Preserve that ordering in any future migration that adds a
 composite tenant foreign key.
 
+Migration `0005_require_complete_record_snapshots.sql` replaces three CHECK predicates so SQL NULL
+cannot admit a partial price snapshot or a void without a reason. It fails on malformed existing
+rows rather than inventing repair values. Inspect and resolve such rows from authoritative evidence
+before upgrading. Fresh application, previous-schema upgrade with representative data, and repeated
+migration execution are separate validation gates.
+
 - Back up and confirm recovery objectives before a destructive or high-risk change.
-- Run migrations as a separately authorized release step or Cloud Run Job, not in every API instance.
+- Run migrations once as a separately authorized release step with a direct URL and migration role,
+  not in every API instance. The Cloud Run Job remains an alternative executor.
 - Prefer expand/migrate/contract: add compatible shape, deploy dual-compatible code, backfill, then
   remove old shape in a later release.
-- Take an advisory migration lock or rely on Drizzle's migration ledger so one executor applies a
-  migration.
+- Serialize migration execution in the release workflow. Drizzle's migration ledger tracks applied
+  artifacts; do not treat a ledger alone as permission to run concurrent migration executors.
 - Verify schema version and critical queries before shifting API traffic.
 - Database rollback usually means a forward corrective migration. Do not assume application rollback
   can undo committed data changes.
 
 ## Backup and privacy
 
-Use Cloud SQL automated backups and point-in-time recovery appropriate to the environment. Test
-restore procedures. Minimize stored provider payloads, restrict access, define retention, and avoid
-placing credentials or unnecessary payment/customer data in JSON evidence.
+Configure backups, point-in-time recovery, retention, and restore access for the selected Neon
+environment; verify the actual account's available features and recovery window. Keep a tested
+standard `pg_dump`/`pg_restore` exit path. Cloud SQL deployments must satisfy the same recovery
+objectives using their own controls. A configured provider is not a successful restore drill;
+[Release evidence](release-evidence.md) owns actual operational results. Minimize stored provider
+payloads, restrict access, define retention, and avoid credentials or unnecessary personal data in
+JSON evidence.
 
 ## Official sources
 
@@ -223,5 +259,7 @@ placing credentials or unnecessary payment/customer data in JSON evidence.
 - [Drizzle migration fundamentals](https://orm.drizzle.team/docs/migrations)
 - [Drizzle generate](https://orm.drizzle.team/docs/drizzle-kit-generate)
 - [Drizzle migrate](https://orm.drizzle.team/docs/drizzle-kit-migrate)
+- [Neon connection pooling](https://neon.com/docs/connect/connection-pooling)
+- [Neon PostgreSQL compatibility](https://neon.com/docs/reference/compatibility)
 - [Cloud SQL connection management](https://cloud.google.com/sql/docs/postgres/manage-connections)
 - [Cloud SQL backups](https://cloud.google.com/sql/docs/postgres/backup-recovery/backups)
