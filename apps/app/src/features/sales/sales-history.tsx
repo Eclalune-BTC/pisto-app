@@ -1,8 +1,10 @@
 import type { Sale, SaleStatusFilter } from "@pisto/contracts";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "@/components/ui/filter-bar";
+import { Heading } from "@/components/ui/heading";
 
 import type { SalesHistoryState } from "./state";
 import { saleStatusFilters } from "./state";
@@ -121,9 +123,9 @@ export function SalesHistory({
   return (
     <View className="gap-5">
       <View className="gap-1">
-        <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+        <Heading level={2} size="section">
           {copy.title}
-        </Text>
+        </Heading>
         <Text className="max-w-[620px] text-sm leading-5 text-muted-foreground">
           {copy.description}
         </Text>
@@ -137,11 +139,7 @@ export function SalesHistory({
         value={filter}
       />
 
-      {answered && state.stale ? (
-        <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
-          <Text className="text-sm leading-5 text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
-        </View>
-      ) : null}
+      {answered && state.stale ? <Alert>{copy.stale}</Alert> : null}
 
       {state.kind === "loading" ? (
         <View className="min-h-40 items-start justify-center gap-3 border-y border-border">
@@ -150,13 +148,13 @@ export function SalesHistory({
         </View>
       ) : state.kind === "denied" || state.kind === "offline" || state.kind === "error" ? (
         <View className="min-h-40 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-          <Text accessibilityRole="header" className="text-lg font-black text-foreground">
+          <Heading level={3} size="section">
             {state.kind === "denied"
               ? copy.deniedTitle
               : state.kind === "offline"
                 ? copy.offlineTitle
                 : copy.unavailableTitle}
-          </Text>
+          </Heading>
           <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
             {state.kind === "denied" ? copy.deniedDescription : state.message}
           </Text>
@@ -166,9 +164,9 @@ export function SalesHistory({
         </View>
       ) : state.kind === "empty" ? (
         <View className="min-h-40 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-          <Text accessibilityRole="header" className="text-lg font-black text-foreground">
+          <Heading level={3} size="section">
             {copy.emptyTitle}
-          </Text>
+          </Heading>
           <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
             {copy.emptyDescription}
           </Text>
