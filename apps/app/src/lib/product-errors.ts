@@ -24,6 +24,8 @@ const translationKeys = {
   NOT_FOUND: "productErrors.notFound",
   UNAUTHORIZED: "productErrors.unauthorized",
   VALIDATION_ERROR: "productErrors.validation",
+  RATE_LIMITED: "productErrors.rateLimited",
+  WRITES_PAUSED: "productErrors.writesPaused",
 } as const;
 
 const contextTranslationKeys: Record<

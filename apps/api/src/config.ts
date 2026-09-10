@@ -6,6 +6,9 @@ export interface ApiConfig {
   corsOrigins: string[];
   requestBodyLimitBytes: number;
   production: boolean;
+  productWritesEnabled: boolean;
+  productReadLimit: number;
+  productWriteLimit: number;
 }
 
 export class ApiConfigurationError extends Error {
@@ -77,6 +80,9 @@ function parseInteger(
 
 export function parseApiConfig(env: Record<string, string | undefined>): ApiConfig {
   const production = (env.NODE_ENV ?? "development") === "production";
+  if (env.PRODUCT_WRITES_ENABLED && !["true", "false"].includes(env.PRODUCT_WRITES_ENABLED)) {
+    throw new ApiConfigurationError("PRODUCT_WRITES_ENABLED must be true or false");
+  }
   return {
     host: env.API_HOST?.trim() || "0.0.0.0",
     port: parseInteger(env.PORT ?? env.API_PORT, 3001, "PORT", 1, 65_535),
@@ -89,5 +95,20 @@ export function parseApiConfig(env: Record<string, string | undefined>): ApiConf
       10_485_760,
     ),
     production,
+    productWritesEnabled: env.PRODUCT_WRITES_ENABLED !== "false",
+    productReadLimit: parseInteger(
+      env.PRODUCT_READ_LIMIT_PER_MINUTE,
+      300,
+      "PRODUCT_READ_LIMIT_PER_MINUTE",
+      1,
+      10_000,
+    ),
+    productWriteLimit: parseInteger(
+      env.PRODUCT_WRITE_LIMIT_PER_MINUTE,
+      60,
+      "PRODUCT_WRITE_LIMIT_PER_MINUTE",
+      1,
+      1_000,
+    ),
   };
 }

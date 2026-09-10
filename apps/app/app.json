@@ -23,7 +23,7 @@
       "predictiveBackGestureEnabled": true
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/brand/favicon.png"
     },
     "plugins": [

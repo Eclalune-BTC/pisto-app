@@ -3,6 +3,7 @@ FROM oven/bun:1.4.0 AS build
 WORKDIR /workspace
 
 COPY package.json bun.lock bunfig.toml ./
+COPY patches ./patches
 COPY apps/api/package.json ./apps/api/package.json
 COPY apps/app/package.json ./apps/app/package.json
 COPY packages/auth/package.json ./packages/auth/package.json

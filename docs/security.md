@@ -267,7 +267,7 @@ mandatory with that seam:
 
 ## Dependency audit snapshot
 
-`bun audit` was rerun against the committed lockfile on 2026-08-22. It reports four unresolved
+`bun audit` was rerun against the delivery lockfile on 2026-09-10. It reports four unresolved
 advisories in three transitive development/build-tool packages; it does not report a direct
 application-runtime dependency finding.
 
@@ -277,9 +277,17 @@ application-runtime dependency finding.
 | Expo/React Native Metro toolchain -> `image-size@1.2.1` | [GHSA-w3rx-r6r6-pgpr](https://github.com/advisories/GHSA-w3rx-r6r6-pgpr) and [GHSA-5p2g-fcmc-qvqq](https://github.com/advisories/GHSA-5p2g-fcmc-qvqq), high | Metro can parse image assets during development/build. Only process trusted repository assets; do not add an untrusted-image build or preview pipeline. The registry's latest `image-size` was `2.0.2`, and the advisories still marked every version through `2.0.2` affected. |
 | Expo Xcode project tooling -> `xcode@3.0.1 -> uuid@7.0.3` | [GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq), moderate | The advisory affects UUID v3/v5/v6 calls supplied a caller buffer. The installed Xcode tool calls only `uuid.v4()` without a buffer, so that affected path is not currently reached. Recheck this call site whenever Expo/Xcode tooling changes. |
 
-`bun audit fix --dry-run` fixed zero findings on that date. The current `xcode@3.0.1` still declared
+This delivery updates Hono to 4.13.5 and js-yaml to 4.3.2, and overrides `decode-uri-component` to
+0.5.0 to close the newly reported runtime/build findings. Expo Router still brings query-string
+7.1.3, whose CommonJS import needs the committed one-line `patches/query-string@7.1.3.patch` to read
+the decoder's ESM default export. Node and Bun subprocess regressions exercise real router query
+semantics and bound malformed 60 KB decoding to eight seconds. Web/native exports must verify Metro.
+Do not remove the patch/override until an upstream router dependency update passes those gates.
+
+The four remaining exceptions are owned by the release maintainer, reviewed 2026-09-10; recheck
+before each release or by 2026-10-10. The current `xcode@3.0.1` still declares
 `uuid ^7.0.3`, and the current `drizzle-kit@0.31.10` still included its legacy esbuild loader. No
-out-of-range override was forced: Bun supports only top-level overrides, not dependency-path-specific
+out-of-range override was forced for those remaining packages: Bun supports only top-level overrides, not dependency-path-specific
 nested overrides, so an override would replace the package across the graph and could violate the
 tested Expo/Vite/Drizzle dependency ranges. Prefer a compatible upstream parent-package update and
 rerun the full validation matrix.

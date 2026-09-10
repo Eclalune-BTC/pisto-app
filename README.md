@@ -19,6 +19,12 @@ with [the documentation map](docs/README.md) and the
 [product capability architecture](docs/product-capability-architecture.md) before adding a module or
 changing navigation.
 
+The 2026-09-10 delivery audit documents the [functional and nonfunctional requirements](docs/product-requirements.md),
+[view/component specifications](docs/ux-requirements.md), and [normalized data model](docs/data-model.md).
+The selected deployment uses standard PostgreSQL on Neon and a narrow web/API hosting adapter;
+the Docker API and ordinary Expo web artifacts remain portable. See the [audit](docs/audit-2026-09-10.md)
+and [release evidence](docs/release-evidence.md) for actual validation, published URLs and remaining gates.
+
 ## What it looks like
 
 Captured from a local development build against PostgreSQL, with a seeded demo business.

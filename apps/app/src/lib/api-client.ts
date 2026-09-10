@@ -36,6 +36,7 @@ import {
   type VoidSaleRequest,
   voidSaleRequestSchema,
 } from "@pisto/contracts";
+import axios from "axios";
 import { Platform } from "react-native";
 import type { ZodType } from "zod";
 import { ApiClientError } from "@/lib/api-error";
@@ -43,12 +44,20 @@ import { isApiFailure, parseSuccessPayload, type ResponseMode } from "@/lib/api-
 import { authClient } from "@/lib/auth-client";
 import { env } from "@/lib/env";
 
-type ApiRequestOptions = Omit<RequestInit, "body"> & {
+type ApiRequestOptions = Pick<RequestInit, "method" | "signal" | "headers"> & {
   authenticated?: boolean;
   body?: unknown;
 };
 
 export { ApiClientError, isAmbiguousMutationError } from "@/lib/api-error";
+
+const http = axios.create({
+  baseURL: env.apiUrl,
+  timeout: 30_000,
+  responseType: "text",
+  transformResponse: [(data: unknown) => data],
+  validateStatus: () => true,
+});
 
 function pathWithQuery(path: `/${string}`, query: Record<string, unknown>): `/${string}` {
   const search = Object.entries(query)
@@ -72,6 +81,9 @@ export async function apiRequest<TResponse, TResult>(
   schema: ZodType<TResponse>,
   responseMode: ResponseMode = "envelope",
 ): Promise<TResult> {
+  if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\")) {
+    throw new ApiClientError("The API path is invalid.", 400, "VALIDATION_ERROR");
+  }
   const requestHeaders = new Headers(headers);
   requestHeaders.set("Accept", "application/json");
 
@@ -79,37 +91,40 @@ export async function apiRequest<TResponse, TResult>(
     requestHeaders.set("Content-Type", "application/json");
   }
 
-  let credentials: RequestCredentials = "include";
+  let withCredentials = true;
 
   if (authenticated && Platform.OS !== "web") {
     const cookie = await authClient.getCookie();
     if (cookie) {
       requestHeaders.set("Cookie", cookie);
     }
-    credentials = "omit";
+    withCredentials = false;
   }
 
-  let response: Response;
+  let response: { status: number; data: unknown };
   try {
-    response = await fetch(`${env.apiUrl}${path}`, {
-      ...init,
-      body: body === undefined ? undefined : JSON.stringify(body),
-      credentials,
-      headers: requestHeaders,
+    response = await http.request({
+      url: path,
+      method: init.method ?? "GET",
+      signal: init.signal ?? undefined,
+      data: body === undefined ? undefined : JSON.stringify(body),
+      withCredentials,
+      headers: Object.fromEntries(requestHeaders.entries()),
     });
-  } catch {
+  } catch (error) {
+    if (axios.isCancel(error) && ["GET", "HEAD"].includes(init.method ?? "GET")) throw error;
     throw new ApiClientError("The API could not be reached.", 0);
   }
 
   let payload: unknown;
 
   try {
-    payload = await response.json();
+    payload = typeof response.data === "string" ? JSON.parse(response.data) : response.data;
   } catch {
     throw new ApiClientError("The server returned an unreadable response.", response.status);
   }
 
-  if (!response.ok || isApiFailure(payload)) {
+  if (response.status < 200 || response.status >= 300 || isApiFailure(payload)) {
     const failure = isApiFailure(payload) ? payload.error : undefined;
     throw new ApiClientError(
       failure?.message ?? "The request could not be completed.",
@@ -160,16 +175,16 @@ export const api = {
         },
         saleResponseSchema,
       ),
-    get: (saleId: string) =>
+    get: (saleId: string, signal?: AbortSignal) =>
       apiRequest<SaleResponse, SaleResponse["data"]>(
         `/v1/sales/${encodeURIComponent(saleId)}`,
-        { authenticated: true },
+        { authenticated: true, signal },
         saleResponseSchema,
       ),
-    list: (query: SaleListQuery = {}) =>
+    list: (query: SaleListQuery = {}, signal?: AbortSignal) =>
       apiRequest<SaleListResponse, SaleListResponse["data"]>(
         pathWithQuery("/v1/sales", query),
-        { authenticated: true },
+        { authenticated: true, signal },
         saleListResponseSchema,
       ),
     void: (saleId: string, command: VoidSaleRequest) =>
@@ -192,10 +207,10 @@ export const api = {
         },
         saleCorrectionResponseSchema,
       ),
-    previousMonthSummary: () =>
+    previousMonthSummary: (signal?: AbortSignal) =>
       apiRequest<PreviousMonthSummaryResponse, PreviousMonthSummaryResponse["data"]>(
         "/v1/sales/summary/previous-month",
-        { authenticated: true },
+        { authenticated: true, signal },
         previousMonthSummaryResponseSchema,
       ),
   },

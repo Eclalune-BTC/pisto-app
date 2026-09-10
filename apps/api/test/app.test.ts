@@ -123,9 +123,13 @@ function testApp(
       corsOrigins: ["https://app.example.test"],
       requestBodyLimitBytes: 1_048_576,
       production: false,
+      productWritesEnabled: true,
+      productReadLimit: 300,
+      productWriteLimit: 60,
     },
     authConfig: { baseUrl: "https://api.example.test" },
     auth,
+    consumeProductRequest: async () => ({ allowed: true, retryAfterSeconds: 60 }),
     billing,
     cash: unavailableRepository<CashRepository>("Cash repository", options.onRepositoryCall),
     catalog: unavailableRepository<CatalogRepository>(

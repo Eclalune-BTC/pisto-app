@@ -3,6 +3,7 @@ import type { BillingRuntime } from "@pisto/billing";
 import type {
   CashRepository,
   CatalogRepository,
+  ConsumeProductRequest,
   DatabaseHandle,
   ProductRepository,
   ReceivablesRepository,
@@ -15,6 +16,7 @@ import { secureHeaders } from "hono/secure-headers";
 
 import type { ApiConfig } from "./config.ts";
 import { ApiError, normalizeError } from "./errors.ts";
+import { productAccess } from "./middleware/product-access.ts";
 import { requestContext } from "./middleware/request-context.ts";
 import { systemRoutes } from "./routes/system.ts";
 import { v1Routes } from "./routes/v1.ts";
@@ -31,6 +33,7 @@ export function createApp(input: {
   product: ProductRepository;
   receivables: ReceivablesRepository;
   reports: ReportsRepository;
+  consumeProductRequest: ConsumeProductRequest;
 }) {
   const app = new Hono<AppEnv>();
 
@@ -47,7 +50,7 @@ export function createApp(input: {
         "X-Request-ID",
         "X-RevenueCat-Webhook-Signature",
       ],
-      exposeHeaders: ["X-Request-ID"],
+      exposeHeaders: ["X-Request-ID", "Retry-After"],
       maxAge: 600,
     }),
   );
@@ -65,6 +68,7 @@ export function createApp(input: {
   const unsafeMethods = new Set(["POST", "PATCH", "PUT", "DELETE"]);
 
   app.use("/v1/*", async (context, next) => {
+    context.header("Cache-Control", "no-store");
     // Every method that can mutate has to clear the same gate. CORS preflight
     // happens to block a cross-site PATCH from a browser, but docs/security.md
     // is explicit that CORS response headers are not the CSRF control.
@@ -81,6 +85,15 @@ export function createApp(input: {
     await next();
     context.header("Cache-Control", "no-store");
   });
+
+  app.use(
+    "/v1/*",
+    productAccess({
+      auth: input.auth,
+      writesEnabled: input.config.productWritesEnabled,
+      consume: input.consumeProductRequest,
+    }),
+  );
 
   app.route("/", systemRoutes({ database: input.database, billing: input.billing }));
 

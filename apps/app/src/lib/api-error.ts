@@ -22,6 +22,7 @@ export class ApiClientError extends Error {
 export function isAmbiguousMutationError(error: unknown): boolean {
   return (
     error instanceof ApiClientError &&
+    error.code !== "WRITES_PAUSED" &&
     (error.status === 0 || error.status >= 500 || (error.status >= 200 && error.status < 300))
   );
 }

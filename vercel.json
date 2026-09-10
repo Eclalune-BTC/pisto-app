@@ -1,0 +1,33 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "bunVersion": "1.4.x",
+  "installCommand": "bun install --frozen-lockfile",
+  "buildCommand": "bun run --filter @pisto/app build",
+  "outputDirectory": "apps/app/dist",
+  "regions": ["iad1"],
+  "functions": { "api/server.ts": { "maxDuration": 60 } },
+  "rewrites": [
+    { "source": "/v1", "destination": "/api/server" },
+    { "source": "/v1/(.*)", "destination": "/api/server" },
+    { "source": "/api/auth/(.*)", "destination": "/api/server" },
+    { "source": "/health", "destination": "/api/server" },
+    { "source": "/ready", "destination": "/api/server" },
+    { "source": "/((?!api/|_expo/|assets/|.*\\.[^/]+$).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
+    },
+    {
+      "source": "/_expo/static/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    }
+  ]
+}

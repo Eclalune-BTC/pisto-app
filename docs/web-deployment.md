@@ -1,159 +1,129 @@
 # Web deployment
 
-## Scope and default
+## Current target and portable artifacts
 
-`@pisto/app` produces an Expo static web export. The API's Cloud Run service does **not** host that
-web artifact by itself. A separate HTTPS static host serves the browser app and calls the API at
-`EXPO_PUBLIC_API_URL`.
+The owner's 2026-09-10 instruction selects Neon PostgreSQL and avoids provider coupling.
+[ADR 0017](adrs/0017-portable-postgres-and-hosting.md) records the decision. The initial publishing
+adapter is Vercel; actual deployment status and checks live in [release evidence](release-evidence.md).
 
-The recommended first production default is **Firebase Hosting** because it provides managed HTTPS,
-a CDN, custom domains, headers, redirects/rewrites, atomic deploys, and preview channels for static
-or single-page applications. This repository describes that target but does not claim a Firebase
-project/site is provisioned.
+- `apps/app/dist`: ordinary Expo web files, using `web.output: "single"`.
+- `apps/api/Dockerfile`: portable Bun/Hono server plus a separate bundled migration entrypoint.
+- `api/server.ts`: minimal Vercel Bun entrypoint invoking the same API runtime.
+- `vercel.json`: routing, build, region, response headers and function duration for that adapter.
+- `packages/db/migrations`: standard SQL/Drizzle history, using the existing `postgres` driver.
 
-## Build artifact
+There is no Neon or Vercel SDK in domain code. Rehosting needs a static server and reverse proxy,
+the API container, and a PostgreSQL URL; it does not require rewriting business features. The API
+container does not serve the frontend itself. The GCP reference under `infra/gcp` remains optional.
 
-The current Expo config uses `web.output: "static"`. Export from the app workspace through its
-package script:
+## Configuration and build
+
+Use Node 24.19 and Bun 1.4.0 with the committed lockfile and `patches` directory:
 
 ```sh
-bun --filter @pisto/app build
+bun install --frozen-lockfile
+bun run check
+bun run test:integration
+bun run audit:ci
+bun run db:check
+bun run auth:schema:check
 ```
 
-The exact script and output directory in `apps/app/package.json` are authoritative. Expo's direct
-equivalent is `expo export --platform web`, which normally writes `dist` in the app workspace.
+Set `APP_VARIANT=production`, `EXPO_PUBLIC_API_URL` to the exact HTTPS product origin, the private
+app scheme and explicit native identifiers before exporting. `EXPO_PUBLIC_*` values become public
+bundle contents: never put credentials there. Changing them requires a new web export. Set
+`BETTER_AUTH_URL`, `CORS_ORIGINS` and `TRUSTED_ORIGINS` to the intended same-origin HTTPS endpoint;
+also allow the explicit native scheme in trusted origins. Preview domains must be enrolled explicitly.
 
-`EXPO_PUBLIC_*` values are replaced at build time. Before exporting:
+Server-only secrets are `DATABASE_URL`, `BETTER_AUTH_SECRET` and any enabled provider credentials.
+Runtime uses a pooled Neon connection, `DATABASE_SSL=verify-full`, a bounded connection budget,
+and the restricted `pisto_app` role. Migrations use a separately held direct connection and owner role.
+Apply migrations before traffic; do not run DDL during a function startup or a web build.
 
-- set the production HTTPS API origin and public app scheme/identifiers for the intended environment;
-- set `APP_VARIANT=production` so `app.config.ts` enforces an explicit exact HTTPS API origin,
-  private scheme, and non-placeholder identifiers; retain bundle scanning and artifact smoke tests;
-- ensure no secret is present under an `EXPO_PUBLIC_*` name;
-- build once per public-configuration environment;
-- retain the commit, environment name, dependency lock digest, and artifact checksum.
+Keep billing disabled until its separate delivery gates pass. `PISTO_PRODUCT_WRITES_ENABLED=false`
+pauses authenticated operating writes while preserving reads; apply that setting through a new
+deployment when using immutable function environments. Read/write request budgets remain shared
+across instances in PostgreSQL. Their window must stay 60 seconds because the auth limiter owns
+cleanup of the shared operational table.
 
-Changing a public environment variable requires a new export and deployment. Uploading the same
-files while changing server environment variables does not change the compiled browser bundle.
+## Routing and cookies
 
-## Route handling
+The browser uses one origin for web files and the API. Route `/v1`, `/v1/(.*)`, `/api/auth/(.*)`,
+`/health` and `/ready` to the API function before applying the SPA fallback. Vercel named captures
+are forwarded as query parameters; use anonymous captures so strict API query schemas do not
+receive an invented `path` parameter. Verify the runtime receives the original path and query.
 
-Hosting rules must match Expo's output mode:
+Remaining application paths resolve to `/index.html`, including deep record/correction routes.
+Existing assets are served directly. Missing `/_expo`, `/assets`, and file-extension paths must
+return 404, not HTML. Unknown application routes reach Expo's not-found screen. No session or
+private business data is embedded in the web export.
 
-- **`static` (current):** Expo emits statically rendered HTML per route. Preserve those files and
-  configure clean URLs/static-route mapping as the host requires. Direct requests to every route in
-  the [Expo route model](frontend-expo-ui.md#route-model) must return the matching document, not a
-  storage 404.
+Same-origin HTTPS keeps Better Auth cookies host-only and avoids third-party-cookie dependence.
+Native continues using the official SecureStore cookie adapter against the same API. Verify
+sign-up, sign-in, authenticated reads, sign-out and expired-session behavior on the deployed host.
 
-  Pay particular attention to routes with a dynamic segment, and to the ones nested two or three
-  levels deep. A host's clean-URL and directory-index rules are usually derived from the flat
-  top-level routes and then silently fail on `/operate/receivables/<id>/payments/<id>/reverse`.
-  Inspect the actual export directory to see which document each dynamic route produced, then
-  configure the mapping from the real filenames rather than assuming a naming convention.
-- **`single`:** the export contains one SPA document. Configure a final rewrite of application routes
-  to `/index.html`, after real asset/file rules. Never rewrite missing JavaScript, image, manifest, or
-  source-map requests to HTML.
-- **`server`:** requires a compatible server runtime. Do not deploy it as a static Firebase/Storage
-  artifact; create a separate reviewed architecture/deployment path.
+## Headers and caching
 
-Authentication is still resolved at runtime. Static generation must not embed a user's session or
-private API data into HTML.
-
-## Cache policy
-
-Apply response headers deliberately:
-
-| Artifact | Recommended behavior |
+| Resource | Policy |
 | --- | --- |
-| Fingerprinted JS/CSS/fonts/images | Public long-lived cache, for example one year with `immutable` |
-| HTML route documents and `index.html` | `no-cache` or short revalidation; never immutable |
-| Web manifest, service worker, route/update metadata | Revalidate; keep short enough for safe rollout |
-| Source maps | Do not publish publicly unless the observability/security model explicitly allows it |
+| Fingerprinted `/_expo/static` assets | One year, immutable |
+| HTML and other route metadata | Revalidation; never immutable |
+| Financial/authenticated API responses | `Cache-Control: no-store`, including failures |
+| Missing files | Real 404 and correct content type |
 
-A new HTML document can reference a new asset hash, so deploy atomically and retain assets long
-enough for clients with an older HTML document. Verify actual `Cache-Control` headers from the CDN,
-not only configuration files.
+The host adds `nosniff`, referrer policy, frame denial, and disables currently unused microphone,
+camera and geolocation permissions. Revisit the last policy as part of an actual voice feature.
+Verify CDN response headers rather than assuming configuration proves their delivery. The core
+application has no offline mutation queue; an uncertain save must be reconciled before retrying.
 
-## Firebase Hosting path
+## Release and rollback
 
-1. Create separate preview/staging/production targets or projects and restrict deploy permissions.
-2. Configure the app export directory as the Hosting public directory.
-3. Add route behavior appropriate to `static`; use an SPA rewrite only if output changes to `single`.
-4. Configure security and cache headers, custom 404, HTTPS custom domain, and redirects.
-5. Deploy a preview channel from the immutable export and run smoke tests.
-6. Promote/deploy the same reviewed artifact to production and record the Hosting release ID.
+1. Review changes, migration impact, runtime budgets, dependency exceptions and secrets separately.
+2. Validate source, SQL integration, auth schema and the portable container; export native bundles
+   when dependencies affect Expo Router or cross-platform behavior.
+3. Apply forward migrations using the migration identity. Confirm runtime cannot create schema or
+   delete financial records, and can perform the documented authenticated operating paths.
+4. Deploy the reviewed source with its immutable lockfile and production environment. Keep the
+   deployment ID, URL, commit and validation results in release evidence.
+5. Smoke-test the public API and SPA, including authenticated strict-query lists and deep routes.
+6. If necessary, restore the previous compatible application deployment. SQL constraints are forward
+   migrations; application rollback must remain compatible with the current database. Never delete
+   financial evidence or roll back a database just to undo a frontend release.
 
-Do not configure a blanket rewrite to the API Cloud Run service. The browser app and `/v1` API use
-separate origins by default; if a reverse proxy is introduced, record it in an ADR and retest cookies,
-CORS, Better Auth base URL, trusted origins, and caching.
+Migration scripts, private backups, `.env` files and local tooling must never enter the web output or
+uploaded build context. `.vercelignore`, `.dockerignore` and explicit runtime COPY rules enforce this.
+Do not enable purchases, change account plans or automatically promote the optional GCP candidate.
 
-## Alternatives
+## Required live smoke checks
 
-- **EAS Hosting:** simplest Expo-native path and the option Expo recommends for feature alignment.
-  Use it when the team wants Expo-managed previews/domains and accepts the additional service.
-- **Cloud Storage backend bucket + external HTTPS Application Load Balancer + optional Cloud CDN:**
-  keeps the static stack in Google Cloud and offers detailed CDN/IAM/routing controls, but adds load
-  balancer, certificate, DNS, cache-invalidation, public/private bucket, and cost complexity. Cloud
-  Storage alone does not serve a custom domain over HTTPS.
-- **Other static hosts:** acceptable when they provide HTTPS, atomic deploys, route rewrites, header
-  controls, previews, access control, and rollback. Record the operational owner and provider.
+- `/health`, `/ready`, `/v1`, unauthenticated `/v1/me`, auth session endpoint, and malformed/unknown API paths.
+- Register a clearly named QA account/business; perform a manual sale, retrieve it, and verify
+  idempotent replay, history, permissions and sign-out. Keep production QA data clearly identified.
+- Authenticated catalog listing with a real `search`/`limit` query, and rejection of unknown query keys.
+- Fresh direct loads of `/sign-in`, `/business`, `/operate/reports`, `/operate/sales/new`,
+  `/operate/sales/<id>`, and `/operate/receivables/<id>/payments/<id>/reverse`.
+- Actual JS/CSS content types, missing-asset 404, HTML/API cache behavior and credentialed CORS.
+- Compact and desktop web layouts, visible errors/loading states, keyboard access and confirmation.
+- Bundle configuration for accidental localhost URLs or secrets. Native exports are build evidence;
+  physical device tests and signed store releases remain separate gates.
 
-Do not put the static app into the API container merely to avoid choosing a host. That couples UI
-asset delivery/cache invalidation to API scaling and releases without a product requirement.
+## Moving providers
 
-## CORS and auth coordination
+Export the PostgreSQL database with `pg_dump`, restore with `pg_restore`, recreate least-privilege
+roles, then verify constraints, migration history and ledger totals before cutover. Deploy the
+same container and web files behind a same-origin proxy. Update private/public origins and rebuild
+the web artifact. Test cookie renewal and existing sessions, restore, and rollback before moving
+real traffic. A backup/restore test is evidence; a configured backup switch alone is not.
 
-For each deployed web origin:
+## Public website boundary
 
-- add the exact HTTPS origin to API `CORS_ORIGINS`;
-- add it to Better Auth `TRUSTED_ORIGINS`;
-- set `BETTER_AUTH_URL` to the API auth origin, not the static host unless a reviewed proxy makes
-  them the same origin;
-- send credentials only to the intended API origin;
-- keep preview origins either explicitly enrolled or unauthenticated—do not wildcard production
-  cookies for every preview URL.
+The Expo app is the authenticated product. Add `apps/site` only when public editorial/SEO content
+requires its own rendering, CMS or release lifecycle; do not add another frontend preemptively.
 
-## Smoke checks
-
-- Open each of these directly in a fresh browser tab, then reload each path. The list deliberately
-  includes the deep and dynamic routes, because those are what a host's clean-URL rules break:
-  - flat: `/`, `/sign-in`, `/sign-up`, `/dashboard`, `/business`, `/billing`, `/billing/success`,
-    `/settings`, `/operate`;
-  - one module index per group: `/operate/sales`, `/operate/expenses`, `/operate/cash`,
-    `/operate/catalog`, `/operate/inventory`, `/operate/customers`, `/operate/receivables`;
-  - nested static: `/operate/sales/new`, `/operate/catalog/categories`,
-    `/operate/cash/accounts/new`, `/operate/cash/transfers/new`;
-  - one dynamic segment: `/operate/sales/<saleId>`, `/operate/expenses/<expenseId>`,
-    `/operate/catalog/<productId>`, `/operate/customers/<customerId>`;
-  - dynamic plus a nested static segment: `/operate/sales/correct/<saleId>`,
-    `/operate/catalog/<productId>/edit`, `/operate/cash/accounts/<accountId>/edit`,
-    `/operate/inventory/<productId>/new`, `/operate/receivables/<receivableId>/payment`;
-  - two dynamic segments: `/operate/inventory/<productId>/reverse/<movementId>` and
-    `/operate/receivables/<receivableId>/payments/<paymentId>/reverse`.
-- Confirm an unknown path still reaches the exported not-found document rather than a host 404 page,
-  and that a partially matching deep path does not fall through to a parent route's document.
-- Confirm HTML content type, all JS/CSS/font/image requests, and no asset request returns `index.html`.
-- Inspect production bundle/config for localhost and secret-like values.
-- Verify API CORS preflight and credentialed session behavior from the exact production origin.
-- Verify sign-in/sign-out and direct auth callback/deep-link routes.
-- On web, request an allowlisted billing slug and open only the server-returned Polar URL; do not
-  complete a real production purchase during a generic smoke test.
-- Verify `Cache-Control`, HTTPS certificate, redirects, CSP/security headers, custom 404, and rollback.
-- Confirm API Cloud Run health separately; static-host success does not prove API health and vice
-  versa.
-
-## When to add `apps/site`
-
-Keep Expo web as the authenticated product default. Add a separate `apps/site` only when public
-marketing/content needs SEO-heavy editorial pages, a CMS, advanced server rendering, independent
-content deploys, or a materially different performance/analytics lifecycle. That site can link to the
-Expo product origin while sharing only intentional brand/contracts packages. Do not force the
-authenticated app to become a general CMS, and do not add a second frontend preemptively.
-
-## Official sources
+## Official sources reviewed 2026-09-10
 
 - [Expo web publishing and output modes](https://docs.expo.dev/guides/publishing-websites/)
-- [Expo EAS web deployment](https://docs.expo.dev/deploy/web/)
-- [Firebase Hosting use cases](https://firebase.google.com/docs/hosting/use-cases)
-- [Firebase Hosting rewrites and headers](https://firebase.google.com/docs/hosting/full-config)
-- [Cloud Storage static site with HTTPS load balancer](https://cloud.google.com/storage/docs/hosting-static-website)
-- [Cloud CDN cache behavior](https://cloud.google.com/cdn/docs/caching)
+- [Vercel Bun runtime](https://vercel.com/docs/functions/runtimes/bun)
+- [Vercel routing configuration](https://vercel.com/docs/project-configuration/vercel-json)
+- [Neon pooling](https://neon.com/docs/connect/connection-pooling)
+- [PostgreSQL backup and restore](https://www.postgresql.org/docs/current/backup-dump.html)

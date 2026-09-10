@@ -12,7 +12,7 @@ retaining platform-specific files and navigation where needed.
 Expo web remains the authenticated product surface. Add a separate `apps/site` only when public
 marketing/content has materially different SEO, CMS, server-rendering, content-deploy, or analytics
 needs; do not force the product client to become a general content site or add a second frontend
-without that requirement. See [Web deployment](web-deployment.md#when-to-add-appssite).
+without that requirement. See [Web deployment](web-deployment.md#public-website-boundary).
 
 The selected web adapter exports this same client as an Expo single-page application
 (`web.output: single`). Vercel routing serves deep links through Expo Router and sends API/auth

@@ -1,0 +1,13 @@
+.git
+.cache
+.secrets
+.agents
+**/node_modules
+**/.env
+**/.env.*
+**/.expo
+**/dist
+**/.turbo
+**/coverage
+**/*.log
+docs/screenshots

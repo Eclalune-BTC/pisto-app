@@ -4,6 +4,7 @@ import {
   createCashRepository,
   createCatalogRepository,
   createDatabase,
+  createProductRateLimiter,
   createProductRepository,
   createReceivablesRepository,
   createReportsRepository,
@@ -36,6 +37,11 @@ export function createRuntime(env: Record<string, string | undefined>) {
     product,
     receivables,
     reports,
+    consumeProductRequest: createProductRateLimiter(database.db, {
+      readLimit: config.productReadLimit,
+      writeLimit: config.productWriteLimit,
+      windowSeconds: 60,
+    }),
   });
 
   return { app, auth, billing, database, config };

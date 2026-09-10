@@ -1,4 +1,5 @@
 import {
+  focusManager,
   MutationCache,
   onlineManager,
   QueryCache,
@@ -8,9 +9,11 @@ import {
 import * as Network from "expo-network";
 import { router } from "expo-router";
 import { type PropsWithChildren, useEffect, useState } from "react";
+import { AppState, Platform } from "react-native";
 
 import { ApiClientError } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
+import { shouldRetryQuery } from "@/lib/query-policy";
 
 let recoveringUnauthorizedSession = false;
 
@@ -46,7 +49,7 @@ export function QueryProvider({ children }: PropsWithChildren) {
       }),
       defaultOptions: {
         queries: {
-          retry: 1,
+          retry: shouldRetryQuery,
           staleTime: 30_000,
         },
         mutations: {
@@ -63,13 +66,32 @@ export function QueryProvider({ children }: PropsWithChildren) {
         const subscription = Network.addNetworkStateListener((state) => {
           setOnline(state.isConnected !== false && state.isInternetReachable !== false);
         });
-        void Network.getNetworkStateAsync().then((state) => {
-          setOnline(state.isConnected !== false && state.isInternetReachable !== false);
-        });
-        return () => subscription.remove();
+        let active = true;
+        void Network.getNetworkStateAsync()
+          .then((state) => {
+            if (active)
+              setOnline(state.isConnected !== false && state.isInternetReachable !== false);
+          })
+          .catch(() => undefined);
+        return () => {
+          active = false;
+          subscription.remove();
+        };
       }),
     [],
   );
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    focusManager.setFocused(AppState.currentState === "active");
+    const subscription = AppState.addEventListener("change", (state) => {
+      focusManager.setFocused(state === "active");
+    });
+    return () => {
+      subscription.remove();
+      focusManager.setFocused(undefined);
+    };
+  }, []);
 
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
