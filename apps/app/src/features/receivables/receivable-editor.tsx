@@ -13,6 +13,7 @@ import { CustomerPicker } from "@/features/customers/customer-picker";
 import { customerDetailQueryOptions, customersQueryOptions } from "@/features/customers/queries";
 import { hasDeniedRead } from "@/features/customers/remote-state";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { isAmbiguousMutationError } from "@/lib/api-client";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 
 import { receivablesApi } from "./api";
@@ -116,7 +117,10 @@ export function ReceivableEditor({
         ? customers.isError || customers.fetchStatus === "paused"
         : false;
 
+  const confirmationLocked = mutation.isPending || isAmbiguousMutationError(mutation.error);
+
   const prepareReview = () => {
+    if (confirmationLocked) return;
     if (selectionReadFailed) {
       setErrors((current) => ({
         ...current,
@@ -176,7 +180,12 @@ export function ReceivableEditor({
 
   return (
     <Page width="form">
-      <Button className="self-start px-0" onPress={onBack} variant="ghost">
+      <Button
+        className="self-start px-0"
+        disabled={confirmationLocked}
+        onPress={confirmationLocked ? undefined : onBack}
+        variant="ghost"
+      >
         <ArrowLeft color="#237A55" size={18} />
         <ButtonText variant="ghost">{copy.common.back}</ButtonText>
       </Button>

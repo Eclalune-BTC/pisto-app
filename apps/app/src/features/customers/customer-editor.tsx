@@ -8,6 +8,7 @@ import { Text } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { isAmbiguousMutationError } from "@/lib/api-client";
 
 import { customersApi } from "./api";
 import { buildCustomersCopy, type CustomersReceivablesCopy } from "./copy";
@@ -90,7 +91,10 @@ export function CustomerEditor({ businessId, customer, onBack, onConfirmed }: Cu
   });
   const mutationState = customerMutationState(t, mutation);
 
+  const confirmationLocked = mutation.isPending || isAmbiguousMutationError(mutation.error);
+
   const prepareReview = () => {
+    if (confirmationLocked) return;
     const idempotencyKey = Crypto.randomUUID();
     const result = customer
       ? buildUpdateCustomerCommand(customer, values, idempotencyKey)
@@ -104,7 +108,12 @@ export function CustomerEditor({ businessId, customer, onBack, onConfirmed }: Cu
 
   return (
     <Page width="form">
-      <Button className="self-start px-0" onPress={onBack} variant="ghost">
+      <Button
+        className="self-start px-0"
+        disabled={confirmationLocked}
+        onPress={confirmationLocked ? undefined : onBack}
+        variant="ghost"
+      >
         <ArrowLeft color="#237A55" size={18} />
         <ButtonText variant="ghost">{copy.common.back}</ButtonText>
       </Button>

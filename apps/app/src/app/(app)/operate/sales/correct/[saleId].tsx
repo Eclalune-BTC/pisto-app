@@ -120,7 +120,11 @@ export default function CorrectSaleScreen() {
     );
   }
 
+  const ambiguousFailure = isAmbiguousMutationError(correction.error);
+  const confirmationLocked = correction.isPending || ambiguousFailure;
+
   const prepareReview = () => {
+    if (confirmationLocked) return;
     const trimmedReason = reason.trim();
     const nextReasonError =
       trimmedReason.length < 2 || trimmedReason.length > 240
@@ -167,7 +171,6 @@ export default function CorrectSaleScreen() {
     correction.reset();
   };
 
-  const ambiguousFailure = isAmbiguousMutationError(correction.error);
   const originalAmount = formatMinorUnits(
     sale.grossMinorUnits,
     sale.currency,
@@ -179,6 +182,7 @@ export default function CorrectSaleScreen() {
     <Page width="form">
       <Button
         className="self-start px-0"
+        disabled={confirmationLocked}
         onPress={() =>
           router.replace({ pathname: "/operate/sales/[saleId]", params: { saleId: sale.id } })
         }
@@ -268,7 +272,9 @@ export default function CorrectSaleScreen() {
           <View className="gap-3 sm:flex-row">
             <Button
               loading={correction.isPending}
-              onPress={() => correction.mutate(review)}
+              onPress={() => {
+                if (!correction.isPending) correction.mutate(review);
+              }}
               variant="accent"
             >
               <Check color="#14241D" size={18} strokeWidth={2.8} />
@@ -276,8 +282,10 @@ export default function CorrectSaleScreen() {
             </Button>
             {!ambiguousFailure ? (
               <Button
+                disabled={confirmationLocked}
                 label={t("sales.edit")}
                 onPress={() => {
+                  if (confirmationLocked) return;
                   setReview(null);
                   correction.reset();
                 }}

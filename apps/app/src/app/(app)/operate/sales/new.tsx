@@ -79,7 +79,11 @@ export default function NewSaleScreen() {
   }
   if (!business) return <Redirect href="/business" />;
 
+  const ambiguousFailure = isAmbiguousMutationError(confirmation.error);
+  const confirmationLocked = confirmation.isPending || ambiguousFailure;
+
   const prepareReview = () => {
+    if (confirmationLocked) return;
     const validation = validateSaleDraft(
       { amount, date, time, description },
       business.currencyMinorUnitDigits,
@@ -107,12 +111,11 @@ export default function NewSaleScreen() {
     confirmation.reset();
   };
 
-  const ambiguousFailure = isAmbiguousMutationError(confirmation.error);
-
   return (
     <Page width="form">
       <Button
         className="self-start px-0"
+        disabled={confirmationLocked}
         onPress={() => router.replace("/operate/sales")}
         size="sm"
         variant="ghost"
@@ -183,7 +186,9 @@ export default function NewSaleScreen() {
             <Button
               accessibilityLabel={t("sales.confirm")}
               loading={confirmation.isPending}
-              onPress={() => confirmation.mutate(command)}
+              onPress={() => {
+                if (!confirmation.isPending) confirmation.mutate(command);
+              }}
               variant="accent"
             >
               <Check color="#14241D" size={18} strokeWidth={2.8} />
@@ -191,8 +196,10 @@ export default function NewSaleScreen() {
             </Button>
             {!ambiguousFailure ? (
               <Button
+                disabled={confirmationLocked}
                 label={t("sales.edit")}
                 onPress={() => {
+                  if (confirmationLocked) return;
                   setCommand(null);
                   confirmation.reset();
                 }}

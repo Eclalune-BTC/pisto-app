@@ -147,7 +147,13 @@ export function ProductDetailScreen({
   const { product, stock } = state.detail;
   return (
     <Page width="form">
-      <Button className="self-start px-0" onPress={onBack} size="sm" variant="ghost">
+      <Button
+        className="self-start px-0"
+        disabled={archiveState === "pending" || archiveState === "uncertain"}
+        onPress={archiveState === "pending" || archiveState === "uncertain" ? undefined : onBack}
+        size="sm"
+        variant="ghost"
+      >
         <ArrowLeft color="#617168" size={18} />
         <ButtonText className="text-ink-muted dark:text-[#AAB8B0]" variant="ghost">
           {copy.back}
@@ -249,7 +255,12 @@ export function ProductDetailScreen({
                   onPress={onArchive}
                   variant="danger"
                 />
-                <Button label={copy.cancel} onPress={onCancelArchive} variant="secondary" />
+                <Button
+                  disabled={archiveState === "pending"}
+                  label={copy.cancel}
+                  onPress={archiveState === "pending" ? undefined : onCancelArchive}
+                  variant="secondary"
+                />
               </>
             )}
           </View>

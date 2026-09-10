@@ -88,7 +88,13 @@ export function ReversalEditor({
 
   return (
     <Page width="form">
-      <Button className="self-start px-0" onPress={onBack} size="sm" variant="ghost">
+      <Button
+        className="self-start px-0"
+        disabled={mutationState === "pending" || mutationState === "uncertain"}
+        onPress={mutationState === "pending" || mutationState === "uncertain" ? undefined : onBack}
+        size="sm"
+        variant="ghost"
+      >
         <ArrowLeft color="#617168" size={18} />
         <ButtonText className="text-ink-muted dark:text-[#AAB8B0]" variant="ghost">
           {copy.back}
@@ -154,11 +160,20 @@ export function ReversalEditor({
               />
             ) : (
               <>
-                <Button loading={mutationState === "pending"} onPress={onConfirm} variant="danger">
+                <Button
+                  loading={mutationState === "pending"}
+                  onPress={mutationState === "pending" ? undefined : onConfirm}
+                  variant="danger"
+                >
                   <Check color="#FFFFFF" size={18} />
                   <ButtonText variant="danger">{copy.confirm}</ButtonText>
                 </Button>
-                <Button label={copy.cancel} onPress={onCancelReview} variant="secondary" />
+                <Button
+                  disabled={mutationState === "pending"}
+                  label={copy.cancel}
+                  onPress={mutationState === "pending" ? undefined : onCancelReview}
+                  variant="secondary"
+                />
               </>
             )}
           </View>

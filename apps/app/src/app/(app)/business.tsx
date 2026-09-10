@@ -63,8 +63,14 @@ export default function BusinessSetupScreen() {
     },
   });
   const uncertainCreation = isAmbiguousMutationError(creation.error);
+  const creationLocked = creation.isPending || uncertainCreation;
 
   const createBusiness = () => {
+    if (creation.isPending) return;
+    if (uncertainCreation) {
+      if (creation.variables) creation.mutate(creation.variables);
+      return;
+    }
     const result = buildBusinessCommand({ currency, name, timeZone });
     const nextErrors = result.ok
       ? {}
@@ -144,7 +150,7 @@ export default function BusinessSetupScreen() {
           <View className="gap-5">
             <Field
               autoCapitalize="words"
-              editable={!uncertainCreation}
+              editable={!creationLocked}
               error={errors.name}
               label={t("business.name")}
               maxLength={80}
@@ -156,7 +162,7 @@ export default function BusinessSetupScreen() {
               <View className="flex-1">
                 <Field
                   autoCapitalize="characters"
-                  editable={!uncertainCreation}
+                  editable={!creationLocked}
                   error={errors.currency}
                   label={t("business.currency")}
                   maxLength={3}
@@ -168,7 +174,7 @@ export default function BusinessSetupScreen() {
               <View className="flex-1">
                 <Field
                   autoCapitalize="none"
-                  editable={!uncertainCreation}
+                  editable={!creationLocked}
                   error={errors.timeZone}
                   label={t("business.timeZone")}
                   onChangeText={setTimeZone}
@@ -181,10 +187,13 @@ export default function BusinessSetupScreen() {
 
           <Pressable
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: acknowledged }}
+            accessibilityState={{ checked: acknowledged, disabled: creationLocked }}
             aria-checked={acknowledged}
             className="flex-row items-start gap-3"
-            onPress={() => setAcknowledged((value) => !value)}
+            disabled={creationLocked}
+            onPress={() => {
+              if (!creationLocked) setAcknowledged((value) => !value);
+            }}
           >
             <View
               className={`mt-0.5 h-6 w-6 items-center justify-center border ${

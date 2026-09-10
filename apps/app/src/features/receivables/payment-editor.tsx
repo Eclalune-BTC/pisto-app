@@ -9,6 +9,7 @@ import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { buildCustomersCopy, type CustomersReceivablesCopy } from "@/features/customers/copy";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { isAmbiguousMutationError } from "@/lib/api-client";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 
 import { receivablesApi } from "./api";
@@ -75,7 +76,10 @@ export function PaymentEditor({ business, onBack, onConfirmed, receivable }: Pay
     },
   });
 
+  const confirmationLocked = mutation.isPending || isAmbiguousMutationError(mutation.error);
+
   const prepareReview = () => {
+    if (confirmationLocked) return;
     if (accounts.isError || accounts.fetchStatus === "paused") {
       setErrors((current) => ({
         ...current,
@@ -128,7 +132,12 @@ export function PaymentEditor({ business, onBack, onConfirmed, receivable }: Pay
 
   return (
     <Page width="form">
-      <Button className="self-start px-0" onPress={onBack} variant="ghost">
+      <Button
+        className="self-start px-0"
+        disabled={confirmationLocked}
+        onPress={confirmationLocked ? undefined : onBack}
+        variant="ghost"
+      >
         <ArrowLeft color="#237A55" size={18} />
         <ButtonText variant="ghost">{copy.common.back}</ButtonText>
       </Button>

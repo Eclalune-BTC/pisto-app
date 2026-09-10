@@ -175,6 +175,8 @@ export function CategoryManager({
   state,
   status,
 }: CategoryManagerProps) {
+  const mutationState = editor?.mutationState ?? archiveView?.mutationState;
+  const confirmationLocked = mutationState === "pending" || mutationState === "uncertain";
   if (state.status === "denied") {
     return (
       <Page>
@@ -184,7 +186,13 @@ export function CategoryManager({
   }
   return (
     <Page contentContainerClassName="gap-8">
-      <Button className="self-start px-0" onPress={onBack} size="sm" variant="ghost">
+      <Button
+        className="self-start px-0"
+        disabled={confirmationLocked}
+        onPress={confirmationLocked ? undefined : onBack}
+        size="sm"
+        variant="ghost"
+      >
         <ArrowLeft color="#617168" size={18} />
         <ButtonText className="text-ink-muted dark:text-[#AAB8B0]" variant="ghost">
           {copy.back}
@@ -248,7 +256,12 @@ export function CategoryManager({
                       {editor.mode === "create" ? copy.confirmCreate : copy.confirmUpdate}
                     </ButtonText>
                   </Button>
-                  <Button label={copy.edit} onPress={onEditReview} variant="secondary" />
+                  <Button
+                    disabled={editor.mutationState === "pending"}
+                    label={copy.edit}
+                    onPress={editor.mutationState === "pending" ? undefined : onEditReview}
+                    variant="secondary"
+                  />
                 </>
               )}
             </View>
@@ -300,7 +313,12 @@ export function CategoryManager({
                   onPress={onConfirmArchive}
                   variant="danger"
                 />
-                <Button label={copy.back} onPress={onCancelArchive} variant="secondary" />
+                <Button
+                  disabled={archiveView.mutationState === "pending"}
+                  label={copy.back}
+                  onPress={archiveView.mutationState === "pending" ? undefined : onCancelArchive}
+                  variant="secondary"
+                />
               </>
             )}
           </View>

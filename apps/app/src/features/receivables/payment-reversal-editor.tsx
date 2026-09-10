@@ -13,6 +13,7 @@ import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { buildCustomersCopy, type CustomersReceivablesCopy } from "@/features/customers/copy";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { isAmbiguousMutationError } from "@/lib/api-client";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 
 import { receivablesApi } from "./api";
@@ -77,7 +78,10 @@ export function PaymentReversalEditor({
     },
   });
 
+  const confirmationLocked = mutation.isPending || isAmbiguousMutationError(mutation.error);
+
   const prepareReview = () => {
+    if (confirmationLocked) return;
     const result = buildPaymentReversalCommand(draft, Crypto.randomUUID());
     setErrors({
       date: issueMessage(copy, result.issues.date),
@@ -91,7 +95,12 @@ export function PaymentReversalEditor({
 
   return (
     <Page width="form">
-      <Button className="self-start px-0" onPress={onBack} variant="ghost">
+      <Button
+        className="self-start px-0"
+        disabled={confirmationLocked}
+        onPress={confirmationLocked ? undefined : onBack}
+        variant="ghost"
+      >
         <ArrowLeft color="#237A55" size={18} />
         <ButtonText variant="ghost">{copy.common.back}</ButtonText>
       </Button>

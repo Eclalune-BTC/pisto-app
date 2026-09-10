@@ -84,7 +84,13 @@ export function MovementEditor({
   const review = reviewItems !== null;
   return (
     <Page width="form">
-      <Button className="self-start px-0" onPress={onBack} size="sm" variant="ghost">
+      <Button
+        className="self-start px-0"
+        disabled={mutationState === "pending" || mutationState === "uncertain"}
+        onPress={mutationState === "pending" || mutationState === "uncertain" ? undefined : onBack}
+        size="sm"
+        variant="ghost"
+      >
         <ArrowLeft color="#617168" size={18} />
         <ButtonText className="text-ink-muted dark:text-[#AAB8B0]" variant="ghost">
           {copy.back}
@@ -126,11 +132,20 @@ export function MovementEditor({
               />
             ) : (
               <>
-                <Button loading={mutationState === "pending"} onPress={onConfirm} variant="accent">
+                <Button
+                  loading={mutationState === "pending"}
+                  onPress={mutationState === "pending" ? undefined : onConfirm}
+                  variant="accent"
+                >
                   <Check color="#14241D" size={18} strokeWidth={2.8} />
                   <ButtonText variant="accent">{copy.confirm}</ButtonText>
                 </Button>
-                <Button label={copy.edit} onPress={onEditReview} variant="secondary" />
+                <Button
+                  disabled={mutationState === "pending"}
+                  label={copy.edit}
+                  onPress={mutationState === "pending" ? undefined : onEditReview}
+                  variant="secondary"
+                />
               </>
             )}
           </View>
