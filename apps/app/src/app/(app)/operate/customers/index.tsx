@@ -3,6 +3,7 @@ import { Redirect, useRouter } from "expo-router";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { queryHasStaleData } from "@/features/cash/remote-state";
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
@@ -48,15 +49,16 @@ export default function CustomersRoute() {
     state = { kind: readFailureKind(customers.error) === "denied" ? "denied" : "error" };
   } else {
     const items = customers.data?.pages.flatMap((page) => page.items) ?? [];
+    const stale = queryHasStaleData(customers) || access.isStale;
     state =
       items.length === 0
-        ? { kind: "empty", stale: customers.isError || access.isStale }
+        ? { kind: "empty", stale }
         : {
             kind: "ready",
             items,
             loadingMore: customers.isFetchingNextPage,
             nextCursor: customers.data?.pages.at(-1)?.nextCursor ?? null,
-            stale: customers.isError || access.isStale,
+            stale,
           };
   }
 

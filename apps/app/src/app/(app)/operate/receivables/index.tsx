@@ -3,6 +3,7 @@ import { Redirect, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { queryHasStaleData } from "@/features/cash/remote-state";
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
@@ -69,9 +70,10 @@ export default function ReceivablesRoute() {
   } else if (list.data && summary.data) {
     const stale =
       access.isStale ||
-      list.isError ||
-      summary.isError ||
-      customerQueries.some((query) => query.isError);
+      [list, summary, ...customerQueries].some(queryHasStaleData) ||
+      customerQueries.some(
+        (query) => query.isError || isPausedWithoutData(query.fetchStatus, Boolean(query.data)),
+      );
     state =
       items.length === 0
         ? { kind: "empty", stale, summary: summary.data.summary }
