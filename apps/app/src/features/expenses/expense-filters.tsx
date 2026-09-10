@@ -2,7 +2,7 @@ import type { CashAccount, ExpenseCategory, ExpenseStatus } from "@pisto/contrac
 import { Text, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import { ChoiceList, type ChoiceOption } from "../cash/choice-list";
+import { FilterBar, type FilterOption } from "@/components/ui/filter-bar";
 
 export type ExpenseFiltersValue = {
   accountId: string;
@@ -35,7 +35,7 @@ export type ExpenseFiltersCopy = {
 
 type ExpenseFiltersProps = {
   accounts: CashAccount[];
-  categoryOptions: readonly ChoiceOption<ExpenseCategory>[];
+  categoryOptions: readonly FilterOption<ExpenseCategory>[];
   copy: ExpenseFiltersCopy;
   filters: ExpenseFiltersValue;
   hasMoreAccounts: boolean;
@@ -72,7 +72,8 @@ export function ExpenseFilters({
       </Text>
       <View className="gap-6 lg:flex-row lg:items-start">
         <View className="min-w-0 flex-1 gap-5">
-          <ChoiceList
+          <FilterBar
+            showLabel
             label={copy.statusFilter}
             onChange={(status) => onFiltersChange({ ...filters, status })}
             options={[
@@ -82,7 +83,8 @@ export function ExpenseFilters({
             ]}
             value={filters.status}
           />
-          <ChoiceList
+          <FilterBar
+            showLabel
             label={copy.categoryFilter}
             onChange={(category) => onFiltersChange({ ...filters, category })}
             options={[{ label: copy.allCategories, value: "all" }, ...categoryOptions]}
@@ -90,7 +92,8 @@ export function ExpenseFilters({
           />
         </View>
         <View className="min-w-0 flex-1 gap-5">
-          <ChoiceList
+          <FilterBar
+            showLabel
             label={copy.accountFilter}
             onChange={(accountId) => onFiltersChange({ ...filters, accountId })}
             options={[

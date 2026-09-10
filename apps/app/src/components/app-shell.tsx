@@ -3,7 +3,7 @@ import { type Href, Link, usePathname } from "expo-router";
 import { LogOut, ReceiptText, UserRound } from "lucide-react-native";
 import type { ComponentType, PropsWithChildren } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Brand } from "@/components/brand";
@@ -16,7 +16,7 @@ type NavItem = {
   href: Href;
   icon: ComponentType<{ color?: string; size?: number; strokeWidth?: number }>;
   labelKey: "common.operate" | "common.account";
-  matchPrefix: string;
+  matchPrefixes: readonly string[];
 };
 
 const navItems: NavItem[] = [
@@ -24,10 +24,21 @@ const navItems: NavItem[] = [
     href: "/operate",
     icon: ReceiptText,
     labelKey: "common.operate",
-    matchPrefix: "/operate",
+    matchPrefixes: ["/operate"],
   },
-  { href: "/settings", icon: UserRound, labelKey: "common.account", matchPrefix: "/settings" },
+  {
+    href: "/settings",
+    icon: UserRound,
+    labelKey: "common.account",
+    matchPrefixes: ["/settings", "/billing"],
+  },
 ];
+
+function isNavigationItemActive(pathname: string, item: NavItem) {
+  return item.matchPrefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
 
 type AppShellProps = PropsWithChildren<{
   email?: string;
@@ -47,9 +58,10 @@ export function AppShell({ children, email, name }: AppShellProps) {
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#0F1D18]" edges={["top", "left", "right"]}>
       <View className="flex-1 flex-row">
         {isWeb ? (
-          <View
+          <ScrollView
             accessibilityLabel={t("shell.primaryNavigation")}
-            className="hidden w-[272px] justify-between bg-ink px-6 py-7 lg:flex"
+            className="hidden w-[272px] shrink-0 grow-0 bg-ink lg:flex"
+            contentContainerClassName="min-h-full justify-between gap-8 px-6 py-7"
             role="navigation"
           >
             <View className="gap-10">
@@ -58,8 +70,7 @@ export function AppShell({ children, email, name }: AppShellProps) {
               </View>
               <View className="gap-2">
                 {navItems.map((item) => {
-                  const active =
-                    pathname === item.href || pathname.startsWith(`${item.matchPrefix}/`);
+                  const active = isNavigationItemActive(pathname, item);
                   const Icon = item.icon;
 
                   return (
@@ -67,6 +78,7 @@ export function AppShell({ children, email, name }: AppShellProps) {
                       <Link href={item.href} asChild>
                         <Pressable
                           accessibilityState={{ selected: active }}
+                          aria-current={active ? "page" : undefined}
                           className={cn(
                             "min-h-12 flex-row items-center gap-3 border-l-2 px-4 active:opacity-80",
                             active
@@ -90,7 +102,7 @@ export function AppShell({ children, email, name }: AppShellProps) {
                         </Pressable>
                       </Link>
 
-                      {item.matchPrefix === "/operate" && pathname.startsWith("/operate") ? (
+                      {item.href === "/operate" && pathname.startsWith("/operate") ? (
                         <View className="gap-0.5 pl-7">
                           {operateModules.map((module) => {
                             const moduleActive =
@@ -99,7 +111,8 @@ export function AppShell({ children, email, name }: AppShellProps) {
                               <Link href={module.href} asChild key={module.id}>
                                 <Pressable
                                   accessibilityState={{ selected: moduleActive }}
-                                  className="min-h-9 justify-center border-l border-[#466055] px-4 active:opacity-70"
+                                  aria-current={moduleActive ? "page" : undefined}
+                                  className="min-h-11 justify-center border-l border-[#466055] px-4 active:opacity-70"
                                 >
                                   <Text
                                     className={cn(
@@ -137,7 +150,12 @@ export function AppShell({ children, email, name }: AppShellProps) {
               </View>
               <Pressable
                 accessibilityLabel={t("common.signOut")}
-                className="min-h-10 flex-row items-center gap-2 rounded-xl active:opacity-70"
+                accessibilityRole="button"
+                accessibilityState={{
+                  busy: signOutAction.isPending,
+                  disabled: signOutAction.isPending,
+                }}
+                className="min-h-11 flex-row items-center gap-2 rounded-xl active:opacity-70"
                 disabled={signOutAction.isPending}
                 onPress={signOutAction.signOut}
               >
@@ -150,7 +168,7 @@ export function AppShell({ children, email, name }: AppShellProps) {
                 <Text className="text-xs leading-4 text-[#F6BB76]">{signOutAction.error}</Text>
               ) : null}
             </View>
-          </View>
+          </ScrollView>
         ) : null}
 
         <View className="min-w-0 flex-1">
@@ -183,13 +201,14 @@ export function AppShell({ children, email, name }: AppShellProps) {
             role="navigation"
           >
             {navItems.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(`${item.matchPrefix}/`);
+              const active = isNavigationItemActive(pathname, item);
               const Icon = item.icon;
 
               return (
                 <Link key={item.labelKey} href={item.href} asChild>
                   <Pressable
                     accessibilityState={{ selected: active }}
+                    aria-current={active ? "page" : undefined}
                     className={cn(
                       "min-h-14 flex-1 items-center justify-center gap-1 border-t-2 active:bg-[#EFF3EF] dark:active:bg-[#21352C]",
                       active ? "border-positive" : "border-transparent",

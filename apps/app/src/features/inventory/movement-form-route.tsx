@@ -4,6 +4,7 @@ import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { reportsQueryKeys } from "@/features/reports/queries";
 import { currentLocalDateTime } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
@@ -77,6 +78,9 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
     networkMode: "always",
     onSuccess: async () => {
       await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: reportsQueryKeys.all(business?.id ?? "unselected"),
+        }),
         queryClient.invalidateQueries({
           queryKey: catalogInventoryQueryKeys.productsRoot(business?.id),
         }),

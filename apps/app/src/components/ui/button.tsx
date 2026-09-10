@@ -1,13 +1,14 @@
 import { Slot } from "@rn-primitives/slot";
 import { cva, type VariantProps } from "class-variance-authority";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text } from "react-native";
+import { useUniwind } from "uniwind";
 
 import { cn } from "@/lib/cn";
 
 const buttonVariants = cva(
-  "min-h-12 flex-row items-center justify-center gap-2 rounded-lg px-5 active:opacity-80 disabled:opacity-45",
+  "min-h-12 max-w-full flex-row items-center justify-center gap-2 rounded-lg px-5 py-2 active:opacity-80 disabled:opacity-45",
   {
     variants: {
       variant: {
@@ -18,7 +19,7 @@ const buttonVariants = cva(
         danger: "bg-danger",
       },
       size: {
-        sm: "min-h-10 px-4",
+        sm: "min-h-11 px-4",
         md: "min-h-12 px-5",
         lg: "min-h-14 px-7",
       },
@@ -30,7 +31,7 @@ const buttonVariants = cva(
   },
 );
 
-const textVariants = cva("text-center text-[15px] font-bold", {
+const textVariants = cva("shrink text-center text-[15px] font-bold", {
   variants: {
     variant: {
       primary: "text-white",
@@ -45,9 +46,10 @@ const textVariants = cva("text-center text-[15px] font-bold", {
   },
 });
 
-type ButtonProps = ComponentProps<typeof Pressable> &
+type ButtonProps = Omit<ComponentProps<typeof Pressable>, "children"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
+    children?: ReactNode;
     label?: string;
     loading?: boolean;
   };
@@ -66,16 +68,17 @@ export function Button({
   ...props
 }: ButtonProps) {
   const { t } = useTranslation();
+  const { theme } = useUniwind();
   const Component = asChild ? Slot : Pressable;
 
   return (
     <Component
       {...props}
       accessibilityLabel={
-        accessibilityLabel ??
-        (loading ? (label ? `${label}, ${t("common.loading")}` : t("common.loading")) : undefined)
+        accessibilityLabel ?? (loading && label ? `${label}, ${t("common.loading")}` : undefined)
       }
       accessibilityRole="button"
+      aria-busy={Boolean(loading)}
       accessibilityState={{
         ...accessibilityState,
         busy: Boolean(loading),
@@ -84,12 +87,23 @@ export function Button({
       className={cn(buttonVariants({ size, variant }), className)}
       disabled={disabled || loading}
     >
-      {loading ? (
-        <ActivityIndicator color={variant === "accent" ? "#14241D" : "#FFFFFF"} />
-      ) : label ? (
-        <Text className={textVariants({ variant })}>{label}</Text>
-      ) : (
+      {asChild ? (
         children
+      ) : (
+        <>
+          {loading ? (
+            <ActivityIndicator
+              color={
+                variant === "accent"
+                  ? "#14241D"
+                  : (variant === "secondary" || variant === "ghost") && theme !== "dark"
+                    ? "#237A55"
+                    : "#FFFFFF"
+              }
+            />
+          ) : null}
+          {label ? <Text className={textVariants({ variant })}>{label}</Text> : children}
+        </>
       )}
     </Component>
   );

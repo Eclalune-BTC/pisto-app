@@ -1376,6 +1376,9 @@ export const esSV = {
     action: "Ir al inicio",
   },
   productErrors: {
+    rateLimited: "Hiciste varias solicitudes seguidas. Espera un momento y vuelve a intentarlo.",
+    writesPaused:
+      "Los cambios están pausados temporalmente. Puedes consultar tus registros e intentar guardar más tarde.",
     businessRequired: "Selecciona o crea un negocio antes de continuar.",
     conflict: "La operación entra en conflicto con el estado actual. Actualiza y revisa de nuevo.",
     forbidden: "Tu cuenta no tiene permiso para realizar esta acción.",

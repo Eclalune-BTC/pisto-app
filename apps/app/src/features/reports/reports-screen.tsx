@@ -43,24 +43,26 @@ export function ReportsScreen({
   state,
 }: ReportsScreenProps) {
   return (
-    <FeatureBoundary copy={copy} onRetry={onRetry} state={state}>
-      {state.kind === "ready" ? (
-        <Page contentContainerClassName="gap-8">
-          <ScreenHeader description={copy.description} eyebrow={copy.eyebrow} title={copy.title} />
-          {state.isStale ? <StaleNotice /> : null}
-          <ReportRangeSelector
-            applying={applying}
-            copy={copy.range}
-            endLocalDate={endLocalDate}
-            issue={issue}
-            onApply={onApply}
-            onEndLocalDateChange={onEndLocalDateChange}
-            onStartLocalDateChange={onStartLocalDateChange}
-            startLocalDate={startLocalDate}
-          />
-          <ReportSections copy={copy.sections} locale={locale} report={state.report} />
-        </Page>
+    <Page contentContainerClassName="gap-8">
+      <ScreenHeader description={copy.description} eyebrow={copy.eyebrow} title={copy.title} />
+      {state.kind === "ready" && state.isStale ? <StaleNotice /> : null}
+      {state.kind !== "denied" ? (
+        <ReportRangeSelector
+          applying={applying}
+          copy={copy.range}
+          endLocalDate={endLocalDate}
+          issue={issue}
+          onApply={onApply}
+          onEndLocalDateChange={onEndLocalDateChange}
+          onStartLocalDateChange={onStartLocalDateChange}
+          startLocalDate={startLocalDate}
+        />
       ) : null}
-    </FeatureBoundary>
+      <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
+        {state.kind === "ready" ? (
+          <ReportSections copy={copy.sections} locale={locale} report={state.report} />
+        ) : null}
+      </FeatureBoundary>
+    </Page>
   );
 }

@@ -33,19 +33,23 @@ export function useCapabilityAccess(
 
   return {
     business,
-    canManage: !businesses.isError && resolveBusinessPermission(business, managePermission),
+    canManage:
+      !businesses.isError &&
+      businesses.fetchStatus !== "paused" &&
+      resolveBusinessPermission(business, managePermission),
     canRead: hasReadPermission,
     isError: businesses.isError && !businesses.data,
     isOffline: businesses.fetchStatus === "paused" && !businesses.data,
     isPending: businesses.isPending,
-    isStale: businesses.isError && Boolean(businesses.data),
+    isStale:
+      (businesses.isError || businesses.fetchStatus === "paused") && Boolean(businesses.data),
     refetch: () => businesses.refetch(),
   };
 }
 
 export function capabilityBoundaryState(access: CapabilityAccess): CapabilityBoundaryState {
-  if (access.isPending) return "loading";
   if (access.isOffline) return "offline";
+  if (access.isPending) return "loading";
   if (access.isError) return "error";
   if (access.business && !access.canRead) return "denied";
   return "ready";

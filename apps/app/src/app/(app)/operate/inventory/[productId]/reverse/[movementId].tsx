@@ -14,6 +14,7 @@ import { useMovementsQuery } from "@/features/inventory/queries";
 import type { ReversalDraft, ReversalDraftErrors } from "@/features/inventory/reversal-draft";
 import { buildReversalCommand } from "@/features/inventory/reversal-draft";
 import { ReversalEditor } from "@/features/inventory/reversal-editor";
+import { reportsQueryKeys } from "@/features/reports/queries";
 import { currentLocalDateTime } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
@@ -105,6 +106,9 @@ export default function ReverseInventoryMovementRoute() {
     networkMode: "always",
     onSuccess: async () => {
       await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: reportsQueryKeys.all(business?.id ?? "unselected"),
+        }),
         queryClient.invalidateQueries({
           queryKey: catalogInventoryQueryKeys.productsRoot(business?.id),
         }),

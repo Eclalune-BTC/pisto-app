@@ -5,6 +5,7 @@ import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { formatMinorUnits } from "@/lib/money";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
 import type { CatalogStatusFilter } from "./query-keys";
@@ -166,7 +167,7 @@ export function CatalogScreen({
     <Page contentContainerClassName="gap-8">
       <ScreenHeader
         action={
-          <View className="gap-3 sm:flex-row">
+          <View className="gap-3 sm:flex-row sm:flex-wrap">
             <Button onPress={onManageCategories} variant="secondary">
               <FolderCog color="#237A55" size={18} />
               <ButtonText variant="secondary">{copy.manageCategories}</ButtonText>
@@ -202,21 +203,16 @@ export function CatalogScreen({
             <Text className="text-xs font-semibold text-ink-muted dark:text-[#AAB8B0]">
               {copy.statusLabel}
             </Text>
-            <View accessibilityRole="tablist" className="flex-row flex-wrap gap-x-5 gap-y-1">
-              {(["active", "archived", "all"] as const).map((value) => (
-                <Pressable
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: status === value }}
-                  className={status === value ? "border-b-2 border-positive py-2" : "py-2"}
-                  key={value}
-                  onPress={() => onStatusChange(value)}
-                >
-                  <Text className="font-semibold text-ink dark:text-white">
-                    {copy.statuses[value]}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+            <FilterBar
+              disabled={state.status === "denied"}
+              label={copy.statusLabel}
+              onChange={onStatusChange}
+              options={(["active", "archived", "all"] as const).map((value) => ({
+                label: copy.statuses[value],
+                value,
+              }))}
+              value={status}
+            />
           </View>
         </View>
 

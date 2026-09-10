@@ -9,6 +9,7 @@ import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { reportsQueryKeys } from "@/features/reports/queries";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
@@ -148,6 +149,9 @@ export function ProductFormRoute({
     networkMode: "always",
     onSuccess: async ({ product: savedProduct }) => {
       await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: reportsQueryKeys.all(business?.id ?? "unselected"),
+        }),
         queryClient.invalidateQueries({
           queryKey: catalogInventoryQueryKeys.productsRoot(business?.id),
         }),

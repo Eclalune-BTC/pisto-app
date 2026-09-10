@@ -2,6 +2,7 @@ import type { Sale, SaleStatusFilter } from "@pisto/contracts";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { Button } from "@/components/ui/button";
+import { FilterBar } from "@/components/ui/filter-bar";
 
 import type { SalesHistoryState } from "./state";
 import { saleStatusFilters } from "./state";
@@ -128,31 +129,13 @@ export function SalesHistory({
         </Text>
       </View>
 
-      <View className="flex-row flex-wrap border-b border-line dark:border-[#304239]">
-        {saleStatusFilters.map((value) => (
-          <Pressable
-            // A label on the group is dropped by both platforms, so each tab carries it.
-            accessibilityLabel={`${copy.filterLabel}: ${filterLabels[value]}`}
-            accessibilityRole="button"
-            accessibilityState={{ selected: filter === value }}
-            className={`min-h-11 justify-center border-b-2 px-4 ${
-              filter === value ? "border-positive" : "border-transparent"
-            }`}
-            key={value}
-            onPress={() => onFilterChange(value)}
-          >
-            <Text
-              className={`text-sm font-bold ${
-                filter === value
-                  ? "text-positive dark:text-[#8DDEAF]"
-                  : "text-ink-muted dark:text-[#AAB8B0]"
-              }`}
-            >
-              {filterLabels[value]}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <FilterBar
+        disabled={state.kind === "denied"}
+        label={copy.filterLabel}
+        onChange={onFilterChange}
+        options={saleStatusFilters.map((value) => ({ label: filterLabels[value], value }))}
+        value={filter}
+      />
 
       {answered && state.stale ? (
         <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">

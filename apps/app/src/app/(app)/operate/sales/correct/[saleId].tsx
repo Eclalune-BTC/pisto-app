@@ -6,13 +6,13 @@ import { AlertTriangle, ArrowLeft, Check } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
-
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { reportsQueryKeys } from "@/features/reports/queries";
 import { saleQueryKeys, saleQueryOptions } from "@/features/sales/queries";
 import {
   type SaleDraftIssues,
@@ -65,9 +65,14 @@ export default function CorrectSaleScreen() {
     onSuccess: async () => {
       // A correction changes the summary and every history page, not just the
       // two records it names.
-      await queryClient.invalidateQueries({
-        queryKey: saleQueryKeys.all(business?.id ?? "unselected"),
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: saleQueryKeys.all(business?.id ?? "unselected"),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: reportsQueryKeys.all(business?.id ?? "unselected"),
+        }),
+      ]);
       router.replace({ pathname: "/operate/sales/[saleId]", params: { saleId: saleId as string } });
     },
   });

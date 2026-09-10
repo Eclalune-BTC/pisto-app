@@ -10,13 +10,14 @@ type ScreenHeaderProps = {
 
 export function ScreenHeader({ action, description, eyebrow, title }: ScreenHeaderProps) {
   return (
-    <View className="gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <View className="max-w-[680px] gap-2">
+    <View className="gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+      <View className="min-w-0 max-w-[680px] gap-2 sm:basis-[340px] sm:grow sm:shrink">
         {eyebrow ? (
           <Text className="text-sm font-bold text-positive dark:text-[#8DDEAF]">{eyebrow}</Text>
         ) : null}
         <Text
           accessibilityRole="header"
+          aria-level={1}
           className="text-[32px] font-black leading-[38px] tracking-[-1.4px] text-ink dark:text-white sm:text-[40px] sm:leading-[46px]"
         >
           {title}
@@ -25,7 +26,7 @@ export function ScreenHeader({ action, description, eyebrow, title }: ScreenHead
           {description}
         </Text>
       </View>
-      {action}
+      {action ? <View className="max-w-full shrink gap-3">{action}</View> : null}
     </View>
   );
 }

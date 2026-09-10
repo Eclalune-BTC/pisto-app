@@ -10,6 +10,7 @@ import { ProductDetailScreen, type ProductDetailState } from "@/features/catalog
 import { useCategoriesQuery, useProductQuery } from "@/features/catalog/queries";
 import { catalogInventoryQueryKeys, flattenPages } from "@/features/catalog/query-keys";
 import { isDeniedError, isNotFoundError, mutationUiState } from "@/features/catalog/state";
+import { reportsQueryKeys } from "@/features/reports/queries";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
@@ -68,6 +69,9 @@ export default function ProductDetailRoute() {
     networkMode: "always",
     onSuccess: async () => {
       await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: reportsQueryKeys.all(business?.id ?? "unselected"),
+        }),
         queryClient.invalidateQueries({
           queryKey: catalogInventoryQueryKeys.productsRoot(business?.id),
         }),

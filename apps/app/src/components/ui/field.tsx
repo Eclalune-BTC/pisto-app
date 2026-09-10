@@ -34,7 +34,10 @@ export function Field({
           accessibilityLabel={accessibilityLabel ?? label}
           aria-describedby={error ? errorId : undefined}
           aria-invalid={Boolean(error)}
-          className={cn("min-w-0 flex-1 text-base text-ink dark:text-white", className)}
+          className={cn(
+            "min-h-14 min-w-0 flex-1 py-3 text-base text-ink dark:text-white",
+            className,
+          )}
           placeholderTextColor="#7B8A82"
           {...props}
         />

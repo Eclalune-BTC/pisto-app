@@ -11,6 +11,7 @@ import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { reportsQueryKeys } from "@/features/reports/queries";
 import { saleQueryKeys } from "@/features/sales/queries";
 import {
   type SaleDraftIssues,
@@ -51,9 +52,14 @@ export default function NewSaleScreen() {
   const confirmation = useMutation({
     mutationFn: api.sales.create,
     onSuccess: async ({ sale }) => {
-      await queryClient.invalidateQueries({
-        queryKey: saleQueryKeys.all(business?.id ?? "unselected"),
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: saleQueryKeys.all(business?.id ?? "unselected"),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: reportsQueryKeys.all(business?.id ?? "unselected"),
+        }),
+      ]);
       router.replace({ pathname: "/operate/sales/[saleId]", params: { saleId: sale.id } });
     },
   });

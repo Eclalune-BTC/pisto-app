@@ -1,9 +1,10 @@
-import { ChevronRight, Plus, RefreshCw } from "lucide-react-native";
+import { ChevronRight, Plus } from "lucide-react-native";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { FilterBar } from "@/components/ui/filter-bar";
 
 import type { ReceivablesCopy, ReceivablesLoadState } from "./types";
 
@@ -95,33 +96,16 @@ export function ReceivablesScreen({
           </View>
         </View>
       ) : null}
-      {successful ? (
-        <View
-          accessibilityLabel={copy.filterLabel}
-          className="flex-row flex-wrap border-b border-line dark:border-[#304239]"
-        >
-          {(Object.keys(filterLabels) as ReceivableFilter[]).map((value) => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: filter === value }}
-              className={`min-h-11 justify-center border-b-2 px-4 ${
-                filter === value ? "border-positive" : "border-transparent"
-              }`}
-              key={value}
-              onPress={() => onFilterChange(value)}
-            >
-              <Text
-                className={`text-sm font-bold ${
-                  filter === value
-                    ? "text-positive dark:text-[#8DDEAF]"
-                    : "text-ink-muted dark:text-[#AAB8B0]"
-                }`}
-              >
-                {filterLabels[value]}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+      {state.kind !== "denied" ? (
+        <FilterBar
+          label={copy.filterLabel}
+          onChange={onFilterChange}
+          options={(Object.keys(filterLabels) as ReceivableFilter[]).map((value) => ({
+            label: filterLabels[value],
+            value,
+          }))}
+          value={filter}
+        />
       ) : null}
       {successful && state.stale ? (
         <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
@@ -201,16 +185,12 @@ export function ReceivablesScreen({
             ))}
           </View>
           {state.nextCursor ? (
-            <Button disabled={state.loadingMore} onPress={onLoadMore} variant="secondary">
-              {state.loadingMore ? (
-                <ActivityIndicator color="#14241D" />
-              ) : (
-                <>
-                  <RefreshCw color="#14241D" size={17} />
-                  <ButtonText variant="secondary">{copy.loadMore}</ButtonText>
-                </>
-              )}
-            </Button>
+            <Button
+              label={copy.loadMore}
+              loading={state.loadingMore}
+              onPress={onLoadMore}
+              variant="secondary"
+            />
           ) : null}
         </View>
       )}

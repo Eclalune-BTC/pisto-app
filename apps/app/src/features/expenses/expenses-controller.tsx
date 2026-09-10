@@ -35,6 +35,8 @@ export function ExpensesController() {
     canRead,
     isStale: accessIsStale,
   } = useCashAccess("expenses");
+  const businessId = business?.id ?? "unselected";
+  const timeZone = business?.timeZone;
   const [filters, setFilters] = useState<ExpenseFiltersValue>({
     accountId: "all",
     category: "all",
@@ -51,12 +53,12 @@ export function ExpensesController() {
   const [periodError, setPeriodError] = useState<string>();
 
   useEffect(() => {
-    if (!business) return;
-    const initialPeriod = currentMonthPeriod(business.timeZone);
+    if (businessId === "unselected" || !timeZone) return;
+    const initialPeriod = currentMonthPeriod(timeZone);
     setPeriod(initialPeriod);
     setAppliedPeriod(initialPeriod);
     setPeriodError(undefined);
-  }, [business]);
+  }, [businessId, timeZone]);
 
   const normalizedFilters = useMemo(
     () => ({
@@ -66,7 +68,6 @@ export function ExpensesController() {
     }),
     [filters],
   );
-  const businessId = business?.id ?? "unselected";
   const expenses = useInfiniteQuery({
     ...expensesInfiniteOptions(businessId, normalizedFilters),
     enabled: Boolean(business && canRead),

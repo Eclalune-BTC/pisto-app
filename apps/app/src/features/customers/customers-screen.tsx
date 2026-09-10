@@ -1,10 +1,11 @@
-import { ChevronRight, Plus, RefreshCw, Search } from "lucide-react-native";
+import { ChevronRight, Plus, Search } from "lucide-react-native";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { FilterBar } from "@/components/ui/filter-bar";
 
 import type { CustomersCopy, CustomersLoadState } from "./types";
 
@@ -75,7 +76,7 @@ export function CustomersScreen({
         title={copy.title}
       />
 
-      {hasSuccessfulRead ? (
+      {state.kind !== "denied" ? (
         <View className="gap-5">
           <View className="max-w-[620px]">
             <Field
@@ -87,38 +88,16 @@ export function CustomersScreen({
               value={searchQuery}
             />
           </View>
-          <View
-            accessibilityLabel={copy.filterLabel}
-            className="flex-row flex-wrap border-b border-line dark:border-[#304239]"
-          >
-            {(
-              [
-                ["active", copy.active],
-                ["archived", copy.archived],
-                ["all", copy.all],
-              ] as const
-            ).map(([value, label]) => (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: status === value }}
-                className={`min-h-11 justify-center border-b-2 px-4 ${
-                  status === value ? "border-positive" : "border-transparent"
-                }`}
-                key={value}
-                onPress={() => onStatusChange(value)}
-              >
-                <Text
-                  className={`text-sm font-bold ${
-                    status === value
-                      ? "text-positive dark:text-[#8DDEAF]"
-                      : "text-ink-muted dark:text-[#AAB8B0]"
-                  }`}
-                >
-                  {label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          <FilterBar
+            label={copy.filterLabel}
+            onChange={onStatusChange}
+            options={[
+              { value: "active", label: copy.active },
+              { value: "archived", label: copy.archived },
+              { value: "all", label: copy.all },
+            ]}
+            value={status}
+          />
         </View>
       ) : null}
 
@@ -185,16 +164,12 @@ export function CustomersScreen({
             })}
           </View>
           {state.nextCursor ? (
-            <Button disabled={state.loadingMore} onPress={onLoadMore} variant="secondary">
-              {state.loadingMore ? (
-                <ActivityIndicator color="#14241D" />
-              ) : (
-                <>
-                  <RefreshCw color="#14241D" size={17} />
-                  <ButtonText variant="secondary">{copy.loadMore}</ButtonText>
-                </>
-              )}
-            </Button>
+            <Button
+              label={copy.loadMore}
+              loading={state.loadingMore}
+              onPress={onLoadMore}
+              variant="secondary"
+            />
           ) : null}
         </View>
       )}

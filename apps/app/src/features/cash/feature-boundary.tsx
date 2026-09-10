@@ -32,12 +32,26 @@ type FeatureBoundaryProps = {
   copy: FeatureBoundaryCopy;
   children: ReactNode;
   onRetry: () => void;
+  inline?: boolean;
 };
 
-export function FeatureBoundary({ state, copy, children, onRetry }: FeatureBoundaryProps) {
+export function FeatureBoundary({
+  state,
+  copy,
+  children,
+  onRetry,
+  inline = false,
+}: FeatureBoundaryProps) {
+  const Container = inline ? View : Page;
   if (state.kind === "loading") {
     return (
-      <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
+      <View
+        className={
+          inline
+            ? "min-h-48 items-start justify-center gap-3"
+            : "flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10"
+        }
+      >
         <ActivityIndicator color="#237A55" size="large" />
         <Text className="text-sm font-semibold text-ink-muted dark:text-[#AAB8B0]">
           {copy.loading}
@@ -47,7 +61,7 @@ export function FeatureBoundary({ state, copy, children, onRetry }: FeatureBound
   }
   if (state.kind === "denied") {
     return (
-      <Page>
+      <Container>
         <View className="min-h-56 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
           <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
             {copy.deniedTitle}
@@ -56,12 +70,12 @@ export function FeatureBoundary({ state, copy, children, onRetry }: FeatureBound
             {copy.deniedDescription}
           </Text>
         </View>
-      </Page>
+      </Container>
     );
   }
   if (state.kind === "offline" || state.kind === "error") {
     return (
-      <Page>
+      <Container>
         <View className="min-h-56 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
           <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
             {state.kind === "offline" ? copy.offlineTitle : copy.unavailableTitle}
@@ -71,7 +85,7 @@ export function FeatureBoundary({ state, copy, children, onRetry }: FeatureBound
           </Text>
           <Button label={copy.retry} onPress={onRetry} variant="secondary" />
         </View>
-      </Page>
+      </Container>
     );
   }
   return children;

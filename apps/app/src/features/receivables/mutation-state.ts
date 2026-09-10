@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
-
 import { customerQueryKeys } from "@/features/customers/queries";
+import { reportsQueryKeys } from "@/features/reports/queries";
 import { isAmbiguousMutationError } from "@/lib/api-error";
 import { productErrorMessage } from "@/lib/product-errors";
 
@@ -36,6 +36,7 @@ export async function invalidateReceivableMutation(
   input: { businessId: string; customerId: string; receivableId?: string },
 ): Promise<void> {
   await Promise.all([
+    queryClient.invalidateQueries({ queryKey: reportsQueryKeys.all(input.businessId) }),
     queryClient.invalidateQueries({ queryKey: receivableQueryKeys.all(input.businessId) }),
     queryClient.invalidateQueries({
       queryKey: customerQueryKeys.detail(input.businessId, input.customerId),
