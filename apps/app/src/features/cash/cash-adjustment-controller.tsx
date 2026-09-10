@@ -1,3 +1,4 @@
+import type { CashAccount } from "@pisto/contracts";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
@@ -5,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { isAmbiguousMutationError } from "@/lib/api-error";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "./api";
@@ -54,6 +56,7 @@ export function CashAdjustmentController() {
   const [command, setCommand] = useState<
     Parameters<typeof cashApi.movements.recordAdjustment>[0] | null
   >(null);
+  const [reviewAccount, setReviewAccount] = useState<CashAccount | null>(null);
 
   useEffect(() => {
     if (!business) return;
@@ -66,12 +69,13 @@ export function CashAdjustmentController() {
   }, [business]);
 
   useEffect(() => {
+    if (command) return;
     const selectedExists = accounts.some(({ id }) => id === draft.accountId);
     const firstAccount = accounts[0];
     if (!selectedExists && firstAccount) {
       setDraft((value) => ({ ...value, accountId: firstAccount.id }));
     }
-  }, [accounts, draft.accountId]);
+  }, [accounts, draft.accountId, command]);
 
   const mutation = useMutation({
     mutationFn: cashApi.movements.recordAdjustment,
@@ -84,6 +88,7 @@ export function CashAdjustmentController() {
       });
     },
   });
+  const confirmationLocked = mutation.isPending || isAmbiguousMutationError(mutation.error);
 
   if (businesses.data && !business) return <Redirect href="/business" />;
   let remoteState = featureRemoteState({
@@ -99,8 +104,11 @@ export function CashAdjustmentController() {
   }
 
   const prepareReview = () => {
+    if (confirmationLocked || command || !canManage || stale || remoteState.kind !== "ready")
+      return;
+    const account = accounts.find(({ id }) => id === draft.accountId);
     const result = buildCashAdjustmentCommand({
-      account: accounts.find(({ id }) => id === draft.accountId),
+      account,
       draft,
       idempotencyKey: Crypto.randomUUID(),
     });
@@ -109,9 +117,14 @@ export function CashAdjustmentController() {
         Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(t, issue)]),
       ) as CashAdjustmentErrors,
     );
-    if (!result.command) return;
+    if (!result.command || !account) return;
+    setReviewAccount(account);
     setCommand(result.command);
     mutation.reset();
+  };
+  const confirm = () => {
+    if (command && !mutation.isPending && canManage && !stale && remoteState.kind === "ready")
+      mutation.mutate(command);
   };
 
   return (
@@ -133,27 +146,32 @@ export function CashAdjustmentController() {
         formatMinorUnits(
           minorUnits,
           currency,
-          accounts.find(({ id }) => id === command?.accountId)?.currencyMinorUnitDigits ??
-            business?.currencyMinorUnitDigits ??
-            2,
+          reviewAccount?.currencyMinorUnitDigits ?? business?.currencyMinorUnitDigits ?? 2,
           locale,
         )
       }
       hasMoreAccounts={Boolean(accountsQuery.hasNextPage)}
       isLoadingMoreAccounts={accountsQuery.isFetchingNextPage}
-      onCancel={() => router.replace("/operate/cash")}
-      onCheckStatus={() => command && mutation.mutate(command)}
-      onConfirm={() => command && mutation.mutate(command)}
+      onCancel={() => {
+        if (!confirmationLocked) router.replace("/operate/cash");
+      }}
+      onCheckStatus={confirm}
+      onConfirm={confirm}
       onCreateAccount={() => router.push("/operate/cash/accounts/new")}
-      onDraftChange={setDraft}
+      onDraftChange={(next) => {
+        if (!confirmationLocked && !command) setDraft(next);
+      }}
       onEdit={() => {
+        if (confirmationLocked) return;
         setCommand(null);
+        setReviewAccount(null);
         mutation.reset();
       }}
       onLoadMoreAccounts={() => void accountsQuery.fetchNextPage()}
       onPrepareReview={prepareReview}
       onRetry={() => void Promise.all([businesses.refetch(), accountsQuery.refetch()])}
       remoteState={remoteState}
+      reviewAccount={reviewAccount}
       stage={command ? "review" : "edit"}
     />
   );

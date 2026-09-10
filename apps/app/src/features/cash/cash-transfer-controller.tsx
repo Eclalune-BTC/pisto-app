@@ -1,3 +1,4 @@
+import type { CashAccount } from "@pisto/contracts";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
@@ -5,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { isAmbiguousMutationError } from "@/lib/api-error";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "./api";
@@ -56,6 +58,7 @@ export function CashTransferController() {
   const [command, setCommand] = useState<Parameters<typeof cashApi.movements.transfer>[0] | null>(
     null,
   );
+  const [reviewAccounts, setReviewAccounts] = useState<CashAccount[]>([]);
 
   useEffect(() => {
     if (!business) return;
@@ -68,6 +71,7 @@ export function CashTransferController() {
   }, [business]);
 
   useEffect(() => {
+    if (command) return;
     const first = accounts[0];
     if (!first) return;
     const from = accounts.some(({ id }) => id === draft.fromAccountId)
@@ -79,7 +83,7 @@ export function CashTransferController() {
     if (from !== draft.fromAccountId || to !== draft.toAccountId) {
       setDraft((value) => ({ ...value, fromAccountId: from, toAccountId: to }));
     }
-  }, [accounts, draft.fromAccountId, draft.toAccountId]);
+  }, [accounts, draft.fromAccountId, draft.toAccountId, command]);
 
   const mutation = useMutation({
     mutationFn: cashApi.movements.transfer,
@@ -89,6 +93,7 @@ export function CashTransferController() {
       router.replace("/operate/cash");
     },
   });
+  const confirmationLocked = mutation.isPending || isAmbiguousMutationError(mutation.error);
 
   if (businesses.data && !business) return <Redirect href="/business" />;
   let remoteState = featureRemoteState({
@@ -104,6 +109,8 @@ export function CashTransferController() {
   }
 
   const prepareReview = () => {
+    if (confirmationLocked || command || !canManage || stale || remoteState.kind !== "ready")
+      return;
     const result = buildCashTransferCommand({
       accounts,
       draft,
@@ -115,11 +122,20 @@ export function CashTransferController() {
       ) as CashTransferErrors,
     );
     if (!result.command) return;
+    setReviewAccounts(
+      accounts.filter(
+        ({ id }) => id === result.command?.fromAccountId || id === result.command?.toAccountId,
+      ),
+    );
     setCommand(result.command);
     mutation.reset();
   };
+  const confirm = () => {
+    if (command && !mutation.isPending && canManage && !stale && remoteState.kind === "ready")
+      mutation.mutate(command);
+  };
 
-  const selectedAccount = accounts.find(({ id }) => id === command?.fromAccountId);
+  const selectedAccount = reviewAccounts.find(({ id }) => id === command?.fromAccountId);
   return (
     <CashTransferScreen
       accounts={accounts}
@@ -145,19 +161,26 @@ export function CashTransferController() {
       }
       hasMoreAccounts={Boolean(accountsQuery.hasNextPage)}
       isLoadingMoreAccounts={accountsQuery.isFetchingNextPage}
-      onCancel={() => router.replace("/operate/cash")}
-      onCheckStatus={() => command && mutation.mutate(command)}
-      onConfirm={() => command && mutation.mutate(command)}
+      onCancel={() => {
+        if (!confirmationLocked) router.replace("/operate/cash");
+      }}
+      onCheckStatus={confirm}
+      onConfirm={confirm}
       onCreateAccount={() => router.push("/operate/cash/accounts/new")}
-      onDraftChange={setDraft}
+      onDraftChange={(next) => {
+        if (!confirmationLocked && !command) setDraft(next);
+      }}
       onEdit={() => {
+        if (confirmationLocked) return;
         setCommand(null);
+        setReviewAccounts([]);
         mutation.reset();
       }}
       onLoadMoreAccounts={() => void accountsQuery.fetchNextPage()}
       onPrepareReview={prepareReview}
       onRetry={() => void Promise.all([businesses.refetch(), accountsQuery.refetch()])}
       remoteState={remoteState}
+      reviewAccounts={reviewAccounts}
       stage={command ? "review" : "edit"}
     />
   );

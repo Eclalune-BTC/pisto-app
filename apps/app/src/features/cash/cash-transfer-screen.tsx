@@ -52,6 +52,7 @@ type CashTransferScreenProps = {
   remoteState: FeatureRemoteState;
   canManage: boolean;
   accounts: CashAccount[];
+  reviewAccounts: CashAccount[];
   stage: "edit" | "review";
   draft: CashTransferDraft;
   errors: CashTransferErrors;
@@ -78,6 +79,7 @@ export function CashTransferScreen({
   remoteState,
   canManage,
   accounts,
+  reviewAccounts,
   stage,
   draft,
   errors,
@@ -102,8 +104,8 @@ export function CashTransferScreen({
   const authorizedState = requireFeatureManageAccess(remoteState, canManage);
   const activeAccounts = accounts.filter(({ status }) => status === "active");
   const options = activeAccounts.map(({ id, name }) => ({ label: name, value: id }));
-  const fromAccount = activeAccounts.find(({ id }) => id === command?.fromAccountId);
-  const toAccount = activeAccounts.find(({ id }) => id === command?.toAccountId);
+  const fromAccount = reviewAccounts.find(({ id }) => id === command?.fromAccountId);
+  const toAccount = reviewAccounts.find(({ id }) => id === command?.toAccountId);
   const reviewing =
     stage === "review" && command !== null && fromAccount !== undefined && toAccount !== undefined;
   const draftCurrency =
@@ -119,7 +121,7 @@ export function CashTransferScreen({
           title={reviewing ? copy.reviewTitle : copy.title}
         />
 
-        {activeAccounts.length < 2 ? (
+        {activeAccounts.length < 2 && !reviewing ? (
           <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
             <Text accessibilityRole="header" className="text-xl font-black text-foreground">
               {copy.accountsUnavailableTitle}

@@ -1,4 +1,4 @@
-import type { CashMovement } from "@pisto/contracts";
+import type { CashAccount, CashMovement } from "@pisto/contracts";
 import type { TFunction } from "i18next";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -27,7 +27,9 @@ vi.mock("@/components/ui/button", () => ({
   }) => createElement("button", { type: "button", disabled: disabled || loading }, label),
 }));
 
+import { CashAdjustmentScreen } from "./cash-adjustment-screen";
 import { CashMovementDetailScreen } from "./cash-movement-detail-screen";
+import { CashTransferScreen } from "./cash-transfer-screen";
 import { buildCashCopy } from "./copy";
 
 const copy = buildCashCopy(((key: string) => key) as TFunction).movementDetail;
@@ -100,4 +102,118 @@ describe("cash movement access after a successful cached read", () => {
     );
     expect(uncertain).toContain(`<button type="button" disabled="">${copy.backToAccount}</button>`);
   });
+});
+
+describe("cash confirmations retain reviewed accounts across list refetches", () => {
+  const account = {
+    id: "original-account",
+    name: "Reviewed source",
+    status: "active",
+    currency: "USD",
+    currencyMinorUnitDigits: 2,
+  } as CashAccount;
+  const destination = { ...account, id: "destination-account", name: "Reviewed destination" };
+  const allCopy = buildCashCopy(((key: string) => key) as TFunction);
+  const common = {
+    remoteState: { kind: "ready" } as const,
+    canManage: true,
+    accounts: [],
+    stage: "review" as const,
+    errors: {},
+    hasMoreAccounts: false,
+    isLoadingMoreAccounts: false,
+    effect: "Reviewed effect",
+    formatMoney: () => "USD 1.00",
+    onDraftChange: noop,
+    onPrepareReview: noop,
+    onConfirm: noop,
+    onEdit: noop,
+    onCancel: noop,
+    onCreateAccount: noop,
+    onCheckStatus: noop,
+    onRetry: noop,
+    onLoadMoreAccounts: noop,
+  };
+  test.each(["pending", "uncertain"] as const)(
+    "adjustment stays in %s review after its account disappears",
+    (confirmation) => {
+      const html = renderToStaticMarkup(
+        createElement(CashAdjustmentScreen, {
+          ...common,
+          confirmation,
+          reviewAccount: account,
+          copy: allCopy.adjustment,
+          draft: {
+            accountId: account.id,
+            amount: "1",
+            direction: "in",
+            reason: "Reason",
+            localDate: "2026-09-10",
+            localTime: "11:00",
+          },
+          command: {
+            accountId: account.id,
+            amountMinorUnits: "100",
+            currency: "USD",
+            direction: "in",
+            reason: "Reason",
+            occurredLocalDate: "2026-09-10",
+            occurredLocalTime: "11:00",
+            idempotencyKey: "original-key",
+          },
+        }),
+      );
+      expect(html).toContain(account.name);
+      expect(html).not.toContain("<input");
+      expect(html).not.toContain(allCopy.adjustment.createAccount);
+      if (confirmation === "uncertain") {
+        expect(html).toContain(allCopy.adjustment.retrySameConfirmation);
+        expect(html).not.toContain(`>${allCopy.adjustment.edit}</button>`);
+      } else
+        expect(html).toContain(
+          `<button type="button" disabled="">${allCopy.adjustment.edit}</button>`,
+        );
+    },
+  );
+  test.each(["pending", "uncertain"] as const)(
+    "transfer stays in %s review after both accounts disappear",
+    (confirmation) => {
+      const html = renderToStaticMarkup(
+        createElement(CashTransferScreen, {
+          ...common,
+          confirmation,
+          reviewAccounts: [account, destination],
+          copy: allCopy.transfer,
+          draft: {
+            fromAccountId: account.id,
+            toAccountId: destination.id,
+            amount: "1",
+            note: "",
+            localDate: "2026-09-10",
+            localTime: "11:00",
+          },
+          command: {
+            fromAccountId: account.id,
+            toAccountId: destination.id,
+            amountMinorUnits: "100",
+            currency: "USD",
+            occurredLocalDate: "2026-09-10",
+            occurredLocalTime: "11:00",
+            idempotencyKey: "original-key",
+          },
+        }),
+      );
+      expect(html).toContain(account.name);
+      expect(html).toContain(destination.name);
+      expect(html).not.toContain("<input");
+      expect(html).not.toContain(allCopy.transfer.createAccount);
+      if (confirmation === "uncertain") {
+        expect(html).toContain(allCopy.transfer.retrySameConfirmation);
+        expect(html).not.toContain(`>${allCopy.transfer.edit}</button>`);
+      } else
+        expect(html).toContain(
+          `<button type="button" disabled="">${allCopy.transfer.edit}</button>`,
+        );
+    },
+  );
 });

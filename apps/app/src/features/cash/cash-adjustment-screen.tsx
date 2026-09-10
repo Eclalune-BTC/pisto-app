@@ -57,6 +57,7 @@ type CashAdjustmentScreenProps = {
   remoteState: FeatureRemoteState;
   canManage: boolean;
   accounts: CashAccount[];
+  reviewAccount: CashAccount | null;
   hasMoreAccounts: boolean;
   isLoadingMoreAccounts: boolean;
   stage: "edit" | "review";
@@ -83,6 +84,7 @@ export function CashAdjustmentScreen({
   remoteState,
   canManage,
   accounts,
+  reviewAccount,
   hasMoreAccounts,
   isLoadingMoreAccounts,
   stage,
@@ -107,7 +109,7 @@ export function CashAdjustmentScreen({
   const authorizedState = requireFeatureManageAccess(remoteState, canManage);
   const activeAccounts = accounts.filter(({ status }) => status === "active");
   const accountOptions = activeAccounts.map(({ id, name }) => ({ label: name, value: id }));
-  const account = activeAccounts.find(({ id }) => id === (command?.accountId ?? draft.accountId));
+  const account = command ? reviewAccount : activeAccounts.find(({ id }) => id === draft.accountId);
   const reviewing = stage === "review" && command !== null;
 
   return (
@@ -119,7 +121,7 @@ export function CashAdjustmentScreen({
           title={reviewing ? copy.reviewTitle : copy.title}
         />
 
-        {activeAccounts.length === 0 ? (
+        {activeAccounts.length === 0 && !reviewing ? (
           <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
             <Text accessibilityRole="header" className="text-xl font-black text-foreground">
               {copy.accountUnavailableTitle}
