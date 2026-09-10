@@ -74,6 +74,8 @@ interface ProductEditorProps {
   errors: ProductDraftErrors;
   mode: "create" | "edit";
   isStale: boolean;
+  isRefreshing: boolean;
+  onRetryRead: () => void;
   mutationMessage?: string;
   mutationState: "idle" | "pending" | "error" | "uncertain";
   onBack: () => void;
@@ -124,6 +126,8 @@ export function ProductEditor({
   errors,
   mode,
   isStale,
+  isRefreshing,
+  onRetryRead,
   mutationMessage,
   mutationState,
   onBack,
@@ -163,7 +167,7 @@ export function ProductEditor({
         title={review ? copy.reviewTitle : mode === "create" ? copy.createTitle : copy.editTitle}
       />
 
-      {isStale ? <StaleNotice /> : null}
+      {isStale ? <StaleNotice loading={isRefreshing} onRetry={onRetryRead} /> : null}
 
       {review ? (
         <View className="gap-7">

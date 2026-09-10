@@ -54,6 +54,8 @@ interface MovementEditorProps {
   draft: InventoryMovementDraft;
   errors: InventoryMovementErrors;
   isStale: boolean;
+  isRefreshing: boolean;
+  onRetryRead: () => void;
   mutationMessage?: string;
   mutationState: "idle" | "pending" | "error" | "uncertain";
   onBack: () => void;
@@ -72,6 +74,8 @@ export function MovementEditor({
   draft,
   errors,
   isStale,
+  isRefreshing,
+  onRetryRead,
   mutationMessage,
   mutationState,
   onBack,
@@ -105,7 +109,7 @@ export function MovementEditor({
         title={review ? copy.reviewTitle : copy.title}
       />
 
-      {isStale ? <StaleNotice /> : null}
+      {isStale ? <StaleNotice loading={isRefreshing} onRetry={onRetryRead} /> : null}
 
       {review ? (
         <View className="gap-7">

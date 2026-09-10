@@ -190,6 +190,11 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
       draft={draft}
       errors={errors}
       isStale={isStale}
+      isRefreshing={businesses.isFetching || product.isFetching}
+      onRetryRead={() => {
+        void businesses.refetch();
+        void product.refetch();
+      }}
       mutationMessage={
         mutation.error
           ? productErrorMessage(mutation.error, copy.errorFallbacks.movement, t, "movement")

@@ -19,6 +19,7 @@ const fixture = vi.hoisted(() => ({
       error: unknown;
       fetchStatus: string;
       isPending: boolean;
+      isFetching: boolean;
       isError: boolean;
       hasNextPage: boolean;
       isFetchingNextPage: boolean;
@@ -98,6 +99,7 @@ function query(data: unknown) {
     error: null as unknown,
     fetchStatus: "idle",
     isPending: false,
+    isFetching: false,
     isError: false,
     hasNextPage: false,
     isFetchingNextPage: false,
@@ -218,7 +220,37 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       expect(confirmation.disabled).toBe(true);
       press(confirmation);
       expect(fixture.mutation.mutate).not.toHaveBeenCalled();
+      const beforeRefresh = fixture.states.slice();
+      const notice = elements<ComponentProps<typeof StaleNotice>>(tree, StaleNotice)[0];
+      if (!notice) throw new Error("Missing stale notice");
+      press(button(StaleNotice(notice.props), ({ label }) => label === "common.retry"));
+      expect(fixture.queries.businesses?.refetch).toHaveBeenCalledTimes(1);
+      if (screen === "correction") expect(fixture.queries.sale?.refetch).toHaveBeenCalledTimes(1);
+      fixture.states.forEach((value, index) => {
+        expect(value).toBe(beforeRefresh[index]);
+      });
+      expect(fixture.randomUUID).toHaveBeenCalledTimes(1);
+      expect(fixture.mutation.reset).toHaveBeenCalledTimes(1);
+      const refreshingSource = fixture.queries[dependency];
+      if (!refreshingSource) throw new Error("Missing query fixture");
+      refreshingSource.isFetching = true;
+      const loadingNotice = elements<ComponentProps<typeof StaleNotice>>(
+        render(component),
+        StaleNotice,
+      )[0];
+      expect(loadingNotice?.props?.loading).toBe(true);
+      const loadingRetry = button(
+        StaleNotice(loadingNotice?.props),
+        ({ label }) => label === "common.retry",
+      );
+      expect(loadingRetry.loading).toBe(true);
+      expect(loadingRetry.onPress).toBeUndefined();
+      refreshingSource.isFetching = false;
       recover(dependency);
+      expect(elements(render(component), StaleNotice)).toHaveLength(0);
+      fixture.states.forEach((value, index) => {
+        expect(value).toBe(beforeRefresh[index]);
+      });
       press(button(render(component), ({ variant }) => variant === "accent"));
       expect(fixture.mutation.mutate).toHaveBeenCalledTimes(1);
       const originalCommand = fixture.mutation.mutate.mock.calls[0]?.[0];
@@ -262,6 +294,12 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       );
       expect(actions).toHaveLength(2);
       for (const action of actions) press(action.props);
+      expect(fixture.navigate).not.toHaveBeenCalled();
+      const notice = elements<ComponentProps<typeof StaleNotice>>(tree, StaleNotice)[0];
+      if (!notice) throw new Error("Missing stale notice");
+      press(button(StaleNotice(notice.props), ({ label }) => label === "common.retry"));
+      expect(fixture.queries.businesses?.refetch).toHaveBeenCalledTimes(1);
+      expect(fixture.queries.sale?.refetch).toHaveBeenCalledTimes(1);
       expect(fixture.navigate).not.toHaveBeenCalled();
       recover(dependency);
       press(button(render(SaleDetailScreen), ({ variant }) => variant === "accent"));

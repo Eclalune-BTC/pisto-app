@@ -337,6 +337,16 @@ export function ProductFormRoute({
       draft={draft}
       errors={errors}
       isStale={isStale}
+      isRefreshing={
+        businesses.isFetching ||
+        categories.isFetching ||
+        (mode === "edit" && productQuery.isFetching)
+      }
+      onRetryRead={() => {
+        void businesses.refetch();
+        void categories.refetch();
+        if (mode === "edit") void productQuery.refetch();
+      }}
       mode={mode}
       mutationMessage={
         mutation.error

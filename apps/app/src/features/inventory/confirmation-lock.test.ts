@@ -112,6 +112,8 @@ describe("reviewed inventory confirmation", () => {
         draft,
         errors: {},
         isStale: false,
+        isRefreshing: false,
+        onRetryRead: vi.fn(),
         mutationState: mutation.isPending ? "pending" : mutation.isError ? "uncertain" : "idle",
         onBack: discard,
         onConfirm: submit,

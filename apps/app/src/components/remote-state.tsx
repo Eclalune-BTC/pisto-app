@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 
 export function OfflineState({ level = 1, title }: { level?: 1 | 2 | 3; title?: string }) {
@@ -20,7 +21,27 @@ export function OfflineState({ level = 1, title }: { level?: 1 | 2 | 3; title?: 
   );
 }
 
-export function StaleNotice() {
+export function StaleNotice({
+  onRetry,
+  loading = false,
+}: {
+  onRetry?: () => void;
+  loading?: boolean;
+} = {}) {
   const { t } = useTranslation();
-  return <Alert tone="warning">{t("remote.stale")}</Alert>;
+  const notice = <Alert tone="warning">{t("remote.stale")}</Alert>;
+  if (!onRetry) return notice;
+  return (
+    <View className="gap-3">
+      {notice}
+      <Button
+        className="self-start"
+        label={t("common.retry")}
+        loading={loading}
+        onPress={loading ? undefined : onRetry}
+        size="sm"
+        variant="secondary"
+      />
+    </View>
+  );
 }

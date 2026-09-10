@@ -204,7 +204,15 @@ export default function CorrectSaleScreen() {
         title={review ? t("sales.correction.reviewTitle") : t("sales.correction.title")}
       />
 
-      {isStale ? <StaleNotice /> : null}
+      {isStale ? (
+        <StaleNotice
+          loading={businesses.isFetching || saleResult.isFetching}
+          onRetry={() => {
+            void businesses.refetch();
+            void saleResult.refetch();
+          }}
+        />
+      ) : null}
 
       <View className="gap-3 border-y border-line py-5 dark:border-[#304239]">
         <Text className="text-xs font-black uppercase tracking-[1.4px] text-muted-foreground">

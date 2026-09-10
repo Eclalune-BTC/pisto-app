@@ -103,7 +103,15 @@ export default function SaleResultScreen() {
         </View>
       </View>
 
-      {isStale ? <StaleNotice /> : null}
+      {isStale ? (
+        <StaleNotice
+          loading={businesses.isFetching || result.isFetching}
+          onRetry={() => {
+            void businesses.refetch();
+            void result.refetch();
+          }}
+        />
+      ) : null}
 
       <DetailList
         items={[

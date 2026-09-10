@@ -19,6 +19,7 @@ const fixture = vi.hoisted(() => ({
       error: unknown;
       fetchStatus: string;
       isPending: boolean;
+      isFetching: boolean;
       isError: boolean;
       hasNextPage: boolean;
       isFetchingNextPage: boolean;
@@ -90,6 +91,7 @@ function query(data: unknown) {
     error: null as unknown,
     fetchStatus: "idle",
     isPending: false,
+    isFetching: false,
     isError: false,
     hasNextPage: false,
     isFetchingNextPage: false,
@@ -234,7 +236,39 @@ describe.each(["paused", "error"] as const)("cached %s editor dependencies", (fa
       expect(screen.props.reviewItems).not.toBeNull();
       screen.props.onConfirm();
       expect(fixture.mutation.mutate).not.toHaveBeenCalled();
+      const beforeRefresh = fixture.states.slice();
+      const refreshTree =
+        editor === "movement"
+          ? MovementEditor((screen as ReactElement<ComponentProps<typeof MovementEditor>>).props)
+          : ProductEditor((screen as ReactElement<ComponentProps<typeof ProductEditor>>).props);
+      const notice = elements<ComponentProps<typeof StaleNotice>>(refreshTree, StaleNotice)[0];
+      if (!notice) throw new Error("Missing stale notice");
+      const retry = elements<ComponentProps<typeof Button>>(StaleNotice(notice.props), Button)[0];
+      if (!retry) throw new Error("Missing refresh action");
+      (retry.props.onPress as (() => void) | undefined)?.();
+      const sources =
+        editor === "create"
+          ? ["businesses", "categories"]
+          : editor === "edit"
+            ? ["businesses", "categories", "product"]
+            : ["businesses", "product"];
+      for (const source of sources)
+        expect(fixture.queries[source]?.refetch).toHaveBeenCalledTimes(1);
+      fixture.states.forEach((value, index) => {
+        expect(value).toBe(beforeRefresh[index]);
+      });
+      expect(fixture.randomUUID).toHaveBeenCalledTimes(1);
+      expect(fixture.mutation.reset).toHaveBeenCalledTimes(1);
+      const refreshingSource = fixture.queries[dependency];
+      if (!refreshingSource) throw new Error("Missing query fixture");
+      refreshingSource.isFetching = true;
+      expect(renderScreen().props.isRefreshing).toBe(true);
+      refreshingSource.isFetching = false;
       recoverRead();
+      expect(renderScreen().props.isStale).toBe(false);
+      fixture.states.forEach((value, index) => {
+        expect(value).toBe(beforeRefresh[index]);
+      });
       renderScreen().props.onConfirm();
       expect(fixture.mutation.mutate).toHaveBeenCalledTimes(1);
       const originalCommand = fixture.mutation.mutate.mock.calls[0]?.[0];

@@ -133,7 +133,14 @@ export default function NewSaleScreen() {
         title={command ? t("sales.reviewTitle") : t("sales.newTitle")}
       />
 
-      {isStale ? <StaleNotice /> : null}
+      {isStale ? (
+        <StaleNotice
+          loading={businesses.isFetching}
+          onRetry={() => {
+            void businesses.refetch();
+          }}
+        />
+      ) : null}
 
       {command ? (
         <View className="gap-7">
