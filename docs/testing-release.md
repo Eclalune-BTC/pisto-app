@@ -10,7 +10,7 @@ Use precise status language:
 | Locally validated | Named commands/tests passed in the local environment |
 | Built | Reproducible app/container artifact was produced |
 | Published/submitted | Artifact reached registry, EAS, or a store review channel |
-| Deployed | A Cloud Run revision exists with intended configuration |
+| Deployed | A container/web deployment exists on the selected host with intended configuration |
 | Released | Production traffic/store availability and post-release checks are confirmed |
 
 A green unit suite is not a deployment. An EAS build is not App Store/Play approval. A Cloud Run
@@ -83,6 +83,8 @@ explicitly rather than calling shared source code platform parity.
   rate-limit key with a spoofed `X-Forwarded-For` value, and ambiguous comma-separated chains use the
   documented shared per-path fallback until an explicitly trusted proxy/header is configured.
 - Error and log capture contain no tokens, cookies, database URL, webhook secret, or signed URL.
+  Request logs use registered route patterns, including dynamic/auth/unknown paths. Shutdown
+  failures report exception type without arbitrary driver messages.
 - Invalid Polar signature and invalid RevenueCat auth/HMAC cause no durable entitlement change.
 - Duplicate and older webhook events are safe.
 - A revoked provider grant does not remove another active provider grant.
@@ -167,16 +169,18 @@ The included `.github/workflows/ci.yml` currently:
 2. starts a PostgreSQL 18 service;
 3. installs from `bun.lock` with `--frozen-lockfile`;
 4. runs `bun run check`;
-5. applies committed migrations and runs all four repository integration suites — product/sales,
-   catalog/inventory, cash/expenses, and customers/receivables — against the PostgreSQL 18 service
-   through `bun run --filter @pisto/db test:integration`;
+5. applies committed migrations and runs the database repository integration suites against the
+   PostgreSQL 18 service through `bun run --filter @pisto/db test:integration`;
 6. runs `bun run audit:ci` to reject advisories outside the reviewed exception set;
-7. runs `bun run build`.
+7. runs `db:check`, `auth:schema:check`, credential-free release-script tests, and Bash syntax checks;
+8. builds the portable API Docker image, replays bundled migrations, and checks readiness, liveness,
+   unauthenticated denial, injected `PORT`, and successful bounded shutdown in the actual container.
 
-It does **not** currently run `doctor`, `db:check`, `auth:schema:check`, an API image build/scan, a
-previous-schema upgrade fixture, or an Expo native preview build. Those are not implied by a green CI
-workflow. The separate Cloud Build reference does configure, execute, and wait for a migration job
-before its API deploy; that is deployment-path configuration, not proof it has run.
+It does **not** currently run `doctor`, an image vulnerability scan, a previous-schema upgrade fixture,
+a live Neon/provider test, or an Expo native preview build. Those are not implied by a green CI
+workflow. The separate Cloud Build reference waits for migration success and deploys one resolved
+image digest without changing normal traffic or service IAM; this is configuration, not proof it ran.
+Its shell tests use a fake `gcloud` command and do not establish provider compatibility or permissions.
 
 A protected production promotion gate should additionally:
 
@@ -192,12 +196,19 @@ an explicitly protected environment and never receive production business data.
 
 Do not inject production provider credentials into pull-request jobs from untrusted forks.
 
-## API and Cloud Run release
+## API and database release
+
+Use [Neon deployment](neon-deployment.md) for the selected PostgreSQL provider and
+[Cloud deployment](cloud-deployment.md) for the optional Cloud Run reference. Other container hosts
+must demonstrate the equivalent image, secret, migration, health, IAM, promotion, and rollback
+properties. Do not infer serverless-function compatibility from the portable container.
 
 1. Confirm change scope, source-policy audit, release notes, migration plan, and rollback owner.
 2. Build and scan a single image; promote the digest rather than rebuilding per environment.
 3. Run controlled migration job if required.
-4. Deploy a no-traffic revision with production Secret Manager references and dedicated identity.
+4. Deploy an isolated candidate with pinned secret references and dedicated identity. On Cloud Run,
+   use `--no-traffic`; its tag URL remains directly reachable under existing service IAM. A new
+   service needs private bootstrap and separate public-access promotion.
 5. Smoke test health/readiness, auth, one authorized API path, database, and webhook rejection paths.
 6. Shift a small traffic percentage; monitor error rate, latency, instance count, DB connections,
    task failures, auth errors, and billing webhook lag.

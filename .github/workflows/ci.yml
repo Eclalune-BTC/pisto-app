@@ -16,7 +16,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:18-alpine
@@ -66,5 +66,31 @@ jobs:
       - name: Reject new dependency advisories
         run: bun run audit:ci
 
-      - name: Build packages and applications
-        run: bun run build
+      - name: Validate schema contracts and release safeguards
+        run: |
+          bun run db:check
+          bun run auth:schema:check
+          python3 -m unittest discover -s infra/gcp -p 'test_*.py'
+          bash -n infra/gcp/release.sh
+
+      - name: Build the portable API image
+        run: docker build --pull -t pisto-api:ci -f apps/api/Dockerfile .
+
+      - name: Exercise bundled migrations and the container contract
+        run: |
+          docker run --rm --network host --env DATABASE_URL \
+            --entrypoint bun pisto-api:ci packages/db/dist/bundled-migrate.js
+          docker run -d --name pisto-api-ci --network host \
+            --env DATABASE_URL --env BETTER_AUTH_SECRET \
+            --env NODE_ENV=production --env PORT=3301 \
+            --env BETTER_AUTH_URL=https://api.pisto.app \
+            --env BILLING_ENABLED=false --env REVENUECAT_ENABLED=false \
+            pisto-api:ci
+          trap 'docker logs pisto-api-ci; docker stop --time 10 pisto-api-ci' EXIT
+          curl --fail --retry 10 --retry-connrefused --retry-delay 1 --max-time 5 \
+            http://localhost:3301/ready
+          curl --fail --max-time 5 http://localhost:3301/health
+          test "$(curl --silent --output /tmp/pisto-denied.json --write-out '%{http_code}' \
+            --max-time 5 http://localhost:3301/v1/me)" = 401
+          docker stop --time 10 pisto-api-ci
+          test "$(docker inspect --format '{{.State.ExitCode}}' pisto-api-ci)" = 0

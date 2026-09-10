@@ -1,43 +1,38 @@
-# Google Cloud deployment reference
+# Optional Cloud Run deployment reference
 
-The default production target is a Cloud Run service connected to Cloud SQL for PostgreSQL.
-Artifact Registry stores immutable API images and Secret Manager injects runtime secrets.
-Cloud Run can scale the HTTP service to zero; use Cloud Run Jobs or Cloud Tasks for work
-that must continue independently of a request.
+The API runs as a portable Bun container with **Neon PostgreSQL** through a standard TLS database
+URL. No Cloud SQL instance, socket, connector, or Cloud SQL IAM role is required. The application
+does not depend on a Neon SDK or proprietary database API.
 
-## Required resources
+Read [the cloud runbook](../../docs/cloud-deployment.md) and
+[Neon setup](../../docs/neon-deployment.md) before configuring a target.
 
-Create a Google Cloud project with billing enabled, then provision:
+Provide an Artifact Registry repository, existing Cloud Run service, separate API/migration service
+accounts, and these Secret Manager secrets with explicitly chosen numeric versions:
 
-- an Artifact Registry Docker repository named pisto
-- a Cloud SQL PostgreSQL instance and application database/user
-- separate pisto-api and pisto-migrate service accounts with minimum runtime and migration roles
-- Secret Manager values named pisto-database-url, pisto-migration-database-url,
-  pisto-auth-secret, pisto-polar-token, pisto-polar-webhook-secret, and pisto-polar-products
-- a Cloud Build trigger that uses infra/gcp/cloudbuild.yaml
+- `pisto-database-url`: runtime role's PostgreSQL connection URL;
+- `pisto-migration-database-url`: migration role's direct PostgreSQL connection URL;
+- `pisto-auth-secret`: high-entropy Better Auth secret.
 
-Override every substitution in cloudbuild.yaml for the target project. In particular, never
-deploy the replace-project or example.com defaults. The first build step rejects those placeholders
-and non-HTTPS application URLs before it can build an image or touch the database.
+Set the real API/app origins and all three secret-version substitutions in `cloudbuild.yaml`.
+Validation rejects missing/placeholder origins and unpinned versions before migration. The pipeline
+builds one image, resolves its digest, waits for a separate migration job, and deploys the digest
+as a candidate without changing normal traffic or public IAM. Polar and RevenueCat remain disabled.
 
-Database URLs should use the Cloud SQL Unix socket exposed to Cloud Run. Percent-encode
-special characters in database credentials and give the migration identity a distinct database
-role. The build file configures and executes a one-task Cloud Run migration job, waits for it to
-succeed, and only then deploys the API revision. API instances never run migrations at startup.
+Migration jobs include the build UUID to prevent configuration races. Serialize database migrations
+and candidate promotion for each target environment; no distributed release lock is implemented.
+Review `_PRODUCT_WRITES_ENABLED` for every release and set it to `false` during a write suspension.
+The runbook specifies private first-service bootstrap, candidate-tag exposure, smoke, image-scan,
+promotion, capacity, recovery, and rollback requirements. A successful build is not a production
+release. The scripts neither provision Neon nor read secret values.
 
-## Production checks
+Credential-free checks:
 
-- Use a dedicated service account, not the default Compute Engine identity.
-- Restrict Secret Manager access to individual secrets.
-- Configure a custom domain and update Better Auth trusted origins.
-- Set a minimum instance only when latency requirements justify the idle cost.
-- Send structured logs and alert on readiness failures and webhook dead letters.
-- Back up Cloud SQL and test restoration before accepting production data.
+```sh
+python3 -m unittest discover -s infra/gcp -p 'test_*.py'
+bash -n infra/gcp/release.sh
+```
 
-Primary references:
-
-- https://cloud.google.com/run/docs/deploying-source-code
-- https://cloud.google.com/run/docs/configuring/services/cloud-sql
-- https://cloud.google.com/run/docs/configuring/services/secrets
-- https://cloud.google.com/build/docs/building/build-containers
-- https://cloud.google.com/sql/docs/postgres/backup-recovery/backups
+The shell orchestration tests use a fake `gcloud` command on Linux or Windows Git Bash. They verify failure
+stops, the shared image digest, disabled billing, and no automatic traffic/IAM promotion. They do
+not prove live Google Cloud behavior or account permissions.

@@ -1,197 +1,132 @@
-# Google Cloud deployment
+# Portable API deployment and the Cloud Run reference
 
-## Target topology
+The selected managed database is **Neon PostgreSQL**, reached through the existing standard
+PostgreSQL driver. The Bun API remains a portable Docker image. Cloud Run is a maintained deployment
+reference; using Neon does not require Cloud Run, a Neon SDK, or a provider-specific data API. See
+[Neon deployment](neon-deployment.md) for database setup, privileges, capacity, recovery, and exit.
 
-| Component | Google Cloud service | Purpose |
-| --- | --- | --- |
-| API container | Cloud Run service | Stateless public Hono API |
-| Container registry | Artifact Registry | Immutable application images |
-| PostgreSQL | Cloud SQL for PostgreSQL | Durable relational data |
-| Controlled migrations | Cloud Run Job or CI release step | One executor, separately authorized |
-| Asynchronous HTTP work | Cloud Tasks | Retryable, scheduled delivery to private handlers |
-| User objects | Cloud Storage | Durable private object storage |
-| Secrets | Secret Manager | Runtime credentials and signing secrets |
-| Identity/access | Dedicated service accounts and IAM | Least-privilege workload identity |
-
-This is a target operating model, not evidence that a project, service, or deployment currently
-exists.
-
-The repository includes `apps/api/Dockerfile` and `infra/gcp/cloudbuild.yaml` as build/deploy
-references. The Cloud Build file configures and executes a one-task `pisto-migrate` Cloud Run Job,
-waits for success, and only then deploys the API. Their presence proves only that the configuration
-is reviewable; it does not prove an image was published, a Google Cloud resource was provisioned, a
-migration ran, or a revision received traffic.
-
-The Expo static export is a separate artifact and is not served merely because the API is on Cloud
-Run. See [Web deployment](web-deployment.md) for the Firebase Hosting default and Google Cloud/EAS
-alternatives.
+Configuration in this repository is not evidence that resources exist or traffic is released. The
+Expo web export is a separate artifact; [Web deployment](web-deployment.md) describes its requirements.
 
 ## Container contract
 
-The API image must:
-
-- be Linux `amd64` compatible (or a multi-architecture image including it);
-- listen on `0.0.0.0` using Cloud Run's injected `PORT`;
-- start without running migrations, seeding data, or provisioning providers;
-- write logs to stdout/stderr and remain stateless;
-- handle termination and bounded in-flight shutdown;
-- run as a non-root user where the chosen Bun image supports it;
-- contain only the Bun runtime, bundled application/migration artifacts, and SQL migration files.
-
-Use a multi-stage Dockerfile, a small trusted base, `.dockerignore`, a fixed working directory, and a
-non-root runtime stage. Pin the base version and record the deployed image digest. Rebuild regularly
-for base security updates; a tag alone does not prove identical content.
-
-The current release stage copies `apps/api/dist/bundled-index.js`,
-`packages/db/dist/bundled-migrate.js`, and `packages/db/migrations`; it does not copy the build-stage
-`node_modules`. Its normal entrypoint runs only the bundled API.
-
-Test locally without deployment:
+`apps/api/Dockerfile` builds Linux-compatible bundled API and migration artifacts, includes committed
+SQL migrations, and runs the API as the non-root `bun` user. It must listen on `0.0.0.0` at the
+runtime's `PORT`, remain stateless, and complete bounded shutdown. Migrations never run at API startup.
 
 ```sh
 docker build --pull -t pisto-api:local -f apps/api/Dockerfile .
 docker run --rm -p 8080:8080 --env-file .env -e PORT=8080 pisto-api:local
 ```
 
-The Dockerfile path above matches this repository. The run command remains an illustrative local
-smoke invocation and requires suitable local configuration. Never bake `.env`, service-account
-JSON, or registry credentials into an image or build argument.
+The local run requires reviewed local configuration. Keep credentials out of image layers, build
+arguments, logs, and client bundles. Production images must be scanned and identified by digest;
+the versioned base tag alone is not an immutable artifact.
 
-## Cloud Run service
+## Cloud Run resources and identities
 
-- Use one dedicated runtime service account, not a default Editor account.
-- Keep ingress and authentication as restrictive as product routing permits. Public API routes still
-  perform application authentication; private task handlers require Google OIDC.
-- Set minimum/maximum instances and request concurrency from measured behavior.
-- Bound database pool size so maximum instances cannot exhaust Cloud SQL.
-- Configure startup/liveness probes against non-mutating health endpoints.
-- Inject secrets by Secret Manager reference and ordinary non-sensitive settings as environment
-  variables.
-- Use revision labels, image digests, and gradual traffic migration. Verify before 100% traffic.
+Provision only the resources required for the selected environment:
 
-Cloud Run revisions are immutable. Configuration changes create a new revision and should pass the
-same release evidence as code.
+- Artifact Registry repository for the image;
+- Cloud Run service and a separately authorized one-task migration job;
+- dedicated API, migration, and deployer identities;
+- Secret Manager references for the runtime database URL, migration database URL, and auth secret;
+- logs, alerts, access restrictions, and a documented operational owner.
 
-## Cloud SQL
+Neither workload needs a Cloud SQL attachment or Cloud SQL IAM role. Database access is normal
+outbound TLS to Neon. Select nearby compute/database regions and measure the actual latency.
+Grant Secret Accessor on individual secrets to the relevant runtime identity. Use workload identity
+for CI and attached service accounts at runtime rather than downloaded service-account keys.
 
-Production uses PostgreSQL with automated backups and point-in-time recovery appropriate to the
-environment. Prefer a private-IP/VPC path when the project network design supports it; otherwise use
-an officially supported Cloud SQL connector/Unix socket with IAM and encryption controls.
+The API database role must not own schema objects or have migration privileges. The migration
+identity alone gets its separate credential. Database recovery remains required even when hosting
+and database providers differ.
 
-Rules:
+## Reviewable candidate pipeline
 
-- API service account receives only the Cloud SQL access it needs.
-- Database application credentials are separate from migration credentials.
-- Pool maximum and Cloud Run maximum instances share one documented connection budget.
-- Migrations are run once before traffic promotion and never by every starting instance.
-- High-risk migrations have a tested restore/forward-fix plan.
-- Production access is audited and human direct access is time-bounded.
+`infra/gcp/cloudbuild.yaml` and `infra/gcp/release.sh` implement this sequence:
 
-## Cloud Run Job for migrations
+1. Validate exact public HTTPS origins, private app scheme, and numeric secret versions before building.
+2. Build and push a unique `build-$BUILD_ID` image tag.
+3. Verify the target service already exists and resolve the pushed image to one immutable digest.
+4. Configure a build-specific migration job from that digest with its separate secret/identity; execute once with
+   zero retries and wait for success. Failure prevents API deployment.
+5. Deploy the same digest using `--no-traffic --tag=candidate` and the existing service IAM policy.
+6. Emit candidate revision/traffic information and digest for the release record. Stop before promotion.
 
-The included Cloud Build reference deploys `pisto-migrate` from the exact API image, uses the
-distinct `pisto-migrate` service account and `pisto-migration-database-url` secret, runs
-`bun packages/db/dist/bundled-migrate.js` as one task with zero automatic retries, and waits for
-completion before the API deploy step. Provisioning must give that identity a distinct migration
-database role and only the required Cloud SQL/secret permissions. A failed execution stops that
-build sequence.
+Migration job names include the full build UUID, so another build cannot replace a job's image or
+credential between configuration and execution. Retain execution evidence before retiring old jobs.
+Serialize releases for one environment: only one build/operator may migrate its database or update
+the candidate tag at a time. The scripts do not implement a distributed release lock. Database
+changes must be compatible with the currently serving revision before this sequence begins.
 
-The YAML is deployment configuration, not evidence that the job, service account, secret, database
-role, or a successful execution exists in any Google Cloud project.
+Required substitutions are the real `_API_URL`, `_APP_URL`, `_DATABASE_SECRET_VERSION`,
+`_MIGRATION_SECRET_VERSION`, and `_AUTH_SECRET_VERSION`. Numeric versions pin rollback configuration;
+`latest` is rejected. Review project, region, repository, service/job names, identities, and scheme.
+Set `_PRODUCT_WRITES_ENABLED=false` to preserve an operational suspension; its baseline default is
+`true`. Review `_PRODUCT_READ_LIMIT_PER_MINUTE` and `_PRODUCT_WRITE_LIMIT_PER_MINUTE` alongside it.
+Substitutions enter scripts as environment values, not interpolated shell source.
 
-Do not make the API container's normal command conditional on an environment variable that could
-accidentally run migrations in all instances.
+The template is a complete baseline configuration: it replaces the candidate's ordinary environment
+and secret references. It explicitly disables Polar/RevenueCat, removes Cloud SQL attachments, and
+defaults to 300 reads / 60 writes per minute. Do not apply it unchanged to a service
+with a different enabled capability set or an active operational write suspension. Billing requires
+its own reviewed configuration and provider evidence before enablement.
 
-## Cloud Tasks
+The initial capacity is two maximum instances with five PostgreSQL connections each. Budget for
+overlapping revisions, migration connections, probes, and administrative reserve before accepting load;
+this configuration is not performance evidence. The startup probe uses `/ready` with a bounded
+database check. Liveness uses `/health` so a database outage does not itself cause liveness restarts.
+Cloud Run supplies `PORT`; the command configures `--port=3001` without setting the reserved variable.
 
-Use Cloud Tasks for short, bounded asynchronous HTTP work that benefits from scheduling, rate
-control, and retry. It is at-least-once delivery: every handler needs an idempotency key and a durable
-deduplication/result record.
+## First deployment
 
-- Queue and target should be in a deliberate region.
-- Target the Cloud Run `run.app` URL and attach an OIDC token from a dedicated invoker service account.
-- Validate issuer, audience, and target authorization through Cloud Run/IAM.
-- Do not expose the task handler as an unauthenticated alternate API.
-- Return 2xx only after durable success. Classify permanent 4xx failures separately from retryable
-  dependency errors.
-- Keep task payloads minimal; store large data in PostgreSQL/Storage and send an opaque reference.
-- Configure retry/backoff, rate, concurrency, and dead-letter/alert handling from workload behavior.
+The candidate script intentionally requires an existing service. For a new environment, first run
+the reviewed migration image once, then create the first API revision privately with
+`--no-allow-unauthenticated`, the same pinned digest/secrets, and the documented probes. Complete
+authenticated operator smoke checks before granting public invocation or enrolling the browser
+origin. Record this bootstrap separately; the first revision has no prior traffic target to preserve.
 
-Cloud Tasks is not the source of truth for billing webhook receipt. Persist/deduplicate the provider
-event before enqueueing optional downstream work.
+Do not reuse a live service's public IAM settings to describe a new deployment as private.
+`--no-traffic` excludes the candidate from the normal traffic split, but its tag URL remains directly
+reachable under the service's IAM policy. Candidate code therefore needs all normal authorization,
+rate limits, write controls, and data safeguards before deployment.
 
-## Cloud Storage
+## Smoke, promotion, and rollback
 
-- Buckets are private with uniform bucket-level access.
-- Separate environments and data classifications into appropriate buckets/projects.
-- Object names are server-generated opaque IDs, not trusted user paths.
-- Validate declared type, detected type, size, and ownership before marking an upload usable.
-- Use short-lived V4 signed URLs for one object and one method. A signed URL is a bearer credential;
-  never log it and keep its lifetime minimal.
-- Configure lifecycle/retention according to product and legal requirements.
-- Grant the API service account object permissions only on required buckets/prefixes.
+Before promotion, record the source commit, image digest and scan outcome, migration execution,
+revision, secret version references, database endpoint identity (never credentials), origins, IAM,
+capacity budget, and previous revision. Verify:
 
-Do not treat a successful upload as safe content. Malware scanning or transformation should occur in
-an isolated asynchronous flow before distribution when the product accepts untrusted files.
+- health/readiness, denied unauthenticated routes, and an authorized persisted operation;
+- real browser sign-in/sign-out, cookies, exact CORS, and the forwarded-IP rate-limit contract;
+- rate limits, write suspension, sensitive-log redaction, and invalid webhook rejection;
+- the exact web artifact against the API; provider/device checks for any enabled capability;
+- monitoring, backup/restore evidence, and the compatible rollback target.
 
-## Secret Manager
+Use the reviewed concrete revision names, not `LATEST`, when shifting traffic:
 
-Store at least these server secrets there when enabled:
+```sh
+gcloud run services update-traffic SERVICE --region REGION --to-revisions NEW_REVISION=5,PREVIOUS_REVISION=95
+gcloud run services update-traffic SERVICE --region REGION --to-revisions NEW_REVISION=100
+```
 
-- `DATABASE_URL` or its password component;
-- `BETTER_AUTH_SECRET` / rotation set;
-- `POLAR_ACCESS_TOKEN` and `POLAR_WEBHOOK_SECRET`;
-- RevenueCat webhook Authorization value and any server API secret;
-- signing/encryption keys introduced by future features.
+Observe errors, latency, connections, denied requests, and business outcomes between steps. Record
+the actual traffic result before calling the release complete. Rollback sends traffic to the prior
+compatible revision; it does not reverse database writes or migrations. Remove the candidate tag
+when no longer needed. A failed migration uses its reviewed restore/forward-fix plan.
 
-Reference a specific secret version for deterministic rollback or use an explicit rotation process.
-Grant `Secret Manager Secret Accessor` on individual secrets to the exact workload identity. Avoid
-long-lived service-account key files; Cloud Run uses its attached identity.
+## Source review
 
-Google recommends avoiding secrets in environment variables when feasible because accidental debug
-logging can expose process environments. Cloud Run supports mounted secret files and environment
-references; choose deliberately, prevent logging, and understand rotation behavior for the selected
-delivery mechanism.
-
-## IAM split
-
-Use separate identities for:
-
-- API runtime: Cloud SQL client, narrow Storage access, Tasks enqueue, selected secrets;
-- task invoker: invoke only the private task handler;
-- migration job: Cloud SQL client and migration secret/database role;
-- deployer: Cloud Run deploy and service-account user, without runtime secret access where possible;
-- CI federation: Workload Identity Federation instead of downloaded service-account keys.
-
-Avoid project-wide Owner/Editor and default service accounts. Review unused permissions with IAM
-recommendations and audit logs.
-
-## Release sequence
-
-1. Run repository checks and build the Docker image.
-2. Scan dependencies/image, push to Artifact Registry, and record the digest/SBOM if available.
-3. Back up/verify recovery posture; let the included Cloud Build sequence configure and execute the
-   one-task migration job, and require its successful `--wait` result.
-4. Deploy a no-traffic Cloud Run revision with pinned image digest and configuration.
-5. Verify startup, readiness, auth, database, webhook route behavior, and critical smoke tests.
-6. Shift a small traffic percentage, observe errors/latency/database connections, then increase.
-7. Keep the prior revision deployable and record release evidence.
-
-Rollback routes traffic to a known-good revision. It does not automatically reverse database or
-external provider changes.
-
-## Official sources
+Reviewed on **2026-09-10**. Recheck before changing deployment flags, health behavior, secret delivery,
+runtime topology, or database provider:
 
 - [Cloud Run container contract](https://cloud.google.com/run/docs/container-contract)
-- [Deploying Cloud Run containers](https://cloud.google.com/run/docs/deploying)
-- [Cloud Run health checks](https://cloud.google.com/run/docs/configuring/healthchecks)
-- [Cloud Run rollouts and rollbacks](https://cloud.google.com/run/docs/rollouts-rollbacks-traffic-migration)
+- [Reserved environment variables](https://cloud.google.com/run/docs/configuring/services/environment-variables)
+- [Cloud Run deploy flags](https://cloud.google.com/sdk/gcloud/reference/run/deploy)
+- [Health checks](https://cloud.google.com/run/docs/configuring/healthchecks)
+- [Traffic migration and tags](https://cloud.google.com/run/docs/rollouts-rollbacks-traffic-migration)
 - [Cloud Run Jobs](https://cloud.google.com/run/docs/create-jobs)
-- [Connect Cloud Run to Cloud SQL for PostgreSQL](https://cloud.google.com/sql/docs/postgres/connect-run)
-- [Cloud SQL connection management](https://cloud.google.com/sql/docs/postgres/manage-connections)
-- [Cloud Tasks HTTP targets and OIDC](https://cloud.google.com/tasks/docs/creating-http-target-tasks)
-- [Cloud Storage signed URLs](https://cloud.google.com/storage/docs/access-control/signed-urls)
+- [Artifact Registry image inspection](https://cloud.google.com/sdk/gcloud/reference/artifacts/docker/images/describe)
 - [Cloud Run secrets](https://cloud.google.com/run/docs/configuring/services/secrets)
-- [Secret Manager best practices](https://cloud.google.com/secret-manager/docs/best-practices)
-- [Service-account security](https://cloud.google.com/iam/docs/best-practices-service-accounts)
-- [Docker build best practices](https://docs.docker.com/build/building/best-practices/)
+- [Neon connection pooling](https://neon.com/docs/connect/connection-pooling)

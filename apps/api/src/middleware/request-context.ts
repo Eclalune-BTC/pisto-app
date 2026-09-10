@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from "hono";
+import { routePath } from "hono/route";
 
 import type { AppEnv } from "../types.ts";
 
@@ -20,7 +21,8 @@ export function requestContext(): MiddlewareHandler<AppEnv> {
         message: "Request completed",
         requestId,
         method: context.req.method,
-        path: new URL(context.req.url).pathname,
+        // Patterns keep record IDs, auth tokens, and unknown user input out of logs.
+        path: routePath(context, -1) ?? "unmatched",
         status: context.res.status,
         durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
       }),

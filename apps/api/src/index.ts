@@ -71,7 +71,7 @@ export function shutdown(signal: "SIGINT" | "SIGTERM"): Promise<boolean> {
           level: "error",
           message: "HTTP server shutdown failed",
           signal,
-          error: error instanceof Error ? error.message : String(error),
+          errorType: error instanceof Error ? error.name : typeof error,
         }),
       );
       await server.stop(true).catch(() => undefined);
@@ -96,7 +96,7 @@ export function shutdown(signal: "SIGINT" | "SIGTERM"): Promise<boolean> {
           level: "error",
           message: "Database shutdown failed",
           signal,
-          error: error instanceof Error ? error.message : String(error),
+          errorType: error instanceof Error ? error.name : typeof error,
         }),
       );
     }
@@ -123,7 +123,7 @@ function terminate(signal: "SIGINT" | "SIGTERM") {
           level: "error",
           message: "API shutdown crashed",
           signal,
-          error: error instanceof Error ? error.message : String(error),
+          errorType: error instanceof Error ? error.name : typeof error,
         }),
       );
       process.exit(1);
