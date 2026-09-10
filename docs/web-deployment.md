@@ -9,6 +9,8 @@ adapter is Vercel; actual deployment status and checks live in [release evidence
 - `apps/app/dist`: ordinary Expo web files, using `web.output: "single"`.
 - `apps/api/Dockerfile`: portable Bun/Hono server plus a separate bundled migration entrypoint.
 - `api/server.ts`: minimal Vercel Bun entrypoint invoking the same API runtime.
+- `api/tsconfig.json`: explicit Bun compiler settings and emitted relative-import rewriting;
+  the function also retains package source files referenced by workspace TypeScript exports.
 - `vercel.json`: routing, build, region, response headers and function duration for that adapter.
 - `packages/db/migrations`: standard SQL/Drizzle history, using the existing `postgres` driver.
 
