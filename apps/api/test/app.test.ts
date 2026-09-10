@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
-import type { BillingRuntime } from "@pisto/billing";
+import { BillingProviderError, type BillingRuntime } from "@pisto/billing";
 import type {
   CashRepository,
   CatalogRepository,
@@ -27,6 +27,7 @@ function testApp(
     activeBusinessId?: string | null;
     product?: ProductRepository;
     onRepositoryCall?: () => void;
+    readCustomerState?: BillingRuntime["readCustomerState"];
   } = {},
 ) {
   const auth = {
@@ -76,6 +77,7 @@ function testApp(
     },
     catalog: [],
     listEntitlements: async () => [],
+    readCustomerState: options.readCustomerState ?? (async () => ({ activeSubscriptions: [] })),
     processRevenueCatWebhook: async () => {
       throw new Error("RevenueCat is disabled");
     },
@@ -234,6 +236,35 @@ describe("Pisto API", () => {
         redirect: false,
       },
     });
+  });
+
+  test("reads billing state through the scope-bound provider adapter", async () => {
+    let scope: unknown;
+    const response = await testApp({
+      authenticated: true,
+      polarEnabled: true,
+      readCustomerState: async (selectedScope) => {
+        scope = selectedScope;
+        return { activeSubscriptions: [] };
+      },
+    }).request("/v1/billing/state");
+    expect(response.status).toBe(200);
+    expect(scope).toEqual({ type: "user", id: "user_test" });
+    expect(await response.json()).toMatchObject({
+      data: { customerState: { activeSubscriptions: [] } },
+    });
+  });
+
+  test("returns a stable unavailable error for billing-state provider failures", async () => {
+    const response = await testApp({
+      authenticated: true,
+      polarEnabled: true,
+      readCustomerState: async () => {
+        throw new BillingProviderError();
+      },
+    }).request("/v1/billing/state");
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ error: { code: "BILLING_UNAVAILABLE" } });
   });
 
   test("does not expose provider billing routes through the auth catch-all", async () => {

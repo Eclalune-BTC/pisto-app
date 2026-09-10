@@ -1,4 +1,4 @@
-import { RevenueCatWebhookError } from "@pisto/billing";
+import { BillingProviderError, RevenueCatWebhookError } from "@pisto/billing";
 import type { ApiErrorCode } from "@pisto/contracts";
 import { ProductError, type ProductErrorCode } from "@pisto/db";
 
@@ -46,6 +46,12 @@ const revenueCatWebhookCodes: Record<RevenueCatWebhookError["status"], ApiErrorC
 export function normalizeError(error: unknown): { apiError: ApiError; unexpected: boolean } {
   if (error instanceof ApiError) {
     return { apiError: error, unexpected: false };
+  }
+  if (error instanceof BillingProviderError) {
+    return {
+      apiError: new ApiError(503, "BILLING_UNAVAILABLE", error.message),
+      unexpected: false,
+    };
   }
   if (error instanceof RevenueCatWebhookError) {
     const code = revenueCatWebhookCodes[error.status];

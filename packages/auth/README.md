@@ -4,6 +4,13 @@ Better Auth 1.7.1 is configured with its Drizzle adapter, the official Expo
 server plugin, and the organization plugin. Polar's Better Auth plugin is added
 only when Polar billing is explicitly enabled.
 
+Authentication owns a separate error boundary because Better Auth can return its own response before
+Hono sees a failure. Provider diagnostics retain severity only, unexpected exceptions become a safe
+API error, and a response hook removes provider error details from server failures. The regression
+uses the real Better Auth handler with synthetic persistence failures. This policy uses the installed
+1.7.1 logger, `onAPIError`, and plugin response hooks; recheck their behavior on upgrades against the
+[official options](https://better-auth.com/docs/reference/options) (reviewed 2026-09-10).
+
 Rate limits are always enabled and stored in PostgreSQL so counters are shared
 across Cloud Run instances. The checked-in auth schema therefore includes the
 Better Auth `rateLimit` model as well as the core and organization models.

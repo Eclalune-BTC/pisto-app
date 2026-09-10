@@ -126,17 +126,7 @@ export function v1Routes(input: {
       });
     }
 
-    const path =
-      scope.type === "organization"
-        ? `/api/auth/customer/subscriptions/list?referenceId=${encodeURIComponent(scope.id)}&active=true`
-        : "/api/auth/customer/state";
-    const customerState = await callAuthEndpoint({
-      auth: input.auth,
-      baseUrl: input.authBaseUrl,
-      path,
-      method: "GET",
-      headers: context.req.raw.headers,
-    });
+    const customerState = await input.billing.readCustomerState(scope);
     return context.json({
       data: {
         status: "enabled" as const,

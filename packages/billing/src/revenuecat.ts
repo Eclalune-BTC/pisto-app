@@ -1,5 +1,5 @@
 import { billingWebhookEvent, type Database, entitlement, user } from "@pisto/db";
-import { inArray, sql } from "drizzle-orm";
+import { inArray, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import type { RevenueCatBillingConfig } from "./config.ts";
@@ -17,6 +17,8 @@ const revenueCatEventSchema = z
     entitlement_ids: z.array(z.string().min(1)).nullable().optional(),
     purchased_at_ms: z.number().int().nonnegative().nullable().optional(),
     expiration_at_ms: z.number().int().nonnegative().nullable().optional(),
+    grace_period_expiration_at_ms: z.number().int().nonnegative().nullable().optional(),
+    cancel_reason: z.string().nullable().optional(),
     transaction_id: z.string().min(1).nullable().optional(),
     original_transaction_id: z.string().min(1).nullable().optional(),
     environment: z.string().optional(),
@@ -50,9 +52,9 @@ export class RevenueCatWebhookError extends Error {
 export function revenueCatEventStatus(type: string, expiresAt: Date | null, now: Date) {
   if (type === "EXPIRATION") return "expired" as const;
   if (type === "REFUND") return "revoked" as const;
-  if (type === "BILLING_ISSUE") return "pending" as const;
-  if (type === "SUBSCRIPTION_PAUSED") return "inactive" as const;
-  if (type === "CANCELLATION") {
+  // Pausing is scheduled for period end; a billing issue is not expiration.
+  // Keep only the access interval the store has already verified.
+  if (["CANCELLATION", "BILLING_ISSUE", "SUBSCRIPTION_PAUSED"].includes(type)) {
     return expiresAt && expiresAt > now ? ("active" as const) : ("expired" as const);
   }
   return "active" as const;
@@ -163,7 +165,12 @@ export function createRevenueCatWebhookProcessor(input: {
     const receivedAt = request.now ?? new Date();
     const sourceEventAt = new Date(event.event_timestamp_ms);
     const purchasedAt = dateFromMilliseconds(event.purchased_at_ms);
-    const expiresAt = dateFromMilliseconds(event.expiration_at_ms);
+    const paidUntil = dateFromMilliseconds(event.expiration_at_ms);
+    const graceUntil =
+      event.type === "BILLING_ISSUE"
+        ? dateFromMilliseconds(event.grace_period_expiration_at_ms)
+        : null;
+    const expiresAt = graceUntil && (!paidUntil || graceUntil > paidUntil) ? graceUntil : paidUntil;
     const candidateIds = [
       event.app_user_id,
       event.original_app_user_id,
@@ -189,6 +196,9 @@ export function createRevenueCatWebhookProcessor(input: {
 
       if (
         !isRevenueCatEventProjectable(event.type) ||
+        // This companion event has no grace deadline and can arrive before or
+        // after BILLING_ISSUE. Only that event and EXPIRATION own billing access.
+        (event.type === "CANCELLATION" && event.cancel_reason === "BILLING_ERROR") ||
         !isRevenueCatEnvironmentAllowed(event.environment, config.allowedEnvironment) ||
         (event.entitlement_ids?.length ?? 0) === 0
       ) {
@@ -259,7 +269,16 @@ export function createRevenueCatWebhookProcessor(input: {
               productId: event.product_id ?? null,
               status,
               sourceEventAt,
-              validFrom: purchasedAt,
+              // Apple can notify renewal before the next period begins. Extend
+              // a continuous existing grant without hiding its paid current day.
+              validFrom: sql`case
+                when ${entitlement.status} = 'active'
+                  and ${entitlement.userId} = excluded.user_id
+                  and ${entitlement.validUntil} >= excluded.valid_from
+                  and (${entitlement.validFrom} is null or ${entitlement.validFrom} <= excluded.valid_from)
+                then ${entitlement.validFrom}
+                else excluded.valid_from
+              end`,
               validUntil: expiresAt,
               metadata: {
                 providerEntitlementKey: mapped.providerKey,
@@ -270,7 +289,7 @@ export function createRevenueCatWebhookProcessor(input: {
               },
               updatedAt: receivedAt,
             },
-            setWhere: sql`${entitlement.sourceEventAt} <= ${sourceEventAt}`,
+            setWhere: lte(entitlement.sourceEventAt, sourceEventAt),
           });
       }
       return { duplicate: false, projected: true };

@@ -36,8 +36,13 @@ describe("RevenueCat webhook projection", () => {
     expect(revenueCatEventStatus("REFUND", null, new Date())).toBe("revoked");
   });
 
-  test("does not grant a paused subscription", () => {
-    expect(revenueCatEventStatus("SUBSCRIPTION_PAUSED", null, new Date())).toBe("inactive");
+  test("retains paid access while a pause or billing retry is pending", () => {
+    const now = new Date("2026-09-10T00:00:00Z");
+    for (const type of ["SUBSCRIPTION_PAUSED", "BILLING_ISSUE"]) {
+      expect(revenueCatEventStatus(type, new Date("2026-10-01T00:00:00Z"), now)).toBe("active");
+      expect(revenueCatEventStatus(type, now, now)).toBe("expired");
+      expect(revenueCatEventStatus(type, null, now)).toBe("expired");
+    }
   });
 });
 

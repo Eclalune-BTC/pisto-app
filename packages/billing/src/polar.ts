@@ -1,3 +1,4 @@
+import type { BillingScope } from "@pisto/contracts";
 import {
   billingCustomer,
   billingSubscription,
@@ -9,7 +10,7 @@ import {
 } from "@pisto/db";
 import { checkout, polar as polarPlugin, portal, webhooks } from "@polar-sh/better-auth";
 import { Polar } from "@polar-sh/sdk";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, lte, ne } from "drizzle-orm";
 
 import type { PolarBillingConfig } from "./config.ts";
 import { eventFingerprint } from "./security.ts";
@@ -18,6 +19,30 @@ import { asRecord, readBoolean, readDate, readString } from "./values.ts";
 export interface WebhookProcessResult {
   duplicate: boolean;
   projected: boolean;
+}
+
+export class BillingProviderError extends Error {
+  override readonly name = "BillingProviderError";
+
+  constructor() {
+    super("The billing provider request failed");
+  }
+}
+
+export async function readPolarCustomerState(
+  client: Pick<Polar, "customers" | "subscriptions"> | null,
+  scope: BillingScope,
+): Promise<unknown> {
+  if (!client) throw new BillingProviderError();
+  try {
+    // The Better Auth organization-list endpoint prints raw SDK errors directly
+    // to console.log. Own scope translation and safe failure at this boundary.
+    return scope.type === "organization"
+      ? await client.subscriptions.list({ active: true, metadata: { referenceId: scope.id } })
+      : await client.customers.getStateExternal({ externalId: scope.id });
+  } catch {
+    throw new BillingProviderError();
+  }
 }
 
 function jsonRecord(value: unknown): Record<string, unknown> {
@@ -33,10 +58,18 @@ function polarEntitlementStatus(input: {
   validUntil: Date | null;
   now: Date;
 }): "active" | "pending" | "revoked" | "expired" | "inactive" {
-  if (input.eventType === "subscription.revoked") return "revoked";
-  if (input.eventType === "subscription.past_due") return "pending";
-  if (input.eventType === "subscription.paused") return "inactive";
-  if (input.eventType === "subscription.canceled" || input.providerStatus === "canceled") {
+  // A scheduled cancellation retains provider status `active`; `canceled`
+  // already means revoked, even when the old billing period ends in the future.
+  if (input.eventType === "subscription.revoked" || input.providerStatus === "canceled") {
+    return "revoked";
+  }
+  if (input.eventType === "subscription.past_due" || input.providerStatus === "past_due") {
+    return "pending";
+  }
+  if (input.eventType === "subscription.paused" || input.providerStatus === "paused") {
+    return "inactive";
+  }
+  if (input.eventType === "subscription.canceled") {
     return input.validUntil && input.validUntil > input.now ? "active" : "expired";
   }
   if (
@@ -154,7 +187,7 @@ export function createPolarWebhookProcessor(input: {
               syncedAt: eventAt,
               updatedAt: new Date(),
             },
-            setWhere: sql`${billingCustomer.syncedAt} <= ${eventAt}`,
+            setWhere: lte(billingCustomer.syncedAt, eventAt),
           });
       }
 
@@ -164,7 +197,7 @@ export function createPolarWebhookProcessor(input: {
         validUntil: periodEnd,
         now: new Date(),
       });
-      await tx
+      const applied = await tx
         .insert(billingSubscription)
         .values({
           provider: "polar",
@@ -197,8 +230,13 @@ export function createPolarWebhookProcessor(input: {
             raw: jsonRecord(data),
             updatedAt: new Date(),
           },
-          setWhere: sql`${billingSubscription.sourceEventAt} <= ${eventAt}`,
-        });
+          setWhere: lte(billingSubscription.sourceEventAt, eventAt),
+        })
+        .returning({ id: billingSubscription.id });
+      // The subscription UPSERT serializes this source's event stream, including
+      // transitions between keys. A stale event cannot create a previously absent
+      // grant merely because that individual key has no newer row yet.
+      if (applied.length === 0) return { duplicate: false, projected: false };
 
       const entitlementKey = entitlementByProduct.get(productId);
       const subject = organizationId
@@ -206,6 +244,18 @@ export function createPolarWebhookProcessor(input: {
         : userId
           ? { userId, organizationId: null }
           : null;
+      // A subscription can change products, including to an unmapped product.
+      // Retire grants from its previous mapping before projecting the new key.
+      await tx
+        .update(entitlement)
+        .set({ status: "inactive", sourceEventAt: eventAt, updatedAt: new Date() })
+        .where(
+          and(
+            eq(entitlement.source, "polar"),
+            eq(entitlement.sourceId, subscriptionId),
+            entitlementKey && subject ? ne(entitlement.key, entitlementKey) : undefined,
+          ),
+        );
       if (!entitlementKey || !subject) {
         return { duplicate: false, projected: false };
       }
@@ -236,7 +286,7 @@ export function createPolarWebhookProcessor(input: {
             metadata: { eventType, providerStatus },
             updatedAt: new Date(),
           },
-          setWhere: sql`${entitlement.sourceEventAt} <= ${eventAt}`,
+          setWhere: lte(entitlement.sourceEventAt, eventAt),
         });
       return { duplicate: false, projected: true };
     });

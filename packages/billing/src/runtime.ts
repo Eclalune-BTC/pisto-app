@@ -3,7 +3,7 @@ import type { Database } from "@pisto/db";
 
 import type { BillingConfig } from "./config.ts";
 import { listEntitlements } from "./entitlements.ts";
-import { createPolarIntegration } from "./polar.ts";
+import { createPolarIntegration, readPolarCustomerState } from "./polar.ts";
 import { createRevenueCatWebhookProcessor } from "./revenuecat.ts";
 
 export function createBillingRuntime(input: { config: BillingConfig; db: Database }) {
@@ -30,6 +30,8 @@ export function createBillingRuntime(input: { config: BillingConfig; db: Databas
     catalog,
     listEntitlements: (scope: Parameters<typeof listEntitlements>[1]) =>
       listEntitlements(input.db, scope),
+    readCustomerState: (scope: Parameters<typeof readPolarCustomerState>[1]) =>
+      readPolarCustomerState(polar.client, scope),
     processRevenueCatWebhook,
   };
 }

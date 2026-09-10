@@ -9,7 +9,8 @@
   "scripts": {
     "build": "bun build ./src/index.ts --outdir ./dist --target bun --packages external",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "test:integration": "bun test ./integration/webhooks.integration.ts"
   },
   "dependencies": {
     "@pisto/contracts": "workspace:*",
