@@ -80,7 +80,7 @@ export function CustomerForm({
         </Text>
       ) : mutation.kind === "uncertain" ? (
         <View className="gap-2 border-l-4 border-warning bg-[#FFF6E8] p-4 dark:bg-[#3A2A18]">
-          <Text className="font-bold text-ink dark:text-white">{copy.uncertainTitle}</Text>
+          <Text className="font-bold text-foreground">{copy.uncertainTitle}</Text>
           <Text className="text-sm leading-5 text-ink-muted dark:text-[#D5C8B8]">
             {mutation.message}
           </Text>

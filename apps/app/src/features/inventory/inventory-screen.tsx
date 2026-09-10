@@ -78,9 +78,9 @@ function InventoryFailure({
 }) {
   if (status === "loading") {
     return (
-      <View className="min-h-56 items-start justify-center gap-3 border-y border-line dark:border-[#304239]">
+      <View className="min-h-56 items-start justify-center gap-3 border-y border-border">
         <ActivityIndicator color="#237A55" />
-        <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">{copy.loading}</Text>
+        <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
       </View>
     );
   }
@@ -159,7 +159,7 @@ export function InventoryScreen({
             className={!lowStockOnly ? "border-b-2 border-positive py-2" : "py-2"}
             onPress={() => onLowStockOnlyChange(false)}
           >
-            <Text className="font-semibold text-ink dark:text-white">{copy.showAll}</Text>
+            <Text className="font-semibold text-foreground">{copy.showAll}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="tab"
@@ -167,7 +167,7 @@ export function InventoryScreen({
             className={lowStockOnly ? "border-b-2 border-positive py-2" : "py-2"}
             onPress={() => onLowStockOnlyChange(true)}
           >
-            <Text className="font-semibold text-ink dark:text-white">{copy.showLowStock}</Text>
+            <Text className="font-semibold text-foreground">{copy.showLowStock}</Text>
           </Pressable>
         </View>
       </View>
@@ -183,8 +183,8 @@ export function InventoryScreen({
           ) : null}
           {state.items.length === 0 ? (
             <View className="gap-2 py-12">
-              <Text className="text-xl font-black text-ink dark:text-white">{copy.emptyTitle}</Text>
-              <Text className="max-w-[560px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+              <Text className="text-xl font-black text-foreground">{copy.emptyTitle}</Text>
+              <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
                 {copy.emptyDescription}
               </Text>
             </View>
@@ -198,17 +198,15 @@ export function InventoryScreen({
                 onPress={() => onOpenHistory(product.id)}
               >
                 <View className="min-w-0 flex-1 gap-1">
-                  <Text className="text-lg font-black text-ink dark:text-white">
-                    {product.name}
-                  </Text>
-                  <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+                  <Text className="text-lg font-black text-foreground">{product.name}</Text>
+                  <Text className="text-sm text-muted-foreground">
                     {product.sku ?? copy.unitLabels[product.unitKind]}
                   </Text>
                 </View>
                 <View className="gap-1 sm:min-w-[220px] sm:items-end">
-                  <Text className="text-2xl font-black text-ink dark:text-white">
+                  <Text className="text-2xl font-black text-foreground">
                     {formatQuantityMinorUnits(stock.onHandMinorUnits, stock.quantityPrecision)}{" "}
-                    <Text className="text-base font-semibold text-ink-muted dark:text-[#AAB8B0]">
+                    <Text className="text-base font-semibold text-muted-foreground">
                       {copy.unitLabels[product.unitKind]}
                     </Text>
                   </Text>
@@ -216,7 +214,7 @@ export function InventoryScreen({
                     className={
                       stock.lowStock
                         ? "text-sm font-semibold text-danger dark:text-[#FFBABA]"
-                        : "text-sm text-ink-muted dark:text-[#AAB8B0]"
+                        : "text-sm text-muted-foreground"
                     }
                   >
                     {stock.lowStock ? copy.lowStock : copy.onHand}

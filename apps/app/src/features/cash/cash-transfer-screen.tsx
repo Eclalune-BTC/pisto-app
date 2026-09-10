@@ -121,13 +121,10 @@ export function CashTransferScreen({
 
         {activeAccounts.length < 2 ? (
           <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
-            <Text
-              accessibilityRole="header"
-              className="text-xl font-black text-ink dark:text-white"
-            >
+            <Text accessibilityRole="header" className="text-xl font-black text-foreground">
               {copy.accountsUnavailableTitle}
             </Text>
-            <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+            <Text className="text-sm leading-5 text-muted-foreground">
               {copy.accountsUnavailableDescription}
             </Text>
             <Button

@@ -55,7 +55,7 @@ export function AppShell({ children, email, name }: AppShellProps) {
   const operateModules = getVisibleOperateModules(activeBusiness?.access.permissions);
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#0F1D18]" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
       <View className="flex-1 flex-row">
         {isWeb ? (
           <ScrollView
@@ -175,7 +175,7 @@ export function AppShell({ children, email, name }: AppShellProps) {
         <View className="min-w-0 flex-1">
           <View
             className={cn(
-              "min-h-16 flex-row items-center justify-between border-b border-line bg-canvas px-5 dark:border-[#2B3C34] dark:bg-[#0F1D18]",
+              "min-h-16 flex-row items-center justify-between border-b border-border bg-background px-5",
               isWeb && "lg:hidden",
             )}
             role="banner"
@@ -195,7 +195,7 @@ export function AppShell({ children, email, name }: AppShellProps) {
           <SafeAreaView
             accessibilityLabel={t("shell.primaryNavigation")}
             className={cn(
-              "flex-row border-t border-line bg-white px-3 pb-2 pt-2 dark:border-[#2B3C34] dark:bg-[#15251E]",
+              "flex-row border-t border-border bg-card px-3 pb-2 pt-2",
               isWeb && "lg:hidden",
             )}
             edges={["bottom"]}

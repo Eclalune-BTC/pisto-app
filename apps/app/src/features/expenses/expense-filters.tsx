@@ -64,12 +64,10 @@ export function ExpenseFilters({
 }: ExpenseFiltersProps) {
   return (
     <View className="gap-6 border-y border-line py-6 dark:border-[#304239]">
-      <Text accessibilityRole="header" className="text-lg font-black text-ink dark:text-white">
+      <Text accessibilityRole="header" className="text-lg font-black text-foreground">
         {copy.filtersTitle}
       </Text>
-      <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
-        {copy.periodScope}
-      </Text>
+      <Text className="text-sm leading-5 text-muted-foreground">{copy.periodScope}</Text>
       <View className="gap-6 lg:flex-row lg:items-start">
         <View className="min-w-0 flex-1 gap-5">
           <FilterBar

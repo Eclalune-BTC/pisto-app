@@ -106,7 +106,7 @@ function Choice({
       }
       onPress={onPress}
     >
-      <Text className="font-semibold text-ink dark:text-white">{label}</Text>
+      <Text className="font-semibold text-foreground">{label}</Text>
     </Pressable>
   );
 }
@@ -144,7 +144,7 @@ export function ProductEditor({
         variant="ghost"
       >
         <ArrowLeft color="#617168" size={18} />
-        <ButtonText className="text-ink-muted dark:text-[#AAB8B0]" variant="ghost">
+        <ButtonText className="text-muted-foreground" variant="ghost">
           {copy.back}
         </ButtonText>
       </Button>
@@ -242,9 +242,7 @@ export function ProductEditor({
             label={copy.price}
             onChangeText={(sellingPrice) => onDraftChange({ ...draft, sellingPrice })}
             placeholder={copy.pricePlaceholder}
-            trailing={
-              <Text className="font-bold text-ink-muted dark:text-[#AAB8B0]">{currency}</Text>
-            }
+            trailing={<Text className="font-bold text-muted-foreground">{currency}</Text>}
             value={draft.sellingPrice}
           />
 
@@ -332,8 +330,8 @@ export function ProductEditor({
 
           <View className="gap-3 border-t border-line pt-5 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between">
             <View className="max-w-[520px] gap-1">
-              <Text className="font-bold text-ink dark:text-white">{copy.tracked}</Text>
-              <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+              <Text className="font-bold text-foreground">{copy.tracked}</Text>
+              <Text className="text-sm leading-5 text-muted-foreground">
                 {copy.trackedDescription}
               </Text>
             </View>

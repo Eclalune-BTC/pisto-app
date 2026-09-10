@@ -1,12 +1,14 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AlertCircle, ExternalLink } from "lucide-react-native";
+import { ExternalLink } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
+import { Alert } from "@/components/ui/alert";
 import { Button, ButtonText } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { api } from "@/lib/api-client";
 import { deriveBillingAccessState } from "@/lib/billing/billing-access";
 import { platformBilling } from "@/lib/billing/platform-billing";
@@ -73,26 +75,16 @@ export default function BillingScreen() {
         title={t("billing.title")}
       />
 
-      {notice ? (
-        <View className="flex-row items-start gap-3 border-l-4 border-warning bg-[#FFF8EC] p-4 dark:bg-[#392B1C]">
-          <AlertCircle color="#B86718" size={20} />
-          <Text
-            accessibilityRole="alert"
-            className="min-w-0 flex-1 text-sm font-semibold leading-5 text-warning dark:text-[#F6BB76]"
-          >
-            {notice}
-          </Text>
-        </View>
-      ) : null}
+      {notice ? <Alert tone="warning">{notice}</Alert> : null}
 
       <View className="gap-10 lg:flex-row lg:items-start lg:gap-12">
-        <View className="border-y border-line dark:border-[#304239] lg:w-[40%]">
+        <View className="border-y border-border lg:w-[40%]">
           <View className="gap-5 py-7 sm:flex-row sm:items-start sm:justify-between lg:flex-col">
             <View className="min-w-0 flex-1 gap-2">
-              <Text className="text-2xl font-black text-ink dark:text-white">
+              <Heading level={2} size="section">
                 {t("billing.accessTitle")}
-              </Text>
-              <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+              </Heading>
+              <Text className="text-sm leading-5 text-muted-foreground">
                 {accessState === "checking"
                   ? t("billing.accessChecking")
                   : accessState === "unknown"
@@ -102,16 +94,12 @@ export default function BillingScreen() {
                       : t("billing.accessStandard")}
               </Text>
             </View>
-            <Text className="text-sm font-extrabold uppercase tracking-[1.2px] text-positive dark:text-[#8DDEAF]">
-              {accessLabel}
-            </Text>
+            <Text className="text-sm font-semibold text-link">{accessLabel}</Text>
           </View>
 
           {accessState === "active" ? (
             <View className="flex-row items-center justify-between border-t border-line py-4 dark:border-[#304239]">
-              <Text className="font-bold text-ink dark:text-white">
-                {t("billing.activeAccess")}
-              </Text>
+              <Text className="font-bold text-foreground">{t("billing.activeAccess")}</Text>
               <Text className="text-sm font-bold text-positive dark:text-[#8DDEAF]">
                 {t("billing.stateActive")}
               </Text>
@@ -142,15 +130,15 @@ export default function BillingScreen() {
 
         <View className="min-w-0 flex-1 gap-8">
           <View className="gap-6 border-b border-line pb-8 dark:border-[#304239]">
-            <View className="gap-2 border-l-4 border-accent pl-5">
-              <Text className="text-sm font-bold text-positive dark:text-[#8DDEAF]">
+            <View className="gap-2">
+              <Text className="text-sm text-muted-foreground">
                 {webCheckout
                   ? t("billing.webSubscription")
                   : nativeBilling
                     ? t("billing.nativeAccess")
                     : t("billing.unavailable")}
               </Text>
-              <Text className="text-[30px] font-black leading-[36px] tracking-[-1px] text-ink dark:text-white">
+              <Heading level={2} size="section">
                 {catalog.isPending
                   ? t("billing.loadingPlan")
                   : catalog.isError
@@ -160,17 +148,17 @@ export default function BillingScreen() {
                       : catalogEnabled
                         ? t("billing.noPlan")
                         : t("billing.notConfigured")}
-              </Text>
+              </Heading>
               {catalog.isError ? (
-                <Text className="text-base leading-6 text-ink-muted dark:text-[#AAB8B0]">
+                <Text className="text-base leading-6 text-muted-foreground">
                   {t("billing.catalogError")}
                 </Text>
               ) : product?.description ? (
-                <Text className="text-base leading-6 text-ink-muted dark:text-[#AAB8B0]">
+                <Text className="text-base leading-6 text-muted-foreground">
                   {product.description}
                 </Text>
               ) : !catalog.isPending ? (
-                <Text className="text-base leading-6 text-ink-muted dark:text-[#AAB8B0]">
+                <Text className="text-base leading-6 text-muted-foreground">
                   {catalogEnabled ? t("billing.noPurchasablePlan") : t("billing.checkoutDisabled")}
                 </Text>
               ) : null}
@@ -197,7 +185,7 @@ export default function BillingScreen() {
                     <ExternalLink color="#14241D" size={16} strokeWidth={2.4} />
                   </Button>
                 ) : (
-                  <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+                  <Text className="text-sm leading-5 text-muted-foreground">
                     {t("billing.noCheckoutAction")}
                   </Text>
                 )}
@@ -207,19 +195,17 @@ export default function BillingScreen() {
               </View>
             ) : nativeBilling ? (
               <View className="gap-2">
-                <Text className="font-bold text-ink dark:text-white">
+                <Text className="font-bold text-foreground">
                   {t("billing.nativeDisabledTitle")}
                 </Text>
-                <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+                <Text className="text-sm leading-5 text-muted-foreground">
                   {t("billing.nativeDisabledDescription")}
                 </Text>
               </View>
             ) : (
               <View className="gap-2">
-                <Text className="font-bold text-ink dark:text-white">
-                  {t("billing.unresolvedTitle")}
-                </Text>
-                <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+                <Text className="font-bold text-foreground">{t("billing.unresolvedTitle")}</Text>
+                <Text className="text-sm leading-5 text-muted-foreground">
                   {t("billing.unresolvedDescription")}
                 </Text>
               </View>
@@ -227,8 +213,8 @@ export default function BillingScreen() {
           </View>
 
           <View className="gap-2">
-            <Text className="font-bold text-ink dark:text-white">{t("billing.howTitle")}</Text>
-            <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+            <Text className="font-bold text-foreground">{t("billing.howTitle")}</Text>
+            <Text className="text-sm leading-5 text-muted-foreground">
               {t("billing.howDescription")}
             </Text>
           </View>

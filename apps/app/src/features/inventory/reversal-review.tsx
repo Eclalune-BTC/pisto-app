@@ -45,12 +45,10 @@ export function ReversalReview({
   return (
     <View className="gap-6 border-y border-line py-6 dark:border-[#304239]">
       <View className="gap-1">
-        <Text accessibilityRole="header" className="text-2xl font-black text-ink dark:text-white">
+        <Text accessibilityRole="header" className="text-2xl font-black text-foreground">
           {copy.title}
         </Text>
-        <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
-          {copy.description}
-        </Text>
+        <Text className="text-sm leading-5 text-muted-foreground">{copy.description}</Text>
       </View>
       <DetailList
         items={[

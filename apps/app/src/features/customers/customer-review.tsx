@@ -33,18 +33,16 @@ export function CustomerReview({
   const action = customerPrimaryAction(mutation);
   return (
     <View className="gap-6">
-      <Text accessibilityRole="header" className="text-2xl font-black text-ink dark:text-white">
+      <Text accessibilityRole="header" className="text-2xl font-black text-foreground">
         {title}
       </Text>
-      <View className="border-y border-line dark:border-[#304239]">
+      <View className="border-y border-border">
         {fields.map((field) => (
           <View
             className="gap-1 border-b border-line py-4 last:border-b-0 sm:flex-row sm:items-start sm:justify-between sm:gap-8 dark:border-[#304239]"
             key={field.label}
           >
-            <Text className="text-sm font-semibold text-ink-muted dark:text-[#AAB8B0]">
-              {field.label}
-            </Text>
+            <Text className="text-sm font-semibold text-muted-foreground">{field.label}</Text>
             <Text className="max-w-[540px] text-base font-bold text-ink sm:text-right dark:text-white">
               {field.value}
             </Text>
@@ -53,9 +51,7 @@ export function CustomerReview({
       </View>
       {mutation.kind === "uncertain" ? (
         <View className="gap-2 border-l-4 border-warning bg-[#FFF6E8] p-4 dark:bg-[#3A2A18]">
-          <Text className="font-bold text-ink dark:text-white">
-            {copy.customers.form.uncertainTitle}
-          </Text>
+          <Text className="font-bold text-foreground">{copy.customers.form.uncertainTitle}</Text>
           <Text accessibilityRole="alert" className="text-sm text-ink-muted dark:text-[#D5C8B8]">
             {mutation.message}
           </Text>

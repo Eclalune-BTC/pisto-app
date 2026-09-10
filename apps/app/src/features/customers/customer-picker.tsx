@@ -44,10 +44,10 @@ export function CustomerPicker({
   return (
     <View className="gap-6">
       <View className="gap-2">
-        <Text accessibilityRole="header" className="text-2xl font-black text-ink dark:text-white">
+        <Text accessibilityRole="header" className="text-2xl font-black text-foreground">
           {copy.receivables.picker.activeCustomersTitle}
         </Text>
-        <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+        <Text className="text-sm leading-5 text-muted-foreground">
           {copy.receivables.picker.activeCustomersDescription}
         </Text>
       </View>
@@ -62,13 +62,11 @@ export function CustomerPicker({
         <ActivityIndicator color="#237A55" />
       ) : isOffline ? (
         <View className="gap-3 border-y border-line py-5 dark:border-[#304239]">
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
-            {copy.access.offlineDescription}
-          </Text>
+          <Text className="text-sm text-muted-foreground">{copy.access.offlineDescription}</Text>
         </View>
       ) : isError ? (
         <View className="gap-3 border-y border-line py-5 dark:border-[#304239]">
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="text-sm text-muted-foreground">
             {copy.common.unavailableDescription}
           </Text>
           <Button label={copy.common.retry} onPress={onRetry} variant="secondary" />
@@ -78,7 +76,7 @@ export function CustomerPicker({
           {copy.receivables.picker.noCustomers}
         </Text>
       ) : (
-        <View className="border-t border-line dark:border-[#304239]">
+        <View className="border-t border-border">
           {items.map((customer) => {
             const selected = customer.id === selectedCustomerId;
             return (
@@ -91,9 +89,9 @@ export function CustomerPicker({
                 onPress={() => onSelect(customer)}
               >
                 <View className="min-w-0 flex-1 gap-1">
-                  <Text className="font-bold text-ink dark:text-white">{customer.name}</Text>
+                  <Text className="font-bold text-foreground">{customer.name}</Text>
                   {customer.email || customer.phone ? (
-                    <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+                    <Text className="text-sm text-muted-foreground">
                       {customer.email ?? customer.phone}
                     </Text>
                   ) : null}

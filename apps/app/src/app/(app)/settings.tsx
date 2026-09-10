@@ -68,10 +68,10 @@ export default function SettingsScreen() {
               </Text>
             </View>
             <View className="min-w-0 flex-1 gap-1">
-              <Text className="text-xl font-black text-ink dark:text-white">
+              <Text className="text-xl font-black text-foreground">
                 {user?.name || t("common.pistoAccount")}
               </Text>
-              <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+              <Text className="text-sm text-muted-foreground">
                 {user?.email || t("settings.loadingAccount")}
               </Text>
             </View>
@@ -82,10 +82,8 @@ export default function SettingsScreen() {
 
           <View className="gap-5">
             <View className="gap-0.5">
-              <Text className="text-lg font-bold text-ink dark:text-white">
-                {t("settings.appearance")}
-              </Text>
-              <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+              <Text className="text-lg font-bold text-foreground">{t("settings.appearance")}</Text>
+              <Text className="text-sm text-muted-foreground">
                 {t("settings.appearanceDescription")}
               </Text>
             </View>
@@ -108,7 +106,7 @@ export default function SettingsScreen() {
                     <Text
                       className={cn(
                         "text-xs font-bold",
-                        selected ? "text-ink dark:text-white" : "text-[#7B8A82]",
+                        selected ? "text-foreground" : "text-[#7B8A82]",
                       )}
                     >
                       {t(choice.labelKey)}
@@ -125,10 +123,8 @@ export default function SettingsScreen() {
             <View className="flex-row items-start gap-3">
               <ShieldCheck color="#237A55" size={23} />
               <View className="min-w-0 flex-1 gap-1">
-                <Text className="text-lg font-bold text-ink dark:text-white">
-                  {t("settings.security")}
-                </Text>
-                <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+                <Text className="text-lg font-bold text-foreground">{t("settings.security")}</Text>
+                <Text className="text-sm leading-5 text-muted-foreground">
                   {t("settings.securityDescription")}
                 </Text>
               </View>
@@ -137,10 +133,8 @@ export default function SettingsScreen() {
               <View className="flex-row items-center gap-3 sm:min-w-0 sm:flex-1">
                 <LockKeyhole color="#617168" size={20} />
                 <View className="min-w-0 flex-1">
-                  <Text className="font-bold text-ink dark:text-white">
-                    {t("settings.currentSession")}
-                  </Text>
-                  <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+                  <Text className="font-bold text-foreground">{t("settings.currentSession")}</Text>
+                  <Text className="text-sm text-muted-foreground">
                     {profile.data?.session.expiresAt
                       ? t("settings.expires", {
                           date: formatLocalizedDate(profile.data.session.expiresAt, locale),
@@ -162,10 +156,8 @@ export default function SettingsScreen() {
               <View className="flex-row items-start gap-3 sm:min-w-0 sm:flex-1">
                 <CreditCard color="#617168" size={20} />
                 <View className="min-w-0 flex-1 gap-1">
-                  <Text className="font-bold text-ink dark:text-white">
-                    {t("settings.billing")}
-                  </Text>
-                  <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+                  <Text className="font-bold text-foreground">{t("settings.billing")}</Text>
+                  <Text className="text-sm leading-5 text-muted-foreground">
                     {t("settings.billingDescription")}
                   </Text>
                 </View>
@@ -182,10 +174,8 @@ export default function SettingsScreen() {
 
           <View className="gap-4 border-t border-[#F0CDCD] pt-6 dark:border-[#603939]">
             <View className="gap-1">
-              <Text className="text-lg font-bold text-ink dark:text-white">
-                {t("common.signOut")}
-              </Text>
-              <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+              <Text className="text-lg font-bold text-foreground">{t("common.signOut")}</Text>
+              <Text className="text-sm text-muted-foreground">
                 {t("settings.signOutDescription")}
               </Text>
             </View>

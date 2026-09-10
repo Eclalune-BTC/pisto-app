@@ -47,7 +47,7 @@ export function ReceivableForm({
           }`}
           onPress={onChooseCustomer}
         >
-          <Text className="min-w-0 flex-1 text-base text-ink dark:text-white">
+          <Text className="min-w-0 flex-1 text-base text-foreground">
             {selectedCustomerName ?? copy.chooseCustomer}
           </Text>
           <ChevronRight color="#617168" size={18} />

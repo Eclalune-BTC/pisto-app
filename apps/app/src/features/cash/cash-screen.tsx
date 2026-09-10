@@ -74,12 +74,10 @@ function StateMessage({
 }) {
   return (
     <View className="min-h-56 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-      <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+      <Text accessibilityRole="header" className="text-xl font-black text-foreground">
         {title}
       </Text>
-      <Text className="max-w-[560px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
-        {description}
-      </Text>
+      <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">{description}</Text>
       {action}
     </View>
   );
@@ -186,10 +184,7 @@ export function CashScreen({
               />
             ) : (
               <View className="gap-4">
-                <Text
-                  accessibilityRole="header"
-                  className="text-xl font-black text-ink dark:text-white"
-                >
+                <Text accessibilityRole="header" className="text-xl font-black text-foreground">
                   {copy.accountsTitle}
                 </Text>
                 <CashAccountList
@@ -213,10 +208,7 @@ export function CashScreen({
             )}
 
             <View className="gap-4">
-              <Text
-                accessibilityRole="header"
-                className="text-xl font-black text-ink dark:text-white"
-              >
+              <Text accessibilityRole="header" className="text-xl font-black text-foreground">
                 {copy.movementsTitle}
               </Text>
               <CashMovementList

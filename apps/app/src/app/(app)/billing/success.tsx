@@ -63,11 +63,11 @@ export default function BillingSuccessScreen() {
           </Text>
           <Text
             accessibilityRole="header"
-            className="text-[30px] font-black leading-[36px] tracking-[-1px] text-ink dark:text-white"
+            className="text-[30px] font-black leading-[36px] tracking-[-1px] text-foreground"
           >
             {t(`billing.returnTitle.${accessState}`)}
           </Text>
-          <Text className="text-base leading-6 text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="text-base leading-6 text-muted-foreground">
             {t(`billing.returnDescription.${accessState}`)}
           </Text>
           {checkoutId ? (

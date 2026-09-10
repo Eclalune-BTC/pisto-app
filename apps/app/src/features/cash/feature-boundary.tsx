@@ -53,9 +53,7 @@ export function FeatureBoundary({
         }
       >
         <ActivityIndicator color="#237A55" size="large" />
-        <Text className="text-sm font-semibold text-ink-muted dark:text-[#AAB8B0]">
-          {copy.loading}
-        </Text>
+        <Text className="text-sm font-semibold text-muted-foreground">{copy.loading}</Text>
       </View>
     );
   }
@@ -63,10 +61,10 @@ export function FeatureBoundary({
     return (
       <Container>
         <View className="min-h-56 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-          <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+          <Text accessibilityRole="header" className="text-xl font-black text-foreground">
             {copy.deniedTitle}
           </Text>
-          <Text className="max-w-[560px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
             {copy.deniedDescription}
           </Text>
         </View>
@@ -77,10 +75,10 @@ export function FeatureBoundary({
     return (
       <Container>
         <View className="min-h-56 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-          <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+          <Text accessibilityRole="header" className="text-xl font-black text-foreground">
             {state.kind === "offline" ? copy.offlineTitle : copy.unavailableTitle}
           </Text>
-          <Text className="max-w-[560px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
             {state.message}
           </Text>
           <Button label={copy.retry} onPress={onRetry} variant="secondary" />

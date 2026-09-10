@@ -12,9 +12,9 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-ink",
+        primary: "bg-primary",
         accent: "bg-accent",
-        secondary: "border border-line bg-surface dark:border-[#34453D] dark:bg-[#1A2B24]",
+        secondary: "border border-border bg-card",
         ghost: "bg-transparent",
         danger: "bg-danger",
       },
@@ -31,13 +31,13 @@ const buttonVariants = cva(
   },
 );
 
-const textVariants = cva("shrink text-center text-[15px] font-bold", {
+const textVariants = cva("shrink text-center text-[15px] font-semibold", {
   variants: {
     variant: {
-      primary: "text-white",
+      primary: "text-primary-foreground",
       accent: "text-ink",
-      secondary: "text-ink dark:text-white",
-      ghost: "text-ink dark:text-white",
+      secondary: "text-foreground",
+      ghost: "text-foreground",
       danger: "text-white",
     },
   },

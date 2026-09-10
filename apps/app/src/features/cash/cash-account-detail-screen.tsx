@@ -124,13 +124,10 @@ export function CashAccountDetailScreen({
 
         {account === null ? (
           <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
-            <Text
-              accessibilityRole="header"
-              className="text-xl font-black text-ink dark:text-white"
-            >
+            <Text accessibilityRole="header" className="text-xl font-black text-foreground">
               {copy.notFoundTitle}
             </Text>
-            <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+            <Text className="text-sm leading-5 text-muted-foreground">
               {copy.notFoundDescription}
             </Text>
           </View>
@@ -195,10 +192,7 @@ export function CashAccountDetailScreen({
             ) : null}
 
             <View className="gap-4">
-              <Text
-                accessibilityRole="header"
-                className="text-xl font-black text-ink dark:text-white"
-              >
+              <Text accessibilityRole="header" className="text-xl font-black text-foreground">
                 {copy.movementsTitle}
               </Text>
               <CashMovementList

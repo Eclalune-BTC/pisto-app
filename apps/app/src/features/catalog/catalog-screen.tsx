@@ -100,9 +100,9 @@ function StatusState({
 }) {
   if (status === "loading") {
     return (
-      <View className="min-h-56 items-start justify-center gap-3 border-y border-line dark:border-[#304239]">
+      <View className="min-h-56 items-start justify-center gap-3 border-y border-border">
         <ActivityIndicator color="#237A55" />
-        <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">{copy.loading}</Text>
+        <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
       </View>
     );
   }
@@ -207,9 +207,7 @@ export function CatalogScreen({
             />
           </View>
           <View className="gap-1 lg:max-w-[48%]">
-            <Text className="text-xs font-semibold text-ink-muted dark:text-[#AAB8B0]">
-              {copy.statusLabel}
-            </Text>
+            <Text className="text-xs font-semibold text-muted-foreground">{copy.statusLabel}</Text>
             <FilterBar
               label={copy.statusLabel}
               onChange={onStatusChange}
@@ -232,7 +230,7 @@ export function CatalogScreen({
             className={categoryId === null ? "border-b-2 border-positive py-2" : "py-2"}
             onPress={() => onCategoryChange(null)}
           >
-            <Text className="font-semibold text-ink dark:text-white">{copy.allCategories}</Text>
+            <Text className="font-semibold text-foreground">{copy.allCategories}</Text>
           </Pressable>
           {categories
             .filter((category) => category.status === "active")
@@ -244,13 +242,11 @@ export function CatalogScreen({
                 key={category.id}
                 onPress={() => onCategoryChange(category.id)}
               >
-                <Text className="font-semibold text-ink dark:text-white">{category.name}</Text>
+                <Text className="font-semibold text-foreground">{category.name}</Text>
               </Pressable>
             ))}
           {categoriesLoading ? (
-            <Text className="py-2 text-sm text-ink-muted dark:text-[#AAB8B0]">
-              {copy.categoriesLoading}
-            </Text>
+            <Text className="py-2 text-sm text-muted-foreground">{copy.categoriesLoading}</Text>
           ) : null}
           {categoriesHasNextPage ? (
             <Button
@@ -283,8 +279,8 @@ export function CatalogScreen({
           ) : null}
           {state.items.length === 0 ? (
             <View className="gap-2 py-12">
-              <Text className="text-xl font-black text-ink dark:text-white">{copy.emptyTitle}</Text>
-              <Text className="max-w-[560px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+              <Text className="text-xl font-black text-foreground">{copy.emptyTitle}</Text>
+              <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
                 {copy.emptyDescription}
               </Text>
               {canManage ? (
@@ -307,21 +303,17 @@ export function CatalogScreen({
               >
                 <View className="min-w-0 flex-1 gap-1">
                   <View className="flex-row flex-wrap items-center gap-2">
-                    <Text className="text-lg font-black text-ink dark:text-white">
-                      {product.name}
-                    </Text>
+                    <Text className="text-lg font-black text-foreground">{product.name}</Text>
                     {product.status === "archived" ? (
                       <Text className="text-xs font-semibold text-danger dark:text-[#FFBABA]">
                         {copy.archived}
                       </Text>
                     ) : null}
                   </View>
-                  <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
-                    {product.sku ?? copy.noSku}
-                  </Text>
+                  <Text className="text-sm text-muted-foreground">{product.sku ?? copy.noSku}</Text>
                 </View>
                 <View className="gap-1 sm:min-w-[220px] sm:items-end">
-                  <Text className="font-bold text-ink dark:text-white">
+                  <Text className="font-bold text-foreground">
                     {product.sellingPriceMinorUnits === null ||
                     product.sellingPriceCurrency === null ||
                     product.sellingPriceCurrencyMinorUnitDigits === null
@@ -337,7 +329,7 @@ export function CatalogScreen({
                     className={
                       stock?.lowStock
                         ? "text-sm font-semibold text-danger dark:text-[#FFBABA]"
-                        : "text-sm text-ink-muted dark:text-[#AAB8B0]"
+                        : "text-sm text-muted-foreground"
                     }
                   >
                     {stock

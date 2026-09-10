@@ -27,7 +27,7 @@ export function FilterBar<T extends string>({
       {showLabel ? (
         <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">{label}</Text>
       ) : null}
-      <View className="flex-row flex-wrap border-b border-line dark:border-[#304239]">
+      <View className="flex-row flex-wrap border-b border-border">
         {options.map((option) => {
           const selected = option.value === value;
           return (
@@ -49,9 +49,7 @@ export function FilterBar<T extends string>({
               <Text
                 className={cn(
                   "text-sm font-bold",
-                  selected
-                    ? "text-positive dark:text-[#8DDEAF]"
-                    : "text-ink-muted dark:text-[#AAB8B0]",
+                  selected ? "text-positive dark:text-[#8DDEAF]" : "text-muted-foreground",
                 )}
               >
                 {option.label}

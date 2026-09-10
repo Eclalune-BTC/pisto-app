@@ -12,10 +12,10 @@ export default function NotFoundRoute() {
   return (
     <Page width="reading">
       <View className="min-h-64 items-start justify-center gap-4">
-        <Text accessibilityRole="header" className="text-2xl font-black text-ink dark:text-white">
+        <Text accessibilityRole="header" className="text-2xl font-black text-foreground">
           {t("notFound.title")}
         </Text>
-        <Text className="max-w-[520px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+        <Text className="max-w-[520px] text-sm leading-5 text-muted-foreground">
           {t("notFound.description")}
         </Text>
         <Button

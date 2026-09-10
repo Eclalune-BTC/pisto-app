@@ -43,9 +43,7 @@ export default function SaleResultScreen() {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
         <ActivityIndicator color="#237A55" size="large" />
-        <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
-          {t("sales.resultLoading")}
-        </Text>
+        <Text className="text-sm text-muted-foreground">{t("sales.resultLoading")}</Text>
       </View>
     );
   }
@@ -53,10 +51,8 @@ export default function SaleResultScreen() {
   if (!result.data) {
     return (
       <View className="flex-1 items-start justify-center gap-4 px-5 sm:px-8 lg:px-10">
-        <Text className="text-xl font-black text-ink dark:text-white">
-          {t("sales.resultFailedTitle")}
-        </Text>
-        <Text className="max-w-[460px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+        <Text className="text-xl font-black text-foreground">{t("sales.resultFailedTitle")}</Text>
+        <Text className="max-w-[460px] text-sm leading-5 text-muted-foreground">
           {t("sales.resultFailedDescription")}
         </Text>
         <View className="gap-3 sm:flex-row">
@@ -85,7 +81,7 @@ export default function SaleResultScreen() {
         variant="ghost"
       >
         <ArrowLeft color="#617168" size={18} />
-        <ButtonText className="text-ink-muted dark:text-[#AAB8B0]" variant="ghost">
+        <ButtonText className="text-muted-foreground" variant="ghost">
           {t("sales.back")}
         </ButtonText>
       </Button>

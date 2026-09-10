@@ -38,7 +38,7 @@ export function CashOperationReview({
   return (
     <View className="gap-7">
       <DetailList items={rows} />
-      <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">{effect}</Text>
+      <Text className="text-sm leading-5 text-muted-foreground">{effect}</Text>
 
       {state === "uncertain" ? (
         <View className="gap-3 border-l-4 border-warning bg-[#FFF6E8] p-4 dark:bg-[#3A2A18]">

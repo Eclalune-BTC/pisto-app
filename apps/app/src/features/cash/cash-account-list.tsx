@@ -19,7 +19,7 @@ export function CashAccountList({
   onOpenAccount,
 }: CashAccountListProps) {
   return (
-    <View className="border-y border-line dark:border-[#304239]">
+    <View className="border-y border-border">
       {accounts.map((account) => (
         <Pressable
           accessibilityLabel={`${account.name}, ${formatMoney(account.balanceMinorUnits, account.currency, account.currencyMinorUnitDigits)}`}
@@ -29,13 +29,13 @@ export function CashAccountList({
           onPress={() => onOpenAccount(account.id)}
         >
           <View className="min-w-0 flex-1 gap-1">
-            <Text className="text-base font-bold text-ink dark:text-white">{account.name}</Text>
+            <Text className="text-base font-bold text-foreground">{account.name}</Text>
             <Text className="text-xs text-ink-muted dark:text-[#91A198]">
               {account.status === "active" ? activeLabel : archivedLabel}
               {account.allowNegativeBalance ? ` · ${negativeAllowedLabel}` : ""}
             </Text>
           </View>
-          <Text className="text-lg font-black text-ink dark:text-white">
+          <Text className="text-lg font-black text-foreground">
             {formatMoney(
               account.balanceMinorUnits,
               account.currency,

@@ -26,7 +26,7 @@ export function ExpenseHistory({
   onVoidExpense,
 }: ExpenseHistoryProps) {
   return (
-    <View className="border-y border-line dark:border-[#304239]">
+    <View className="border-y border-border">
       {expenses.map((expense) => (
         <View
           className="gap-3 border-b border-line py-4 last:border-b-0 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
@@ -39,7 +39,7 @@ export function ExpenseHistory({
             variant="ghost"
           >
             <View className="min-w-0 flex-1 gap-1">
-              <Text className="font-bold text-ink dark:text-white">{expense.description}</Text>
+              <Text className="font-bold text-foreground">{expense.description}</Text>
               <Text className="text-xs text-ink-muted dark:text-[#91A198]">
                 {categoryLabels[expense.category]} · {expense.occurredLocalDate} ·{" "}
                 {expense.status === "posted" ? postedLabel : voidedLabel}
@@ -47,7 +47,7 @@ export function ExpenseHistory({
             </View>
           </Button>
           <View className="items-start gap-2 sm:items-end">
-            <Text className="font-black text-ink dark:text-white">
+            <Text className="font-black text-foreground">
               {formatMoney(
                 expense.amountMinorUnits,
                 expense.currency,

@@ -24,7 +24,7 @@ export function CustomerArchiveReview({
   const action = customerPrimaryAction(mutation);
   return (
     <View className="gap-5">
-      <Text accessibilityRole="header" className="text-2xl font-black text-ink dark:text-white">
+      <Text accessibilityRole="header" className="text-2xl font-black text-foreground">
         {copy.confirmArchive}
       </Text>
       <Text className="border-y border-line py-5 text-base font-bold text-ink dark:border-[#304239] dark:text-white">
@@ -38,7 +38,7 @@ export function CustomerArchiveReview({
               : "border-danger bg-[#FFF1F1] dark:bg-[#3A2020]"
           }`}
         >
-          <Text accessibilityRole="alert" className="text-sm text-ink dark:text-white">
+          <Text accessibilityRole="alert" className="text-sm text-foreground">
             {mutation.message}
           </Text>
         </View>

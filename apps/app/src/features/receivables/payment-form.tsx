@@ -57,7 +57,7 @@ export function PaymentForm({
           }`}
           onPress={onChooseCashAccount}
         >
-          <Text className="min-w-0 flex-1 text-base text-ink dark:text-white">
+          <Text className="min-w-0 flex-1 text-base text-foreground">
             {selectedCashAccountName ?? copy.chooseCashAccount}
           </Text>
           <ChevronRight color="#617168" size={18} />

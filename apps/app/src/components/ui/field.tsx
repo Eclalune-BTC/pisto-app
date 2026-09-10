@@ -22,11 +22,11 @@ export function Field({
 
   return (
     <View className="gap-2">
-      <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">{label}</Text>
+      <Text className="text-sm font-medium text-foreground">{label}</Text>
       <View
         className={cn(
-          "min-h-14 flex-row items-center rounded-lg border bg-white px-4 dark:bg-[#14241D]",
-          error ? "border-danger" : "border-line dark:border-[#3B4A43]",
+          "min-h-12 flex-row items-center rounded-lg border bg-input px-3",
+          error ? "border-destructive" : "border-input-border",
         )}
       >
         <TextInput
@@ -34,10 +34,7 @@ export function Field({
           accessibilityLabel={accessibilityLabel ?? label}
           aria-describedby={error ? errorId : undefined}
           aria-invalid={Boolean(error)}
-          className={cn(
-            "min-h-14 min-w-0 flex-1 py-3 text-base text-ink dark:text-white",
-            className,
-          )}
+          className={cn("min-h-12 min-w-0 flex-1 py-3 text-base text-foreground", className)}
           placeholderTextColor="#7B8A82"
           {...props}
         />
@@ -47,7 +44,7 @@ export function Field({
         <Text
           accessibilityLiveRegion="polite"
           accessibilityRole="alert"
-          className="text-xs text-danger"
+          className="text-xs text-destructive"
           nativeID={errorId}
         >
           {error}

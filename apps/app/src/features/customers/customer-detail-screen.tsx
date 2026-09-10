@@ -40,7 +40,7 @@ export function CustomerDetailScreen({
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
         <ActivityIndicator color="#237A55" />
-        <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">{copy.loading}</Text>
+        <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
       </View>
     );
   }
@@ -57,12 +57,10 @@ export function CustomerDetailScreen({
       <Page>
         <Button label={copy.back} onPress={onBack} variant="ghost" />
         <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
-          <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+          <Text accessibilityRole="header" className="text-xl font-black text-foreground">
             {content.title}
           </Text>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
-            {content.description}
-          </Text>
+          <Text className="text-sm leading-5 text-muted-foreground">{content.description}</Text>
           {state.kind === "error" ? (
             <Button label={copy.retry} onPress={onRetry} variant="secondary" />
           ) : null}
@@ -114,14 +112,14 @@ export function CustomerDetailScreen({
           <Text className="text-xs font-bold uppercase tracking-[1px] text-ink-muted dark:text-[#91A198]">
             {copy.balance}
           </Text>
-          <Text className="text-3xl font-black text-ink dark:text-white">
+          <Text className="text-3xl font-black text-foreground">
             {formatMoney(
               balance.outstandingMinorUnits,
               balance.currency,
               balance.currencyMinorUnitDigits,
             )}
           </Text>
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="text-sm text-muted-foreground">
             {copy.openReceivables}: {balance.openReceivableCount}
           </Text>
         </View>
@@ -136,38 +134,36 @@ export function CustomerDetailScreen({
               balance.currencyMinorUnitDigits,
             )}
           </Text>
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
-            {balance.overdueReceivableCount}
-          </Text>
+          <Text className="text-sm text-muted-foreground">{balance.overdueReceivableCount}</Text>
         </View>
       </View>
       <View className="gap-3">
-        <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+        <Text accessibilityRole="header" className="text-xl font-black text-foreground">
           {copy.contact}
         </Text>
         <View className="gap-3 border-t border-line pt-4 dark:border-[#304239]">
           {customer.phone ? (
-            <Text className="text-sm text-ink dark:text-white">
+            <Text className="text-sm text-foreground">
               {copy.phone}: {customer.phone}
             </Text>
           ) : null}
           {customer.email ? (
-            <Text className="text-sm text-ink dark:text-white">
+            <Text className="text-sm text-foreground">
               {copy.email}: {customer.email}
             </Text>
           ) : null}
           {customer.notes ? (
-            <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+            <Text className="text-sm leading-5 text-muted-foreground">
               {copy.notes}: {customer.notes}
             </Text>
           ) : null}
           {!customer.phone && !customer.email && !customer.notes ? (
-            <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">{copy.noContact}</Text>
+            <Text className="text-sm text-muted-foreground">{copy.noContact}</Text>
           ) : null}
         </View>
       </View>
       <View className="gap-3">
-        <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+        <Text accessibilityRole="header" className="text-xl font-black text-foreground">
           {copy.receivableHistory}
         </Text>
         {state.receivables.length === 0 ? (
@@ -176,7 +172,7 @@ export function CustomerDetailScreen({
           </Text>
         ) : (
           <View className="gap-4">
-            <View className="border-t border-line dark:border-[#304239]">
+            <View className="border-t border-border">
               {state.receivables.map((item) => (
                 <Pressable
                   accessibilityRole="button"
@@ -185,12 +181,12 @@ export function CustomerDetailScreen({
                   onPress={() => onOpenReceivable(item.id)}
                 >
                   <View className="min-w-0 flex-1 gap-1">
-                    <Text className="font-bold text-ink dark:text-white">{item.description}</Text>
-                    <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+                    <Text className="font-bold text-foreground">{item.description}</Text>
+                    <Text className="text-sm text-muted-foreground">
                       {formatDate(item.postedDate)}
                     </Text>
                   </View>
-                  <Text className="font-bold text-ink dark:text-white">
+                  <Text className="font-bold text-foreground">
                     {formatMoney(
                       item.outstandingMinorUnits,
                       item.currency,

@@ -40,10 +40,10 @@ export function CashAccountPicker({
   return (
     <View className="gap-6">
       <View className="gap-2">
-        <Text accessibilityRole="header" className="text-2xl font-black text-ink dark:text-white">
+        <Text accessibilityRole="header" className="text-2xl font-black text-foreground">
           {copy.receivables.picker.activeAccountsTitle}
         </Text>
-        <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+        <Text className="text-sm leading-5 text-muted-foreground">
           {copy.receivables.picker.activeAccountsDescription}
         </Text>
       </View>
@@ -51,13 +51,11 @@ export function CashAccountPicker({
         <ActivityIndicator color="#237A55" />
       ) : isOffline ? (
         <View className="gap-3 border-y border-line py-5 dark:border-[#304239]">
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
-            {copy.access.offlineDescription}
-          </Text>
+          <Text className="text-sm text-muted-foreground">{copy.access.offlineDescription}</Text>
         </View>
       ) : isError ? (
         <View className="gap-3 border-y border-line py-5 dark:border-[#304239]">
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="text-sm text-muted-foreground">
             {copy.common.unavailableDescription}
           </Text>
           <Button label={copy.common.retry} onPress={onRetry} variant="secondary" />
@@ -67,7 +65,7 @@ export function CashAccountPicker({
           {copy.receivables.picker.noAccounts}
         </Text>
       ) : (
-        <View accessibilityRole="radiogroup" className="border-t border-line dark:border-[#304239]">
+        <View accessibilityRole="radiogroup" className="border-t border-border">
           {items.map((account) => {
             const selected = account.id === selectedAccountId;
             return (
@@ -79,9 +77,7 @@ export function CashAccountPicker({
                 key={account.id}
                 onPress={() => onSelect(account)}
               >
-                <Text className="min-w-0 flex-1 font-bold text-ink dark:text-white">
-                  {account.name}
-                </Text>
+                <Text className="min-w-0 flex-1 font-bold text-foreground">{account.name}</Text>
                 {selected ? <Check color="#237A55" size={19} strokeWidth={3} /> : null}
               </Pressable>
             );

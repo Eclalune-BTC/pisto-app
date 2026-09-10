@@ -127,13 +127,10 @@ export function ExpenseEditorScreen({
 
         {accounts.length === 0 ? (
           <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
-            <Text
-              accessibilityRole="header"
-              className="text-xl font-black text-ink dark:text-white"
-            >
+            <Text accessibilityRole="header" className="text-xl font-black text-foreground">
               {copy.accountsEmptyTitle}
             </Text>
-            <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+            <Text className="text-sm leading-5 text-muted-foreground">
               {copy.accountsEmptyDescription}
             </Text>
             <Button

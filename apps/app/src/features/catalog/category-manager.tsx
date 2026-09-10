@@ -194,7 +194,7 @@ export function CategoryManager({
         variant="ghost"
       >
         <ArrowLeft color="#617168" size={18} />
-        <ButtonText className="text-ink-muted dark:text-[#AAB8B0]" variant="ghost">
+        <ButtonText className="text-muted-foreground" variant="ghost">
           {copy.back}
         </ButtonText>
       </Button>
@@ -228,7 +228,7 @@ export function CategoryManager({
       {editor ? (
         editor.reviewName ? (
           <View className="gap-6">
-            <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+            <Text className="text-sm leading-5 text-muted-foreground">
               {editor.mode === "create" ? copy.reviewCreateDescription : copy.reviewEditDescription}
             </Text>
             <DetailList items={[{ label: copy.name, value: editor.reviewName }]} />
@@ -284,7 +284,7 @@ export function CategoryManager({
         )
       ) : archiveView ? (
         <View className="gap-6">
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="text-sm leading-5 text-muted-foreground">
             {copy.archiveDescription(archiveView.category.name)}
           </Text>
           <DetailList
@@ -344,9 +344,7 @@ export function CategoryManager({
                   key={value}
                   onPress={() => onStatusChange(value)}
                 >
-                  <Text className="font-semibold text-ink dark:text-white">
-                    {copy.statuses[value]}
-                  </Text>
+                  <Text className="font-semibold text-foreground">{copy.statuses[value]}</Text>
                 </Pressable>
               ))}
             </View>
@@ -355,7 +353,7 @@ export function CategoryManager({
           {state.status === "loading" ? (
             <View className="min-h-56 items-start justify-center gap-3">
               <ActivityIndicator color="#237A55" />
-              <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">{copy.loading}</Text>
+              <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
             </View>
           ) : state.status === "offline" ? (
             <FailureNotice description={copy.offlineDescription} title={copy.offlineTitle} />
@@ -371,8 +369,8 @@ export function CategoryManager({
             </View>
           ) : state.items.length === 0 ? (
             <View className="gap-2 py-12">
-              <Text className="text-xl font-black text-ink dark:text-white">{copy.emptyTitle}</Text>
-              <Text className="max-w-[560px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+              <Text className="text-xl font-black text-foreground">{copy.emptyTitle}</Text>
+              <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
                 {copy.emptyDescription}
               </Text>
             </View>
@@ -389,10 +387,8 @@ export function CategoryManager({
                   key={category.id}
                 >
                   <View className="min-w-0 flex-1 gap-1">
-                    <Text className="text-lg font-black text-ink dark:text-white">
-                      {category.name}
-                    </Text>
-                    <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+                    <Text className="text-lg font-black text-foreground">{category.name}</Text>
+                    <Text className="text-sm text-muted-foreground">
                       {category.status === "active" ? copy.active : copy.archived}
                     </Text>
                   </View>

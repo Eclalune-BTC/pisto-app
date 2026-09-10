@@ -102,6 +102,8 @@ hosted artifact does not change the current local-only instruction.
 27. [Architecture decision records](adrs/README.md) preserve the reasoning behind the design.
 28. [Data model](data-model.md) records normalization, invariants, read models, and migration decisions.
 29. [Release evidence](release-evidence.md) distinguishes local verification from deployed behavior.
+30. [Component design review](component-design-review.md) records the restrained UI, shared component
+    ownership, shadcn/native assessment and commit-language audit.
 
 ## Non-negotiable invariants
 

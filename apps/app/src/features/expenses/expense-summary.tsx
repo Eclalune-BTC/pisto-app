@@ -29,31 +29,31 @@ export function ExpenseSummary({
           <Text className="text-sm font-bold text-positive dark:text-[#8DDEAF]">
             {periodTotalLabel}
           </Text>
-          <Text className="text-[38px] font-black leading-[44px] tracking-[-1.4px] text-ink dark:text-white sm:text-[46px] sm:leading-[52px]">
+          <Text className="text-[38px] font-black leading-[44px] tracking-[-1.4px] text-foreground sm:text-[46px] sm:leading-[52px]">
             {formatMoney(
               summary.totalMinorUnits,
               summary.currency,
               summary.currencyMinorUnitDigits,
             )}
           </Text>
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="text-sm text-muted-foreground">
             {recordedExpensesLabel} · {summary.expenseCount}
           </Text>
         </View>
         <View className="min-w-0 flex-1 gap-3 border-t border-line pt-5 dark:border-[#304239] lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
-          <Text className="font-bold text-ink dark:text-white">{categoryBreakdownLabel}</Text>
+          <Text className="font-bold text-foreground">{categoryBreakdownLabel}</Text>
           {summary.categories.length === 0 ? (
-            <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">{noCategoryData}</Text>
+            <Text className="text-sm text-muted-foreground">{noCategoryData}</Text>
           ) : (
             summary.categories.map((category) => (
               <View
                 className="flex-row items-baseline justify-between gap-4"
                 key={category.category}
               >
-                <Text className="min-w-0 flex-1 text-sm text-ink-muted dark:text-[#AAB8B0]">
+                <Text className="min-w-0 flex-1 text-sm text-muted-foreground">
                   {categoryLabels[category.category]}
                 </Text>
-                <Text className="font-bold text-ink dark:text-white">
+                <Text className="font-bold text-foreground">
                   {formatMoney(
                     category.amountMinorUnits,
                     summary.currency,

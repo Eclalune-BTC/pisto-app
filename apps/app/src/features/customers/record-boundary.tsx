@@ -25,7 +25,7 @@ export function RecordBoundary({ children, onBack, onRetry, state }: RecordBound
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
         <ActivityIndicator color="#237A55" size="large" />
-        <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">{copy.common.loading}</Text>
+        <Text className="text-sm text-muted-foreground">{copy.common.loading}</Text>
       </View>
     );
   }
@@ -47,12 +47,10 @@ export function RecordBoundary({ children, onBack, onRetry, state }: RecordBound
     <Page width="form">
       <Button label={copy.common.back} onPress={onBack} variant="ghost" />
       <View className="gap-3 border-y border-line py-7 dark:border-[#304239]">
-        <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+        <Text accessibilityRole="header" className="text-xl font-black text-foreground">
           {content.title}
         </Text>
-        <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
-          {content.description}
-        </Text>
+        <Text className="text-sm leading-5 text-muted-foreground">{content.description}</Text>
         {state === "error" ? (
           <Button label={copy.common.retry} onPress={onRetry} variant="secondary" />
         ) : null}

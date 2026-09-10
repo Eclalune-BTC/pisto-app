@@ -172,6 +172,13 @@ applicable.
 Pisto keeps the ink, lime, cream, white, and semantic status palette defined in `global.css`. Build
 hierarchy with type, spacing, alignment, and dividers before adding another decorated surface.
 
+The [component design review](component-design-review.md) records the owner's preference for
+restrained product UI and the local component changes. Use shared `Heading` variants instead of
+inventing oversized, tightly tracked titles per screen. `global.css` owns adaptive semantic colors;
+`ink` and `accent` remain immutable brand colors. `Page` owns bounded layout, while components in
+`components/ui` own visual variants. Screen-level classes primarily compose layout. Decorative
+vertical rules, promotional auth panels and numbered feature ornament are not default product UI.
+
 - A card, pill, icon, shadow, gradient, or illustration must communicate grouping, interaction,
   state, hierarchy, feedback, or established brand character. If removing it preserves meaning and
   usability, simplify it.

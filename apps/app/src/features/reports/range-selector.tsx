@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Heading } from "@/components/ui/heading";
 
 import type { ReportRangeIssue } from "./date-range";
 
@@ -65,12 +66,10 @@ export function ReportRangeSelector({
       <View className="flex-row items-start gap-3">
         <CalendarDays color="#237A55" size={20} />
         <View className="min-w-0 flex-1 gap-1">
-          <Text accessibilityRole="header" className="font-bold text-ink dark:text-white">
+          <Heading level={2} size="section">
             {copy.title}
-          </Text>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
-            {copy.description}
-          </Text>
+          </Heading>
+          <Text className="text-sm leading-5 text-muted-foreground">{copy.description}</Text>
         </View>
       </View>
       <View className="gap-4 sm:flex-row sm:items-start">

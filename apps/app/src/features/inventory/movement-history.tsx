@@ -79,7 +79,7 @@ function Failure({
     return (
       <View className="min-h-56 items-start justify-center gap-3">
         <ActivityIndicator color="#237A55" />
-        <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">{copy.loading}</Text>
+        <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
       </View>
     );
   }
@@ -139,7 +139,7 @@ export function MovementHistory({
     <Page contentContainerClassName="gap-8">
       <Button className="self-start px-0" onPress={onBack} size="sm" variant="ghost">
         <ArrowLeft color="#617168" size={18} />
-        <ButtonText className="text-ink-muted dark:text-[#AAB8B0]" variant="ghost">
+        <ButtonText className="text-muted-foreground" variant="ghost">
           {copy.back}
         </ButtonText>
       </Button>
@@ -161,12 +161,10 @@ export function MovementHistory({
 
       <View className="gap-2 border-y border-line py-6 dark:border-[#304239] sm:flex-row sm:items-end sm:justify-between">
         <View className="gap-1">
-          <Text className="text-sm font-semibold text-ink-muted dark:text-[#AAB8B0]">
-            {copy.onHand}
-          </Text>
-          <Text className="text-[38px] font-black leading-[44px] text-ink dark:text-white">
+          <Text className="text-sm font-semibold text-muted-foreground">{copy.onHand}</Text>
+          <Text className="text-[38px] font-black leading-[44px] text-foreground">
             {formatQuantityMinorUnits(stock.onHandMinorUnits, stock.quantityPrecision)}{" "}
-            <Text className="text-base font-semibold text-ink-muted dark:text-[#AAB8B0]">
+            <Text className="text-base font-semibold text-muted-foreground">
               {copy.unitLabels[product.unitKind]}
             </Text>
           </Text>
@@ -176,12 +174,12 @@ export function MovementHistory({
             className={
               stock.lowStock
                 ? "font-bold text-danger dark:text-[#FFBABA]"
-                : "font-semibold text-ink dark:text-white"
+                : "font-semibold text-foreground"
             }
           >
             {stock.lowStock ? copy.lowStock : copy.onHand}
           </Text>
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="text-sm text-muted-foreground">
             {stock.lowStockThresholdMinorUnits === null
               ? copy.noThreshold
               : `${copy.threshold}: ${formatQuantityMinorUnits(
@@ -203,8 +201,8 @@ export function MovementHistory({
           ) : null}
           {state.items.length === 0 ? (
             <View className="gap-2 py-12">
-              <Text className="text-xl font-black text-ink dark:text-white">{copy.emptyTitle}</Text>
-              <Text className="max-w-[560px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+              <Text className="text-xl font-black text-foreground">{copy.emptyTitle}</Text>
+              <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
                 {copy.emptyDescription}
               </Text>
             </View>
@@ -222,7 +220,7 @@ export function MovementHistory({
                 >
                   <View className="min-w-0 flex-1 gap-1">
                     <View className="flex-row flex-wrap items-center gap-2">
-                      <Text className="font-black text-ink dark:text-white">
+                      <Text className="font-black text-foreground">
                         {copy.actions[movement.action]}
                       </Text>
                       {movement.reversedByMovementId ? (
@@ -231,9 +229,7 @@ export function MovementHistory({
                         </Text>
                       ) : null}
                     </View>
-                    <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
-                      {movement.reason}
-                    </Text>
+                    <Text className="text-sm text-muted-foreground">{movement.reason}</Text>
                     <Text className="text-xs text-ink-muted dark:text-[#91A198]">
                       {copy.occurrence(
                         movement.occurredLocalDate,

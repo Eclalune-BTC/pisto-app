@@ -42,7 +42,7 @@ export function ReceivableDetailScreen({
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
         <ActivityIndicator color="#237A55" />
-        <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">{copy.loading}</Text>
+        <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
       </View>
     );
   }
@@ -67,12 +67,10 @@ export function ReceivableDetailScreen({
       <Page>
         <Button label={copy.back} onPress={onBack} variant="ghost" />
         <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
-          <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+          <Text accessibilityRole="header" className="text-xl font-black text-foreground">
             {title}
           </Text>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
-            {description}
-          </Text>
+          <Text className="text-sm leading-5 text-muted-foreground">{description}</Text>
           {state.kind === "error" ? (
             <Button label={copy.retry} onPress={onRetry} variant="secondary" />
           ) : null}
@@ -125,25 +123,25 @@ export function ReceivableDetailScreen({
           <Text className="text-xs font-bold uppercase tracking-[1px] text-ink-muted dark:text-[#91A198]">
             {copy.outstanding}
           </Text>
-          <Text className="text-3xl font-black text-ink dark:text-white">
+          <Text className="text-3xl font-black text-foreground">
             {formatMoney(item.outstandingMinorUnits, item.currency, item.currencyMinorUnitDigits)}
           </Text>
         </View>
         <View className="min-w-0 flex-1 gap-2 border-t border-line pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0 dark:border-[#304239]">
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="text-sm text-muted-foreground">
             {copy.originalAmount}:{" "}
             {formatMoney(item.originalMinorUnits, item.currency, item.currencyMinorUnitDigits)}
           </Text>
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="text-sm text-muted-foreground">
             {copy.postedDate}: {formatDate(item.postedDate)}
           </Text>
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="text-sm text-muted-foreground">
             {copy.dueDate}: {item.dueDate ? formatDate(item.dueDate) : copy.noDueDate}
           </Text>
         </View>
       </View>
       <View className="gap-3">
-        <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+        <Text accessibilityRole="header" className="text-xl font-black text-foreground">
           {copy.paymentHistory}
         </Text>
         {state.payments.length === 0 ? (
@@ -151,7 +149,7 @@ export function ReceivableDetailScreen({
             {copy.noPayments}
           </Text>
         ) : (
-          <View className="border-t border-line dark:border-[#304239]">
+          <View className="border-t border-border">
             {state.payments.map((payment) => {
               const alreadyReversed = state.payments.some(
                 (candidate) =>
@@ -163,18 +161,18 @@ export function ReceivableDetailScreen({
                   key={payment.id}
                 >
                   <View className="min-w-0 flex-1 gap-1">
-                    <Text className="font-bold text-ink dark:text-white">
+                    <Text className="font-bold text-foreground">
                       {payment.kind === "reversal" ? copy.reversedPayment : copy.applyPayment}
                     </Text>
-                    <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+                    <Text className="text-sm text-muted-foreground">
                       {formatDate(payment.occurredLocalDate)}
                     </Text>
-                    <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+                    <Text className="text-sm text-muted-foreground">
                       {copy.cashAccount}: {cashAccountNameFor(payment.cashAccountId)}
                     </Text>
                   </View>
                   <View className="items-start gap-2 sm:items-end">
-                    <Text className="font-black text-ink dark:text-white">
+                    <Text className="font-black text-foreground">
                       {formatMoney(
                         payment.amountMinorUnits,
                         payment.currency,

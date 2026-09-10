@@ -20,7 +20,7 @@ export function Brand({ compact = false, inverse = false }: BrandProps) {
         <Text
           className={cn(
             "text-xl font-black tracking-[-0.8px]",
-            inverse ? "text-white" : "text-ink dark:text-white",
+            inverse ? "text-white" : "text-foreground",
           )}
         >
           pisto

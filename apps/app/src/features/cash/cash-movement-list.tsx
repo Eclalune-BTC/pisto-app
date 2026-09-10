@@ -17,12 +17,10 @@ export function CashMovementList({
   onOpenMovement,
 }: CashMovementListProps) {
   if (movements.length === 0) {
-    return (
-      <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">{noMovements}</Text>
-    );
+    return <Text className="text-sm leading-5 text-muted-foreground">{noMovements}</Text>;
   }
   return (
-    <View className="border-y border-line dark:border-[#304239]">
+    <View className="border-y border-border">
       {movements.map((movement) => (
         <Pressable
           accessibilityRole={onOpenMovement ? "button" : undefined}
@@ -32,14 +30,12 @@ export function CashMovementList({
           onPress={onOpenMovement ? () => onOpenMovement(movement.id) : undefined}
         >
           <View className="min-w-0 flex-1 gap-1">
-            <Text className="font-bold text-ink dark:text-white">
-              {actionLabels[movement.action]}
-            </Text>
+            <Text className="font-bold text-foreground">{actionLabels[movement.action]}</Text>
             <Text className="text-xs text-ink-muted dark:text-[#91A198]">
               {movement.occurredLocalDate} · {movement.occurredLocalTime}
             </Text>
           </View>
-          <Text className="font-black text-ink dark:text-white">
+          <Text className="font-black text-foreground">
             {formatMoney(
               movement.deltaMinorUnits,
               movement.currency,

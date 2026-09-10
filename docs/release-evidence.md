@@ -4,6 +4,10 @@ Date: 2026-09-10. Baseline: `92fd080`; integrated local branch: `codex/audit-com
 The owner's latest instruction is local-only. This record distinguishes local acceptance from
 historical cloud activity and remaining product work.
 
+The subsequent [component design review](component-design-review.md) records the owner's restrained
+UI request, semantic theme/component changes and their own validation. This preserves the original
+data/runtime audit evidence below without implying every earlier screenshot shows the new design.
+
 ## Current runtime
 
 | Component | Verified local target |

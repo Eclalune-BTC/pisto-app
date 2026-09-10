@@ -85,12 +85,10 @@ function MessageState({
 }) {
   return (
     <View className="min-h-56 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-      <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+      <Text accessibilityRole="header" className="text-xl font-black text-foreground">
         {title}
       </Text>
-      <Text className="max-w-[560px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
-        {description}
-      </Text>
+      <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">{description}</Text>
       {action}
     </View>
   );
@@ -205,10 +203,7 @@ export function ExpensesScreen({
             />
 
             <View className="gap-4">
-              <Text
-                accessibilityRole="header"
-                className="text-xl font-black text-ink dark:text-white"
-              >
+              <Text accessibilityRole="header" className="text-xl font-black text-foreground">
                 {copy.historyTitle}
               </Text>
               {state.expenses.length === 0 ? (

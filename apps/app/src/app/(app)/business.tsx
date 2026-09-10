@@ -87,9 +87,7 @@ export default function BusinessSetupScreen() {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
         <ActivityIndicator color="#237A55" size="large" />
-        <Text className="text-sm font-semibold text-ink-muted dark:text-[#AAB8B0]">
-          {t("business.loading")}
-        </Text>
+        <Text className="text-sm font-semibold text-muted-foreground">{t("business.loading")}</Text>
       </View>
     );
   }
@@ -121,10 +119,10 @@ export default function BusinessSetupScreen() {
           <View className="flex-row items-start gap-4">
             <Building2 color="#237A55" size={24} />
             <View className="min-w-0 flex-1 gap-1">
-              <Text className="text-xl font-black text-ink dark:text-white">
+              <Text className="text-xl font-black text-foreground">
                 {businesses.data.items[0]?.name}
               </Text>
-              <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+              <Text className="text-sm leading-5 text-muted-foreground">
                 {businesses.data.items[0]?.currency} · {businesses.data.items[0]?.timeZone}
               </Text>
             </View>

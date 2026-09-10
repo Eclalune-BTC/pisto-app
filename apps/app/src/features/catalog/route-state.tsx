@@ -31,9 +31,7 @@ export function CapabilityRouteState({
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
         <ActivityIndicator color="#237A55" size="large" />
-        <Text className="text-sm font-semibold text-ink-muted dark:text-[#AAB8B0]">
-          {copy.loadingBusiness}
-        </Text>
+        <Text className="text-sm font-semibold text-muted-foreground">{copy.loadingBusiness}</Text>
       </View>
     );
   }
@@ -65,10 +63,10 @@ export function CapabilityRouteState({
       <View className="min-h-64 items-start justify-center gap-4">
         <Icon color={kind === "offline" ? "#617168" : "#B94242"} size={24} />
         <View className="gap-2">
-          <Text accessibilityRole="header" className="text-2xl font-black text-ink dark:text-white">
+          <Text accessibilityRole="header" className="text-2xl font-black text-foreground">
             {title}
           </Text>
-          <Text className="max-w-[520px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="max-w-[520px] text-sm leading-5 text-muted-foreground">
             {description}
           </Text>
         </View>
@@ -89,9 +87,7 @@ export function ReadOnlyNotice({ description }: { description: string }) {
     <View className="flex-row items-start gap-3 border-l-4 border-positive bg-[#EAF5ED] p-4 dark:bg-[#18352A]">
       <Info color="#237A55" size={19} />
       <View className="min-w-0 flex-1 gap-1">
-        <Text className="font-bold text-ink dark:text-white">
-          {t("catalog.remote.readOnlyTitle")}
-        </Text>
+        <Text className="font-bold text-foreground">{t("catalog.remote.readOnlyTitle")}</Text>
         <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">{description}</Text>
       </View>
     </View>

@@ -18,7 +18,7 @@ export function ChoiceList<T extends string>({
   return (
     <View className="gap-2">
       <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">{label}</Text>
-      <View accessibilityRole="radiogroup" className="border-y border-line dark:border-[#304239]">
+      <View accessibilityRole="radiogroup" className="border-y border-border">
         {options.map((option) => {
           const selected = option.value === value;
           return (
@@ -30,7 +30,7 @@ export function ChoiceList<T extends string>({
               key={option.value}
               onPress={() => onChange(option.value)}
             >
-              <Text className="font-semibold text-ink dark:text-white">{option.label}</Text>
+              <Text className="font-semibold text-foreground">{option.label}</Text>
               <View
                 className={`h-5 w-5 items-center justify-center rounded-full border ${
                   selected ? "border-positive" : "border-line dark:border-[#526159]"

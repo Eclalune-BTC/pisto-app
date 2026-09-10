@@ -74,7 +74,7 @@ function SaleRow({
         className="min-h-11 min-w-0 flex-1 justify-center gap-1 active:opacity-70"
         onPress={() => onOpenSale(sale.id)}
       >
-        <Text className="font-bold text-ink dark:text-white">{description}</Text>
+        <Text className="font-bold text-foreground">{description}</Text>
         <Text className="text-xs text-ink-muted dark:text-[#91A198]">
           {formatDateTime(sale.occurredAt)} · {statusLabel}
         </Text>
@@ -85,7 +85,7 @@ function SaleRow({
         ) : null}
       </Pressable>
       <View className="items-start gap-2 sm:items-end">
-        <Text className="font-black text-ink dark:text-white">{amount}</Text>
+        <Text className="font-black text-foreground">{amount}</Text>
         {canCorrect && sale.status === "posted" && sale.correction === null ? (
           <Button
             label={copy.correct}
@@ -121,10 +121,10 @@ export function SalesHistory({
   return (
     <View className="gap-5">
       <View className="gap-1">
-        <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+        <Text accessibilityRole="header" className="text-xl font-black text-foreground">
           {copy.title}
         </Text>
-        <Text className="max-w-[620px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+        <Text className="max-w-[620px] text-sm leading-5 text-muted-foreground">
           {copy.description}
         </Text>
       </View>
@@ -144,20 +144,20 @@ export function SalesHistory({
       ) : null}
 
       {state.kind === "loading" ? (
-        <View className="min-h-40 items-start justify-center gap-3 border-y border-line dark:border-[#304239]">
+        <View className="min-h-40 items-start justify-center gap-3 border-y border-border">
           <ActivityIndicator color="#237A55" />
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">{copy.loading}</Text>
+          <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
         </View>
       ) : state.kind === "denied" || state.kind === "offline" || state.kind === "error" ? (
         <View className="min-h-40 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-          <Text accessibilityRole="header" className="text-lg font-black text-ink dark:text-white">
+          <Text accessibilityRole="header" className="text-lg font-black text-foreground">
             {state.kind === "denied"
               ? copy.deniedTitle
               : state.kind === "offline"
                 ? copy.offlineTitle
                 : copy.unavailableTitle}
           </Text>
-          <Text className="max-w-[560px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
             {state.kind === "denied" ? copy.deniedDescription : state.message}
           </Text>
           {state.kind === "error" ? (
@@ -166,16 +166,16 @@ export function SalesHistory({
         </View>
       ) : state.kind === "empty" ? (
         <View className="min-h-40 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-          <Text accessibilityRole="header" className="text-lg font-black text-ink dark:text-white">
+          <Text accessibilityRole="header" className="text-lg font-black text-foreground">
             {copy.emptyTitle}
           </Text>
-          <Text className="max-w-[560px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
             {copy.emptyDescription}
           </Text>
         </View>
       ) : (
         <View className="gap-4">
-          <View className="border-t border-line dark:border-[#304239]">
+          <View className="border-t border-border">
             {state.items.map((sale) => (
               <SaleRow
                 canCorrect={state.canCorrect}

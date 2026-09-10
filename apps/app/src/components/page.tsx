@@ -39,7 +39,7 @@ export function Page({
         {...props}
         className={cn("flex-1", className)}
         contentContainerClassName={cn(
-          "w-full gap-8 px-5 pb-12 pt-7 sm:px-8 sm:pt-10 lg:px-10 xl:px-12",
+          "mx-auto w-full gap-6 px-5 pb-12 pt-7 sm:px-8 sm:pt-8 lg:px-10 xl:px-12",
           widthClasses[width],
           contentContainerClassName,
         )}

@@ -32,7 +32,6 @@ export const esSV = {
   welcome: {
     signIn: "Iniciar sesión",
     createAccount: "Crear cuenta",
-    eyebrow: "Control para negocios que están creciendo",
     title: "Registra lo que vendes. Entiende lo que pasó.",
     description: "Registra las ventas de tu negocio y consulta un resumen mensual de sus ingresos.",
     setupBusiness: "Configurar mi negocio",
@@ -56,12 +55,9 @@ export const esSV = {
     },
   },
   auth: {
-    sideTitle: "Tu negocio empieza a hablar con datos claros.",
-    sideDescription:
-      "Registra una venta por total, revisa sus datos y consulta el resumen del mes anterior.",
-    tagline: "Pisto · Control que puedes comprobar",
+    backToWelcome: "Volver al inicio",
     signUpTitle: "Crea tu cuenta",
-    signInTitle: "Qué bueno verte",
+    signInTitle: "Iniciar sesión",
     signUpDescription: "Después configurarás la moneda y la zona horaria de tu negocio.",
     signInDescription: "Inicia sesión para continuar con las operaciones de tu negocio.",
     name: "Nombre",
@@ -77,8 +73,7 @@ export const esSV = {
     alreadyRegistered: "¿Ya tienes una cuenta?",
     newToPisto: "¿Eres nuevo en Pisto?",
     signInLink: "Inicia sesión",
-    createAccountLink: "Crea una",
-    securityNote: "No compartas tu contraseña ni dejes una sesión abierta en dispositivos ajenos.",
+    createAccountLink: "Crear cuenta",
     validation: {
       name: "Escribe el nombre que quieres usar.",
       email: "Escribe un correo válido.",

@@ -68,14 +68,14 @@ export function ReceivablesScreen({
             <Text className="text-xs font-bold uppercase tracking-[1px] text-ink-muted dark:text-[#91A198]">
               {copy.outstanding}
             </Text>
-            <Text className="text-3xl font-black text-ink dark:text-white">
+            <Text className="text-3xl font-black text-foreground">
               {formatMoney(
                 summary.outstandingMinorUnits,
                 summary.currency,
                 summary.currencyMinorUnitDigits,
               )}
             </Text>
-            <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+            <Text className="text-sm text-muted-foreground">
               {copy.openCount}: {summary.openReceivableCount}
             </Text>
           </View>
@@ -90,7 +90,7 @@ export function ReceivablesScreen({
                 summary.currencyMinorUnitDigits,
               )}
             </Text>
-            <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+            <Text className="text-sm text-muted-foreground">
               {copy.overdueCount}: {summary.overdueReceivableCount}
             </Text>
           </View>
@@ -113,20 +113,20 @@ export function ReceivablesScreen({
         </View>
       ) : null}
       {state.kind === "loading" ? (
-        <View className="min-h-56 items-start justify-center gap-3 border-y border-line dark:border-[#304239]">
+        <View className="min-h-56 items-start justify-center gap-3 border-y border-border">
           <ActivityIndicator color="#237A55" />
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">{copy.loading}</Text>
+          <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
         </View>
       ) : state.kind === "offline" || state.kind === "denied" || state.kind === "error" ? (
         <View className="min-h-56 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-          <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+          <Text accessibilityRole="header" className="text-xl font-black text-foreground">
             {state.kind === "offline"
               ? copy.offlineTitle
               : state.kind === "denied"
                 ? copy.deniedTitle
                 : copy.errorTitle}
           </Text>
-          <Text className="max-w-[540px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="max-w-[540px] text-sm leading-5 text-muted-foreground">
             {state.kind === "offline"
               ? copy.offlineDescription
               : state.kind === "denied"
@@ -139,10 +139,10 @@ export function ReceivablesScreen({
         </View>
       ) : state.kind === "empty" ? (
         <View className="min-h-48 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-          <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+          <Text accessibilityRole="header" className="text-xl font-black text-foreground">
             {copy.emptyTitle}
           </Text>
-          <Text className="max-w-[540px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+          <Text className="max-w-[540px] text-sm leading-5 text-muted-foreground">
             {copy.emptyDescription}
           </Text>
           {canManage ? (
@@ -151,7 +151,7 @@ export function ReceivablesScreen({
         </View>
       ) : (
         <View className="gap-4">
-          <View className="border-t border-line dark:border-[#304239]">
+          <View className="border-t border-border">
             {state.items.map((item) => (
               <Pressable
                 accessibilityRole="button"
@@ -160,19 +160,19 @@ export function ReceivablesScreen({
                 onPress={() => onOpenReceivable(item.id)}
               >
                 <View className="min-w-0 flex-1 gap-1">
-                  <Text className="text-base font-black text-ink dark:text-white">
+                  <Text className="text-base font-black text-foreground">
                     {customerNameFor(item.customerId)}
                   </Text>
-                  <Text className="font-bold text-ink dark:text-white">{item.description}</Text>
-                  <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+                  <Text className="font-bold text-foreground">{item.description}</Text>
+                  <Text className="text-sm text-muted-foreground">
                     {copy.postedDate}: {formatDate(item.postedDate)}
                   </Text>
-                  <Text className="text-sm font-semibold text-ink-muted dark:text-[#AAB8B0]">
+                  <Text className="text-sm font-semibold text-muted-foreground">
                     {filterLabels[item.state]}
                   </Text>
                 </View>
                 <View className="items-end gap-1">
-                  <Text className="font-black text-ink dark:text-white">
+                  <Text className="font-black text-foreground">
                     {formatMoney(
                       item.outstandingMinorUnits,
                       item.currency,

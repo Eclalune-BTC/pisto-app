@@ -41,9 +41,7 @@ export default function SalesOverviewScreen() {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
         <ActivityIndicator color="#237A55" size="large" />
-        <Text className="text-sm font-semibold text-ink-muted dark:text-[#AAB8B0]">
-          {t("sales.loading")}
-        </Text>
+        <Text className="text-sm font-semibold text-muted-foreground">{t("sales.loading")}</Text>
       </View>
     );
   }
@@ -51,10 +49,8 @@ export default function SalesOverviewScreen() {
   if (businesses.isError && !businesses.data) {
     return (
       <View className="flex-1 items-start justify-center gap-4 px-5 sm:px-8 lg:px-10">
-        <Text className="text-xl font-black text-ink dark:text-white">
-          {t("sales.unavailableTitle")}
-        </Text>
-        <Text className="max-w-[460px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+        <Text className="text-xl font-black text-foreground">{t("sales.unavailableTitle")}</Text>
+        <Text className="max-w-[460px] text-sm leading-5 text-muted-foreground">
           {t("sales.unavailableDescription")}
         </Text>
         <Button
@@ -86,14 +82,12 @@ export default function SalesOverviewScreen() {
 
       {summary.fetchStatus === "paused" && !summary.data ? (
         <View className="min-h-56">
-          <OfflineState title={t("sales.staleTitle")} />
+          <OfflineState level={2} title={t("sales.staleTitle")} />
         </View>
       ) : summary.isPending ? (
-        <View className="min-h-56 items-start justify-center gap-3 border-y border-line dark:border-[#304239]">
+        <View className="min-h-56 items-start justify-center gap-3 border-y border-border">
           <ActivityIndicator color="#237A55" />
-          <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
-            {t("sales.calculating")}
-          </Text>
+          <Text className="text-sm text-muted-foreground">{t("sales.calculating")}</Text>
         </View>
       ) : summary.isError && !summary.data ? (
         <View className="gap-4 border-l-4 border-danger bg-[#FFF1F1] p-5 dark:bg-[#3A2020]">
@@ -117,12 +111,12 @@ export default function SalesOverviewScreen() {
       ) : summary.data ? (
         <View className="gap-6">
           {summary.isError ? <StaleNotice /> : null}
-          <View className="border-y border-line dark:border-[#304239] lg:flex-row">
+          <View className="border-y border-border lg:flex-row">
             <View className="gap-2 py-7 lg:w-[58%] lg:pr-10">
               <Text className="text-sm font-bold capitalize text-positive dark:text-[#8DDEAF]">
                 {periodLabel(summary.data.summary.periodStartLocal, locale)}
               </Text>
-              <Text className="text-[38px] font-black leading-[44px] tracking-[-1.6px] text-ink dark:text-white sm:text-[48px] sm:leading-[54px]">
+              <Text className="text-[38px] font-black leading-[44px] tracking-[-1.6px] text-foreground sm:text-[48px] sm:leading-[54px]">
                 {formatMinorUnits(
                   summary.data.summary.grossMinorUnits,
                   summary.data.summary.currency,
@@ -130,17 +124,15 @@ export default function SalesOverviewScreen() {
                   locale,
                 )}
               </Text>
-              <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
-                {t("sales.grossRevenue")}
-              </Text>
+              <Text className="text-sm text-muted-foreground">{t("sales.grossRevenue")}</Text>
             </View>
 
-            <View className="border-t border-line dark:border-[#304239] sm:flex-row lg:min-w-0 lg:flex-1 lg:border-l lg:border-t-0 lg:pl-10">
+            <View className="border-t border-border sm:flex-row lg:min-w-0 lg:flex-1 lg:border-l lg:border-t-0 lg:pl-10">
               <View className="flex-1 gap-1 py-5 sm:border-r sm:border-line sm:pr-6 lg:py-7 dark:sm:border-[#304239]">
                 <Text className="text-xs font-bold uppercase tracking-[1px] text-ink-muted dark:text-[#91A198]">
                   {t("sales.count")}
                 </Text>
-                <Text className="text-2xl font-black text-ink dark:text-white">
+                <Text className="text-2xl font-black text-foreground">
                   {summary.data.summary.saleCount}
                 </Text>
               </View>
@@ -148,7 +140,7 @@ export default function SalesOverviewScreen() {
                 <Text className="text-xs font-bold uppercase tracking-[1px] text-ink-muted dark:text-[#91A198]">
                   {t("sales.average")}
                 </Text>
-                <Text className="text-2xl font-black text-ink dark:text-white">
+                <Text className="text-2xl font-black text-foreground">
                   {summary.data.summary.averageMinorUnits === null
                     ? "—"
                     : formatMinorUnits(
@@ -163,7 +155,7 @@ export default function SalesOverviewScreen() {
           </View>
 
           {summary.data.summary.saleCount === "0" ? (
-            <Text className="max-w-[620px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+            <Text className="max-w-[620px] text-sm leading-5 text-muted-foreground">
               {t("sales.empty")}
             </Text>
           ) : null}

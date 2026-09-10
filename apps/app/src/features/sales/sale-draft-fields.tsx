@@ -28,9 +28,7 @@ export function SaleDraftFields({ currency, errors, labels, onChange, values }: 
         label={labels.amount}
         onChangeText={(value) => onChange("amount", value)}
         placeholder="0.00"
-        trailing={
-          <Text className="text-sm font-bold text-ink-muted dark:text-[#AAB8B0]">{currency}</Text>
-        }
+        trailing={<Text className="text-sm font-bold text-muted-foreground">{currency}</Text>}
         value={values.amount}
       />
       <View className="gap-5 sm:flex-row">

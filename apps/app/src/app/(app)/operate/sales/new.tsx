@@ -121,7 +121,7 @@ export default function NewSaleScreen() {
         variant="ghost"
       >
         <ArrowLeft color="#617168" size={18} />
-        <ButtonText className="text-ink-muted dark:text-[#AAB8B0]" variant="ghost">
+        <ButtonText className="text-muted-foreground" variant="ghost">
           {t("sales.back")}
         </ButtonText>
       </Button>

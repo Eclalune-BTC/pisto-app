@@ -108,7 +108,7 @@ export function ProductDetailScreen({
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
         <ActivityIndicator color="#237A55" />
-        <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">{copy.loading}</Text>
+        <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
       </View>
     );
   }
@@ -131,12 +131,10 @@ export function ProductDetailScreen({
             : copy.errorDescription;
     return (
       <View className="flex-1 items-start justify-center gap-4 px-5 sm:px-8 lg:px-10">
-        <Text accessibilityRole="alert" className="text-xl font-black text-ink dark:text-white">
+        <Text accessibilityRole="alert" className="text-xl font-black text-foreground">
           {title}
         </Text>
-        <Text className="max-w-[460px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
-          {description}
-        </Text>
+        <Text className="max-w-[460px] text-sm leading-5 text-muted-foreground">{description}</Text>
         {state.status === "error" ? (
           <Button label={copy.retry} onPress={onRetry} variant="secondary" />
         ) : null}
@@ -155,7 +153,7 @@ export function ProductDetailScreen({
         variant="ghost"
       >
         <ArrowLeft color="#617168" size={18} />
-        <ButtonText className="text-ink-muted dark:text-[#AAB8B0]" variant="ghost">
+        <ButtonText className="text-muted-foreground" variant="ghost">
           {copy.back}
         </ButtonText>
       </Button>
@@ -212,13 +210,10 @@ export function ProductDetailScreen({
       {archiveReview ? (
         <View className="gap-5 border-y border-line py-6 dark:border-[#304239]">
           <View className="gap-1">
-            <Text
-              accessibilityRole="header"
-              className="text-xl font-black text-ink dark:text-white"
-            >
+            <Text accessibilityRole="header" className="text-xl font-black text-foreground">
               {copy.archiveTitle}
             </Text>
-            <Text className="text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
+            <Text className="text-sm leading-5 text-muted-foreground">
               {copy.archiveDescription}
             </Text>
           </View>

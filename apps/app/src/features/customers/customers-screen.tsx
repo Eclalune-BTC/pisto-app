@@ -36,12 +36,10 @@ function StateMessage({
 }) {
   return (
     <View className="min-h-56 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-      <Text accessibilityRole="header" className="text-xl font-black text-ink dark:text-white">
+      <Text accessibilityRole="header" className="text-xl font-black text-foreground">
         {title}
       </Text>
-      <Text className="max-w-[540px] text-sm leading-5 text-ink-muted dark:text-[#AAB8B0]">
-        {description}
-      </Text>
+      <Text className="max-w-[540px] text-sm leading-5 text-muted-foreground">{description}</Text>
       {action ? <Button label={action.label} onPress={action.onPress} variant="secondary" /> : null}
     </View>
   );
@@ -108,11 +106,9 @@ export function CustomersScreen({
       ) : null}
 
       {state.kind === "loading" ? (
-        <View className="min-h-56 items-start justify-center gap-3 border-y border-line dark:border-[#304239]">
+        <View className="min-h-56 items-start justify-center gap-3 border-y border-border">
           <ActivityIndicator color="#237A55" />
-          <Text className="text-sm font-semibold text-ink-muted dark:text-[#AAB8B0]">
-            {copy.loading}
-          </Text>
+          <Text className="text-sm font-semibold text-muted-foreground">{copy.loading}</Text>
         </View>
       ) : state.kind === "offline" ? (
         <StateMessage description={copy.offlineDescription} title={copy.offlineTitle} />
@@ -134,7 +130,7 @@ export function CustomersScreen({
         />
       ) : (
         <View className="gap-4">
-          <View className="border-t border-line dark:border-[#304239]">
+          <View className="border-t border-border">
             {state.items.map((item) => {
               const contact = item.email ?? item.phone;
               return (
@@ -146,15 +142,13 @@ export function CustomersScreen({
                   onPress={() => onOpenCustomer(item.id)}
                 >
                   <View className="min-w-0 flex-1 gap-1">
-                    <Text className="text-base font-bold text-ink dark:text-white">
-                      {item.name}
-                    </Text>
-                    <Text className="text-sm text-ink-muted dark:text-[#AAB8B0]">
+                    <Text className="text-base font-bold text-foreground">{item.name}</Text>
+                    <Text className="text-sm text-muted-foreground">
                       {contact ?? copy.noContact}
                     </Text>
                   </View>
                   {item.status === "archived" ? (
-                    <Text className="text-sm font-semibold text-ink-muted dark:text-[#AAB8B0]">
+                    <Text className="text-sm font-semibold text-muted-foreground">
                       {copy.archived}
                     </Text>
                   ) : null}
