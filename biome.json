@@ -9,7 +9,6 @@
       "!!**/.turbo",
       "!!**/.cache",
       "!!**/.secrets",
-      "!!**/.vercel",
       "!!**/dist",
       "!!**/build",
       "!!**/coverage",
