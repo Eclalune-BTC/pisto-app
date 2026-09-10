@@ -55,7 +55,7 @@ Result refresh does not replace the page header or its query controls.
 | --- | --- |
 | A search or filter starts a request | Keep the field, entered text, selection, and page context mounted; replace only the results with loading feedback |
 | A query fails or pauses offline | Keep filters and dates available; distinguish unavailable results from an empty successful result; offer retry where meaningful |
-| Permission is denied | Show the denial, hide capability controls and protected results, and rely on the API for authorization |
+| Permission is denied | A fresh 401/403 response overrides cached data and loading/offline companions; hide capability controls and protected results while the existing session recovery handles authentication |
 | A successful query returns no records | Say which filter/search has no matches; do not manufacture records or financial zeros from a failure |
 | A financial mutation succeeds | Invalidate the owning record/list and all operating report periods for that business; retain other businesses' caches |
 | A confirmation is pending | Keep the action name visible and accessible, show progress, and prevent repeated activation |
@@ -86,6 +86,10 @@ second query or UI library is needed.
   action name with a generic loading announcement. Small shared buttons were only 40 units tall.
 - Billing routes had no active primary navigation item. Wide navigation had no independent scroll
   container for short viewports. Header title/action columns did not shrink or wrap coherently.
+- Several read states treated every cached error as a stale network result, retaining customer or
+  financial data after an authoritative access rejection. Shared remote state, business access,
+  and legacy sales/catalog/customer/receivable routes now give access rejection priority. This
+  changes display state only; server authorization and business selection remain authoritative.
 
 ## Evidence and outstanding checks
 
@@ -98,6 +102,10 @@ receivable filter recovery, report date persistence while results are unavailabl
 button names, offline boundary ordering, and real TanStack cache invalidation across report periods
 without invalidating another business. The rendering tests use React Native Web's server renderer;
 they do not simulate browser focus, native keyboards, or assistive technology.
+
+An additional real QueryClient regression first caches an authorized customer result, rejects its
+refresh with 401/403, and verifies that the UI chooses denied despite retained cache data or a
+pending companion query. Separate network/502/503/504 cases retain the labelled stale result.
 
 Before release, record real browser evidence at compact, intermediate, and wide widths, including
 slow-request search typing, failed-period recovery, empty search, denied access, visible keyboard

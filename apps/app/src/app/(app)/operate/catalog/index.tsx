@@ -40,6 +40,7 @@ export default function CatalogIndexRoute() {
     status,
   });
 
+  if (isDeniedError(businesses.error)) return <CapabilityRouteState kind="denied" />;
   if (businesses.fetchStatus === "paused" && !businesses.data) {
     return <CapabilityRouteState kind="offline" />;
   }
@@ -50,7 +51,7 @@ export default function CatalogIndexRoute() {
   if (!business) return <Redirect href="/business" />;
 
   let state: CatalogCollectionState;
-  if (!canRead || isDeniedError(products.error)) {
+  if (!canRead || isDeniedError(products.error) || isDeniedError(categories.error)) {
     state = { status: "denied" };
   } else if (products.fetchStatus === "paused" && !products.data) {
     state = { status: "offline" };

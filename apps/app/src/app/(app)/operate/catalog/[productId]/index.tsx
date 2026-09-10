@@ -107,7 +107,9 @@ export default function ProductDetailRoute() {
   if (!business && businesses.data) return <Redirect href="/business" />;
 
   let state: ProductDetailState;
-  if (businesses.fetchStatus === "paused" && !businesses.data) {
+  if (isDeniedError(businesses.error)) {
+    state = { status: "denied" };
+  } else if (businesses.fetchStatus === "paused" && !businesses.data) {
     state = { status: "offline" };
   } else if (businesses.isError && !businesses.data) {
     state = { status: "error" };

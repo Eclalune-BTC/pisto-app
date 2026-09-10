@@ -163,6 +163,13 @@ export function CatalogScreen({
   state,
   status,
 }: CatalogScreenProps) {
+  if (state.status === "denied") {
+    return (
+      <Page>
+        <StatusState copy={copy} onRetry={onRetry} status="denied" />
+      </Page>
+    );
+  }
   return (
     <Page contentContainerClassName="gap-8">
       <ScreenHeader
@@ -204,7 +211,6 @@ export function CatalogScreen({
               {copy.statusLabel}
             </Text>
             <FilterBar
-              disabled={state.status === "denied"}
               label={copy.statusLabel}
               onChange={onStatusChange}
               options={(["active", "archived", "all"] as const).map((value) => ({

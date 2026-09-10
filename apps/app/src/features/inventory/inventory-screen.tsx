@@ -128,6 +128,13 @@ export function InventoryScreen({
   showReadOnlyNotice,
   state,
 }: InventoryScreenProps) {
+  if (state.status === "denied") {
+    return (
+      <Page>
+        <InventoryFailure copy={copy} onRetry={onRetry} status="denied" />
+      </Page>
+    );
+  }
   return (
     <Page contentContainerClassName="gap-8">
       <ScreenHeader description={copy.description} eyebrow={copy.eyebrow} title={copy.title} />

@@ -12,6 +12,7 @@ describe("customer and receivable access recovery", () => {
     business: undefined,
     canManage: false,
     canRead: false,
+    isDenied: false,
     isError: false,
     isOffline: false,
     isPending: true,
@@ -23,5 +24,11 @@ describe("customer and receivable access recovery", () => {
     expect(capabilityBoundaryState({ ...access, isOffline: true })).toBe("offline");
     expect(capabilityBoundaryState(access)).toBe("loading");
     expect(capabilityBoundaryState({ ...access, isPending: false, isError: true })).toBe("error");
+  });
+
+  test("hides cached access after a rejection even when another read is paused", () => {
+    expect(
+      capabilityBoundaryState({ ...access, isDenied: true, isOffline: true, canRead: true }),
+    ).toBe("denied");
   });
 });

@@ -7,6 +7,8 @@ import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { CapabilityRouteState } from "@/features/catalog/route-state";
+import { hasDeniedRead } from "@/features/customers/remote-state";
 import { previousMonthSummaryQueryOptions } from "@/features/sales/queries";
 import { SalesHistoryController } from "@/features/sales/sales-history-controller";
 import { formatLocalizedDateTime, formatMonthYear } from "@/i18n/format";
@@ -30,6 +32,8 @@ export default function SalesOverviewScreen() {
     ...previousMonthSummaryQueryOptions(activeBusiness?.id ?? "unselected"),
     enabled: Boolean(activeBusiness),
   });
+
+  if (hasDeniedRead([businesses, summary])) return <CapabilityRouteState kind="denied" />;
 
   if (businesses.fetchStatus === "paused" && !businesses.data) return <OfflineState />;
 

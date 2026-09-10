@@ -7,9 +7,11 @@ import { useTranslation } from "react-i18next";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { buildCustomersCopy, type CustomersReceivablesCopy } from "@/features/customers/copy";
 import { CustomerPicker } from "@/features/customers/customer-picker";
 import { customerDetailQueryOptions, customersQueryOptions } from "@/features/customers/queries";
+import { hasDeniedRead } from "@/features/customers/remote-state";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 
@@ -139,6 +141,10 @@ export function ReceivableEditor({
     setCommand(result.command);
     mutation.reset();
   };
+
+  if (hasDeniedRead([customers, initialCustomer])) {
+    return <CapabilityRouteState kind="denied" />;
+  }
 
   if (pickerOpen) {
     const items = customers.data?.pages.flatMap((page) => page.items) ?? [];

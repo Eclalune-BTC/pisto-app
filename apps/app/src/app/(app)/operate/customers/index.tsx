@@ -8,7 +8,11 @@ import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { type CustomerStatusFilter, CustomersScreen } from "@/features/customers/customers-screen";
 import { customersQueryOptions } from "@/features/customers/queries";
-import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
+import {
+  hasDeniedRead,
+  isPausedWithoutData,
+  readFailureKind,
+} from "@/features/customers/remote-state";
 import type { CustomersLoadState } from "@/features/customers/types";
 
 export default function CustomersRoute() {
@@ -34,7 +38,7 @@ export default function CustomersRoute() {
   }
 
   let state: CustomersLoadState;
-  if (!access.canRead && access.business) {
+  if ((!access.canRead && access.business) || hasDeniedRead([customers])) {
     state = { kind: "denied" };
   } else if (isPausedWithoutData(customers.fetchStatus, Boolean(customers.data))) {
     state = { kind: "offline" };

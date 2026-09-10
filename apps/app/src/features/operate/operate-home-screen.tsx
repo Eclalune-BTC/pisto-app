@@ -15,11 +15,12 @@ import {
 import type { ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
-
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { CapabilityRouteState } from "@/features/catalog/route-state";
+import { hasDeniedRead } from "@/features/customers/remote-state";
 import {
   getVisibleOperateModules,
   OPERATE_GROUPS,
@@ -50,6 +51,8 @@ export default function OperateHomeScreen() {
   const router = useRouter();
   const businesses = useQuery(businessesQueryOptions);
   const activeBusiness = getActiveBusiness(businesses.data);
+
+  if (hasDeniedRead([businesses])) return <CapabilityRouteState kind="denied" />;
 
   if (businesses.fetchStatus === "paused" && !businesses.data) return <OfflineState />;
 

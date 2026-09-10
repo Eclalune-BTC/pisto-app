@@ -32,6 +32,9 @@ describe("catalog and inventory controller states", () => {
     const message = productErrorMessage(conflict, "fallback", t, "movement");
 
     expect(isDeniedError(denied)).toBe(true);
+    expect(isDeniedError(new ApiClientError("Expired session", 401, "UNAUTHORIZED"))).toBe(true);
+    expect(isDeniedError(new ApiClientError("Proxy rejected access", 403))).toBe(true);
+    expect(isDeniedError(new ApiClientError("Connection lost", 0))).toBe(false);
     expect(message).toContain("existencia");
     expect(message).not.toContain("raw server detail");
   });

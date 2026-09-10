@@ -12,6 +12,8 @@ import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { CapabilityRouteState } from "@/features/catalog/route-state";
+import { hasDeniedRead } from "@/features/customers/remote-state";
 import { reportsQueryKeys } from "@/features/reports/queries";
 import { saleQueryKeys, saleQueryOptions } from "@/features/sales/queries";
 import {
@@ -76,6 +78,8 @@ export default function CorrectSaleScreen() {
       router.replace({ pathname: "/operate/sales/[saleId]", params: { saleId: saleId as string } });
     },
   });
+
+  if (hasDeniedRead([businesses, saleResult])) return <CapabilityRouteState kind="denied" />;
 
   if (
     (businesses.fetchStatus === "paused" && !businesses.data) ||

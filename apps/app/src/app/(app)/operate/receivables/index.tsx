@@ -7,7 +7,11 @@ import { capabilityBoundaryState, useCapabilityAccess } from "@/features/custome
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
-import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
+import {
+  hasDeniedRead,
+  isPausedWithoutData,
+  readFailureKind,
+} from "@/features/customers/remote-state";
 import { formatBusinessLocalDate, uniqueValues } from "@/features/receivables/presentation";
 import {
   receivablesQueryOptions,
@@ -50,7 +54,7 @@ export default function ReceivablesRoute() {
 
   let state: ReceivablesLoadState;
   const hasCombinedData = Boolean(list.data && summary.data);
-  if (!access.canRead && access.business) {
+  if ((!access.canRead && access.business) || hasDeniedRead([list, summary, ...customerQueries])) {
     state = { kind: "denied" };
   } else if (
     isPausedWithoutData(list.fetchStatus, Boolean(list.data)) ||

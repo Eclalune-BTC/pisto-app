@@ -40,6 +40,7 @@ export default function InventoryHistoryRoute() {
     onPress: () => router.replace("/operate/inventory"),
   };
 
+  if (isDeniedError(businesses.error)) return <CapabilityRouteState kind="denied" />;
   if (businesses.fetchStatus === "paused" && !businesses.data) {
     return <CapabilityRouteState back={back} kind="offline" />;
   }

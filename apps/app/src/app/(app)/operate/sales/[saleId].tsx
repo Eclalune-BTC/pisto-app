@@ -8,6 +8,8 @@ import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { CapabilityRouteState } from "@/features/catalog/route-state";
+import { hasDeniedRead } from "@/features/customers/remote-state";
 import { saleQueryOptions } from "@/features/sales/queries";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
@@ -25,6 +27,8 @@ export default function SaleResultScreen() {
     ...saleQueryOptions(business?.id ?? "unselected", saleId ?? ""),
     enabled: Boolean(saleId && business),
   });
+
+  if (hasDeniedRead([businesses, result])) return <CapabilityRouteState kind="denied" />;
 
   if (
     (businesses.fetchStatus === "paused" && !businesses.data) ||

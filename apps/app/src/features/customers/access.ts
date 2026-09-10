@@ -4,11 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 
 import type { CapabilityBoundaryState } from "./capability-boundary";
+import { isAccessDeniedError } from "./remote-state";
 
 export type CapabilityAccess = {
   business: Business | undefined;
   canManage: boolean;
   canRead: boolean;
+  isDenied: boolean;
   isError: boolean;
   isOffline: boolean;
   isPending: boolean;
@@ -30,14 +32,17 @@ export function useCapabilityAccess(
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
   const hasReadPermission = resolveBusinessPermission(business, readPermission);
+  const isDenied = isAccessDeniedError(businesses.error);
 
   return {
     business,
     canManage:
+      !isDenied &&
       !businesses.isError &&
       businesses.fetchStatus !== "paused" &&
       resolveBusinessPermission(business, managePermission),
-    canRead: hasReadPermission,
+    canRead: !isDenied && hasReadPermission,
+    isDenied,
     isError: businesses.isError && !businesses.data,
     isOffline: businesses.fetchStatus === "paused" && !businesses.data,
     isPending: businesses.isPending,
@@ -48,6 +53,7 @@ export function useCapabilityAccess(
 }
 
 export function capabilityBoundaryState(access: CapabilityAccess): CapabilityBoundaryState {
+  if (access.isDenied) return "denied";
   if (access.isOffline) return "offline";
   if (access.isPending) return "loading";
   if (access.isError) return "error";

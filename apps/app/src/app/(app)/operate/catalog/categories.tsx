@@ -93,6 +93,7 @@ export default function CategoriesRoute() {
     },
   });
 
+  if (isDeniedError(businesses.error)) return <CapabilityRouteState kind="denied" />;
   if (businesses.fetchStatus === "paused" && !businesses.data) {
     return <CapabilityRouteState kind="offline" />;
   }

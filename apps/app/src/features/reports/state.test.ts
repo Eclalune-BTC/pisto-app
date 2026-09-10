@@ -114,6 +114,20 @@ describe("operating report screen state", () => {
     ).toMatchObject({ isStale: true, kind: "ready" });
   });
 
+  test("hides cached financial results after report or business access is rejected", () => {
+    for (const error of [
+      new ApiClientError("Permission revoked", 403, "FORBIDDEN"),
+      new ApiClientError("Session expired", 401, "UNAUTHORIZED"),
+    ]) {
+      expect(
+        screenState({ report: reportQuery({ data: { report }, isError: true, error }) }),
+      ).toEqual({ kind: "denied" });
+      expect(screenState({ businesses: businessesQuery({ isError: true, error }) })).toEqual({
+        kind: "denied",
+      });
+    }
+  });
+
   test("keeps loading until the report itself arrives", () => {
     expect(screenState({ report: reportQuery({ isPending: true }) })).toEqual({ kind: "loading" });
     expect(

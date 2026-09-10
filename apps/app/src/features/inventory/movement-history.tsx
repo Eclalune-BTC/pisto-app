@@ -128,6 +128,13 @@ export function MovementHistory({
   state,
   stock,
 }: MovementHistoryProps) {
+  if (state.status === "denied") {
+    return (
+      <Page>
+        <Failure copy={copy} onRetry={onRetry} status="denied" />
+      </Page>
+    );
+  }
   return (
     <Page contentContainerClassName="gap-8">
       <Button className="self-start px-0" onPress={onBack} size="sm" variant="ghost">

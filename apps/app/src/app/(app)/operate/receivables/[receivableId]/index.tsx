@@ -7,7 +7,11 @@ import { capabilityBoundaryState, useCapabilityAccess } from "@/features/custome
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
-import { isPausedWithoutData, readFailureKind } from "@/features/customers/remote-state";
+import {
+  hasDeniedRead,
+  isPausedWithoutData,
+  readFailureKind,
+} from "@/features/customers/remote-state";
 import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-account-source";
 import { formatBusinessLocalDate, uniqueValues } from "@/features/receivables/presentation";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
@@ -52,7 +56,10 @@ export default function ReceivableDetailRoute() {
 
   let state: ReceivableDetailLoadState;
   const hasCombinedData = Boolean(detail.data && customer.data);
-  if (!access.canRead && access.business) {
+  if (
+    (!access.canRead && access.business) ||
+    hasDeniedRead([detail, customer, ...accountQueries])
+  ) {
     state = { kind: "denied" };
   } else if (!receivableId) {
     state = { kind: "notFound" };

@@ -7,12 +7,17 @@ vi.mock("uniwind", () => ({ useUniwind: () => ({ theme: "light" }) }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 vi.mock("lucide-react-native", () => ({
+  AlertTriangle: () => null,
   CalendarDays: () => null,
   ChevronRight: () => null,
+  FolderCog: () => null,
+  Info: () => null,
   Plus: () => null,
   Search: () => null,
 }));
 
+import { CatalogScreen } from "@/features/catalog/catalog-screen";
+import { buildCatalogCopy } from "@/features/catalog/copy";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { CustomersScreen } from "@/features/customers/customers-screen";
 import { ReceivablesScreen } from "@/features/receivables/receivables-screen";
@@ -24,6 +29,49 @@ import { Button, ButtonText } from "./ui/button";
 const noop = () => undefined;
 
 describe("stable query controls rendered through result transitions", () => {
+  test("hides cached category names and all controls after catalog access is denied", () => {
+    const copy = buildCatalogCopy(i18n.t).list;
+    const markup = renderToStaticMarkup(
+      createElement(CatalogScreen, {
+        canManage: true,
+        categories: [
+          {
+            id: "11111111-1111-4111-8111-111111111111",
+            name: "Private cached category",
+            status: "active",
+            createdAt: "2026-09-10T12:00:00.000Z",
+            updatedAt: "2026-09-10T12:00:00.000Z",
+          },
+        ],
+        categoriesError: true,
+        categoriesHasNextPage: false,
+        categoriesLoading: false,
+        categoriesLoadingMore: false,
+        categoryId: null,
+        copy,
+        locale: "es-SV",
+        onCategoryChange: noop,
+        onCreateProduct: noop,
+        onLoadMore: noop,
+        onLoadMoreCategories: noop,
+        onManageCategories: noop,
+        onOpenProduct: noop,
+        onRetry: noop,
+        onRetryCategories: noop,
+        onSearchChange: noop,
+        onStatusChange: noop,
+        search: "Private search",
+        showReadOnlyNotice: false,
+        state: { status: "denied" },
+        status: "active",
+      }),
+    );
+    expect(markup).toContain(copy.deniedTitle);
+    expect(markup).not.toContain("Private cached category");
+    expect(markup).not.toContain("Private search");
+    expect(markup).not.toContain(`>${copy.createProduct}<`);
+    expect(markup).not.toContain(`>${copy.manageCategories}<`);
+  });
   test.each(["loading", "error", "offline"] as const)(
     "keeps customer search and filters available during %s without a create action",
     (kind) => {

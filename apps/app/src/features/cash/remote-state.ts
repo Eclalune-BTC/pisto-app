@@ -1,4 +1,4 @@
-import { ApiClientError } from "@/lib/api-error";
+import { hasDeniedRead } from "../customers/remote-state";
 
 import type { FeatureRemoteState } from "./feature-boundary";
 
@@ -18,14 +18,10 @@ export function featureRemoteState(input: {
   offlineMessage: string;
 }): FeatureRemoteState {
   const queries = input.queries ?? [];
+  // An authoritative access rejection overrides any previously cached data.
+  if (hasDeniedRead(queries)) return { kind: "denied" };
   const firstTerminalError = queries.find(({ isError, data }) => isError && data === undefined);
   if (firstTerminalError) {
-    if (
-      firstTerminalError.error instanceof ApiClientError &&
-      firstTerminalError.error.code === "FORBIDDEN"
-    ) {
-      return { kind: "denied" };
-    }
     return {
       kind: "error",
       message:

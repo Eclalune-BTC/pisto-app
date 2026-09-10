@@ -175,6 +175,13 @@ export function CategoryManager({
   state,
   status,
 }: CategoryManagerProps) {
+  if (state.status === "denied") {
+    return (
+      <Page>
+        <FailureNotice description={copy.deniedDescription} title={copy.deniedTitle} />
+      </Page>
+    );
+  }
   return (
     <Page contentContainerClassName="gap-8">
       <Button className="self-start px-0" onPress={onBack} size="sm" variant="ghost">
@@ -334,8 +341,6 @@ export function CategoryManager({
             </View>
           ) : state.status === "offline" ? (
             <FailureNotice description={copy.offlineDescription} title={copy.offlineTitle} />
-          ) : state.status === "denied" ? (
-            <FailureNotice description={copy.deniedDescription} title={copy.deniedTitle} />
           ) : state.status === "error" ? (
             <View className="gap-4">
               <FailureNotice description={copy.errorDescription} title={copy.errorTitle} />
