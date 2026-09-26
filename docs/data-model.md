@@ -1,5 +1,20 @@
 # Pisto relational data model
 
+## September 26 addition: sale review recovery
+
+Migration `0006` adds `sale_review`. Each actor/business can have one open working command snapshot,
+not an additional ledger or aggregate. The review freezes currency, exponent, and time zone and
+retains the original confirmation UUID. Posting writes `sale`, `sale_operation`, and the review's
+`sale_id` in the same transaction. The composite sale foreign key prevents cross-business links.
+
+The JSONB command is a strict, bounded transport snapshot validated on write and read; canonical
+money remains in normalized sale columns. Closing clears this payload and retains minimal key/owner
+metadata to reject delayed retries. A saved result is not closed until its exact sale ID is
+acknowledged. See [ADR 0018](adrs/0018-durable-sale-review.md) for ownership, retention, and failure
+semantics. The earlier table inventory below describes the September 10 baseline.
+
+## September 10 baseline
+
 Reviewed against the implementation on 2026-09-10. This document describes persisted behavior,
 intentional snapshots, and the next bounded changes. It does not imply that a database has been
 provisioned, migrated, backed up, or released.

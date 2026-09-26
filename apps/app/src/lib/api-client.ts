@@ -30,9 +30,14 @@ import {
   type SaleListQuery,
   type SaleListResponse,
   type SaleResponse,
+  type SaleReviewDismissResponse,
+  type SaleReviewResponse,
   saleCorrectionResponseSchema,
   saleListResponseSchema,
   saleResponseSchema,
+  saleReviewDismissResponseSchema,
+  saleReviewPreparedResponseSchema,
+  saleReviewResponseSchema,
   type VoidSaleRequest,
   voidSaleRequestSchema,
 } from "@pisto/contracts";
@@ -165,6 +170,36 @@ export const api = {
       ),
   },
   sales: {
+    review: {
+      get: (signal?: AbortSignal) =>
+        apiRequest<SaleReviewResponse, SaleReviewResponse["data"]>(
+          "/v1/sales/review",
+          { authenticated: true, signal },
+          saleReviewResponseSchema,
+        ),
+      prepare: (command: CreateSaleRequest) =>
+        apiRequest<SaleReviewResponse, SaleReviewResponse["data"]>(
+          "/v1/sales/review",
+          {
+            authenticated: true,
+            method: "POST",
+            body: parseRequestPayload(createSaleRequestSchema, command),
+          },
+          saleReviewPreparedResponseSchema,
+        ),
+      confirm: (reviewId: string) =>
+        apiRequest<SaleResponse, SaleResponse["data"]>(
+          `/v1/sales/review/${encodeURIComponent(reviewId)}/confirm`,
+          { authenticated: true, method: "POST", body: {} },
+          saleResponseSchema,
+        ),
+      dismiss: (reviewId: string, acknowledgedSaleId: string | null) =>
+        apiRequest<SaleReviewDismissResponse, SaleReviewDismissResponse["data"]>(
+          `/v1/sales/review/${encodeURIComponent(reviewId)}/dismiss`,
+          { authenticated: true, method: "POST", body: { acknowledgedSaleId } },
+          saleReviewDismissResponseSchema,
+        ),
+    },
     create: (command: CreateSaleRequest) =>
       apiRequest<SaleResponse, SaleResponse["data"]>(
         "/v1/sales",

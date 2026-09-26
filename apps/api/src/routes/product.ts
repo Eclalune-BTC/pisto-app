@@ -4,6 +4,8 @@ import {
   createSaleRequestSchema,
   replaceSaleRequestSchema,
   saleListQuerySchema,
+  saleReviewActionRequestSchema,
+  saleReviewDismissRequestSchema,
   voidSaleRequestSchema,
 } from "@pisto/contracts";
 import type { ProductRepository } from "@pisto/db";
@@ -60,6 +62,48 @@ export function productRoutes(input: { auth: Auth; product: ProductRepository })
     );
     const result = await input.product.createSale(actor, command);
     return context.json({ data: result }, commandStatus(result));
+  });
+
+  routes.get("/sales/review", async (context) => {
+    const actor = await requireActor(input.auth, context);
+    return context.json({ data: { review: await input.product.getSaleReview(actor) } });
+  });
+
+  routes.post("/sales/review", async (context) => {
+    const actor = await requireActor(input.auth, context);
+    const command = parseRequest(
+      createSaleRequestSchema,
+      await parseJsonBody(context),
+      "Sale review is invalid",
+    );
+    return context.json({
+      data: { review: await input.product.prepareSaleReview(actor, command) },
+    });
+  });
+
+  routes.post("/sales/review/:reviewId/confirm", async (context) => {
+    const actor = await requireActor(input.auth, context);
+    const reviewId = requireRecordId(context.req.param("reviewId"), "Sale review was not found");
+    parseRequest(
+      saleReviewActionRequestSchema,
+      await parseJsonBody(context),
+      "Sale review action is invalid",
+    );
+    const result = await input.product.confirmSaleReview(actor, reviewId);
+    return context.json({ data: result }, commandStatus(result));
+  });
+
+  routes.post("/sales/review/:reviewId/dismiss", async (context) => {
+    const actor = await requireActor(input.auth, context);
+    const reviewId = requireRecordId(context.req.param("reviewId"), "Sale review was not found");
+    const command = parseRequest(
+      saleReviewDismissRequestSchema,
+      await parseJsonBody(context),
+      "Sale review dismissal is invalid",
+    );
+    return context.json({
+      data: await input.product.dismissSaleReview(actor, reviewId, command.acknowledgedSaleId),
+    });
   });
 
   routes.get("/sales/summary/previous-month", async (context) => {

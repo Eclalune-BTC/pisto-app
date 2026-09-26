@@ -1,5 +1,47 @@
 # Local delivery evidence
 
+## September 26: durable new-sale reviews
+
+The owner authorized publishing the existing local work and starting the remaining product work.
+GitHub `main` and the audit branch were fast-forwarded to `18922d7`, with the 25 previously
+unpublished commits attributed to `wkatir <wilmerhenrysalazarmartinez@gmail.com>`. Source trees were
+unchanged by that identity correction; no published history was rewritten. GitHub CI run
+`36275414318` passed for that synchronized baseline. Source publication is not a hosted deployment.
+
+The new-sales increment implements [ADR 0018](adrs/0018-durable-sale-review.md). Opening a review
+only reads. Explicit confirmation reuses the original key and the existing posting transaction;
+the sale, receipt, and recoverable result commit atomically. Closing a saved review requires
+acknowledging its exact sale ID. A cancel racing with a successful confirmation cannot hide the
+saved result, even when the cancel response is lost.
+
+Validation on Bun 1.4.0:
+
+- `bun run check`, with Turbo task-cache bypassed: exit 0; 524 tests passed (39 scripts, 70
+  contracts, 47 database unit, 10 auth, 21 billing, 69 API, and 268 app tests), all workspace
+  typechecks and builds passed, and the Expo web export completed.
+- PostgreSQL integration: 70 passed, 434 assertions across nine files, against a newly created
+  isolated local database. This includes 11 recovery cases and the complete pre-existing suites.
+- `bun run db:check`: exit 0. `bun run audit:ci`: exit 0, 752 packages checked with the same four
+  documented exceptions. No dependency was added or upgraded; the exceptions were not resolved.
+- An isolated headless Chrome session exercised the built web application with synthetic account
+  and business records. A prepared review survived reload with its exact key and amount. The
+  browser then dropped the POST confirmation response after HTTP 201: the screen recovered the
+  saved sale, survived another reload, and history contained exactly one additional $12.50 sale.
+  Explicit acknowledgement cleared the review and returned an empty new-sale form.
+- The review was inspected at wide and 390 CSS-pixel widths. At the compact width, body and
+  document scroll widths matched the viewport; this is responsive-web evidence, not native-device
+  or full accessibility acceptance. The lost-response run used the wide viewport.
+- Migration `0006` was first exercised on the isolated database, then applied to the configured
+  local `pisto` database at `localhost:55438` after an exclusive private PostgreSQL custom-format
+  backup. The migration count increased from six to seven and the new review table was empty.
+  Existing business tables were not transformed and synthetic transactions did not use that database.
+
+The attempted read-only reviewer could not start; this increment has self-review and the automated
+and browser evidence above, not an independent-agent review. No cloud, provider, signed native
+binary, physical device, or store release was validated in this increment.
+
+## September 10 baseline record
+
 Date: 2026-09-10. Baseline: `92fd080`; integrated local branch: `codex/audit-completion`.
 The owner's latest instruction is local-only. This record distinguishes local acceptance from
 historical cloud activity and remaining product work.
@@ -108,9 +150,10 @@ separate owner instruction. Standard PostgreSQL, Docker and Expo artifacts prese
 
 ## Remaining acceptance limits
 
-The manual core is locally usable; the whole future product is not declared complete. Reviewed
-commands need durable recovery across route unmount/reload, where the original key can currently
-be lost even if the server commits. Full screen-reader/device acceptance, email delivery/recovery,
+The manual core is locally usable; the whole future product is not declared complete. New-sale
+reviews have the bounded server-owned recovery described above. Correction, cash, expense,
+inventory, and receivable commands still need durable recovery across route unmount/reload.
+Full screen-reader/device acceptance, email delivery/recovery,
 team invitations, catalog-linked sales, AI/voice, billing purchases and signed native/store releases
 remain separate work. Availability/performance/recovery targets have not been measured.
 

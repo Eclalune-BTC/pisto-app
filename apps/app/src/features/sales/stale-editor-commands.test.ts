@@ -89,9 +89,7 @@ import { StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import SaleCorrectionScreen from "./sale-correction-screen";
-import SaleCreateScreen from "./sale-create-screen";
 import SaleDetailScreen from "./sale-detail-screen";
-import { SaleDraftFields } from "./sale-draft-fields";
 
 function query(data: unknown) {
   return {
@@ -180,7 +178,6 @@ function recover(dependency: "businesses" | "sale") {
   Object.assign(source, { fetchStatus: "idle", isError: false, error: null });
 }
 const cases = [
-  { screen: "create", dependency: "businesses" },
   { screen: "correction", dependency: "businesses" },
   { screen: "correction", dependency: "sale" },
 ] as const;
@@ -188,21 +185,13 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
   test.each(cases)(
     "$screen preserves exact confirmation when $dependency cannot refresh",
     ({ screen, dependency }) => {
-      const component = screen === "create" ? SaleCreateScreen : SaleCorrectionScreen;
+      const component = SaleCorrectionScreen;
       let tree = render(component);
-      if (screen === "create") {
-        const fields = elements<ComponentProps<typeof SaleDraftFields>>(tree, SaleDraftFields)[0];
-        if (!fields) throw new Error("Expected sale draft");
-        fields.props.onChange("amount", "5.00");
-        fields.props.onChange("date", "2026-09-10");
-        fields.props.onChange("time", "12:00");
-      } else {
-        const reason = elements<ComponentProps<typeof Field>>(tree, Field).find(
-          ({ props }) => props.label === "sales.correction.reason",
-        );
-        reason?.props.onChangeText?.("Wrong sale");
-      }
-      const reviewLabel = screen === "create" ? "sales.review" : "sales.correction.review";
+      const reason = elements<ComponentProps<typeof Field>>(tree, Field).find(
+        ({ props }) => props.label === "sales.correction.reason",
+      );
+      reason?.props.onChangeText?.("Wrong sale");
+      const reviewLabel = "sales.correction.review";
       setFailure(dependency, failure);
       tree = render(component);
       expect(elements(tree, StaleNotice)).toHaveLength(1);
@@ -254,11 +243,7 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       press(button(render(component), ({ variant }) => variant === "accent"));
       expect(fixture.mutation.mutate).toHaveBeenCalledTimes(1);
       const originalCommand = fixture.mutation.mutate.mock.calls[0]?.[0];
-      expect(
-        screen === "create"
-          ? originalCommand.idempotencyKey
-          : originalCommand.command.idempotencyKey,
-      ).toBe("11111111-1111-4111-8111-111111111111");
+      expect(originalCommand.command.idempotencyKey).toBe("11111111-1111-4111-8111-111111111111");
       fixture.mutation.isPending = true;
       setFailure(dependency, failure);
       tree = render(component);

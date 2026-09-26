@@ -1,9 +1,11 @@
+import type { CreateSaleRequest } from "@pisto/contracts";
 import { sql } from "drizzle-orm";
 import {
   bigint,
   check,
   foreignKey,
   index,
+  jsonb,
   pgTable,
   smallint,
   text,
@@ -70,6 +72,56 @@ export const sale = pgTable(
       table.createdAt,
       table.id,
     ),
+  ],
+);
+
+export const saleReview = pgTable(
+  "sale_review",
+  {
+    id: uuid("id").primaryKey(),
+    businessId: text("business_id")
+      .notNull()
+      .references(() => businessSettings.businessId, { onDelete: "restrict" }),
+    actorUserId: text("actor_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    command: jsonb("command").$type<CreateSaleRequest>(),
+    currency: text("currency").notNull(),
+    currencyMinorUnitDigits: smallint("currency_minor_unit_digits").notNull(),
+    timeZone: text("time_zone").notNull(),
+    saleId: uuid("sale_id"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+    closedAt: timestamp("closed_at", { withTimezone: true, mode: "date" }),
+  },
+  (table) => [
+    uniqueIndex("sale_review_open_actor_unique")
+      .on(table.businessId, table.actorUserId)
+      .where(sql`${table.closedAt} is null`),
+    foreignKey({
+      columns: [table.businessId, table.saleId],
+      foreignColumns: [sale.businessId, sale.id],
+      name: "sale_review_business_sale_fk",
+    }).onDelete("restrict"),
+    check(
+      "sale_review_payload_lifecycle_check",
+      sql`
+      (${table.closedAt} is null and ${table.command} is not null)
+      or (${table.closedAt} is not null and ${table.command} is null)`,
+    ),
+    check(
+      "sale_review_command_check",
+      sql`${table.command} is null or (
+      jsonb_typeof(${table.command}) = 'object'
+      and octet_length(${table.command}::text) <= 8192
+      and (${table.command}->>'idempotencyKey') is not null
+      and ${table.command}->>'idempotencyKey' = ${table.id}::text)`,
+    ),
+    check("sale_review_currency_check", sql`${table.currency} ~ '^[A-Z]{3}$'`),
+    check(
+      "sale_review_currency_digits_check",
+      sql`${table.currencyMinorUnitDigits} between 0 and 4`,
+    ),
+    check("sale_review_time_zone_check", sql`char_length(${table.timeZone}) between 1 and 64`),
   ],
 );
 

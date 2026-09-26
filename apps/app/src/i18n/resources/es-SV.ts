@@ -207,7 +207,6 @@ export const esSV = {
     newTitle: "Nueva venta",
     newDescription:
       "Registra el total bruto de la venta. Esta venta no modifica las existencias del inventario.",
-    reviewEyebrow: "Revisión",
     reviewTitle: "Revisa antes de registrar",
     reviewDescription: "Confirma que el total y el momento de la venta sean correctos.",
     total: "Total",
@@ -222,10 +221,6 @@ export const esSV = {
     interpretation: "La moneda es {{currency}}. La fecha y la hora se interpretan en {{timeZone}}.",
     confirm: "Confirmar y registrar",
     edit: "Editar datos",
-    uncertainDescription:
-      "Reintenta esta misma venta. Pisto conserva la clave para evitar duplicados.",
-    failedTitle: "No se registró la venta",
-    failedDescription: "No pudimos registrar la venta. Revisa los datos e inténtalo de nuevo.",
     resultLoading: "Consultando el registro…",
     resultFailedTitle: "No pudimos abrir esta venta",
     resultFailedDescription:
@@ -236,6 +231,24 @@ export const esSV = {
     posted: "Registrada",
     voided: "Anulada",
     registerAnother: "Registrar otra venta",
+    recovery: {
+      loading: "Comprobando si hay una venta por completar…",
+      unavailable:
+        "No pudimos recuperar la revisión. No registres la misma venta otra vez; vuelve a consultar.",
+      retained:
+        "Esta revisión está guardada en tu cuenta. Puedes retomarla al volver a esta pantalla. No se registrará hasta que confirmes.",
+      saved: "Esta venta ya fue registrada. Abre el registro antes de volver a ingresarla.",
+      open: "Abrir venta registrada",
+      prepareFailed:
+        "No pudimos confirmar que la revisión se guardó. Vuelve a consultar antes de preparar otra.",
+      actionFailed: "No pudimos completar la acción. Consulta el estado antes de continuar.",
+      settingsChanged:
+        "La moneda o zona horaria cambió desde la revisión. Edita y revisa nuevamente antes de confirmar.",
+      contextChanged:
+        "Cambió el negocio activo. Actualiza el acceso para continuar sin mezclar operaciones.",
+      refresh: "Comprobar estado de la venta",
+      discard: "Descartar revisión",
+    },
     viewSummary: "Ver resumen",
     correction: {
       eyebrow: "Corrección de venta",

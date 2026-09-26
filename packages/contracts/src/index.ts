@@ -266,6 +266,42 @@ export const saleResponseSchema = z.object({
   }),
 });
 
+export const saleReviewSchema = z
+  .object({
+    id: uuidSchema,
+    businessId: z.string().min(1),
+    command: createSaleRequestSchema,
+    currency: currencyCodeSchema,
+    currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
+    timeZone: timeZoneSchema,
+    createdAt: timestampSchema,
+    saleId: uuidSchema.nullable(),
+  })
+  .strict()
+  .refine((review) => review.id === review.command.idempotencyKey, {
+    message: "The review must preserve the confirmation key",
+  });
+
+export const saleReviewResponseSchema = z
+  .object({
+    data: z.object({ review: saleReviewSchema.nullable() }).strict(),
+  })
+  .strict();
+
+export const saleReviewActionRequestSchema = z.object({}).strict();
+export const saleReviewPreparedResponseSchema = saleReviewResponseSchema.extend({
+  data: z.object({ review: saleReviewSchema }).strict(),
+});
+export const saleReviewDismissRequestSchema = z
+  .object({ acknowledgedSaleId: uuidSchema.nullable() })
+  .strict();
+
+export const saleReviewDismissResponseSchema = z
+  .object({
+    data: z.object({ saleId: uuidSchema.nullable() }).strict(),
+  })
+  .strict();
+
 export const voidSaleRequestSchema = z
   .object({
     idempotencyKey: uuidSchema,
@@ -355,6 +391,9 @@ export type CreateBusinessResponse = z.infer<typeof createBusinessResponseSchema
 export type Sale = z.infer<typeof saleSchema>;
 export type CreateSaleRequest = z.infer<typeof createSaleRequestSchema>;
 export type SaleResponse = z.infer<typeof saleResponseSchema>;
+export type SaleReview = z.infer<typeof saleReviewSchema>;
+export type SaleReviewResponse = z.infer<typeof saleReviewResponseSchema>;
+export type SaleReviewDismissResponse = z.infer<typeof saleReviewDismissResponseSchema>;
 export type SaleCorrectionKind = z.infer<typeof saleCorrectionKindSchema>;
 export type SaleCorrection = z.infer<typeof saleCorrectionSchema>;
 export type VoidSaleRequest = z.infer<typeof voidSaleRequestSchema>;

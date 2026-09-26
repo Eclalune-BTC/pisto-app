@@ -43,6 +43,7 @@ export const schema = {
   receivablePayment: receivables.receivablePayment,
   receivableOperation: receivables.receivableOperation,
   sale: sales.sale,
+  saleReview: sales.saleReview,
   saleOperation: sales.saleOperation,
   saleCorrection: sales.saleCorrection,
 };

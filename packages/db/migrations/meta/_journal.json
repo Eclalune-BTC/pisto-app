@@ -43,6 +43,13 @@
       "when": 1789050384074,
       "tag": "0005_require_complete_record_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790461253636,
+      "tag": "0006_durable_sale_reviews",
+      "breakpoints": true
     }
   ]
 }

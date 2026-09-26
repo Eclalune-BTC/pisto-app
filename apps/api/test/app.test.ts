@@ -101,6 +101,16 @@ function testApp(
           createSale: async () => {
             throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
           },
+          getSaleReview: async () => null,
+          prepareSaleReview: async () => {
+            throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
+          },
+          confirmSaleReview: async () => {
+            throw new ProductError("NOT_FOUND", "Sale review was not found");
+          },
+          dismissSaleReview: async () => {
+            throw new ProductError("NOT_FOUND", "Sale review was not found");
+          },
           voidSale: async () => {
             throw new ProductError("NOT_FOUND", "Sale was not found");
           },

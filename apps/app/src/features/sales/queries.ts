@@ -7,6 +7,7 @@ const pageSize = 25;
 
 export const saleQueryKeys = {
   all: (businessId: string) => ["sales", businessId] as const,
+  review: (businessId: string) => [...saleQueryKeys.all(businessId), "review"] as const,
   details: (businessId: string) => [...saleQueryKeys.all(businessId), "detail"] as const,
   detail: (businessId: string, saleId: string) =>
     [...saleQueryKeys.details(businessId), saleId] as const,
@@ -31,6 +32,15 @@ export function saleQueryOptions(businessId: string, saleId: string) {
   return queryOptions({
     queryFn: ({ signal }) => api.sales.get(saleId, signal),
     queryKey: saleQueryKeys.detail(businessId, saleId),
+  });
+}
+
+export function saleReviewQueryOptions(businessId: string) {
+  return queryOptions({
+    queryFn: ({ signal }) => api.sales.review.get(signal),
+    queryKey: saleQueryKeys.review(businessId),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 

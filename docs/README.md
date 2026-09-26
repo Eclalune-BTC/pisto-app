@@ -35,6 +35,11 @@ the sale history indexes. Exact operating reports also have a PostgreSQL reposit
 strengthens nullable record constraints without adding tables. The
 [data model](data-model.md) explains canonical records, snapshots, derived facts, and query ownership.
 
+New-sale review recovery uses migration `0006` and [ADR 0018](adrs/0018-durable-sale-review.md):
+the server retains the reviewed command and any confirmed sale reference across navigation/reload.
+Only an explicit confirmation posts; closing a review clears its financial payload while retaining
+its closed key. Other financial editors still need their own recovery work.
+
 Still absent: obligations, goals, AI/voice, retrieval, graph, and general activity history.
 Entitlements are projected but gate no product route. Email
 verification/recovery delivery, invitations/role administration/domain-specific team roles, native

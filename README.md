@@ -20,6 +20,12 @@ with [the documentation map](docs/README.md) and the
 [product capability architecture](docs/product-capability-architecture.md) before adding a module or
 changing navigation.
 
+New total-only sales now use a server-owned review before confirmation. A reviewed sale can be
+reopened after navigation or reload without saving financial drafts in browser storage or replaying
+writes automatically. Apply migration `0006` before running this revision. See
+[the recovery contract](docs/adrs/0018-durable-sale-review.md); corrections and other financial
+editors are outside this first recovery slice.
+
 The 2026-09-10 delivery audit documents the [functional and nonfunctional requirements](docs/product-requirements.md),
 [view/component specifications](docs/ux-requirements.md), and [normalized data model](docs/data-model.md).
 The current environment is local only: Expo, Bun/Hono, and PostgreSQL 18 in Docker. Hosting is

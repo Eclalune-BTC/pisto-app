@@ -24,6 +24,7 @@ changes, add a new ADR that supersedes the old one instead of rewriting the old 
 | [0015](0015-business-owned-currency-and-money-snapshots.md) | Accepted | Business-owned currency and immutable money snapshots prevent global defaults and history rewrites |
 | [0016](0016-owner-ports-for-cross-capability-transactions.md) | Accepted | Narrow owner ports keep cross-capability financial writes atomic without hiding ownership |
 | [0017](0017-portable-postgres-and-hosting.md) | Accepted, revised | Local Expo, Bun/Hono, and PostgreSQL; future hosting remains undecided |
+| [0018](0018-durable-sale-review.md) | Accepted | Server-owned recovery for reviewed new sales without client-side financial storage |
 
 ## Status values
 

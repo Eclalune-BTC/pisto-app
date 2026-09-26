@@ -8,13 +8,13 @@ import type {
   Sale,
   SaleList,
   SaleListQuery,
+  SaleReview,
   VoidSaleRequest,
 } from "@pisto/contracts";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 
-import { authorizeBusinessAction, authorizeSession } from "./business-access.ts";
+import { authorizeSession } from "./business-access.ts";
 import type { Database } from "./client.ts";
-import { lockCommandKey } from "./operation-log.ts";
 import {
   hasBusinessPermission,
   resolveBusinessAccess,
@@ -28,14 +28,15 @@ import {
   ProductError,
   requireActiveBusiness,
   requireBusinessPermission,
-  resolveLocalDateTime,
 } from "./product-core.ts";
+import { createSaleReviewRepository } from "./sale-reviews.ts";
 import { createSalesCorrectionRepository, type SaleCorrectionResult } from "./sales-correction.ts";
+import { postSale } from "./sales-posting.ts";
 import { createSalesQueryRepository } from "./sales-queries.ts";
-import { parseSaleMinorUnits, saleFingerprint, toCorrection, toSale } from "./sales-records.ts";
+import { toCorrection, toSale } from "./sales-records.ts";
 import { member, organization, session } from "./schema/auth.ts";
 import { businessSettings } from "./schema/business.ts";
-import { sale, saleCorrection, saleOperation } from "./schema/sales.ts";
+import { sale, saleCorrection } from "./schema/sales.ts";
 
 export type { ProductActor, ProductErrorCode } from "./product-core.ts";
 export {
@@ -48,6 +49,17 @@ export {
 export type { SaleCorrectionResult } from "./sales-correction.ts";
 
 export interface ProductRepository {
+  getSaleReview(actor: ProductActor): Promise<SaleReview | null>;
+  prepareSaleReview(actor: ProductActor, command: CreateSaleRequest): Promise<SaleReview>;
+  confirmSaleReview(
+    actor: ProductActor,
+    reviewId: string,
+  ): Promise<{ sale: Sale; replayed: boolean }>;
+  dismissSaleReview(
+    actor: ProductActor,
+    reviewId: string,
+    acknowledgedSaleId: string | null,
+  ): Promise<{ saleId: string | null }>;
   listBusinesses(actor: ProductActor): Promise<{
     activeBusinessId: string | null;
     items: Business[];
@@ -111,6 +123,7 @@ export function createProductRepository(db: Database): ProductRepository {
   const salesQueries = createSalesQueryRepository(db);
 
   return {
+    ...createSaleReviewRepository(db),
     async listBusinesses(actor) {
       return db.transaction(async (tx) => {
         await authorizeSession(tx, actor, "share");
@@ -328,109 +341,8 @@ export function createProductRepository(db: Database): ProductRepository {
       });
     },
 
-    async createSale(actor, command) {
-      const businessId = requireActiveBusiness(actor);
-      const grossMinorUnits = parseSaleMinorUnits(command.grossMinorUnits);
-      const commandFingerprint = await saleFingerprint(command);
-
-      return db.transaction(async (tx) => {
-        const access = await authorizeBusinessAction(tx, actor, ["sales:create"], "update");
-        await lockCommandKey(tx, {
-          actorUserId: actor.userId,
-          businessId,
-          idempotencyKey: command.idempotencyKey,
-        });
-        const [existingCorrectionOperation] = await tx
-          .select({ id: saleCorrection.id })
-          .from(saleCorrection)
-          .where(
-            and(
-              eq(saleCorrection.businessId, businessId),
-              eq(saleCorrection.actorUserId, actor.userId),
-              eq(saleCorrection.idempotencyKey, command.idempotencyKey),
-            ),
-          )
-          .limit(1);
-        if (existingCorrectionOperation) {
-          throw new ProductError(
-            "IDEMPOTENCY_CONFLICT",
-            "That confirmation key was already used for another sale operation",
-          );
-        }
-
-        const [existingOperation] = await tx
-          .select({
-            commandFingerprint: saleOperation.commandFingerprint,
-            record: sale,
-            correction: saleCorrection,
-          })
-          .from(saleOperation)
-          .innerJoin(
-            sale,
-            and(eq(sale.id, saleOperation.saleId), eq(sale.businessId, saleOperation.businessId)),
-          )
-          .leftJoin(
-            saleCorrection,
-            and(
-              eq(saleCorrection.businessId, sale.businessId),
-              eq(saleCorrection.originalSaleId, sale.id),
-            ),
-          )
-          .where(
-            and(
-              eq(saleOperation.businessId, businessId),
-              eq(saleOperation.actorUserId, actor.userId),
-              eq(saleOperation.idempotencyKey, command.idempotencyKey),
-            ),
-          )
-          .limit(1);
-        if (existingOperation) {
-          if (existingOperation.commandFingerprint !== commandFingerprint) {
-            throw new ProductError(
-              "IDEMPOTENCY_CONFLICT",
-              "That confirmation key was already used for a different sale",
-            );
-          }
-          return {
-            sale: toSale(
-              existingOperation.record,
-              existingOperation.correction ? toCorrection(existingOperation.correction) : null,
-            ),
-            replayed: true,
-          };
-        }
-
-        const occurredAt = resolveLocalDateTime({
-          date: command.occurredLocalDate,
-          time: command.occurredLocalTime,
-          timeZone: access.timeZone,
-        });
-        const [createdSale] = await tx
-          .insert(sale)
-          .values({
-            businessId,
-            grossMinorUnits,
-            currency: access.currency,
-            currencyMinorUnitDigits: access.currencyMinorUnitDigits,
-            occurredAt,
-            occurredLocalDate: command.occurredLocalDate,
-            occurredLocalTime: command.occurredLocalTime,
-            timeZone: access.timeZone,
-            description: command.description ?? null,
-            createdByUserId: actor.userId,
-          })
-          .returning();
-        if (!createdSale) throw new Error("Sale insert returned no record");
-        await tx.insert(saleOperation).values({
-          businessId,
-          saleId: createdSale.id,
-          actorUserId: actor.userId,
-          idempotencyKey: command.idempotencyKey,
-          commandFingerprint,
-          action: "sale.posted",
-        });
-        return { sale: toSale(createdSale), replayed: false };
-      });
+    createSale(actor, command) {
+      return db.transaction((tx) => postSale(tx, actor, command));
     },
 
     voidSale(actor, saleId, command) {

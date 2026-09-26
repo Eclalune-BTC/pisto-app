@@ -171,3 +171,57 @@ describe("sales list route", () => {
     expect(await staleCursor.json()).toMatchObject({ error: { code: "VALIDATION_ERROR" } });
   });
 });
+
+describe("durable sale review routes", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  const request = (path: string, body: unknown) =>
+    new Request(`http://localhost/v1/sales/review${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  test("protects all review routes before calling a repository", async () => {
+    const app = createTestApp({}, false);
+    expect((await app.request("/v1/sales/review")).status).toBe(401);
+    for (const path of ["", `/${id}/confirm`, `/${id}/dismiss`]) {
+      expect((await app.request(request(path, {}))).status).toBe(401);
+    }
+  });
+  test("resolves the static review read instead of interpreting it as a sale ID", async () => {
+    const app = createTestApp({
+      getSaleReview: async (actor) => {
+        expect(actor.activeBusinessId).toBe("business_test");
+        return null;
+      },
+    });
+    const response = await app.request("/v1/sales/review");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ data: { review: null } });
+  });
+  test("rejects command ownership, invalid IDs, and replacement data", async () => {
+    const app = createTestApp({});
+    expect((await app.request(request("", { businessId: "foreign" }))).status).toBe(400);
+    expect((await app.request(request("/bad/confirm", {}))).status).toBe(404);
+    expect((await app.request(request(`/${id}/confirm`, { grossMinorUnits: "1" }))).status).toBe(
+      400,
+    );
+    expect((await app.request(request(`/${id}/dismiss`, {}))).status).toBe(400);
+  });
+  test("passes explicit saved-sale acknowledgement through the authenticated boundary", async () => {
+    let received: unknown;
+    const app = createTestApp({
+      dismissSaleReview: async (actor, reviewId, acknowledgedSaleId) => {
+        received = { actor, reviewId, acknowledgedSaleId };
+        return { saleId: id };
+      },
+    });
+    const response = await app.request(request(`/${id}/dismiss`, { acknowledgedSaleId: id }));
+    expect(response.status).toBe(200);
+    expect(received).toEqual({
+      actor: { userId: "user_test", sessionId: "session_test", activeBusinessId: "business_test" },
+      reviewId: id,
+      acknowledgedSaleId: id,
+    });
+    expect(await response.json()).toEqual({ data: { saleId: id } });
+  });
+});
