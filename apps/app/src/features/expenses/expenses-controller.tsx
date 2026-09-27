@@ -1,3 +1,4 @@
+import { calendarLocalDateSchema } from "@pisto/contracts";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -6,7 +7,6 @@ import { useTranslation } from "react-i18next";
 import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { queryHasStaleData } from "@/lib/query-state";
-import { isValidCashLocalDate } from "../cash/drafts";
 import {
   cashAccountsInfiniteOptions,
   expenseSummaryQueryOptions,
@@ -120,8 +120,8 @@ export function ExpensesController() {
 
   const applyPeriod = () => {
     if (
-      !isValidCashLocalDate(period.startLocalDate) ||
-      !isValidCashLocalDate(period.endLocalDate) ||
+      !calendarLocalDateSchema.safeParse(period.startLocalDate).success ||
+      !calendarLocalDateSchema.safeParse(period.endLocalDate).success ||
       period.startLocalDate > period.endLocalDate
     ) {
       setPeriodError(copy.remote.invalidPeriod);

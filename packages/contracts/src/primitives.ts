@@ -44,31 +44,6 @@ export const uuidSchema = z.string().uuid();
 export const opaqueCursorSchema = z.string().min(1).max(512);
 export const boundedListLimitSchema = z.coerce.number().int().min(1).max(50).default(25);
 
-function isGregorianLeapYear(year: number): boolean {
-  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-}
-
-function lastDayOfMonth(year: number, month: number): number {
-  if (month === 2) return isGregorianLeapYear(year) ? 29 : 28;
-  return month === 4 || month === 6 || month === 9 || month === 11 ? 30 : 31;
-}
-
-function isCalendarLocalDate(value: string): boolean {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return false;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (month < 1 || month > 12 || day < 1) return false;
-  return day <= lastDayOfMonth(year, month);
-}
-
-/**
- * A `YYYY-MM-DD` date that also exists in the proleptic Gregorian calendar, so `2026-02-30` and
- * `2025-02-29` are rejected. Use it for a business-local date a user supplies; `localDateSchema`
- * stays format-only for values already produced by a trusted calendar computation.
- */
-export const calendarLocalDateSchema = localDateSchema.refine(
-  isCalendarLocalDate,
-  "Must be a real calendar date",
-);
+export const calendarLocalDateSchema = z.iso
+  .date({ error: "Must be a real calendar date" })
+  .refine((value) => !value.startsWith("0000"), "Year zero is not supported");

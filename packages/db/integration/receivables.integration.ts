@@ -377,6 +377,40 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
     expect(summary.businessLocalDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
+  test("preserves early calendar dates and exact replay without accepting year zero", async () => {
+    const owner = actor("ownerB", businessB);
+    const created = await repository.createCustomer(owner, {
+      idempotencyKey: crypto.randomUUID(),
+      name: "Calendar validation",
+    });
+    const command = {
+      idempotencyKey: crypto.randomUUID(),
+      customerId: created.customer.id,
+      originalMinorUnits: "100",
+      description: "Calendar test",
+      postedDate: "0099-12-30",
+      dueDate: "0099-12-31",
+    };
+    const posted = await repository.postReceivable(owner, command);
+    expect(posted.receivable.postedDate).toBe(command.postedDate);
+    expect(posted.receivable.dueDate).toBe(command.dueDate);
+    expect(await repository.postReceivable(owner, command)).toEqual({ ...posted, replayed: true });
+    await expect(
+      repository.postReceivable(owner, {
+        ...command,
+        idempotencyKey: crypto.randomUUID(),
+        postedDate: "0000-01-01",
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    const summary = await cash.getExpensePeriodSummary(owner, {
+      startLocalDate: "0099-12-30",
+      endLocalDate: "0099-12-31",
+    });
+    expect(summary.periodStartUtc).toMatch(/^0099-/);
+    expect(summary.periodEndUtcExclusive).toMatch(/^0100-/);
+    expect(summary.totalMinorUnits).toBe("0");
+  });
+
   test("requires reversal before void and denies stale sessions", async () => {
     const createdCustomer = await repository.createCustomer(actor("ownerA", businessA), {
       idempotencyKey: crypto.randomUUID(),

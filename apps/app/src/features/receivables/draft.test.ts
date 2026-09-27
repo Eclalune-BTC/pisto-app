@@ -1,7 +1,7 @@
 import type { Customer } from "@pisto/contracts";
 import { describe, expect, test } from "vitest";
 import type { CashAccountChoice } from "./cash-account-source";
-import { buildPaymentCommand, buildPostReceivableCommand, isActualLocalDate } from "./draft";
+import { buildPaymentCommand, buildPostReceivableCommand } from "./draft";
 
 const customer: Customer = {
   id: "20000000-0000-4000-8000-000000000001",
@@ -22,8 +22,37 @@ const account: CashAccountChoice = {
 
 describe("receivable drafts", () => {
   test("rejects impossible calendar dates before review", () => {
-    expect(isActualLocalDate("2026-02-29")).toBe(false);
-    expect(isActualLocalDate("2028-02-29")).toBe(true);
+    for (const postedDate of ["2026-02-29", "0000-01-01", "1900-02-29"]) {
+      expect(
+        buildPostReceivableCommand(
+          { amount: "1", description: "Order", postedDate, dueDate: "" },
+          customer,
+          2,
+          "20000000-0000-4000-8000-000000000003",
+        ),
+      ).toEqual({ issues: { postedDate: "date" } });
+    }
+  });
+
+  test("shares calendar validation for early years, leap days and due dates", () => {
+    for (const postedDate of ["0099-01-01", "2028-02-29"]) {
+      expect(
+        buildPostReceivableCommand(
+          { amount: "1", description: "Order", postedDate, dueDate: postedDate },
+          customer,
+          2,
+          "20000000-0000-4000-8000-000000000003",
+        ),
+      ).toMatchObject({ command: { postedDate, dueDate: postedDate }, issues: {} });
+    }
+    expect(
+      buildPostReceivableCommand(
+        { amount: "1", description: "Order", postedDate: "2026-01-01", dueDate: "2026-02-30" },
+        customer,
+        2,
+        "20000000-0000-4000-8000-000000000003",
+      ),
+    ).toEqual({ issues: { dueDate: "date" } });
   });
 
   test("builds an exact minor-unit charge without client currency input", () => {

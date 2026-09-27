@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { getTableColumns, getTableName } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
+import { assertCalendarDate } from "../src/receivables/codec.ts";
 import { deriveReceivableBalance } from "../src/receivables.ts";
 import { cashMovement } from "../src/schema/cash.ts";
 import {
@@ -11,6 +12,16 @@ import {
 } from "../src/schema/receivables.ts";
 
 describe("customers and receivables schema", () => {
+  test("validates charge dates through the shared calendar contract", () => {
+    for (const value of ["0001-01-01", "0099-12-31", "2000-02-29", "2028-02-29"]) {
+      expect(() => assertCalendarDate(value, "The posted date")).not.toThrow();
+    }
+    for (const value of ["0000-01-01", "1900-02-29", "2026-02-30", "2026-04-31", "2026-1-1"]) {
+      expect(() => assertCalendarDate(value, "The posted date")).toThrow(
+        "The posted date is invalid",
+      );
+    }
+  });
   test("owns customer, charge, payment, and operation records", () => {
     expect(getTableName(customer)).toBe("customer");
     expect(getTableName(receivable)).toBe("receivable");

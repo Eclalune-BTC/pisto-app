@@ -85,6 +85,16 @@ describe("money formatting", () => {
 });
 
 describe("money parsing", () => {
+  test("allows zero only when requested without weakening other amount checks", () => {
+    for (const digits of [0, 1, 2, 3, 4]) {
+      expect(parseAmountToMinorUnits("0", digits, { allowZero: true })).toEqual({ value: "0" });
+      expect(parseAmountToMinorUnits("0", digits)).toEqual({ error: "non-positive" });
+    }
+    for (const value of ["", "-0", "-1", "12.", "1e3", "1,500"]) {
+      expect(parseAmountToMinorUnits(value, 3, { allowZero: true })).toHaveProperty("error");
+    }
+  });
+
   test("parses decimal input without floating-point arithmetic", () => {
     expect(parseAmountToMinorUnits("12.50", 2)).toEqual({ value: "1250" });
     expect(parseAmountToMinorUnits("12,5", 2)).toEqual({ value: "1250" });

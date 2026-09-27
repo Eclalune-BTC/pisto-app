@@ -7,6 +7,8 @@ import type {
 } from "@pisto/contracts";
 import {
   applyReceivablePaymentRequestSchema,
+  calendarLocalDateSchema,
+  localTimeSchema,
   postReceivableRequestSchema,
   reverseReceivablePaymentRequestSchema,
   voidReceivableRequestSchema,
@@ -51,22 +53,6 @@ type DraftResult<T, TField extends string> =
   | { command: T; issues: Partial<Record<TField, ReceivableDraftIssue>> }
   | { issues: Partial<Record<TField, ReceivableDraftIssue>> };
 
-export function isActualLocalDate(value: string): boolean {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return false;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return (
-    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
-  );
-}
-
-function isLocalTime(value: string): boolean {
-  return /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
-}
-
 export function buildPostReceivableCommand(
   draft: PostReceivableDraft,
   customer: Customer | null,
@@ -85,8 +71,9 @@ export function buildPostReceivableCommand(
   if (draft.description.trim().length < 1 || draft.description.trim().length > 240) {
     issues.description = "description";
   }
-  if (!isActualLocalDate(draft.postedDate)) issues.postedDate = "date";
-  if (draft.dueDate && !isActualLocalDate(draft.dueDate)) issues.dueDate = "date";
+  if (!calendarLocalDateSchema.safeParse(draft.postedDate).success) issues.postedDate = "date";
+  if (draft.dueDate && !calendarLocalDateSchema.safeParse(draft.dueDate).success)
+    issues.dueDate = "date";
   if (!issues.postedDate && !issues.dueDate && draft.dueDate && draft.dueDate < draft.postedDate) {
     issues.dueDate = "due-date";
   }
@@ -119,8 +106,8 @@ export function buildPaymentCommand(
   const amount = parseAmountToMinorUnits(draft.amount, currencyMinorUnitDigits);
   if ("error" in amount) issues.amount = "amount";
   if (account?.status !== "active") issues.cashAccount = "cash-account";
-  if (!isActualLocalDate(draft.date)) issues.date = "date";
-  if (!isLocalTime(draft.time)) issues.time = "time";
+  if (!calendarLocalDateSchema.safeParse(draft.date).success) issues.date = "date";
+  if (!localTimeSchema.safeParse(draft.time).success) issues.time = "time";
   if (draft.reference.trim().length > 120) issues.reference = "reference";
   if (!("error" in amount) && BigInt(amount.value) > BigInt(outstandingMinorUnits)) {
     issues.amount = "overpayment";
@@ -143,8 +130,8 @@ export function buildPaymentReversalCommand(
   idempotencyKey: string,
 ): DraftResult<ReverseReceivablePaymentRequest, "date" | "reference" | "time"> {
   const issues: Partial<Record<"date" | "reference" | "time", ReceivableDraftIssue>> = {};
-  if (!isActualLocalDate(draft.date)) issues.date = "date";
-  if (!isLocalTime(draft.time)) issues.time = "time";
+  if (!calendarLocalDateSchema.safeParse(draft.date).success) issues.date = "date";
+  if (!localTimeSchema.safeParse(draft.time).success) issues.time = "time";
   if (draft.reference.trim().length > 120) issues.reference = "reference";
   if (Object.keys(issues).length > 0) return { issues };
   const parsed = reverseReceivablePaymentRequestSchema.safeParse({

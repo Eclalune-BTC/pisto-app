@@ -204,6 +204,16 @@ provider layers return stable English reason codes and never expose raw messages
 reads system/app preferences, but unsupported preferences intentionally resolve to `es-SV` while it
 is the only approved locale. See [ADR 0013](adrs/0013-es-sv-localization-boundary.md).
 
+The catalog list reads its typed translations through `useTranslation` instead of receiving a
+second copy object. Shared UI primitives still receive their labels from the owning screen.
+Keep interpolation and locale changes inside i18next; do not duplicate the translation catalog in
+component prop interfaces. See the [hook reference](https://react.i18next.com/latest/usetranslation-hook).
+
+Draft dates and minute-precision times reuse `calendarLocalDateSchema` and `localTimeSchema` from
+`@pisto/contracts`. Sales and catalog prices share `parseAmountToMinorUnits`: catalog prices allow
+zero explicitly and a blank price remains absent; sales require a positive amount. Both reject
+ambiguous separators and incomplete decimals without rounding or changing stored records.
+
 ## Voice UI boundary
 
 No voice dependency or surface exists today. A later approved push-to-talk slice uses a visible

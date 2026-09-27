@@ -1,21 +1,8 @@
 import type { CreateProductRequest, Product, UpdateProductRequest } from "@pisto/contracts";
 import { createProductRequestSchema, updateProductRequestSchema } from "@pisto/contracts";
+import { parseAmountToMinorUnits } from "@/lib/money";
 import { parseQuantityToMinorUnits } from "../inventory/quantity";
 import type { ProductDraftErrors, ProductDraftFields } from "./product-editor";
-
-const maximumMinorUnits = 9_223_372_036_854_775_807n;
-
-function parsePrice(input: string, fractionDigits: number): string | null | "invalid" {
-  const normalized = input.trim().replace(",", ".");
-  if (!normalized) return null;
-  const pattern =
-    fractionDigits === 0 ? /^\d+$/ : new RegExp(`^\\d+(?:\\.\\d{0,${fractionDigits}})?$`);
-  if (!pattern.test(normalized)) return "invalid";
-  const [whole = "0", fraction = ""] = normalized.split(".");
-  const canonical = `${whole}${fraction.padEnd(fractionDigits, "0")}`.replace(/^0+(?=\d)/, "");
-  const parsed = BigInt(canonical || "0");
-  return parsed > maximumMinorUnits ? "invalid" : parsed.toString();
-}
 
 export function buildProductCommand(input: {
   currencyMinorUnitDigits: number;
@@ -29,18 +16,19 @@ export function buildProductCommand(input: {
   const sku = input.draft.sku.trim();
   if (!name || name.length > 120) errors.name = "invalid";
   if (sku.length > 64) errors.sku = "invalid";
-  const sellingPriceMinorUnits = parsePrice(
-    input.draft.sellingPrice,
-    input.currencyMinorUnitDigits,
-  );
-  if (sellingPriceMinorUnits === "invalid") errors.sellingPrice = "invalid";
+  const price = input.draft.sellingPrice.trim()
+    ? parseAmountToMinorUnits(input.draft.sellingPrice, input.currencyMinorUnitDigits, {
+        allowZero: true,
+      })
+    : null;
+  if (price && "error" in price) errors.sellingPrice = "invalid";
   const threshold = input.draft.lowStockThreshold.trim()
     ? parseQuantityToMinorUnits(input.draft.lowStockThreshold, input.draft.quantityPrecision, {
         allowZero: true,
       })
     : null;
   if (threshold && "error" in threshold) errors.lowStockThreshold = threshold.error;
-  if (Object.keys(errors).length > 0 || sellingPriceMinorUnits === "invalid") return { errors };
+  if (Object.keys(errors).length > 0 || (price && "error" in price)) return { errors };
   const thresholdMinorUnits = threshold && "value" in threshold ? threshold.value : null;
 
   const fields = {
@@ -48,7 +36,7 @@ export function buildProductCommand(input: {
     lowStockThresholdMinorUnits: input.draft.tracked ? thresholdMinorUnits : null,
     name,
     quantityPrecision: input.draft.quantityPrecision,
-    sellingPriceMinorUnits,
+    sellingPriceMinorUnits: price?.value ?? null,
     sku: sku || null,
     tracked: input.draft.tracked,
     unitKind: input.draft.unitKind,

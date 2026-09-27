@@ -13,6 +13,7 @@ describe("operating report contracts", () => {
   });
 
   test.each([
+    { startLocalDate: "0000-01-01", endLocalDate: "0000-01-31" },
     { startLocalDate: "2026-02-29", endLocalDate: "2026-03-01" },
     { startLocalDate: "2026-04-02", endLocalDate: "2026-04-01" },
     { startLocalDate: "2025-01-01", endLocalDate: "2026-01-02" },
@@ -56,5 +57,20 @@ describe("operating report contracts", () => {
 
     expect(parsed.data.report.positionAsOfLocalDate).toBe("2026-08-22");
     expect(parsed.data.report.sales.grossMinorUnits).toBe("0");
+  });
+
+  test("accepts an early four-digit year without shifting it into the 1900s", () => {
+    expect(
+      operatingReportQuerySchema.parse({
+        startLocalDate: "0099-01-01",
+        endLocalDate: "0099-12-31",
+      }),
+    ).toEqual({ startLocalDate: "0099-01-01", endLocalDate: "0099-12-31" });
+    expect(
+      operatingReportQuerySchema.safeParse({
+        startLocalDate: "0099-01-01",
+        endLocalDate: "0100-01-02",
+      }).success,
+    ).toBe(false);
   });
 });

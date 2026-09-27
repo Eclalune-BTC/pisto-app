@@ -5,7 +5,6 @@ import type { InventoryScreenCopy } from "../inventory/inventory-screen";
 import type { MovementEditorCopy } from "../inventory/movement-editor";
 import type { MovementHistoryCopy } from "../inventory/movement-history";
 import type { ReversalEditorCopy } from "../inventory/reversal-editor";
-import type { CatalogScreenCopy } from "./catalog-screen";
 import type { CategoryManagerCopy } from "./category-manager";
 import type { ProductDetailCopy } from "./product-detail";
 import type { ProductEditorCopy } from "./product-editor";
@@ -61,49 +60,6 @@ export function buildCatalogCopy(t: TFunction) {
   const uncertain = {
     retrySameConfirmation: t("common.retrySameConfirmation"),
     uncertainTitle: t("common.uncertainTitle"),
-  };
-
-  const list: CatalogScreenCopy = {
-    allCategories: t("catalog.list.allCategories"),
-    archived: t("catalog.list.archived"),
-    categoriesLoading: t("catalog.list.categoriesLoading"),
-    categoriesUnavailable: t("catalog.list.categoriesUnavailable"),
-    createProduct: t("catalog.list.createProduct"),
-    deniedDescription: t("catalog.list.deniedDescription"),
-    deniedTitle: t("catalog.list.deniedTitle"),
-    description: t("catalog.list.description"),
-    emptyDescription: t("catalog.list.emptyDescription"),
-    emptyTitle: t("catalog.list.emptyTitle"),
-    errorDescription: t("catalog.list.errorDescription"),
-    errorTitle: t("catalog.list.errorTitle"),
-    eyebrow: t("catalog.list.eyebrow"),
-    loadMore: t("catalog.list.loadMore"),
-    loadMoreCategories: t("catalog.list.loadMoreCategories"),
-    loading: t("catalog.list.loading"),
-    loadingMore: t("catalog.list.loadingMore"),
-    lowStock: t("catalog.list.lowStock"),
-    manageCategories: t("catalog.list.manageCategories"),
-    noPrice: t("catalog.list.noPrice"),
-    noSku: t("catalog.list.noSku"),
-    offlineDescription: remote.offlineDescription,
-    offlineTitle: remote.offlineTitle,
-    onHand: t("catalog.list.onHand"),
-    openProduct: (name: string) => t("catalog.list.openProduct", { name }),
-    readOnlyDescription: remote.catalogReadOnly,
-    readOnlyTitle: remote.readOnlyTitle,
-    retry: remote.retry,
-    searchLabel: t("catalog.list.searchLabel"),
-    searchPlaceholder: t("catalog.list.searchPlaceholder"),
-    stale: remote.stale,
-    statusLabel: t("catalog.list.statusLabel"),
-    statuses: {
-      active: t("catalog.list.statuses.active"),
-      all: t("catalog.list.statuses.all"),
-      archived: t("catalog.list.statuses.archived"),
-    },
-    stockNotTracked: t("catalog.list.stockNotTracked"),
-    title: t("catalog.list.title"),
-    unitLabels,
   };
 
   const categories: CategoryManagerCopy = {
@@ -401,7 +357,6 @@ export function buildCatalogCopy(t: TFunction) {
       reversal: t("productErrors.contexts.reversal.fallback"),
     },
     inventory,
-    list,
     movementEditor,
     movementEditorFields,
     movementHistory,

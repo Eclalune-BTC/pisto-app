@@ -1,11 +1,13 @@
-import type { Category, ProductDetail, ProductUnitKind } from "@pisto/contracts";
+import type { Category, ProductDetail } from "@pisto/contracts";
 import { AlertTriangle, FolderCog, Plus, Search } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { FilterBar } from "@/components/ui/filter-bar";
+import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
 import type { CatalogStatusFilter } from "./query-keys";
@@ -24,45 +26,6 @@ export type CatalogCollectionState =
       stale?: boolean;
     };
 
-export interface CatalogScreenCopy {
-  title: string;
-  description: string;
-  eyebrow: string;
-  createProduct: string;
-  manageCategories: string;
-  searchLabel: string;
-  searchPlaceholder: string;
-  allCategories: string;
-  statusLabel: string;
-  statuses: Record<CatalogStatusFilter, string>;
-  loading: string;
-  offlineTitle: string;
-  offlineDescription: string;
-  deniedTitle: string;
-  deniedDescription: string;
-  errorTitle: string;
-  errorDescription: string;
-  retry: string;
-  stale: string;
-  emptyTitle: string;
-  emptyDescription: string;
-  archived: string;
-  noSku: string;
-  noPrice: string;
-  stockNotTracked: string;
-  lowStock: string;
-  onHand: string;
-  loadMore: string;
-  loadingMore: string;
-  loadMoreCategories: string;
-  categoriesLoading: string;
-  categoriesUnavailable: string;
-  readOnlyTitle: string;
-  readOnlyDescription: string;
-  unitLabels: Record<ProductUnitKind, string>;
-  openProduct: (name: string) => string;
-}
-
 interface CatalogScreenProps {
   canManage: boolean;
   categories: Category[];
@@ -71,8 +34,6 @@ interface CatalogScreenProps {
   categoriesLoading: boolean;
   categoriesLoadingMore: boolean;
   categoryId: string | null;
-  copy: CatalogScreenCopy;
-  locale: string;
   onCategoryChange: (categoryId: string | null) => void;
   onCreateProduct: () => void;
   onLoadMore: () => void;
@@ -90,34 +51,33 @@ interface CatalogScreenProps {
 }
 
 function StatusState({
-  copy,
   onRetry,
   status,
 }: {
-  copy: CatalogScreenCopy;
   onRetry: () => void;
   status: "denied" | "error" | "loading" | "offline";
 }) {
+  const { t } = useTranslation();
   if (status === "loading") {
     return (
       <View className="min-h-56 items-start justify-center gap-3 border-y border-border">
         <ActivityIndicator color="#237A55" />
-        <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
+        <Text className="text-sm text-muted-foreground">{t("catalog.list.loading")}</Text>
       </View>
     );
   }
   const title =
     status === "denied"
-      ? copy.deniedTitle
+      ? t("catalog.list.deniedTitle")
       : status === "offline"
-        ? copy.offlineTitle
-        : copy.errorTitle;
+        ? t("remote.offlineTitle")
+        : t("catalog.list.errorTitle");
   const description =
     status === "denied"
-      ? copy.deniedDescription
+      ? t("catalog.list.deniedDescription")
       : status === "offline"
-        ? copy.offlineDescription
-        : copy.errorDescription;
+        ? t("remote.offlineDescription")
+        : t("catalog.list.errorDescription");
   return (
     <View className="gap-4 border-l-4 border-danger bg-[#FFF1F1] p-5 dark:bg-[#3A2020]">
       <View className="flex-row items-start gap-3">
@@ -132,7 +92,12 @@ function StatusState({
         </View>
       </View>
       {status === "error" ? (
-        <Button className="self-start" label={copy.retry} onPress={onRetry} variant="secondary" />
+        <Button
+          className="self-start"
+          label={t("common.retry")}
+          onPress={onRetry}
+          variant="secondary"
+        />
       ) : null}
     </View>
   );
@@ -146,8 +111,6 @@ export function CatalogScreen({
   categoriesLoading,
   categoriesLoadingMore,
   categoryId,
-  copy,
-  locale,
   onCategoryChange,
   onCreateProduct,
   onLoadMore,
@@ -163,10 +126,12 @@ export function CatalogScreen({
   state,
   status,
 }: CatalogScreenProps) {
+  const { i18n, t } = useTranslation();
+  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
   if (state.status === "denied") {
     return (
       <Page>
-        <StatusState copy={copy} onRetry={onRetry} status="denied" />
+        <StatusState onRetry={onRetry} status="denied" />
       </Page>
     );
   }
@@ -177,42 +142,46 @@ export function CatalogScreen({
           <View className="gap-3 sm:flex-row sm:flex-wrap">
             <Button onPress={onManageCategories} variant="secondary">
               <FolderCog color="#237A55" size={18} />
-              <ButtonText variant="secondary">{copy.manageCategories}</ButtonText>
+              <ButtonText variant="secondary">{t("catalog.list.manageCategories")}</ButtonText>
             </Button>
             {canManage ? (
               <Button onPress={onCreateProduct} variant="accent">
                 <Plus color="#14241D" size={18} strokeWidth={2.6} />
-                <ButtonText variant="accent">{copy.createProduct}</ButtonText>
+                <ButtonText variant="accent">{t("catalog.list.createProduct")}</ButtonText>
               </Button>
             ) : null}
           </View>
         }
-        description={copy.description}
-        eyebrow={copy.eyebrow}
-        title={copy.title}
+        description={t("catalog.list.description")}
+        eyebrow={t("catalog.list.eyebrow")}
+        title={t("catalog.list.title")}
       />
 
-      {showReadOnlyNotice ? <ReadOnlyNotice description={copy.readOnlyDescription} /> : null}
+      {showReadOnlyNotice ? (
+        <ReadOnlyNotice description={t("catalog.remote.catalogReadOnly")} />
+      ) : null}
 
       <View className="gap-5 border-y border-line py-5 dark:border-[#304239]">
         <View className="gap-4 lg:flex-row lg:items-end">
           <View className="min-w-0 flex-1">
             <Field
-              accessibilityLabel={copy.searchLabel}
-              label={copy.searchLabel}
+              accessibilityLabel={t("catalog.list.searchLabel")}
+              label={t("catalog.list.searchLabel")}
               onChangeText={onSearchChange}
-              placeholder={copy.searchPlaceholder}
+              placeholder={t("catalog.list.searchPlaceholder")}
               trailing={<Search color="#617168" size={18} />}
               value={search}
             />
           </View>
           <View className="gap-1 lg:max-w-[48%]">
-            <Text className="text-xs font-semibold text-muted-foreground">{copy.statusLabel}</Text>
+            <Text className="text-xs font-semibold text-muted-foreground">
+              {t("catalog.list.statusLabel")}
+            </Text>
             <FilterBar
-              label={copy.statusLabel}
+              label={t("catalog.list.statusLabel")}
               onChange={onStatusChange}
               options={(["active", "archived", "all"] as const).map((value) => ({
-                label: copy.statuses[value],
+                label: t(`catalog.list.statuses.${value}`),
                 value,
               }))}
               value={status}
@@ -230,7 +199,7 @@ export function CatalogScreen({
             className={categoryId === null ? "border-b-2 border-positive py-2" : "py-2"}
             onPress={() => onCategoryChange(null)}
           >
-            <Text className="font-semibold text-foreground">{copy.allCategories}</Text>
+            <Text className="font-semibold text-foreground">{t("catalog.list.allCategories")}</Text>
           </Pressable>
           {categories
             .filter((category) => category.status === "active")
@@ -246,11 +215,13 @@ export function CatalogScreen({
               </Pressable>
             ))}
           {categoriesLoading ? (
-            <Text className="py-2 text-sm text-muted-foreground">{copy.categoriesLoading}</Text>
+            <Text className="py-2 text-sm text-muted-foreground">
+              {t("catalog.list.categoriesLoading")}
+            </Text>
           ) : null}
           {categoriesHasNextPage ? (
             <Button
-              label={copy.loadMoreCategories}
+              label={t("catalog.list.loadMoreCategories")}
               loading={categoriesLoadingMore}
               onPress={onLoadMoreCategories}
               size="sm"
@@ -261,32 +232,39 @@ export function CatalogScreen({
         {categoriesError ? (
           <View className="gap-2 border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18] sm:flex-row sm:items-center sm:justify-between">
             <Text accessibilityRole="alert" className="text-sm text-ink dark:text-[#F2E4D2]">
-              {copy.categoriesUnavailable}
+              {t("catalog.list.categoriesUnavailable")}
             </Text>
-            <Button label={copy.retry} onPress={onRetryCategories} size="sm" variant="secondary" />
+            <Button
+              label={t("common.retry")}
+              onPress={onRetryCategories}
+              size="sm"
+              variant="secondary"
+            />
           </View>
         ) : null}
       </View>
 
       {state.status !== "ready" ? (
-        <StatusState copy={copy} onRetry={onRetry} status={state.status} />
+        <StatusState onRetry={onRetry} status={state.status} />
       ) : (
         <View className="gap-0">
           {state.stale ? (
             <View className="mb-5 border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
-              <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
+              <Text className="text-sm text-ink dark:text-[#F2E4D2]">{t("remote.stale")}</Text>
             </View>
           ) : null}
           {state.items.length === 0 ? (
             <View className="gap-2 py-12">
-              <Text className="text-xl font-black text-foreground">{copy.emptyTitle}</Text>
+              <Text className="text-xl font-black text-foreground">
+                {t("catalog.list.emptyTitle")}
+              </Text>
               <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
-                {copy.emptyDescription}
+                {t("catalog.list.emptyDescription")}
               </Text>
               {canManage ? (
                 <Button
                   className="mt-3 self-start"
-                  label={copy.createProduct}
+                  label={t("catalog.list.createProduct")}
                   onPress={onCreateProduct}
                   variant="accent"
                 />
@@ -295,7 +273,7 @@ export function CatalogScreen({
           ) : (
             state.items.map(({ product, stock }) => (
               <Pressable
-                accessibilityLabel={copy.openProduct(product.name)}
+                accessibilityLabel={t("catalog.list.openProduct", { name: product.name })}
                 accessibilityRole="button"
                 className="gap-3 border-b border-line py-5 active:opacity-70 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
                 key={product.id}
@@ -306,18 +284,20 @@ export function CatalogScreen({
                     <Text className="text-lg font-black text-foreground">{product.name}</Text>
                     {product.status === "archived" ? (
                       <Text className="text-xs font-semibold text-danger dark:text-[#FFBABA]">
-                        {copy.archived}
+                        {t("catalog.list.archived")}
                       </Text>
                     ) : null}
                   </View>
-                  <Text className="text-sm text-muted-foreground">{product.sku ?? copy.noSku}</Text>
+                  <Text className="text-sm text-muted-foreground">
+                    {product.sku ?? t("catalog.list.noSku")}
+                  </Text>
                 </View>
                 <View className="gap-1 sm:min-w-[220px] sm:items-end">
                   <Text className="font-bold text-foreground">
                     {product.sellingPriceMinorUnits === null ||
                     product.sellingPriceCurrency === null ||
                     product.sellingPriceCurrencyMinorUnitDigits === null
-                      ? copy.noPrice
+                      ? t("catalog.list.noPrice")
                       : formatMinorUnits(
                           product.sellingPriceMinorUnits,
                           product.sellingPriceCurrency,
@@ -333,11 +313,11 @@ export function CatalogScreen({
                     }
                   >
                     {stock
-                      ? `${copy.onHand}: ${formatQuantityMinorUnits(
+                      ? `${t("catalog.list.onHand")}: ${formatQuantityMinorUnits(
                           stock.onHandMinorUnits,
                           stock.quantityPrecision,
-                        )} ${copy.unitLabels[product.unitKind]}${stock.lowStock ? ` · ${copy.lowStock}` : ""}`
-                      : copy.stockNotTracked}
+                        )} ${t(`catalog.unitLabels.${product.unitKind}`)}${stock.lowStock ? ` · ${t("catalog.list.lowStock")}` : ""}`
+                      : t("catalog.list.stockNotTracked")}
                   </Text>
                 </View>
               </Pressable>
@@ -346,7 +326,7 @@ export function CatalogScreen({
           {state.hasNextPage ? (
             <Button
               className="mt-6 self-start"
-              label={state.loadingMore ? copy.loadingMore : copy.loadMore}
+              label={state.loadingMore ? t("catalog.list.loadingMore") : t("catalog.list.loadMore")}
               loading={state.loadingMore}
               onPress={onLoadMore}
               variant="secondary"

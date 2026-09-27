@@ -104,6 +104,12 @@ materialized balance.
 Raw JSON is evidence and forward-compatibility data. Queryable authorization fields remain typed
 columns with indexes; code does not scan provider JSON to authorize each request.
 
+Calendar checks reuse the [Zod ISO date validator](https://zod.dev/api#iso-dates) through
+`calendarLocalDateSchema`. Four-digit years retain their exact century; year zero is rejected
+because [PostgreSQL has no year zero](https://www.postgresql.org/docs/18/datetime-input-rules.html).
+`localDateSchema` remains format-only for existing record contracts. Date validation does not replace
+the server's time-zone resolution or daylight-saving ambiguity checks.
+
 ## Transaction and idempotency rules
 
 - Enforce invariants in both application code and PostgreSQL constraints where practical.

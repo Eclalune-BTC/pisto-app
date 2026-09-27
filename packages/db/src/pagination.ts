@@ -13,7 +13,6 @@ export const cursorTimestampPattern = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.
 export function isCursorTimestamp(value: string): boolean {
   if (!cursorTimestampPattern.test(value)) return false;
   return (
-    value.slice(0, 4) !== "0000" &&
     calendarLocalDateSchema.safeParse(value.slice(0, 10)).success &&
     /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(value.slice(11, 19))
   );

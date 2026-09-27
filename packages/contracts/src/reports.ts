@@ -3,6 +3,7 @@ import { z } from "zod";
 import { cashAccountKindSchema, cashAccountStatusSchema, expenseCategorySchema } from "./cash";
 import {
   aggregateIntegerSchema,
+  calendarLocalDateSchema,
   currencyCodeSchema,
   currencyMinorUnitDigitsSchema,
   localDateSchema,
@@ -16,18 +17,8 @@ const millisecondsPerDay = 86_400_000;
 export const maximumInclusiveDays = 366;
 
 function localDateEpoch(value: string): number | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const epoch = Date.UTC(year, month - 1, day);
-  const parsed = new Date(epoch);
-  return parsed.getUTCFullYear() === year &&
-    parsed.getUTCMonth() === month - 1 &&
-    parsed.getUTCDate() === day
-    ? epoch
-    : null;
+  if (!calendarLocalDateSchema.safeParse(value).success) return null;
+  return Date.parse(`${value}T00:00:00.000Z`);
 }
 
 export const operatingReportQuerySchema = z

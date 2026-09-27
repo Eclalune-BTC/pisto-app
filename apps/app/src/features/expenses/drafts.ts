@@ -4,8 +4,9 @@ import type {
   PostExpenseRequest,
   VoidExpenseRequest,
 } from "@pisto/contracts";
+import { calendarLocalDateSchema, localTimeSchema } from "@pisto/contracts";
 import { parseAmountToMinorUnits } from "@/lib/money";
-import { type CashDraftIssue, isValidCashLocalDate } from "../cash/drafts";
+import type { CashDraftIssue } from "../cash/drafts";
 
 export type ExpenseDraftValues = {
   accountId: string;
@@ -22,10 +23,6 @@ export type VoidExpenseDraftValues = {
   localDate: string;
   localTime: string;
 };
-
-function validTime(value: string): boolean {
-  return /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
-}
 
 export function buildExpenseCommand(input: {
   accounts: CashAccount[];
@@ -47,8 +44,9 @@ export function buildExpenseCommand(input: {
   else if (description.length > 240) issues.description = "too-long";
   const payee = input.draft.payee.trim();
   if (payee.length > 120) issues.payee = "too-long";
-  if (!isValidCashLocalDate(input.draft.localDate)) issues.localDate = "invalid-date";
-  if (!validTime(input.draft.localTime)) issues.localTime = "invalid-time";
+  if (!calendarLocalDateSchema.safeParse(input.draft.localDate).success)
+    issues.localDate = "invalid-date";
+  if (!localTimeSchema.safeParse(input.draft.localTime).success) issues.localTime = "invalid-time";
   if (Object.keys(issues).length > 0 || !account || "error" in amount) {
     return { command: null, issues };
   }
@@ -79,8 +77,9 @@ export function buildVoidExpenseCommand(input: {
   const reason = input.draft.reason.trim();
   if (!reason) issues.reason = "required";
   else if (reason.length > 240) issues.reason = "too-long";
-  if (!isValidCashLocalDate(input.draft.localDate)) issues.localDate = "invalid-date";
-  if (!validTime(input.draft.localTime)) issues.localTime = "invalid-time";
+  if (!calendarLocalDateSchema.safeParse(input.draft.localDate).success)
+    issues.localDate = "invalid-date";
+  if (!localTimeSchema.safeParse(input.draft.localTime).success) issues.localTime = "invalid-time";
   if (Object.keys(issues).length > 0) return { command: null, issues };
   return {
     command: {

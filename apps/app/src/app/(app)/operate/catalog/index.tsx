@@ -1,22 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useState } from "react";
 
 import { type CatalogCollectionState, CatalogScreen } from "@/features/catalog/catalog-screen";
-import { buildCatalogCopy } from "@/features/catalog/copy";
 import { useCategoriesQuery, useProductsQuery } from "@/features/catalog/queries";
 import type { CatalogStatusFilter } from "@/features/catalog/query-keys";
 import { flattenPages } from "@/features/catalog/query-keys";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { isAccessDeniedError } from "@/lib/query-state";
 
 export default function CatalogIndexRoute() {
   const router = useRouter();
-  const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildCatalogCopy(t), [t]);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<CatalogStatusFilter>("active");
@@ -81,8 +76,6 @@ export default function CatalogIndexRoute() {
       categoriesLoading={categories.isPending}
       categoriesLoadingMore={categories.isFetchingNextPage}
       categoryId={categoryId}
-      copy={copy.list}
-      locale={i18n.resolvedLanguage ?? DEFAULT_LOCALE}
       onCategoryChange={setCategoryId}
       onCreateProduct={() => router.push("/operate/catalog/new")}
       onLoadMore={() => void products.fetchNextPage()}

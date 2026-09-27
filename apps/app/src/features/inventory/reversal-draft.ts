@@ -1,9 +1,9 @@
 import {
+  calendarLocalDateSchema,
+  localTimeSchema,
   type ReverseInventoryMovementRequest,
   reverseInventoryMovementRequestSchema,
 } from "@pisto/contracts";
-
-import { isValidCalendarDate, isValidLocalTime } from "./movement-draft";
 
 export type ReversalDraft = {
   occurredLocalDate: string;
@@ -22,10 +22,10 @@ export function buildReversalCommand(input: {
   const errors: ReversalDraftErrors = {};
   const reason = input.draft.reason.trim();
   if (!reason || reason.length > 240) errors.reason = "invalid";
-  if (!isValidCalendarDate(input.draft.occurredLocalDate)) {
+  if (!calendarLocalDateSchema.safeParse(input.draft.occurredLocalDate).success) {
     errors.occurredLocalDate = "invalid";
   }
-  if (!isValidLocalTime(input.draft.occurredLocalTime)) {
+  if (!localTimeSchema.safeParse(input.draft.occurredLocalTime).success) {
     errors.occurredLocalTime = "invalid";
   }
   if (Object.keys(errors).length > 0) return { errors };

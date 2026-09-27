@@ -3,6 +3,7 @@ import {
   type CashMovementCommandResult,
   type CashTransferCommandResult,
   type CreateCashAccountRequest,
+  calendarLocalDateSchema,
   cashAccountCommandResultSchema,
   cashMovementCommandResultSchema,
   cashTransferCommandResultSchema,
@@ -68,20 +69,10 @@ export function decodeCashCursor(cursor: string): CashCursorPayload {
 }
 
 export function nextCalendarDate(localDate: string): string {
-  const match = localDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) throw new ProductError("VALIDATION_ERROR", "The local date is invalid");
-  const [, yearText, monthText, dayText] = match;
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  ) {
+  if (!calendarLocalDateSchema.safeParse(localDate).success || localDate === "9999-12-31") {
     throw new ProductError("VALIDATION_ERROR", "The local date is invalid");
   }
+  const date = new Date(`${localDate}T00:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() + 1);
   return date.toISOString().slice(0, 10);
 }

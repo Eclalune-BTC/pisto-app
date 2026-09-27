@@ -17,6 +17,7 @@ function assertFractionDigits(fractionDigits: number): void {
 export function parseAmountToMinorUnits(
   input: string,
   fractionDigits: number,
+  { allowZero = false }: { allowZero?: boolean } = {},
 ): { value: string } | { error: AmountParseError } {
   assertFractionDigits(fractionDigits);
   const trimmed = input.trim();
@@ -44,7 +45,7 @@ export function parseAmountToMinorUnits(
   const [whole = "0", fraction = ""] = normalized.split(".");
   const canonical = `${whole}${fraction.padEnd(fractionDigits, "0")}`.replace(/^0+(?=\d)/, "");
   const value = BigInt(canonical || "0");
-  if (value <= 0n) return { error: "non-positive" };
+  if (value === 0n && !allowZero) return { error: "non-positive" };
   if (value > maximumMinorUnits) return { error: "too-large" };
   return { value: value.toString() };
 }

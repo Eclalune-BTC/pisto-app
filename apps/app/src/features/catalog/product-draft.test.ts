@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { validateSaleDraft } from "../sales/sale-draft";
 
 import { buildProductCommand } from "./product-draft";
 
@@ -107,5 +108,74 @@ describe("product draft command", () => {
         original,
       }),
     ).toEqual({ errors: { form: "no-changes" } });
+  });
+
+  test.each([
+    ["1,500", 3],
+    ["2,000", 4],
+    ["1,234.56", 2],
+    ["1.234,56", 2],
+    ["12.", 2],
+    ["-1", 2],
+    ["1e3", 2],
+    ["1.234", 2],
+    ["92233720368547758.08", 2],
+  ])("rejects %s at exponent %s consistently with sales", (amount, digits) => {
+    expect(
+      buildProductCommand({
+        currencyMinorUnitDigits: digits,
+        draft: { ...base, sellingPrice: amount },
+        idempotencyKey: "00b87f42-09d8-4bcf-9925-2a2c08f12f34",
+        mode: "create",
+      }),
+    ).toEqual({ errors: { sellingPrice: "invalid" } });
+    expect(
+      validateSaleDraft({ amount, date: "2026-09-26", time: "12:00", description: "" }, digits)
+        .issues.amount,
+    ).toBeDefined();
+  });
+
+  test.each([
+    ["0,001", 3, "1"],
+    ["0.0001", 4, "1"],
+    ["0012,50", 2, "1250"],
+    ["92233720368547758.07", 2, "9223372036854775807"],
+    ["45035996273704.97", 2, "4503599627370497"],
+  ])("keeps the same exact minor units as sales for %s", (amount, digits, expected) => {
+    expect(
+      buildProductCommand({
+        currencyMinorUnitDigits: digits,
+        draft: { ...base, sellingPrice: amount },
+        idempotencyKey: "00b87f42-09d8-4bcf-9925-2a2c08f12f34",
+        mode: "create",
+      }),
+    ).toMatchObject({ command: { sellingPriceMinorUnits: expected } });
+    expect(
+      validateSaleDraft({ amount, date: "2026-09-26", time: "12:00", description: "" }, digits)
+        .draft?.grossMinorUnits,
+    ).toBe(expected);
+  });
+
+  test("preserves an absent price, zero price and clearing an existing price", () => {
+    for (const mode of ["create", "edit"] as const) {
+      for (const [sellingPrice, expected] of [
+        ["  ", null],
+        ["0.00", "0"],
+      ] as const) {
+        expect(
+          buildProductCommand({
+            currencyMinorUnitDigits: 2,
+            draft: { ...base, sellingPrice },
+            idempotencyKey: "00b87f42-09d8-4bcf-9925-2a2c08f12f34",
+            mode,
+            original: mode === "edit" ? original : undefined,
+          }),
+        ).toMatchObject({ command: { sellingPriceMinorUnits: expected } });
+      }
+    }
+    expect(
+      validateSaleDraft({ amount: "0.00", date: "2026-09-26", time: "12:00", description: "" }, 2)
+        .draft,
+    ).toBeNull();
   });
 });

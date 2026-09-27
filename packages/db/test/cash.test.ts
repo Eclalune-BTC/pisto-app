@@ -50,8 +50,12 @@ describe("cash domain primitives", () => {
   });
 
   test("advances real calendar dates and rejects impossible dates", () => {
+    expect(nextCalendarDate("0099-12-31")).toBe("0100-01-01");
+    expect(nextCalendarDate("0001-01-01")).toBe("0001-01-02");
     expect(nextCalendarDate("2024-02-29")).toBe("2024-03-01");
     expect(nextCalendarDate("2026-12-31")).toBe("2027-01-01");
     expect(() => nextCalendarDate("2026-02-30")).toThrow(ProductError);
+    expect(() => nextCalendarDate("0000-01-01")).toThrow(ProductError);
+    expect(() => nextCalendarDate("9999-12-31")).toThrow(ProductError);
   });
 });

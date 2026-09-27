@@ -14,14 +14,22 @@ import {
 } from "../src/index.ts";
 
 describe("calendar-valid local dates", () => {
-  test.each(["2026-01-01", "2024-02-29", "2026-02-28", "2026-04-30", "2026-12-31", "2000-02-29"])(
-    "accepts the real calendar date %s",
-    (value) => {
-      expect(calendarLocalDateSchema.safeParse(value).success).toBe(true);
-    },
-  );
+  test.each([
+    "0001-01-01",
+    "0099-01-01",
+    "2026-01-01",
+    "2024-02-29",
+    "2026-02-28",
+    "2026-04-30",
+    "2026-12-31",
+    "2000-02-29",
+    "9999-12-31",
+  ])("accepts the real calendar date %s", (value) => {
+    expect(calendarLocalDateSchema.safeParse(value).success).toBe(true);
+  });
 
   test.each([
+    "0000-01-01",
     "2026-02-30",
     "2025-02-29",
     "1900-02-29",

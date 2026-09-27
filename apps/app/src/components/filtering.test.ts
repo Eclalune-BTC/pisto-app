@@ -17,7 +17,6 @@ vi.mock("lucide-react-native", () => ({
 }));
 
 import { CatalogScreen } from "@/features/catalog/catalog-screen";
-import { buildCatalogCopy } from "@/features/catalog/copy";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { CustomersScreen } from "@/features/customers/customers-screen";
 import { ReceivablesScreen } from "@/features/receivables/receivables-screen";
@@ -30,7 +29,6 @@ const noop = () => undefined;
 
 describe("stable query controls rendered through result transitions", () => {
   test("hides cached category names and all controls after catalog access is denied", () => {
-    const copy = buildCatalogCopy(i18n.t).list;
     const markup = renderToStaticMarkup(
       createElement(CatalogScreen, {
         canManage: true,
@@ -48,8 +46,6 @@ describe("stable query controls rendered through result transitions", () => {
         categoriesLoading: false,
         categoriesLoadingMore: false,
         categoryId: null,
-        copy,
-        locale: "es-SV",
         onCategoryChange: noop,
         onCreateProduct: noop,
         onLoadMore: noop,
@@ -66,11 +62,11 @@ describe("stable query controls rendered through result transitions", () => {
         status: "active",
       }),
     );
-    expect(markup).toContain(copy.deniedTitle);
+    expect(markup).toContain(i18n.t("catalog.list.deniedTitle"));
     expect(markup).not.toContain("Private cached category");
     expect(markup).not.toContain("Private search");
-    expect(markup).not.toContain(`>${copy.createProduct}<`);
-    expect(markup).not.toContain(`>${copy.manageCategories}<`);
+    expect(markup).not.toContain(`>${i18n.t("catalog.list.createProduct")}<`);
+    expect(markup).not.toContain(`>${i18n.t("catalog.list.manageCategories")}<`);
   });
   test.each(["loading", "error", "offline"] as const)(
     "keeps customer search and filters available during %s without a create action",
