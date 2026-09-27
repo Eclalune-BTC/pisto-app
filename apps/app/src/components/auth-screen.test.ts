@@ -46,6 +46,7 @@ vi.mock("react-native", () => ({
 vi.mock("react-native-safe-area-context", () => ({ SafeAreaView: "div" }));
 vi.mock("lucide-react-native", () => ({ Eye: "span", EyeOff: "span" }));
 vi.mock("@/components/brand", () => ({ Brand: "span" }));
+vi.mock("@/components/appearance-control", () => ({ AppearanceControl: "div" }));
 vi.mock("@/components/ui/alert", () => ({ Alert: "div" }));
 vi.mock("@/components/ui/button", () => ({ Button: "button" }));
 vi.mock("@/components/ui/card", () => ({ Card: "div", CardDescription: "span" }));

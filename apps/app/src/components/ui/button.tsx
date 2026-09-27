@@ -32,7 +32,7 @@ const buttonVariants = cva(
   },
 );
 
-const textVariants = cva("shrink text-center text-[15px] font-semibold", {
+const textVariants = cva("web:font-sans shrink text-center text-[15px] font-semibold", {
   variants: {
     variant: {
       primary: "text-primary-foreground",

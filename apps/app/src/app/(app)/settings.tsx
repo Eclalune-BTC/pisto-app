@@ -1,18 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import {
-  CreditCard,
-  Laptop,
-  LockKeyhole,
-  LogOut,
-  Moon,
-  ShieldCheck,
-  Sun,
-} from "lucide-react-native";
+import { CreditCard, LockKeyhole, LogOut, ShieldCheck } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { Platform, Text, View } from "react-native";
-import { Uniwind, useUniwind } from "uniwind";
+import { Text, View } from "react-native";
 
+import { AppearanceControl } from "@/components/appearance-control";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Alert } from "@/components/ui/alert";
@@ -23,36 +15,17 @@ import { useSignOut } from "@/hooks/use-sign-out";
 import { formatLocalizedDate } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { api } from "@/lib/api-client";
-import { cn } from "@/lib/cn";
-
-type ThemeChoice = "light" | "dark" | "system";
-
-const themeChoices = [
-  { icon: Sun, labelKey: "settings.themes.light", value: "light" },
-  { icon: Moon, labelKey: "settings.themes.dark", value: "dark" },
-  { icon: Laptop, labelKey: "settings.themes.system", value: "system" },
-] as const;
 
 export default function SettingsScreen() {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const router = useRouter();
   const profile = useQuery({ queryFn: api.me, queryKey: ["account", "me"] });
-  const { hasAdaptiveThemes, theme } = useUniwind();
-  const activeTheme: ThemeChoice = hasAdaptiveThemes
-    ? "system"
-    : theme === "dark"
-      ? "dark"
-      : "light";
   const profileUnavailable = profile.isError || profile.fetchStatus === "paused";
   const currentProfile = profileUnavailable ? undefined : profile.data;
   const user = currentProfile?.user;
   const checkingProfile = profile.isPending && !profileUnavailable;
   const signOutAction = useSignOut();
-
-  const selectTheme = (choice: ThemeChoice) => {
-    Uniwind.setTheme(choice);
-  };
 
   return (
     <Page>
@@ -106,36 +79,7 @@ export default function SettingsScreen() {
                 {t("settings.appearanceDescription")}
               </Text>
             </View>
-            <View className="flex-row border border-line bg-[#EFF3EF] p-1 dark:border-[#304239] dark:bg-[#14241D]">
-              {themeChoices.map((choice) => {
-                const Icon = choice.icon;
-                const selected = activeTheme === choice.value;
-                return (
-                  <Button
-                    key={choice.value}
-                    accessibilityRole={Platform.OS === "web" ? "button" : "togglebutton"}
-                    accessibilityState={Platform.OS === "web" ? undefined : { checked: selected }}
-                    aria-pressed={Platform.OS === "web" ? selected : undefined}
-                    className={cn(
-                      "min-h-12 flex-1 gap-1 rounded-lg px-2",
-                      selected ? "bg-white dark:bg-[#2A4036]" : "bg-transparent",
-                    )}
-                    onPress={() => selectTheme(choice.value)}
-                    variant="ghost"
-                  >
-                    <Icon color={selected ? "#237A55" : "#7B8A82"} size={17} />
-                    <Text
-                      className={cn(
-                        "text-xs font-bold",
-                        selected ? "text-foreground" : "text-[#7B8A82]",
-                      )}
-                    >
-                      {t(choice.labelKey)}
-                    </Text>
-                  </Button>
-                );
-              })}
-            </View>
+            <AppearanceControl />
           </View>
         </View>
 

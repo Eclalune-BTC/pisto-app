@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const fixture = vi.hoisted(() => ({ profile: {} as Record<string, unknown> }));
+vi.mock("@/components/appearance-control", () => ({ AppearanceControl: () => null }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => fixture.profile }));
 vi.mock("expo-router", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/lib/api-client", () => ({ api: { me: vi.fn() } }));

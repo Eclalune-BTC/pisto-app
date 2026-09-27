@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useUniwind } from "uniwind";
+import { AppearanceProvider } from "@/providers/appearance-provider";
 import { I18nProvider } from "@/providers/i18n-provider";
 import { QueryProvider } from "@/providers/query-provider";
 
@@ -16,15 +17,17 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <I18nProvider>
-            <QueryProvider>
-              <StatusBar style={theme === "dark" ? "light" : "dark"} />
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="index" />
-                <Stack.Screen name="sign-in" />
-                <Stack.Screen name="sign-up" />
-                <Stack.Screen name="(app)" />
-              </Stack>
-            </QueryProvider>
+            <AppearanceProvider>
+              <QueryProvider>
+                <StatusBar style={theme === "dark" ? "light" : "dark"} />
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="sign-in" />
+                  <Stack.Screen name="sign-up" />
+                  <Stack.Screen name="(app)" />
+                </Stack>
+              </QueryProvider>
+            </AppearanceProvider>
           </I18nProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>

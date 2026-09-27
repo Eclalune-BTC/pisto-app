@@ -2,13 +2,14 @@
 @import "uniwind";
 
 @theme {
+  --font-sans: system-ui;
   --color-ink: #14241d;
   --color-ink-muted: #617168;
   --color-canvas: #f3f6f1;
   --color-surface: #ffffff;
   --color-line: #dce5dd;
-  --color-accent: #d9fb67;
-  --color-accent-strong: #b8e637;
+  --color-accent: #d2e0bd;
+  --color-accent-strong: #bfd09f;
   --color-positive: #237a55;
   --color-warning: #b86718;
   --color-danger: #b94242;
@@ -18,14 +19,14 @@
 @layer theme {
   :root {
     @variant light {
-      --color-background: #f3f6f1;
-      --color-foreground: #14241d;
-      --color-muted-foreground: #617168;
+      --color-background: #f8f7f4;
+      --color-foreground: #242d27;
+      --color-muted-foreground: #616960;
       --color-card: #ffffff;
-      --color-muted: #edf1ed;
-      --color-border: #dce5dd;
+      --color-muted: #efeee9;
+      --color-border: #dcded5;
       --color-input: #ffffff;
-      --color-input-border: #c6d2c9;
+      --color-input-border: #babfb4;
       --color-primary: #14241d;
       --color-primary-foreground: #ffffff;
       --color-link: #237a55;
@@ -38,13 +39,13 @@
 
   :root {
     @variant dark {
-      --color-background: #0f1d18;
+      --color-background: #171d19;
       --color-foreground: #e7eee9;
       --color-muted-foreground: #aab8b0;
-      --color-card: #192a23;
-      --color-muted: #26372f;
-      --color-border: #34453d;
-      --color-input: #14241d;
+      --color-card: #202923;
+      --color-muted: #2b352e;
+      --color-border: #3c473f;
+      --color-input: #1c251f;
       --color-input-border: #4b5d53;
       --color-primary: #237a55;
       --color-primary-foreground: #ffffff;
@@ -70,4 +71,12 @@
 html,
 body {
   background: var(--color-background);
+}
+
+html.light {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
 }

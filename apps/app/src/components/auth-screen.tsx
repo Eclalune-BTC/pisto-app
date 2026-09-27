@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import { AppearanceControl } from "@/components/appearance-control";
 import { Brand } from "@/components/brand";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -151,16 +151,19 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
         >
           <View className="min-w-0 flex-1 items-center justify-center px-5 py-10" role="main">
             <View className="w-full max-w-[420px] gap-6">
-              <Link href="/" replace asChild>
-                <Button
-                  accessibilityLabel={t("auth.backToWelcome")}
-                  className="self-center px-0"
-                  size="sm"
-                  variant="ghost"
-                >
-                  <Brand />
-                </Button>
-              </Link>
+              <View className="flex-row flex-wrap items-center justify-between gap-3">
+                <Link href="/" replace asChild>
+                  <Button
+                    accessibilityLabel={t("auth.backToWelcome")}
+                    className="self-center px-0"
+                    size="sm"
+                    variant="ghost"
+                  >
+                    <Brand />
+                  </Button>
+                </Link>
+                <AppearanceControl compact />
+              </View>
 
               <Card className="gap-6">
                 <View className="gap-2">

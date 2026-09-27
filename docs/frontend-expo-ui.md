@@ -169,12 +169,14 @@ applicable.
 
 ## Product visual language
 
-Pisto keeps the ink, lime, cream, white, and semantic status palette defined in `global.css`. Build
+Pisto uses the ink, muted sage, warm paper, white, and semantic status palette defined in `global.css`.
+The owner's public-page redesign replaces the highlighter-lime accent and green-tinted page background
+with quieter shared tokens. Build
 hierarchy with type, spacing, alignment, and dividers before adding another decorated surface.
 
 The owner prefers restrained product UI. Use shared `Heading` variants instead of
 inventing oversized, tightly tracked titles per screen. `global.css` owns adaptive semantic colors;
-`ink` and `accent` remain immutable brand colors. `Page` owns bounded layout, while components in
+`ink` and `accent` remain theme-independent brand colors. `Page` owns bounded layout, while components in
 `components/ui` own visual variants. Screen-level classes primarily compose layout. Decorative
 vertical rules, promotional auth panels and numbered feature ornament are not default product UI.
 
@@ -195,6 +197,40 @@ vertical rules, promotional auth panels and numbered feature ornament are not de
 
 Visual cleanup preserves approved copy, product behavior, accessibility, and responsive intent. It
 does not justify an unrelated redesign.
+
+### Public product page and appearance
+
+The public `/` route composes `features/welcome/welcome-screen.tsx` inside the same Expo application.
+It is not a second marketing deployment or an authenticated workspace. Its four product areas reuse
+the public module names from the Operate destination model; no account, permission or business data is
+read by the page. All public copy, example descriptions, document metadata and accessibility labels
+come from the typed `es-SV` catalog. The illustrative record selector never submits a business command.
+The FAQ states the current sales/cash/stock separation, accounting limits and unimplemented AI/voice
+and native-store release. It must change when the capability matrix changes, not before.
+
+Use system UI typography: `web:font-sans` resolves to `system-ui` (Segoe UI on Windows, San Francisco
+on Apple systems); native text keeps its platform system font. Do not download a font merely to make
+the public page look different. Moderate weights, readable line lengths and shared `Heading` variants
+own hierarchy. The page has one primary heading, real account links, section-navigation actions and
+no decorative charts, fabricated metrics, testimonials or prices.
+
+`AppearanceControl` is shared by the public page, authentication and Account. Uniwind owns effective
+light/dark/system state; `AppearanceProvider` restores and saves the preference through browser
+localStorage or the already-installed native SecureStore. Only this non-sensitive preference is
+stored. Absent storage means system appearance; corrupt or blocked storage produces an explicit
+localized error. A failed write does not change the selected theme. Restoration is asynchronous and
+does not block product access; an initial system-to-saved-theme transition may be visible on reload.
+
+The page remains a single-page web export, not an SEO-oriented static/SSR marketing site. Its localized
+title and description are set through the installed Expo Router Head API at runtime. A separate public
+site or static rendering strategy requires its own routing and hosting decision.
+
+Theme switching and typography were checked against the installed Uniwind 1.11.0 source and its
+[theming API](https://docs.uniwind.dev/theming/basics),
+[global style rules](https://docs.uniwind.dev/theming/global-css) and
+[platform typography](https://docs.uniwind.dev/api/platform-select) on 2026-09-26. Native persistence
+uses the existing [Expo SecureStore API](https://docs.expo.dev/versions/latest/sdk/securestore/), not
+a new dependency. Recheck these boundaries when upgrading the styling or Expo stack.
 
 The manual increment uses neutral Latin American Spanish copy and Salvadoran `es-SV` money/date
 formatting as its explicit initial product choice. Validate terminology and comprehension with

@@ -31,26 +31,129 @@ export const esSV = {
   welcome: {
     signIn: "Iniciar sesión",
     createAccount: "Crear cuenta",
-    title: "Registra lo que vendes. Entiende lo que pasó.",
-    description: "Registra las ventas de tu negocio y consulta un resumen mensual de sus ingresos.",
-    setupBusiness: "Configurar mi negocio",
-    existingAccount: "Ya tengo una cuenta",
-    availableNow:
-      "Lleva tus ventas, gastos y caja; organiza clientes e inventario y consulta reportes del negocio.",
-    capabilities: {
-      businessContext: {
-        title: "Contexto de negocio",
-        description: "Define una moneda y una zona horaria para que cada cifra tenga significado.",
+    pageTitle: "Pisto · Ventas, gastos, inventario y cobros",
+    navigation: "Conoce Pisto",
+    sectionLinks: { product: "Producto", workflow: "Cómo funciona", questions: "Preguntas" },
+    eyebrow: "Para el día a día de tu negocio",
+    title: "Lleva tu negocio.\nNo solo tus ventas.",
+    description:
+      "Registra lo que entra y sale, controla existencias y da seguimiento a lo que te deben. Pisto reúne la operación diaria de tu negocio en un mismo lugar.",
+    setupBusiness: "Crear mi negocio",
+    explore: "Conocer el producto",
+    audience: "Para tiendas, servicios y pequeños negocios.",
+    preview: {
+      label: "Ejemplo ilustrativo",
+      title: "Cada registro tiene su lugar.",
+      selector: "Ver un ejemplo de",
+      amount: "Importe del ejemplo · USD",
+      description: "Descripción",
+      effect: "Qué registra Pisto",
+      note: "Ejemplos de uso, no datos de tu negocio. Aquí no se guarda ninguna operación.",
+      sales: {
+        description: "Venta de mostrador",
+        effect: "El total de la venta y su historial.",
+        detail: "La caja y el inventario se registran por separado.",
       },
-      reviewedSales: {
-        title: "Ventas revisadas",
+      expenses: {
+        description: "Compra de insumos",
+        effect: "El gasto y la salida en la cuenta elegida.",
+        detail: "Ambos se guardan juntos al confirmar el gasto pagado.",
+      },
+      receivables: {
+        description: "Abono de un cliente",
+        effect: "El pago recibido y la entrada en caja.",
+        detail: "El abono reduce el saldo pendiente de ese cliente.",
+      },
+    },
+    product: {
+      eyebrow: "El producto completo",
+      title: "De la primera venta\nal cobro pendiente.",
+      description:
+        "Empieza por la tarea que necesitas. Tus registros quedan organizados en cuatro áreas de trabajo.",
+      money: {
+        title: "Sigue el movimiento de tu dinero.",
         description:
-          "Registra el total, revisa los datos y confirma sin crear duplicados al reintentar.",
+          "Registra ventas por importe total y gastos pagados. Consulta tus cuentas de efectivo o banco, sus movimientos y las transferencias que registres entre ellas.",
+        detail: "Historial de ventas y correcciones, gastos por categoría y saldos por cuenta.",
       },
-      realResults: {
-        title: "Resultados reales",
-        description: "Consulta ingresos, conteo y promedio del mes calendario anterior.",
+      stock: {
+        title: "Ten a mano lo que vendes y lo que queda.",
+        description:
+          "Organiza productos, precios y categorías. Registra entradas y ajustes de inventario; consulta las existencias y los productos que están por debajo de su umbral.",
+        detail: "Catálogo con SKU y unidades, movimientos de inventario y reversión de errores.",
       },
+      relationships: {
+        title: "No pierdas de vista lo que te deben.",
+        description:
+          "Guarda los datos de tus clientes, registra cargos y aplica abonos. Distingue lo pendiente, lo vencido y lo pagado, con el historial de cada cuenta por cobrar.",
+        detail: "Contactos, fechas de vencimiento, pagos parciales y reversión de pagos.",
+      },
+      insight: {
+        title: "Mira tus registros con perspectiva.",
+        description:
+          "Consulta ventas, gastos y movimientos de caja para un período. Revisa por separado las existencias y las cuentas por cobrar actuales, con la moneda y las fechas del negocio.",
+        detail:
+          "Reportes de operación basados en tus registros, sin confundir ingresos con utilidad.",
+      },
+    },
+    workflow: {
+      eyebrow: "Una forma de trabajar",
+      title: "Configura. Registra. Consulta.",
+      setup: {
+        title: "Dale contexto a tus cuentas",
+        description:
+          "Crea tu negocio y elige su moneda y zona horaria. Añade las cuentas, productos o clientes que necesites.",
+      },
+      record: {
+        title: "Revisa antes de confirmar",
+        description:
+          "Escribe la operación, comprueba los datos y confírmala. Las correcciones conservan la relación con el registro original.",
+      },
+      understand: {
+        title: "Vuelve al detalle cuando lo necesites",
+        description:
+          "Busca un registro, cambia un filtro o consulta un período. Revisa de dónde viene cada movimiento, no solo un número final.",
+      },
+      controlTitle: "La última palabra la tienes tú.",
+      controlDescription:
+        "Una revisión no es una operación confirmada. Si se interrumpe la respuesta al guardar una venta nueva, Pisto permite recuperar su revisión o su resultado al volver.",
+    },
+    questions: {
+      eyebrow: "Antes de empezar",
+      title: "Qué hace Pisto.\nY qué no hace todavía.",
+      sales: {
+        question: "¿Una venta descuenta inventario o entra a caja automáticamente?",
+        answer:
+          "No. Hoy las ventas se registran por importe total. El inventario y la caja se llevan por separado. Los gastos pagados y los cobros de clientes sí generan su movimiento de caja al confirmarlos.",
+      },
+      accounting: {
+        question: "¿Reemplaza mi contabilidad o emite facturas fiscales?",
+        answer:
+          "No. Pisto organiza la operación del negocio; no calcula impuestos, no emite facturas fiscales ni sincroniza bancos. Sus reportes no son estados contables ni un cálculo de utilidad.",
+      },
+      assistant: {
+        question: "¿Ya puedo registrar con inteligencia artificial o con mi voz?",
+        answer:
+          "Todavía no. Hoy registras y consultas mediante formularios. El asistente por texto y la entrada por voz son funciones previstas, no incluidas en la versión actual.",
+      },
+      devices: {
+        question: "¿Dónde puedo usarlo?",
+        answer:
+          "La interfaz web se adapta a computadora y teléfono. Las versiones nativas para Android e iOS siguen en validación y aún no están publicadas en tiendas. Necesitas conexión para consultar y confirmar operaciones.",
+      },
+    },
+    closing: {
+      title: "Empieza por tu próximo registro.",
+      description: "Crea tu negocio y organiza la operación a tu ritmo.",
+      account: "Ya tengo una cuenta",
+    },
+    footer: "Gestión para pequeños negocios.",
+  },
+  appearance: {
+    errors: {
+      restore:
+        "No pudimos recuperar tu apariencia guardada. Elige una opción para volver a guardarla.",
+      save: "No pudimos guardar la apariencia. La selección anterior no cambió; vuelve a intentarlo.",
     },
   },
   auth: {

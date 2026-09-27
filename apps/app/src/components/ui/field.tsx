@@ -22,7 +22,7 @@ export function Field({
 
   return (
     <View className="gap-2">
-      <Text className="text-sm font-medium text-foreground">{label}</Text>
+      <Text className="web:font-sans text-sm font-medium text-foreground">{label}</Text>
       <View
         className={cn(
           "min-h-12 flex-row items-center rounded-lg border bg-input px-3",
@@ -34,7 +34,10 @@ export function Field({
           accessibilityLabel={accessibilityLabel ?? label}
           aria-describedby={error ? errorId : undefined}
           aria-invalid={Boolean(error)}
-          className={cn("min-h-12 min-w-0 flex-1 py-3 text-base text-foreground", className)}
+          className={cn(
+            "web:font-sans min-h-12 min-w-0 flex-1 py-3 text-base text-foreground",
+            className,
+          )}
           placeholderTextColor="#7B8A82"
           {...props}
         />
