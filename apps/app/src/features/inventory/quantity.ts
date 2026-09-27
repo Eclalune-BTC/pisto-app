@@ -22,7 +22,7 @@ export function parseQuantityToMinorUnits(
   if (fraction.length > precision) return { error: "invalid-decimals" };
   const canonicalWhole = whole.replace(/^0+(?=\d)/, "");
   const minorText = `${canonicalWhole}${fraction.padEnd(precision, "0")}`.replace(/^0+(?=\d)/, "");
-  const parsed = BigInt(minorText || "0");
+  const parsed = BigInt(minorText);
   if (parsed > maximumMinorQuantity) return { error: "too-large" };
   if (!options.allowZero && parsed === 0n) return { error: "non-positive" };
   return { value: parsed.toString() };

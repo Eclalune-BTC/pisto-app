@@ -47,7 +47,7 @@ export function ExpenseEditorController() {
     canRead,
     isStale: accessIsStale,
   } = useCashAccess("expenses");
-  const businessId = business?.id ?? "unselected";
+  const businessId = business?.id;
   const accountsQuery = useInfiniteQuery({
     ...activeCashAccountsInfiniteOptions(businessId),
     enabled: Boolean(business && canRead),

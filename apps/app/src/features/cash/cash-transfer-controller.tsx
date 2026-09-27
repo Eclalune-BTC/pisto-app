@@ -45,13 +45,13 @@ export function CashTransferController() {
     canRead,
     isStale: accessIsStale,
   } = useCashAccess("cash");
-  const businessId = business?.id ?? "unselected";
+  const businessId = business?.id;
   const accountsQuery = useInfiniteQuery({
     ...activeCashAccountsInfiniteOptions(businessId),
     enabled: Boolean(business && canRead),
   });
   const requestedAccount = useQuery({
-    ...cashAccountQueryOptions(businessId, requestedFromAccount ?? "missing"),
+    ...cashAccountQueryOptions(businessId, requestedFromAccount),
     enabled: Boolean(business && canRead && requestedFromAccount),
   });
   const listedAccounts = flattenPages(accountsQuery.data);

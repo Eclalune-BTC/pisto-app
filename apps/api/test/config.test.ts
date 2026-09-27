@@ -3,6 +3,13 @@ import { describe, expect, test } from "bun:test";
 import { ApiConfigurationError, parseApiConfig } from "../src/config.ts";
 
 describe("API configuration", () => {
+  test("rejects an unknown environment and an empty write switch instead of enabling writes", () => {
+    for (const NODE_ENV of ["prod", "staging", "", "production "]) {
+      expect(() => parseApiConfig({ NODE_ENV })).toThrow("NODE_ENV");
+    }
+    expect(() => parseApiConfig({ PRODUCT_WRITES_ENABLED: "" })).toThrow("PRODUCT_WRITES_ENABLED");
+    expect(parseApiConfig({ PRODUCT_WRITES_ENABLED: "false" }).productWritesEnabled).toBe(false);
+  });
   test("uses the documented bind defaults", () => {
     expect(parseApiConfig({})).toMatchObject({
       host: "0.0.0.0",

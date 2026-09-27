@@ -1,4 +1,4 @@
-import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions, skipToken } from "@tanstack/react-query";
 import { z } from "zod";
 import { apiRequest } from "@/lib/api-client";
 import { cashQueryKeys } from "../cash/queries";
@@ -30,11 +30,11 @@ type CashAccountChoiceDetailResponse = z.infer<typeof cashAccountChoiceDetailRes
 // prefix. A sibling namespace was never reached, so archiving a cash account
 // left it selectable here.
 export const receivableCashAccountKeys = {
-  all: (businessId: string) =>
+  all: (businessId: string | undefined) =>
     [...cashQueryKeys.accounts(businessId), "receivable-account-choice"] as const,
-  detail: (businessId: string, accountId: string) =>
+  detail: (businessId: string | undefined, accountId: string | undefined) =>
     [...receivableCashAccountKeys.all(businessId), "detail", accountId] as const,
-  list: (businessId: string, status: "active" | "all") =>
+  list: (businessId: string | undefined, status: "active" | "all") =>
     [...receivableCashAccountKeys.all(businessId), "list", status] as const,
 };
 
@@ -56,22 +56,30 @@ export const receivableCashAccountSource = {
     ),
 } as const;
 
-export function cashAccountDetailQueryOptions(businessId: string, accountId: string) {
+export function cashAccountDetailQueryOptions(
+  businessId: string | undefined,
+  accountId: string | undefined,
+) {
   return queryOptions({
     queryKey: receivableCashAccountKeys.detail(businessId, accountId),
-    queryFn: ({ signal }) => receivableCashAccountSource.get(accountId, signal),
+    queryFn:
+      businessId && accountId
+        ? ({ signal }) => receivableCashAccountSource.get(accountId, signal)
+        : skipToken,
   });
 }
 
 export function cashAccountChoicesQueryOptions(
-  businessId: string,
+  businessId: string | undefined,
   status: "active" | "all" = "active",
 ) {
   return infiniteQueryOptions({
     initialPageParam: null as string | null,
     queryKey: receivableCashAccountKeys.list(businessId, status),
-    queryFn: ({ pageParam, signal }) =>
-      receivableCashAccountSource.list({ cursor: pageParam ?? undefined, status }, signal),
+    queryFn: businessId
+      ? ({ pageParam, signal }) =>
+          receivableCashAccountSource.list({ cursor: pageParam ?? undefined, status }, signal)
+      : skipToken,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 }

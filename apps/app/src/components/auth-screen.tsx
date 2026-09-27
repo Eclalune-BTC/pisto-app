@@ -1,9 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { Eye, EyeOff } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Brand } from "@/components/brand";
@@ -151,14 +151,16 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
         >
           <View className="min-w-0 flex-1 items-center justify-center px-5 py-10" role="main">
             <View className="w-full max-w-[420px] gap-6">
-              <Pressable
-                accessibilityLabel={t("auth.backToWelcome")}
-                accessibilityRole="button"
-                className="min-h-11 self-center justify-center rounded-lg"
-                onPress={() => router.replace("/")}
-              >
-                <Brand />
-              </Pressable>
+              <Link href="/" replace asChild>
+                <Button
+                  accessibilityLabel={t("auth.backToWelcome")}
+                  className="self-center px-0"
+                  size="sm"
+                  variant="ghost"
+                >
+                  <Brand />
+                </Button>
+              </Link>
 
               <Card className="gap-6">
                 <View className="gap-2">
@@ -203,12 +205,12 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                     returnKeyType="done"
                     secureTextEntry={!showPassword}
                     trailing={
-                      <Pressable
+                      <Button
                         accessibilityLabel={
                           showPassword ? t("auth.hidePassword") : t("auth.showPassword")
                         }
-                        accessibilityRole="button"
-                        className="h-11 w-11 items-center justify-center rounded-md"
+                        size="icon"
+                        variant="ghost"
                         onPress={() => setShowPassword((value) => !value)}
                       >
                         {showPassword ? (
@@ -216,7 +218,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                         ) : (
                           <Eye color="#6C7B73" size={20} />
                         )}
-                      </Pressable>
+                      </Button>
                     }
                     value={password}
                   />
@@ -235,15 +237,13 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                   <Text className="text-sm text-muted-foreground">
                     {isSignUp ? t("auth.alreadyRegistered") : t("auth.newToPisto")}
                   </Text>
-                  <Pressable
-                    accessibilityRole="link"
-                    className="min-h-11 justify-center rounded-md"
-                    onPress={() => router.replace(isSignUp ? "/sign-in" : "/sign-up")}
-                  >
-                    <Text className="text-sm font-semibold text-link underline">
-                      {isSignUp ? t("auth.signInLink") : t("auth.createAccountLink")}
-                    </Text>
-                  </Pressable>
+                  <Link href={isSignUp ? "/sign-in" : "/sign-up"} replace asChild>
+                    <Button className="px-0" size="sm" variant="ghost">
+                      <Text className="text-sm font-semibold text-link underline">
+                        {isSignUp ? t("auth.signInLink") : t("auth.createAccountLink")}
+                      </Text>
+                    </Button>
+                  </Link>
                 </View>
               </Card>
             </View>

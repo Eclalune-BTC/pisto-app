@@ -35,13 +35,13 @@ export function CashAccountDetailController() {
     canRead,
     isStale: accessIsStale,
   } = useCashAccess("cash");
-  const businessId = business?.id ?? "unselected";
+  const businessId = business?.id;
   const accountQuery = useQuery({
-    ...cashAccountQueryOptions(businessId, accountId ?? "missing"),
+    ...cashAccountQueryOptions(businessId, accountId),
     enabled: Boolean(business && canRead && accountId),
   });
   const movementsQuery = useInfiniteQuery({
-    ...cashMovementsInfiniteOptions(businessId, accountId),
+    ...cashMovementsInfiniteOptions(accountId ? businessId : undefined, accountId),
     enabled: Boolean(business && canRead && accountId),
   });
   const movements = flattenPages(movementsQuery.data);
@@ -88,7 +88,7 @@ export function CashAccountDetailController() {
     accessIsStale || queryHasStaleData(accountQuery) || queryHasStaleData(movementsQuery);
   const account = accountQuery.data?.account ?? null;
   const selectedMovement =
-    selection?.businessId === businessId && selection.accountId === accountId
+    selection && selection.businessId === businessId && selection.accountId === accountId
       ? selection.movement
       : undefined;
 
@@ -160,7 +160,7 @@ export function CashAccountDetailController() {
       onLoadMoreMovements={() => void movementsQuery.fetchNextPage()}
       onOpenMovement={(movementId) => {
         const movement = movements.find(({ id }) => id === movementId);
-        if (movement && accountId) setSelection({ businessId, accountId, movement });
+        if (movement && businessId && accountId) setSelection({ businessId, accountId, movement });
       }}
       onRecordAdjustment={() =>
         router.push({ pathname: "/operate/cash/adjustments/new", params: { accountId } })

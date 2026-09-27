@@ -33,7 +33,7 @@ vi.mock("react", async (importOriginal) => ({
   useRef: () => fixture.lock,
 }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ clear: fixture.clear }) }));
-vi.mock("expo-router", () => ({ useRouter: () => ({ replace: fixture.replace }) }));
+vi.mock("expo-router", () => ({ Link: "a", useRouter: () => ({ replace: fixture.replace }) }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock("react-native", () => ({
   KeyboardAvoidingView: "div",

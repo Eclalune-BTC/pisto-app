@@ -79,8 +79,14 @@ function parseInteger(
 }
 
 export function parseApiConfig(env: Record<string, string | undefined>): ApiConfig {
+  if (env.NODE_ENV !== undefined && !["development", "test", "production"].includes(env.NODE_ENV)) {
+    throw new ApiConfigurationError("NODE_ENV must be development, test, or production");
+  }
   const production = (env.NODE_ENV ?? "development") === "production";
-  if (env.PRODUCT_WRITES_ENABLED && !["true", "false"].includes(env.PRODUCT_WRITES_ENABLED)) {
+  if (
+    env.PRODUCT_WRITES_ENABLED !== undefined &&
+    !["true", "false"].includes(env.PRODUCT_WRITES_ENABLED)
+  ) {
     throw new ApiConfigurationError("PRODUCT_WRITES_ENABLED must be true or false");
   }
   return {

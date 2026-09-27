@@ -36,7 +36,7 @@ export function ExpensesController() {
     canRead,
     isStale: accessIsStale,
   } = useCashAccess("expenses");
-  const businessId = business?.id ?? "unselected";
+  const businessId = business?.id;
   const timeZone = business?.timeZone;
   const [filters, setFilters] = useState<ExpenseFiltersValue>({
     accountId: "all",
@@ -54,7 +54,7 @@ export function ExpensesController() {
   const [periodError, setPeriodError] = useState<string>();
 
   useEffect(() => {
-    if (businessId === "unselected" || !timeZone) return;
+    if (!businessId || !timeZone) return;
     const initialPeriod = currentMonthPeriod(timeZone);
     setPeriod(initialPeriod);
     setAppliedPeriod(initialPeriod);
@@ -80,8 +80,8 @@ export function ExpensesController() {
   const summary = useQuery({
     ...expenseSummaryQueryOptions(
       businessId,
-      appliedPeriod.startLocalDate || "0000-00-00",
-      appliedPeriod.endLocalDate || "0000-00-00",
+      appliedPeriod.startLocalDate,
+      appliedPeriod.endLocalDate,
     ),
     enabled: Boolean(
       business && canRead && appliedPeriod.startLocalDate && appliedPeriod.endLocalDate,

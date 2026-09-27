@@ -16,7 +16,6 @@ export const esSV = {
     operate: "Operar",
     account: "Cuenta",
     signOut: "Cerrar sesión",
-    protectedSession: "Sesión protegida",
     pistoAccount: "Cuenta de Pisto",
     noDescription: "Sin descripción",
     currency: "Moneda",
@@ -309,6 +308,8 @@ export const esSV = {
     },
   },
   settings: {
+    profileUnavailable:
+      "No pudimos consultar los datos actuales de tu cuenta. Vuelve a intentarlo.",
     eyebrow: "Cuenta",
     title: "Tu cuenta de Pisto",
     description: "Administra tu sesión, apariencia y acceso a facturación.",

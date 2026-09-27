@@ -27,7 +27,7 @@ export function ReportsController() {
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
   const canRead = resolveBusinessPermission(business, "reports:read");
-  const businessId = business?.id ?? "unselected";
+  const businessId = business?.id;
   const timeZone = business?.timeZone;
   const [draftRange, setDraftRange] = useState<OperatingReportQuery>(unseededRange);
   const [appliedRange, setAppliedRange] = useState<OperatingReportQuery>(unseededRange);
@@ -37,7 +37,7 @@ export function ReportsController() {
   // A refetch hands back a new businesses payload, so the range is seeded once
   // per business rather than whenever that payload changes identity.
   useEffect(() => {
-    if (!timeZone || seededBusinessId.current === businessId) return;
+    if (!businessId || !timeZone || seededBusinessId.current === businessId) return;
     seededBusinessId.current = businessId;
     const initialRange = currentBusinessMonthRange(timeZone);
     setDraftRange(initialRange);

@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react-native";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -49,19 +49,19 @@ export function PaymentForm({
         <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">
           {copy.cashAccount}
         </Text>
-        <Pressable
+        <Button
           accessibilityLabel={copy.chooseCashAccount}
-          accessibilityRole="button"
           className={`min-h-14 flex-row items-center justify-between gap-3 rounded-lg border bg-white px-4 active:opacity-75 dark:bg-[#14241D] ${
             errors.cashAccount ? "border-danger" : "border-line dark:border-[#3B4A43]"
           }`}
           onPress={onChooseCashAccount}
+          variant="ghost"
         >
           <Text className="min-w-0 flex-1 text-base text-foreground">
             {selectedCashAccountName ?? copy.chooseCashAccount}
           </Text>
           <ChevronRight color="#617168" size={18} />
-        </Pressable>
+        </Button>
         {errors.cashAccount ? (
           <Text accessibilityRole="alert" className="text-xs text-danger">
             {errors.cashAccount}

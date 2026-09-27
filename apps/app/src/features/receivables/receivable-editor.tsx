@@ -83,7 +83,7 @@ export function ReceivableEditor({
     }),
   );
   const initialCustomer = useQuery({
-    ...customerDetailQueryOptions(business.id, initialCustomerId ?? "missing-customer"),
+    ...customerDetailQueryOptions(business.id, initialCustomerId),
     enabled: Boolean(initialCustomerId),
   });
 

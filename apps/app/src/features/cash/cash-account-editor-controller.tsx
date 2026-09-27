@@ -51,9 +51,9 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
     canRead,
     isStale: accessIsStale,
   } = useCashAccess("cash");
-  const businessId = business?.id ?? "unselected";
+  const businessId = business?.id;
   const accountQuery = useQuery({
-    ...cashAccountQueryOptions(businessId, accountId ?? "missing"),
+    ...cashAccountQueryOptions(businessId, accountId),
     enabled: Boolean(mode === "update" && accountId && business && canRead),
   });
   const account = mode === "update" ? (accountQuery.data?.account ?? null) : null;

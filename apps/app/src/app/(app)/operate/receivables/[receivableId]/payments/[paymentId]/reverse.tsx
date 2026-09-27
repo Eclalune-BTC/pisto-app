@@ -26,14 +26,14 @@ export default function ReversePaymentRoute() {
     : params.receivableId;
   const paymentId = Array.isArray(params.paymentId) ? params.paymentId[0] : params.paymentId;
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
-  const businessId = access.business?.id ?? "inactive-business";
+  const businessId = access.business?.id;
   const detail = useQuery({
-    ...receivableDetailQueryOptions(businessId, receivableId ?? "missing-receivable"),
+    ...receivableDetailQueryOptions(businessId, receivableId),
     enabled: Boolean(access.business && access.canManage && receivableId && paymentId),
   });
   const payment = detail.data?.payments.find((item) => item.id === paymentId);
   const account = useQuery({
-    ...cashAccountDetailQueryOptions(businessId, payment?.cashAccountId ?? "missing-account"),
+    ...cashAccountDetailQueryOptions(businessId, payment?.cashAccountId),
     enabled: Boolean(access.business && access.canManage && payment),
   });
   const boundaryState = manageCapabilityBoundaryState(access);

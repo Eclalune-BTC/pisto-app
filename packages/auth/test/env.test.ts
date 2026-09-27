@@ -8,6 +8,12 @@ const baseEnvironment = {
 };
 
 describe("auth configuration", () => {
+  test("rejects an unknown environment before applying development security behavior", () => {
+    for (const NODE_ENV of ["prod", "staging", "", "production "]) {
+      expect(() => parseAuthConfig({ ...baseEnvironment, NODE_ENV })).toThrow("NODE_ENV");
+    }
+    expect(parseAuthConfig({ ...baseEnvironment, NODE_ENV: "test" }).production).toBe(false);
+  });
   test("requires an explicit secret and canonical URL", () => {
     expect(() => parseAuthConfig({})).toThrow(AuthConfigurationError);
   });

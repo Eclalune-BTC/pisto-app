@@ -42,14 +42,14 @@ export function ExpenseDetailController() {
     canRead,
     isStale: accessIsStale,
   } = useCashAccess("expenses");
-  const businessId = business?.id ?? "unselected";
+  const businessId = business?.id;
   const expenseQuery = useQuery({
-    ...expenseQueryOptions(businessId, expenseId ?? "missing"),
+    ...expenseQueryOptions(businessId, expenseId),
     enabled: Boolean(business && canRead && expenseId),
   });
   const expense = expenseQuery.data?.expense;
   const accountQuery = useQuery({
-    ...cashAccountQueryOptions(businessId, expense?.accountId ?? "missing"),
+    ...cashAccountQueryOptions(businessId, expense?.accountId),
     enabled: Boolean(business && canRead && expense?.accountId),
   });
   const [stage, setStage] = useState<"detail" | "void-edit" | "void-review">(

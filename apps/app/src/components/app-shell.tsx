@@ -7,6 +7,7 @@ import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Brand } from "@/components/brand";
+import { Button, ButtonText } from "@/components/ui/button";
 import { getVisibleOperateModules } from "@/features/operate/navigation";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { cn } from "@/lib/cn";
@@ -41,8 +42,8 @@ function isNavigationItemActive(pathname: string, item: NavItem) {
 }
 
 type AppShellProps = PropsWithChildren<{
-  email?: string;
-  name?: string;
+  email: string;
+  name: string;
 }>;
 
 export function AppShell({ children, email, name }: AppShellProps) {
@@ -146,25 +147,22 @@ export function AppShell({ children, email, name }: AppShellProps) {
                   {name || t("common.pistoAccount")}
                 </Text>
                 <Text className="text-xs text-[#AFC0B6]" numberOfLines={1}>
-                  {email || t("common.protectedSession")}
+                  {email}
                 </Text>
               </View>
-              <Pressable
+              <Button
                 accessibilityLabel={t("common.signOut")}
-                accessibilityRole="button"
-                accessibilityState={{
-                  busy: signOutAction.isPending,
-                  disabled: signOutAction.isPending,
-                }}
-                className="min-h-11 flex-row items-center gap-2 rounded-xl active:opacity-70"
-                disabled={signOutAction.isPending}
+                className="justify-start px-0"
+                loading={signOutAction.isPending}
                 onPress={signOutAction.signOut}
+                size="sm"
+                variant="ghost"
               >
                 <LogOut color="#D3DDD7" size={17} />
-                <Text className="text-sm font-bold text-[#D3DDD7]">
+                <ButtonText className="text-sm font-bold text-[#D3DDD7]" variant="ghost">
                   {signOutAction.isPending ? t("shell.signingOut") : t("common.signOut")}
-                </Text>
-              </Pressable>
+                </ButtonText>
+              </Button>
               {signOutAction.error ? (
                 <Text className="text-xs leading-4 text-[#F6BB76]">{signOutAction.error}</Text>
               ) : null}

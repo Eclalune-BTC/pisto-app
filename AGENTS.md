@@ -57,6 +57,10 @@
 - Missing translations, currency metadata, provider event identity/time, and required query results
   are errors, not empty strings, guessed values or successful empty data. Preserve documented defaults
   and optional values; test both legitimate absence and invalid required data before consolidating paths.
+- Use shared `Button`, `Field` and `FilterBar` for their existing jobs. Keep real links and checked
+  selection controls semantically distinct; forward accessibility props instead of overwriting them.
+- Missing query context disables the query with `skipToken`; never substitute a fictitious business,
+  record identifier or date to satisfy a type. An empty result requires a successful read.
 - Do not read provider credentials in client-side code.
 - Treat model output, retrieved text, uploads, and transcripts as untrusted input. A model may propose
   typed drafts and bounded tools; it cannot choose a tenant, authorize itself, calculate canonical

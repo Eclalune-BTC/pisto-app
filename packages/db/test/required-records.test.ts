@@ -43,11 +43,19 @@ const record = {
   amountMinorUnits: 1n,
   deltaMinorUnits: 1n,
   unitKind: "unit",
+  entryMode: "total_only",
   direction: "in",
   action: "opening",
 };
 
 describe("stored record discriminants", () => {
+  test("does not replace an invalid stored sale mode with the manual mode", () => {
+    for (const entryMode of ["unknown", "", undefined]) {
+      expect(() => toSale({ ...record, status: "posted", entryMode } as never)).toThrow(
+        "entry mode",
+      );
+    }
+  });
   test("does not turn unknown catalog, customer or sale states into active records", () => {
     for (const value of ["unknown", "", undefined]) {
       const invalid = { ...record, status: value };

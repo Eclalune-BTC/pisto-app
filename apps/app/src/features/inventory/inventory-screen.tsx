@@ -1,10 +1,11 @@
 import type { ProductUnitKind, StockListResponse } from "@pisto/contracts";
 import { AlertTriangle, Search } from "lucide-react-native";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { ReadOnlyNotice } from "../catalog/route-state";
 import { formatQuantityMinorUnits } from "./quantity";
 
@@ -152,24 +153,15 @@ export function InventoryScreen({
             value={search}
           />
         </View>
-        <View accessibilityRole="tablist" className="flex-row gap-6">
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: !lowStockOnly }}
-            className={!lowStockOnly ? "border-b-2 border-positive py-2" : "py-2"}
-            onPress={() => onLowStockOnlyChange(false)}
-          >
-            <Text className="font-semibold text-foreground">{copy.showAll}</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: lowStockOnly }}
-            className={lowStockOnly ? "border-b-2 border-positive py-2" : "py-2"}
-            onPress={() => onLowStockOnlyChange(true)}
-          >
-            <Text className="font-semibold text-foreground">{copy.showLowStock}</Text>
-          </Pressable>
-        </View>
+        <FilterBar
+          label={copy.title}
+          onChange={(value) => onLowStockOnlyChange(value === "low-stock")}
+          options={[
+            { value: "all", label: copy.showAll },
+            { value: "low-stock", label: copy.showLowStock },
+          ]}
+          value={lowStockOnly ? "low-stock" : "all"}
+        />
       </View>
 
       {state.status !== "ready" ? (
@@ -190,12 +182,12 @@ export function InventoryScreen({
             </View>
           ) : (
             state.items.map(({ product, stock }) => (
-              <Pressable
+              <Button
                 accessibilityLabel={copy.openHistory(product.name)}
-                accessibilityRole="button"
-                className="gap-3 border-b border-line py-5 active:opacity-70 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
+                className="flex-col items-stretch justify-start gap-3 rounded-none border-b border-line px-0 py-5 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
                 key={product.id}
                 onPress={() => onOpenHistory(product.id)}
+                variant="ghost"
               >
                 <View className="min-w-0 flex-1 gap-1">
                   <Text className="text-lg font-black text-foreground">{product.name}</Text>
@@ -228,7 +220,7 @@ export function InventoryScreen({
                         )}`}
                   </Text>
                 </View>
-              </Pressable>
+              </Button>
             ))
           )}
           {state.hasNextPage ? (

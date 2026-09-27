@@ -13,7 +13,12 @@ import { formatBusinessLocalDate } from "@/features/receivables/presentation";
 import { receivablesQueryOptions } from "@/features/receivables/queries";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
-import { hasDeniedRead, isPausedWithoutData, readFailureKind } from "@/lib/query-state";
+import {
+  hasDeniedRead,
+  isPausedWithoutData,
+  queryHasStaleData,
+  readFailureKind,
+} from "@/lib/query-state";
 
 export default function CustomerDetailRoute() {
   const { i18n, t } = useTranslation();
@@ -23,16 +28,13 @@ export default function CustomerDetailRoute() {
   const params = useLocalSearchParams<{ customerId?: string | string[] }>();
   const customerId = Array.isArray(params.customerId) ? params.customerId[0] : params.customerId;
   const access = useCapabilityAccess("customers:read", "customers:manage");
-  const businessId = access.business?.id ?? "inactive-business";
+  const businessId = access.business?.id;
   const customer = useQuery({
-    ...customerDetailQueryOptions(businessId, customerId ?? "missing-customer"),
+    ...customerDetailQueryOptions(businessId, customerId),
     enabled: Boolean(access.business && access.canRead && customerId),
   });
   const receivables = useInfiniteQuery({
-    ...receivablesQueryOptions(businessId, {
-      customerId: customerId ?? "00000000-0000-4000-8000-000000000000",
-      state: "all",
-    }),
+    ...receivablesQueryOptions(businessId, customerId ? { customerId, state: "all" } : undefined),
     enabled: Boolean(access.business && access.canRead && customerId),
   });
   const boundaryState = capabilityBoundaryState(access);
@@ -66,7 +68,7 @@ export default function CustomerDetailRoute() {
       receivables: receivables.data.pages.flatMap((page) => page.items),
       receivablesLoadingMore: receivables.isFetchingNextPage,
       receivablesNextCursor: receivables.data.pages.at(-1)?.nextCursor ?? null,
-      stale: customer.isError || receivables.isError || access.isStale,
+      stale: queryHasStaleData(customer) || queryHasStaleData(receivables) || access.isStale,
     };
   } else {
     state = { kind: "error" };
@@ -81,25 +83,28 @@ export default function CustomerDetailRoute() {
         formatMoney={(minorUnits, currency, digits) =>
           formatMinorUnits(minorUnits, currency, digits, locale)
         }
-        onArchive={() =>
+        onArchive={() => {
+          if (state.kind !== "ready") return;
           router.push({
             pathname: "/operate/customers/[customerId]/archive",
-            params: { customerId: customerId ?? "" },
-          })
-        }
+            params: { customerId: state.detail.customer.id },
+          });
+        }}
         onBack={() => router.replace("/operate/customers")}
-        onCreateReceivable={() =>
+        onCreateReceivable={() => {
+          if (state.kind !== "ready") return;
           router.push({
             pathname: "/operate/receivables/new",
-            params: { customerId: customerId ?? "" },
-          })
-        }
-        onEdit={() =>
+            params: { customerId: state.detail.customer.id },
+          });
+        }}
+        onEdit={() => {
+          if (state.kind !== "ready") return;
           router.push({
             pathname: "/operate/customers/[customerId]/edit",
-            params: { customerId: customerId ?? "" },
-          })
-        }
+            params: { customerId: state.detail.customer.id },
+          });
+        }}
         onLoadMoreReceivables={() => receivables.fetchNextPage()}
         onOpenReceivable={(receivableId) =>
           router.push({

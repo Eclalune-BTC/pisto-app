@@ -44,7 +44,7 @@ export default function CorrectSaleScreen() {
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
   const saleResult = useQuery({
-    ...saleQueryOptions(business?.id ?? "unselected", saleId ?? ""),
+    ...saleQueryOptions(business?.id, saleId),
     enabled: Boolean(saleId && business),
   });
   const [mode, setMode] = useState<CorrectionMode>("void");
@@ -69,10 +69,10 @@ export default function CorrectSaleScreen() {
       // two records it names.
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: saleQueryKeys.all(business?.id ?? "unselected"),
+          queryKey: saleQueryKeys.all(business?.id),
         }),
         queryClient.invalidateQueries({
-          queryKey: reportsQueryKeys.all(business?.id ?? "unselected"),
+          queryKey: reportsQueryKeys.all(business?.id),
         }),
       ]);
       router.replace({ pathname: "/operate/sales/[saleId]", params: { saleId: saleId as string } });

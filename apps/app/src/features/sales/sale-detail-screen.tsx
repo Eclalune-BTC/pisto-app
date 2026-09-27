@@ -24,7 +24,7 @@ export default function SaleResultScreen() {
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
   const result = useQuery({
-    ...saleQueryOptions(business?.id ?? "unselected", saleId ?? ""),
+    ...saleQueryOptions(business?.id, saleId),
     enabled: Boolean(saleId && business),
   });
 

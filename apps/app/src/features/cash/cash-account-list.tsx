@@ -1,5 +1,6 @@
 import type { CashAccount } from "@pisto/contracts";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import { Button } from "@/components/ui/button";
 
 type CashAccountListProps = {
   accounts: CashAccount[];
@@ -21,12 +22,12 @@ export function CashAccountList({
   return (
     <View className="border-y border-border">
       {accounts.map((account) => (
-        <Pressable
+        <Button
           accessibilityLabel={`${account.name}, ${formatMoney(account.balanceMinorUnits, account.currency, account.currencyMinorUnitDigits)}`}
-          accessibilityRole="button"
-          className="min-h-16 gap-2 border-b border-line py-4 last:border-b-0 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
+          className="min-h-16 flex-col items-stretch justify-start gap-2 rounded-none border-b border-line px-0 py-4 last:border-b-0 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
           key={account.id}
           onPress={() => onOpenAccount(account.id)}
+          variant="ghost"
         >
           <View className="min-w-0 flex-1 gap-1">
             <Text className="text-base font-bold text-foreground">{account.name}</Text>
@@ -42,7 +43,7 @@ export function CashAccountList({
               account.currencyMinorUnitDigits,
             )}
           </Text>
-        </Pressable>
+        </Button>
       ))}
     </View>
   );

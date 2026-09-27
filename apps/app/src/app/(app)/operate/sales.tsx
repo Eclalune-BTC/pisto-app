@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
 import { Plus, RefreshCw } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
@@ -23,7 +23,7 @@ export default function SalesOverviewScreen() {
   const businesses = useQuery(businessesQueryOptions);
   const activeBusiness = getActiveBusiness(businesses.data);
   const summary = useQuery({
-    ...previousMonthSummaryQueryOptions(activeBusiness?.id ?? "unselected"),
+    ...previousMonthSummaryQueryOptions(activeBusiness?.id),
     enabled: Boolean(activeBusiness),
   });
 
@@ -93,14 +93,17 @@ export default function SalesOverviewScreen() {
               {t("sales.noSummaryDescription")}
             </Text>
           </View>
-          <Pressable
+          <Button
             accessibilityLabel={t("sales.recalculate")}
-            className="min-h-10 flex-row items-center gap-2 self-start"
+            className="self-start px-0"
+            loading={summary.isFetching}
             onPress={() => summary.refetch()}
+            size="sm"
+            variant="ghost"
           >
             <RefreshCw color="#B94242" size={17} />
             <Text className="font-bold text-danger dark:text-[#FFBABA]">{t("common.retry")}</Text>
-          </Pressable>
+          </Button>
         </View>
       ) : summary.data ? (
         <View className="gap-6">

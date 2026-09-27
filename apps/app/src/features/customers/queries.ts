@@ -1,4 +1,4 @@
-import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions, skipToken } from "@tanstack/react-query";
 
 import { customersApi } from "./api";
 
@@ -8,35 +8,45 @@ export type CustomerListFilters = {
 };
 
 export const customerQueryKeys = {
-  all: (businessId: string) => ["customers", businessId] as const,
-  detail: (businessId: string, customerId: string) =>
+  all: (businessId: string | undefined) => ["customers", businessId] as const,
+  detail: (businessId: string | undefined, customerId: string | undefined) =>
     [...customerQueryKeys.all(businessId), "detail", customerId] as const,
-  lists: (businessId: string) => [...customerQueryKeys.all(businessId), "list"] as const,
-  list: (businessId: string, filters: CustomerListFilters) =>
+  lists: (businessId: string | undefined) =>
+    [...customerQueryKeys.all(businessId), "list"] as const,
+  list: (businessId: string | undefined, filters: CustomerListFilters) =>
     [...customerQueryKeys.lists(businessId), filters] as const,
 };
 
-export function customersQueryOptions(businessId: string, filters: CustomerListFilters) {
+export function customersQueryOptions(
+  businessId: string | undefined,
+  filters: CustomerListFilters,
+) {
   return infiniteQueryOptions({
     initialPageParam: null as string | null,
     queryKey: customerQueryKeys.list(businessId, filters),
-    queryFn: ({ pageParam, signal }) =>
-      customersApi.list(
-        {
-          cursor: pageParam ?? undefined,
-          limit: 25,
-          query: filters.query || undefined,
-          status: filters.status,
-        },
-        signal,
-      ),
+    queryFn: businessId
+      ? ({ pageParam, signal }) =>
+          customersApi.list(
+            {
+              cursor: pageParam ?? undefined,
+              limit: 25,
+              query: filters.query || undefined,
+              status: filters.status,
+            },
+            signal,
+          )
+      : skipToken,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 }
 
-export function customerDetailQueryOptions(businessId: string, customerId: string) {
+export function customerDetailQueryOptions(
+  businessId: string | undefined,
+  customerId: string | undefined,
+) {
   return queryOptions({
     queryKey: customerQueryKeys.detail(businessId, customerId),
-    queryFn: ({ signal }) => customersApi.get(customerId, signal),
+    queryFn:
+      businessId && customerId ? ({ signal }) => customersApi.get(customerId, signal) : skipToken,
   });
 }

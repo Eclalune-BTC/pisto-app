@@ -19,9 +19,9 @@ export default function EditCustomerRoute() {
   const params = useLocalSearchParams<{ customerId?: string | string[] }>();
   const customerId = Array.isArray(params.customerId) ? params.customerId[0] : params.customerId;
   const access = useCapabilityAccess("customers:read", "customers:manage");
-  const businessId = access.business?.id ?? "inactive-business";
+  const businessId = access.business?.id;
   const customer = useQuery({
-    ...customerDetailQueryOptions(businessId, customerId ?? "missing-customer"),
+    ...customerDetailQueryOptions(businessId, customerId),
     enabled: Boolean(access.business && access.canManage && customerId),
   });
   const boundaryState = manageCapabilityBoundaryState(access);

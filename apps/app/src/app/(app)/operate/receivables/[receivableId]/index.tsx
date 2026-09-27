@@ -14,7 +14,12 @@ import { ReceivableDetailScreen } from "@/features/receivables/receivable-detail
 import type { ReceivableDetailLoadState } from "@/features/receivables/types";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
-import { hasDeniedRead, isPausedWithoutData, readFailureKind } from "@/lib/query-state";
+import {
+  hasDeniedRead,
+  isPausedWithoutData,
+  queryHasStaleData,
+  readFailureKind,
+} from "@/lib/query-state";
 
 export default function ReceivableDetailRoute() {
   const { i18n, t } = useTranslation();
@@ -26,14 +31,14 @@ export default function ReceivableDetailRoute() {
     ? params.receivableId[0]
     : params.receivableId;
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
-  const businessId = access.business?.id ?? "inactive-business";
+  const businessId = access.business?.id;
   const detail = useQuery({
-    ...receivableDetailQueryOptions(businessId, receivableId ?? "missing-receivable"),
+    ...receivableDetailQueryOptions(businessId, receivableId),
     enabled: Boolean(access.business && access.canRead && receivableId),
   });
   const customerId = detail.data?.receivable.customerId;
   const customer = useQuery({
-    ...customerDetailQueryOptions(businessId, customerId ?? "missing-customer"),
+    ...customerDetailQueryOptions(businessId, customerId),
     enabled: Boolean(access.business && access.canRead && customerId),
   });
   const accountIds = useMemo(
@@ -80,9 +85,8 @@ export default function ReceivableDetailRoute() {
       receivable: detail.data.receivable,
       stale:
         access.isStale ||
-        detail.isError ||
-        customer.isError ||
-        accountQueries.some((query) => query.isError),
+        [detail, customer, ...accountQueries].some(queryHasStaleData) ||
+        accountQueries.some((query) => query.isError || query.fetchStatus === "paused"),
     };
   } else {
     state = { kind: "error" };
@@ -109,30 +113,33 @@ export default function ReceivableDetailRoute() {
         formatMoney={(minorUnits, currency, digits) =>
           formatMinorUnits(minorUnits, currency, digits, locale)
         }
-        onApplyPayment={() =>
+        onApplyPayment={() => {
+          if (state.kind !== "ready") return;
           router.push({
             pathname: "/operate/receivables/[receivableId]/payment",
-            params: { receivableId: receivableId ?? "" },
-          })
-        }
+            params: { receivableId: state.receivable.id },
+          });
+        }}
         onBack={() => router.replace("/operate/receivables")}
         onRetry={() => {
           void detail.refetch();
           void customer.refetch();
           for (const query of accountQueries) void query.refetch();
         }}
-        onReversePayment={(paymentId) =>
+        onReversePayment={(paymentId) => {
+          if (state.kind !== "ready") return;
           router.push({
             pathname: "/operate/receivables/[receivableId]/payments/[paymentId]/reverse",
-            params: { paymentId, receivableId: receivableId ?? "" },
-          })
-        }
-        onVoid={() =>
+            params: { paymentId, receivableId: state.receivable.id },
+          });
+        }}
+        onVoid={() => {
+          if (state.kind !== "ready") return;
           router.push({
             pathname: "/operate/receivables/[receivableId]/void",
-            params: { receivableId: receivableId ?? "" },
-          })
-        }
+            params: { receivableId: state.receivable.id },
+          });
+        }}
         state={state}
       />
     </CapabilityBoundary>

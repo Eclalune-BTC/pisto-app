@@ -31,7 +31,7 @@ export default function ReceivablesRoute() {
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
   const [filter, setFilter] = useState<ReceivableFilter>("all");
-  const businessId = access.business?.id ?? "inactive-business";
+  const businessId = access.business?.id;
   const list = useInfiniteQuery({
     ...receivablesQueryOptions(businessId, { state: filter }),
     enabled: Boolean(access.business && access.canRead),

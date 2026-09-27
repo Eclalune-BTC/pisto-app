@@ -44,7 +44,7 @@ export function parseAmountToMinorUnits(
   }
   const [whole = "0", fraction = ""] = normalized.split(".");
   const canonical = `${whole}${fraction.padEnd(fractionDigits, "0")}`.replace(/^0+(?=\d)/, "");
-  const value = BigInt(canonical || "0");
+  const value = BigInt(canonical);
   if (value === 0n && !allowZero) return { error: "non-positive" };
   if (value > maximumMinorUnits) return { error: "too-large" };
   return { value: value.toString() };

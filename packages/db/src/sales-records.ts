@@ -61,10 +61,11 @@ export function toCorrection(record: SaleCorrectionRecord): SaleCorrection {
 }
 
 export function toSale(record: SaleRecord, correction: SaleCorrection | null = null): Sale {
+  if (record.entryMode !== "total_only") throw new Error("Stored sale entry mode is invalid");
   return {
     id: record.id,
     status: saleStatusSchema.parse(record.status),
-    entryMode: "total_only",
+    entryMode: record.entryMode,
     grossMinorUnits: record.grossMinorUnits.toString(),
     currency: record.currency,
     currencyMinorUnitDigits: record.currencyMinorUnitDigits,

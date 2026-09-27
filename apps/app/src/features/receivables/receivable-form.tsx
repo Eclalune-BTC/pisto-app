@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react-native";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -39,19 +39,19 @@ export function ReceivableForm({
     <View className="gap-5">
       <View className="gap-2">
         <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">{copy.customer}</Text>
-        <Pressable
+        <Button
           accessibilityLabel={copy.chooseCustomer}
-          accessibilityRole="button"
           className={`min-h-14 flex-row items-center justify-between gap-3 rounded-lg border bg-white px-4 active:opacity-75 dark:bg-[#14241D] ${
             errors.customer ? "border-danger" : "border-line dark:border-[#3B4A43]"
           }`}
           onPress={onChooseCustomer}
+          variant="ghost"
         >
           <Text className="min-w-0 flex-1 text-base text-foreground">
             {selectedCustomerName ?? copy.chooseCustomer}
           </Text>
           <ChevronRight color="#617168" size={18} />
-        </Pressable>
+        </Button>
         {errors.customer ? (
           <Text accessibilityRole="alert" className="text-xs text-danger">
             {errors.customer}

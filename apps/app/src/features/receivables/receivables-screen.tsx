@@ -1,5 +1,5 @@
 import { ChevronRight, Plus } from "lucide-react-native";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
@@ -153,11 +153,11 @@ export function ReceivablesScreen({
         <View className="gap-4">
           <View className="border-t border-border">
             {state.items.map((item) => (
-              <Pressable
-                accessibilityRole="button"
-                className="min-h-20 flex-row items-center gap-4 border-b border-line py-4 active:opacity-70 dark:border-[#304239]"
+              <Button
+                className="min-h-20 justify-start gap-4 rounded-none border-b border-line px-0 py-4 dark:border-[#304239]"
                 key={item.id}
                 onPress={() => onOpenReceivable(item.id)}
+                variant="ghost"
               >
                 <View className="min-w-0 flex-1 gap-1">
                   <Text className="text-base font-black text-foreground">
@@ -181,7 +181,7 @@ export function ReceivablesScreen({
                   </Text>
                   <ChevronRight color="#617168" size={18} />
                 </View>
-              </Pressable>
+              </Button>
             ))}
           </View>
           {state.nextCursor ? (

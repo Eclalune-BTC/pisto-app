@@ -25,7 +25,7 @@ export function CashController() {
     isStale: accessIsStale,
   } = useCashAccess("cash");
   const [accountStatus, setAccountStatus] = useState<CashAccountStatus | "all">("active");
-  const businessId = business?.id ?? "unselected";
+  const businessId = business?.id;
   const accounts = useInfiniteQuery({
     ...cashAccountsInfiniteOptions(businessId, accountStatus),
     enabled: Boolean(business && canRead),

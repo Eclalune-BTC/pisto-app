@@ -22,14 +22,14 @@ export default function ApplyPaymentRoute() {
     ? params.receivableId[0]
     : params.receivableId;
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
-  const businessId = access.business?.id ?? "inactive-business";
+  const businessId = access.business?.id;
   const detail = useQuery({
-    ...receivableDetailQueryOptions(businessId, receivableId ?? "missing-receivable"),
+    ...receivableDetailQueryOptions(businessId, receivableId),
     enabled: Boolean(access.business && access.canManage && receivableId),
   });
   const customerId = detail.data?.receivable.customerId;
   const customer = useQuery({
-    ...customerDetailQueryOptions(businessId, customerId ?? "missing-customer"),
+    ...customerDetailQueryOptions(businessId, customerId),
     enabled: Boolean(access.business && access.canManage && customerId),
   });
   const boundaryState = manageCapabilityBoundaryState(access);

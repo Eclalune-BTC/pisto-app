@@ -3,6 +3,11 @@ import { describe, expect, test } from "bun:test";
 import { BillingConfigurationError, parseBillingConfig } from "../src/config.ts";
 
 describe("billing configuration", () => {
+  test("rejects an unknown environment even when providers are disabled", () => {
+    for (const NODE_ENV of ["prod", "staging", "", "production "]) {
+      expect(() => parseBillingConfig({ NODE_ENV })).toThrow("NODE_ENV");
+    }
+  });
   test("is explicitly disabled without provider credentials", () => {
     expect(parseBillingConfig({})).toEqual({
       polar: { enabled: false },

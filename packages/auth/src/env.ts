@@ -120,6 +120,9 @@ function parseOrigins(input: {
 }
 
 export function parseAuthConfig(env: Record<string, string | undefined>): AuthConfig {
+  if (env.NODE_ENV !== undefined && !["development", "test", "production"].includes(env.NODE_ENV)) {
+    throw new AuthConfigurationError("NODE_ENV must be development, test, or production");
+  }
   const production = (env.NODE_ENV ?? "development") === "production";
   const baseUrlValue = env.BETTER_AUTH_URL?.trim();
   let baseUrl: URL;

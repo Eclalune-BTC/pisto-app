@@ -80,7 +80,7 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: reportsQueryKeys.all(business?.id ?? "unselected"),
+          queryKey: reportsQueryKeys.all(business?.id),
         }),
         queryClient.invalidateQueries({
           queryKey: catalogInventoryQueryKeys.productsRoot(business?.id),

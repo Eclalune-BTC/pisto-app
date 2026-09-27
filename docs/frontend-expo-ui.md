@@ -334,10 +334,18 @@ direct RN Primitives package currently installed; menus, dialogs and selects are
 provided. Evaluate a maintained native-compatible primitive when a real interaction needs it,
 rather than pasting a web shadcn component into a shared native screen.
 
+Standalone actions, actionable list rows and icon actions use the shared `Button`; its `icon` size
+retains a 44-unit target. Inputs use `Field`, and list filters use `FilterBar`. A passive row remains
+a `View`, not a disabled button. `Link` owns navigation destinations and checked controls retain
+their radio or checkbox roles. `Button` preserves an explicit role passed by `Link asChild`.
+Component-boundary tests inspect the application TSX tree, while render tests check role, label,
+disabled and loading behavior. Styling and native interaction still require browser/device checks.
+
 ### What runs on each platform
 
-The same feature screen imports `View`, `Text`, `Pressable` and `TextInput` from `react-native`.
-On Android and iOS these render through React Native's native view implementation. On web,
+Shared controls are built from `View`, `Text`, `Pressable` and `TextInput` from `react-native`;
+feature screens compose those controls instead of recreating inputs and actions. On Android and
+iOS they render through React Native's native view implementation. On web,
 React Native Web supplies the browser implementation. This is not a website embedded in a WebView.
 Expo Router owns routes, and all three clients call the same Hono API; PostgreSQL and the server
 packages do not run on the phone.
@@ -374,6 +382,13 @@ reviews are persisted on the server under [ADR 0018](adrs/0018-durable-sale-revi
 still have their documented recovery limits. Queries retry selected transient failures once;
 financial mutations require explicit retries with the same idempotency key and are never queued
 for automatic offline replay.
+
+Query factories use `skipToken` when required business, record, filter or period context is absent.
+They do not manufacture record IDs or dates. A manual refetch of a skipped query cannot call the
+API; the next render supplies a real query function when the context exists. Intentional all-record
+filters stay explicit. See [TanStack Query's disabled-query contract](https://tanstack.com/query/latest/docs/framework/react/guides/disabling-queries).
+Account settings show pending or unavailable profile verification rather than substituting cached
+authentication data or declaring an unknown email/session verified.
 
 These integration choices were checked against the [Uniwind quickstart](https://docs.uniwind.dev/quickstart)
 and [TanStack Query React Native guide](https://tanstack.com/query/latest/docs/framework/react/react-native)

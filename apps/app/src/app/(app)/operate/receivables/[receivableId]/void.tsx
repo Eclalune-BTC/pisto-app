@@ -37,18 +37,22 @@ export default function VoidReceivableRoute() {
     ? params.receivableId[0]
     : params.receivableId;
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
-  const businessId = access.business?.id ?? "inactive-business";
+  const businessId = access.business?.id;
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string>();
   const [command, setCommand] = useState<VoidReceivableRequest | null>(null);
   const detail = useQuery({
-    ...receivableDetailQueryOptions(businessId, receivableId ?? "missing-receivable"),
+    ...receivableDetailQueryOptions(businessId, receivableId),
     enabled: Boolean(access.business && access.canManage && receivableId),
   });
   const mutation = useMutation({
-    mutationFn: (nextCommand: VoidReceivableRequest) =>
-      receivablesApi.void(receivableId as string, nextCommand),
+    mutationFn: (nextCommand: VoidReceivableRequest) => {
+      if (!businessId || !receivableId)
+        throw new Error("Receivable void requires its business and record");
+      return receivablesApi.void(receivableId, nextCommand);
+    },
     onSuccess: async ({ receivable }) => {
+      if (!businessId) throw new Error("Receivable invalidation requires its business");
       await invalidateReceivableMutation(queryClient, {
         businessId,
         customerId: receivable.customerId,

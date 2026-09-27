@@ -1,5 +1,5 @@
 import { Archive, ArrowLeft, Pencil } from "lucide-react-native";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
@@ -72,15 +72,16 @@ export function CustomerDetailScreen({
   const { balance, customer } = state.detail;
   return (
     <Page contentContainerClassName="gap-8">
-      <Pressable
+      <Button
         accessibilityLabel={copy.back}
-        accessibilityRole="button"
-        className="min-h-11 flex-row items-center gap-2 self-start"
+        className="self-start px-0"
         onPress={onBack}
+        size="sm"
+        variant="ghost"
       >
         <ArrowLeft color="#237A55" size={18} />
         <Text className="font-bold text-positive dark:text-[#8DDEAF]">{copy.back}</Text>
-      </Pressable>
+      </Button>
       <ScreenHeader
         action={
           canManage && customer.status === "active" ? (
@@ -174,11 +175,11 @@ export function CustomerDetailScreen({
           <View className="gap-4">
             <View className="border-t border-border">
               {state.receivables.map((item) => (
-                <Pressable
-                  accessibilityRole="button"
-                  className="min-h-16 flex-row items-center justify-between gap-4 border-b border-line py-4 active:opacity-70 dark:border-[#304239]"
+                <Button
+                  className="min-h-16 justify-between gap-4 rounded-none border-b border-line px-0 py-4 dark:border-[#304239]"
                   key={item.id}
                   onPress={() => onOpenReceivable(item.id)}
+                  variant="ghost"
                 >
                   <View className="min-w-0 flex-1 gap-1">
                     <Text className="font-bold text-foreground">{item.description}</Text>
@@ -193,7 +194,7 @@ export function CustomerDetailScreen({
                       item.currencyMinorUnitDigits,
                     )}
                   </Text>
-                </Pressable>
+                </Button>
               ))}
             </View>
             {state.receivablesNextCursor ? (

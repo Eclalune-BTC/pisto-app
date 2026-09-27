@@ -24,9 +24,11 @@ export function Badge({
   children,
   className,
   tone = "neutral",
+  ...props
 }: ComponentProps<typeof View> & { tone?: BadgeTone }) {
   return (
     <View
+      {...props}
       className={cn("self-start rounded-full px-3 py-1.5", toneClasses[tone].container, className)}
     >
       <Text className={cn("text-xs font-bold", toneClasses[tone].text)}>{children}</Text>

@@ -170,6 +170,9 @@ function parseEntitlementMap(value: string): Record<string, string> {
 }
 
 export function parseBillingConfig(env: Record<string, string | undefined>): BillingConfig {
+  if (env.NODE_ENV !== undefined && !["development", "test", "production"].includes(env.NODE_ENV)) {
+    throw new BillingConfigurationError("NODE_ENV must be development, test, or production");
+  }
   const production = (env.NODE_ENV ?? "development") === "production";
   const polarEnabled = parseEnabled(env.BILLING_ENABLED, "BILLING_ENABLED");
   const revenueCatEnabled = parseEnabled(env.REVENUECAT_ENABLED, "REVENUECAT_ENABLED");

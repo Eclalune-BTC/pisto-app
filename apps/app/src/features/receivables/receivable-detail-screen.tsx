@@ -1,5 +1,5 @@
 import { ArrowLeft, RotateCcw } from "lucide-react-native";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
@@ -88,15 +88,16 @@ export function ReceivableDetailScreen({
   }[item.state];
   return (
     <Page contentContainerClassName="gap-8">
-      <Pressable
+      <Button
         accessibilityLabel={copy.back}
-        accessibilityRole="button"
-        className="min-h-11 flex-row items-center gap-2 self-start"
+        className="self-start px-0"
         onPress={onBack}
+        size="sm"
+        variant="ghost"
       >
         <ArrowLeft color="#237A55" size={18} />
         <Text className="font-bold text-positive dark:text-[#8DDEAF]">{copy.back}</Text>
-      </Pressable>
+      </Button>
       <ScreenHeader
         action={
           canManage && item.state !== "voided" ? (

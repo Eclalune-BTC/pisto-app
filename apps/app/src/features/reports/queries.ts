@@ -1,18 +1,25 @@
 import type { OperatingReportQuery } from "@pisto/contracts";
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, skipToken } from "@tanstack/react-query";
 
 import { reportsApi } from "./api";
 
 export const reportsQueryKeys = {
-  all: (businessId: string) => ["reports", businessId] as const,
-  operating: (businessId: string) => [...reportsQueryKeys.all(businessId), "operating"] as const,
-  operatingRange: (businessId: string, range: OperatingReportQuery) =>
+  all: (businessId: string | undefined) => ["reports", businessId] as const,
+  operating: (businessId: string | undefined) =>
+    [...reportsQueryKeys.all(businessId), "operating"] as const,
+  operatingRange: (businessId: string | undefined, range: OperatingReportQuery) =>
     [...reportsQueryKeys.operating(businessId), range.startLocalDate, range.endLocalDate] as const,
 } as const;
 
-export function operatingReportQueryOptions(businessId: string, range: OperatingReportQuery) {
+export function operatingReportQueryOptions(
+  businessId: string | undefined,
+  range: OperatingReportQuery,
+) {
   return queryOptions({
-    queryFn: ({ signal }) => reportsApi.operating(range, signal),
+    queryFn:
+      businessId && range.startLocalDate && range.endLocalDate
+        ? ({ signal }) => reportsApi.operating(range, signal)
+        : skipToken,
     queryKey: reportsQueryKeys.operatingRange(businessId, range),
   });
 }

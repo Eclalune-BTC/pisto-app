@@ -1,5 +1,5 @@
 import { ChevronRight, Plus, Search } from "lucide-react-native";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
@@ -134,12 +134,12 @@ export function CustomersScreen({
             {state.items.map((item) => {
               const contact = item.email ?? item.phone;
               return (
-                <Pressable
+                <Button
                   accessibilityHint={copy.contact}
-                  accessibilityRole="button"
-                  className="min-h-16 flex-row items-center gap-4 border-b border-line py-4 active:opacity-70 dark:border-[#304239]"
+                  className="min-h-16 justify-start gap-4 rounded-none border-b border-line px-0 py-4 dark:border-[#304239]"
                   key={item.id}
                   onPress={() => onOpenCustomer(item.id)}
+                  variant="ghost"
                 >
                   <View className="min-w-0 flex-1 gap-1">
                     <Text className="text-base font-bold text-foreground">{item.name}</Text>
@@ -153,7 +153,7 @@ export function CustomersScreen({
                     </Text>
                   ) : null}
                   <ChevronRight color="#617168" size={19} />
-                </Pressable>
+                </Button>
               );
             })}
           </View>

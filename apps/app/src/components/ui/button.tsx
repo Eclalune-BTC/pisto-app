@@ -19,6 +19,7 @@ const buttonVariants = cva(
         danger: "bg-danger",
       },
       size: {
+        icon: "h-11 min-h-11 w-11 px-0",
         sm: "min-h-11 px-4",
         md: "min-h-12 px-5",
         lg: "min-h-14 px-7",
@@ -56,6 +57,7 @@ type ButtonProps = Omit<ComponentProps<typeof Pressable>, "children"> &
 
 export function Button({
   accessibilityLabel,
+  accessibilityRole = "button",
   accessibilityState,
   asChild,
   children,
@@ -77,7 +79,7 @@ export function Button({
       accessibilityLabel={
         accessibilityLabel ?? (loading && label ? `${label}, ${t("common.loading")}` : undefined)
       }
-      accessibilityRole="button"
+      accessibilityRole={accessibilityRole}
       aria-busy={Boolean(loading)}
       accessibilityState={{
         ...accessibilityState,

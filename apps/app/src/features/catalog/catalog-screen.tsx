@@ -1,7 +1,7 @@
 import type { Category, ProductDetail } from "@pisto/contracts";
 import { AlertTriangle, FolderCog, Plus, Search } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
@@ -189,31 +189,18 @@ export function CatalogScreen({
           </View>
         </View>
 
-        <View
-          accessibilityRole="tablist"
-          className="flex-row flex-wrap items-center gap-x-5 gap-y-2"
-        >
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: categoryId === null }}
-            className={categoryId === null ? "border-b-2 border-positive py-2" : "py-2"}
-            onPress={() => onCategoryChange(null)}
-          >
-            <Text className="font-semibold text-foreground">{t("catalog.list.allCategories")}</Text>
-          </Pressable>
-          {categories
-            .filter((category) => category.status === "active")
-            .map((category) => (
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected: categoryId === category.id }}
-                className={categoryId === category.id ? "border-b-2 border-positive py-2" : "py-2"}
-                key={category.id}
-                onPress={() => onCategoryChange(category.id)}
-              >
-                <Text className="font-semibold text-foreground">{category.name}</Text>
-              </Pressable>
-            ))}
+        <View className="gap-2">
+          <FilterBar
+            label={t("catalog.categories.title")}
+            onChange={(value) => onCategoryChange(value === "all" ? null : value)}
+            options={[
+              { value: "all", label: t("catalog.list.allCategories") },
+              ...categories
+                .filter((category) => category.status === "active")
+                .map((category) => ({ value: category.id, label: category.name })),
+            ]}
+            value={categoryId ?? "all"}
+          />
           {categoriesLoading ? (
             <Text className="py-2 text-sm text-muted-foreground">
               {t("catalog.list.categoriesLoading")}
@@ -272,12 +259,12 @@ export function CatalogScreen({
             </View>
           ) : (
             state.items.map(({ product, stock }) => (
-              <Pressable
+              <Button
                 accessibilityLabel={t("catalog.list.openProduct", { name: product.name })}
-                accessibilityRole="button"
-                className="gap-3 border-b border-line py-5 active:opacity-70 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
+                className="flex-col items-stretch justify-start gap-3 rounded-none border-b border-line px-0 py-5 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
                 key={product.id}
                 onPress={() => onOpenProduct(product.id)}
+                variant="ghost"
               >
                 <View className="min-w-0 flex-1 gap-1">
                   <View className="flex-row flex-wrap items-center gap-2">
@@ -320,7 +307,7 @@ export function CatalogScreen({
                       : t("catalog.list.stockNotTracked")}
                   </Text>
                 </View>
-              </Pressable>
+              </Button>
             ))
           )}
           {state.hasNextPage ? (

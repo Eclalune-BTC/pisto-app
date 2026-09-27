@@ -27,7 +27,7 @@ export default function CustomersRoute() {
     () => ({ query: deferredSearch || undefined, status }),
     [deferredSearch, status],
   );
-  const businessId = access.business?.id ?? "inactive-business";
+  const businessId = access.business?.id;
   const customers = useInfiniteQuery({
     ...customersQueryOptions(businessId, filters),
     enabled: Boolean(access.business && access.canRead),
@@ -46,8 +46,8 @@ export default function CustomersRoute() {
     state = { kind: "loading" };
   } else if (customers.isError && !customers.data) {
     state = { kind: readFailureKind(customers.error) === "denied" ? "denied" : "error" };
-  } else {
-    const items = customers.data?.pages.flatMap((page) => page.items) ?? [];
+  } else if (customers.data) {
+    const items = customers.data.pages.flatMap((page) => page.items);
     const stale = queryHasStaleData(customers) || access.isStale;
     state =
       items.length === 0
@@ -56,9 +56,11 @@ export default function CustomersRoute() {
             kind: "ready",
             items,
             loadingMore: customers.isFetchingNextPage,
-            nextCursor: customers.data?.pages.at(-1)?.nextCursor ?? null,
+            nextCursor: customers.data.pages.at(-1)?.nextCursor ?? null,
             stale,
           };
+  } else {
+    state = { kind: "error" };
   }
 
   return (

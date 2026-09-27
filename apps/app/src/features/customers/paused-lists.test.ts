@@ -72,6 +72,11 @@ beforeEach(() => {
 });
 
 describe("customer and receivable lists with cached reads", () => {
+  test("does not present a missing customer response as a successful empty list", () => {
+    setup.list = cached(undefined);
+    renderToStaticMarkup(createElement(CustomersRoute));
+    expect(setup.screen.state).toEqual({ kind: "error" });
+  });
   test.each([CustomersRoute, ReceivablesRoute])(
     "%s keeps healthy cached results actionable",
     (Route) => {

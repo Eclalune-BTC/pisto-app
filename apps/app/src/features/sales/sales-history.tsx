@@ -1,5 +1,5 @@
 import type { Sale, SaleStatusFilter } from "@pisto/contracts";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -70,11 +70,12 @@ function SaleRow({
   const description = sale.description ?? copy.noDescription;
   return (
     <View className="gap-3 border-b border-line py-4 dark:border-[#304239] sm:flex-row sm:items-start sm:justify-between">
-      <Pressable
+      <Button
         accessibilityLabel={`${description}, ${amount}, ${statusLabel}`}
-        accessibilityRole="button"
-        className="min-h-11 min-w-0 flex-1 justify-center gap-1 active:opacity-70"
+        className="min-w-0 flex-1 flex-col items-stretch gap-1 rounded-none p-0"
         onPress={() => onOpenSale(sale.id)}
+        size="sm"
+        variant="ghost"
       >
         <Text className="font-bold text-foreground">{description}</Text>
         <Text className="text-xs text-ink-muted dark:text-[#91A198]">
@@ -85,7 +86,7 @@ function SaleRow({
             {copy.voidReason}: {sale.correction.reason}
           </Text>
         ) : null}
-      </Pressable>
+      </Button>
       <View className="items-start gap-2 sm:items-end">
         <Text className="font-black text-foreground">{amount}</Text>
         {canCorrect && sale.status === "posted" && sale.correction === null ? (

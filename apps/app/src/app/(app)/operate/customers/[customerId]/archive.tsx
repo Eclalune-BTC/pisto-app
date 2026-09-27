@@ -25,14 +25,18 @@ export default function ArchiveCustomerRoute() {
   const params = useLocalSearchParams<{ customerId?: string | string[] }>();
   const customerId = Array.isArray(params.customerId) ? params.customerId[0] : params.customerId;
   const access = useCapabilityAccess("customers:read", "customers:manage");
-  const businessId = access.business?.id ?? "inactive-business";
+  const businessId = access.business?.id;
   const [idempotencyKey] = useState(() => Crypto.randomUUID());
   const customer = useQuery({
-    ...customerDetailQueryOptions(businessId, customerId ?? "missing-customer"),
+    ...customerDetailQueryOptions(businessId, customerId),
     enabled: Boolean(access.business && access.canManage && customerId),
   });
   const mutation = useMutation({
-    mutationFn: () => customersApi.archive(customerId as string, { idempotencyKey }),
+    mutationFn: () => {
+      if (!businessId || !customerId)
+        throw new Error("Customer archive requires its business and customer");
+      return customersApi.archive(customerId, { idempotencyKey });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: customerQueryKeys.all(businessId) });
       goBack();

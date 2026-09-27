@@ -1,11 +1,12 @@
 import type { Category } from "@pisto/contracts";
 import { AlertTriangle, ArrowLeft, Check, Plus, Search } from "lucide-react-native";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { FilterBar } from "@/components/ui/filter-bar";
 
 import type { CatalogStatusFilter } from "./query-keys";
 import { ReadOnlyNotice } from "./route-state";
@@ -335,19 +336,15 @@ export function CategoryManager({
                 value={search}
               />
             </View>
-            <View accessibilityRole="tablist" className="flex-row flex-wrap gap-x-5 gap-y-1">
-              {(["active", "archived", "all"] as const).map((value) => (
-                <Pressable
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: status === value }}
-                  className={status === value ? "border-b-2 border-positive py-2" : "py-2"}
-                  key={value}
-                  onPress={() => onStatusChange(value)}
-                >
-                  <Text className="font-semibold text-foreground">{copy.statuses[value]}</Text>
-                </Pressable>
-              ))}
-            </View>
+            <FilterBar
+              label={copy.status}
+              onChange={onStatusChange}
+              options={(["active", "archived", "all"] as const).map((value) => ({
+                label: copy.statuses[value],
+                value,
+              }))}
+              value={status}
+            />
           </View>
 
           {state.status === "loading" ? (

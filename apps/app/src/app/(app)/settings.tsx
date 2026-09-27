@@ -10,18 +10,19 @@ import {
   Sun,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 import { Uniwind, useUniwind } from "uniwind";
 
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, ButtonText } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { formatLocalizedDate } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { api } from "@/lib/api-client";
-import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 
 type ThemeChoice = "light" | "dark" | "system";
@@ -36,7 +37,6 @@ export default function SettingsScreen() {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const router = useRouter();
-  const { data: authSession } = authClient.useSession();
   const profile = useQuery({ queryFn: api.me, queryKey: ["account", "me"] });
   const { hasAdaptiveThemes, theme } = useUniwind();
   const activeTheme: ThemeChoice = hasAdaptiveThemes
@@ -44,7 +44,10 @@ export default function SettingsScreen() {
     : theme === "dark"
       ? "dark"
       : "light";
-  const user = profile.data?.user ?? authSession?.user;
+  const profileUnavailable = profile.isError || profile.fetchStatus === "paused";
+  const currentProfile = profileUnavailable ? undefined : profile.data;
+  const user = currentProfile?.user;
+  const checkingProfile = profile.isPending && !profileUnavailable;
   const signOutAction = useSignOut();
 
   const selectTheme = (choice: ThemeChoice) => {
@@ -61,28 +64,44 @@ export default function SettingsScreen() {
 
       <View className="gap-9 lg:flex-row lg:items-start lg:gap-12">
         <View className="gap-8 lg:w-[38%]">
-          <View className="gap-5 border-y border-line py-6 dark:border-[#304239] sm:flex-row sm:items-center">
-            <View className="h-14 w-14 items-center justify-center rounded-full bg-accent">
-              <Text className="text-xl font-black text-ink">
-                {user?.name?.slice(0, 1).toUpperCase() || "P"}
-              </Text>
+          {user ? (
+            <View className="gap-5 border-y border-line py-6 dark:border-[#304239] sm:flex-row sm:items-center">
+              <View className="h-14 w-14 items-center justify-center rounded-full bg-accent">
+                <Text className="text-xl font-black text-ink">
+                  {user.name.slice(0, 1).toUpperCase() || "P"}
+                </Text>
+              </View>
+              <View className="min-w-0 flex-1 gap-1">
+                <Text className="text-xl font-black text-foreground">
+                  {user.name || t("common.pistoAccount")}
+                </Text>
+                <Text className="text-sm text-muted-foreground">{user.email}</Text>
+              </View>
+              <Badge tone={user.emailVerified ? "positive" : "warning"}>
+                {user.emailVerified ? t("settings.verifiedEmail") : t("settings.unverifiedEmail")}
+              </Badge>
             </View>
-            <View className="min-w-0 flex-1 gap-1">
-              <Text className="text-xl font-black text-foreground">
-                {user?.name || t("common.pistoAccount")}
-              </Text>
-              <Text className="text-sm text-muted-foreground">
-                {user?.email || t("settings.loadingAccount")}
-              </Text>
+          ) : checkingProfile ? (
+            <Text accessibilityLiveRegion="polite" className="py-6 text-muted-foreground">
+              {t("settings.loadingAccount")}
+            </Text>
+          ) : (
+            <View className="gap-3">
+              <Alert>{t("settings.profileUnavailable")}</Alert>
+              <Button
+                label={t("common.retry")}
+                loading={profile.isFetching}
+                onPress={() => profile.refetch()}
+                variant="secondary"
+              />
             </View>
-            <Badge tone={user?.emailVerified ? "positive" : "warning"}>
-              {user?.emailVerified ? t("settings.verifiedEmail") : t("settings.unverifiedEmail")}
-            </Badge>
-          </View>
+          )}
 
           <View className="gap-5">
             <View className="gap-0.5">
-              <Text className="text-lg font-bold text-foreground">{t("settings.appearance")}</Text>
+              <Heading level={2} size="section">
+                {t("settings.appearance")}
+              </Heading>
               <Text className="text-sm text-muted-foreground">
                 {t("settings.appearanceDescription")}
               </Text>
@@ -94,7 +113,9 @@ export default function SettingsScreen() {
                 return (
                   <Button
                     key={choice.value}
-                    accessibilityState={{ selected }}
+                    accessibilityRole={Platform.OS === "web" ? "button" : "togglebutton"}
+                    accessibilityState={Platform.OS === "web" ? undefined : { checked: selected }}
+                    aria-pressed={Platform.OS === "web" ? selected : undefined}
                     className={cn(
                       "min-h-12 flex-1 gap-1 rounded-lg px-2",
                       selected ? "bg-white dark:bg-[#2A4036]" : "bg-transparent",
@@ -123,7 +144,9 @@ export default function SettingsScreen() {
             <View className="flex-row items-start gap-3">
               <ShieldCheck color="#237A55" size={23} />
               <View className="min-w-0 flex-1 gap-1">
-                <Text className="text-lg font-bold text-foreground">{t("settings.security")}</Text>
+                <Heading level={2} size="section">
+                  {t("settings.security")}
+                </Heading>
                 <Text className="text-sm leading-5 text-muted-foreground">
                   {t("settings.securityDescription")}
                 </Text>
@@ -135,20 +158,22 @@ export default function SettingsScreen() {
                 <View className="min-w-0 flex-1">
                   <Text className="font-bold text-foreground">{t("settings.currentSession")}</Text>
                   <Text className="text-sm text-muted-foreground">
-                    {profile.data?.session.expiresAt
+                    {currentProfile
                       ? t("settings.expires", {
-                          date: formatLocalizedDate(profile.data.session.expiresAt, locale),
+                          date: formatLocalizedDate(currentProfile.session.expiresAt, locale),
                         })
-                      : t("settings.checkingSession")}
+                      : checkingProfile
+                        ? t("settings.checkingSession")
+                        : t("session.checkFailedDescription")}
                   </Text>
                 </View>
               </View>
-              <Badge tone={profile.isError ? "warning" : "positive"}>
-                {profile.isPending
+              <Badge tone={currentProfile ? "positive" : checkingProfile ? "neutral" : "warning"}>
+                {checkingProfile
                   ? t("settings.checking")
-                  : profile.isError
-                    ? t("settings.unconfirmed")
-                    : t("settings.active")}
+                  : currentProfile
+                    ? t("settings.active")
+                    : t("settings.unconfirmed")}
               </Badge>
             </View>
 
@@ -174,7 +199,9 @@ export default function SettingsScreen() {
 
           <View className="gap-4 border-t border-[#F0CDCD] pt-6 dark:border-[#603939]">
             <View className="gap-1">
-              <Text className="text-lg font-bold text-foreground">{t("common.signOut")}</Text>
+              <Heading level={2} size="section">
+                {t("common.signOut")}
+              </Heading>
               <Text className="text-sm text-muted-foreground">
                 {t("settings.signOutDescription")}
               </Text>

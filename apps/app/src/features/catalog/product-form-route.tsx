@@ -151,7 +151,7 @@ export function ProductFormRoute({
     onSuccess: async ({ product: savedProduct }) => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: reportsQueryKeys.all(business?.id ?? "unselected"),
+          queryKey: reportsQueryKeys.all(business?.id),
         }),
         queryClient.invalidateQueries({
           queryKey: catalogInventoryQueryKeys.productsRoot(business?.id),
