@@ -37,8 +37,10 @@ export function buildExpenseCommand(input: {
     ({ id, status }) => id === input.draft.accountId && status === "active",
   );
   if (!account) issues.accountId = "account-required";
-  const amount = parseAmountToMinorUnits(input.draft.amount, account?.currencyMinorUnitDigits ?? 2);
-  if ("error" in amount) issues.amount = "invalid-amount";
+  const amount = account
+    ? parseAmountToMinorUnits(input.draft.amount, account.currencyMinorUnitDigits)
+    : null;
+  if (amount && "error" in amount) issues.amount = "invalid-amount";
   const description = input.draft.description.trim();
   if (!description) issues.description = "required";
   else if (description.length > 240) issues.description = "too-long";
@@ -47,7 +49,7 @@ export function buildExpenseCommand(input: {
   if (!calendarLocalDateSchema.safeParse(input.draft.localDate).success)
     issues.localDate = "invalid-date";
   if (!localTimeSchema.safeParse(input.draft.localTime).success) issues.localTime = "invalid-time";
-  if (Object.keys(issues).length > 0 || !account || "error" in amount) {
+  if (Object.keys(issues).length > 0 || !account || !amount || "error" in amount) {
     return { command: null, issues };
   }
   return {

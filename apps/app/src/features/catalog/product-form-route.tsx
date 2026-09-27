@@ -10,7 +10,7 @@ import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { reportsQueryKeys } from "@/features/reports/queries";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
@@ -92,7 +92,7 @@ export function ProductFormRoute({
   const queryClient = useQueryClient();
   const { i18n, t } = useTranslation();
   const copy = useMemo(() => buildCatalogCopy(t), [t]);
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
   const canManage = business?.access.permissions.includes("catalog:manage") ?? false;
@@ -195,7 +195,9 @@ export function ProductFormRoute({
       { label: fieldCopy.price, value: price },
       {
         label: fieldCopy.category,
-        value: categoryName ?? copy.productEditor.noCategory,
+        value: fields.categoryId
+          ? (categoryName ?? copy.productEditor.categoriesUnavailable)
+          : copy.productEditor.noCategory,
       },
       {
         label: fieldCopy.unit,

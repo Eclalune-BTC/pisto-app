@@ -4,7 +4,7 @@ import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { queryHasStaleData } from "@/lib/query-state";
 import {
@@ -28,7 +28,7 @@ export function ExpensesController() {
   const router = useRouter();
   const { i18n, t } = useTranslation();
   const copy = useMemo(() => buildExpensesCopy(t), [t]);
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const {
     business,
     businesses,

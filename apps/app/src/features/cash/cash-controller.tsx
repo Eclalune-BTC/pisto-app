@@ -3,7 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { queryHasStaleData } from "@/lib/query-state";
 import { CashScreen, type CashScreenState } from "./cash-screen";
@@ -16,7 +16,7 @@ export function CashController() {
   const router = useRouter();
   const { i18n, t } = useTranslation();
   const copy = useMemo(() => buildCashCopy(t), [t]);
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const {
     business,
     businesses,

@@ -5,6 +5,7 @@ import type {
   SaleCorrection,
   VoidSaleRequest,
 } from "@pisto/contracts";
+import { saleCorrectionKindSchema, saleStatusSchema } from "@pisto/contracts";
 
 import { fingerprintValue, maximumMinorUnits } from "./operation-log.ts";
 import { ProductError } from "./product-core.ts";
@@ -51,7 +52,7 @@ export function correctionFingerprint(saleId: string, input: SaleCorrectionInput
 export function toCorrection(record: SaleCorrectionRecord): SaleCorrection {
   return {
     id: record.id,
-    kind: record.kind === "replacement" ? "replacement" : "void",
+    kind: saleCorrectionKindSchema.parse(record.kind),
     reason: record.reason,
     originalSaleId: record.originalSaleId,
     replacementSaleId: record.replacementSaleId,
@@ -62,7 +63,7 @@ export function toCorrection(record: SaleCorrectionRecord): SaleCorrection {
 export function toSale(record: SaleRecord, correction: SaleCorrection | null = null): Sale {
   return {
     id: record.id,
-    status: record.status === "voided" ? "voided" : "posted",
+    status: saleStatusSchema.parse(record.status),
     entryMode: "total_only",
     grossMinorUnits: record.grossMinorUnits.toString(),
     currency: record.currency,

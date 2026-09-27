@@ -20,7 +20,7 @@ import {
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
 import { VoidReceivableReview } from "@/features/receivables/receivable-reviews";
 import { ReceivableVoidForm } from "@/features/receivables/receivable-void-form";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { isPausedWithoutData, readFailureKind } from "@/lib/query-state";
 
@@ -31,7 +31,7 @@ export default function VoidReceivableRoute() {
   const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const params = useLocalSearchParams<{ receivableId?: string | string[] }>();
   const receivableId = Array.isArray(params.receivableId)
     ? params.receivableId[0]

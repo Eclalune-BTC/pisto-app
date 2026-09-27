@@ -8,6 +8,27 @@ import {
 } from "../src/revenuecat.ts";
 
 describe("RevenueCat webhook projection", () => {
+  test("rejects out-of-range dates instead of treating them as lifetime access", () => {
+    for (const key of [
+      "event_timestamp_ms",
+      "purchased_at_ms",
+      "expiration_at_ms",
+      "grace_period_expiration_at_ms",
+    ]) {
+      expect(
+        revenueCatWebhookSchema.safeParse({
+          api_version: "1.0",
+          event: {
+            id: "event",
+            type: "INITIAL_PURCHASE",
+            event_timestamp_ms: 1_800_000_000_000,
+            [key]: 8_640_000_000_000_001,
+          },
+        }).success,
+      ).toBe(false);
+    }
+    expect(() => revenueCatEventStatus("UNKNOWN", null, new Date())).toThrow("Unsupported");
+  });
   test("parses stable event identity and entitlement fields", () => {
     const result = revenueCatWebhookSchema.safeParse({
       api_version: "1.0",

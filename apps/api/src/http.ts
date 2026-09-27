@@ -82,7 +82,6 @@ export async function callAuthEndpoint(input: {
       ...(input.body !== undefined ? { body: JSON.stringify(input.body) } : {}),
     }),
   );
-  const payload = await response.json().catch(() => null);
   if (!response.ok) {
     const status = statusForAuthResponse(response.status);
     throw new ApiError(
@@ -93,5 +92,9 @@ export async function callAuthEndpoint(input: {
         : "The billing provider request failed",
     );
   }
-  return payload;
+  try {
+    return await response.json();
+  } catch {
+    throw new ApiError(503, "BILLING_UNAVAILABLE", "The billing provider returned invalid JSON");
+  }
 }

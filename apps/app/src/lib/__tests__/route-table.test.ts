@@ -60,7 +60,7 @@ describe("route table", () => {
 
   test("keeps exactly these layouts and special files", () => {
     expect(table.layouts).toEqual(["(app)/_layout.tsx", "_layout.tsx"]);
-    expect(table.specials).toEqual(["+html.tsx", "+not-found.tsx"]);
+    expect(table.specials).toEqual(["+not-found.tsx"]);
   });
 
   test("gives every URL a single owning file", () => {

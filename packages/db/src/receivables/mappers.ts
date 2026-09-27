@@ -1,4 +1,5 @@
 import type { Customer, Receivable, ReceivablePayment } from "@pisto/contracts";
+import { customerStatusSchema, receivablePaymentKindSchema } from "@pisto/contracts";
 
 import type { CustomerRecord, PaymentRecord, ReceivableRecord } from "./types.ts";
 
@@ -9,7 +10,7 @@ export function toCustomer(record: CustomerRecord): Customer {
     phone: record.phone,
     email: record.email,
     notes: record.notes,
-    status: record.status === "archived" ? "archived" : "active",
+    status: customerStatusSchema.parse(record.status),
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   };
@@ -20,7 +21,7 @@ export function toPayment(record: PaymentRecord): ReceivablePayment {
     id: record.id,
     receivableId: record.receivableId,
     customerId: record.customerId,
-    kind: record.kind === "reversal" ? "reversal" : "payment",
+    kind: receivablePaymentKindSchema.parse(record.kind),
     amountMinorUnits: record.amountMinorUnits.toString(),
     currency: record.currency,
     currencyMinorUnitDigits: record.currencyMinorUnitDigits,
@@ -42,6 +43,9 @@ export function deriveReceivableBalance(input: {
   paidMinorUnits: bigint;
   status: string;
 }): { outstandingMinorUnits: bigint; state: Receivable["state"] } {
+  if (input.status !== "posted" && input.status !== "voided") {
+    throw new Error("Stored receivable status is invalid");
+  }
   const outstandingMinorUnits =
     input.status === "voided" ? 0n : input.originalMinorUnits - input.paidMinorUnits;
   if (input.paidMinorUnits < 0n || outstandingMinorUnits < 0n) {

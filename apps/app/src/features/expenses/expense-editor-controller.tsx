@@ -1,10 +1,11 @@
+import type { CashAccount } from "@pisto/contracts";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { queryHasStaleData } from "@/lib/query-state";
@@ -38,7 +39,7 @@ export function ExpenseEditorController() {
   const queryClient = useQueryClient();
   const { i18n, t } = useTranslation();
   const copy = useMemo(() => buildExpensesCopy(t), [t]);
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const {
     business,
     businesses,
@@ -55,6 +56,7 @@ export function ExpenseEditorController() {
   const [draft, setDraft] = useState<ExpenseDraft>(emptyDraft);
   const [errors, setErrors] = useState<ExpenseDraftErrors>({});
   const [command, setCommand] = useState<Parameters<typeof cashApi.expenses.post>[0] | null>(null);
+  const [reviewAccount, setReviewAccount] = useState<CashAccount | null>(null);
 
   useEffect(() => {
     if (!business) return;
@@ -101,7 +103,11 @@ export function ExpenseEditorController() {
     remoteState = { kind: "error", message: copy.remote.staleMutation };
   }
 
+  const confirmation = cashConfirmationState(mutation);
+  const confirmationLocked = confirmation === "pending" || confirmation === "uncertain";
+
   const prepareReview = () => {
+    if (confirmationLocked || command || !canConfirm || remoteState.kind !== "ready") return;
     const result = buildExpenseCommand({
       accounts,
       draft,
@@ -113,14 +119,17 @@ export function ExpenseEditorController() {
       ) as ExpenseDraftErrors,
     );
     if (!result.command) return;
+    const account = accounts.find(({ id }) => id === result.command?.accountId);
+    if (!account) throw new Error("Expense review requires the selected cash account");
+    setReviewAccount(account);
     setCommand(result.command);
     mutation.reset();
   };
 
-  const confirmation = cashConfirmationState(mutation);
   return (
     <ExpenseEditorScreen
       accounts={accounts}
+      reviewAccount={reviewAccount}
       canManage={canConfirm}
       categoryOptions={copy.categoryOptions}
       command={command}
@@ -135,17 +144,31 @@ export function ExpenseEditorController() {
           : undefined
       }
       errors={errors}
-      formatMoney={(minorUnits, currency) =>
-        formatMinorUnits(minorUnits, currency, business?.currencyMinorUnitDigits ?? 2, locale)
-      }
+      formatMoney={(minorUnits, currency) => {
+        if (!reviewAccount) throw new Error("Expense review requires its cash account snapshot");
+        return formatMinorUnits(
+          minorUnits,
+          currency,
+          reviewAccount.currencyMinorUnitDigits,
+          locale,
+        );
+      }}
       hasMoreAccounts={Boolean(accountsQuery.hasNextPage)}
       isLoadingMoreAccounts={accountsQuery.isFetchingNextPage}
-      onCheckStatus={() => command && mutation.mutate(command)}
-      onConfirm={() => command && mutation.mutate(command)}
+      onCheckStatus={() => {
+        if (command && !mutation.isPending) mutation.mutate(command);
+      }}
+      onConfirm={() => {
+        if (command && !mutation.isPending && canConfirm) mutation.mutate(command);
+      }}
       onCreateAccount={() => router.push("/operate/cash/accounts/new")}
-      onDraftChange={setDraft}
+      onDraftChange={(value) => {
+        if (!confirmationLocked && !command) setDraft(value);
+      }}
       onEdit={() => {
+        if (confirmationLocked) return;
         setCommand(null);
+        setReviewAccount(null);
         mutation.reset();
       }}
       onLoadMoreAccounts={() => void accountsQuery.fetchNextPage()}

@@ -7,7 +7,7 @@ import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { FilterBar } from "@/components/ui/filter-bar";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
 import type { CatalogStatusFilter } from "./query-keys";
@@ -127,7 +127,7 @@ export function CatalogScreen({
   status,
 }: CatalogScreenProps) {
   const { i18n, t } = useTranslation();
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   if (state.status === "denied") {
     return (
       <Page>

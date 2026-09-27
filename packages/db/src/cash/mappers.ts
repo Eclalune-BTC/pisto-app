@@ -1,4 +1,12 @@
 import type { CashAccount, CashMovement, CashTransfer, Expense } from "@pisto/contracts";
+import {
+  cashAccountKindSchema,
+  cashAccountStatusSchema,
+  cashMovementActionSchema,
+  cashMovementDirectionSchema,
+  expenseCategorySchema,
+  expenseStatusSchema,
+} from "@pisto/contracts";
 
 import type {
   CashAccountRecord,
@@ -11,8 +19,8 @@ export function toCashAccount(record: CashAccountRecord, balanceMinorUnits: stri
   return {
     id: record.id,
     name: record.name,
-    kind: record.kind as CashAccount["kind"],
-    status: record.status as CashAccount["status"],
+    kind: cashAccountKindSchema.parse(record.kind),
+    status: cashAccountStatusSchema.parse(record.status),
     allowNegativeBalance: record.allowNegativeBalance,
     currency: record.currency,
     currencyMinorUnitDigits: record.currencyMinorUnitDigits,
@@ -26,8 +34,8 @@ export function toCashMovement(record: CashMovementRecord): CashMovement {
   return {
     id: record.id,
     accountId: record.accountId,
-    direction: record.direction as CashMovement["direction"],
-    action: record.action as CashMovement["action"],
+    direction: cashMovementDirectionSchema.parse(record.direction),
+    action: cashMovementActionSchema.parse(record.action),
     amountMinorUnits: record.amountMinorUnits.toString(),
     deltaMinorUnits: record.deltaMinorUnits.toString(),
     currency: record.currency,
@@ -49,8 +57,8 @@ export function toExpense(record: ExpenseRecord): Expense {
   return {
     id: record.id,
     accountId: record.accountId,
-    status: record.status as Expense["status"],
-    category: record.category as Expense["category"],
+    status: expenseStatusSchema.parse(record.status),
+    category: expenseCategorySchema.parse(record.category),
     amountMinorUnits: record.amountMinorUnits.toString(),
     currency: record.currency,
     currencyMinorUnitDigits: record.currencyMinorUnitDigits,

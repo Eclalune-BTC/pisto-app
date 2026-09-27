@@ -119,14 +119,29 @@ export function CashAccountEditorScreen({
   onRetry,
 }: CashAccountEditorScreenProps) {
   const authorizedState = requireFeatureManageAccess(remoteState, canManage);
-  const reviewing = stage === "review" && command !== null;
-  const createCommand = reviewing && isCreateCommand(command) ? command : null;
-  const reviewName = command?.name ?? account?.name ?? draft.name;
-  const reviewKind = command?.kind ?? account?.kind ?? draft.kind;
-  const reviewKindLabel =
-    kindOptions.find(({ value }) => value === reviewKind)?.label ?? reviewKind;
-  const reviewAllowsNegative =
-    command?.allowNegativeBalance ?? account?.allowNegativeBalance ?? false;
+  if (authorizedState.kind !== "ready") {
+    return (
+      <FeatureBoundary copy={copy} onRetry={onRetry} state={authorizedState}>
+        {null}
+      </FeatureBoundary>
+    );
+  }
+  const reviewing = stage === "review";
+  if (reviewing && !command) throw new Error("Cash account review requires its command");
+  const createCommand = command && isCreateCommand(command) ? command : null;
+  const original = createCommand ?? account;
+  let review: { name: string; kindLabel: string; allowNegativeBalance: boolean } | null = null;
+  if (reviewing && command) {
+    if (!original) throw new Error("Cash account update review requires its original account");
+    const kind = command.kind ?? original.kind;
+    const option = kindOptions.find(({ value }) => value === kind);
+    if (!option) throw new Error("Cash account kind has no translated option");
+    review = {
+      name: command.name ?? original.name,
+      kindLabel: option.label,
+      allowNegativeBalance: command.allowNegativeBalance ?? original.allowNegativeBalance,
+    };
+  }
   const openingValue = createCommand?.opening
     ? `${createCommand.opening.direction === "in" ? copy.moneyIn : copy.moneyOut} - ${formatMoney(createCommand.opening.amountMinorUnits, createCommand.currency)}`
     : copy.startAtZero;
@@ -148,7 +163,7 @@ export function CashAccountEditorScreen({
           }
         />
 
-        {reviewing ? (
+        {review ? (
           <CashOperationReview
             copy={copy}
             effect={effect}
@@ -157,11 +172,11 @@ export function CashAccountEditorScreen({
             onConfirm={onConfirm}
             onEdit={onEdit}
             rows={[
-              { label: copy.name, value: reviewName },
-              { label: copy.kind, value: reviewKindLabel },
+              { label: copy.name, value: review.name },
+              { label: copy.kind, value: review.kindLabel },
               {
                 label: copy.negativePolicy,
-                value: reviewAllowsNegative ? copy.allowNegative : copy.protectedBalance,
+                value: review.allowNegativeBalance ? copy.allowNegative : copy.protectedBalance,
               },
               ...(createCommand
                 ? [

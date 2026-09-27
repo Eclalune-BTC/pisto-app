@@ -2,6 +2,12 @@ export const DEFAULT_LOCALE = "es-SV";
 export const SUPPORTED_LOCALES = [DEFAULT_LOCALE] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
+export function requireSupportedLocale(language: string | undefined): SupportedLocale {
+  const locale = SUPPORTED_LOCALES.find((value) => value === language);
+  if (!locale) throw new Error("The application locale is not initialized or supported");
+  return locale;
+}
+
 export function resolveSupportedLocale(
   locales: ReadonlyArray<{ languageCode?: string | null; languageTag: string }>,
 ): SupportedLocale {

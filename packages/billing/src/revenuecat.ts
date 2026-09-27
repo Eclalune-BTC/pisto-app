@@ -5,19 +5,21 @@ import { z } from "zod";
 import type { RevenueCatBillingConfig } from "./config.ts";
 import { constantTimeEqual, verifyRevenueCatSignature } from "./security.ts";
 
+const millisecondsSchema = z.number().int().min(0).max(8_640_000_000_000_000);
+
 const revenueCatEventSchema = z
   .object({
     id: z.string().min(1),
     type: z.string().min(1),
-    event_timestamp_ms: z.number().int().nonnegative(),
+    event_timestamp_ms: millisecondsSchema,
     app_user_id: z.string().min(1).optional(),
     original_app_user_id: z.string().min(1).optional(),
     aliases: z.array(z.string().min(1)).optional(),
     product_id: z.string().min(1).nullable().optional(),
     entitlement_ids: z.array(z.string().min(1)).nullable().optional(),
-    purchased_at_ms: z.number().int().nonnegative().nullable().optional(),
-    expiration_at_ms: z.number().int().nonnegative().nullable().optional(),
-    grace_period_expiration_at_ms: z.number().int().nonnegative().nullable().optional(),
+    purchased_at_ms: millisecondsSchema.nullable().optional(),
+    expiration_at_ms: millisecondsSchema.nullable().optional(),
+    grace_period_expiration_at_ms: millisecondsSchema.nullable().optional(),
     cancel_reason: z.string().nullable().optional(),
     transaction_id: z.string().min(1).nullable().optional(),
     original_transaction_id: z.string().min(1).nullable().optional(),
@@ -50,6 +52,8 @@ export class RevenueCatWebhookError extends Error {
 }
 
 export function revenueCatEventStatus(type: string, expiresAt: Date | null, now: Date) {
+  if (!isRevenueCatEventProjectable(type))
+    throw new Error("Unsupported RevenueCat projection event");
   if (type === "EXPIRATION") return "expired" as const;
   if (type === "REFUND") return "revoked" as const;
   // Pausing is scheduled for period end; a billing issue is not expiration.
@@ -63,7 +67,8 @@ export function revenueCatEventStatus(type: string, expiresAt: Date | null, now:
 function dateFromMilliseconds(value: number | null | undefined): Date | null {
   if (value === null || value === undefined) return null;
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
+  if (Number.isNaN(date.getTime())) throw new Error("Invalid RevenueCat timestamp");
+  return date;
 }
 
 /**
@@ -234,10 +239,24 @@ export function createRevenueCatWebhookProcessor(input: {
         return { duplicate: false, projected: false };
       }
 
-      const sourceId =
-        event.original_transaction_id ??
-        event.transaction_id ??
-        `${userId}:${event.product_id ?? "unknown-product"}`;
+      const sourceId = event.original_transaction_id ?? event.transaction_id;
+      if (!sourceId || !event.product_id || !purchasedAt || event.expiration_at_ms === undefined) {
+        throw new RevenueCatWebhookError(
+          400,
+          "REVENUECAT_INVALID_PAYLOAD",
+          "RevenueCat entitlement projection requires transaction identity, product and period fields",
+        );
+      }
+      if (
+        paidUntil === null &&
+        !["NON_RENEWING_PURCHASE", "CANCELLATION", "REFUND", "REFUND_REVERSED"].includes(event.type)
+      ) {
+        throw new RevenueCatWebhookError(
+          400,
+          "REVENUECAT_INVALID_PAYLOAD",
+          "Subscription access requires an explicit expiration",
+        );
+      }
       const status = revenueCatEventStatus(event.type, expiresAt, receivedAt);
       for (const mapped of mappedEntitlements) {
         await tx
@@ -248,7 +267,7 @@ export function createRevenueCatWebhookProcessor(input: {
             organizationId: null,
             source: "revenuecat",
             sourceId,
-            productId: event.product_id ?? null,
+            productId: event.product_id,
             status,
             sourceEventAt,
             validFrom: purchasedAt,
@@ -266,7 +285,7 @@ export function createRevenueCatWebhookProcessor(input: {
             set: {
               userId,
               organizationId: null,
-              productId: event.product_id ?? null,
+              productId: event.product_id,
               status,
               sourceEventAt,
               // Apple can notify renewal before the next period begins. Extend

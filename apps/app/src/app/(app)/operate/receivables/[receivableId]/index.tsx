@@ -12,7 +12,7 @@ import { formatBusinessLocalDate, uniqueValues } from "@/features/receivables/pr
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
 import { ReceivableDetailScreen } from "@/features/receivables/receivable-detail-screen";
 import type { ReceivableDetailLoadState } from "@/features/receivables/types";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { hasDeniedRead, isPausedWithoutData, readFailureKind } from "@/lib/query-state";
 
@@ -20,7 +20,7 @@ export default function ReceivableDetailRoute() {
   const { i18n, t } = useTranslation();
   const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const params = useLocalSearchParams<{ receivableId?: string | string[] }>();
   const receivableId = Array.isArray(params.receivableId)
     ? params.receivableId[0]

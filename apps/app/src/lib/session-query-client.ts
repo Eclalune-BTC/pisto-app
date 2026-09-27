@@ -17,7 +17,9 @@ export function createSessionQueryClient(refetchSession: () => Promise<unknown>)
     // Refresh the session atom. Signing out here could revoke a newer session
     // established in another tab while this request was in flight.
     void refetchSession()
-      .catch(() => undefined)
+      .catch(() => {
+        if (active) console.error("Session refresh failed after an unauthorized API response");
+      })
       .finally(() => {
         recovering = false;
       });

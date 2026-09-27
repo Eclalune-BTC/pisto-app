@@ -1,4 +1,5 @@
 import type { BusinessPermission } from "@pisto/contracts";
+import { signedAggregateIntegerSchema } from "@pisto/contracts";
 import { and, eq, sql } from "drizzle-orm";
 
 import {
@@ -100,5 +101,6 @@ export async function currentBalance(
     .where(
       and(eq(inventoryMovement.businessId, businessId), eq(inventoryMovement.productId, productId)),
     );
-  return BigInt(balance?.value ?? "0");
+  if (!balance) throw new Error("Inventory balance query returned no row");
+  return BigInt(signedAggregateIntegerSchema.parse(balance.value));
 }

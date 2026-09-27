@@ -11,7 +11,7 @@ import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { buildCustomersCopy, type CustomersReceivablesCopy } from "@/features/customers/copy";
 import { CustomerPicker } from "@/features/customers/customer-picker";
 import { customerDetailQueryOptions, customersQueryOptions } from "@/features/customers/queries";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { isAmbiguousMutationError } from "@/lib/api-client";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { hasDeniedRead } from "@/lib/query-state";
@@ -62,7 +62,7 @@ export function ReceivableEditor({
   const { i18n, t } = useTranslation();
   const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const queryClient = useQueryClient();
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search.trim());

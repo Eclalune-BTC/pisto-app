@@ -99,11 +99,13 @@ describe("missing translation guard", () => {
     );
   });
 
-  test("never renders a raw key path in a release build", () => {
+  test("does not hide a missing translation in a release build", () => {
     const previous = process.env.NODE_ENV;
     process.env.NODE_ENV = "production";
     try {
-      expect(resolveMissingTranslation("cash.overview.unknown")).toBe("");
+      expect(() => resolveMissingTranslation("cash.overview.unknown")).toThrow(
+        "Missing es-SV translation key: cash.overview.unknown",
+      );
     } finally {
       process.env.NODE_ENV = previous;
     }

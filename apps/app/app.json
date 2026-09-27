@@ -24,6 +24,7 @@
     },
     "web": {
       "output": "single",
+      "lang": "es-SV",
       "favicon": "./assets/brand/favicon.png"
     },
     "plugins": [

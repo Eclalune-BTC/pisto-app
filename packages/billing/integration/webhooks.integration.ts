@@ -182,6 +182,8 @@ function polarFixture(db: Database, userId: string) {
       productId,
       customerId,
       status: type === "subscription.revoked" ? "canceled" : "active",
+      cancelAtPeriodEnd: type === "subscription.canceled",
+      metadata: {},
       customer: { id: customerId, externalId: userId, email: `${userId}@example.test` },
       currentPeriodStart: "2026-09-01T00:00:00Z",
       currentPeriodEnd: "2099-10-01T00:00:00Z",
@@ -257,6 +259,101 @@ describe("Polar PostgreSQL webhook projection", () => {
 });
 
 describe("RevenueCat PostgreSQL webhook projection", () => {
+  test("rejects missing transaction identity or expiration without consuming the retry key", () =>
+    withFixture(async (db, userId) => {
+      const project = createRevenueCatWebhookProcessor({
+        db,
+        config: {
+          enabled: true,
+          authorization: "test-authorization",
+          signatureToleranceSeconds: 300,
+          allowedEnvironment: "PRODUCTION",
+          entitlementMap: { pro: "pro" },
+        },
+      });
+      const event = {
+        id: crypto.randomUUID(),
+        type: "INITIAL_PURCHASE",
+        event_timestamp_ms: Date.parse("2026-09-10T00:00:00Z"),
+        app_user_id: userId,
+        entitlement_ids: ["pro"],
+        environment: "PRODUCTION",
+        product_id: "monthly",
+        original_transaction_id: crypto.randomUUID(),
+        purchased_at_ms: Date.parse("2026-09-01T00:00:00Z"),
+        expiration_at_ms: Date.parse("2026-10-01T00:00:00Z"),
+      };
+      const send = (value: object) =>
+        project({
+          authorization: "test-authorization",
+          signature: null,
+          now: new Date("2026-09-10T00:00:00Z"),
+          rawBody: JSON.stringify({ api_version: "1.0", event: value }),
+        });
+      for (const change of [
+        { original_transaction_id: undefined },
+        { expiration_at_ms: undefined },
+        { expiration_at_ms: null },
+        { expiration_at_ms: 8_640_000_000_000_001 },
+        { purchased_at_ms: null },
+        { product_id: undefined },
+      ]) {
+        await expect(send({ ...event, ...change })).rejects.toMatchObject({ status: 400 });
+        expect(
+          await db.select().from(entitlement).where(eq(entitlement.userId, userId)),
+        ).toHaveLength(0);
+        expect(
+          await db
+            .select()
+            .from(billingWebhookEvent)
+            .where(eq(billingWebhookEvent.eventKey, event.id)),
+        ).toHaveLength(0);
+      }
+      expect(await send(event)).toEqual({ duplicate: false, projected: true });
+      expect(await send(event)).toEqual({ duplicate: true, projected: false });
+    }));
+
+  test("keeps an explicit lifetime purchase and a provider transaction ID without inventing either", () =>
+    withFixture(async (db, userId) => {
+      const project = createRevenueCatWebhookProcessor({
+        db,
+        config: {
+          enabled: true,
+          authorization: "test-authorization",
+          signatureToleranceSeconds: 300,
+          allowedEnvironment: "PRODUCTION",
+          entitlementMap: { pro: "pro" },
+        },
+      });
+      const transactionId = crypto.randomUUID();
+      await project({
+        authorization: "test-authorization",
+        signature: null,
+        now: new Date("2026-09-10T00:00:00Z"),
+        rawBody: JSON.stringify({
+          api_version: "1.0",
+          event: {
+            id: crypto.randomUUID(),
+            type: "NON_RENEWING_PURCHASE",
+            event_timestamp_ms: Date.parse("2026-09-10T00:00:00Z"),
+            app_user_id: userId,
+            entitlement_ids: ["pro"],
+            environment: "PRODUCTION",
+            product_id: "lifetime",
+            transaction_id: transactionId,
+            purchased_at_ms: Date.parse("2026-09-01T00:00:00Z"),
+            expiration_at_ms: null,
+          },
+        }),
+      });
+      const rows = await db.select().from(entitlement).where(eq(entitlement.userId, userId));
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        sourceId: transactionId,
+        validUntil: null,
+        status: "active",
+      });
+    }));
   test("keeps grace for either ordering of billing-issue and its cancellation companion", () =>
     withFixture(async (db, userId) => {
       const project = createRevenueCatWebhookProcessor({

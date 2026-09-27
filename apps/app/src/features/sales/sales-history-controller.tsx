@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { formatLocalizedDateTime } from "@/i18n/format";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { queryHasStaleData } from "@/lib/query-state";
 import { featureRemoteState } from "../cash/remote-state";
@@ -21,7 +21,7 @@ type SalesHistoryControllerProps = {
 
 export function SalesHistoryController({ accessIsStale, business }: SalesHistoryControllerProps) {
   const { i18n, t } = useTranslation();
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const router = useRouter();
   const copy = useMemo(() => buildSalesHistoryCopy(t), [t]);
   const messages = useMemo(() => buildSalesHistoryMessages(t), [t]);

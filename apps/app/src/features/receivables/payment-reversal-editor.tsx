@@ -12,7 +12,7 @@ import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { buildCustomersCopy, type CustomersReceivablesCopy } from "@/features/customers/copy";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { isAmbiguousMutationError } from "@/lib/api-client";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 
@@ -56,7 +56,7 @@ export function PaymentReversalEditor({
   const { i18n, t } = useTranslation();
   const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const queryClient = useQueryClient();
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const now = currentLocalDateTime(business.timeZone);
   const [draft, setDraft] = useState<PaymentReversalDraft>({
     date: now.date,

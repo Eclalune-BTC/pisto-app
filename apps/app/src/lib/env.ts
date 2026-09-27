@@ -42,6 +42,10 @@ export function normalizeAppScheme(value: string): AppScheme {
   return value as AppScheme;
 }
 
+if (process.env.NODE_ENV === "production" && !process.env.EXPO_PUBLIC_API_URL) {
+  throw new Error("EXPO_PUBLIC_API_URL is required in production.");
+}
+
 const apiUrl = normalizeHttpUrl(
   process.env.EXPO_PUBLIC_API_URL ?? developmentApiUrl,
   "EXPO_PUBLIC_API_URL",

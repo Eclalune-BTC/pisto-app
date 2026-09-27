@@ -12,11 +12,19 @@ export const resources = {
 void i18n.use(initReactI18next).init({
   defaultNS: "translation",
   fallbackLng: false,
+  fallbackNS: false,
+  ignoreJSONStructure: false,
   initAsync: false,
   interpolation: { escapeValue: false },
   lng: resolveSupportedLocale(getLocales()),
   load: "currentOnly",
+  missingInterpolationHandler: () => {
+    throw new Error("A required translation interpolation value is missing");
+  },
   parseMissingKeyHandler: resolveMissingTranslation,
+  returnedObjectHandler: (key) => {
+    throw new Error(`Translation key must resolve to text: ${key}`);
+  },
   resources,
   returnEmptyString: false,
   returnNull: false,

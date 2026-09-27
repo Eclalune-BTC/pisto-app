@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "./api";
@@ -46,7 +46,7 @@ export function CashMovementDetailController({
   const queryClient = useQueryClient();
   const { i18n, t } = useTranslation();
   const copy = useMemo(() => buildCashCopy(t), [t]);
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const [stage, setStage] = useState<"detail" | "reverse-edit" | "reverse-review">("detail");
   const [draft, setDraft] = useState<CashReversalDraft>({
     localDate: "",

@@ -1,3 +1,5 @@
+import { calendarLocalDateSchema } from "@pisto/contracts";
+
 export function formatLocalizedDateTime(
   value: Date | string,
   locale: string,
@@ -14,8 +16,11 @@ export function formatLocalizedDate(value: Date | string, locale: string): strin
   return new Intl.DateTimeFormat(locale, { dateStyle: "short" }).format(new Date(value));
 }
 
-export function formatMonthYear(value: Date | string, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(
-    new Date(value),
-  );
+export function formatMonthYear(localDate: string, locale: string): string {
+  const date = calendarLocalDateSchema.parse(localDate);
+  return new Intl.DateTimeFormat(locale, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T00:00:00.000Z`));
 }

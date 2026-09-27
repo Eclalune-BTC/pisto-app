@@ -204,6 +204,21 @@ provider layers return stable English reason codes and never expose raw messages
 reads system/app preferences, but unsupported preferences intentionally resolve to `es-SV` while it
 is the only approved locale. See [ADR 0013](adrs/0013-es-sv-localization-boundary.md).
 
+Missing translation keys, required interpolation values and object-valued text keys fail in both
+development and production. Empty/null resource strings do not render as blank labels. Runtime
+formatting requires the initialized supported locale; device-language selection is the only place
+that deliberately chooses `es-SV` for an unsupported preference. Business calendar labels validate
+the date and format it in UTC without changing its local day or early four-digit year.
+These settings use the installed i18next configuration API, checked against its
+[configuration reference](https://www.i18next.com/overview/configuration-options) on 2026-09-26.
+Recheck the handlers and key typing when upgrading i18next or react-i18next.
+
+The single-page export uses `web.lang` and `public/index.html`, not a Router `+html.tsx`.
+The template retains Expo's root layout reset and supplies the Spanish document language and
+no-JavaScript text; Metro injects the configured title and bundle assets. Verify the generated HTML
+in browser QA, not just the React source. This uses Expo's [public HTML template support](https://docs.expo.dev/guides/customizing-metro/#static-files),
+verified against the installed CLI on 2026-09-26; recheck when changing the web output mode.
+
 The catalog list reads its typed translations through `useTranslation` instead of receiving a
 second copy object. Shared UI primitives still receive their labels from the owning screen.
 Keep interpolation and locale changes inside i18next; do not duplicate the translation catalog in
@@ -213,6 +228,10 @@ Draft dates and minute-precision times reuse `calendarLocalDateSchema` and `loca
 `@pisto/contracts`. Sales and catalog prices share `parseAmountToMinorUnits`: catalog prices allow
 zero explicitly and a blank price remains absent; sales require a positive amount. Both reject
 ambiguous separators and incomplete decimals without rounding or changing stored records.
+
+Cash and expense amounts require the selected account's currency precision. A reviewed expense
+retains its account snapshot if the current option list changes. Missing review metadata is an
+invariant failure, not permission to guess two decimals or reopen an editable form.
 
 ## Voice UI boundary
 

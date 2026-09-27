@@ -107,10 +107,23 @@ export function CashAdjustmentScreen({
   onLoadMoreAccounts,
 }: CashAdjustmentScreenProps) {
   const authorizedState = requireFeatureManageAccess(remoteState, canManage);
+  if (authorizedState.kind !== "ready") {
+    return (
+      <FeatureBoundary copy={copy} onRetry={onRetry} state={authorizedState}>
+        {null}
+      </FeatureBoundary>
+    );
+  }
   const activeAccounts = accounts.filter(({ status }) => status === "active");
   const accountOptions = activeAccounts.map(({ id, name }) => ({ label: name, value: id }));
   const account = command ? reviewAccount : activeAccounts.find(({ id }) => id === draft.accountId);
   const reviewing = stage === "review" && command !== null;
+  if (
+    stage === "review" &&
+    (!command || !reviewAccount || reviewAccount.id !== command.accountId)
+  ) {
+    throw new Error("Cash adjustment review is missing its command or account snapshot");
+  }
 
   return (
     <FeatureBoundary copy={copy} onRetry={onRetry} state={authorizedState}>

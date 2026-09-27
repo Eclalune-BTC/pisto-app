@@ -1,8 +1,9 @@
+import { calendarLocalDateSchema } from "@pisto/contracts";
+
 export function formatBusinessLocalDate(localDate: string, locale: string): string {
-  const [year, month, day] = localDate.split("-").map(Number);
-  if (!year || !month || !day) return localDate;
+  const date = calendarLocalDateSchema.parse(localDate);
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(
-    new Date(Date.UTC(year, month - 1, day)),
+    new Date(`${date}T00:00:00.000Z`),
   );
 }
 

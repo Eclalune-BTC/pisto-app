@@ -74,7 +74,11 @@ export function shutdown(signal: "SIGINT" | "SIGTERM"): Promise<boolean> {
           errorType: error instanceof Error ? error.name : typeof error,
         }),
       );
-      await server.stop(true).catch(() => undefined);
+      await server.stop(true).catch(() => {
+        console.error(
+          JSON.stringify({ level: "error", message: "Forced HTTP shutdown failed", signal }),
+        );
+      });
     }
 
     try {

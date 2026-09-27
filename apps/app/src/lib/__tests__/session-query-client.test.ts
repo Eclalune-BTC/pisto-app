@@ -6,6 +6,31 @@ import { createSessionQueryClient } from "../session-query-client";
 afterEach(() => onlineManager.setOnline(true));
 
 describe("session-owned queries and manual confirmations", () => {
+  test("reports a failed session refresh without leaking errors or blocking the next attempt", async () => {
+    const diagnostic = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const refresh = vi.fn(async () => {
+      throw new Error("private provider details");
+    });
+    const scope = createSessionQueryClient(refresh);
+    try {
+      for (const key of ["first", "second"]) {
+        await expect(
+          scope.client.fetchQuery({
+            queryKey: [key],
+            queryFn: async () => {
+              throw new ApiClientError("Expired", 401, "UNAUTHORIZED");
+            },
+          }),
+        ).rejects.toMatchObject({ status: 401 });
+        await vi.waitFor(() => expect(diagnostic).toHaveBeenCalledTimes(key === "first" ? 1 : 2));
+      }
+      expect(refresh).toHaveBeenCalledTimes(2);
+      expect(diagnostic.mock.calls.flat().join(" ")).not.toContain("private provider details");
+    } finally {
+      scope.dispose();
+      diagnostic.mockRestore();
+    }
+  });
   test("fails an offline confirmation without executing it later after unmount", async () => {
     const scope = createSessionQueryClient(async () => undefined);
     scope.client.mount();

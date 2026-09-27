@@ -158,17 +158,23 @@ export function buildCashAdjustmentCommand(input: {
 } {
   const issues: Partial<Record<keyof AdjustmentDraftValues, CashDraftIssue>> = {};
   if (input.account?.status !== "active") issues.accountId = "account-required";
-  const amount = parseAmountToMinorUnits(
-    input.draft.amount,
-    input.account?.currencyMinorUnitDigits ?? 2,
-  );
-  if ("error" in amount) issues.amount = "invalid-amount";
+  const amount =
+    input.account?.status === "active"
+      ? parseAmountToMinorUnits(input.draft.amount, input.account.currencyMinorUnitDigits)
+      : null;
+  if (amount && "error" in amount) issues.amount = "invalid-amount";
   const reason = validateText(input.draft.reason, 240, true);
   if (reason.issue) issues.reason = reason.issue;
   const dateTimeIssues = validateDateTime(input.draft.localDate, input.draft.localTime);
   if (dateTimeIssues.localDate) issues.localDate = dateTimeIssues.localDate;
   if (dateTimeIssues.localTime) issues.localTime = dateTimeIssues.localTime;
-  if (Object.keys(issues).length > 0 || !input.account || "error" in amount || !reason.value) {
+  if (
+    Object.keys(issues).length > 0 ||
+    !input.account ||
+    !amount ||
+    "error" in amount ||
+    !reason.value
+  ) {
     return { command: null, issues };
   }
   return {
@@ -206,17 +212,22 @@ export function buildCashTransferCommand(input: {
   if (fromAccount && toAccount && fromAccount.id === toAccount.id) {
     issues.toAccountId = "accounts-must-differ";
   }
-  const amount = parseAmountToMinorUnits(
-    input.draft.amount,
-    fromAccount?.currencyMinorUnitDigits ?? 2,
-  );
-  if ("error" in amount) issues.amount = "invalid-amount";
+  const amount = fromAccount
+    ? parseAmountToMinorUnits(input.draft.amount, fromAccount.currencyMinorUnitDigits)
+    : null;
+  if (amount && "error" in amount) issues.amount = "invalid-amount";
   const note = validateText(input.draft.note, 240, false);
   if (note.issue) issues.note = note.issue;
   const dateTimeIssues = validateDateTime(input.draft.localDate, input.draft.localTime);
   if (dateTimeIssues.localDate) issues.localDate = dateTimeIssues.localDate;
   if (dateTimeIssues.localTime) issues.localTime = dateTimeIssues.localTime;
-  if (Object.keys(issues).length > 0 || !fromAccount || !toAccount || "error" in amount) {
+  if (
+    Object.keys(issues).length > 0 ||
+    !fromAccount ||
+    !toAccount ||
+    !amount ||
+    "error" in amount
+  ) {
     return { command: null, issues };
   }
   return {

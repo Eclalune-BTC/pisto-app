@@ -11,7 +11,7 @@ import { useCategoriesQuery, useProductQuery } from "@/features/catalog/queries"
 import { catalogInventoryQueryKeys, flattenPages } from "@/features/catalog/query-keys";
 import { isNotFoundError, mutationUiState } from "@/features/catalog/state";
 import { reportsQueryKeys } from "@/features/reports/queries";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { isAccessDeniedError } from "@/lib/query-state";
@@ -92,7 +92,7 @@ export default function ProductDetailRoute() {
         canManage={false}
         categoryName={null}
         copy={copy.productDetail}
-        locale={i18n.resolvedLanguage ?? DEFAULT_LOCALE}
+        locale={requireSupportedLocale(i18n.resolvedLanguage)}
         onArchive={() => undefined}
         onBack={() => router.replace("/operate/catalog")}
         onCancelArchive={() => undefined}
@@ -166,7 +166,7 @@ export default function ProductDetailRoute() {
       canManage={roleCanManage && accessCurrent}
       categoryName={categoryId ? (categoryName ?? copy.productDetail.categoryUnavailable) : null}
       copy={copy.productDetail}
-      locale={i18n.resolvedLanguage ?? DEFAULT_LOCALE}
+      locale={requireSupportedLocale(i18n.resolvedLanguage)}
       mutationMessage={
         archive.error
           ? productErrorMessage(

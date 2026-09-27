@@ -1,4 +1,5 @@
 import type { BusinessPermission } from "@pisto/contracts";
+import { signedAggregateIntegerSchema } from "@pisto/contracts";
 import { and, eq, sql } from "drizzle-orm";
 
 import { authorizeBusinessAction, requireActiveBusiness } from "../business-access.ts";
@@ -90,7 +91,8 @@ export async function getAccountBalance(
     .select({ value: sql<string>`coalesce(sum(${cashMovement.deltaMinorUnits}), 0)::text` })
     .from(cashMovement)
     .where(and(eq(cashMovement.businessId, businessId), eq(cashMovement.accountId, accountId)));
-  return BigInt(row?.value ?? "0");
+  if (!row) throw new Error("Cash balance query returned no row");
+  return BigInt(signedAggregateIntegerSchema.parse(row.value));
 }
 
 export async function lockAccount(

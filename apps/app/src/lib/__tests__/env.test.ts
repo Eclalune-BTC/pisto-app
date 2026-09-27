@@ -1,8 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { joinHttpUrl, normalizeAppScheme, normalizeHttpUrl } from "@/lib/env";
 
 describe("public environment URLs", () => {
+  it("does not replace a missing production API origin with localhost", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("EXPO_PUBLIC_API_URL", undefined);
+    vi.resetModules();
+    try {
+      await expect(import("../env")).rejects.toThrow(
+        "EXPO_PUBLIC_API_URL is required in production",
+      );
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
   it("normalizes an API origin and joins the Better Auth path", () => {
     const origin = normalizeHttpUrl("http://localhost:3001/", "EXPO_PUBLIC_API_URL");
     expect(origin).toBe("http://localhost:3001");

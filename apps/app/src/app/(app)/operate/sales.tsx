@@ -11,20 +11,14 @@ import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { previousMonthSummaryQueryOptions } from "@/features/sales/queries";
 import { SalesHistoryController } from "@/features/sales/sales-history-controller";
 import { formatLocalizedDateTime, formatMonthYear } from "@/i18n/format";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead } from "@/lib/query-state";
 
-function periodLabel(periodStartLocal: string, locale: string): string {
-  const [year, month] = periodStartLocal.split("-");
-  if (!year || !month) return periodStartLocal;
-  return formatMonthYear(new Date(Date.UTC(Number(year), Number(month) - 1, 15)), locale);
-}
-
 export default function SalesOverviewScreen() {
   const { i18n, t } = useTranslation();
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const router = useRouter();
   const businesses = useQuery(businessesQueryOptions);
   const activeBusiness = getActiveBusiness(businesses.data);
@@ -114,7 +108,7 @@ export default function SalesOverviewScreen() {
           <View className="border-y border-border lg:flex-row">
             <View className="gap-2 py-7 lg:w-[58%] lg:pr-10">
               <Text className="text-sm font-bold capitalize text-positive dark:text-[#8DDEAF]">
-                {periodLabel(summary.data.summary.periodStartLocal, locale)}
+                {formatMonthYear(summary.data.summary.periodStartLocal, locale)}
               </Text>
               <Text className="text-[38px] font-black leading-[44px] tracking-[-1.6px] text-foreground sm:text-[48px] sm:leading-[54px]">
                 {formatMinorUnits(

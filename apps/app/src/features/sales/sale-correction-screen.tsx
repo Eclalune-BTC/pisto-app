@@ -21,7 +21,7 @@ import {
   validateSaleDraft,
 } from "@/features/sales/sale-draft";
 import { SaleDraftFields } from "@/features/sales/sale-draft-fields";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { api, isAmbiguousMutationError } from "@/lib/api-client";
 import { formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
@@ -36,7 +36,7 @@ type DraftErrors = Partial<Record<keyof SaleDraftValues, string>>;
 
 export default function CorrectSaleScreen() {
   const { i18n, t } = useTranslation();
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const router = useRouter();
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{ saleId?: string | string[] }>();

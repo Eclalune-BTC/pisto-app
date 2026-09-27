@@ -5,7 +5,7 @@ import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { ApiClientError, isAmbiguousMutationError } from "@/lib/api-error";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
@@ -37,7 +37,7 @@ export function CashTransferController() {
   const queryClient = useQueryClient();
   const { i18n, t } = useTranslation();
   const copy = useMemo(() => buildCashCopy(t), [t]);
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const {
     business,
     businesses,
@@ -180,14 +180,15 @@ export function CashTransferController() {
           : undefined
       }
       errors={errors}
-      formatMoney={(minorUnits, currency) =>
-        formatMinorUnits(
+      formatMoney={(minorUnits, currency) => {
+        if (!selectedAccount) throw new Error("Cash transfer review requires its account snapshot");
+        return formatMinorUnits(
           minorUnits,
           currency,
-          selectedAccount?.currencyMinorUnitDigits ?? business?.currencyMinorUnitDigits ?? 2,
+          selectedAccount.currencyMinorUnitDigits,
           locale,
-        )
-      }
+        );
+      }}
       hasMoreAccounts={Boolean(accountsQuery.hasNextPage)}
       isLoadingMoreAccounts={accountsQuery.isFetchingNextPage}
       onCancel={() => {

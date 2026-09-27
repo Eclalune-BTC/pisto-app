@@ -11,10 +11,50 @@ import {
 import { checkout, polar as polarPlugin, portal, webhooks } from "@polar-sh/better-auth";
 import { Polar } from "@polar-sh/sdk";
 import { and, eq, lte, ne } from "drizzle-orm";
+import { z } from "zod";
 
 import type { PolarBillingConfig } from "./config.ts";
 import { eventFingerprint } from "./security.ts";
-import { asRecord, readBoolean, readDate, readString } from "./values.ts";
+
+const providerDateSchema = z.union([z.date(), z.iso.datetime({ offset: true })]);
+const polarEventSchema = z.looseObject({
+  type: z.string().min(1),
+  timestamp: providerDateSchema,
+  data: z.record(z.string(), z.unknown()),
+});
+const subscriptionProjectionSchema = z
+  .looseObject({
+    id: z.string().min(1),
+    productId: z.string().min(1),
+    customerId: z.string().min(1),
+    status: z.enum([
+      "incomplete",
+      "incomplete_expired",
+      "trialing",
+      "active",
+      "past_due",
+      "canceled",
+      "unpaid",
+      "paused",
+    ]),
+    currentPeriodStart: providerDateSchema,
+    currentPeriodEnd: providerDateSchema,
+    cancelAtPeriodEnd: z.boolean(),
+    metadata: z.looseObject({ referenceId: z.string().min(1).optional() }),
+    customer: z.looseObject({
+      id: z.string().min(1),
+      externalId: z.string().min(1).nullish(),
+      email: z.string().min(1).nullish(),
+    }),
+  })
+  .refine(
+    (data) => data.customer.id === data.customerId,
+    "Subscription customer identifiers disagree",
+  )
+  .refine(
+    (data) => new Date(data.currentPeriodEnd) >= new Date(data.currentPeriodStart),
+    "Subscription period is reversed",
+  );
 
 export interface WebhookProcessResult {
   duplicate: boolean;
@@ -45,11 +85,10 @@ export async function readPolarCustomerState(
   }
 }
 
-function jsonRecord(value: unknown): Record<string, unknown> {
-  const serialized = JSON.stringify(value, (_key, item) =>
-    typeof item === "bigint" ? item.toString() : item,
+function jsonRecord(value: Record<string, unknown>): Record<string, unknown> {
+  return JSON.parse(
+    JSON.stringify(value, (_key, item) => (typeof item === "bigint" ? item.toString() : item)),
   );
-  return asRecord(serialized ? JSON.parse(serialized) : null) ?? {};
 }
 
 function polarEntitlementStatus(input: {
@@ -93,11 +132,14 @@ export function createPolarWebhookProcessor(input: {
   );
 
   return async (payload: unknown): Promise<WebhookProcessResult> => {
-    const event = asRecord(payload);
-    const eventType = readString(event, "type") ?? "unknown";
-    const eventAt = readDate(event, "timestamp") ?? new Date();
+    const event = polarEventSchema.parse(payload);
+    const eventType = event.type;
+    const eventAt = new Date(event.timestamp);
+    const subscription = eventType.startsWith("subscription.")
+      ? subscriptionProjectionSchema.parse(event.data)
+      : null;
     const eventKey = eventFingerprint(payload);
-    const storedPayload = jsonRecord(payload);
+    const storedPayload = jsonRecord(event);
 
     return input.db.transaction(async (tx) => {
       const inserted = await tx
@@ -112,40 +154,20 @@ export function createPolarWebhookProcessor(input: {
         .returning({ id: billingWebhookEvent.id });
       if (inserted.length === 0) return { duplicate: true, projected: false };
 
-      if (!eventType.startsWith("subscription.")) {
+      if (!subscription) {
         return { duplicate: false, projected: false };
       }
 
-      const data = asRecord(event?.data);
-      const subscriptionId = readString(data, "id");
-      const productId = readString(data, "productId", "product_id");
-      if (!data || !subscriptionId || !productId) {
-        return { duplicate: false, projected: false };
-      }
-
-      const customer = asRecord(data.customer);
-      const metadata = asRecord(data.metadata) ?? {};
-      const providerCustomerId =
-        readString(data, "customerId", "customer_id") ?? readString(customer, "id");
-      const externalUserId = readString(customer, "externalId", "external_id");
-      const referenceId = readString(metadata, "referenceId", "reference_id");
-      const providerStatus = readString(data, "status");
-      const periodStart = readDate(
-        data,
-        "currentPeriodStart",
-        "current_period_start",
-        "startedAt",
-        "started_at",
-      );
-      const periodEnd = readDate(
-        data,
-        "currentPeriodEnd",
-        "current_period_end",
-        "endsAt",
-        "ends_at",
-        "endedAt",
-        "ended_at",
-      );
+      const data = subscription;
+      const subscriptionId = data.id;
+      const productId = data.productId;
+      const { customer, metadata } = data;
+      const providerCustomerId = data.customerId;
+      const externalUserId = customer.externalId;
+      const referenceId = metadata.referenceId;
+      const providerStatus = data.status;
+      const periodStart = new Date(data.currentPeriodStart);
+      const periodEnd = new Date(data.currentPeriodEnd);
 
       let userId: string | null = null;
       if (externalUserId) {
@@ -174,7 +196,7 @@ export function createPolarWebhookProcessor(input: {
             provider: "polar",
             providerCustomerId,
             userId,
-            email: readString(customer, "email"),
+            email: customer.email ?? null,
             metadata,
             syncedAt: eventAt,
           })
@@ -182,7 +204,7 @@ export function createPolarWebhookProcessor(input: {
             target: [billingCustomer.provider, billingCustomer.providerCustomerId],
             set: {
               userId,
-              email: readString(customer, "email"),
+              email: customer.email ?? null,
               metadata,
               syncedAt: eventAt,
               updatedAt: new Date(),
@@ -206,10 +228,9 @@ export function createPolarWebhookProcessor(input: {
           userId,
           organizationId,
           productId,
-          status: providerStatus ?? status,
+          status: providerStatus,
           sourceEventAt: eventAt,
-          cancelAtPeriodEnd:
-            readBoolean(data, "cancelAtPeriodEnd", "cancel_at_period_end") ?? false,
+          cancelAtPeriodEnd: data.cancelAtPeriodEnd,
           currentPeriodStart: periodStart,
           currentPeriodEnd: periodEnd,
           raw: jsonRecord(data),
@@ -221,10 +242,9 @@ export function createPolarWebhookProcessor(input: {
             userId,
             organizationId,
             productId,
-            status: providerStatus ?? status,
+            status: providerStatus,
             sourceEventAt: eventAt,
-            cancelAtPeriodEnd:
-              readBoolean(data, "cancelAtPeriodEnd", "cancel_at_period_end") ?? false,
+            cancelAtPeriodEnd: data.cancelAtPeriodEnd,
             currentPeriodStart: periodStart,
             currentPeriodEnd: periodEnd,
             raw: jsonRecord(data),

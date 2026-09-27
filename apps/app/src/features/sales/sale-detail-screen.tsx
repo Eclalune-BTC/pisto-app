@@ -10,14 +10,14 @@ import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { saleQueryOptions } from "@/features/sales/queries";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
 
 export default function SaleResultScreen() {
   const { i18n, t } = useTranslation();
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const router = useRouter();
   const params = useLocalSearchParams<{ saleId?: string | string[] }>();
   const saleId = Array.isArray(params.saleId) ? params.saleId[0] : params.saleId;

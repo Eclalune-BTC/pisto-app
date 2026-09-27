@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, ButtonText } from "@/components/ui/button";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { formatLocalizedDate } from "@/i18n/format";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { api } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
@@ -34,7 +34,7 @@ const themeChoices = [
 
 export default function SettingsScreen() {
   const { i18n, t } = useTranslation();
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const router = useRouter();
   const { data: authSession } = authClient.useSession();
   const profile = useQuery({ queryFn: api.me, queryKey: ["account", "me"] });

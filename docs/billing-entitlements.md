@@ -197,6 +197,10 @@ accepted based only on Expo Go or a web preview.
 - Validate Standard Webhooks signatures with the official SDK and `POLAR_WEBHOOK_SECRET`.
 - Use the exact raw payload/headers expected by the verifier.
 - Deduplicate by `(provider, event key)` before changing state.
+- The projection consumes the installed SDK's camelCase subscription shape. Required event time,
+  identifiers, status, cancellation flag and current-period bounds are validated before persistence.
+  Missing fields do not use receipt time, another timestamp, snake_case aliases or an empty object.
+  Fingerprints retain the original event payload; optional customer linkage remains nullable.
 
 ### RevenueCat
 
@@ -205,10 +209,20 @@ accepted based only on Expo Go or a web preview.
   `X-RevenueCat-Webhook-Signature` against the exact raw body and enforce the configured timestamp
   tolerance before parsing or trusting the event.
 - Use RevenueCat's unique event identity for deduplication.
+- Projected grants require a real original/transaction ID, product, purchase time and an explicitly
+  present expiration field. Missing or invalid dates never become lifetime access. Explicit null
+  expiration remains supported for non-renewing purchases and their cancellation/refund events.
+  Unsupported and unmapped events remain non-projecting; malformed required projection data rejects
+  and rolls back its receipt so a corrected delivery can retry.
 - Treat the notification as RevenueCat-trusted subscription information, not as locally verified
   Apple/Google receipt cryptography.
 
 ### Both
+
+Payload requirements were checked against the installed Polar SDK 0.47.0 and RevenueCat's
+[event fields](https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields) on
+2026-09-26. Recheck on provider/SDK changes. Local fixtures do not establish provider-sandbox or
+store acceptance, including temporary-grant payload compatibility.
 
 - Production and sandbox endpoints/configuration are separated.
 - Expect retries, duplicates, delays, and out-of-order events.

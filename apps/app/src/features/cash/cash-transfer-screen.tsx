@@ -102,15 +102,23 @@ export function CashTransferScreen({
   onLoadMoreAccounts,
 }: CashTransferScreenProps) {
   const authorizedState = requireFeatureManageAccess(remoteState, canManage);
+  if (authorizedState.kind !== "ready") {
+    return (
+      <FeatureBoundary copy={copy} onRetry={onRetry} state={authorizedState}>
+        {null}
+      </FeatureBoundary>
+    );
+  }
   const activeAccounts = accounts.filter(({ status }) => status === "active");
   const options = activeAccounts.map(({ id, name }) => ({ label: name, value: id }));
   const fromAccount = reviewAccounts.find(({ id }) => id === command?.fromAccountId);
   const toAccount = reviewAccounts.find(({ id }) => id === command?.toAccountId);
+  if (stage === "review" && (!command || !fromAccount || !toAccount)) {
+    throw new Error("Cash transfer review is missing its command or account snapshots");
+  }
   const reviewing =
     stage === "review" && command !== null && fromAccount !== undefined && toAccount !== undefined;
-  const draftCurrency =
-    activeAccounts.find(({ id }) => id === draft.fromAccountId)?.currency ??
-    activeAccounts[0]?.currency;
+  const draftCurrency = activeAccounts.find(({ id }) => id === draft.fromAccountId)?.currency;
 
   return (
     <FeatureBoundary copy={copy} onRetry={onRetry} state={authorizedState}>

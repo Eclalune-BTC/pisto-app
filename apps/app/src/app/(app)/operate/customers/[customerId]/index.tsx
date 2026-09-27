@@ -11,7 +11,7 @@ import { customerDetailQueryOptions } from "@/features/customers/queries";
 import type { CustomerDetailLoadState } from "@/features/customers/types";
 import { formatBusinessLocalDate } from "@/features/receivables/presentation";
 import { receivablesQueryOptions } from "@/features/receivables/queries";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { hasDeniedRead, isPausedWithoutData, readFailureKind } from "@/lib/query-state";
 
@@ -19,7 +19,7 @@ export default function CustomerDetailRoute() {
   const { i18n, t } = useTranslation();
   const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const params = useLocalSearchParams<{ customerId?: string | string[] }>();
   const customerId = Array.isArray(params.customerId) ? params.customerId[0] : params.customerId;
   const access = useCapabilityAccess("customers:read", "customers:manage");

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { resolveBusinessPermission } from "@/features/customers/access";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 
 import { buildReportsCopy } from "./copy";
@@ -23,7 +23,7 @@ const unseededRange: OperatingReportQuery = { endLocalDate: "", startLocalDate: 
 export function ReportsController() {
   const { i18n, t } = useTranslation();
   const copy = useMemo(() => buildReportsCopy(t), [t]);
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
   const canRead = resolveBusinessPermission(business, "reports:read");

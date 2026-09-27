@@ -1,4 +1,5 @@
 import type { BusinessPermission } from "@pisto/contracts";
+import { signedAggregateIntegerSchema } from "@pisto/contracts";
 import { and, eq, sql } from "drizzle-orm";
 import type { ZodType } from "zod";
 
@@ -115,7 +116,8 @@ export async function getPaidMinorUnits(
         eq(receivablePayment.receivableId, receivableId),
       ),
     );
-  return BigInt(row?.paid ?? "0");
+  if (!row) throw new Error("Receivable payment total query returned no row");
+  return BigInt(signedAggregateIntegerSchema.parse(row.paid));
 }
 
 export async function loadReceivable(

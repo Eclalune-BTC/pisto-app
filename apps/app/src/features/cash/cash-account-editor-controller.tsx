@@ -4,7 +4,7 @@ import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
 import { queryHasStaleData } from "@/lib/query-state";
@@ -43,7 +43,7 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
   const queryClient = useQueryClient();
   const { i18n, t } = useTranslation();
   const copy = useMemo(() => buildCashCopy(t), [t]);
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const {
     business,
     businesses,
@@ -160,9 +160,10 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
           : undefined
       }
       errors={errors}
-      formatMoney={(minorUnits, currency) =>
-        formatMinorUnits(minorUnits, currency, business?.currencyMinorUnitDigits ?? 2, locale)
-      }
+      formatMoney={(minorUnits, currency) => {
+        if (!business) throw new Error("Cash account review requires business currency metadata");
+        return formatMinorUnits(minorUnits, currency, business.currencyMinorUnitDigits, locale);
+      }}
       kindOptions={copy.kindOptions}
       mode={mode}
       onCancel={cancel}

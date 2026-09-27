@@ -35,7 +35,12 @@ export function QueryProvider({ children }: PropsWithChildren) {
             if (active)
               setOnline(state.isConnected !== false && state.isInternetReachable !== false);
           })
-          .catch(() => undefined);
+          .catch(() => {
+            if (active)
+              console.error(
+                "Initial network-state lookup failed; API requests remain authoritative",
+              );
+          });
         return () => {
           active = false;
           subscription.remove();

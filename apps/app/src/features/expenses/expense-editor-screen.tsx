@@ -65,6 +65,7 @@ type ExpenseEditorScreenProps = {
   draft: ExpenseDraft;
   errors: ExpenseDraftErrors;
   accounts: AccountOption[];
+  reviewAccount: AccountOption | null;
   categoryOptions: readonly ChoiceOption<ExpenseCategory>[];
   currency: string;
   command: PostExpenseRequest | null;
@@ -92,6 +93,7 @@ export function ExpenseEditorScreen({
   draft,
   errors,
   accounts,
+  reviewAccount,
   categoryOptions,
   currency,
   command,
@@ -112,9 +114,24 @@ export function ExpenseEditorScreen({
   onLoadMoreAccounts,
 }: ExpenseEditorScreenProps) {
   const authorizedState = requireFeatureManageAccess(remoteState, canManage);
+  if (authorizedState.kind !== "ready") {
+    return (
+      <FeatureBoundary copy={copy} onRetry={onRetry} state={authorizedState}>
+        {null}
+      </FeatureBoundary>
+    );
+  }
   const accountOptions = accounts.map(({ id, name }) => ({ value: id, label: name }));
-  const selectedAccount = accounts.find(({ id }) => id === command?.accountId);
+  const selectedAccount = reviewAccount;
   const selectedCategory = categoryOptions.find(({ value }) => value === command?.category);
+  if (
+    stage === "review" &&
+    (!command || !selectedAccount || selectedAccount.id !== command.accountId || !selectedCategory)
+  ) {
+    throw new Error(
+      "Expense review is missing its command, account snapshot or translated category",
+    );
+  }
 
   return (
     <FeatureBoundary copy={copy} onRetry={onRetry} state={authorizedState}>
@@ -125,7 +142,7 @@ export function ExpenseEditorScreen({
           title={stage === "review" ? copy.reviewTitle : copy.newTitle}
         />
 
-        {accounts.length === 0 ? (
+        {accounts.length === 0 && stage !== "review" ? (
           <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
             <Text accessibilityRole="header" className="text-xl font-black text-foreground">
               {copy.accountsEmptyTitle}

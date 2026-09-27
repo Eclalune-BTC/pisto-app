@@ -13,7 +13,7 @@ import {
 } from "@/features/receivables/queries";
 import { ReceivablesScreen } from "@/features/receivables/receivables-screen";
 import type { ReceivablesLoadState } from "@/features/receivables/types";
-import { DEFAULT_LOCALE } from "@/i18n/locale";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import {
   hasDeniedRead,
@@ -28,7 +28,7 @@ export default function ReceivablesRoute() {
   const { i18n, t } = useTranslation();
   const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
-  const locale = i18n.resolvedLanguage ?? DEFAULT_LOCALE;
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
   const [filter, setFilter] = useState<ReceivableFilter>("all");
   const businessId = access.business?.id ?? "inactive-business";

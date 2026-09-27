@@ -54,6 +54,9 @@
   concrete hierarchy, interaction, state, feedback, or brand purpose.
 - Never invent plan data, progress, account activity, saved settings, or success-shaped fallbacks to
   make an incomplete feature appear finished.
+- Missing translations, currency metadata, provider event identity/time, and required query results
+  are errors, not empty strings, guessed values or successful empty data. Preserve documented defaults
+  and optional values; test both legitimate absence and invalid required data before consolidating paths.
 - Do not read provider credentials in client-side code.
 - Treat model output, retrieved text, uploads, and transcripts as untrusted input. A model may propose
   typed drafts and bounded tools; it cannot choose a tenant, authorize itself, calculate canonical

@@ -1,4 +1,5 @@
 import type { Category, InventoryMovement, Product, ProductStock } from "@pisto/contracts";
+import { catalogRecordStatusSchema, productUnitKindSchema } from "@pisto/contracts";
 import { and, lt, or, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { type ZodType, z } from "zod";
@@ -24,7 +25,7 @@ export function toCategory(record: CategoryRecord): Category {
   return {
     id: record.id,
     name: record.name,
-    status: record.status === "archived" ? "archived" : "active",
+    status: catalogRecordStatusSchema.parse(record.status),
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   };
@@ -39,28 +40,14 @@ export function toProduct(record: ProductRecord): Product {
     sellingPriceMinorUnits: record.sellingPriceMinorUnits?.toString() ?? null,
     sellingPriceCurrency: record.sellingPriceCurrency,
     sellingPriceCurrencyMinorUnitDigits: record.sellingPriceCurrencyMinorUnitDigits,
-    unitKind: productUnitKind(record.unitKind),
+    unitKind: productUnitKindSchema.parse(record.unitKind),
     quantityPrecision: record.quantityPrecision,
     tracked: record.tracked,
     lowStockThresholdMinorUnits: record.lowStockThresholdMinorUnits?.toString() ?? null,
-    status: record.status === "archived" ? "archived" : "active",
+    status: catalogRecordStatusSchema.parse(record.status),
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   };
-}
-
-function productUnitKind(value: string): Product["unitKind"] {
-  if (
-    value === "unit" ||
-    value === "kilogram" ||
-    value === "gram" ||
-    value === "liter" ||
-    value === "milliliter" ||
-    value === "meter"
-  ) {
-    return value;
-  }
-  throw new Error("Stored product unit kind is invalid");
 }
 
 export function toMovement(
