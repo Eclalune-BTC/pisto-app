@@ -251,7 +251,7 @@ separately in every native workflow.
 | Variable | Local purpose |
 | --- | --- |
 | `NODE_ENV` | Select development/test/production validation behavior |
-| `API_HOST`, `API_PORT` | Bind the Hono service; defaults are `0.0.0.0:3001`; Cloud Run `PORT` wins |
+| `API_HOST`, `API_PORT` | Bind the Hono service; defaults are `0.0.0.0:3001`; injected `PORT` wins |
 | `PORT` | Platform-injected listener port; overrides `API_PORT` when present |
 | `API_REQUEST_BODY_LIMIT_BYTES` | Hono body limit, 1,024 through 10,485,760 bytes |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | Local Compose container only |

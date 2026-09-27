@@ -5,7 +5,7 @@ to local design, CI, staging, and production; production adds stricter identity,
 backup, and monitoring controls.
 
 The current authorized environment is local Expo, Bun/Hono, and PostgreSQL 18. Hosting is undecided
-and publication is outside the current scope. The controls for future shared/production environments
+and hosted deployment is outside the current scope. GitHub source synchronization is separate. The controls for future shared/production environments
 below remain design requirements, not authorization to provision or publish; see
 [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
 
@@ -16,7 +16,7 @@ Treat all of these as untrusted until verified at their boundary:
 - browser, native app, URL parameters, headers, cookies, and uploaded files;
 - data returned from local device storage;
 - Polar and RevenueCat webhook requests before signature/authentication checks;
-- task requests before Cloud Run/IAM OIDC validation;
+- future task requests before invoker identity and audience validation;
 - provider metadata and raw JSON before normalization;
 - model output, tool arguments, retrieved content, uploads, audio, and transcripts;
 - database content when rendered into HTML, logs, filenames, redirects, or provider requests;
@@ -224,10 +224,9 @@ See [Billing and entitlements](billing-entitlements.md) for the full model.
 - Local runtime and integration tests use the intended local PostgreSQL instance. Verify database
   targets before migrations or restore tests; never let retained remote credentials silently select
   a hosted database. Keep runtime pools bounded and backup files private.
-- Any future hosted database requires reviewed TLS, restricted runtime roles, and direct migration
-  connections. Neon is an optional future preference through standard PostgreSQL, not a current
-  runtime dependency. Private Cloud SQL connectivity remains an alternative reference; see
-  [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
+- Any future hosted database requires reviewed TLS, restricted runtime roles and direct migration
+  connections, under [ADR 0017](adrs/0017-portable-postgres-and-hosting.md). No provider's private
+  network, backup policy or credential configuration is implied by local operation.
 - Keep pools bounded and timeouts finite.
 - Enforce subject, uniqueness, and foreign-key invariants in PostgreSQL.
 - Nullable CHECK predicates must explicitly reject partial values. Migration `0005` requires a
@@ -238,18 +237,18 @@ See [Billing and entitlements](billing-entitlements.md) for the full model.
 - Restrict and audit production human access; do not use shared database accounts.
 - Minimize raw webhook payload retention and never store full payment credentials.
 
-## Cloud Tasks controls when introduced
+## Background task controls when introduced
 
 No queue or handler is implemented in the baseline. These controls become mandatory with that seam:
 
 - Keep the handler private and require an OIDC token whose audience is the exact service URL.
-- Give the invoker service account only `run.invoker` on the intended service.
+- Grant the invoker identity only the permission needed for that exact handler, not broad runtime access.
 - Use an application-level idempotency key because delivery is at least once.
 - Validate payload schema and resolve current authorization/state from durable storage.
 - Do not place credentials or large personal payloads in task bodies.
 - Cap retries and alert on exhausted/permanent failures.
 
-## Cloud Storage and upload controls when introduced
+## Object storage and upload controls when introduced
 
 No bucket adapter or user-file feature is implemented in the baseline. These controls become
 mandatory with that seam:
@@ -370,8 +369,6 @@ control.
 - [Expo SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
 - [Polar webhook validation](https://polar.sh/docs/integrate/webhooks/delivery)
 - [RevenueCat webhook authentication and signing](https://www.revenuecat.com/docs/integrations/webhooks)
-- [Secret Manager best practices](https://cloud.google.com/secret-manager/docs/best-practices)
-- [Google service-account security](https://cloud.google.com/iam/docs/best-practices-service-accounts)
 - [Docker build best practices](https://docs.docker.com/build/building/best-practices/)
 - [Bun audit](https://bun.sh/docs/pm/cli/audit)
 - [Bun overrides and resolutions](https://bun.sh/docs/pm/overrides)

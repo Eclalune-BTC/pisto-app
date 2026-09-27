@@ -1,7 +1,10 @@
 # Architecture decision records
 
-ADRs preserve why a consequential decision was made. They are append-only history: when a decision
-changes, add a new ADR that supersedes the old one instead of rewriting the old context.
+ADRs retain consequential decisions that still guide Pisto. Keep current decisions and their useful
+rationale here; Git preserves retired architecture and superseded wording. Do not keep abandoned
+runbooks or completed task instructions as active guidance. Never recycle or renumber ADR identifiers.
+For a genuinely new decision, add an ADR; reconciling old wording with an already accepted decision
+should update the affected guide and references. Accepted target architecture is not shipped code.
 
 ## Index
 
@@ -13,9 +16,8 @@ changes, add a new ADR that supersedes the old one instead of rewriting the old 
 | [0004](0004-postgresql-drizzle-migrations.md) | Accepted | PostgreSQL 18 and reviewed Drizzle migrations |
 | [0005](0005-better-auth.md) | Accepted | Centralized Better Auth with Hono and Expo adapters |
 | [0006](0006-split-billing-channels.md) | Accepted | Polar web billing and RevenueCat/native store billing |
-| [0007](0007-provider-neutral-entitlements.md) | Accepted | Internal entitlements are the authorization boundary |
-| [0008](0008-google-cloud-managed-runtime.md) | Superseded by 0017 | Cloud Run and managed Google Cloud supporting services; retained as an optional reference |
-| [0009](0009-provider-neutral-ai-assistant.md) | Accepted | Provider-neutral AI orchestration with deterministic business tools |
+| [0007](0007-provider-neutral-entitlements.md) | Accepted | Provider-neutral paid-access model; product routes are not yet entitlement-gated |
+| [0009](0009-provider-neutral-ai-assistant.md) | Accepted target; not implemented | Provider-neutral AI orchestration with deterministic business tools |
 | [0010](0010-organization-backed-business-tenancy.md) | Accepted | Better Auth organization IDs back Pisto business tenant boundaries |
 | [0011](0011-modular-capabilities-and-app-owned-composition.md) | Accepted | Product capabilities compose explicitly inside a modular monolith |
 | [0012](0012-total-only-sales-increment.md) | Accepted | Total-only manual sales are the first persisted product increment |

@@ -172,8 +172,7 @@ applicable.
 Pisto keeps the ink, lime, cream, white, and semantic status palette defined in `global.css`. Build
 hierarchy with type, spacing, alignment, and dividers before adding another decorated surface.
 
-The [component design review](component-design-review.md) records the owner's preference for
-restrained product UI and the local component changes. Use shared `Heading` variants instead of
+The owner prefers restrained product UI. Use shared `Heading` variants instead of
 inventing oversized, tightly tracked titles per screen. `global.css` owns adaptive semantic colors;
 `ink` and `accent` remain immutable brand colors. `Page` owns bounded layout, while components in
 `components/ui` own visual variants. Screen-level classes primarily compose layout. Decorative
@@ -246,6 +245,10 @@ inspects the exported bundle for localhost and smoke-tests the exact artifact be
 validation alone does not prove the intended service was deployed.
 
 ## API and auth client
+
+The JSON transport uses the installed Axios client with a 30-second timeout, cancellation and strict
+response-schema validation. TanStack Query owns server-state retry and invalidation; the transport
+must not silently retry financial mutations or translate failed reads into empty results.
 
 - Centralize base URL parsing and reject malformed or non-HTTP(S) URLs.
 - Encode request/response shapes in `@pisto/contracts`; validate data at the network boundary.

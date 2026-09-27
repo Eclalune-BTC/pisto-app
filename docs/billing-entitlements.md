@@ -213,11 +213,11 @@ accepted based only on Expo Go or a web preview.
 - Production and sandbox endpoints/configuration are separated.
 - Expect retries, duplicates, delays, and out-of-order events.
 - Compare provider effective time/version and do not let an older event regress a newer projection.
-- Return success only after durable receipt; once the documented Cloud Tasks seam is implemented,
-  move long follow-up work there.
+- Return success only after durable receipt. Introduce a bounded background-work adapter only
+  after a real asynchronous job and its idempotency, authorization and failure rules are approved.
 - Retain the minimum bounded payload evidence needed for support/audit and redact logs.
 - A future reconciliation job should compare active local grants with provider server state; no
-  scheduler or Cloud Tasks queue is included in this baseline.
+  scheduler or queue is included in this baseline.
 
 ## Failure behavior
 

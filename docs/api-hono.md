@@ -24,6 +24,9 @@ The baseline surface is:
 | `POST` | `/v1/businesses` | Yes, fresh session | Create or replay the one owner business and settings |
 | `GET` | `/v1/sales` | `sales:read`, fresh session | List active-business sales newest first with a status filter |
 | `POST` | `/v1/sales` | `sales:create`, fresh session | Confirm or replay one total-only sale |
+| `GET`, `POST` | `/v1/sales/review` | `sales:create`, fresh session | Read or prepare the current actor/business review without posting |
+| `POST` | `/v1/sales/review/:reviewId/confirm` | `sales:create`, fresh session | Explicitly confirm the stored review and retain its result |
+| `POST` | `/v1/sales/review/:reviewId/dismiss` | `sales:create`, fresh session | Dismiss or acknowledge the exact saved-sale ID |
 | `GET` | `/v1/sales/:saleId` | `sales:read`, fresh session | Read a canonical active-business sale |
 | `POST` | `/v1/sales/:saleId/void` | `sales:correct`, fresh session | Void or exactly replay one posted sale correction |
 | `POST` | `/v1/sales/:saleId/replace` | `sales:correct`, fresh session | Atomically void and replace or exactly replay one sale |
@@ -165,7 +168,7 @@ provider. Billing readiness reports configured/disabled, not whether Polar is gl
 
 The Bun listener handles `SIGTERM` and `SIGINT` with one bounded nine-second shutdown: it stops
 accepting requests, waits for in-flight work within the deadline, forces HTTP stop if needed, and
-closes the PostgreSQL pool. Cloud Run can send concurrent requests, so mutable module globals must
+closes the PostgreSQL pool. The server can handle concurrent requests, so mutable module globals must
 not hold request/user state.
 
 ## Official sources
@@ -178,4 +181,3 @@ not hold request/user state.
 - [RFC 9111 `no-store`](https://www.rfc-editor.org/rfc/rfc9111.html#name-no-store)
 - [Hono validation](https://hono.dev/docs/guides/validation)
 - [Better Auth Hono integration](https://better-auth.com/docs/integrations/hono)
-- [Cloud Run container contract](https://cloud.google.com/run/docs/container-contract)

@@ -4,7 +4,7 @@
   and operating report routes. No new capability, permission, or navigation destination is implied.
 - Owner: `apps/app`; authoritative records, validation, money, and tenancy retain their existing
   contract/API/PostgreSQL owners.
-- Review date: 2026-09-10.
+- Implementation scope reconciled with current routes and new-sale recovery.
 
 ## Observable outcome
 
@@ -59,7 +59,7 @@ Result refresh does not replace the page header or its query controls.
 | A successful query returns no records | Say which filter/search has no matches; do not manufacture records or financial zeros from a failure |
 | A financial mutation succeeds | Invalidate the owning record/list and all operating report periods for that business; retain other businesses' caches |
 | A confirmation is pending | Keep the action name visible and accessible, show progress, and prevent repeated activation |
-| A confirmation has an unknown outcome | While mounted, preserve the original reviewed payload and idempotency key; disable its edit/back/cancel controls and offer the existing exact retry/recovery path |
+| A confirmation has an unknown outcome | New-sale reviews recover their server-owned state before proceeding; other editors retain the exact command while mounted. Never turn an uncertain response into a new financial operation |
 | A business read refreshes | Preserve an expense period chosen for the same business; initialize it again only when the business/time-zone context changes |
 | A user opens billing | Keep Account active in both compact and wide navigation |
 | Space or text size changes | Wrap page heading actions and control text; keep controls reachable without horizontal page overflow |
@@ -70,26 +70,6 @@ state, web pressed-button state, and a 48-unit minimum height. It is used by sal
 receivables, catalog status, cash status, and expense filters. It does not own fetching, permission,
 or domain data. Result panels reuse the existing `FeatureBoundary` in an inline composition; no
 second query or UI library is needed.
-
-## Audit findings addressed
-
-- Customer search previously unmounted on each uncached query key, losing focus during typing.
-- Receivable filters and whole cash/expense/report pages disappeared while fetching. A failed
-  report left only Retry, preventing the user from choosing a different period.
-- The customer/receivable access boundary checked pending before offline and could show an endless
-  spinner for a no-data paused query.
-- Expense period initialization depended on the full business object, so a refreshed business
-  payload could overwrite an edited period.
-- Successful sales, cash, expense, stock/catalog, and receivable mutations omitted operating report
-  invalidation; cached report facts could appear current after a canonical change.
-- Secondary button spinners were white on light surfaces. Composed buttons replaced their full
-  action name with a generic loading announcement. Small shared buttons were only 40 units tall.
-- Billing routes had no active primary navigation item. Wide navigation had no independent scroll
-  container for short viewports. Header title/action columns did not shrink or wrap coherently.
-- Several read states treated every cached error as a stale network result, retaining customer or
-  financial data after an authoritative access rejection. Shared remote state, business access,
-  and legacy sales/catalog/customer/receivable routes now give access rejection priority. This
-  changes display state only; server authorization and business selection remain authoritative.
 
 ## Evidence and outstanding checks
 
@@ -108,8 +88,8 @@ refresh with 401/403, and verifies that the UI chooses denied despite retained c
 pending companion query. Separate network/502/503/504 cases retain the labelled stale result.
 
 Current local browser findings and the delayed real-request confirmation check are recorded in
-[local delivery evidence](release-evidence.md#browser-evidence). Durable command recovery after
-unmount/reload remains missing: the in-screen controls do not cover every navigation path.
+[local delivery evidence](release-evidence.md#browser-evidence). New-sale review recovery is
+implemented under ADR 0018; other financial editors still need recovery beyond their mounted state.
 
 Before broad release, complete browser evidence at compact, intermediate, and wide widths, including
 slow-request search typing, failed-period recovery, empty search, denied access, visible keyboard
@@ -119,10 +99,10 @@ Local typechecks, tests, and web export are necessary but do not prove deploymen
 
 ## Research and reuse evidence
 
-This component/UX slice adds no production dependency. Existing React Native controls, React Native Web, React Query,
-the localization catalog, and Pisto tokens cover the exact slice. A new component library or form
-framework would add migration and native compatibility costs without addressing these defects.
-The separate Axios transport decision is recorded in the [repository audit](audit-2026-09-10.md).
+Shared controls use React Native, React Native Web, TanStack Query, the localization catalog and Pisto
+tokens. Evaluate a new component/form dependency only against an actual requirement and its native
+compatibility, rather than treating a historical cleanup as a mandate to replace the component layer.
+The JSON transport uses Axios as described in [the frontend guide](frontend-expo-ui.md#api-and-auth-client).
 Component regression tests use the already installed `react-dom/server`; its matching
 `@types/react-dom` development dependency supplies the test compiler types. Vitest uses Vite's Oxc
 automatic JSX transform because Expo's source configuration leaves JSX for Metro.

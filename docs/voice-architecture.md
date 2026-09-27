@@ -23,7 +23,7 @@ session is installed or selected today.
 - ElevenLabs is a credible candidate. If a voice brief is approved, evaluate first whether AI SDK
   7's stable transcription/speech API with the direct `@ai-sdk/elevenlabs` provider fits the Pisto
   server boundary. This is evaluation order, not provider selection. Pin exact versions only after
-  the Bun/Hono/Cloud Run and Expo data-path spike passes.
+  the Bun/Hono/container and Expo data-path spike passes.
 - A small raw ElevenLabs REST adapter is an allowed escape hatch only if a measured requirement, such
   as keyterm prompting for product names, is absent from the AI SDK adapter. It must implement the
   same Pisto port.
@@ -92,10 +92,9 @@ byte, and cost budgets from device/provider evidence.
   narrowband telephony codec, which is the worst available input for accented Spanish carrying
   numbers in a noisy room. Use a custom preset instead — M4A, mpeg4/AAC, 16 kHz, mono, ~32 kbps —
   since speech models are trained at 16 kHz and 44.1 kHz stereo is wasted uplink.
-- On-device speech recognition is closed for this stack today. `@react-native-voice/voice` is
-  deprecated on npm in favour of `expo-speech-recognition`, and `expo-speech-recognition` has no
-  SDK 57 release. Revisit only if that changes and offline `es` models are confirmed on target
-  hardware.
+- On-device speech recognition is not selected. Before proposing it, verify current maintenance,
+  compatibility with the pinned Expo SDK and offline Spanish model availability on target hardware.
+  A historical package-compatibility claim is not a permanent prohibition or implementation plan.
 - Accept only container/MIME combinations observed in the target matrix. Expo's documented high
   quality preset uses native M4A/AAC and web `audio/webm`; do not enable a provider's entire format
   catalog by default.
@@ -125,7 +124,7 @@ messages/transcripts and narrowly redacted operational metadata.
 
 | Option | Evaluation order and current non-selection |
 | --- | --- |
-| AI SDK 7 plus direct `@ai-sdk/elevenlabs` | First candidate to evaluate if a voice brief is approved; stable batch `transcribe` and later `generateSpeech` would preserve the accepted boundary without adding Vercel hosting/Gateway to the Cloud Run data path |
+| AI SDK 7 plus direct `@ai-sdk/elevenlabs` | First candidate to evaluate if a voice brief is approved; stable batch `transcribe` and later `generateSpeech` would preserve the accepted boundary without adding Vercel hosting/Gateway to the API data path |
 | Tiny raw ElevenLabs REST adapter | Conditional only for an evaluated capability missing from the AI SDK provider; same Pisto port and tests |
 | Full ElevenLabs server SDK | Not justified for batch STT/TTS while the smaller boundary works |
 | Vercel AI Gateway | Not selected; it introduces another credential/data/routing boundary and requires its own fail-closed, retention, billing, and provider-routing review |
@@ -137,8 +136,8 @@ promotion.
 
 ## Credentials and session tokens
 
-- Batch STT/TTS clients call Pisto only. The Cloud Run service uses a server-only provider key from
-  Secret Manager with the narrowest available permissions and a provider credit quota.
+- Batch STT/TTS clients call Pisto only. The API uses a server-only provider key from restricted
+  runtime configuration, with the narrowest available permissions and a provider credit quota.
 - Never return a server API key to Expo, persist it in the app, or include it in logs/errors.
 - If a later realtime client connects directly to ElevenLabs, Pisto authenticates the user,
   authorizes the business, checks consent/quota, and then mints one credential per session.
@@ -152,11 +151,10 @@ promotion.
 Audio and transcripts are sensitive business data. Pisto's deletion of its client/cache/API copy
 does not prove deletion by the provider.
 
-ElevenLabs documents default retention. Its Zero Retention Mode is limited to selected Enterprise
-customers and eligible API traffic; without it, deleting generation history can leave moderation or
-debugging logs and backups can retain deleted database items for up to 30 days. Standard storage is
-in the United States. Isolated EU, India, and Singapore environments are Enterprise features, and
-processing can still differ from storage location depending on configuration and subprocessors.
+Do not apply a historical provider-plan, retention-duration or region snapshot to a future account.
+Recheck the selected product's current terms and actual account controls. Deleting visible generation
+history is not evidence that moderation/debugging logs and backups were deleted. Storage location
+alone does not establish processing location or subprocessors.
 
 Before selecting any voice provider/account, verify and record:
 
@@ -173,10 +171,9 @@ arguments to request logs, traces, analytics, crash reports, or default telemetr
 
 TTS is not part of push-to-talk. If later approved, keep text visible and canonical; offer explicit
 Listen/Pause/Stop/Replay controls and never autoplay. Deterministically format canonical money,
-dates, and quantities before speech. ElevenLabs currently warns that Flash v2.5 does not normalize
-numbers, dates, and currencies as users may expect by default and points to Multilingual v2 when
-number normalization matters. Model choice therefore requires a financial pronunciation evaluation,
-not an LLM rewrite of authoritative values.
+dates, and quantities before speech. Choose a model only after a financial pronunciation evaluation
+against its current normalization behavior; historical model names are not a recommendation to
+install them. An LLM must not rewrite authoritative values.
 
 Realtime conversation is a new subsystem, not a configuration switch. A future ADR must resolve
 WebSocket versus WebRTC, sample formats/resampling, echo cancellation, barge-in, silence and turn

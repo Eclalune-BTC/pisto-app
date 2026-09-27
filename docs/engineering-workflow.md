@@ -7,12 +7,11 @@ truth, repository boundaries, and delivery evidence without turning small edits 
 
 For a material change:
 
-1. Read [Active product goal](product-goal.md), the approved
-   [AI-native product brief](product-briefs/pisto-ai-business-assistant.md),
-   [Product capability architecture](product-capability-architecture.md), this workflow, and the
-   relevant domain guide/ADRs. Read [AI assistant architecture](ai-assistant.md) completely when the
-   change touches AI, voice, retrieval, models, tools, or assistant behavior, and read
-   [Voice architecture](voice-architecture.md) for recording, transcription, TTS, or realtime voice.
+1. Start with [the documentation map](README.md), this workflow and the relevant domain guides/ADRs.
+   For a new capability, also read [the goal](product-goal.md), its approved brief and
+   [capability composition](product-capability-architecture.md). Read [the full AI guide](ai-assistant.md)
+   for AI/model/tool/retrieval work and additionally [the voice guide](voice-architecture.md) for voice.
+   Do not make unrelated maintenance load every future product specification.
 2. Inspect `git status`, the actual implementation, public contracts, tests, manifests, and nearby
    patterns. Do not plan from filenames or documentation alone.
 3. State the requested outcome, acceptance criteria, non-goals, confirmed facts, and unresolved

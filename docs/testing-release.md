@@ -9,11 +9,12 @@ Use precise status language:
 | Implemented | Code and reviewable configuration exist |
 | Locally validated | Named commands/tests passed in the local environment |
 | Built | Reproducible app/container artifact was produced |
+| Source pushed | The intended commit is present on the authorized Git remote; no runtime is deployed |
 | Published/submitted | Artifact reached registry, EAS, or a store review channel |
 | Deployed | A container/web deployment exists on the selected host with intended configuration |
 | Released | Production traffic/store availability and post-release checks are confirmed |
 
-A green unit suite is not a deployment. An EAS build is not App Store/Play approval. A Cloud Run
+A green unit suite is not a deployment. An EAS build is not App Store/Play approval. A candidate
 revision with zero traffic is not a production release.
 
 ## Local quality gate
@@ -53,7 +54,7 @@ digest/build IDs.
 | App component/navigation | Loading/error/auth routing, accessibility, platform adapter selection | React Native/Expo test tooling |
 | Voice acceptance | Permission, recording bounds, audio formats, editable transcript, cancellation/deletion/failure | Web plus physical iOS/Android devices and provider sandbox |
 | Native purchase acceptance | Real store sandbox purchase/restore lifecycle | Physical iOS/Android development/preview build |
-| Deployment smoke | Container contract, DB connection, secrets, IAM, health, rollback | No-traffic/canary Cloud Run revision |
+| Deployment smoke | Container contract, DB connection, secrets, IAM, health, rollback | Isolated candidate on a separately approved host |
 
 ## Product UI acceptance gate when introduced
 
@@ -80,7 +81,7 @@ explicitly rather than calling shared source code platform parity.
 - No-active-business, wrong-business, removed-member, stale active-organization, and unapproved role
   cases fail closed; direct organization deletion cannot erase canonical business records.
 - Credentialed CORS allows only exact configured origins.
-- A deployed Cloud Run smoke verifies the client-IP header contract: a client cannot choose a
+- A separately approved hosted smoke verifies the client-IP header contract: a client cannot choose a
   rate-limit key with a spoofed `X-Forwarded-For` value, and ambiguous comma-separated chains use the
   documented shared per-path fallback until an explicitly trusted proxy/header is configured.
 - Error and log capture contain no tokens, cookies, database URL, webhook secret, or signed URL.
@@ -91,7 +92,7 @@ explicitly rather than calling shared source code platform parity.
 - A revoked provider grant does not remove another active provider grant.
 - Pending/unknown/expired grants fail closed.
 - CLI `init` is repeatable and preserves existing environment files.
-- Once a Cloud Tasks handler exists, task replay causes one domain effect.
+- Once an approved background-task handler exists, task replay causes one domain effect.
 - Model/tool input cannot select another tenant, bypass confirmation, expand tool scope, or override
   server policy through direct or stored prompt injection.
 - Duplicate approval, reconnect, provider retry, timeout, and stream interruption create at most one
@@ -178,10 +179,9 @@ The included `.github/workflows/ci.yml` currently:
    unauthenticated denial, injected `PORT`, and successful bounded shutdown in the actual container.
 
 It does **not** currently run `doctor`, an image vulnerability scan, a previous-schema upgrade fixture,
-a live Neon/provider test, or an Expo native preview build. Those are not implied by a green CI
-workflow. The separate Cloud Build reference waits for migration success and deploys one resolved
-image digest without changing normal traffic or service IAM; this is configuration, not proof it ran.
-Its shell tests use a fake `gcloud` command and do not establish provider compatibility or permissions.
+a live provider test, or an Expo native preview build. Those are not implied by a green CI workflow.
+The retained `infra/gcp` shell tests use a fake provider command. They validate local safeguards, not
+provider compatibility, deployment permission or an active cloud architecture.
 
 A protected production promotion gate should additionally:
 
@@ -200,17 +200,16 @@ Do not inject production provider credentials into pull-request jobs from untrus
 ## API and database release
 
 The current environment is local under [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
-For a future approved release, [Neon deployment](neon-deployment.md) and
-[Cloud deployment](cloud-deployment.md) remain optional provider references. Other container hosts
-must demonstrate the equivalent image, secret, migration, health, IAM, promotion, and rollback
-properties. Do not infer serverless-function compatibility from the portable container.
+For a future approved release, [the portable runtime contract](web-deployment.md) defines the image,
+secret, migration, health, identity, promotion and rollback requirements. Re-evaluate a concrete host
+only after selection; do not infer serverless-function compatibility from the portable container.
 
 1. Confirm change scope, source-policy audit, release notes, migration plan, and rollback owner.
 2. Build and scan a single image; promote the digest rather than rebuilding per environment.
 3. Run controlled migration job if required.
-4. Deploy an isolated candidate with pinned secret references and dedicated identity. On Cloud Run,
-   use `--no-traffic`; its tag URL remains directly reachable under existing service IAM. A new
-   service needs private bootstrap and separate public-access promotion.
+4. Deploy an isolated candidate with pinned secret references and dedicated identity. A candidate
+   URL must not bypass intended access controls. A new service needs private bootstrap and a
+   separately authorized public-access/traffic promotion.
 5. Smoke test health/readiness, auth, one authorized API path, database, and webhook rejection paths.
 6. Shift a small traffic percentage; monitor error rate, latency, instance count, DB connections,
    task failures, auth errors, and billing webhook lag.
@@ -244,7 +243,6 @@ change native RevenueCat modules. Use a new binary for native-code/config-plugin
 - [Expo distribution and submission](https://docs.expo.dev/distribution/introduction/)
 - [RevenueCat sandbox testing](https://www.revenuecat.com/docs/test-and-launch/sandbox)
 - [Polar sandbox](https://polar.sh/docs/integrate/sandbox)
-- [Cloud Run rollouts and rollback](https://cloud.google.com/run/docs/rollouts-rollbacks-traffic-migration)
 - [Vercel AI SDK testing](https://ai-sdk.dev/docs/ai-sdk-core/testing)
 - [Vercel AI SDK loop control](https://ai-sdk.dev/docs/agents/loop-control)
 - [Expo Audio](https://docs.expo.dev/versions/v57.0.0/sdk/audio/)

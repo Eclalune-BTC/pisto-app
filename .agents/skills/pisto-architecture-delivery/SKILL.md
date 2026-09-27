@@ -10,16 +10,15 @@ standards.
 
 ## Before changing code
 
-1. Read `AGENTS.md`, `docs/product-goal.md`,
-   `docs/product-briefs/pisto-ai-business-assistant.md`,
-   `docs/product-capability-architecture.md`, `docs/engineering-workflow.md`, and the relevant domain
-   guide and ADRs. Read `docs/ai-assistant.md` completely for AI, voice, retrieval, model, or
-   assistant work and `docs/voice-architecture.md` for voice work.
+1. Read `AGENTS.md`, `docs/README.md`, the engineering workflow and the task-specific domain guide.
+   Load the goal, approved brief and capability composition contract for new product work, not every
+   maintenance task. Read the complete AI guide for AI/model/tool/retrieval work and the voice guide
+   for voice work. Current source and the capability matrix establish what is implemented.
 2. Inspect the current code, tests, manifests, and `git status`. Separate confirmed facts from
    assumptions and illustrative UI.
 3. Confirm the exact user outcome, acceptance criteria, and non-goals. Use
-   `docs/agent-feature-prompt.md` for a material assignment. Do not expand the approved first job into
-   inventory, roles, RAG, voice, or a generic ERP without a separate approved brief.
+   `docs/agent-feature-prompt.md` for a material assignment. Do not expand the current request into
+   unrelated modules or recreate implemented features from an obsolete task description.
 4. Follow the research triggers and reuse-before-adding rubric in `docs/engineering-workflow.md`.
    Prefer current primary sources for external or version-sensitive decisions.
 5. Trace the change through the existing application, contract, domain, persistence, provider, and

@@ -1,16 +1,18 @@
 # Pisto product requirements
 
-Review: 2026-09-10. Actor: an owner operating a small business in Spanish, across web, Android and
-iOS. This specification separates the implemented manual operating core from release gates and
+Actor: an owner operating a small business in Spanish, across web, Android and iOS.
+This specification separates the implemented manual operating core from release gates and
 future capabilities. Requirements describe acceptance, not proof that production meets every target.
 
 ## Delivery contract
 
 The current delivery reviews and improves the existing manual core for local operation. No hosting
-or publication is in scope. Expo, Bun/Hono and PostgreSQL run locally. A user
-signs in, creates or selects a business, records a reviewed operation, receives its canonical result,
-and can find, inspect and correct that record later. PostgreSQL owns business facts; the client owns
-drafts and presentation. AI and voice remain additional input channels with separate delivery gates.
+or provider activation is in scope. GitHub source synchronization is separate. Expo, Bun/Hono and
+PostgreSQL run locally. A user signs in, creates or selects a business, records a reviewed operation,
+receives its canonical result,
+and can find, inspect and correct that record later. PostgreSQL owns business facts and reviewed
+new-sale recovery; the client owns unreviewed inputs and presentation. AI and voice remain additional
+input channels with separate delivery gates.
 
 Prerequisites are a working account, explicit currency and IANA timezone, an active business and a
 fresh server-authorized permission. Sales do not implicitly move cash or stock. A recorded expense
@@ -22,7 +24,7 @@ does move cash; a receivable payment does move cash. These differences must rema
 | --- | --- | --- |
 | FR-01 | Sign up, sign in and sign out; a wrong password never reveals account data; logout clears account caches. | Implemented; Better Auth / app. Full delivery and device acceptance still required. |
 | FR-02 | Confirm business name, currency and timezone before first operation; reload actual session/membership on every command. | Implemented; business repository and onboarding. |
-| FR-03 | Enter a positive total-only sale, review date/amount, confirm once and open the persisted result. Identical retries return the same sale. | Implemented; sales. |
+| FR-03 | Enter a positive total-only sale, persist its review, explicitly confirm once and open the canonical result. The reviewed command and saved result survive reload; identical retries return the same sale. | Implemented; [sales](sales.md) and ADR 0018. |
 | FR-04 | Find older sales with status filters and cursor pagination. Void once or atomically replace with an explicit reason; preserve both records. | Implemented; sales history/corrections. |
 | FR-05 | Create and maintain categories/products, unique business names/SKUs, units and optional price. Archive instead of removing history. | Implemented; catalog. |
 | FR-06 | Receive/adjust/reverse stock through signed movements; show derived stock and low stock. No sale silently deducts stock. | Implemented; inventory. |
@@ -55,7 +57,7 @@ performance, device behavior, email delivery or recovery.
 | NFR-06 | Accessible interaction | Target WCAG 2.2 AA on web; labelled controls, visible focus, keyboard operation, meaningful heading/landmarks, busy/disabled/error semantics, non-color-only status and at least 44-point primary hit targets. Manual screen-reader audit remains required. |
 | NFR-07 | Responsive layouts | No horizontal page overflow at 390, 768 and 1440 CSS px; short-height navigation remains reachable; native safe areas and keyboard never cover the confirmation action. Record screenshots and actual devices separately. |
 | NFR-08 | Performance | Proposed p95 API reads under 800 ms and writes under 1.5 s at an agreed 20 concurrent-user dataset; web p75 LCP under 2.5 s and INP under 200 ms. Measure before claiming these targets. Cold starts are reported separately. |
-| NFR-09 | Bounded failure | HTTP timeout 30 s in Axios; one retry only for transient reads; zero automatic mutation retries. While the review remains mounted, pending/uncertain mutations retain their command and block its edit/back controls. Durable recovery after reload/unmount is still required. |
+| NFR-09 | Bounded failure | HTTP timeout 30 s in Axios; one retry only for transient reads; zero automatic mutation retries. While the review remains mounted, pending/uncertain mutations retain their command and block its edit/back controls. New-sale reviews have durable recovery; other financial editors still need it after reload/unmount. |
 | NFR-10 | Availability and recovery | Future hosted targets, outside local scope: 99.5% monthly API availability, RPO 24 h and RTO 4 h. Require monitoring and measured recovery; a successful local restore alone does not prove an SLA. |
 | NFR-11 | Privacy and transport | TLS with certificate verification, secure HTTP-only session cookies, exact origins, private credential storage, no tokens/records/raw paths in application logs. No database/provider credential in Expo bundles. |
 | NFR-12 | Abuse protection | Default 300 reads and 60 writes per authenticated user per 60 s, shared atomically in PostgreSQL; 429 includes Retry-After; failed limiter storage denies execution. Auth has its own limiter. Edge unauthenticated abuse limits remain an operational gate. |
@@ -73,9 +75,9 @@ into an implemented feature.
 
 ## Prioritized remaining product work
 
-1. Preserve and recover reviewed commands across shell/browser/native navigation and reload. The
-   current protection lasts while its screen remains mounted; leaving can lose the original key
-   even though the server may commit the request. Do not claim durable recovery or an offline queue.
+1. Extend durable recovery beyond new-sale reviews to corrections and the other financial editors.
+   Those editors can still lose a key on unmount despite a server commit. Preserve the existing
+   sales recovery contract; do not rebuild it or introduce automatic offline replay.
 2. Complete physical-device, screen-reader and local responsiveness acceptance. Future availability
    monitoring and recovery objectives apply only after a separately requested hosting decision.
 3. Deliver verified email/recovery and user-controlled session revocation before broad production use.
@@ -85,5 +87,6 @@ into an implemented feature.
    and confirmation/denial tests. Voice follows that proven workflow.
 6. Add invitations, catalog-linked sales and inventory deduction as separately coherent slices;
    define their permissions and accounting effects before schema expansion.
-7. Enable billing only after product-change entitlement reconciliation, provider sandbox and native
-   purchase validation. Publish iOS/Android only with signing, store configuration and device evidence.
+7. Validate the implemented product-change entitlement reconciliation against the actual provider
+   sandbox before enabling billing; native purchases still need integration and validation.
+   Publish iOS/Android only with signing, store configuration and device evidence.

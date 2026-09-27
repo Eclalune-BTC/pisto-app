@@ -2,11 +2,9 @@
 
 ## Baseline
 
-The active database is local PostgreSQL 18 using the official `postgres:18-alpine` image. The
-owner's latest instruction is local-only. Neon remains an optional future preference through the
-existing postgres-js driver, Drizzle, and standard PostgreSQL SQL; it is not the active runtime
-database. No Neon SDK or proprietary data API is required. Cloud SQL is an optional reference, not
-a mandatory target. [ADR 0017](adrs/0017-portable-postgres-and-hosting.md) records the corrected scope.
+The active database is local PostgreSQL 18 using `postgres:18-alpine`, postgres-js and Drizzle.
+No managed database is required for local operation. Hosted resources require separate approval
+under [ADR 0017](adrs/0017-portable-postgres-and-hosting.md); source publication is not deployment.
 `@pisto/db` owns Drizzle schema, SQL migration artifacts, database connection creation, repositories,
 and transaction helpers. [Data model](data-model.md) records normalization, snapshots, constraints,
 read models, and the portable migration plan.
@@ -53,7 +51,6 @@ Never edit an already-applied migration. Add a forward migration.
   operational table with an isolated `pisto:product:<read|write>:<userId>` key namespace.
 - Billing receipt tables retain deduplication keys and provider payload evidence.
 - Provider customer/subscription records are projections, not authorization by themselves.
-- Entitlements have exactly one subject: a user or an organization.
 - Entitlements enforce exactly one user/organization subject. A unique `(source, sourceId, key)`
   identity prevents the same provider grant from being projected twice; subject/status indexes serve
   authorization queries.
@@ -95,12 +92,14 @@ Never edit an already-applied migration. Add a forward migration.
 - The public entitlement contract accepts `polar`, `revenuecat`, and reserved `manual` sources, but
   no supported manual-grant write workflow is implemented.
 
-The Drizzle schema object in `packages/db/src/schema/index.ts` is the authoritative inventory: 29
-tables, of which 8 are Better Auth, 4 are billing, and 17 are Pisto business tables. Migration
+The Drizzle schema object in `packages/db/src/schema/index.ts` is the authoritative inventory: 30
+tables, of which 8 are Better Auth, 4 are billing, and 18 are Pisto business tables. Migration
 `0001` created `business_settings`, `sale`, and `sale_operation`; migration `0003` created the other
 14. Migration `0004` adds sale-history indexes. Migration `0005` strengthens complete optional-price
-and void-record constraints without adding tables. Reports use relational read models over these
-records and add no reporting ledger or materialized balance.
+and void-record constraints without adding tables. Migration `0006` adds `sale_review`, with one
+open working snapshot per actor/business, a same-business saved-sale reference and closed-key
+retention. See [ADR 0018](adrs/0018-durable-sale-review.md). Reports add no reporting ledger or
+materialized balance.
 
 Raw JSON is evidence and forward-compatibility data. Queryable authorization fields remain typed
 columns with indexes; code does not scan provider JSON to authorize each request.
@@ -165,7 +164,7 @@ session and membership first, then takes the idempotency lock, then reads the re
 
 ### Why the two sales paths do not use `beginOperation`
 
-`createSale` in `packages/db/src/product.ts` and the correction commands in
+`postSale` in `packages/db/src/sales-posting.ts` and the correction commands in
 `packages/db/src/sales-correction.ts` deliberately do **not** call `beginOperation`. They use
 `authorizeBusinessAction` and `lockCommandKey` with the same global lock order as other commands:
 live session, membership, then command-key advisory lock. Sales retain `for update` authorization
@@ -203,9 +202,8 @@ maximum active API instances × per-instance pool maximum
 
 Keep that result below the selected database connection budget with headroom for migrations,
 operations, and failover. A high HTTP concurrency setting does not justify one database connection
-per request. Local migrations and backup/restore tools use a direct local connection. If Neon is
-explicitly selected for future use, prefer its direct connection URL for those operations and
-validate pooled runtime connections against the existing transaction tests first.
+per request. Local migrations and backup/restore tools use a direct local connection. A future
+pooler needs explicit compatibility evidence from the existing transaction tests before adoption.
 
 Set production TLS/network behavior deliberately through `DATABASE_SSL` and the selected PostgreSQL
 connection path. Do not disable certificate verification globally. A provider move changes connection
@@ -234,7 +232,7 @@ migration execution are separate validation gates.
 
 - Back up and confirm recovery objectives before a destructive or high-risk change.
 - Run migrations once as a separately authorized release step with a direct URL and migration role,
-  not in every API instance. The Cloud Run Job remains an alternative executor.
+  not in every API instance. Hosting does not change that separation of privilege.
 - Prefer expand/migrate/contract: add compatible shape, deploy dual-compatible code, backfill, then
   remove old shape in a later release.
 - Serialize migration execution in the release workflow. Drizzle's migration ledger tracks applied
@@ -248,18 +246,17 @@ migration execution are separate validation gates.
 The local Docker volume persists data, but is not a backup. Keep private backups and a tested
 standard `pg_dump`/`pg_restore` path; restore into an isolated database rather than overwriting the
 active local database. Any future hosted environment needs explicitly selected backups/PITR,
-retention, restore access, and verified recovery objectives. Neon and Cloud SQL remain optional
-future choices with their own controls. [Release evidence](release-evidence.md) owns the historical
-portability proof and current operational results. Minimize stored provider
+retention, restore access, and verified recovery objectives. [Release evidence](release-evidence.md)
+owns completed portability checks and their limits. Minimize stored provider
 payloads, restrict access, define retention, and avoid credentials or unnecessary personal data in
 JSON evidence.
 
-The September 10 follow-up audit uses `FOR NO KEY UPDATE` for immutable cash-account rows.
+Cash commands use `FOR NO KEY UPDATE` for stable cash-account identities.
 It still serializes balance-changing commands, while remaining compatible with the foreign-key
 key-share locks acquired by receivable payments. Cursor validation rejects impossible calendar
 dates and times before database casts without reducing the six-digit timestamp precision. Sale
 detail reads the sale and its correction in one statement; posting replays include later correction
-evidence. See [code audit](code-audit-2026-09-10.md) for regression evidence and scope.
+evidence. `packages/db/integration/data-hardening.integration.ts` covers these regressions.
 
 ## Official sources
 
@@ -271,7 +268,3 @@ evidence. See [code audit](code-audit-2026-09-10.md) for regression evidence and
 - [Drizzle migration fundamentals](https://orm.drizzle.team/docs/migrations)
 - [Drizzle generate](https://orm.drizzle.team/docs/drizzle-kit-generate)
 - [Drizzle migrate](https://orm.drizzle.team/docs/drizzle-kit-migrate)
-- [Neon connection pooling](https://neon.com/docs/connect/connection-pooling)
-- [Neon PostgreSQL compatibility](https://neon.com/docs/reference/compatibility)
-- [Cloud SQL connection management](https://cloud.google.com/sql/docs/postgres/manage-connections)
-- [Cloud SQL backups](https://cloud.google.com/sql/docs/postgres/backup-recovery/backups)

@@ -17,7 +17,7 @@ Use Better Auth 1.7.1 in `@pisto/auth`, mounted through Hono at `/api/auth/*`, w
 owned by `@pisto/db` and official Expo adapter for native session storage. Use a 32-byte-or-greater
 secret, exact trusted origins, secure cookies in production, and documented secret rotation.
 
-Use Better Auth's PostgreSQL-backed rate-limit storage so counters are shared across Cloud Run
+Use Better Auth's PostgreSQL-backed rate-limit storage so counters are shared across API
 instances. Keep the synchronized `better-auth`, `@better-auth/expo`, and `auth` CLI packages aligned;
 the accepted baseline is 1.7.1 for all three.
 

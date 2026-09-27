@@ -2,11 +2,16 @@
 
 ## Start here
 
-- Read `docs/README.md`, `docs/product-goal.md`,
-  `docs/product-briefs/pisto-ai-business-assistant.md`, `docs/product-capability-architecture.md`,
-  and `docs/engineering-workflow.md` before planning a material change. Then read the domain guide
-  and accepted ADRs for the area you will touch. For AI, voice, retrieval, or model work, also read
-  `docs/ai-assistant.md` completely; for voice, also read `docs/voice-architecture.md`.
+- Start with `docs/README.md` and load its task-specific guides, not the entire documentation tree.
+  For material work, read `docs/engineering-workflow.md`; for a new capability, also read the active
+  goal, approved brief and capability composition contract. Read `docs/ai-assistant.md` completely
+  for AI/model/tool/retrieval work and additionally `docs/voice-architecture.md` for voice work.
+- Use the owner's current request and inspect current source/contracts/tests. Retired instructions
+  remain in Git history, not active guidance. Keep status in `docs/production-capabilities.md` and
+  update the relevant guide instead of adding dated handoffs or duplicate architecture summaries.
+- Source synchronization with `Eclalune-BTC/pisto-app` is authorized; hosted deployment and store
+  publication require separate approval. Commit as `wkatir <wilmerhenrysalazarmartinez@gmail.com>`
+  using repository-local Git configuration; do not modify another project's identity.
 - Inspect the current implementation, tests, package manifests, and `git status` before proposing
   work. Treat repository evidence as fact; label assumptions and unresolved product decisions.
 - Do not infer real product behavior from illustrative UI, starter copy, package availability, or a

@@ -13,17 +13,17 @@ remain the exact installed source of truth.
 | EAS CLI contract | `>=22.2.0` in `apps/app/eas.json` | Recheck build-profile schema and remote version behavior |
 | React Native / React / RN Web | 0.86 / 19.2.3 / 0.21 | Keep Expo-supported matrix together |
 | Hono | 4.13.5 (verified 2026-09-10) | Exact direct dependency; review middleware/runtime changes |
-| PostgreSQL | 18 (current community patch 18.6) | Test migrations and backups before major upgrade |
+| PostgreSQL | 18; resolve the deployed image patch explicitly | Test migrations and backups before major upgrade |
 | Drizzle ORM / Kit | 0.45.2 / 0.31.10 | Review generated SQL and release notes |
 | Better Auth / Expo adapter / `auth` CLI | 1.7.1 / 1.7.1 / 1.7.1 | Keep the synchronized release train aligned; regenerate/review auth schema |
 | Polar Better Auth / SDK | 1.8.4 / 0.47.0 | Test checkout/webhook sandbox contracts |
 | RevenueCat React Native SDK | Not installed in baseline | Pin deliberately when native IAP integration begins |
 | TypeScript | 6.0.3 | Keep every workspace and Expo tooling compatible; no silent major jump |
 
-On 2026-08-22, `bun outdated` reported only TypeScript `6.0.3 -> 7.0.2`. TypeScript 7 is a new
-native compiler generation and does not yet expose the prior programmatic API. This baseline
-intentionally retains 6.0.3 until Expo SDK 57, React Native, Bun, Biome, editor, test, and build-tool
-compatibility have been validated together; "latest compatible" does not mean latest published.
+The repository retains TypeScript 6.0.3 and the Expo-managed version family. Upstream versions and
+compatibility can change; run the upgrade audit when work is scoped rather than treating a historical
+registry snapshot as a current constraint. The dated Expo patch findings are in
+[the frontend guide](frontend-expo-ui.md#dependency-review-on-2026-09-26).
 
 ## Dependency policy
 
@@ -131,7 +131,7 @@ Then complete and attach this checklist to the upgrade/release record:
 - [ ] Build physical-device iOS/Android tests if Expo/native/RevenueCat changed.
 - [ ] Re-open current Apple App Review 3.1 and Google Play Payments/US program pages.
 - [ ] Re-open RevenueCat and Polar webhook security/event docs; update fixtures.
-- [ ] Recheck Cloud Run container/secret/Cloud SQL/Tasks/Storage behavior if infrastructure changed.
+- [ ] Recheck the actual container, secrets, database and any approved task/storage provider when infrastructure changes.
 - [ ] Record build/image digest, EAS IDs, migration result, canary metrics, and rollback compatibility.
 - [ ] Update the baseline date/table, source index, and affected ADR if the decision changed.
 

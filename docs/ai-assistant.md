@@ -6,7 +6,8 @@
 
 ## Decision summary
 
-Pisto will use the current stable Vercel AI SDK 7 family as a thin server-side orchestration layer for
+The accepted target is AI SDK 7, with current APIs to be revalidated before implementation, as a
+thin server-side orchestration layer for
 streaming, typed tools, structured output, approvals, transcription, and provider adapters. The exact
 patch and first provider package are selected and pinned only after the implementation spike validates
 the current APIs against Bun, Hono, the portable API container, Expo web, iOS, and Android.
@@ -170,8 +171,8 @@ brief is approved, and the exact provider/account is verified.
 - Use a visible press-to-record control and request permission in context.
 - Keep background recording disabled.
 - Cap duration and bytes and allow only tested formats from web, iOS, and Android.
-- Use a narrow authenticated multipart upload adapter; do not weaken the JSON API client or use
-  base64 JSON.
+- Use the narrow authenticated audio transport specified in the voice guide; do not weaken the
+  JSON API client or use base64 JSON. Resolve transport details in the approved voice brief.
 - Treat audio and transcripts as sensitive business data.
 - Delete Pisto's raw-audio copy after transcription and a short documented retry window by default;
   separately verify provider retention/deletion instead of implying local deletion controls it.
@@ -246,7 +247,7 @@ account setting.
 | Product brief and target architecture | Approved and documented |
 | AI SDK or provider dependency | Not installed |
 | Assistant route, package, prompt, tools, UI, or schema | Not implemented |
-| Sales, catalog, inventory, expense, cash, customer, and receivable product data | Implemented and locally validated; not pushed, deployed, or released |
+| Sales, catalog, inventory, expense, cash, customer, and receivable product data | Implemented; source synchronized. Validation and remaining platform/release limits are in [release evidence](release-evidence.md) |
 | Operating reports the assistant would read | Implemented PostgreSQL repository, `GET /v1/reports/operating`, and `/operate/reports`; no assistant tool yet |
 | Narrow read or mutation tools over that product data | Not implemented |
 | Voice recording or transcription | Not implemented |

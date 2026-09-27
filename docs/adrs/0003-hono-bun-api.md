@@ -8,7 +8,7 @@
 ## Context
 
 The project needs a small standards-based HTTP API that composes auth, database, and billing packages,
-runs locally on Bun, and packages cleanly as a Cloud Run container. Public data contracts must not be
+runs locally on Bun, and packages cleanly as a portable container. Public data contracts must not be
 database/provider SDK types.
 
 ## Decision
@@ -18,7 +18,7 @@ transport schemas. Mount Better Auth's Web Standard handler at `/api/auth/*`, ve
 under `/v1`, and expose separate non-mutating liveness/readiness probes.
 
 Use exact credentialed CORS origins, secure headers, centralized error envelopes/request IDs, bounded
-input, and `0.0.0.0:$PORT` in Cloud Run.
+input, and the configured interface/port in the container. Hosting is separately governed by ADR 0017.
 
 ## Consequences
 
@@ -47,4 +47,3 @@ input, and `0.0.0.0:$PORT` in Cloud Run.
 - [Hono Bun guide](https://hono.dev/docs/getting-started/bun)
 - [Hono validation](https://hono.dev/docs/guides/validation)
 - [Hono CORS](https://hono.dev/docs/middleware/builtin/cors)
-- [Cloud Run container contract](https://cloud.google.com/run/docs/container-contract)

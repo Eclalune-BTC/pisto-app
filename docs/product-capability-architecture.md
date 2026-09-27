@@ -135,8 +135,8 @@ Removing a module from the list does not remove server authorization or its cano
 
 Compact native and web layouts keep only durable destinations in bottom navigation. Wide web may
 show the authorized Operate modules as secondary navigation without changing their route meaning.
-Billing remains reachable through Account. Reports will join Operate only with its implemented exact
-query and structured surface; it does not receive a placeholder button.
+Billing remains reachable through Account. Reports is implemented in Operate at `/operate/reports`,
+backed by the exact authorized query; it is not a future placeholder or a permanent primary tab.
 
 The manual increment uses neutral Latin American Spanish copy with Salvadoran `es-SV` money/date
 formatting as its explicit initial product choice. Validate it with Salvadoran terminology and users
@@ -244,23 +244,19 @@ and leaves text/manual paths available.
 
 ## Delivery sequence and dependency gates
 
-The sequence favors coherent operating loops over breadth:
+The manual sales, catalog/stock, expenses/cash, customer/receivable and reporting loops already exist.
+Do not follow a historical rollout order that places these after unimplemented voice work. The
+[current goal](product-goal.md), owner's task and [capability matrix](production-capabilities.md)
+determine the next scoped change.
 
-| Stage | Outcome | Gate before expansion |
-| --- | --- | --- |
-| 0. Trust foundation | Verified/recoverable account, truthful business selection, hardened organization boundary | End-to-end auth and cross-tenant tests; product data cannot be orphaned or exposed |
-| 1. Sales loop | Create, review, confirm, list, correct/void, and summarize sales | Idempotent audited money records and representative Spanish assistant evaluations |
-| 2. Voice entry | Speak the same sale/report jobs and edit the transcript | Permission, format, privacy, latency, provider-error, device, and cost evidence |
-| 3. Catalog and stock | Products/variants, purchases, stock movements, sale deduction, low-stock attention | Movement-ledger invariants, concurrency tests, correction effects, and usable manual flows |
-| 4. Expenses and cash | Expenses, payment methods, cash movements, close, cost foundations | Reconciliation rules and truthful revenue/cash/cost/margin terminology |
-| 5. Relationships | Customers, suppliers, receivables, payables, history | Contact privacy, balances, settlement/correction, and authorization policy |
-| 6. Team | Invitations and task-level owner/manager/cashier/accountant permissions | Verified invitation delivery, least privilege, role matrix, session revocation, and audit |
-| 7. Insight and reach | Deeper reports, exports, catalog sharing, receipts, barcode/scanner, useful automation | Each channel's security, localization, platform, and external-policy brief |
-| 8. Locale/fiscal expansion | Country-specific invoices, taxes, compliance, and integrations | Legal/accounting owner, locale-specific model, external certification, and release evidence |
+Text assistance requires safe existing commands, a reviewed provider, Spanish evaluations and
+explicit approval. Voice follows proven text behavior and adds permission, transport, privacy,
+cancellation, device and cost evidence. Team workflows require verified invitation delivery and
+least-privilege role rules. Itemized sales, suppliers, payables, fiscal work and other extensions
+need their own canonical-data and correction contracts; existing modules do not imply they exist.
 
-Stages may overlap only when their prerequisites and file ownership are explicit. They do not
-authorize speculative schemas, generic workflow engines, autonomous financial actions, RAG, graph
-storage, or microservices.
+These gates do not authorize speculative schemas, generic workflow engines, autonomous financial
+actions, RAG, graph storage or microservices.
 
 ## Multi-agent delivery contract
 

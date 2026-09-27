@@ -13,8 +13,9 @@
 | Catalog and inventory | Implemented and locally validated | [Catalog and inventory V1](catalog-inventory-v1.md) |
 | Expenses and cash | Implemented and locally validated | [Expenses and cash V1](expenses-cash-v1.md) |
 | Customers and receivables | Implemented and locally validated | [Customers and receivables V1](customers-receivables-v1.md) |
-| Sales history and correction | Implemented with bounded keyset history and transactional correction | [Sales Increment 1](../sales-increment-1.md) |
+| Sales history and correction | Implemented with bounded keyset history and transactional correction | [Sales](../sales.md) |
 | Reports | Implemented repository, route, screen, and PostgreSQL integration coverage | [Data model and read models](../data-model.md), [release evidence](../release-evidence.md) |
+| New-sale review recovery | Implemented; explicit confirmation, durable actor/business review and saved-result acknowledgement | [ADR 0018](../adrs/0018-durable-sale-review.md) |
 | Assistant and voice | Not implemented; no AI or audio dependency exists | None |
 
 This milestone turns Pisto from one sales increment into a useful modular operating product. It is
@@ -268,12 +269,10 @@ conversation remain separate future capabilities.
   responsive loading/empty/error/denied states, keyboard/accessibility checks, and independent review.
 - `bun run check`, build, migration consistency, PostgreSQL 18 integration, web browser, and available
   native checks must be recorded separately. Local validation does not establish device or hosted
-  acceptance. The owner's latest instruction requires local Expo, Bun/Hono, and PostgreSQL 18 only;
-  hosting is undecided and publication is not authorized. The revised
-  [ADR 0017](../adrs/0017-portable-postgres-and-hosting.md) records this scope, and
-  [Release evidence](../release-evidence.md) owns local results and withdrawal of the earlier
-  unwanted publication. Store submission and completion of the assistant/voice acceptance contract
-  remain separate gates.
+  acceptance. Runtime work remains local Expo, Bun/Hono and PostgreSQL. GitHub source synchronization
+  is distinct from separately approved hosting or store submission under
+  [ADR 0017](../adrs/0017-portable-postgres-and-hosting.md). [Release evidence](../release-evidence.md)
+  owns completed checks; assistant/voice and platform acceptance remain separate gates.
 
 ## Sources
 

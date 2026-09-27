@@ -7,42 +7,32 @@ client, an internet-facing API, provider integrations, and durable data. The des
 contracts, small provider adapters, reversible releases, and access decisions that remain valid when
 billing events are delayed or duplicated.
 
-## Context diagram
+## Current runtime diagram
 
 ```mermaid
 flowchart LR
-  User[User]
-  Web[Expo web app]
-  Native[Expo iOS and Android app]
-  API[Local Bun/Hono API]
+  Web[Expo web - React Native Web]
+  Native[Expo Android and iOS client]
+  API[Local Bun and Hono API]
   Auth[Better Auth]
-  Billing[Billing and entitlement domain]
+  Domain[Authorized commands and queries]
   DB[(Local PostgreSQL 18)]
-  Polar[Polar web billing]
-  Stores[Apple App Store and Google Play]
-  RC[RevenueCat]
-  Tasks[Future bounded-work adapter]
-  Storage[Future private-object adapter]
-
-  User --> Web
-  User --> Native
   Web --> API
   Native --> API
   API --> Auth
-  API --> Billing
-  API --> DB
-  Billing --> DB
-  Web -->|browser checkout| Polar
-  Polar -->|signed webhook| API
-  Native -. release-gated native purchase .-> Stores
-  Stores -. future RevenueCat integration .-> RC
-  RC -->|authenticated webhook| API
-  API -. future bounded work .-> Tasks
-  API -. future object flow .-> Storage
+  API --> Domain
+  Auth --> DB
+  Domain --> DB
 ```
 
-The browser and native applications can show cached provider information for responsive UX, but the
-API owns authorization. A client assertion such as `isPro: true` is never trusted.
+Shared React Native components are styled through Tailwind and free Uniwind. Native and web have
+separate rendering/runtime behavior; shared source and successful bundles do not establish device
+acceptance. See [the frontend guide](frontend-expo-ui.md).
+
+Billing adapters exist but are disabled in the local environment. Native purchase integration,
+AI/voice, queues and user-object storage are not running parts of this diagram. Their exact status
+and prerequisites live in [the capability matrix](production-capabilities.md). The API owns access;
+a client assertion or cached provider response is never authorization.
 
 ## Workspace boundaries
 
@@ -143,26 +133,21 @@ in Pisto-owned tables rather than auth metadata. See
 
 The structured total-only path through onboarding, review, confirmation, canonical result,
 previous-month summary, and transactional void/replacement correction is implemented in
-[Sales Increment 1](sales-increment-1.md). The bounded `GET /v1/sales` history exposes past sales and
+[Sales](sales.md). The bounded `GET /v1/sales` history exposes past sales and
 correction actions in `/operate/sales`. `GET /v1/reports/operating` supplies `/operate/reports` with
 exact period flows and current positions from one authorized read-only repeatable-read transaction.
-The conversational path below remains approved but unimplemented.
+New-sale preparation is persisted separately from the sale. Explicit confirmation commits the
+sale, receipt and recoverable result atomically, under
+[ADR 0018](adrs/0018-durable-sale-review.md). Unreviewed inputs and other financial editors retain
+their separate recovery limits. There is no client-side financial outbox or automatic write replay.
 
-1. The authenticated app submits text to a bounded assistant route; the API resolves the user and
-   business instead of trusting either identifier from the client or model.
-2. A server-side Vercel AI SDK boundary asks the configured provider for a typed proposal or narrow
-   tool selection. Provider credentials and raw response types stay at this edge.
-3. A proposed sale is returned as an editable draft with no domain effect.
-4. Explicit approval returns to the API, which revalidates authorization, current state, typed
-   inputs, deterministic money totals, expiry, and idempotency before a transactional audited commit.
-5. A report request invokes an authorized sales query; PostgreSQL/domain code calculates the exact
-   period and totals, and the model explains those facts without becoming their source.
+The conversational target is approved but unimplemented; see [the AI guide](ai-assistant.md) only for
+that work. A model proposes a draft or selects a narrow authorized read, never owns accounting rules
+or silently commits. Voice later supplies editable text to the same flow.
 
-Provider or assistant failure leaves the structured product path available and must not become fake
-data, success, or a silent model fallback. Voice later produces an editable transcript and reuses
-this same flow; it is not a separate financial execution path.
+### Web purchase when configured
 
-### Web purchase
+This flow requires explicitly configured Polar products and credentials; local billing is disabled.
 
 1. An authenticated browser requests an allowed product from `/v1/billing/checkout`.
 2. The server maps the internal product to an allowlisted Polar product and creates or selects a web
@@ -190,39 +175,20 @@ the native release gate in the billing documentation is complete, the intended f
 See [Billing and entitlements](billing-entitlements.md) for the normative rules and current policy
 qualification.
 
-### Asynchronous work and objects (integration seams)
-
-No queue, task handler, user-file feature, or object-storage adapter is included. A future slice must
-select and validate its provider boundary. The existing Google Cloud reference describes private
-OIDC-authenticated task handlers and short-lived signed object URLs; it does not require Google
-services for the current local environment. API requests should not proxy large files unless a
-security requirement demands it.
-
 ## Runtime topology
 
-- Current environment: local Expo and Bun/Hono processes plus local PostgreSQL 18 in Docker Compose.
-  The local API uses the local database URL; no hosted database is required for development or tests.
-- Hosting: undecided and not authorized under the owner's latest local-only instruction. No Vercel
-  entrypoint or other provider-specific runtime adapter is required.
-- Database portability: postgres-js, Drizzle, and standard PostgreSQL migrations remain the boundary.
-  Neon is an optional future preference, not the current runtime database. Runtime pools stay bounded
-  and migrations use a direct connection.
-- Portable API artifact: the Bun/Hono Linux container listens on `0.0.0.0` and the injected `PORT`.
-  Another host can serve the Expo export and proxy API paths to this container.
-- Secrets: local server-only environment files stay ignored and private. Future shared environments
-  require restricted runtime credentials and a separate migration identity. No client bundle contains
-  database or provider credentials.
-- Alternative deployment reference: Cloud Build/Cloud Run/Cloud SQL and Secret Manager configuration
-  remains documented. ADR 0017 removes mandatory hosted targets; this reference is not provisioning
-  authorization or a required dependency for local operation.
-- Background work, object storage, email delivery, AI/voice, and native purchases remain separate
-  implementation and release gates.
+Local Expo and Bun/Hono processes use Docker PostgreSQL. The configured desktop ports and fresh
+checkout workflow are in [getting started](getting-started.md). Source publication to GitHub is
+separate from cloud provisioning, hosting or store submission; none is implied by a source push.
 
-The API remains stateless between requests. Host-local disk is not a source of truth. See
-[ADR 0017](adrs/0017-portable-postgres-and-hosting.md) for the hosting boundary and exit path,
-[Production capabilities](production-capabilities.md) for capability gates, and
-[Release evidence](release-evidence.md) for local validation and the withdrawal status of the earlier
-unwanted publication. Prior hosted artifacts do not establish an accepted remote product.
+The portable API container and Expo web export are separate artifacts. Secrets stay in private
+server configuration, migrations use a separately authorized connection, and pools remain bounded.
+`infra/gcp` contains inactive reference scripts still checked by credential-free CI, not a selected
+runtime or deployment work order. No queue or user-object adapter is implemented.
+
+The API keeps no authoritative host-local state between requests. See
+[ADR 0017](adrs/0017-portable-postgres-and-hosting.md),
+[local runtime and portable artifacts](web-deployment.md), and [release evidence](release-evidence.md).
 
 ## Reliability invariants
 
@@ -250,8 +216,5 @@ unwanted publication. Prior hosted artifacts do not establish an accepted remote
 - [Expo Router introduction](https://docs.expo.dev/router/introduction/)
 - [Hono on Bun](https://hono.dev/docs/getting-started/bun)
 - [Better Auth with Hono](https://better-auth.com/docs/integrations/hono)
-- [Cloud Run container contract](https://cloud.google.com/run/docs/container-contract)
-- [Cloud Tasks HTTP targets](https://cloud.google.com/tasks/docs/creating-http-target-tasks)
-- [Cloud Storage signed URLs](https://cloud.google.com/storage/docs/access-control/signed-urls)
 - [Vercel AI SDK 7](https://vercel.com/changelog/ai-sdk-7)
 - [Vercel AI SDK provider management](https://ai-sdk.dev/docs/ai-sdk-core/provider-management)

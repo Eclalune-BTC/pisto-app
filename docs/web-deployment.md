@@ -1,13 +1,14 @@
-# Local web workflow and future hosting boundary
+# Local runtime and portable artifacts
 
 ## Current local workflow
 
-The owner's latest instruction is local-only: Expo, Bun/Hono, and PostgreSQL 18 run on the local
-machine. Hosting is undecided and publication is not authorized. Neon remains an optional future
-PostgreSQL preference, not an active runtime dependency. See
-[ADR 0017](adrs/0017-portable-postgres-and-hosting.md) and
-[release evidence](release-evidence.md) for the corrected scope, local validation, and withdrawal
-status of the earlier unwanted publication. A local code cleanup does not prove remote deletion.
+Expo, Bun/Hono and PostgreSQL 18 run locally. GitHub source synchronization is authorized; hosting,
+provider activation and store publication require separate approval. No hosted database or platform
+SDK is required for local startup. See [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
+
+The commands below are for a fresh checkout. Use
+[the configured Windows workspace](getting-started.md#existing-windows-workspace) for the existing
+pisto-audit database and its nondefault ports; do not create another database project there.
 
 Use the committed Bun version and local setup workflow:
 
@@ -36,9 +37,9 @@ a local UI. Native device acceptance remains separate from web or bundle verific
 - `apps/app/dist`: ordinary Expo web files using `web.output: single`.
 - `apps/api/Dockerfile`: portable Bun/Hono API and separate bundled migration entrypoint.
 - `packages/db/migrations`: standard PostgreSQL/Drizzle migration history.
-- `infra/gcp`: optional deployment reference, outside the current operational scope.
+- `infra/gcp`: inactive reference scripts with credential-free CI tests; not a selected runtime or work order.
 
-No Vercel entrypoint, Vercel publishing configuration, or host SDK is required. The API container does
+No provider-specific web entrypoint, publishing configuration or host SDK is required. The API container does
 not serve web files. The exported client remains independent of API hosting and can be inspected
 with a local static server that implements SPA deep links and correct asset responses.
 
@@ -125,7 +126,7 @@ identifiers. Those requirements do not replace the current local development con
 Use standard `pg_dump` and `pg_restore`, retain private backups, and restore into an isolated target.
 Recreate least-privilege roles and verify constraints, migration history, and ledger totals before a
 future database move. The prior export/restore proof is historical evidence in the release record;
-it does not select Neon for current local use or establish a recovery SLA.
+it does not select a hosted database or establish a recovery SLA.
 
 ## Public website boundary
 

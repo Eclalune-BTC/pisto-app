@@ -17,7 +17,7 @@ pisto-stack/
 |-- docs/
 |   |-- adrs/                # Consequential architecture decisions
 |   `-- product-briefs/      # Approved product jobs, acceptance, and non-goals
-|-- infra/gcp/               # Reference cloud configuration; not deployment evidence
+|-- infra/gcp/               # Inactive reference scripts with credential-free CI tests
 |-- scripts/
 |   |-- dev-api.ts           # Root watch entry so shared package edits restart the API
 |   |-- pisto.ts             # Safe local init/doctor/help CLI
@@ -78,7 +78,7 @@ for undeclared dependencies: each workspace must still declare every package it 
 | Define how a future product capability composes | Its approved brief plus `docs/product-capability-architecture.md` |
 | Record an operational rule or decision | `docs` and, for architectural decisions, `docs/adrs` |
 
-Increment 1 keeps its cohesive sales repository/transaction code in `@pisto/db`, public schemas in
+The sales capability keeps its cohesive repository/transaction code in `@pisto/db`, public schemas in
 `@pisto/contracts`, HTTP composition in `@pisto/api`, and universal product flow in `@pisto/app`.
 Create a focused sales domain package only when independent invariants and sustained cross-route
 ownership justify extraction, and an assistant package only for provider-neutral orchestration. Do

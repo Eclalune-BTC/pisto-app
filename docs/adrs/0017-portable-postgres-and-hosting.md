@@ -1,59 +1,33 @@
 # ADR 0017: Local operation and portable PostgreSQL
 
-- Status: Revised after the owner's 2026-09-10 correction: everything local, no Vercel publication
-- Supersedes: This ADR's earlier hosted-runtime decision and ADR 0008's mandatory Cloud SQL target
+- Status: Accepted
+- Scope: Current runtime, source publication and future hosting boundary
 
-## Current decision
+## Decision
 
-Run Expo, the Bun/Hono API, and PostgreSQL 18 locally. The API and integration tests use the local
-PostgreSQL instance through the existing `postgres` driver, Drizzle, and standard SQL migrations.
-Hosting is undecided and publication is not authorized. No provider-specific runtime entrypoint,
-publishing configuration, or hosted database is required for the current application.
+Run Expo, the Bun/Hono API and PostgreSQL 18 locally. Use the existing postgres-js driver, Drizzle
+schema and standard SQL migrations. GitHub source synchronization is authorized by the owner; it
+does not authorize cloud provisioning, hosted deployment, provider activation or store submission.
+Hosting remains undecided. Do not use retained remote credentials for local startup or tests.
 
-Neon remains the owner's optional future PostgreSQL preference if a hosted database is explicitly
-requested later. It is not the active runtime database. Do not add a Neon SDK, Neon Auth,
-provider-specific SQL, or proprietary data API. Retained remote credentials or prior infrastructure
-are not permission to use a remote database for local development or tests.
+Neon is an optional future database preference, not a selected runtime dependency. A future database
+or hosting choice needs a new explicit decision and environment-specific acceptance. No hosted
+identity system, provider SQL API or deployment SDK is required by the current product.
 
-Keep the Bun/Hono container and ordinary Expo web export portable. Expo's `web.output: single`
-produces a single-page application that can be inspected locally; producing that artifact does not
-publish it. The API container remains independent of web-file delivery.
+## Portability and safety
 
-## Correction and evidence
+The Bun/Hono Docker image and Expo single-page web export are separate portable artifacts. Keep
+runtime identity, secrets and migrations independent of a hosting vendor. A future shared environment
+requires TLS, least-privilege runtime access, a separate migration identity, a bounded connection
+budget and tested backup/restore. Do not migrate on API startup or infer pooler compatibility.
 
-The earlier hosting interpretation led to an unwanted publication attempt. The owner corrected the
-scope to local-only and rejected Vercel hosting. That interpretation is withdrawn. The integration
-owner records resource deletion and public-endpoint verification in
-[Release evidence](../release-evidence.md); this ADR does not infer removal from a local code change
-or claim that the earlier remote application passed acceptance.
+Web deep links must resolve to Expo Router; missing assets must return a real error. Validate
+cookies, exact CORS/trusted origins and the client-IP contract for the selected topology. Standard
+PostgreSQL dump/restore and reviewed migrations preserve records across a provider move.
 
-The previously provisioned remote database is outside the active environment. Any future use or
-removal is an explicit operational decision, separate from local application startup.
+The inactive `infra/gcp` scripts remain exercised by credential-free CI tests. They are not the
+application's selected architecture or an authorized deployment procedure. Their presence must not
+trigger provisioning. Runtime instructions live in [getting started](../getting-started.md) and
+[local runtime and portable artifacts](../web-deployment.md).
 
-## Portability and future hosting conditions
-
-These are design constraints for a future approved change, not a publishing plan:
-
-- A standard static server can serve `apps/app/dist`; a reverse proxy can send `/v1`, `/api/auth`,
-  `/health`, and `/ready` to the portable API container. No domain package depends on a host SDK.
-- A future same-origin HTTPS proxy is one way to keep host-only cookies without third-party-cookie
-  dependence. A separate-origin topology requires its own cookie, CORS, and trusted-origin review.
-- Browser deep links must resolve to Expo Router; missing assets must return 404, not SPA HTML.
-- A database move uses `pg_dump`/`pg_restore`, committed migrations, and changed connection
-  configuration. Verify constraints, migration history, ledger totals, and restore behavior first.
-- Direct connections run migrations and backup/restore tools. Any future pooler requires transaction
-  tests and a bounded connection budget. Shared environments require separate runtime/migration roles
-  and verified TLS behavior.
-- The Google Cloud reference remains optional. It neither chooses a future provider nor authorizes
-  provisioning or deployment.
-- Billing, AI/voice, email delivery, team workflows, and native store distribution retain their
-  separate implementation and acceptance gates.
-
-## Sources
-
-- [PostgreSQL backup and restore](https://www.postgresql.org/docs/18/backup-dump.html)
-- [Drizzle migration fundamentals](https://orm.drizzle.team/docs/migrations)
-- [Expo web output modes](https://docs.expo.dev/guides/publishing-websites/)
-- [Neon connection pooling, if considered later](https://neon.com/docs/connect/connection-pooling)
-
-Recheck provider-specific guidance only when a future hosting or database decision requires it.
+Historical hosting decisions and task transcripts are available in Git, not active agent guidance.

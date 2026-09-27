@@ -1,6 +1,6 @@
 # ADR 0009: Provider-neutral AI assistant with deterministic business tools
 
-- Status: Accepted
+- Status: Accepted target; not implemented
 - Date: 2026-08-22
 - Owners: `@pisto/app`, `@pisto/api`, future product and assistant packages
 - Supersedes: none
@@ -18,9 +18,10 @@ semantic document retrieval or variable-depth graph traversal.
 
 ## Decision
 
-Use the current stable Vercel AI SDK 7 family as a thin server-side model, structured-output, tool,
-approval, streaming, and transcription boundary. Pin the exact patch and one initial provider adapter
-only after a compatibility spike proves the pinned versions on Bun/Hono/Cloud Run and Expo web/iOS/
+Use the accepted AI SDK 7 target family as a thin server-side model, structured-output, tool,
+approval, streaming and transcription boundary. Revalidate its APIs before implementation.
+Pin the exact patch and one initial provider adapter
+only after a compatibility spike proves the pinned versions on Bun/Hono/container and Expo web/iOS/
 Android. Keep stable task aliases in one validated server registry and keep provider credentials out of
 the Expo bundle.
 

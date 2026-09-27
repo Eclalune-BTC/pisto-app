@@ -1,30 +1,17 @@
 # Pisto relational data model
 
-## September 26 addition: sale review recovery
+## Scope
 
-Migration `0006` adds `sale_review`. Each actor/business can have one open working command snapshot,
-not an additional ledger or aggregate. The review freezes currency, exponent, and time zone and
-retains the original confirmation UUID. Posting writes `sale`, `sale_operation`, and the review's
-`sale_id` in the same transaction. The composite sale foreign key prevents cross-business links.
-
-The JSONB command is a strict, bounded transport snapshot validated on write and read; canonical
-money remains in normalized sale columns. Closing clears this payload and retains minimal key/owner
-metadata to reject delayed retries. A saved result is not closed until its exact sale ID is
-acknowledged. See [ADR 0018](adrs/0018-durable-sale-review.md) for ownership, retention, and failure
-semantics. The earlier table inventory below describes the September 10 baseline.
-
-## September 10 baseline
-
-Reviewed against the implementation on 2026-09-10. This document describes persisted behavior,
-intentional snapshots, and the next bounded changes. It does not imply that a database has been
-provisioned, migrated, backed up, or released.
+This guide describes the current schema, snapshots and derived facts. The schema and migration
+ledger, not a dated audit count, are authoritative. Validation evidence is separate from provisioning,
+migration execution, backups and release acceptance.
 
 ## Design decision
 
 Keep the existing PostgreSQL model and improve its demonstrated integrity and query defects.
-The current schema has 29 tables: eight authentication tables, four billing projections/receipts,
-and seventeen business tables. Reference entities, financial records, movements, and command
-receipts already have distinct owners. Replacing them with a generic transaction/document table,
+The current schema has 30 tables: eight authentication tables, four billing projections/receipts,
+and eighteen business tables, including `sale_review`. Reference entities, financial records,
+movements and command receipts already have distinct owners. Replacing them with a generic transaction/document table,
 JSON business records, a graph, or a second membership system would weaken those boundaries.
 
 The canonical master entities follow relational normalization: one organization owns identity,
@@ -47,6 +34,8 @@ erDiagram
     ORGANIZATION ||--o{ INVITATION : invites
     ORGANIZATION ||--o| BUSINESS_SETTINGS : configures
     BUSINESS_SETTINGS ||--o{ SALE : records
+    BUSINESS_SETTINGS ||--o{ SALE_REVIEW : retains_review
+    SALE o|--o| SALE_REVIEW : saved_result
     SALE ||--o{ SALE_OPERATION : confirms
     SALE ||--o| SALE_CORRECTION : original
     SALE o|--o| SALE_CORRECTION : replacement
@@ -84,6 +73,7 @@ membership authorization.
 | --- | --- | --- |
 | `organization`, `member`, `session` | Workspace identity, exact membership role, session expiry and selected workspace | Effective Pisto permissions come from the static server policy |
 | `business_settings` | One confirmed currency/exponent and business IANA zone | Device locale is display only |
+| `sale_review` | One open reviewed command per actor/business and its confirmed sale reference | Working snapshot, not a ledger; closing clears the payload and retains the key |
 | `sale`, `sale_correction`, `sale_operation` | Posted total-only sale, correction relationship/reason, actor and command identity | Monthly gross/count/average are queries; currency/local wall time are immutable evidence |
 | `catalog_category`, `catalog_product` | Current names, SKU, unit, precision, tracking/archival policy, optional selling price | Stock is never a writable product column |
 | `inventory_movement` | Signed exact quantity delta and one reversal link | On-hand quantity is the sum of deltas; low stock compares that sum with the product threshold |
@@ -104,6 +94,14 @@ changes require a new effective-date design; they must not rewrite old facts.
 `created_at` orders receipt history independently of the operation's occurrence time. PostgreSQL
 retains microseconds, so pagination must serialize the original timestamp as exact UTC text and
 compare it as `timestamptz`; JavaScript `Date` is appropriate only for display timestamps.
+
+## Review lifecycle
+
+Migration `0006` adds `sale_review`, a bounded strict JSONB command snapshot with currency, exponent
+and time zone. Posting commits `sale`, `sale_operation` and its saved-sale reference together.
+The composite sale foreign key prevents cross-business links. Closing clears the financial payload
+and retains the closed key to reject delayed retries. A saved review needs acknowledgement of its
+exact sale ID. See [ADR 0018](adrs/0018-durable-sale-review.md) and [sales](sales.md).
 
 ## Integrity, permissions, and transactions
 
@@ -171,19 +169,14 @@ added by this audit.
 
 ## Local PostgreSQL and portability
 
-The active runtime and tests use local PostgreSQL 18. The owner's latest instruction is local-only;
-Neon is an optional future database preference, not the selected runtime. Keep postgres-js and
-Drizzle as the runtime/schema boundary. The domain depends on PostgreSQL transactions, constraints,
-SQL, and transaction-scoped advisory locks, not a Neon SDK, HTTP database API, branch API, or identity
-service. [ADR 0017](adrs/0017-portable-postgres-and-hosting.md) records the corrected scope.
+The active runtime uses local PostgreSQL 18 through postgres-js and Drizzle. Domain rules depend on
+PostgreSQL transactions, constraints and advisory locks, not a hosted-provider API. Keep migrations
+and standard backup/restore portable. Verify an isolated target before mutation tests or restores.
 
-Committed SQL migrations and standard PostgreSQL backup/restore preserve the exit path. Local
-migrations use a direct local endpoint and tests must verify the target before mutating it. Any
-future shared database requires a separate runtime connection with TLS and a bounded pool, tested
-pooler behavior, restore evidence, and reviewed timeouts/connection budgets. Provider projects,
-branches, and credentials remain operational configuration; provider IDs do not enter canonical
-business tables. The prior Neon-to-local restore is historical portability evidence in
-[Release evidence](release-evidence.md), not authorization to use Neon for current work.
+A future shared environment requires reviewed TLS, restricted runtime access, a separate direct
+migration connection, bounded pools, tested pooler behavior and restore evidence. Hosting remains a
+separate decision under [ADR 0017](adrs/0017-portable-postgres-and-hosting.md). Source publication to
+GitHub does not authorize any such operational action.
 
 ## Next bounded changes and unresolved rules
 
@@ -199,7 +192,7 @@ then removal of superseded fields.
 | Team administration approved | Reuse organization memberships; specify invitation delivery, role transitions, and last-owner protection before exposing provider management endpoints |
 | Customer archival followed by payment reversal | Current policy permits reversal after archival but denies new payment to an archived customer. Reversal can reopen uncollectable debt in the product. Decide explicit reactivation or settlement permission; do not silently erase or void debt |
 | Cash account archival followed by receivable payment correction | Current cash port requires an active account for payment reversal; an archived account can therefore block correction. Decide restoration or a documented archived-account correction policy |
-| Billing product change changes entitlement key | Reconcile grants for the whole subscription, retire superseded keys, and reject stale events before paid feature gates are enabled |
+| Billing product change changes entitlement key | Existing projection/tests retire superseded grants and reject stale events; real provider/store acceptance and deliberate product gating remain required |
 
 ## Validation and primary sources
 
@@ -216,8 +209,6 @@ schema integrity, or managed PostgreSQL connection behavior:
 - [PostgreSQL transaction isolation](https://www.postgresql.org/docs/18/transaction-iso.html)
 - [PostgreSQL row and advisory locks](https://www.postgresql.org/docs/18/explicit-locking.html)
 - [PostgreSQL constraints](https://www.postgresql.org/docs/18/ddl-constraints.html)
-- [Neon connection pooling](https://neon.com/docs/connect/connection-pooling)
-- [Neon PostgreSQL compatibility](https://neon.com/docs/reference/compatibility)
 - [Existing migration policy](database-drizzle.md)
 - [Money snapshot decision](adrs/0015-business-owned-currency-and-money-snapshots.md)
 - [Cross-capability transaction ownership](adrs/0016-owner-ports-for-cross-capability-transactions.md)

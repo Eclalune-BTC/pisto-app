@@ -2,7 +2,8 @@
 
 ## Claude Code adapter
 
-- Use `docs/agent-feature-prompt.md` as the reusable task template for material feature delivery.
+- Start at `docs/README.md` and load task-specific guides. Use `docs/agent-feature-prompt.md` for
+  material assignments; do not resume a historic branch or deleted handoff as current instructions.
 - Prefer bounded read-only subagents for research, repository exploration, tests, and independent
   review. Put every parallel writer in a separate Git worktree on its own branch with non-overlapping
   ownership; only the integration owner combines assigned commits.

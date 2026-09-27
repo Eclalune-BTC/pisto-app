@@ -12,7 +12,7 @@ uses the real Better Auth handler with synthetic persistence failures. This poli
 [official options](https://better-auth.com/docs/reference/options) (reviewed 2026-09-10).
 
 Rate limits are always enabled and stored in PostgreSQL so counters are shared
-across Cloud Run instances. The checked-in auth schema therefore includes the
+across API instances. The checked-in auth schema therefore includes the
 Better Auth `rateLimit` model as well as the core and organization models.
 
 In production, `BETTER_AUTH_URL` and every web entry in `TRUSTED_ORIGINS` must
@@ -20,7 +20,7 @@ be an exact HTTPS origin. Wildcard environment entries are rejected. The only
 wildcard added by the configuration is the scheme-scoped Expo deep-link pattern
 derived from the validated `EXPO_SCHEME` value.
 
-`BETTER_AUTH_SECRET` is the legacy/current single-secret fallback.
+`BETTER_AUTH_SECRET` configures the supported single-secret mode.
 `BETTER_AUTH_SECRETS` enables versioned rotation using the Better Auth format
 `2:current-value,1:previous-value`. At least one form must be configured, and
 every value must contain at least 32 characters.

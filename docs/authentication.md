@@ -20,7 +20,8 @@ remain separate concerns.
 | `EXPO_SCHEME` | Stable private deep-link scheme, expected to be `pisto`; the auth package adds its scheme variants |
 | `AUTH_EMAIL_PASSWORD_ENABLED` | Explicit feature switch; do not infer from missing variables |
 
-The production secret comes from Secret Manager, not a committed file or Docker build argument.
+A future production secret must come from restricted runtime secret storage, not a committed file
+or Docker build argument. No hosting vendor or secret service is selected by this guide.
 Use Better Auth's documented multi-secret rotation mechanism when rotating; retain prior decryption
 keys for the supported transition instead of invalidating sessions without a plan.
 
@@ -64,7 +65,7 @@ Server authorization and session expiry still apply.
 - Keep session lifetime and renewal explicit; revoke server sessions on security-sensitive account
   changes.
 - Better Auth rate-limit counters use the PostgreSQL-backed `rateLimit` model so protection is shared
-  across Cloud Run instances. The implemented defaults are 100 requests per 60 seconds globally,
+  across API instances. The implemented defaults are 100 requests per 60 seconds globally,
   3 per 10 seconds for email sign-in and sign-up, and 3 per 60 seconds for password-reset requests.
   Keep the limiter enabled and test sign-in, sign-up, reset, verification, and other abuse-prone
   routes.
@@ -130,7 +131,7 @@ must not become an authorization source of truth.
 ## Production checklist
 
 - HTTPS URL and exact trusted origins match the deployed revision and app scheme.
-- Secret is high entropy, stored in Secret Manager, and absent from logs/build layers.
+- Secret is high entropy, kept in restricted runtime secret storage, and absent from logs/build layers.
 - Cookie flags are verified in a real browser, including cross-origin behavior if applicable.
 - Native deep links return to the correct app/environment.
 - Email/password enablement matches product policy; email verification/recovery delivery is tested if

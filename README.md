@@ -26,14 +26,12 @@ writes automatically. Apply migration `0006` before running this revision. See
 [the recovery contract](docs/adrs/0018-durable-sale-review.md); corrections and other financial
 editors are outside this first recovery slice.
 
-The 2026-09-10 delivery audit documents the [functional and nonfunctional requirements](docs/product-requirements.md),
-[view/component specifications](docs/ux-requirements.md), and [normalized data model](docs/data-model.md).
-The current environment is local only: Expo, Bun/Hono, and PostgreSQL 18 in Docker. Hosting is
-undecided and publication is not authorized. Neon remains an optional future PostgreSQL preference;
-the application does not need it to run. The Docker API and ordinary Expo web artifacts remain
-portable. See [ADR 0017](docs/adrs/0017-portable-postgres-and-hosting.md), the
-[audit](docs/audit-2026-09-10.md), and [release evidence](docs/release-evidence.md) for local validation,
-the withdrawal status of the earlier unwanted publication, and remaining gates.
+Current [product requirements](docs/product-requirements.md), [UX requirements](docs/ux-requirements.md)
+and [data model](docs/data-model.md) describe the implemented boundaries and remaining acceptance.
+Expo, Bun/Hono and PostgreSQL 18 run locally. GitHub source synchronization is authorized; cloud
+provisioning, hosted deployment and store publication are separate decisions. The API container and
+Expo web artifact remain portable. See [ADR 0017](docs/adrs/0017-portable-postgres-and-hosting.md)
+and [release evidence](docs/release-evidence.md).
 
 ## What it looks like
 
@@ -76,7 +74,7 @@ device, so nothing on this page is evidence of native behavior.
 - scripts: safe setup and diagnostic CLI
 - docs: architecture, setup, operations, security, and source links
 - .agents/skills: repository-scoped Codex workflow for architecture-first product delivery
-- infra/gcp: Cloud Build and Cloud Run deployment reference
+- infra/gcp: inactive reference scripts retained for credential-free CI safeguards; not a deployment plan
 
 ## Quick start
 
