@@ -80,10 +80,16 @@ device, so nothing on this page is evidence of native behavior.
 
 ## Quick start
 
-Requirements: Bun 1.4+, Node.js 24.19 LTS, Docker Desktop, and the Expo prerequisites for
-the target platform.
+For the configured desktop checkout, follow
+[the existing Windows workspace](docs/getting-started.md#existing-windows-workspace): it uses
+`pisto-audit`, PostgreSQL port 55438, API port 3015 and Expo web port 8090, not the template defaults.
+For styling, shadcn-style component ownership and Expo Go limits, read
+[the frontend guide](docs/frontend-expo-ui.md#component-stack-and-cross-platform-rendering).
 
-1. Run bun install.
+Requirements: Bun 1.4+, Node.js 24.19 LTS, Docker Desktop, and the Expo prerequisites for
+the target platform. For a fresh checkout:
+
+1. Run bun install --frozen-lockfile.
 2. Run bun run setup.
 3. Run docker compose up -d postgres.
 4. Run bun run db:migrate.
@@ -96,7 +102,7 @@ ones. Run bun run doctor whenever a local tool or service appears misconfigured.
 
 - bun run check validates formatting, lint rules, types, tests, and the Expo web export.
 - bun run build builds all packages and applications.
-- bun run verify adds environment diagnostics before the full validation.
+- bun run verify adds environment diagnostics and real PostgreSQL integration tests; verify the test database target first.
 
 Start with docs/README.md for the active product goal, engineering workflow, complete guide, and
 primary-source references. Codex agents also load the root AGENTS.md and the repository-scoped skill

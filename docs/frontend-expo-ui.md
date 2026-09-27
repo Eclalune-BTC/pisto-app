@@ -280,6 +280,50 @@ Store rules have regional and program exceptions and can change. The conservativ
 mandatory until a release-specific policy review explicitly approves another path. See
 [Billing and entitlements](billing-entitlements.md#store-policy-and-regional-exceptions).
 
+## Component stack and cross-platform rendering
+
+Pisto does not use the web `shadcn/ui` components directly. Its component source is owned in
+`apps/app/src/components/ui`, built with React Native primitives and styled through Uniwind.
+The shadcn-like part is the source-owned composition and variant approach, not a browser component
+library running on a phone. The app README's reference to React Native Reusables describes these
+conventions; it is not evidence that the entire Reusables registry is installed.
+
+| Layer | Current implementation | Source of truth |
+| --- | --- | --- |
+| Shared controls | Local Button, Field, Card, Heading and Alert built from React Native components | `apps/app/src/components/ui` |
+| Composition primitive | `@rn-primitives/slot` 1.5.2 for `asChild` | `components/ui/button.tsx` |
+| Styling | Tailwind CSS 4.3.3 and the free, JavaScript-based Uniwind 1.11.0 | App manifest, lockfile and Metro config |
+| Variants and class merging | CVA, `clsx`, `tailwind-merge` and the local `cn` function | `components/ui/button.tsx`, `lib/cn.ts` |
+| Icons | `lucide-react-native` backed by `react-native-svg` | App manifest and component imports |
+| Platform rendering | React Native 0.86.3 on Android/iOS; React Native Web on browsers | Expo SDK 57 and installed dependencies |
+
+There is no NativeWind integration or direct Radix/Base UI dependency in this app. Slot is the only
+direct RN Primitives package currently installed; menus, dialogs and selects are not implicitly
+provided. Evaluate a maintained native-compatible primitive when a real interaction needs it,
+rather than pasting a web shadcn component into a shared native screen.
+
+### What runs on each platform
+
+The same feature screen imports `View`, `Text`, `Pressable` and `TextInput` from `react-native`.
+On Android and iOS these render through React Native's native view implementation. On web,
+React Native Web supplies the browser implementation. This is not a website embedded in a WebView.
+Expo Router owns routes, and all three clients call the same Hono API; PostgreSQL and the server
+packages do not run on the phone.
+
+Uniwind's Metro integration processes Tailwind utilities and supplies native style values for
+React Native components. The web target uses the browser styling path. Tailwind's build tooling
+running on the development machine is different from a native module compiled into the mobile app.
+Use the documented [supported class names](https://docs.uniwind.dev/class-names), not an assumption
+that every browser CSS feature or third-party DOM component works on native. Browser selectors such
+as `html`, `body` and `:focus-visible` in `global.css` do not establish native accessibility behavior.
+
+The app shell currently uses a web-only wide sidebar and a shared compact/native bottom bar composed
+of `Link`, `Pressable` and `SafeAreaView`. It is not a separate platform-native tab implementation.
+Billing is resolved through `.web.ts` and `.native.ts` adapters; authentication and lifecycle handling
+also contain explicit platform branches. Shared code preserves business meaning, not guaranteed
+pixel identity, keyboard behavior or screen-reader acceptance. Windows currently uses the web target;
+there is no React Native Windows desktop app in this repository.
+
 ## Styling and server-state ownership
 
 Tailwind CSS 4.3.3 is integrated through Uniwind 1.11.0. `metro.config.js` wraps Expo's Metro
@@ -293,13 +337,97 @@ TanStack Query owns server data. `providers/query-provider.tsx` creates a cache 
 identity, connects Expo Network to `onlineManager`, and connects native AppState to `focusManager`.
 Feature query modules own business-scoped keys, request cancellation, and mutation invalidation.
 `lib/query-state.ts` owns shared denial, missing-data, and failed-refresh predicates; feature modules
-translate those into their screen states. Draft fields and reviewed commands remain local UI state.
-Queries retry selected transient failures once; financial mutations require explicit retries with
-the same idempotency key and are never queued for automatic offline replay.
+translate those into their screen states. Unreviewed draft fields remain local UI state. New-sale
+reviews are persisted on the server under [ADR 0018](adrs/0018-durable-sale-review.md); other editors
+still have their documented recovery limits. Queries retry selected transient failures once;
+financial mutations require explicit retries with the same idempotency key and are never queued
+for automatic offline replay.
 
 These integration choices were checked against the [Uniwind quickstart](https://docs.uniwind.dev/quickstart)
 and [TanStack Query React Native guide](https://tanstack.com/query/latest/docs/framework/react/react-native)
 on 2026-09-10. Recheck them when upgrading the styling, query, or Expo integration.
+
+## Expo Go versus a development build
+
+Tailwind 4 does not prevent Expo Go use. The installed free Uniwind version supports Expo Go;
+Uniwind Pro's additional C++ engine requires a custom development build. Pisto has not installed Pro.
+Expo Go itself contains native components and a fixed set of native libraries. The restriction is
+adding native code that is absent from that binary, not using native components at all.
+
+| Requirement | Expo Go | Custom development build |
+| --- | --- | --- |
+| Current React Native controls and free Uniwind styling | Supported by the underlying stack, with a matching Expo SDK | Supported by the underlying stack |
+| SVG and Reanimated | Included in the matching Expo Go runtime; keep JavaScript versions compatible | Compiled from the app's selected native dependencies |
+| App-specific native code and configuration | Cannot add arbitrary native modules or apply all app config changes | Rebuild after native dependencies or relevant config changes |
+| Stable `pisto://` links and real app identity | Expo Go uses its own app identity and `exp://` links | Uses the app's compiled scheme and identifiers |
+| Real native store purchases | Not an acceptance environment for Pisto purchases | Requires the future purchase integration and store sandbox tests |
+
+### Authentication: check the effective plugin configuration
+
+The native Better Auth client calls `Linking.createURL` to set its `expo-origin` header. Expo Go
+resolves this to an `exp://` URL rather than registering Pisto's own scheme. However, the installed
+`@better-auth/expo` 1.7.1 server plugin already adds `exp://` to its effective trusted origins when
+the API process has `NODE_ENV=development`. Better Auth's custom-scheme matching accepts Expo Go
+host URLs through that development entry. Production does not receive it.
+
+A configuration-only probe of Pisto's actual `createAuth` composition on 2026-09-26 verified that
+an example Expo Go origin is trusted in development and rejected in production, while an unrelated
+HTTPS origin stays rejected. No database operation or device session was used. Checking only
+`parseAuthConfig` would miss the plugin-provided development entry: that parser still rejects an
+explicit `exp://` host or a broad wildcard pasted into `TRUSTED_ORIGINS` with `EXPO_SCHEME=pisto`.
+Do not disable origin checks or change the app scheme merely to run Expo Go. Recheck the effective
+plugin behavior whenever Better Auth changes.
+
+Thus the stack does not rule out an Expo Go preview of Pisto. It still needs a compatible Expo Go
+binary, a phone-reachable API URL and a real sign-in/session test. The configured desktop URL uses
+`localhost`, which points to the phone itself when used on a physical device. No physical-device or
+Expo Go session has been accepted by this documentation review. Follow
+[device networking and startup](getting-started.md#phone-and-emulator-networking).
+
+`eas.json` contains a development profile, but `expo-dev-client` is not installed and no development
+binary is established by that file. A custom development build is the preferred ongoing native
+development workflow for the app's real scheme, configuration and future native capabilities.
+See [local native development builds](getting-started.md#local-native-development-build).
+
+### Dependency review on 2026-09-26
+
+The 20 installed app dependencies listed in the local Expo 57.0.21 compatibility metadata satisfy
+that metadata. Separately, the online `expo install --check` returned exit 1 and recommended these
+newer patches. Local metadata alignment is not the same as satisfying the latest online check.
+
+| Package | Installed | Online recommendation |
+| --- | --- | --- |
+| `expo` | 57.0.21 | ~57.0.25 |
+| `expo-constants` | 57.0.17 | ~57.0.19 |
+| `expo-crypto` | 57.0.2 | ~57.0.3 |
+| `expo-linking` | 57.0.9 | ~57.0.11 |
+| `expo-localization` | 57.0.1 | ~57.0.2 |
+| `expo-network` | 57.0.1 | ~57.0.2 |
+| `expo-router` | 57.0.20 | ~57.0.23 |
+| `expo-secure-store` | 57.0.3 | ~57.0.4 |
+| `expo-splash-screen` | 57.0.8 | ~57.0.9 |
+| `expo-web-browser` | 57.0.2 | ~57.0.3 |
+
+No dependency was changed in this documentation task. This warning is not a demonstrated native
+crash and is not caused by Tailwind 4. Review a coordinated Expo patch update before device acceptance,
+then repeat the version, bundle and runtime checks. This table is a dated observation, not a future
+install command or a reason to bypass the check.
+
+Validation of the unchanged application source during this documentation review:
+
+- `bun run check` with Bun 1.4.0 and Turbo task caching bypassed passed: 524 tests, workspace
+  typechecks/builds and the web export. Documentation links and encoding also passed.
+- The Node 24.19.0 Expo export for web, Android and iOS completed with exit 0 on a second invocation.
+  The first all-platform invocation exited 1 after reporting bundles; its cause was not isolated.
+  No application source or dependency changes were made between those attempts. The successful
+  output is under the ignored `.cache/styling-platform-check-20260926` directory.
+- These Android/iOS outputs are Hermes bundles, not installed APK/IPA builds, an Expo Go session
+  or physical-device acceptance. Native runtime, session restoration, keyboard, safe-area and
+  accessibility checks remain necessary.
+
+The component and Expo Go explanation was checked against the installed source and the official
+Uniwind, Expo, React Native and Better Auth references below on 2026-09-26. Recheck after changing
+the styling engine, Expo SDK/native modules, auth integration or runtime environment.
 
 ## State conventions
 
@@ -344,6 +472,15 @@ and screen-reader checks; do not infer deployed behavior or platform parity from
 
 ## Official sources
 
+- [shadcn source-owned components](https://ui.shadcn.com/docs)
+- [React Native Reusables](https://github.com/founded-labs/react-native-reusables)
+- [React Native core and native components](https://reactnative.dev/docs/intro-react-native-components)
+- [Uniwind quickstart](https://docs.uniwind.dev/quickstart)
+- [Uniwind free versus Pro and Expo Go compatibility](https://docs.uniwind.dev/pro-version)
+- [Expo Go and development build FAQ](https://docs.expo.dev/develop/development-builds/faq/)
+- [Expo SDK 57 linking and Expo Go URLs](https://docs.expo.dev/versions/v57.0.0/sdk/linking/)
+- [Expo SDK 57 Reanimated](https://docs.expo.dev/versions/v57.0.0/sdk/reanimated/)
+- [Expo SDK 57 SVG](https://docs.expo.dev/versions/v57.0.0/sdk/svg/)
 - [Expo SDK compatibility matrix](https://docs.expo.dev/versions/latest/)
 - [Expo Router introduction](https://docs.expo.dev/router/introduction/)
 - [Expo Router platform-specific modules](https://docs.expo.dev/router/advanced/platform-specific-modules/)

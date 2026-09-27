@@ -92,10 +92,11 @@ reproduced defects, fixes, library decisions, and local verification after the c
 10. [Reusable agent feature prompt](agent-feature-prompt.md) frames other bounded Codex or Claude Code work.
 11. [Architecture](architecture.md) explains boundaries and request flows.
 12. [Repository layout](repository-layout.md) says where changes belong.
-13. [Getting started](getting-started.md) takes a new checkout to a verified local environment.
+13. [Getting started](getting-started.md) separates the configured Windows startup from fresh-checkout,
+    Expo Go, device-networking and local native-build workflows.
 14. [CLI workflow](cli-workflow.md) documents the safe `init`, `doctor`, and `help` commands.
-15. [Expo and UI](frontend-expo-ui.md) covers routes, responsive UI, client configuration, and
-   platform boundaries.
+15. [Expo and UI](frontend-expo-ui.md) covers the actual component stack, Tailwind/Uniwind, Expo Go
+    compatibility, routes, responsive UI, client configuration and platform boundaries.
 16. [Web deployment](web-deployment.md) separates the Expo static host from the API runtime.
 17. [API and Hono](api-hono.md) defines the HTTP composition and route conventions.
 18. [PostgreSQL and Drizzle](database-drizzle.md) defines schema and migration policy.

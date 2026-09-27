@@ -1,10 +1,27 @@
 # Pisto universal app
 
-Expo SDK 57 application for iOS, Android, and the web. The app uses Expo Router, React 19, Uniwind, React Native Reusables conventions, RN Primitives, Better Auth, and TanStack Query.
+Expo SDK 57 application for iOS, Android, and the web. The app uses Expo Router, React 19,
+source-owned React Native components, free Uniwind, Tailwind CSS 4, Better Auth, and TanStack Query.
+
+## Styling and platform support
+
+This is not a direct installation of web shadcn/ui. `src/components/ui` owns the shared controls;
+`@rn-primitives/slot`, CVA and `cn` support composition and variants. React Native Reusables is a
+convention/reference, not a claim that its complete component registry is installed. NativeWind is
+not used. `src/global.css` owns tokens, and `metro.config.js` connects Tailwind to Uniwind.
+
+Free Uniwind supports Expo Go; Tailwind 4 alone does not require a native build. A matching SDK,
+reachable API, authentication and device behavior still need verification. The full explanation,
+including the installed auth plugin's development origins and current Expo patch recommendations,
+is in [the frontend guide](../../docs/frontend-expo-ui.md#expo-go-versus-a-development-build).
 
 ## Setup
 
-Install the monorepo once from its root:
+For the already configured desktop checkout, use the
+[Windows startup instructions](../../docs/getting-started.md#existing-windows-workspace) rather
+than starting a second database with the default Compose project.
+
+For a fresh checkout, install the monorepo once from its root:
 
 ```bash
 bun install --frozen-lockfile
@@ -18,7 +35,9 @@ bun run setup
 
 `EXPO_PUBLIC_API_URL` defaults to `http://localhost:3001` in development. Better Auth is mounted at `/api/auth`, so the client resolves `http://localhost:3001/api/auth` locally. Production config requires an explicit HTTPS API origin.
 
-The API must trust the configured app scheme, such as `pisto://`, for native authentication callbacks. Development-only `exp://` origins should be limited to development on the server.
+The API trusts the configured app scheme, such as `pisto://`, for native authentication callbacks.
+The installed Expo auth plugin adds `exp://` only when the API process is in development mode.
+Do not paste broad Expo Go wildcards into Pisto's environment parser or weaken production checks.
 
 ## Commands
 
@@ -27,14 +46,18 @@ Run these from `apps/app`, or use the matching root workspace scripts.
 | Command | Purpose |
 | --- | --- |
 | `bun run dev` | Start Expo for interactive platform selection |
-| `bun run android` | Start and open Android |
-| `bun run ios` | Start and open iOS; a macOS host is required for the iOS simulator |
+| `bun run android` | Start Metro and open Android; does not compile a native binary |
+| `bun run ios` | Start Metro and open iOS; does not compile a binary; the iOS simulator requires macOS |
 | `bun run web` | Start the web app |
 | `bun run typecheck` | Check strict TypeScript |
 | `bun run test` | Run app policy and configuration tests |
 | `bun run lint` | Run Biome without interactive dependency installation |
 | `bun run export:web` | Produce a static web export in `dist` |
 | `bun run check` | Run lint, typecheck, tests, and the web export |
+
+See [Expo Go preview](../../docs/getting-started.md#expo-go-preview) and
+[native build setup](../../docs/getting-started.md#local-native-development-build) for the different
+workflows. The EAS development profile is present, but `expo-dev-client` is not installed.
 
 ## Routes
 
