@@ -36,7 +36,7 @@ cloud provisioning, hosted deployment and store submission require separate appr
 | Schema, transactions or migrations | [Data model](data-model.md), [PostgreSQL/Drizzle](database-drizzle.md) |
 | HTTP, sessions or permissions | [Hono API](api-hono.md), [authentication](authentication.md), [security](security.md) |
 | Billing | [Entitlements](billing-entitlements.md), [billing package](../packages/billing/README.md) |
-| Tooling, local runtime or dependencies | [CLI](cli-workflow.md), [local runtime](web-deployment.md), [upgrades](versioning-upgrades.md) |
+| Tooling, local runtime or dependencies | [CLI](cli-workflow.md), [local runtime](local-runtime.md), [upgrades](versioning-upgrades.md) |
 | New capability or architecture change | [Product requirements](product-requirements.md), [capability composition](product-capability-architecture.md), [engineering workflow](engineering-workflow.md), relevant [ADRs](adrs/README.md) |
 
 For material work, follow [the engineering workflow](engineering-workflow.md). Use

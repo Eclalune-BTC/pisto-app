@@ -1,6 +1,8 @@
 # Catalog and inventory V1
 
-- Status: **integrated into local `main`; schema ships in migration `0003` and the routes are mounted under `/v1`. Not pushed to `origin/main`, not deployed, not released**
+- Status: **implemented**; schema ships in migration `0003` and routes are mounted under `/v1`.
+  [The capability matrix](../production-capabilities.md) owns current acceptance gaps;
+  [release evidence](../release-evidence.md) records validation and its limits.
 - Owner: `@pisto/contracts`, `@pisto/db`, `@pisto/api`, and the Expo `catalog`/`inventory` features
 - Last reviewed: **2026-08-23**
 - Parent contract: [Operating core V1](operating-core-v1.md#catalog-and-inventory-slice)
@@ -158,7 +160,7 @@ uncertain UI state inputs. `packages/db/integration/catalog.integration.ts` runs
 PostgreSQL 18 database carrying the committed migrations, and CI applies those migrations before the
 suite.
 
-Integration is complete. The shared edits the original checklist assigned are done:
+The current composition includes:
 
 1. `catalog.ts` is exported from the contract and database barrels;
 2. `catalog_category`, `catalog_product`, `inventory_movement`, and `catalog_operation` are in the

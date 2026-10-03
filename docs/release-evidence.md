@@ -32,9 +32,8 @@ Pointer-only tab-panel outlines are suppressed; visible neutral keyboard focus r
 - Independent read-only review identified default-blue activity indicators and duplicate H1s in
   nested states. Shared neutral loading feedback and explicit heading levels address those findings;
   selected remaining financial/failure notices now compose the installed Alert components.
-- The original staged patch remains unchanged. No dependencies, backend contracts, database records,
-  main-branch commits, publication or deployment were changed. These browser and export checks do not
-  establish physical-device or complete screen-reader acceptance.
+- These browser and export checks do not establish physical-device or complete screen-reader
+  acceptance.
 
 ### React Native Reusables migration, 2026-09-27
 
@@ -69,9 +68,8 @@ The earlier cobalt proposal is rejected and no longer an active design direction
 - Source guards cover blue utilities/literal colors and the explicitly neutral Expo navigation
   theme. Brand geometry and asset transparency tests remain. These checks do not establish physical
   device appearance, OS-controlled UI colors or full accessibility conformance.
-- The original staged patch was verified unchanged. API, database packages, contracts and root
-  scripts were unchanged from the migration baseline. Browser fixtures wrote no records to the
-  configured database. No main-branch commit, push, hosted deployment or store release was performed.
+- Browser fixtures wrote no records to the configured database. These checks did not include
+  hosted deployment or store release.
 
 ### Manual core and recovery, 2026-09-26
 

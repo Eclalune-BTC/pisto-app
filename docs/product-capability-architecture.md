@@ -267,9 +267,10 @@ For a material capability:
 2. independent agents may research the repository, primary sources, UX, privacy/threats, and test
    gaps in parallel;
 3. the lead resolves open product/data/permission decisions and freezes the public contract before
-   parallel writing starts;
-4. each writer receives a separate worktree/branch, disjoint file ownership, named acceptance
-   criteria, and a stopping condition;
+   implementation;
+4. the lead writes in the primary `main` checkout by default. Only an explicit owner request permits
+   additional worktrees and parallel writers, each with a separate branch, disjoint file ownership,
+   named acceptance criteria and a stopping condition;
 5. one integration owner reviews complete commits and runs the combined gates; and
 6. an independent read-only reviewer tries to falsify correctness, state truth, accessibility,
    authorization, failure behavior, and unnecessary abstraction from the full diff.

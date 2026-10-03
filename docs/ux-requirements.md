@@ -64,18 +64,18 @@ Result refresh does not replace the page header or its query controls.
 | A user opens billing | Keep Account active in both compact and wide navigation |
 | Space or text size changes | Wrap page heading actions and control text; keep controls reachable without horizontal page overflow |
 
-`FilterBar` owns the repeated small single-selection filter interaction. It uses the installed
-React Native `Pressable`, a text label that names both context and choice, native toggle-button
-state, web pressed-button state, and a 48-unit minimum height. It is used by sales, customers,
-receivables, catalog status, cash status, and expense filters. It does not own fetching, permission,
-or domain data. Result panels reuse the existing `FeatureBoundary` in an inline composition; no
-second query or UI library is needed.
+`FilterBar` owns the repeated small single-selection filter interaction. It composes the shared
+RNR `ToggleGroup` and `ToggleGroupItem`, names both context and choice, wraps long labels, and
+uses a 44-unit minimum height. It preserves the current selection when the primitive emits an empty
+value and rejects values outside the supplied options. It does not own fetching, permissions or
+domain data. Feature-owned result boundaries retain loading, empty, stale, denied and failure states.
 
 ## Evidence and outstanding checks
 
-The audit inspected the committed wide/compact Operate and sales-history screenshots and the wide
-receivables screenshot in `docs/screenshots`. These establish the existing ink/lime/cream palette
-and hierarchy; they do not prove the changes in this document have been rendered.
+The current palette, component ownership and layout rules are defined by
+[the design system](design-system.md). Rendered checks and their limits belong in
+[release evidence](release-evidence.md); historical captures do not establish the current visual
+contract or physical-device acceptance.
 
 Regression tests cover rendered customer search/filter availability during pending/error/offline,
 receivable filter recovery, report date persistence while results are unavailable, retained busy

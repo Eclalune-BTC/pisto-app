@@ -1,6 +1,8 @@
 # Customers and receivables V1
 
-- Status: **integrated into local `main`; schema ships in migration `0003` and the routes are mounted under `/v1`. Not pushed to `origin/main`, not deployed, not released**
+- Status: **implemented**; schema ships in migration `0003` and routes are mounted under `/v1`.
+  [The capability matrix](../production-capabilities.md) owns current acceptance gaps;
+  [release evidence](../release-evidence.md) records validation and its limits.
 - Product contract: [Operating core V1](./operating-core-v1.md#customers-and-receivables-slice)
 - Owners: `packages/contracts`, `packages/db`, `apps/api`, and `apps/app`
 - Last reviewed: **2026-08-23**
@@ -244,9 +246,8 @@ access, unknown-role denial, stale session denial, tenant contact isolation, arc
 behavior, concurrent overpayment rejection, reversal once, void-after-reversal, and business-local
 overdue calculation.
 
-The isolated repository test originally ran against a disposable PostgreSQL 18 database using a
-generated scratch migration. That scratch SQL has been superseded: `packages/db/integration/receivables.integration.ts`
-now runs against the committed migrations, and CI applies them to a clean PostgreSQL 18 service
+`packages/db/integration/receivables.integration.ts` runs against the committed migrations.
+CI applies them to a clean PostgreSQL 18 service
 before the suite. Local tests do not claim push, deployment, or release.
 
 ## Non-goals

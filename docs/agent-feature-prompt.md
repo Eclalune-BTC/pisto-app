@@ -26,8 +26,10 @@ explicit financial confirmation and truthful errors. Use existing owners and mai
 For AI/voice work, load the full relevant target guide; do not install or enable a provider merely
 because an architecture document names it.
 
-One lead owns integration. Parallel writers use separate worktrees with disjoint ownership;
-read-only reviewers receive the actual scope and complete diff. Do not claim independent review
+One lead writes in the primary main checkout; other agents remain read-only by default. Create
+worktrees only when the owner explicitly requests them. If parallel writing is authorized, use
+separate worktrees with disjoint ownership. Reviewers receive the actual scope and complete diff.
+Do not claim independent review
 when no reviewer ran. Do not stage unrelated user changes or mutate remote resources outside scope.
 
 Run bun run check and the additional applicable gates from docs/testing-release.md. Database tests

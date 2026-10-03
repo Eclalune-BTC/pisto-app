@@ -34,6 +34,24 @@ AI/voice, queues and user-object storage are not running parts of this diagram. 
 and prerequisites live in [the capability matrix](production-capabilities.md). The API owns access;
 a client assertion or cached provider response is never authorization.
 
+## Backend composition
+
+The backend is an application-owned TypeScript service with explicit package composition:
+
+| Concern | Current implementation | Source owner |
+| --- | --- | --- |
+| HTTP listener | `Bun.serve` | `apps/api/src/index.ts` |
+| Routing and middleware | Hono | `apps/api/src/app.ts` and `apps/api/src/routes` |
+| Runtime composition | Database, auth, billing and domain repositories created together | `apps/api/src/runtime.ts` |
+| Persistence | PostgreSQL 18, Drizzle ORM and postgres-js | `compose.yaml` and `packages/db/src/client.ts` |
+| Identity and sessions | Better Auth with its Drizzle adapter and Expo integration | `packages/auth/src/create-auth.ts` |
+| Public validation | Shared Zod schemas | `packages/contracts/src` |
+| Business commands and reads | Authorized repositories and PostgreSQL transactions | `packages/db/src` |
+
+The active backend connects directly to PostgreSQL. Supabase services, hosted database SDKs and
+cloud deployment scripts are not part of this runtime. Exact package pins live in the workspace
+manifests and `bun.lock`; [versioning](versioning-upgrades.md) owns the upgrade policy.
+
 ## Workspace boundaries
 
 | Workspace | Owns | Must not own |
@@ -188,7 +206,7 @@ runtime or deployment work order. No queue or user-object adapter is implemented
 
 The API keeps no authoritative host-local state between requests. See
 [ADR 0017](adrs/0017-portable-postgres-and-hosting.md),
-[local runtime and portable artifacts](web-deployment.md), and [release evidence](release-evidence.md).
+[local runtime and portable artifacts](local-runtime.md), and [release evidence](release-evidence.md).
 
 ## Reliability invariants
 

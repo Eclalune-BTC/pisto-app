@@ -1,9 +1,10 @@
 # Versioning and upgrades
 
-## Baseline snapshot
+## Committed baseline
 
-This table describes the reviewed baseline on **2026-08-22**. `package.json` files and `bun.lock`
-remain the exact installed source of truth.
+This table summarizes the committed toolchain and dependency policy. Workspace `package.json`
+files, `bun.lock`, `.node-version` and CI configuration own the exact version pins; this table does
+not establish the latest upstream releases or a passing current audit.
 
 | Component | Baseline | Policy |
 | --- | --- | --- |
@@ -12,7 +13,7 @@ remain the exact installed source of truth.
 | Expo | 57.x | Upgrade one SDK at a time with Expo tooling |
 | EAS CLI contract | `>=22.2.0` in `apps/app/eas.json` | Recheck build-profile schema and remote version behavior |
 | React Native / React / RN Web | 0.86 / 19.2.3 / 0.21 | Keep Expo-supported matrix together |
-| Hono | 4.13.5 (verified 2026-09-10) | Exact direct dependency; review middleware/runtime changes |
+| Hono | 4.13.5 | Exact direct dependency; review middleware/runtime changes |
 | PostgreSQL | 18; resolve the deployed image patch explicitly | Test migrations and backups before major upgrade |
 | Drizzle ORM / Kit | 0.45.2 / 0.31.10 | Review generated SQL and release notes |
 | Better Auth / Expo adapter / `auth` CLI | 1.7.1 / 1.7.1 / 1.7.1 | Keep the synchronized release train aligned; regenerate/review auth schema |
@@ -133,13 +134,13 @@ Then complete and attach this checklist to the upgrade/release record:
 - [ ] Re-open RevenueCat and Polar webhook security/event docs; update fixtures.
 - [ ] Recheck the actual container, secrets, database and any approved task/storage provider when infrastructure changes.
 - [ ] Record build/image digest, EAS IDs, migration result, canary metrics, and rollback compatibility.
-- [ ] Update the baseline date/table, source index, and affected ADR if the decision changed.
+- [ ] Update the baseline table, dated validation evidence, source index, and affected ADR if the decision changed.
 
 Use `--recursive` to include workspace dependencies; plain `bun outdated` only reports the root.
 Outdated versions and audit results require review of compatibility, advisories, and actual
-reachability. Raw `bun audit` reports the four reviewed transitive findings in
-[Security](security.md#dependency-audit-snapshot). `bun run audit:ci` passes only when findings remain
-within that explicit exception set; it does not establish a vulnerability-free dependency graph.
+reachability. [Security](security.md#dependency-audit-snapshot) owns the dated findings and the four
+reviewed exceptions. `bun run audit:ci` fails on additional findings and passes only when the result
+stays within that explicit exception set; it does not establish a vulnerability-free dependency graph.
 
 ## Policy-drift audit
 

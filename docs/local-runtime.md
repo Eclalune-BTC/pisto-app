@@ -1,5 +1,7 @@
 # Local runtime and portable artifacts
 
+This guide covers the current local runtime and the portable artifacts it produces.
+
 ## Current local workflow
 
 Expo, Bun/Hono and PostgreSQL 18 run locally. GitHub source synchronization is authorized; hosting,

@@ -1,6 +1,8 @@
 # Expenses and cash V1
 
-- Status: **integrated into local `main`; schema ships in migration `0003` and the routes are mounted under `/v1`. Not pushed to `origin/main`, not deployed, not released**
+- Status: **implemented**; schema ships in migration `0003` and routes are mounted under `/v1`.
+  [The capability matrix](../production-capabilities.md) owns current acceptance gaps;
+  [release evidence](../release-evidence.md) records validation and its limits.
 - Capability owner: `packages/db/src/cash/*`
 - Product surfaces: `/operate/expenses` and `/operate/cash`
 - Last reviewed: **2026-08-23**

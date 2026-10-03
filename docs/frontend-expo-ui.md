@@ -12,14 +12,14 @@ retaining platform-specific files and navigation where needed.
 Expo web remains the authenticated product surface. Add a separate `apps/site` only when public
 marketing/content has materially different SEO, CMS, server-rendering, content-deploy, or analytics
 needs; do not force the product client to become a general content site or add a second frontend
-without that requirement. See [Web deployment](web-deployment.md#public-website-boundary).
+without that requirement. See [the public website boundary](local-runtime.md#public-website-boundary).
 
 The client runs locally with Expo and the local Bun/Hono API. Its portable web export is a
 single-page application (`web.output: single`); an export is not a publication. A future static host
 would need deep-link routing through Expo Router and correct asset responses, but no hosting provider
 or provider-specific runtime adapter is selected or required. See
 [ADR 0017](adrs/0017-portable-postgres-and-hosting.md) and the
-[local web workflow](web-deployment.md#current-local-workflow).
+[local web workflow](local-runtime.md#current-local-workflow).
 
 ## Route model
 
@@ -501,22 +501,15 @@ newer patches. Local metadata alignment is not the same as satisfying the latest
 | `expo-splash-screen` | 57.0.8 | ~57.0.9 |
 | `expo-web-browser` | 57.0.2 | ~57.0.3 |
 
-No dependency was changed in this documentation task. This warning is not a demonstrated native
-crash and is not caused by Tailwind 4. Review a coordinated Expo patch update before device acceptance,
+These recommendations alone do not establish a native crash or a Tailwind 4 incompatibility.
+Review a coordinated Expo patch update before device acceptance,
 then repeat the version, bundle and runtime checks. This table is a dated observation, not a future
 install command or a reason to bypass the check.
 
-Validation of the unchanged application source during this documentation review:
-
-- `bun run check` with Bun 1.4.0 and Turbo task caching bypassed passed: 524 tests, workspace
-  typechecks/builds and the web export. Documentation links and encoding also passed.
-- The Node 24.19.0 Expo export for web, Android and iOS completed with exit 0 on a second invocation.
-  The first all-platform invocation exited 1 after reporting bundles; its cause was not isolated.
-  No application source or dependency changes were made between those attempts. The successful
-  output is under the ignored `.cache/styling-platform-check-20260926` directory.
-- These Android/iOS outputs are Hermes bundles, not installed APK/IPA builds, an Expo Go session
-  or physical-device acceptance. Native runtime, session restoration, keyboard, safe-area and
-  accessibility checks remain necessary.
+Completed validation and remaining device checks are recorded in
+[release evidence](release-evidence.md). Generated export directories are disposable and are not
+required documentation artifacts. Hermes bundles do not establish installed native or Expo Go
+acceptance; session restoration, keyboard, safe-area and accessibility checks remain necessary.
 
 The component and Expo Go explanation was checked against the installed source and the official
 Uniwind, Expo, React Native and Better Auth references below on 2026-09-26. Recheck after changing

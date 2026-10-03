@@ -200,7 +200,7 @@ Do not inject production provider credentials into pull-request jobs from untrus
 ## API and database release
 
 The current environment is local under [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
-For a future approved release, [the portable runtime contract](web-deployment.md) defines the image,
+For a future approved release, [the portable runtime contract](local-runtime.md) defines the image,
 secret, migration, health, identity, promotion and rollback requirements. Re-evaluate a concrete host
 only after selection; do not infer serverless-function compatibility from the portable container.
 

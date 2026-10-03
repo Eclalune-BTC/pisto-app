@@ -28,6 +28,6 @@ PostgreSQL dump/restore and reviewed migrations preserve records across a provid
 The inactive `infra/gcp` scripts remain exercised by credential-free CI tests. They are not the
 application's selected architecture or an authorized deployment procedure. Their presence must not
 trigger provisioning. Runtime instructions live in [getting started](../getting-started.md) and
-[local runtime and portable artifacts](../web-deployment.md).
+[local runtime and portable artifacts](../local-runtime.md).
 
 Historical hosting decisions and task transcripts are available in Git, not active agent guidance.

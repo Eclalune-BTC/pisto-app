@@ -261,8 +261,10 @@ conversation remain separate future capabilities.
 
 ## Integration and release evidence
 
-- Each parallel writer uses a separate branch/worktree and disjoint files. The integration lead owns
-  shared exports, route registration, permission composition, migration generation, navigation,
+- Work in the primary `main` checkout with read-only delegation by default. Additional worktrees
+  require the owner's explicit request; any authorized parallel writers use disjoint files and
+  separate branches/worktrees. The integration lead owns shared exports, route registration,
+  permission composition, migration generation, navigation,
   localization, and cross-capability transactions.
 - Validation includes strict contract tests, permission/cross-tenant denial, idempotent replay and
   changed-input conflict, transaction rollback, precision/time-zone boundaries, ledger concurrency,

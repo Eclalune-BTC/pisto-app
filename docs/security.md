@@ -300,8 +300,8 @@ application-runtime dependency finding.
 | Expo/React Native Metro toolchain -> `image-size@1.2.1` | [GHSA-w3rx-r6r6-pgpr](https://github.com/advisories/GHSA-w3rx-r6r6-pgpr) and [GHSA-5p2g-fcmc-qvqq](https://github.com/advisories/GHSA-5p2g-fcmc-qvqq), high | Metro can parse image assets during development/build. Only process trusted repository assets; do not add an untrusted-image build or preview pipeline. The registry's latest `image-size` was `2.0.2`, and the advisories still marked every version through `2.0.2` affected. |
 | Expo Xcode project tooling -> `xcode@3.0.1 -> uuid@7.0.3` | [GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq), moderate | The advisory affects UUID v3/v5/v6 calls supplied a caller buffer. The installed Xcode tool calls only `uuid.v4()` without a buffer, so that affected path is not currently reached. Recheck this call site whenever Expo/Xcode tooling changes. |
 
-This delivery updates Hono to 4.13.5 and js-yaml to 4.3.2, and overrides `decode-uri-component` to
-0.5.0 to close the newly reported runtime/build findings. Expo Router still brings query-string
+The committed baseline pins Hono 4.13.5 and js-yaml 4.3.2 and overrides `decode-uri-component` to
+0.5.0. The current audit findings are recorded above. Expo Router still brings query-string
 7.1.3, whose CommonJS import needs the committed one-line `patches/query-string@7.1.3.patch` to read
 the decoder's ESM default export. Node and Bun subprocess regressions exercise real router query
 semantics and bound malformed 60 KB decoding to eight seconds. Web/native exports must verify Metro.

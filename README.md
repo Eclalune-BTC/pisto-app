@@ -1,14 +1,12 @@
 # Pisto Stack
 
-Pisto Stack is a production-oriented starter for one TypeScript product across iOS,
-Android, and the web. It combines an Expo Router application with a Bun/Hono API,
-PostgreSQL and Drizzle, Better Auth, provider-neutral entitlements, web billing through
-Polar, and native purchase boundaries for the Apple App Store and Google Play.
+Pisto is a business operating application for Spanish-speaking entrepreneurs, built in TypeScript
+with an Expo Router client and a Bun/Hono backend. The backend uses PostgreSQL 18 through Drizzle
+and postgres-js, Better Auth for authentication, and shared Zod request/response contracts.
+See [the backend composition](docs/architecture.md#backend-composition) for the source owners.
 
-The repository is intentionally built from source instead of cloned from another starter.
-Every integration is replaceable behind a small package boundary.
-"Built from source" means the repository composition is owned here; it is not a rule to reimplement
-mature platform or library capabilities.
+The configured application runs locally. Billing adapters exist but are disabled; native
+purchases still require their separately accepted integration and store checks.
 
 The active product direction is an AI-native operating assistant for Spanish-speaking entrepreneurs.
 What exists today is the structured manual path: sales with void/replacement correction, catalog,
@@ -33,35 +31,11 @@ provisioning, hosted deployment and store publication are separate decisions. Th
 Expo web artifact remain portable. See [ADR 0017](docs/adrs/0017-portable-postgres-and-hosting.md)
 and [release evidence](docs/release-evidence.md).
 
-## What it looks like
+## Interface guidance
 
-Captured from a local development build against PostgreSQL, with a seeded demo business.
-Interface copy is the typed `es-SV` catalog. These images are refreshed by hand and can lag the
-code; the tests and `docs/production-capabilities.md` remain the authoritative statement of what
-works.
-
-### Wide web
-
-| Operate hub | Sale history with correction |
-| --- | --- |
-| ![The Operate hub grouping the authorized modules](docs/screenshots/operate-hub.png) | ![Sale history listing posted sales, each with a correction action](docs/screenshots/sales-history.png) |
-
-| Exact operating report | Cash accounts and movements |
-| --- | --- |
-| ![An operating report showing period flows and current positions](docs/screenshots/reports.png) | ![Cash accounts with derived balances and recent movements](docs/screenshots/cash-accounts.png) |
-
-| Inventory stock | Customer receivables |
-| --- | --- |
-| ![Inventory stock with a low-stock filter](docs/screenshots/inventory.png) | ![Receivables with outstanding and overdue balances](docs/screenshots/receivables.png) |
-
-### Compact web, at 390 CSS pixels
-
-| Operate hub | Sale history | Operating report |
-| --- | --- | --- |
-| ![The Operate hub at compact width](docs/screenshots/mobile-operate-hub.png) | ![Sale history at compact width](docs/screenshots/mobile-sales-history.png) | ![An operating report at compact width](docs/screenshots/mobile-reports.png) |
-
-The same routes render on iOS and Android from this codebase. No screenshot here is from a physical
-device, so nothing on this page is evidence of native behavior.
+[The design system](docs/design-system.md) owns the current neutral palette, React Native Reusables
+components, typography and spacing. Run the local app to inspect the current interface. Dated web
+checks and physical-device acceptance limits are recorded in [release evidence](docs/release-evidence.md).
 
 ## Repository map
 
@@ -115,4 +89,4 @@ provider response directly.
 
 ## License
 
-No license has been selected. Add one before distributing the template outside your team.
+No project license has been selected. Add one before distributing the project outside your team.

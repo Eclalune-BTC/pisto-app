@@ -159,8 +159,10 @@ cost and coordination overhead; use them where a second reasoning path can mater
 or quality.
 
 Prefer parallel agents for independent research, repository exploration, test analysis, and review.
-If Codex, Claude Code, or their subagents write concurrently, give each writer a separate Git worktree
-checked out to its own dedicated branch and disjoint file ownership. Writers may commit only assigned
+Use the primary `main` checkout with one writer by default. Do not create additional worktrees
+unless the owner explicitly requests them. If parallel writing is explicitly authorized, give each
+writer a separate Git worktree checked out to its own dedicated branch and disjoint file ownership.
+Writers may commit only assigned
 files in their own worktree when requested; they do not push or merge unless explicitly assigned.
 One lead owns requirements and integration. Resolve product/data/permission questions and freeze the
 public contract before parallel writers start; do not ask multiple writers to invent competing
