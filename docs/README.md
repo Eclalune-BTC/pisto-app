@@ -18,7 +18,7 @@ The current product is a manual operating application: sales/history/correction,
 expenses/cash, customers/receivables and exact operating reports. New-sale reviews have server-owned
 recovery. AI, voice and native purchases are not implemented. The matrix owns the detailed status.
 
-The runtime is local Expo, Bun/Hono and PostgreSQL 18. GitHub source synchronization is authorized;
+The runtime is local Expo, Bun/Elysia and PostgreSQL 18. GitHub source synchronization is authorized;
 cloud provisioning, hosted deployment and store submission require separate approval. See
 [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
 
@@ -34,7 +34,7 @@ cloud provisioning, hosted deployment and store submission require separate appr
 | Customers or debts | [Customers/receivables contract](product-slices/customers-receivables-v1.md) |
 | Reports or cross-capability effects | [Operating core contracts](product-slices/operating-core-v1.md), [data model](data-model.md) |
 | Schema, transactions or migrations | [Data model](data-model.md), [PostgreSQL/Drizzle](database-drizzle.md) |
-| HTTP, sessions or permissions | [Hono API](api-hono.md), [authentication](authentication.md), [security](security.md) |
+| HTTP, sessions or permissions | [Elysia API](api-elysia.md), [authentication](authentication.md), [security](security.md) |
 | Billing | [Entitlements](billing-entitlements.md), [billing package](../packages/billing/README.md) |
 | Tooling, local runtime or dependencies | [CLI](cli-workflow.md), [local runtime](local-runtime.md), [upgrades](versioning-upgrades.md) |
 | New capability or architecture change | [Product requirements](product-requirements.md), [capability composition](product-capability-architecture.md), [engineering workflow](engineering-workflow.md), relevant [ADRs](adrs/README.md) |

@@ -13,7 +13,7 @@ billing events are delayed or duplicated.
 flowchart LR
   Web[Expo web - React Native Web]
   Native[Expo Android and iOS client]
-  API[Local Bun and Hono API]
+  API[Local Bun and Elysia API]
   Auth[Better Auth]
   Domain[Authorized commands and queries]
   DB[(Local PostgreSQL 18)]
@@ -41,7 +41,7 @@ The backend is an application-owned TypeScript service with explicit package com
 | Concern | Current implementation | Source owner |
 | --- | --- | --- |
 | HTTP listener | `Bun.serve` | `apps/api/src/index.ts` |
-| Routing and middleware | Hono | `apps/api/src/app.ts` and `apps/api/src/routes` |
+| Routing and middleware | Elysia | `apps/api/src/app.ts` and `apps/api/src/routes` |
 | Runtime composition | Database, auth, billing and domain repositories created together | `apps/api/src/runtime.ts` |
 | Persistence | PostgreSQL 18, Drizzle ORM and postgres-js | `compose.yaml` and `packages/db/src/client.ts` |
 | Identity and sessions | Better Auth with its Drizzle adapter and Expo integration | `packages/auth/src/create-auth.ts` |
@@ -57,7 +57,7 @@ manifests and `bun.lock`; [versioning](versioning-upgrades.md) owns the upgrade 
 | Workspace | Owns | Must not own |
 | --- | --- | --- |
 | `@pisto/app` | Expo Router screens, platform UI, public API client, device adapters | Provider secrets, SQL, server authorization |
-| `@pisto/api` | Hono composition, middleware, route handlers, health endpoints | Database schema or provider-specific access rules |
+| `@pisto/api` | Elysia composition, middleware, route handlers, health endpoints | Database schema or provider-specific access rules |
 | `@pisto/contracts` | Transport-neutral request/response schemas and public types | Runtime I/O or provider SDK clients |
 | `@pisto/db` | Drizzle schema, migrations, repositories, transaction helpers | HTTP or UI concerns |
 | `@pisto/auth` | Better Auth configuration, session access, auth schema integration | Product catalog or UI navigation |
@@ -67,7 +67,7 @@ Dependencies point inward toward contracts and domain packages. The API composes
 do not import the API. The app may import public contracts, but never server implementations.
 
 The implemented domain commands, queries, and audit live in `packages/db`, with public money and
-transport rules in `packages/contracts`. They do not depend on AI SDK, Hono, or React. A future
+transport rules in `packages/contracts`. They do not depend on AI SDK, Elysia, or React. A future
 assistant boundary will own prompt versions, provider/model selection, narrow tools, and bounded
 orchestration without owning SQL or business rules. The API remains the composition root. See
 [AI assistant architecture](ai-assistant.md); no assistant package or capability exists today, and
@@ -89,7 +89,7 @@ every screen. An implemented capability follows the same explicit path:
 Expo route
   -> capability-owned screen and draft state
   -> public transport contract
-  -> authenticated Hono route
+  -> authenticated Elysia route
   -> capability-owned command/query
   -> PostgreSQL transaction and canonical record
 ```
@@ -139,8 +139,9 @@ in Pisto-owned tables rather than auth metadata. See
 ### Authenticated API request
 
 1. The client sends its Better Auth session using the platform-appropriate cookie mechanism.
-2. Hono applies request ID, logging, secure headers, CORS, and body-size controls.
-3. Better Auth resolves the session at `/api/auth/*` or an API auth guard resolves it for `/v1/*`.
+2. Elysia applies request ID, logging, secure headers, CORS, and body-size controls.
+3. Better Auth handles `/api/auth/*`; protected business routes resolve one actor in the HTTP request
+   context. Account and billing endpoints keep their separate session policies.
 4. Product middleware charges a server-resolved user budget in PostgreSQL and rejects business
    writes when `PRODUCT_WRITES_ENABLED=false`; account/provider endpoints retain separate policy.
 5. The route validates input using shared contracts, and the repository rechecks the live session,
@@ -170,7 +171,7 @@ This flow requires explicitly configured Polar products and credentials; local b
 1. An authenticated browser requests an allowed product from `/v1/billing/checkout`.
 2. The server maps the internal product to an allowlisted Polar product and creates or selects a web
    checkout. The browser does not supply a trusted price or arbitrary product ID.
-   Direct Better Auth provider checkout/customer paths are denied at the Hono edge; only the `/v1`
+   Direct Better Auth provider checkout/customer paths are denied at the Elysia edge; only the `/v1`
    wrappers invoke those adapter endpoints internally after subject/scope validation.
 3. Polar completes payment in the browser.
 4. A signed Polar webhook updates provider state idempotently.
@@ -195,7 +196,7 @@ qualification.
 
 ## Runtime topology
 
-Local Expo and Bun/Hono processes use Docker PostgreSQL. The configured desktop ports and fresh
+Local Expo and Bun/Elysia processes use Docker PostgreSQL. The configured desktop ports and fresh
 checkout workflow are in [getting started](getting-started.md). Source publication to GitHub is
 separate from cloud provisioning, hosting or store submission; none is implied by a source push.
 
@@ -232,7 +233,7 @@ The API keeps no authoritative host-local state between requests. See
 ## Official sources
 
 - [Expo Router introduction](https://docs.expo.dev/router/introduction/)
-- [Hono on Bun](https://hono.dev/docs/getting-started/bun)
-- [Better Auth with Hono](https://better-auth.com/docs/integrations/hono)
+- [Elysia on Bun](https://github.com/elysiajs/elysia/releases/tag/1.4.30)
+- [Better Auth with Elysia](https://elysiajs.com/integrations/better-auth)
 - [Vercel AI SDK 7](https://vercel.com/changelog/ai-sdk-7)
 - [Vercel AI SDK provider management](https://ai-sdk.dev/docs/ai-sdk-core/provider-management)

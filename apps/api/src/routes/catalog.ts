@@ -1,4 +1,3 @@
-import type { Auth } from "@pisto/auth";
 import {
   archiveCategoryRequestSchema,
   archiveProductRequestSchema,
@@ -14,161 +13,141 @@ import {
   updateProductRequestSchema,
 } from "@pisto/contracts";
 import type { CatalogRepository } from "@pisto/db";
-import { Hono } from "hono";
-
-import { commandStatus, parseJsonBody, parseRequest, requireRecordId } from "../http.ts";
-import { requireActor } from "../session.ts";
-import type { AppEnv } from "../types.ts";
-
-// Preserve last-value duplicate keys, strict validation of empty keys, and fragment
-// stripping. Hono's req.query() handles these differently.
-function queryObject(url: string): Record<string, string> {
-  return Object.fromEntries(new URL(url).searchParams.entries());
-}
+import { commandStatus, contract } from "../http.ts";
+import type { ProductAccess } from "../middleware/product-access.ts";
+import { protectedRoutes } from "./protected.ts";
 
 const categoryNotFound = "Category was not found";
 const productNotFound = "Product was not found";
 const movementNotFound = "Inventory movement was not found";
-
-export function catalogRoutes(input: { auth: Auth; catalog: CatalogRepository }) {
-  const routes = new Hono<AppEnv>();
-
-  routes.get("/catalog/categories", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const query = parseRequest(
-      categoryListQuerySchema,
-      queryObject(context.req.url),
-      "Category query is invalid",
-    );
-    return context.json({ data: await input.catalog.listCategories(actor, query) });
-  });
-
-  routes.post("/catalog/categories", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const command = parseRequest(
-      createCategoryRequestSchema,
-      await parseJsonBody(context),
-      "Category command is invalid",
-    );
-    const result = await input.catalog.createCategory(actor, command);
-    return context.json({ data: result }, commandStatus(result));
-  });
-
-  routes.patch("/catalog/categories/:categoryId", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const categoryId = requireRecordId(context.req.param("categoryId"), categoryNotFound);
-    const command = parseRequest(
-      updateCategoryRequestSchema,
-      await parseJsonBody(context),
-      "Category command is invalid",
-    );
-    return context.json({ data: await input.catalog.updateCategory(actor, categoryId, command) });
-  });
-
-  routes.post("/catalog/categories/:categoryId/archive", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const categoryId = requireRecordId(context.req.param("categoryId"), categoryNotFound);
-    const command = parseRequest(
-      archiveCategoryRequestSchema,
-      await parseJsonBody(context),
-      "Category archive command is invalid",
-    );
-    return context.json({ data: await input.catalog.archiveCategory(actor, categoryId, command) });
-  });
-
-  routes.get("/catalog/products", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const query = parseRequest(
-      productListQuerySchema,
-      queryObject(context.req.url),
-      "Product query is invalid",
-    );
-    return context.json({ data: await input.catalog.listProducts(actor, query) });
-  });
-
-  routes.post("/catalog/products", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const command = parseRequest(
-      createProductRequestSchema,
-      await parseJsonBody(context),
-      "Product command is invalid",
-    );
-    const result = await input.catalog.createProduct(actor, command);
-    return context.json({ data: result }, commandStatus(result));
-  });
-
-  routes.get("/catalog/products/:productId", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const productId = requireRecordId(context.req.param("productId"), productNotFound);
-    return context.json({ data: await input.catalog.getProduct(actor, productId) });
-  });
-
-  routes.patch("/catalog/products/:productId", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const productId = requireRecordId(context.req.param("productId"), productNotFound);
-    const command = parseRequest(
-      updateProductRequestSchema,
-      await parseJsonBody(context),
-      "Product command is invalid",
-    );
-    return context.json({ data: await input.catalog.updateProduct(actor, productId, command) });
-  });
-
-  routes.post("/catalog/products/:productId/archive", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const productId = requireRecordId(context.req.param("productId"), productNotFound);
-    const command = parseRequest(
-      archiveProductRequestSchema,
-      await parseJsonBody(context),
-      "Product archive command is invalid",
-    );
-    return context.json({ data: await input.catalog.archiveProduct(actor, productId, command) });
-  });
-
-  routes.get("/inventory/stock", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const query = parseRequest(
-      stockListQuerySchema,
-      queryObject(context.req.url),
-      "Stock query is invalid",
-    );
-    return context.json({ data: await input.catalog.listStock(actor, query) });
-  });
-
-  routes.get("/inventory/products/:productId/movements", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const productId = requireRecordId(context.req.param("productId"), productNotFound);
-    const query = parseRequest(
-      inventoryMovementListQuerySchema,
-      queryObject(context.req.url),
-      "Movement query is invalid",
-    );
-    return context.json({ data: await input.catalog.listMovements(actor, productId, query) });
-  });
-
-  routes.post("/inventory/products/:productId/movements", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const productId = requireRecordId(context.req.param("productId"), productNotFound);
-    const command = parseRequest(
-      recordInventoryMovementRequestSchema,
-      await parseJsonBody(context),
-      "Movement command is invalid",
-    );
-    const result = await input.catalog.recordMovement(actor, productId, command);
-    return context.json({ data: result }, commandStatus(result));
-  });
-
-  routes.post("/inventory/movements/:movementId/reverse", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const movementId = requireRecordId(context.req.param("movementId"), movementNotFound);
-    const command = parseRequest(
-      reverseInventoryMovementRequestSchema,
-      await parseJsonBody(context),
-      "Reversal command is invalid",
-    );
-    const result = await input.catalog.reverseMovement(actor, movementId, command);
-    return context.json({ data: result }, commandStatus(result));
-  });
-
+export function catalogRoutes(input: { access: ProductAccess; catalog: CatalogRepository }) {
+  const routes = protectedRoutes(input.access);
+  routes.get(
+    "/catalog/categories",
+    async ({ actor, query }) => {
+      return { data: await input.catalog.listCategories(actor, query) };
+    },
+    { query: contract(categoryListQuerySchema, "Category query is invalid"), queryPolicy: "last" },
+  );
+  routes.post(
+    "/catalog/categories",
+    async ({ actor, body, set }) => {
+      const result = await input.catalog.createCategory(actor, body);
+      set.status = commandStatus(result);
+      return { data: result };
+    },
+    {
+      parse: "json",
+      body: contract(createCategoryRequestSchema, "Category command is invalid"),
+    },
+  );
+  routes.patch(
+    "/catalog/categories/:categoryId",
+    async ({ actor, body, params }) => {
+      return { data: await input.catalog.updateCategory(actor, params.categoryId, body) };
+    },
+    {
+      record: { categoryId: categoryNotFound },
+      body: contract(updateCategoryRequestSchema, "Category command is invalid"),
+    },
+  );
+  routes.post(
+    "/catalog/categories/:categoryId/archive",
+    async ({ actor, body, params }) => {
+      return { data: await input.catalog.archiveCategory(actor, params.categoryId, body) };
+    },
+    {
+      record: { categoryId: categoryNotFound },
+      body: contract(archiveCategoryRequestSchema, "Category archive command is invalid"),
+    },
+  );
+  routes.get(
+    "/catalog/products",
+    async ({ actor, query }) => {
+      return { data: await input.catalog.listProducts(actor, query) };
+    },
+    { query: contract(productListQuerySchema, "Product query is invalid"), queryPolicy: "last" },
+  );
+  routes.post(
+    "/catalog/products",
+    async ({ actor, body, set }) => {
+      const result = await input.catalog.createProduct(actor, body);
+      set.status = commandStatus(result);
+      return { data: result };
+    },
+    {
+      parse: "json",
+      body: contract(createProductRequestSchema, "Product command is invalid"),
+    },
+  );
+  routes.get(
+    "/catalog/products/:productId",
+    async ({ actor, params }) => {
+      return { data: await input.catalog.getProduct(actor, params.productId) };
+    },
+    { record: { productId: productNotFound } },
+  );
+  routes.patch(
+    "/catalog/products/:productId",
+    async ({ actor, body, params }) => {
+      return { data: await input.catalog.updateProduct(actor, params.productId, body) };
+    },
+    {
+      record: { productId: productNotFound },
+      body: contract(updateProductRequestSchema, "Product command is invalid"),
+    },
+  );
+  routes.post(
+    "/catalog/products/:productId/archive",
+    async ({ actor, body, params }) => {
+      return { data: await input.catalog.archiveProduct(actor, params.productId, body) };
+    },
+    {
+      record: { productId: productNotFound },
+      body: contract(archiveProductRequestSchema, "Product archive command is invalid"),
+    },
+  );
+  routes.get(
+    "/inventory/stock",
+    async ({ actor, query }) => {
+      return { data: await input.catalog.listStock(actor, query) };
+    },
+    { query: contract(stockListQuerySchema, "Stock query is invalid"), queryPolicy: "last" },
+  );
+  routes.get(
+    "/inventory/products/:productId/movements",
+    async ({ actor, query, params }) => {
+      return { data: await input.catalog.listMovements(actor, params.productId, query) };
+    },
+    {
+      record: { productId: productNotFound },
+      query: contract(inventoryMovementListQuerySchema, "Movement query is invalid"),
+      queryPolicy: "last",
+    },
+  );
+  routes.post(
+    "/inventory/products/:productId/movements",
+    async ({ actor, body, params, set }) => {
+      const result = await input.catalog.recordMovement(actor, params.productId, body);
+      set.status = commandStatus(result);
+      return { data: result };
+    },
+    {
+      record: { productId: productNotFound },
+      body: contract(recordInventoryMovementRequestSchema, "Movement command is invalid"),
+    },
+  );
+  routes.post(
+    "/inventory/movements/:movementId/reverse",
+    async ({ actor, body, params, set }) => {
+      const result = await input.catalog.reverseMovement(actor, params.movementId, body);
+      set.status = commandStatus(result);
+      return { data: result };
+    },
+    {
+      record: { movementId: movementNotFound },
+      body: contract(reverseInventoryMovementRequestSchema, "Reversal command is invalid"),
+    },
+  );
   return routes;
 }

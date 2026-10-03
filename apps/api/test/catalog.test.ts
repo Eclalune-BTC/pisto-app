@@ -2,10 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
 import type { CatalogRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
-import { Hono } from "hono";
-
-import { normalizeError } from "../src/errors.ts";
 import { catalogRoutes } from "../src/routes/catalog.ts";
+import { testAccess, testClient, testErrorBoundary } from "./http-client.ts";
 
 const actorSession = {
   session: {
@@ -50,23 +48,11 @@ function createRepository(overrides: Partial<CatalogRepository> = {}): CatalogRe
 }
 
 function createApp(repository: CatalogRepository) {
-  const app = new Hono();
-  app.route("/v1", catalogRoutes({ auth: createAuth(), catalog: repository }));
-  app.onError((error, context) => {
-    const { apiError } = normalizeError(error);
-    return context.json(
-      {
-        error: {
-          code: apiError.code,
-          message: apiError.message,
-          requestId: "catalog-test",
-          details: apiError.details,
-        },
-      },
-      apiError.status,
-    );
-  });
-  return app;
+  return testClient(
+    testErrorBoundary("catalog-test").use(
+      catalogRoutes({ access: testAccess(createAuth()), catalog: repository }),
+    ),
+  );
 }
 
 describe("catalog HTTP routes", () => {
@@ -182,6 +168,25 @@ describe("catalog HTTP routes", () => {
     const accepted = await app.request("/v1/catalog/products?limit=99&limit=5");
     expect(accepted.status).toBe(200);
     expect(received).toMatchObject({ limit: 5 });
+  });
+
+  test("keeps comma-separated and JSON-shaped searches as scalar strings", async () => {
+    let received: unknown;
+    const app = createApp(
+      createRepository({
+        listProducts: async (_actor, query) => {
+          received = query;
+          return { items: [], nextCursor: null };
+        },
+      }),
+    );
+    for (const search of ["coffee,tea", '["coffee","tea"]', '{"name":"coffee"}']) {
+      const response = await app.request(
+        `/v1/catalog/products?search=${encodeURIComponent(search)}`,
+      );
+      expect(response.status).toBe(200);
+      expect(received).toMatchObject({ search });
+    }
   });
 
   test("still rejects an empty-name query parameter against the strict contract", async () => {

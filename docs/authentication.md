@@ -25,20 +25,25 @@ or Docker build argument. No hosting vendor or secret service is selected by thi
 Use Better Auth's documented multi-secret rotation mechanism when rotating; retain prior decryption
 keys for the supported transition instead of invalidating sessions without a plan.
 
-## Hono mounting
+## Elysia mounting
 
 Mount the exact base and wildcard paths before a broad API catch-all. The composition root registers
 the checkout/customer provider guards before these handlers:
 
 ```ts
-const authHandler = (context: Context) => auth.handler(context.req.raw);
+const authHandler = ({ request }: { request: Request }) => auth.handler(request);
 
-app.on(["GET", "POST"], "/api/auth", authHandler);
-app.on(["GET", "POST"], "/api/auth/*", authHandler);
+for (const method of ["GET", "POST"] as const) {
+  app.route(method, "/api/auth", authHandler, { parse: "none" });
+  app.route(method, "/api/auth/*", authHandler, { parse: "none" });
+}
 ```
 
 The mounted path and Better Auth `basePath` must agree. Apply credentialed CORS before this route and
 use an exact origin, never `*`. Keep the same origins in Better Auth `trustedOrigins`.
+The body limiter buffers exact bytes before this handler; `parse: "none"` prevents Elysia from
+consuming them as JSON. Preserve the handler's response and all Set-Cookie headers. Business routes
+resolve one actor in the HTTP context; repositories still recheck live membership and permissions.
 
 ## Expo session handling
 
@@ -74,7 +79,7 @@ Server authorization and session expiry still apply.
 ## Organization-backed business boundary
 
 The server and Expo organization plugins plus organization/member/invitation schema are included.
-Business onboarding creates one server-owned organization and exact `owner` membership. Hono blocks
+Business onboarding creates one server-owned organization and exact `owner` membership. Elysia blocks
 raw organization creation, deletion, invitations, member/role/team mutations, and reads; only the
 active-organization selector is exposed. Invitations and role administration are not implemented.
 
@@ -100,7 +105,7 @@ data, and raw role strings must not be checked ad hoc across routes, tools, or U
 
 `admin` and `member` currently have no reachable actor. `packages/db/src/product.ts` is the only code
 path that writes a membership row and it hardcodes `role: "owner"`, and every Better Auth
-organization mutation route returns `404` at the Hono edge except the active-organization selector.
+organization mutation route returns `404` at the Elysia edge except the active-organization selector.
 So the `admin` and `member` branches are defined, granted, and covered by tests, but no real user can
 occupy them until invitation delivery and role administration are implemented. Do not read a passing
 `admin` or `member` test as evidence that multi-user access works in the product.
@@ -146,7 +151,7 @@ must not become an authorization source of truth.
 - [Better Auth installation and secret requirements](https://better-auth.com/docs/installation)
 - [Better Auth security](https://better-auth.com/docs/reference/security)
 - [Better Auth rate-limit storage](https://better-auth.com/docs/concepts/rate-limit)
-- [Better Auth Hono integration](https://better-auth.com/docs/integrations/hono)
+- [Better Auth Elysia integration](https://elysiajs.com/integrations/better-auth)
 - [Better Auth Expo integration](https://better-auth.com/docs/integrations/expo)
 - [Better Auth Drizzle adapter](https://better-auth.com/docs/adapters/drizzle)
 - [Better Auth CLI](https://better-auth.com/docs/concepts/cli)

@@ -1,6 +1,7 @@
 import { BillingProviderError, RevenueCatWebhookError } from "@pisto/billing";
 import type { ApiErrorCode } from "@pisto/contracts";
 import { ProductError, type ProductErrorCode } from "@pisto/db";
+import { NotFoundError, ParseError, ValidationError } from "elysia";
 
 export class ApiError extends Error {
   override readonly name = "ApiError";
@@ -34,6 +35,24 @@ const revenueCatWebhookCodes: Record<RevenueCatWebhookError["status"], ApiErrorC
 
 /** Unknown failures expose INTERNAL_ERROR and are logged by type only. */
 export function normalizeError(error: unknown): { apiError: ApiError; unexpected: boolean } {
+  if (error instanceof ParseError) {
+    if (error.cause instanceof ApiError) return normalizeError(error.cause);
+    return {
+      apiError: new ApiError(400, "BAD_REQUEST", "Request body must be valid JSON"),
+      unexpected: false,
+    };
+  }
+  if (error instanceof NotFoundError) {
+    return { apiError: new ApiError(404, "NOT_FOUND", "Route not found"), unexpected: false };
+  }
+  if (error instanceof ValidationError) {
+    // Never expose Elysia's submitted-value diagnostics. Contract adapters above
+    // preserve the existing field errors without serializing the request payload.
+    return {
+      apiError: new ApiError(400, "VALIDATION_ERROR", "The request is invalid"),
+      unexpected: false,
+    };
+  }
   if (error instanceof ApiError) {
     return { apiError: error, unexpected: false };
   }

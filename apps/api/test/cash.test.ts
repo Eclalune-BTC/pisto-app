@@ -1,10 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
-
 import type { CashRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
-import { normalizeError } from "../src/errors.ts";
 import { cashRoutes } from "../src/routes/cash.ts";
+import { testAccess, testClient, testErrorBoundary } from "./http-client.ts";
 
 const accountId = "71402e0c-b17d-4d8c-83ae-8d163d10d51d";
 const idempotencyKey = "85d434e5-a7fd-49b7-9f12-38aa80a920ae";
@@ -31,15 +30,12 @@ function testRoutes(options: { authenticated?: boolean; cash: CashRepository }) 
             },
     },
   } as unknown as Auth;
-  const routes = cashRoutes({ auth, cash: options.cash });
-  routes.onError((error, context) => {
-    const { apiError } = normalizeError(error);
-    return context.json(
-      { error: { code: apiError.code, message: apiError.message, requestId: "test-request" } },
-      apiError.status,
-    );
-  });
-  return routes;
+  return testClient(
+    testErrorBoundary("test-request").use(
+      cashRoutes({ access: testAccess(auth), cash: options.cash }),
+    ),
+    "/v1",
+  );
 }
 
 function repository(overrides: Partial<CashRepository>): CashRepository {
@@ -47,6 +43,22 @@ function repository(overrides: Partial<CashRepository>): CashRepository {
 }
 
 describe("cash and expense API routes", () => {
+  test("retains the first duplicate filter and ignores an empty query name", async () => {
+    let received: unknown;
+    const routes = testRoutes({
+      cash: repository({
+        listAccounts: async (_actor, query) => {
+          received = query;
+          return { items: [], nextCursor: null, queriedAt: "2026-10-03T12:00:00.000Z" };
+        },
+      }),
+    });
+    const accepted = await routes.request("/cash/accounts?limit=5&limit=99&=ignored");
+    expect(accepted.status).toBe(200);
+    expect(received).toMatchObject({ limit: 5 });
+    const rejected = await routes.request("/cash/accounts?limit=99&limit=5");
+    expect(rejected.status).toBe(400);
+  });
   test("requires authentication before any cash read", async () => {
     const response = await testRoutes({
       authenticated: false,

@@ -3,10 +3,8 @@ import type { Auth } from "@pisto/auth";
 import type { OperatingReport } from "@pisto/contracts";
 import type { ReportsRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
-import { Hono } from "hono";
-import { normalizeError } from "../src/errors.ts";
 import { reportsRoutes } from "../src/routes/reports.ts";
-import type { AppEnv } from "../src/types.ts";
+import { testAccess, testClient, testErrorBoundary } from "./http-client.ts";
 
 const report: OperatingReport = {
   period: {
@@ -58,23 +56,11 @@ function createTestApp(
           : null,
     },
   } as unknown as Auth;
-  const app = new Hono<AppEnv>();
-  app.route("/v1", reportsRoutes({ auth, reports: { getOperatingReport } }));
-  // Mirrors the error boundary in src/app.ts.
-  app.onError((error, context) => {
-    const { apiError } = normalizeError(error);
-    return context.json(
-      {
-        error: {
-          code: apiError.code,
-          message: apiError.message,
-          requestId: "request_test",
-        },
-      },
-      apiError.status,
-    );
-  });
-  return app;
+  return testClient(
+    testErrorBoundary().use(
+      reportsRoutes({ access: testAccess(auth), reports: { getOperatingReport } }),
+    ),
+  );
 }
 
 describe("operating report route", () => {

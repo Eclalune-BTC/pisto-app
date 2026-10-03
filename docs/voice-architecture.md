@@ -23,7 +23,7 @@ session is installed or selected today.
 - ElevenLabs is a credible candidate. If a voice brief is approved, evaluate first whether AI SDK
   7's stable transcription/speech API with the direct `@ai-sdk/elevenlabs` provider fits the Pisto
   server boundary. This is evaluation order, not provider selection. Pin exact versions only after
-  the Bun/Hono/container and Expo data-path spike passes.
+  the Bun/Elysia/container and Expo data-path spike passes.
 - A small raw ElevenLabs REST adapter is an allowed escape hatch only if a measured requirement, such
   as keyterm prompting for product names, is absent from the AI SDK adapter. It must implement the
   same Pisto port.
@@ -242,5 +242,5 @@ pricing immediately before approval; never encode a researched price snapshot as
 - [ElevenLabs data residency](https://elevenlabs.io/docs/overview/administration/data-residency)
 - [ElevenLabs models](https://elevenlabs.io/docs/overview/models)
 - [ElevenLabs API pricing](https://elevenlabs.io/pricing/api)
-- [Hono request parsing](https://hono.dev/docs/api/request)
-- [Hono body limit](https://hono.dev/docs/middleware/builtin/body-limit)
+- [Elysia lifecycle](https://elysiajs.com/essential/life-cycle)
+- [Bun HTTP limits](https://bun.com/docs/api/http)

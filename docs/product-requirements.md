@@ -7,7 +7,7 @@ future capabilities. Requirements describe acceptance, not proof that production
 ## Delivery contract
 
 The current delivery reviews and improves the existing manual core for local operation. No hosting
-or provider activation is in scope. GitHub source synchronization is separate. Expo, Bun/Hono and
+or provider activation is in scope. GitHub source synchronization is separate. Expo, Bun/Elysia and
 PostgreSQL run locally. A user signs in, creates or selects a business, records a reviewed operation,
 receives its canonical result,
 and can find, inspect and correct that record later. PostgreSQL owns business facts and reviewed
@@ -61,7 +61,7 @@ performance, device behavior, email delivery or recovery.
 | NFR-10 | Availability and recovery | Future hosted targets, outside local scope: 99.5% monthly API availability, RPO 24 h and RTO 4 h. Require monitoring and measured recovery; a successful local restore alone does not prove an SLA. |
 | NFR-11 | Privacy and transport | TLS with certificate verification, secure HTTP-only session cookies, exact origins, private credential storage, no tokens/records/raw paths in application logs. No database/provider credential in Expo bundles. |
 | NFR-12 | Abuse protection | Default 300 reads and 60 writes per authenticated user per 60 s, shared atomically in PostgreSQL; 429 includes Retry-After; failed limiter storage denies execution. Auth has its own limiter. Edge unauthenticated abuse limits remain an operational gate. |
-| NFR-13 | Maintainability | Feature components share semantic primitives; Expo owns screens, Hono HTTP, contracts transport, Drizzle persistence. Tests cover behavior/invariants, not incidental markup. |
+| NFR-13 | Maintainability | Feature components share semantic primitives; Expo owns screens, Elysia HTTP, contracts transport, Drizzle persistence. Tests cover behavior/invariants, not incidental markup. |
 | NFR-14 | Portability | Standard PostgreSQL dump/restore and SQL migrations; one Docker API; ordinary Expo web artifact; no host-specific SDK or required cloud service. Hosting remains a future decision. |
 | NFR-15 | Supply chain | Exact reviewed dependencies and frozen lockfile; typecheck/tests/lint/build plus dependency audit, migration checks and container smoke before publishing. Exceptions list an advisory, reachability, owner and review date. |
 | NFR-16 | Release truth | Record commit, runtime/artifact, migration, host URL and smoke results. Distinguish implemented, built, locally tested, remotely deployed and store released. |

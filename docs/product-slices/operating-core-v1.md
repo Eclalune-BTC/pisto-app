@@ -19,7 +19,7 @@
 | Assistant and voice | Not implemented; no AI or audio dependency exists | None |
 
 This milestone turns Pisto from one sales increment into a useful modular operating product. It is
-still one Expo client, one Hono API, and one PostgreSQL database. Each capability owns its records,
+still one Expo client, one Elysia API, and one PostgreSQL database. Each capability owns its records,
 commands, queries, and failure behavior; applications compose those capabilities explicitly.
 
 ## Shared product decisions
@@ -271,7 +271,7 @@ conversation remain separate future capabilities.
   responsive loading/empty/error/denied states, keyboard/accessibility checks, and independent review.
 - `bun run check`, build, migration consistency, PostgreSQL 18 integration, web browser, and available
   native checks must be recorded separately. Local validation does not establish device or hosted
-  acceptance. Runtime work remains local Expo, Bun/Hono and PostgreSQL. GitHub source synchronization
+  acceptance. Runtime work remains local Expo, Bun/Elysia and PostgreSQL. GitHub source synchronization
   is distinct from separately approved hosting or store submission under
   [ADR 0017](../adrs/0017-portable-postgres-and-hosting.md). [Release evidence](../release-evidence.md)
   owns completed checks; assistant/voice and platform acceptance remain separate gates.

@@ -58,13 +58,17 @@ can drift.
 
 ## API and contracts
 
+Reviewed for the exact Elysia 1.4.30 baseline in [ADR 0019](adrs/0019-elysia-http-composition.md).
+Upstream pages can already show Elysia 2 beta syntax/package names; use pinned source and regression
+tests for lifecycle details. Response headers and bounded buffering are application-owned policies.
+
 | Decision | Primary official source | Review trigger |
 | --- | --- | --- |
-| Hono on Bun | [Hono Bun guide](https://hono.dev/docs/getting-started/bun) | Runtime/framework upgrade |
-| Exact credentialed CORS | [Hono CORS](https://hono.dev/docs/middleware/builtin/cors) | Origin/auth topology change |
-| Security response headers | [Hono secure headers](https://hono.dev/docs/middleware/builtin/secure-headers) | Browser/API exposure change |
+| Elysia on Bun | [Elysia 1.4.30](https://github.com/elysiajs/elysia/releases/tag/1.4.30) | Runtime/framework upgrade |
+| Exact credentialed CORS | [Elysia CORS](https://elysiajs.com/plugins/cors) | Origin/auth topology change |
+| Security response headers | [OWASP security headers](https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html) | Browser/API exposure change |
 | Unsafe cookie-authenticated `/v1` requests enforce exact Origin and JSON checks; sensitive responses are not cached | [OWASP CSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html), [RFC 9111 `no-store`](https://www.rfc-editor.org/rfc/rfc9111.html#name-no-store) | Client origin, cookie, cache, or mutation topology change |
-| Boundary validation | [Hono validation](https://hono.dev/docs/guides/validation) | Contract/validator change |
+| Boundary validation | [Elysia validation](https://elysiajs.com/essential/validation) | Contract/validator change |
 
 ## AI assistant, voice, retrieval, and product direction
 
@@ -75,7 +79,7 @@ can drift.
 | Models receive narrow typed tools and explicit mutation approval rather than database access | [AI SDK tools and tool calling](https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling) | Tool/approval API or financial-action policy change |
 | Assistant turns are bounded and provider behavior is tested with mocks plus semantic evaluations | [AI SDK loop control](https://ai-sdk.dev/docs/agents/loop-control), [AI SDK testing](https://ai-sdk.dev/docs/ai-sdk-core/testing) | Orchestration, model, prompt, or evaluation change |
 | Conversation persistence stores validated application messages, not provider transport objects | [AI SDK message persistence](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-message-persistence) | Conversation history/retention change |
-| Expo client streaming and Hono server composition require an exact-version spike | [AI SDK Expo quickstart](https://ai-sdk.dev/docs/getting-started/expo), [AI SDK Hono example](https://ai-sdk.dev/cookbook/api-servers/hono), [Expo streaming fetch](https://docs.expo.dev/versions/v57.0.0/sdk/expo/) | AI SDK, Expo, Hono, or Bun upgrade |
+| Expo client streaming and Elysia server composition require an exact-version spike | [AI SDK Expo quickstart](https://ai-sdk.dev/docs/getting-started/expo), [Expo streaming fetch](https://docs.expo.dev/versions/v57.0.0/sdk/expo/) | AI SDK, Expo, Elysia, or Bun upgrade |
 | Voice begins with visible bounded push-to-talk and editable server batch transcription, not always-on/realtime audio | [Expo Audio](https://docs.expo.dev/versions/v57.0.0/sdk/audio/), [AI SDK transcription](https://ai-sdk.dev/docs/ai-sdk-core/transcription), [AI SDK 7 stable transcription and experimental realtime notes](https://vercel.com/changelog/ai-sdk-7) | Voice, transcription, permission, or provider change |
 | ElevenLabs remains an evaluated adapter, not the architecture; if a voice brief is approved, assess the direct AI SDK provider first and use raw REST only for a measured missing capability | [AI SDK ElevenLabs provider](https://ai-sdk.dev/providers/ai-sdk-providers/elevenlabs), [ElevenLabs batch speech-to-text](https://elevenlabs.io/docs/api-reference/speech-to-text/convert), [Speech Engine](https://elevenlabs.io/docs/overview/capabilities/speech-engine) | Voice-provider selection, adapter capability, realtime voice, or pricing change |
 | Direct-client voice credentials are minted by Pisto only after auth/authorization/consent/quota and are single-use, time-bounded, and never persisted | [ElevenLabs single-use token](https://elevenlabs.io/docs/api-reference/tokens/create), [realtime speech-to-text](https://elevenlabs.io/docs/api-reference/speech-to-text/v-1-speech-to-text-realtime) | Direct-client voice or token flow change |
@@ -110,7 +114,7 @@ can drift.
 | Session, cookie, CSRF, and origin baseline | [Better Auth security](https://better-auth.com/docs/reference/security) | Auth upgrade/exposure change |
 | Better Auth organization identity/membership backs Pisto `businessId`; active organization remains only a selector | [Better Auth organization plugin](https://better-auth.com/docs/plugins/organization) | Organization model, product tenancy, roles, or deletion policy change |
 | PostgreSQL-backed cross-instance Better Auth limiter and explicit trusted client-IP boundary | [Better Auth rate-limit storage, forwarded chains, and trusted proxies](https://better-auth.com/docs/concepts/rate-limit) | Auth/schema/proxy/scaling change |
-| Raw Better Auth handler on Hono | [Better Auth Hono](https://better-auth.com/docs/integrations/hono) | Route/framework change |
+| Raw Better Auth handler with explicit GET/POST guards | [Elysia Better Auth](https://elysiajs.com/integrations/better-auth) | Route/framework change |
 | Expo SecureStore/cookie integration | [Better Auth Expo](https://better-auth.com/docs/integrations/expo), [Expo SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/) | Native auth change |
 | Drizzle-owned auth schema | [Better Auth Drizzle adapter](https://better-auth.com/docs/adapters/drizzle) | Auth plugin/schema upgrade |
 | Installed `auth` CLI stays aligned with Better Auth and generates reviewable schema output | [Better Auth CLI](https://better-auth.com/docs/concepts/cli), [1.7 upgrade guide](https://better-auth.com/docs/guides/1-7-upgrade-guide) | Every Better Auth upgrade |

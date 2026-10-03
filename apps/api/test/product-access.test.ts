@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
 import type { ConsumeProductRequest } from "@pisto/db";
-import { Hono } from "hono";
+import { Elysia } from "elysia";
 import { normalizeError } from "../src/errors.ts";
 import { productAccess } from "../src/middleware/product-access.ts";
-import type { AppEnv } from "../src/types.ts";
+import { testClient } from "./http-client.ts";
 
 function createTestApp(
   options: {
@@ -13,7 +13,11 @@ function createTestApp(
     consume?: ConsumeProductRequest;
   } = {},
 ) {
-  const app = new Hono<AppEnv>();
+  const app = new Elysia().onError(({ error, set }) => {
+    const { apiError } = normalizeError(error);
+    set.status = apiError.status;
+    return { error: { code: apiError.code } };
+  });
   const auth = {
     api: {
       getSession: async () =>
@@ -26,19 +30,14 @@ function createTestApp(
     },
   } as unknown as Auth;
   app.use(
-    "/v1/*",
     productAccess({
       auth,
       writesEnabled: options.writesEnabled ?? true,
       consume: options.consume ?? (async () => ({ allowed: true, retryAfterSeconds: 60 })),
     }),
   );
-  app.all("*", (context) => context.json({ reached: true }));
-  app.onError((error, context) => {
-    const { apiError } = normalizeError(error);
-    return context.json({ error: { code: apiError.code } }, apiError.status);
-  });
-  return app;
+  app.all("/*", () => ({ reached: true }), { parse: "none" });
+  return testClient(app);
 }
 
 describe("product traffic controls", () => {

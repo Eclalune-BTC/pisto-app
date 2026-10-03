@@ -62,7 +62,7 @@ live environment evidence for those claims.
 Evaluate the first two options before expanding the solution surface:
 
 1. Existing repository capability or domain module.
-2. Built-in capability of Bun, Expo/React Native, Hono, PostgreSQL, Drizzle, Better Auth, or another
+2. Built-in capability of Bun, Expo/React Native, Elysia, PostgreSQL, Drizzle, Better Auth, or another
    already-approved dependency.
 
 Then compare a focused maintained library with a small local implementation. Neither wins by

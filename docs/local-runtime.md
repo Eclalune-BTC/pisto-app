@@ -4,7 +4,7 @@ This guide covers the current local runtime and the portable artifacts it produc
 
 ## Current local workflow
 
-Expo, Bun/Hono and PostgreSQL 18 run locally. GitHub source synchronization is authorized; hosting,
+Expo, Bun/Elysia and PostgreSQL 18 run locally. GitHub source synchronization is authorized; hosting,
 provider activation and store publication require separate approval. No hosted database or platform
 SDK is required for local startup. See [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
 
@@ -37,7 +37,7 @@ a local UI. Native device acceptance remains separate from web or bundle verific
 ## Portable artifacts and local validation
 
 - `apps/app/dist`: ordinary Expo web files using `web.output: single`.
-- `apps/api/Dockerfile`: portable Bun/Hono API and separate bundled migration entrypoint.
+- `apps/api/Dockerfile`: portable Bun/Elysia API and separate bundled migration entrypoint.
 - `packages/db/migrations`: standard PostgreSQL/Drizzle migration history.
 - `infra/gcp`: inactive reference scripts with credential-free CI tests; not a selected runtime or work order.
 

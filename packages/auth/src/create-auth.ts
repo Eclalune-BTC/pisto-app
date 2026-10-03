@@ -50,7 +50,7 @@ export function createAuth(input: { config: AuthConfig; db: Database; billing: B
       enabled: input.config.emailAndPasswordEnabled,
     },
     trustedOrigins: input.config.trustedOrigins,
-    // Auth handles errors before Hono's boundary. Provider/driver diagnostics can
+    // Auth handles errors before Elysia's boundary. Provider/driver diagnostics can
     // contain credentials, SQL parameters, and customer data, so keep only level.
     logger: {
       log(level) {

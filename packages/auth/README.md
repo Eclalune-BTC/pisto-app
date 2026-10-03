@@ -5,7 +5,7 @@ server plugin, and the organization plugin. Polar's Better Auth plugin is added
 only when Polar billing is explicitly enabled.
 
 Authentication owns a separate error boundary because Better Auth can return its own response before
-Hono sees a failure. Provider diagnostics retain severity only, unexpected exceptions become a safe
+Elysia sees a failure. Provider diagnostics retain severity only, unexpected exceptions become a safe
 API error, and a response hook removes provider error details from server failures. The regression
 uses the real Better Auth handler with synthetic persistence failures. This policy uses the installed
 1.7.1 logger, `onAPIError`, and plugin response hooks; recheck their behavior on upgrades against the

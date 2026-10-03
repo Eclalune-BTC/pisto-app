@@ -164,7 +164,7 @@ Expo can open web from its terminal UI. Android emulators can usually reach the 
 ## Phone and emulator networking
 
 There are two connections: the device downloads JavaScript from Metro and separately calls the
-Hono API. A working QR code does not prove the API is reachable. Docker/PostgreSQL stays on the
+Elysia API. A working QR code does not prove the API is reachable. Docker/PostgreSQL stays on the
 computer; never expose its port or put its credentials in the app.
 
 | Client | API address for the configured Windows workspace |
@@ -251,9 +251,9 @@ separately in every native workflow.
 | Variable | Local purpose |
 | --- | --- |
 | `NODE_ENV` | Select development/test/production validation behavior |
-| `API_HOST`, `API_PORT` | Bind the Hono service; defaults are `0.0.0.0:3001`; injected `PORT` wins |
+| `API_HOST`, `API_PORT` | Bind the Elysia service; defaults are `0.0.0.0:3001`; injected `PORT` wins |
 | `PORT` | Platform-injected listener port; overrides `API_PORT` when present |
-| `API_REQUEST_BODY_LIMIT_BYTES` | Hono body limit, 1,024 through 10,485,760 bytes |
+| `API_REQUEST_BODY_LIMIT_BYTES` | API request byte limit, 1,024 through 10,485,760 bytes; enforced in the listener and request policy |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | Local Compose container only |
 | `DATABASE_URL` | PostgreSQL connection URL |
 | `DATABASE_MAX_CONNECTIONS` | Process pool size, 1 through 100 |
@@ -263,7 +263,7 @@ separately in every native workflow.
 | `BETTER_AUTH_SECRET` | At least 32 high-entropy characters |
 | `BETTER_AUTH_SECRETS` | Optional comma-separated `version:value` rotation set with unique positive versions |
 | `BETTER_AUTH_URL` | Public origin of the auth server |
-| `CORS_ORIGINS` | Exact browser origins allowed by Hono |
+| `CORS_ORIGINS` | Exact browser origins allowed by Elysia |
 | `TRUSTED_ORIGINS` | Exact web origins and approved application schemes for Better Auth |
 | `EXPO_SCHEME` | Private app scheme used to add Better Auth deep-link origins |
 | `AUTH_EMAIL_PASSWORD_ENABLED` | Explicit email/password switch |

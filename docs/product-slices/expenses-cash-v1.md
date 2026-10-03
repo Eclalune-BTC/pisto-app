@@ -117,7 +117,7 @@ empty data.
 
 ## HTTP composition seam
 
-`apps/api/src/routes/cash.ts` provides route-ready Hono composition for:
+`apps/api/src/routes/cash.ts` provides route-ready Elysia composition for:
 
 - `GET/POST /v1/cash/accounts`
 - `GET /v1/cash/accounts/:accountId`
@@ -137,7 +137,7 @@ domain failures to the existing stable error contract. `cashRoutes` is mounted i
 composition root in `apps/api/src/routes/v1.ts`, so every route above is reachable and inherits the
 `/v1` origin/JSON gate, request ID, and `Cache-Control: no-store` behavior. The router deliberately
 registers no `onError` of its own; the single translation boundary lives in `apps/api/src/app.ts`.
-The complete mounted surface is inventoried in [API and Hono](../api-hono.md).
+The complete mounted surface is inventoried in [API and Elysia](../api-elysia.md).
 
 ## Product surfaces and failure states
 
@@ -174,7 +174,7 @@ satisfied on the current branch:
 3. migration `0003_worried_weapon_omega.sql` carries the tables, constraints, and indexes;
 4. one `CashRepository` is constructed at the API composition root and `cashRoutes` is mounted in
    `apps/api/src/routes/v1.ts`;
-5. [API and Hono](../api-hono.md) inventories every route, and the shared `/v1` middleware applies
+5. [API and Elysia](../api-elysia.md) inventories every route, and the shared `/v1` middleware applies
    the origin and JSON gate to every unsafe method;
 6. API client methods, typed `es-SV` copy, the `/operate` module entries for `cash:read` and
    `expenses:read`, and thin Expo Router wrappers all exist;
@@ -207,5 +207,5 @@ and profit claims are excluded.
 - [PostgreSQL constraints](https://www.postgresql.org/docs/18/ddl-constraints.html)
 - [Drizzle indexes and constraints](https://orm.drizzle.team/docs/indexes-constraints)
 - [Drizzle transactions](https://orm.drizzle.team/docs/transactions)
-- [Hono validation](https://hono.dev/docs/guides/validation)
+- [Elysia validation](https://elysiajs.com/essential/validation)
 - [React Native accessibility](https://reactnative.dev/docs/accessibility)

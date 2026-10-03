@@ -8,7 +8,7 @@ pisto-stack/
 |-- .github/workflows/ci.yml # Frozen-install check/build workflow
 |-- apps/
 |   |-- app/                 # @pisto/app: Expo Router universal client
-|   `-- api/                 # @pisto/api: Hono HTTP composition and Dockerfile
+|   `-- api/                 # @pisto/api: Elysia HTTP composition and Dockerfile
 |-- packages/
 |   |-- auth/                # @pisto/auth: Better Auth configuration and schema checks
 |   |-- billing/             # @pisto/billing: providers and entitlement decisions

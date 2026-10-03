@@ -1,8 +1,6 @@
 import type { BillingRuntime } from "@pisto/billing";
 import type { DatabaseHandle } from "@pisto/db";
-import { Hono } from "hono";
-
-import type { AppEnv } from "../types.ts";
+import { Elysia } from "elysia";
 
 function withTimeout<T>(promise: Promise<T>, milliseconds: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -21,15 +19,13 @@ function withTimeout<T>(promise: Promise<T>, milliseconds: number): Promise<T> {
 }
 
 export function systemRoutes(input: { database: DatabaseHandle; billing: BillingRuntime }) {
-  const routes = new Hono<AppEnv>();
+  const routes = new Elysia({ strictPath: true });
 
-  routes.get("/health", (context) =>
-    context.json({
-      status: "ok" as const,
-      service: "pisto-api" as const,
-      timestamp: new Date().toISOString(),
-    }),
-  );
+  routes.get("/health", () => ({
+    status: "ok" as const,
+    service: "pisto-api" as const,
+    timestamp: new Date().toISOString(),
+  }));
 
   routes.get("/ready", async (context) => {
     let database: "ok" | "error" = "ok";
@@ -50,7 +46,8 @@ export function systemRoutes(input: { database: DatabaseHandle; billing: Billing
             : ("disabled" as const),
       },
     };
-    return context.json(response, database === "ok" ? 200 : 503);
+    context.set.status = database === "ok" ? 200 : 503;
+    return response;
   });
 
   return routes;

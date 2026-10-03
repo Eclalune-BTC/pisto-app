@@ -4,7 +4,7 @@ Security controls are part of the architecture, not a deployment afterthought. T
 to local design, CI, staging, and production; production adds stricter identity, network, logging,
 backup, and monitoring controls.
 
-The current authorized environment is local Expo, Bun/Hono, and PostgreSQL 18. Hosting is undecided
+The current authorized environment is local Expo, Bun/Elysia, and PostgreSQL 18. Hosting is undecided
 and hosted deployment is outside the current scope. GitHub source synchronization is separate. The controls for future shared/production environments
 below remain design requirements, not authorization to provision or publish; see
 [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
@@ -274,6 +274,12 @@ mandatory with that seam:
 
 ## Dependency audit snapshot
 
+The 2026-10-03 Elysia migration removed Hono from the lockfile. A fresh `bun run audit:ci` still
+fails on five pre-existing Expo/toolchain findings: four high and one moderate across
+brace-expansion, braces and node-forge. No additional audit exception was added. The new Elysia,
+CORS and TypeBox runtime packages produced no findings in this audit. The snapshots below retain
+the earlier evidence; removing Hono does not remediate the remaining packages.
+
 The 2026-10-02 workspace cleanup reran `bun run audit:ci` with Bun 1.4.0. It failed with
 six additional findings beyond the four existing exceptions: four high and two moderate.
 The locked packages and advisory references are:
@@ -300,7 +306,7 @@ application-runtime dependency finding.
 | Expo/React Native Metro toolchain -> `image-size@1.2.1` | [GHSA-w3rx-r6r6-pgpr](https://github.com/advisories/GHSA-w3rx-r6r6-pgpr) and [GHSA-5p2g-fcmc-qvqq](https://github.com/advisories/GHSA-5p2g-fcmc-qvqq), high | Metro can parse image assets during development/build. Only process trusted repository assets; do not add an untrusted-image build or preview pipeline. The registry's latest `image-size` was `2.0.2`, and the advisories still marked every version through `2.0.2` affected. |
 | Expo Xcode project tooling -> `xcode@3.0.1 -> uuid@7.0.3` | [GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq), moderate | The advisory affects UUID v3/v5/v6 calls supplied a caller buffer. The installed Xcode tool calls only `uuid.v4()` without a buffer, so that affected path is not currently reached. Recheck this call site whenever Expo/Xcode tooling changes. |
 
-The committed baseline pins Hono 4.13.5 and js-yaml 4.3.2 and overrides `decode-uri-component` to
+The committed baseline pins Elysia 1.4.30 and js-yaml 4.3.2 and overrides `decode-uri-component` to
 0.5.0. The current audit findings are recorded above. Expo Router still brings query-string
 7.1.3, whose CommonJS import needs the committed one-line `patches/query-string@7.1.3.patch` to read
 the decoder's ESM default export. Node and Bun subprocess regressions exercise real router query
@@ -379,8 +385,8 @@ control.
 ## Official sources
 
 - [Better Auth security](https://better-auth.com/docs/reference/security)
-- [Hono secure headers](https://hono.dev/docs/middleware/builtin/secure-headers)
-- [Hono CORS](https://hono.dev/docs/middleware/builtin/cors)
+- [OWASP security headers](https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html)
+- [Elysia CORS](https://elysiajs.com/plugins/cors)
 - [Expo environment variables](https://docs.expo.dev/guides/environment-variables/)
 - [Expo SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
 - [Polar webhook validation](https://polar.sh/docs/integrate/webhooks/delivery)

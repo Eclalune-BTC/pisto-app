@@ -9,13 +9,12 @@ import type {
   ReceivablesRepository,
   ReportsRepository,
 } from "@pisto/db";
-import { Hono } from "hono";
+import { Elysia } from "elysia";
 import { z } from "zod";
-
 import { ApiError } from "../errors.ts";
 import { callAuthEndpoint, parseJsonBody, parseOptionalJsonBody, parseRequest } from "../http.ts";
+import type { ProductAccess } from "../middleware/product-access.ts";
 import { requireSession, resolveBillingScope } from "../session.ts";
-import type { AppEnv } from "../types.ts";
 import { cashRoutes } from "./cash.ts";
 import { catalogRoutes } from "./catalog.ts";
 import { productRoutes } from "./product.ts";
@@ -42,6 +41,7 @@ function parseProviderRedirect(payload: unknown) {
 export function v1Routes(input: {
   auth: Auth;
   authBaseUrl: string;
+  access: ProductAccess;
   billing: BillingRuntime;
   cash: CashRepository;
   catalog: CatalogRepository;
@@ -50,28 +50,18 @@ export function v1Routes(input: {
   receivables: ReceivablesRepository;
   reports: ReportsRepository;
 }) {
-  const routes = new Hono<AppEnv>();
+  const routes = new Elysia({ strictPath: true });
 
-  routes.get("/", (context) =>
-    context.json({ data: { version: "v1" as const, service: "pisto-api" as const } }),
-  );
+  routes.get("/v1/", () => ({
+    data: { version: "v1" as const, service: "pisto-api" as const },
+  }));
 
-  // These routers must not register an onError of their own. Hono's route()
-  // rewires a mounted sub-app's handlers to its own error handler when it has
-  // one, which would bypass the single translation boundary in app.ts and turn
-  // every domain failure in that router into a 500.
-  routes.route("/", productRoutes({ auth: input.auth, product: input.product }));
-  routes.route("/", catalogRoutes({ auth: input.auth, catalog: input.catalog }));
-  routes.route("/", cashRoutes({ auth: input.auth, cash: input.cash }));
-  routes.route("/", receivablesRoutes({ auth: input.auth, receivables: input.receivables }));
-  routes.route("/", reportsRoutes({ auth: input.auth, reports: input.reports }));
-
-  routes.get("/me", async (context) => {
-    const authSession = await requireSession(input.auth, context.req.raw.headers);
+  routes.get("/v1/me", async (context) => {
+    const authSession = await requireSession(input.auth, context.request.headers);
     const session = authSession.session as typeof authSession.session & {
       activeOrganizationId?: string | null;
     };
-    return context.json({
+    return {
       data: {
         user: {
           id: authSession.user.id,
@@ -86,36 +76,34 @@ export function v1Routes(input: {
           activeOrganizationId: session.activeOrganizationId ?? null,
         },
       },
-    });
+    };
   });
 
-  routes.get("/billing/catalog", (context) =>
-    context.json({
-      data: {
-        status: input.billing.config.polar.enabled ? ("enabled" as const) : ("disabled" as const),
-        provider: input.billing.config.polar.enabled ? ("polar" as const) : null,
-        products: input.billing.catalog,
-      },
-    }),
-  );
+  routes.get("/v1/billing/catalog", () => ({
+    data: {
+      status: input.billing.config.polar.enabled ? ("enabled" as const) : ("disabled" as const),
+      provider: input.billing.config.polar.enabled ? ("polar" as const) : null,
+      products: input.billing.catalog,
+    },
+  }));
 
-  routes.get("/billing/entitlements", async (context) => {
-    const session = await requireSession(input.auth, context.req.raw.headers);
+  routes.get("/v1/billing/entitlements", async (context) => {
+    const session = await requireSession(input.auth, context.request.headers);
     const scope = await resolveBillingScope({ db: input.db, session });
-    return context.json({
+    return {
       data: {
         scope,
         items: await input.billing.listEntitlements(scope),
       },
-    });
+    };
   });
 
-  routes.get("/billing/state", async (context) => {
-    const session = await requireSession(input.auth, context.req.raw.headers);
+  routes.get("/v1/billing/state", async (context) => {
+    const session = await requireSession(input.auth, context.request.headers);
     const scope = await resolveBillingScope({ db: input.db, session });
     const entitlements = await input.billing.listEntitlements(scope);
     if (!input.billing.config.polar.enabled) {
-      return context.json({
+      return {
         data: {
           status: "disabled" as const,
           provider: null,
@@ -123,11 +111,11 @@ export function v1Routes(input: {
           customerState: null,
           entitlements,
         },
-      });
+      };
     }
 
     const customerState = await input.billing.readCustomerState(scope);
-    return context.json({
+    return {
       data: {
         status: "enabled" as const,
         provider: "polar" as const,
@@ -135,71 +123,89 @@ export function v1Routes(input: {
         customerState,
         entitlements,
       },
-    });
+    };
   });
 
-  routes.post("/billing/checkout", async (context) => {
-    if (!input.billing.config.polar.enabled) {
-      throw new ApiError(503, "BILLING_DISABLED", "Polar checkout is disabled");
-    }
-    const session = await requireSession(input.auth, context.req.raw.headers);
-    const scope = await resolveBillingScope({ db: input.db, session });
-    const command = parseRequest(
-      billingCheckoutRequestSchema,
-      await parseJsonBody(context),
-      "Checkout request is invalid",
-    );
-    if (!input.billing.config.polar.products.some(({ slug }) => slug === command.slug)) {
-      throw new ApiError(404, "NOT_FOUND", "Billing product was not found");
-    }
-    const payload = await callAuthEndpoint({
-      auth: input.auth,
-      baseUrl: input.authBaseUrl,
-      path: "/api/auth/checkout",
-      method: "POST",
-      headers: context.req.raw.headers,
-      body: {
-        slug: command.slug,
-        ...(scope.type === "organization" ? { referenceId: scope.id } : {}),
-        redirect: false,
-      },
-    });
-    return context.json(parseProviderRedirect(payload));
-  });
+  routes.post(
+    "/v1/billing/checkout",
+    async (context) => {
+      if (!input.billing.config.polar.enabled) {
+        throw new ApiError(503, "BILLING_DISABLED", "Polar checkout is disabled");
+      }
+      const session = await requireSession(input.auth, context.request.headers);
+      const scope = await resolveBillingScope({ db: input.db, session });
+      const command = parseRequest(
+        billingCheckoutRequestSchema,
+        await parseJsonBody(context.request),
+        "Checkout request is invalid",
+      );
+      if (!input.billing.config.polar.products.some(({ slug }) => slug === command.slug)) {
+        throw new ApiError(404, "NOT_FOUND", "Billing product was not found");
+      }
+      const payload = await callAuthEndpoint({
+        auth: input.auth,
+        baseUrl: input.authBaseUrl,
+        path: "/api/auth/checkout",
+        method: "POST",
+        headers: context.request.headers,
+        body: {
+          slug: command.slug,
+          ...(scope.type === "organization" ? { referenceId: scope.id } : {}),
+          redirect: false,
+        },
+      });
+      return parseProviderRedirect(payload);
+    },
+    { parse: "none" },
+  );
 
-  routes.post("/billing/portal", async (context) => {
-    if (!input.billing.config.polar.enabled) {
-      throw new ApiError(503, "BILLING_DISABLED", "Polar customer portal is disabled");
-    }
-    await requireSession(input.auth, context.req.raw.headers);
-    parseRequest(
-      billingPortalRequestSchema,
-      await parseOptionalJsonBody(context),
-      "Portal request is invalid",
-    );
-    const payload = await callAuthEndpoint({
-      auth: input.auth,
-      baseUrl: input.authBaseUrl,
-      // Polar's Better Auth portal is customer-scoped, including after an
-      // organization referenceId checkout. It must not be treated as an
-      // organization-wide billing administrator portal.
-      path: "/api/auth/customer/portal",
-      method: "POST",
-      headers: context.req.raw.headers,
-      body: { redirect: false },
-    });
-    return context.json(parseProviderRedirect(payload));
-  });
+  routes.post(
+    "/v1/billing/portal",
+    async (context) => {
+      if (!input.billing.config.polar.enabled) {
+        throw new ApiError(503, "BILLING_DISABLED", "Polar customer portal is disabled");
+      }
+      await requireSession(input.auth, context.request.headers);
+      parseRequest(
+        billingPortalRequestSchema,
+        await parseOptionalJsonBody(context.request),
+        "Portal request is invalid",
+      );
+      const payload = await callAuthEndpoint({
+        auth: input.auth,
+        baseUrl: input.authBaseUrl,
+        // Polar's Better Auth portal is customer-scoped, including after an
+        // organization referenceId checkout. It must not be treated as an
+        // organization-wide billing administrator portal.
+        path: "/api/auth/customer/portal",
+        method: "POST",
+        headers: context.request.headers,
+        body: { redirect: false },
+      });
+      return parseProviderRedirect(payload);
+    },
+    { parse: "none" },
+  );
 
-  routes.post("/webhooks/revenuecat", async (context) => {
-    const rawBody = await context.req.text();
-    const result = await input.billing.processRevenueCatWebhook({
-      authorization: context.req.header("authorization") ?? null,
-      signature: context.req.header("x-revenuecat-webhook-signature") ?? null,
-      rawBody,
-    });
-    return context.json({ received: true as const, ...result });
-  });
+  routes.post(
+    "/v1/webhooks/revenuecat",
+    async (context) => {
+      const rawBody = await context.request.text();
+      const result = await input.billing.processRevenueCatWebhook({
+        authorization: context.request.headers.get("authorization") ?? null,
+        signature: context.request.headers.get("x-revenuecat-webhook-signature") ?? null,
+        rawBody,
+      });
+      return { received: true as const, ...result };
+    },
+    { parse: "none" },
+  );
 
+  routes.get("/v1", () => ({ data: { version: "v1" as const, service: "pisto-api" as const } }));
+  routes.use(productRoutes({ access: input.access, product: input.product }));
+  routes.use(catalogRoutes({ access: input.access, catalog: input.catalog }));
+  routes.use(cashRoutes({ access: input.access, cash: input.cash }));
+  routes.use(receivablesRoutes({ access: input.access, receivables: input.receivables }));
+  routes.use(reportsRoutes({ access: input.access, reports: input.reports }));
   return routes;
 }

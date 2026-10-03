@@ -12,9 +12,9 @@ should update the affected guide and references. Accepted target architecture is
 | --- | --- | --- |
 | [0001](0001-bun-typescript-monorepo.md) | Accepted | Bun and TypeScript workspace with explicit package boundaries |
 | [0002](0002-expo-router-universal-client.md) | Accepted | Expo SDK 57 and Expo Router for Android, iOS, and web |
-| [0003](0003-hono-bun-api.md) | Accepted | Hono API on Bun with transport-neutral contracts |
+| [0003](0003-hono-bun-api.md) | Superseded by 0019 | Original Hono API on Bun with transport-neutral contracts |
 | [0004](0004-postgresql-drizzle-migrations.md) | Accepted | PostgreSQL 18 and reviewed Drizzle migrations |
-| [0005](0005-better-auth.md) | Accepted | Centralized Better Auth with Hono and Expo adapters |
+| [0005](0005-better-auth.md) | Accepted; HTTP adapter updated by 0019 | Centralized Better Auth with API and Expo adapters |
 | [0006](0006-split-billing-channels.md) | Accepted | Polar web billing and RevenueCat/native store billing |
 | [0007](0007-provider-neutral-entitlements.md) | Accepted | Provider-neutral paid-access model; product routes are not yet entitlement-gated |
 | [0009](0009-provider-neutral-ai-assistant.md) | Accepted target; not implemented | Provider-neutral AI orchestration with deterministic business tools |
@@ -25,8 +25,9 @@ should update the affected guide and references. Accepted target architecture is
 | [0014](0014-static-current-operation-permissions.md) | Accepted | Static Pisto permissions authorize current business and sales operations |
 | [0015](0015-business-owned-currency-and-money-snapshots.md) | Accepted | Business-owned currency and immutable money snapshots prevent global defaults and history rewrites |
 | [0016](0016-owner-ports-for-cross-capability-transactions.md) | Accepted | Narrow owner ports keep cross-capability financial writes atomic without hiding ownership |
-| [0017](0017-portable-postgres-and-hosting.md) | Accepted, revised | Local Expo, Bun/Hono, and PostgreSQL; future hosting remains undecided |
+| [0017](0017-portable-postgres-and-hosting.md) | Accepted, revised; HTTP adapter updated by 0019 | Local Expo, Bun API, and PostgreSQL; future hosting remains undecided |
 | [0018](0018-durable-sale-review.md) | Accepted | Server-owned recovery for reviewed new sales without client-side financial storage |
+| [0019](0019-elysia-http-composition.md) | Accepted | Elysia HTTP composition with existing REST and Zod contracts |
 
 ## Status values
 

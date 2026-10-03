@@ -1,7 +1,7 @@
 # Inactive deployment reference
 
 This directory is not Pisto's active runtime or a selected hosting architecture. Development uses
-local Expo, Bun/Hono and PostgreSQL under
+local Expo, Bun/Elysia and PostgreSQL under
 [ADR 0017](../../docs/adrs/0017-portable-postgres-and-hosting.md). Do not run deployment commands or
 provision resources from these files without a separate approved hosting task.
 

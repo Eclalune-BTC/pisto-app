@@ -14,7 +14,7 @@ marketing/content has materially different SEO, CMS, server-rendering, content-d
 needs; do not force the product client to become a general content site or add a second frontend
 without that requirement. See [the public website boundary](local-runtime.md#public-website-boundary).
 
-The client runs locally with Expo and the local Bun/Hono API. Its portable web export is a
+The client runs locally with Expo and the local Bun/Elysia API. Its portable web export is a
 single-page application (`web.output: single`); an export is not a publication. A future static host
 would need deep-link routing through Expo Router and correct asset responses, but no hosting provider
 or provider-specific runtime adapter is selected or required. See
@@ -391,7 +391,7 @@ Shared controls are built from `View`, `Text`, `Pressable` and `TextInput` from 
 feature screens compose those controls instead of recreating inputs and actions. On Android and
 iOS they render through React Native's native view implementation. On web,
 React Native Web supplies the browser implementation. This is not a website embedded in a WebView.
-Expo Router owns routes, and all three clients call the same Hono API; PostgreSQL and the server
+Expo Router owns routes, and all three clients call the same Elysia API; PostgreSQL and the server
 packages do not run on the phone.
 
 Uniwind's Metro integration processes Tailwind utilities and supplies native style values for

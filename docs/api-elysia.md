@@ -1,8 +1,8 @@
-# API and Hono
+# API and Elysia
 
 ## Responsibility
 
-`@pisto/api` is the HTTP composition root. It creates the Hono application, registers cross-cutting
+`@pisto/api` is the HTTP composition root. It creates the Elysia application, registers cross-cutting
 middleware, mounts Better Auth, validates public contracts, calls domain/repository functions, and
 maps expected failures to stable error envelopes. Business logic belongs in its owning package.
 
@@ -82,26 +82,30 @@ The baseline surface is:
 The implementation and `@pisto/contracts` are definitive. Update this table in the same change as a
 route addition or removal.
 
-All Better Auth organization routes are denied at the Hono edge except
+All Better Auth organization routes are denied at the Elysia edge except
 `POST /api/auth/organization/set-active`. Pisto owns business onboarding and does not expose raw
 organization, invitation, member, role, or team mutations.
 
 ## Request pipeline
 
-Recommended order:
+The implemented order is:
 
 1. request ID generation or validation;
-2. structured request logging with redaction;
-3. secure response headers;
-4. exact CORS policy, including credentials only for approved origins;
-5. request/body limits plus JSON and exact-Origin checks for unsafe `/v1` methods;
-6. Better Auth raw request handler for `/api/auth/*`;
-7. session guard for protected `/v1/*` routes;
-8. Zod contract validation;
-9. handler and domain call;
-10. centralized error normalization.
+2. exact credentialed CORS and application-owned security headers;
+3. bounded body buffering plus JSON and exact-Origin checks for unsafe `/v1` methods;
+4. raw Better Auth dispatch or the appropriate session policy;
+5. one business actor resolution and PostgreSQL request budget before parsing domain commands;
+6. identifier, JSON and shared Zod contract validation;
+7. handler and repository authorization/domain call;
+8. centralized error normalization and response security headers;
+9. structured completion logging using route patterns, including routed OPTIONS preflights.
 
-Hono CORS must run before affected routes. When credentials are allowed, never use `*`; use the
+`request-policy.ts` owns the response headers and byte limit; these are not framework defaults.
+Preflights bypass body and session gates. Better Auth and RevenueCat routes use `parse: "none"`:
+the bounded request buffer preserves payload bytes without automatic JSON parsing, including
+whitespace used by signature verifiers. This is bounded buffering, not unbuffered upload streaming.
+
+Elysia CORS must run before affected routes. When credentials are allowed, never use `*`; use the
 exact configured origin and keep it synchronized with Better Auth `trustedOrigins`. In production,
 configured CORS origins must use HTTPS and cannot use localhost, loopback, reserved TLDs, or the
 example domains.
@@ -140,7 +144,7 @@ messages are not copied into logs or responses.
   arbitrary provider IDs.
 - Checkout and portal endpoints return a URL to the client; the server does not perform an implicit
   redirect. This keeps redirect handling explicit across web and native clients.
-- The Hono edge returns `404` for direct `/api/auth/checkout`, checkout subpaths, and
+- The Elysia edge returns `404` for direct `/api/auth/checkout`, checkout subpaths, and
   `/api/auth/customer` paths. The authenticated `/v1` wrappers invoke the provider adapter
   internally only after catalog and active-scope checks. The signed `/api/auth/polar/webhooks`
   endpoint remains externally reachable.
@@ -151,6 +155,18 @@ messages are not copied into logs or responses.
   before parsing/trusting, and deduplicate before applying state.
 
 ## Validation and errors
+
+Routes declare `body` and `query` schemas through the Standard Schema `contract()` adapter. It keeps
+the existing Zod messages, flattened details and HTTP 400 responses instead of exposing Elysia's
+submitted-value diagnostics. `protectedRoutes()` supplies the request actor and compatibility macros:
+catalog/inventory queries keep the last duplicate value, cash/expenses keep the first, and selected
+sales/customer/receivable/report filters ignore unrelated keys. Values remain scalar strings.
+The `record` macro rejects malformed identifiers as 404 before parsing a command body. Commands
+without record parameters explicitly select JSON parsing so absent bodies still produce BAD_REQUEST.
+
+The pinned baseline is Elysia 1.4.30 with `@elysiajs/cors@1.4.2`; current upstream pages can show
+Elysia 2 beta APIs such as `@elysia/cors`. Use [ADR 0019](adrs/0019-elysia-http-composition.md),
+the exact installed source and the API regression tests when applying version-sensitive examples.
 
 - Validate params, query, headers, and body at the route boundary.
 - Reject unknown fields on mutation contracts where ambiguity is unsafe.
@@ -173,11 +189,11 @@ not hold request/user state.
 
 ## Official sources
 
-- [Hono getting started](https://hono.dev/docs/getting-started/basic)
-- [Hono Bun adapter](https://hono.dev/docs/getting-started/bun)
-- [Hono CORS middleware](https://hono.dev/docs/middleware/builtin/cors)
-- [Hono secure headers](https://hono.dev/docs/middleware/builtin/secure-headers)
+- [Elysia getting started](https://elysiajs.com/quick-start)
+- [Elysia 1.4.30 release](https://github.com/elysiajs/elysia/releases/tag/1.4.30)
+- [Elysia CORS middleware](https://elysiajs.com/plugins/cors)
+- [OWASP security headers](https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html)
 - [OWASP CSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
 - [RFC 9111 `no-store`](https://www.rfc-editor.org/rfc/rfc9111.html#name-no-store)
-- [Hono validation](https://hono.dev/docs/guides/validation)
-- [Better Auth Hono integration](https://better-auth.com/docs/integrations/hono)
+- [Elysia validation](https://elysiajs.com/essential/validation)
+- [Better Auth Elysia integration](https://elysiajs.com/integrations/better-auth)

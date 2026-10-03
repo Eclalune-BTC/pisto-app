@@ -2,10 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
 import type { ReceivablesRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
-import { Hono } from "hono";
-import { normalizeError } from "../src/errors.ts";
 import { receivablesRoutes } from "../src/routes/receivables.ts";
-import type { AppEnv } from "../src/types.ts";
+import { testAccess, testClient, testErrorBoundary } from "./http-client.ts";
 
 const customerId = "8f07cf88-4fee-4c54-9ce8-49823d12af68";
 const receivableId = "06a0a76b-5fa7-4687-8086-8525c90d59d7";
@@ -27,22 +25,14 @@ function createTestApp(repository: Partial<ReceivablesRepository>, authenticated
           : null,
     },
   } as unknown as Auth;
-  const app = new Hono<AppEnv>();
-  app.route("/v1", receivablesRoutes({ auth, receivables: repository as ReceivablesRepository }));
-  app.onError((error, context) => {
-    const { apiError } = normalizeError(error);
-    return context.json(
-      {
-        error: {
-          code: apiError.code,
-          message: apiError.message,
-          requestId: "request_test",
-        },
-      },
-      apiError.status,
-    );
-  });
-  return app;
+  return testClient(
+    testErrorBoundary().use(
+      receivablesRoutes({
+        access: testAccess(auth),
+        receivables: repository as ReceivablesRepository,
+      }),
+    ),
+  );
 }
 
 describe("customers and receivables routes", () => {

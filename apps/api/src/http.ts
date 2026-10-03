@@ -3,23 +3,16 @@ import { z } from "zod";
 
 import { ApiError } from "./errors.ts";
 
-type JsonBodyContext = {
-  req: {
-    json: () => Promise<unknown>;
-    text: () => Promise<string>;
-  };
-};
-
-export async function parseJsonBody(context: JsonBodyContext): Promise<unknown> {
+export async function parseJsonBody(request: Request): Promise<unknown> {
   try {
-    return await context.req.json();
+    return await request.json();
   } catch {
     throw new ApiError(400, "BAD_REQUEST", "Request body must be valid JSON");
   }
 }
 
-export async function parseOptionalJsonBody(context: JsonBodyContext): Promise<unknown> {
-  const rawBody = await context.req.text();
+export async function parseOptionalJsonBody(request: Request): Promise<unknown> {
+  const rawBody = await request.text();
   if (!rawBody.trim()) return {};
   try {
     return JSON.parse(rawBody) as unknown;
@@ -39,6 +32,18 @@ export function parseRequest<Schema extends z.ZodType>(
     throw new ApiError(400, "VALIDATION_ERROR", message, parsed.error.flatten());
   }
   return parsed.data;
+}
+
+/** Keep public Zod errors private and stable while Elysia owns route validation. */
+export function contract<Schema extends z.ZodType>(schema: Schema, message: string) {
+  return {
+    "~standard": {
+      ...schema["~standard"],
+      validate(value: unknown) {
+        return { value: parseRequest(schema, value, message) };
+      },
+    },
+  };
 }
 
 const recordIdSchema = z.string().uuid();

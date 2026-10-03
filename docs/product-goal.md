@@ -12,7 +12,7 @@ status; [product requirements](product-requirements.md) own acceptance and remai
 
 ## Current foundation
 
-The universal Expo client uses React Native components, Tailwind and free Uniwind. Hono on Bun owns
+The universal Expo client uses React Native components, Tailwind and free Uniwind. Elysia on Bun owns
 HTTP composition; shared contracts, PostgreSQL/Drizzle, Better Auth and billing retain separate owners.
 See [architecture](architecture.md) and [the frontend guide](frontend-expo-ui.md).
 
@@ -36,7 +36,7 @@ follows proven text behavior and a separate bounded brief; it does not create an
 
 ## Runtime and delivery boundary
 
-Development uses local Expo, Bun/Hono and PostgreSQL 18. Source may be committed and synchronized
+Development uses local Expo, Bun/Elysia and PostgreSQL 18. Source may be committed and synchronized
 with the authorized GitHub repository; that is not a hosted deployment. Hosting, provider activation
 and store submission require separate approval under
 [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).

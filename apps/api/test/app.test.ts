@@ -8,8 +8,8 @@ import type {
   ReportsRepository,
 } from "@pisto/db";
 import { type DatabaseHandle, ProductError, type ProductRepository } from "@pisto/db";
-
 import { createApp } from "../src/app.ts";
+import { testClient } from "./http-client.ts";
 
 function unavailableRepository<T extends object>(name: string, onCall?: () => void): T {
   return new Proxy({} as T, {
@@ -28,31 +28,38 @@ function testApp(
     product?: ProductRepository;
     onRepositoryCall?: () => void;
     readCustomerState?: BillingRuntime["readCustomerState"];
+    onSessionRead?: () => void;
+    authHandler?: Auth["handler"];
+    processRevenueCatWebhook?: BillingRuntime["processRevenueCatWebhook"];
+    requestBodyLimitBytes?: number;
   } = {},
 ) {
   const auth = {
-    handler: async (request: Request) => {
-      const path = new URL(request.url).pathname;
-      if (path === "/api/auth/customer/portal") {
-        return Response.json({
-          url: "https://polar.example.test/customer-portal",
-          redirect: true,
-        });
-      }
-      if (path.startsWith("/api/auth/checkout") || path.startsWith("/api/auth/customer")) {
-        return Response.json({ adapterRouteReached: true });
-      }
-      if (path === "/api/auth/polar/webhooks") {
-        return Response.json({ adapterRouteReached: true }, { status: 202 });
-      }
-      if (path === "/api/auth/organization/set-active") {
-        return Response.json({ organizationSelectorReached: true });
-      }
-      return new Response(null, { status: 404 });
-    },
+    handler:
+      options.authHandler ??
+      (async (request: Request) => {
+        const path = new URL(request.url).pathname;
+        if (path === "/api/auth/customer/portal") {
+          return Response.json({
+            url: "https://polar.example.test/customer-portal",
+            redirect: true,
+          });
+        }
+        if (path.startsWith("/api/auth/checkout") || path.startsWith("/api/auth/customer")) {
+          return Response.json({ adapterRouteReached: true });
+        }
+        if (path === "/api/auth/polar/webhooks") {
+          return Response.json({ adapterRouteReached: true }, { status: 202 });
+        }
+        if (path === "/api/auth/organization/set-active") {
+          return Response.json({ organizationSelectorReached: true });
+        }
+        return new Response(null, { status: 404 });
+      }),
     api: {
-      getSession: async () =>
-        options.authenticated
+      getSession: async () => {
+        options.onSessionRead?.();
+        return options.authenticated
           ? {
               user: {
                 id: "user_test",
@@ -67,7 +74,8 @@ function testApp(
                 activeOrganizationId: options.activeBusinessId ?? null,
               },
             }
-          : null,
+          : null;
+      },
     },
   } as unknown as Auth;
   const billing = {
@@ -78,9 +86,11 @@ function testApp(
     catalog: [],
     listEntitlements: async () => [],
     readCustomerState: options.readCustomerState ?? (async () => ({ activeSubscriptions: [] })),
-    processRevenueCatWebhook: async () => {
-      throw new Error("RevenueCat is disabled");
-    },
+    processRevenueCatWebhook:
+      options.processRevenueCatWebhook ??
+      (async () => {
+        throw new Error("RevenueCat is disabled");
+      }),
     polar: { client: null, plugin: null, processWebhook: null },
   } as unknown as BillingRuntime;
   const database = {
@@ -128,38 +138,193 @@ function testApp(
           },
         } satisfies ProductRepository));
 
-  return createApp({
-    config: {
-      host: "127.0.0.1",
-      port: 3001,
-      corsOrigins: ["https://app.example.test"],
-      requestBodyLimitBytes: 1_048_576,
-      production: false,
-      productWritesEnabled: true,
-      productReadLimit: 300,
-      productWriteLimit: 60,
-    },
-    authConfig: { baseUrl: "https://api.example.test" },
-    auth,
-    consumeProductRequest: async () => ({ allowed: true, retryAfterSeconds: 60 }),
-    billing,
-    cash: unavailableRepository<CashRepository>("Cash repository", options.onRepositoryCall),
-    catalog: unavailableRepository<CatalogRepository>(
-      "Catalog repository",
-      options.onRepositoryCall,
-    ),
-    database,
-    product,
-    receivables: unavailableRepository<ReceivablesRepository>(
-      "Receivables repository",
-      options.onRepositoryCall,
-    ),
-    reports: unavailableRepository<ReportsRepository>(
-      "Reports repository",
-      options.onRepositoryCall,
-    ),
-  });
+  return testClient(
+    createApp({
+      config: {
+        host: "127.0.0.1",
+        port: 3001,
+        corsOrigins: ["https://app.example.test"],
+        requestBodyLimitBytes: options.requestBodyLimitBytes ?? 1_048_576,
+        production: false,
+        productWritesEnabled: true,
+        productReadLimit: 300,
+        productWriteLimit: 60,
+      },
+      authConfig: { baseUrl: "https://api.example.test" },
+      auth,
+      consumeProductRequest: async () => ({ allowed: true, retryAfterSeconds: 60 }),
+      billing,
+      cash: unavailableRepository<CashRepository>("Cash repository", options.onRepositoryCall),
+      catalog: unavailableRepository<CatalogRepository>(
+        "Catalog repository",
+        options.onRepositoryCall,
+      ),
+      database,
+      product,
+      receivables: unavailableRepository<ReceivablesRepository>(
+        "Receivables repository",
+        options.onRepositoryCall,
+      ),
+      reports: unavailableRepository<ReportsRepository>(
+        "Reports repository",
+        options.onRepositoryCall,
+      ),
+    }),
+  );
 }
+
+describe("HTTP framework compatibility", () => {
+  test("resolves a fresh actor once per request, including HEAD", async () => {
+    let sessions = 0;
+    const app = testApp({ authenticated: true, onSessionRead: () => sessions++ });
+    expect((await app.request("/v1/businesses")).status).toBe(200);
+    const head = await app.request("/v1/businesses", { method: "HEAD" });
+    expect(head.status).toBe(200);
+    expect(await head.text()).toBe("");
+    expect(sessions).toBe(2);
+    const denied = await testApp().request("/v1/businesses", { method: "HEAD" });
+    expect(denied.status).toBe(401);
+    expect(await denied.text()).toBe("");
+  });
+
+  test("preserves auth, identifier, JSON and contract failure precedence", async () => {
+    const headers = { "content-type": "application/json" };
+    const anonymous = await testApp().request("/v1/sales", { method: "POST", headers, body: "{" });
+    expect(anonymous.status).toBe(401);
+    const app = testApp({ authenticated: true });
+    const hidden = await app.request("/v1/sales/not-a-uuid/void", {
+      method: "POST",
+      headers,
+      body: "{",
+    });
+    expect(hidden.status).toBe(404);
+    for (const body of [undefined, "", "{"]) {
+      const response = await app.request("/v1/sales", { method: "POST", headers, body });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        error: { code: "BAD_REQUEST", message: "Request body must be valid JSON" },
+      });
+    }
+    const invalid = await app.request("/v1/sales", {
+      method: "POST",
+      headers,
+      body: '{"amountMinorUnits":"private-invalid-value"}',
+    });
+    expect(invalid.status).toBe(400);
+    const payload = await invalid.json();
+    expect(payload).toMatchObject({
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Sale confirmation is invalid",
+        details: { fieldErrors: expect.any(Object) },
+      },
+    });
+    expect(JSON.stringify(payload)).not.toContain("private-invalid-value");
+  });
+
+  test("bounds streams without Content-Length and retains security headers on errors", async () => {
+    let authCalls = 0;
+    const app = testApp({
+      requestBodyLimitBytes: 8,
+      authHandler: async () => {
+        authCalls++;
+        return new Response(null, { status: 202 });
+      },
+    });
+    for (const [size, expected] of [
+      [8, 202],
+      [9, 413],
+    ] as const) {
+      const response = await app.request("/api/auth/polar/webhooks", {
+        method: "POST",
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new Uint8Array(size));
+            controller.close();
+          },
+        }),
+      });
+      expect(response.status).toBe(expected);
+      expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(response.headers.get("x-request-id")).toBeTruthy();
+    }
+    expect(authCalls).toBe(1);
+  });
+
+  test("preserves raw provider bodies, multiple cookies and response policy", async () => {
+    const raw = ' { "event": "raw", "text": "café" }\n';
+    let webhookInput: unknown;
+    const app = testApp({
+      authHandler: async (request) => {
+        expect(await request.text()).toBe(raw);
+        const headers = new Headers({ "x-frame-options": "ALLOWALL", "x-powered-by": "provider" });
+        headers.append("set-cookie", "first=1; HttpOnly; Path=/");
+        headers.append("set-cookie", "second=2; HttpOnly; Path=/");
+        return new Response(null, { status: 202, headers });
+      },
+      processRevenueCatWebhook: async (input) => {
+        webhookInput = input;
+        return { duplicate: false, projected: false };
+      },
+    });
+    const headers = {
+      "content-type": "application/json",
+      authorization: "Bearer fixture",
+      "x-revenuecat-webhook-signature": "fixture-signature",
+    };
+    const auth = await app.request("/api/auth/polar/webhooks", {
+      method: "POST",
+      headers,
+      body: raw,
+    });
+    expect(auth.status).toBe(202);
+    expect(auth.headers.getSetCookie()).toEqual([
+      "first=1; HttpOnly; Path=/",
+      "second=2; HttpOnly; Path=/",
+    ]);
+    expect(auth.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+    expect(auth.headers.has("x-powered-by")).toBe(false);
+    const webhook = await app.request("/v1/webhooks/revenuecat", {
+      method: "POST",
+      headers,
+      body: raw,
+    });
+    expect(webhook.status).toBe(200);
+    expect(webhookInput).toEqual({
+      authorization: "Bearer fixture",
+      signature: "fixture-signature",
+      rawBody: raw,
+    });
+  });
+
+  test("keeps strict paths and logs preflight without requiring a session", async () => {
+    let sessions = 0;
+    const app = testApp({ authenticated: true, onSessionRead: () => sessions++ });
+    expect((await app.request("/health/")).status).toBe(404);
+    expect((await app.request("/v1")).status).toBe(200);
+    expect((await app.request("/v1/")).status).toBe(200);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    const output = spyOn(console, "info").mockImplementation(() => undefined);
+    try {
+      const response = await app.request("/v1/private-record", {
+        method: "OPTIONS",
+        headers: { origin: "https://app.example.test", "access-control-request-method": "PATCH" },
+      });
+      expect(response.status).toBe(204);
+      expect(response.headers.get("access-control-allow-origin")).toBe("https://app.example.test");
+      expect(response.headers.get("access-control-max-age")).toBe("600");
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(sessions).toBe(0);
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      const logs = output.mock.calls.map(([value]) => JSON.parse(String(value)));
+      expect(logs).toHaveLength(1);
+      expect(logs[0]).toMatchObject({ method: "OPTIONS", status: 204, path: "/*" });
+      expect(JSON.stringify(logs)).not.toContain("private-record");
+    } finally {
+      output.mockRestore();
+    }
+  });
+});
 
 describe("Pisto API", () => {
   test("returns liveness without touching the database", async () => {
@@ -280,7 +445,7 @@ describe("Pisto API", () => {
   test("does not expose provider billing routes through the auth catch-all", async () => {
     const app = testApp({ authenticated: true, polarEnabled: true });
     // The fake handler deliberately returns 200 for every guarded provider
-    // path. A 404 therefore proves that Hono stopped the request at the edge.
+    // path. A 404 therefore proves that the API stopped the request at the edge.
     const checkout = await app.request("/api/auth/checkout", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -534,9 +699,8 @@ describe("Pisto API", () => {
     expect(await response.json()).toMatchObject({ error: { code: "FORBIDDEN" } });
   });
 
-  // Session resolution moved into one requireActor call per handler. This
-  // enumerates the mounted domain surface so a handler that ever loses that call
-  // fails here instead of serving an anonymous request.
+  // Enumerate the mounted domain surface so a route that loses its shared
+  // session policy fails here instead of serving an anonymous request.
   const jsonBody = { "content-type": "application/json" };
   const recordId = "11111111-1111-4111-8111-111111111111";
   const protectedRoutes: ReadonlyArray<readonly [string, string]> = [

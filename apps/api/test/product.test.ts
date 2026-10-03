@@ -3,10 +3,8 @@ import type { Auth } from "@pisto/auth";
 import type { SaleList } from "@pisto/contracts";
 import type { ProductRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
-import { Hono } from "hono";
-import { normalizeError } from "../src/errors.ts";
 import { productRoutes } from "../src/routes/product.ts";
-import type { AppEnv } from "../src/types.ts";
+import { testAccess, testClient, testErrorBoundary } from "./http-client.ts";
 
 const emptyPage: SaleList = {
   items: [],
@@ -30,18 +28,11 @@ function createTestApp(repository: Partial<ProductRepository>, authenticated = t
           : null,
     },
   } as unknown as Auth;
-  const app = new Hono<AppEnv>();
-  app.route("/v1", productRoutes({ auth, product: repository as ProductRepository }));
-  app.onError((error, context) => {
-    const { apiError } = normalizeError(error);
-    return context.json(
-      {
-        error: { code: apiError.code, message: apiError.message, requestId: "request_test" },
-      },
-      apiError.status,
-    );
-  });
-  return app;
+  return testClient(
+    testErrorBoundary().use(
+      productRoutes({ access: testAccess(auth), product: repository as ProductRepository }),
+    ),
+  );
 }
 
 describe("sales list route", () => {

@@ -9,12 +9,41 @@ no hosted or store release is established by the checks below.
 
 ## Current runtime
 
-The configured desktop workspace uses Expo web on `localhost:8090`, Bun/Hono on `localhost:3015`
+The configured desktop workspace uses Expo web on `localhost:8090`, Bun/Elysia on `localhost:3015`
 and PostgreSQL 18 on `localhost:55438`, database `pisto`, Compose project `pisto-audit`. Server and
 client configuration stay in ignored environment files. Billing is disabled. These are configured
 targets, not a statement that every process is currently running.
 
 ## Validation
+
+### Elysia HTTP composition, 2026-10-03
+
+The API now uses Elysia 1.4.30, CORS 1.4.2 and the required TypeBox 0.34.52 runtime peer under
+[ADR 0019](adrs/0019-elysia-http-composition.md). Hono was removed from the manifest and lockfile.
+Shared Zod contracts, repository authorization, the Expo REST client and database schema remain intact.
+
+- `bun run check` passed: 757 tests across the CLI and workspaces, including 79 API tests, types,
+  documentation and builds. Unchanged Turbo tasks reused validated local cache entries.
+- `bun run doctor`, `db:check` and `auth:schema:check` passed. PostgreSQL 18 integration passed
+  59 database and 14 billing tests in a disposable database, separate from the owner's local data.
+- The final portable Docker image built with Bun 1.4.0, replayed bundled migrations, served
+  health/readiness, denied anonymous requests, handled HEAD/OPTIONS and exited zero on SIGTERM.
+  Its local image ID was `sha256:6e098fe51fe4218e098120091bb2257cf6adb8ae936b422610436195418f5aef`.
+- The isolated container's 23-request smoke passed real Better Auth sign-up/session/sign-out,
+  business creation, idempotent sale creation, history, reporting and voiding. Test containers,
+  their database volume and network were removed afterward; the owner's runtime was preserved.
+- Independent read-only review and real-listener probes verified raw provider bytes, multiple
+  cookies, security headers, early authentication, stream limits, identifier/JSON error precedence,
+  scalar/duplicate query semantics, request actor isolation and safe preflight logging.
+- Fifty-two repeated per-handler actor calls were removed. Counting all TypeScript source in
+  `apps/api/src` against the pre-migration revision, line count changed from 1,740 to 1,846 (+106):
+  compatibility and explicit security policies offset route simplification. No total-size or
+  throughput improvement is claimed.
+- Elysia 2.0.0-beta.21 was separately probed with seven compatibility checks; it is not the installed
+  application framework. The stable baseline remains intentional.
+- `audit:ci` still fails on five existing Expo/toolchain advisories, documented in
+  [Security](security.md#dependency-audit-snapshot). No new exception was added. This is local
+  implementation/build evidence, not hosted deployment, native acceptance or production release.
 
 ### RNR composition and spacing follow-up, 2026-09-27
 

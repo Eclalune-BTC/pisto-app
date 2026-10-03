@@ -1,4 +1,3 @@
-import type { Auth } from "@pisto/auth";
 import {
   createBusinessRequestSchema,
   createSaleRequestSchema,
@@ -9,139 +8,143 @@ import {
   voidSaleRequestSchema,
 } from "@pisto/contracts";
 import type { ProductRepository } from "@pisto/db";
-import { Hono } from "hono";
-
-import { commandStatus, parseJsonBody, parseRequest, requireRecordId } from "../http.ts";
-import { requireActor } from "../session.ts";
-import type { AppEnv } from "../types.ts";
 
 const saleNotFound = "Sale was not found";
 
-export function productRoutes(input: { auth: Auth; product: ProductRepository }) {
-  const routes = new Hono<AppEnv>();
+import { commandStatus, contract } from "../http.ts";
+import type { ProductAccess } from "../middleware/product-access.ts";
+import { protectedRoutes } from "./protected.ts";
 
-  routes.get("/businesses", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    return context.json({ data: await input.product.listBusinesses(actor) });
+export function productRoutes(input: { access: ProductAccess; product: ProductRepository }) {
+  const routes = protectedRoutes(input.access);
+  routes.get("/businesses", async ({ actor }) => {
+    return { data: await input.product.listBusinesses(actor) };
   });
 
-  routes.post("/businesses", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const command = parseRequest(
-      createBusinessRequestSchema,
-      await parseJsonBody(context),
-      "Business settings are invalid",
-    );
-    const result = await input.product.createBusiness(actor, command);
-    return context.json({ data: result }, commandStatus(result));
+  routes.post(
+    "/businesses",
+    async ({ actor, body, set }) => {
+      const result = await input.product.createBusiness(actor, body);
+      set.status = commandStatus(result);
+      return { data: result };
+    },
+    {
+      parse: "json",
+      body: contract(createBusinessRequestSchema, "Business settings are invalid"),
+    },
+  );
+
+  routes.get(
+    "/sales",
+    async ({ actor, query }) => {
+      return { data: await input.product.listSales(actor, query) };
+    },
+    {
+      query: contract(saleListQuerySchema, "Sale list filters are invalid"),
+      queryPolicy: ["cursor", "limit", "status"],
+    },
+  );
+
+  routes.post(
+    "/sales",
+    async ({ actor, body, set }) => {
+      const result = await input.product.createSale(actor, body);
+      set.status = commandStatus(result);
+      return { data: result };
+    },
+    {
+      parse: "json",
+      body: contract(createSaleRequestSchema, "Sale confirmation is invalid"),
+    },
+  );
+
+  routes.get("/sales/review", async ({ actor }) => {
+    return { data: { review: await input.product.getSaleReview(actor) } };
   });
 
-  routes.get("/sales", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    // The list contract is strict, so only the filters it owns are forwarded.
-    // Passing the whole query record would turn an unrelated tracking parameter
-    // into a 400 the clients do not expect.
-    const query = parseRequest(
-      saleListQuerySchema,
-      {
-        cursor: context.req.query("cursor"),
-        limit: context.req.query("limit"),
-        status: context.req.query("status"),
-      },
-      "Sale list filters are invalid",
-    );
-    return context.json({ data: await input.product.listSales(actor, query) });
-  });
+  routes.post(
+    "/sales/review",
+    async ({ actor, body }) => {
+      return {
+        data: { review: await input.product.prepareSaleReview(actor, body) },
+      };
+    },
+    {
+      parse: "json",
+      body: contract(createSaleRequestSchema, "Sale review is invalid"),
+    },
+  );
 
-  routes.post("/sales", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const command = parseRequest(
-      createSaleRequestSchema,
-      await parseJsonBody(context),
-      "Sale confirmation is invalid",
-    );
-    const result = await input.product.createSale(actor, command);
-    return context.json({ data: result }, commandStatus(result));
-  });
+  routes.post(
+    "/sales/review/:reviewId/confirm",
+    async ({ actor, params, set }) => {
+      const result = await input.product.confirmSaleReview(actor, params.reviewId);
+      set.status = commandStatus(result);
+      return { data: result };
+    },
+    {
+      body: contract(saleReviewActionRequestSchema, "Sale review action is invalid"),
+      record: { reviewId: "Sale review was not found" },
+    },
+  );
 
-  routes.get("/sales/review", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    return context.json({ data: { review: await input.product.getSaleReview(actor) } });
-  });
+  routes.post(
+    "/sales/review/:reviewId/dismiss",
+    async ({ actor, body, params }) => {
+      return {
+        data: await input.product.dismissSaleReview(
+          actor,
+          params.reviewId,
+          body.acknowledgedSaleId,
+        ),
+      };
+    },
+    {
+      body: contract(saleReviewDismissRequestSchema, "Sale review dismissal is invalid"),
+      record: { reviewId: "Sale review was not found" },
+    },
+  );
 
-  routes.post("/sales/review", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const command = parseRequest(
-      createSaleRequestSchema,
-      await parseJsonBody(context),
-      "Sale review is invalid",
-    );
-    return context.json({
-      data: { review: await input.product.prepareSaleReview(actor, command) },
-    });
-  });
-
-  routes.post("/sales/review/:reviewId/confirm", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const reviewId = requireRecordId(context.req.param("reviewId"), "Sale review was not found");
-    parseRequest(
-      saleReviewActionRequestSchema,
-      await parseJsonBody(context),
-      "Sale review action is invalid",
-    );
-    const result = await input.product.confirmSaleReview(actor, reviewId);
-    return context.json({ data: result }, commandStatus(result));
-  });
-
-  routes.post("/sales/review/:reviewId/dismiss", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const reviewId = requireRecordId(context.req.param("reviewId"), "Sale review was not found");
-    const command = parseRequest(
-      saleReviewDismissRequestSchema,
-      await parseJsonBody(context),
-      "Sale review dismissal is invalid",
-    );
-    return context.json({
-      data: await input.product.dismissSaleReview(actor, reviewId, command.acknowledgedSaleId),
-    });
-  });
-
-  routes.get("/sales/summary/previous-month", async (context) => {
-    const actor = await requireActor(input.auth, context);
+  routes.get("/sales/summary/previous-month", async ({ actor }) => {
     const summary = await input.product.getPreviousMonthSummary(actor);
-    return context.json({ data: { summary } });
+    return { data: { summary } };
   });
 
-  routes.post("/sales/:saleId/void", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const saleId = requireRecordId(context.req.param("saleId"), saleNotFound);
-    const command = parseRequest(
-      voidSaleRequestSchema,
-      await parseJsonBody(context),
-      "Sale correction is invalid",
-    );
-    const result = await input.product.voidSale(actor, saleId, command);
-    return context.json({ data: result }, commandStatus(result));
-  });
+  routes.post(
+    "/sales/:saleId/void",
+    async ({ actor, body, params, set }) => {
+      const result = await input.product.voidSale(actor, params.saleId, body);
+      set.status = commandStatus(result);
+      return { data: result };
+    },
+    {
+      body: contract(voidSaleRequestSchema, "Sale correction is invalid"),
+      record: { saleId: saleNotFound },
+    },
+  );
 
-  routes.post("/sales/:saleId/replace", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const saleId = requireRecordId(context.req.param("saleId"), saleNotFound);
-    const command = parseRequest(
-      replaceSaleRequestSchema,
-      await parseJsonBody(context),
-      "Replacement sale is invalid",
-    );
-    const result = await input.product.replaceSale(actor, saleId, command);
-    return context.json({ data: result }, commandStatus(result));
-  });
+  routes.post(
+    "/sales/:saleId/replace",
+    async ({ actor, body, params, set }) => {
+      const result = await input.product.replaceSale(actor, params.saleId, body);
+      set.status = commandStatus(result);
+      return { data: result };
+    },
+    {
+      body: contract(replaceSaleRequestSchema, "Replacement sale is invalid"),
+      record: { saleId: saleNotFound },
+    },
+  );
 
-  routes.get("/sales/:saleId", async (context) => {
-    const actor = await requireActor(input.auth, context);
-    const saleId = requireRecordId(context.req.param("saleId"), saleNotFound);
-    const sale = await input.product.getSale(actor, saleId);
-    return context.json({ data: { sale, replayed: false as const } });
-  });
-
+  routes.get(
+    "/sales/:saleId",
+    async ({ actor, params }) => {
+      const sale = await input.product.getSale(actor, params.saleId);
+      return { data: { sale, replayed: false as const } };
+    },
+    {
+      record: { saleId: saleNotFound },
+    },
+  );
   return routes;
 }

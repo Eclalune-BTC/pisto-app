@@ -13,7 +13,7 @@ not establish the latest upstream releases or a passing current audit.
 | Expo | 57.x | Upgrade one SDK at a time with Expo tooling |
 | EAS CLI contract | `>=22.2.0` in `apps/app/eas.json` | Recheck build-profile schema and remote version behavior |
 | React Native / React / RN Web | 0.86 / 19.2.3 / 0.21 | Keep Expo-supported matrix together |
-| Hono | 4.13.5 | Exact direct dependency; review middleware/runtime changes |
+| Elysia / CORS / runtime TypeBox peer | 1.4.30 / `@elysiajs/cors` 1.4.2 / `@sinclair/typebox` 0.34.52 | Exact pins; review lifecycle/Standard Schema compatibility; Elysia 2 remains beta |
 | PostgreSQL | 18; resolve the deployed image patch explicitly | Test migrations and backups before major upgrade |
 | Drizzle ORM / Kit | 0.45.2 / 0.31.10 | Review generated SQL and release notes |
 | Better Auth / Expo adapter / `auth` CLI | 1.7.1 / 1.7.1 / 1.7.1 | Keep the synchronized release train aligned; regenerate/review auth schema |

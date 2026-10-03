@@ -10,7 +10,7 @@ The accepted target is AI SDK 7, with current APIs to be revalidated before impl
 thin server-side orchestration layer for
 streaming, typed tools, structured output, approvals, transcription, and provider adapters. The exact
 patch and first provider package are selected and pinned only after the implementation spike validates
-the current APIs against Bun, Hono, the portable API container, Expo web, iOS, and Android.
+the current APIs against Bun, Elysia, the portable API container, Expo web, iOS, and Android.
 
 PostgreSQL remains the only authoritative business datastore. The assistant calls narrow Pisto-owned
 commands and queries. It never owns accounting rules, executes arbitrary SQL, trusts generated totals,
@@ -26,7 +26,7 @@ pgvector, Neo4j, GraphRAG, or realtime voice without the evidence gates in this 
 flowchart LR
   User[Business owner]
   App[Expo web, iOS, Android]
-  API[Hono API]
+  API[Elysia API]
   Assistant[Assistant orchestration]
   Model[Configured model provider]
   Product[Sales commands and queries]
@@ -127,10 +127,11 @@ role-management, or tool-discovery capabilities to the product model.
 ## Streaming and Expo compatibility gate
 
 AI SDK documents Hono streaming and an Expo client path, but the current Hono example uses the Node
-server adapter. Before adopting the package:
+server adapter. That example does not establish compatibility with the current Elysia HTTP
+boundary. Before adopting the package:
 
 1. pin the exact AI SDK 7 and provider versions;
-2. run `streamText` through Pisto's Bun Hono server and container;
+2. run `streamText` through Pisto's Bun/Elysia server and container;
 3. validate credentials/cookies, headers, cancellation, disconnect, proxy buffering, timeouts, and
    structured errors;
 4. exercise `@ai-sdk/react` with Expo 57 web, iOS, and Android using the documented stream headers and

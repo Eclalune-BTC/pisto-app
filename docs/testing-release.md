@@ -47,7 +47,7 @@ digest/build IDs.
 | Unit | Parsers, policy, entitlement evaluation, error mapping | Bun tests without network |
 | Contract | Every success/error object matches `@pisto/contracts` | Route and schema tests |
 | Database integration | PostgreSQL constraints, transactions, migrations, repositories | Fresh PostgreSQL 18 container |
-| API integration | Hono middleware order, auth guards, CORS, errors, health | In-process Hono requests |
+| API integration | Elysia middleware order, auth guards, CORS, errors, health | In-process Elysia requests |
 | Provider adapter | Signed/authenticated webhook fixtures, catalog allowlist, disabled state | Sandbox-safe adapter tests |
 | Assistant orchestration | Tool schemas, loop bounds, approvals, denial, timeout, cancellation, duplicate continuation | AI SDK mock model; no live provider required |
 | Model semantic evaluation | Spanish extraction, clarification, tool choice, abstention, injection resistance, revenue/profit language | Versioned dataset against each pinned provider/model candidate |
@@ -110,7 +110,7 @@ assistant change cannot be promoted until it records:
    adversarial, injected, and unsupported sale/report requests;
 3. exact-field, clarification, tool-choice, abstention, revenue-versus-profit, quality, latency,
    token, cost, and failure-rate results for the pinned provider/model and prompt version;
-4. Bun/Hono/container stream and abort evidence plus compact/wide Expo web and iOS/Android evidence;
+4. Bun/Elysia/container stream and abort evidence plus compact/wide Expo web and iOS/Android evidence;
 5. cross-tenant, rate/cost-limit, telemetry-redaction, retention/deletion, and kill-switch verification;
 6. provider account data-use/retention/privacy review and exact environment configuration; and
 7. independent architecture/security review with every material finding resolved.

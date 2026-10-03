@@ -1,7 +1,7 @@
 # Pisto Stack
 
 Pisto is a business operating application for Spanish-speaking entrepreneurs, built in TypeScript
-with an Expo Router client and a Bun/Hono backend. The backend uses PostgreSQL 18 through Drizzle
+with an Expo Router client and a Bun/Elysia backend. The backend uses PostgreSQL 18 through Drizzle
 and postgres-js, Better Auth for authentication, and shared Zod request/response contracts.
 See [the backend composition](docs/architecture.md#backend-composition) for the source owners.
 
@@ -26,7 +26,7 @@ editors are outside this first recovery slice.
 
 Current [product requirements](docs/product-requirements.md), [UX requirements](docs/ux-requirements.md)
 and [data model](docs/data-model.md) describe the implemented boundaries and remaining acceptance.
-Expo, Bun/Hono and PostgreSQL 18 run locally. GitHub source synchronization is authorized; cloud
+Expo, Bun/Elysia and PostgreSQL 18 run locally. GitHub source synchronization is authorized; cloud
 provisioning, hosted deployment and store publication are separate decisions. The API container and
 Expo web artifact remain portable. See [ADR 0017](docs/adrs/0017-portable-postgres-and-hosting.md)
 and [release evidence](docs/release-evidence.md).
@@ -40,7 +40,7 @@ checks and physical-device acceptance limits are recorded in [release evidence](
 ## Repository map
 
 - apps/app: universal Expo application and platform-specific adapters
-- apps/api: Bun/Hono HTTP service
+- apps/api: Bun/Elysia HTTP service
 - packages/contracts: shared request, response, and error schemas
 - packages/db: PostgreSQL schema, migrations, and repositories
 - packages/auth: Better Auth server configuration

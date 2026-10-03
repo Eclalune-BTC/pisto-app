@@ -1,6 +1,6 @@
 # ADR 0003: Hono API on Bun
 
-- Status: Accepted
+- Status: Superseded by [ADR 0019](0019-elysia-http-composition.md)
 - Date: 2026-08-22
 - Owners: `@pisto/api`, `@pisto/contracts`
 - Supersedes: none
