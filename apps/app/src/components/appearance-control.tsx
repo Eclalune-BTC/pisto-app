@@ -1,9 +1,10 @@
 import { Laptop, Moon, Sun } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { Platform, Text, View } from "react-native";
+import { Platform, View } from "react-native";
 import { useUniwind } from "uniwind";
-
 import { Button, ButtonText } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/cn";
 import { useAppearance } from "@/providers/appearance-provider";
 
@@ -17,35 +18,57 @@ export function AppearanceControl({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
   const { theme } = useUniwind();
   const appearance = useAppearance();
+  const nextTheme = theme === "dark" ? "light" : "dark";
+  const ThemeIcon = theme === "dark" ? Sun : Moon;
+  const iconColor = theme === "dark" ? "#FAFAFA" : "#171717";
+  const switchControl = (
+    <Button
+      accessibilityLabel={t(`appearance.switchTo.${nextTheme}`)}
+      disabled={appearance.pending}
+      onPress={() => void appearance.select(nextTheme)}
+      size="icon"
+      variant="ghost"
+    >
+      <ThemeIcon color={iconColor} size={19} strokeWidth={1.75} />
+    </Button>
+  );
 
   return (
     <View className="min-w-0 max-w-full gap-2">
-      <View
-        accessibilityLabel={t("settings.appearance")}
-        className="flex-row gap-1 rounded-lg border border-border p-1"
-      >
-        {choices.map(({ value, icon: Icon }) => (
-          <Button
-            accessibilityLabel={t(`settings.themes.${value}`)}
-            accessibilityRole={Platform.OS === "web" ? "button" : "togglebutton"}
-            accessibilityState={
-              Platform.OS === "web" ? undefined : { checked: appearance.choice === value }
-            }
-            aria-pressed={Platform.OS === "web" ? appearance.choice === value : undefined}
-            className={cn(!compact && "flex-1 px-3", appearance.choice === value && "bg-muted")}
-            disabled={appearance.pending}
-            key={value}
-            onPress={() => void appearance.select(value)}
-            size={compact ? "icon" : "sm"}
-            variant="ghost"
-          >
-            <Icon color={theme === "dark" ? "#e7eee9" : "#303a34"} size={17} />
-            {!compact ? (
+      {compact ? (
+        Platform.OS === "web" ? (
+          <Tooltip>
+            <TooltipTrigger asChild>{switchControl}</TooltipTrigger>
+            <TooltipContent>
+              <Text>{t(`appearance.switchTo.${nextTheme}`)}</Text>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          switchControl
+        )
+      ) : (
+        <View accessibilityLabel={t("settings.appearance")} className="flex-row flex-wrap gap-1">
+          {choices.map(({ value, icon: Icon }) => (
+            <Button
+              accessibilityLabel={t(`settings.themes.${value}`)}
+              accessibilityRole={Platform.OS === "web" ? "button" : "togglebutton"}
+              accessibilityState={
+                Platform.OS === "web" ? undefined : { checked: appearance.choice === value }
+              }
+              aria-pressed={Platform.OS === "web" ? appearance.choice === value : undefined}
+              className={cn("px-3", appearance.choice === value && "bg-muted")}
+              disabled={appearance.pending}
+              key={value}
+              onPress={() => void appearance.select(value)}
+              size="sm"
+              variant="ghost"
+            >
+              <Icon color={iconColor} size={16} />
               <ButtonText variant="ghost">{t(`settings.themes.${value}`)}</ButtonText>
-            ) : null}
-          </Button>
-        ))}
-      </View>
+            </Button>
+          ))}
+        </View>
+      )}
       {appearance.issue ? (
         <Text accessibilityRole="alert" className="max-w-xs text-sm leading-5 text-destructive">
           {t(`appearance.errors.${appearance.issue}`)}

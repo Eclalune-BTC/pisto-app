@@ -2,11 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
 import { Plus, RefreshCw } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Text, View } from "react-native";
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { previousMonthSummaryQueryOptions } from "@/features/sales/queries";
 import { SalesHistoryController } from "@/features/sales/sales-history-controller";
@@ -34,8 +37,8 @@ export default function SalesOverviewScreen() {
   if (businesses.isPending) {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <ActivityIndicator color="#237A55" size="large" />
-        <Text className="text-sm font-semibold text-muted-foreground">{t("sales.loading")}</Text>
+        <LoadingIndicator color="#237A55" size="large" />
+        <Text className="text-sm font-ui text-muted-foreground">{t("sales.loading")}</Text>
       </View>
     );
   }
@@ -43,15 +46,11 @@ export default function SalesOverviewScreen() {
   if (businesses.isError && !businesses.data) {
     return (
       <View className="flex-1 items-start justify-center gap-4 px-5 sm:px-8 lg:px-10">
-        <Text className="text-xl font-black text-foreground">{t("sales.unavailableTitle")}</Text>
+        <Text className="text-xl font-heading text-foreground">{t("sales.unavailableTitle")}</Text>
         <Text className="max-w-[460px] text-sm leading-5 text-muted-foreground">
           {t("sales.unavailableDescription")}
         </Text>
-        <Button
-          label={t("common.retry")}
-          onPress={() => businesses.refetch()}
-          variant="secondary"
-        />
+        <Button label={t("common.retry")} onPress={() => businesses.refetch()} variant="outline" />
       </View>
     );
   }
@@ -62,9 +61,9 @@ export default function SalesOverviewScreen() {
     <Page contentContainerClassName="gap-9">
       <ScreenHeader
         action={
-          <Button onPress={() => router.push("/operate/sales/new")} variant="accent">
-            <Plus color="#14241D" size={18} strokeWidth={2.6} />
-            <ButtonText variant="accent">{t("sales.register")}</ButtonText>
+          <Button onPress={() => router.push("/operate/sales/new")} variant="default">
+            <Icon as={Plus} className="text-primary-foreground" size={18} strokeWidth={2.6} />
+            <ButtonText variant="default">{t("sales.register")}</ButtonText>
           </Button>
         }
         description={t("sales.headerDescription", { business: activeBusiness.name })}
@@ -80,16 +79,14 @@ export default function SalesOverviewScreen() {
         </View>
       ) : summary.isPending ? (
         <View className="min-h-56 items-start justify-center gap-3 border-y border-border">
-          <ActivityIndicator color="#237A55" />
+          <LoadingIndicator color="#237A55" />
           <Text className="text-sm text-muted-foreground">{t("sales.calculating")}</Text>
         </View>
       ) : summary.isError && !summary.data ? (
-        <View className="gap-4 border-l-4 border-danger bg-[#FFF1F1] p-5 dark:bg-[#3A2020]">
+        <View className="gap-4 border-l-4 border-danger bg-destructive-surface p-5 ">
           <View className="gap-1">
-            <Text className="font-bold text-danger dark:text-[#FFBABA]">
-              {t("sales.noSummaryTitle")}
-            </Text>
-            <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
+            <Text className="font-ui text-destructive ">{t("sales.noSummaryTitle")}</Text>
+            <Text className="text-sm leading-5 text-muted-foreground ">
               {t("sales.noSummaryDescription")}
             </Text>
           </View>
@@ -102,7 +99,7 @@ export default function SalesOverviewScreen() {
             variant="ghost"
           >
             <RefreshCw color="#B94242" size={17} />
-            <Text className="font-bold text-danger dark:text-[#FFBABA]">{t("common.retry")}</Text>
+            <Text className="font-ui text-destructive ">{t("common.retry")}</Text>
           </Button>
         </View>
       ) : summary.data ? (
@@ -110,10 +107,10 @@ export default function SalesOverviewScreen() {
           {summary.isError ? <StaleNotice /> : null}
           <View className="border-y border-border lg:flex-row">
             <View className="gap-2 py-7 lg:w-[58%] lg:pr-10">
-              <Text className="text-sm font-bold capitalize text-positive dark:text-[#8DDEAF]">
+              <Text className="text-sm font-ui capitalize text-positive-foreground ">
                 {formatMonthYear(summary.data.summary.periodStartLocal, locale)}
               </Text>
-              <Text className="text-[38px] font-black leading-[44px] tracking-[-1.6px] text-foreground sm:text-[48px] sm:leading-[54px]">
+              <Text className="text-[38px] font-heading leading-[44px] tracking-[-1.6px] text-foreground sm:text-[48px] sm:leading-[54px]">
                 {formatMinorUnits(
                   summary.data.summary.grossMinorUnits,
                   summary.data.summary.currency,
@@ -125,19 +122,19 @@ export default function SalesOverviewScreen() {
             </View>
 
             <View className="border-t border-border sm:flex-row lg:min-w-0 lg:flex-1 lg:border-l lg:border-t-0 lg:pl-10">
-              <View className="flex-1 gap-1 py-5 sm:border-r sm:border-line sm:pr-6 lg:py-7 dark:sm:border-[#304239]">
-                <Text className="text-xs font-bold uppercase tracking-[1px] text-ink-muted dark:text-[#91A198]">
+              <View className="flex-1 gap-1 py-5 sm:border-r sm:border-border sm:pr-6 lg:py-7 dark:sm:border-[#304239]">
+                <Text className="text-xs font-ui uppercase tracking-[1px] text-muted-foreground ">
                   {t("sales.count")}
                 </Text>
-                <Text className="text-2xl font-black text-foreground">
+                <Text className="text-2xl font-heading text-foreground">
                   {summary.data.summary.saleCount}
                 </Text>
               </View>
-              <View className="flex-1 gap-1 border-t border-line py-5 sm:border-t-0 sm:pl-6 lg:py-7 dark:border-[#304239]">
-                <Text className="text-xs font-bold uppercase tracking-[1px] text-ink-muted dark:text-[#91A198]">
+              <View className="flex-1 gap-1 border-t border-border py-5 sm:border-t-0 sm:pl-6 lg:py-7 ">
+                <Text className="text-xs font-ui uppercase tracking-[1px] text-muted-foreground ">
                   {t("sales.average")}
                 </Text>
-                <Text className="text-2xl font-black text-foreground">
+                <Text className="text-2xl font-heading text-foreground">
                   {summary.data.summary.averageMinorUnits === null
                     ? "—"
                     : formatMinorUnits(
@@ -157,7 +154,7 @@ export default function SalesOverviewScreen() {
             </Text>
           ) : null}
           <View className="gap-2 lg:flex-row lg:justify-between lg:gap-8">
-            <Text className="text-xs leading-5 text-ink-muted dark:text-[#91A198]">
+            <Text className="text-xs leading-5 text-muted-foreground ">
               {t("sales.period", {
                 start: summary.data.summary.periodStartLocal,
                 end: summary.data.summary.periodEndLocalExclusive,
@@ -165,7 +162,7 @@ export default function SalesOverviewScreen() {
                 currency: summary.data.summary.currency,
               })}
             </Text>
-            <Text className="text-xs leading-5 text-ink-muted dark:text-[#91A198] lg:text-right">
+            <Text className="text-xs leading-5 text-muted-foreground  lg:text-right">
               {t("sales.calculatedAt", {
                 date: formatLocalizedDateTime(
                   summary.data.summary.queriedAt,

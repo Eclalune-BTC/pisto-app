@@ -1,9 +1,12 @@
 import { type ComponentProps, type ReactNode, useId } from "react";
-import { Text, TextInput, View } from "react-native";
-
+import { View } from "react-native";
 import { cn } from "@/lib/cn";
+import { Input } from "./input";
+import { Label } from "./label";
+import { Text } from "./text";
+import { Textarea } from "./textarea";
 
-type FieldProps = ComponentProps<typeof TextInput> & {
+type FieldProps = ComponentProps<typeof Input> & {
   error?: string;
   label: string;
   trailing?: ReactNode;
@@ -16,39 +19,36 @@ export function Field({
   error,
   label,
   trailing,
+  nativeID,
+  multiline,
   ...props
 }: FieldProps) {
-  const errorId = useId();
-
+  const id = useId();
+  const inputId = nativeID ?? id;
+  const InputComponent = multiline ? Textarea : Input;
   return (
-    <View className="gap-2">
-      <Text className="web:font-sans text-sm font-medium text-foreground">{label}</Text>
-      <View
-        className={cn(
-          "min-h-12 flex-row items-center rounded-lg border bg-input px-3",
-          error ? "border-destructive" : "border-input-border",
-        )}
-      >
-        <TextInput
-          accessibilityHint={error ?? accessibilityHint}
-          accessibilityLabel={accessibilityLabel ?? label}
-          aria-describedby={error ? errorId : undefined}
-          aria-invalid={Boolean(error)}
-          className={cn(
-            "web:font-sans min-h-12 min-w-0 flex-1 py-3 text-base text-foreground",
-            className,
-          )}
-          placeholderTextColor="#7B8A82"
+    <View className="min-w-0 gap-2">
+      <Label htmlFor={inputId}>{label}</Label>
+      <View className="relative min-w-0">
+        <InputComponent
           {...props}
+          nativeID={inputId}
+          accessibilityLabel={accessibilityLabel ?? label}
+          accessibilityHint={error ?? accessibilityHint}
+          aria-describedby={error ? `${id}-error` : undefined}
+          aria-invalid={Boolean(error)}
+          className={cn(error && "border-destructive", trailing && "pr-16", className)}
         />
-        {trailing}
+        {trailing ? (
+          <View className="absolute inset-y-0 right-3 justify-center">{trailing}</View>
+        ) : null}
       </View>
       {error ? (
         <Text
+          nativeID={`${id}-error`}
           accessibilityLiveRegion="polite"
           accessibilityRole="alert"
-          className="text-xs text-destructive"
-          nativeID={errorId}
+          className="text-sm text-destructive"
         >
           {error}
         </Text>

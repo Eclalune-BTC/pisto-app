@@ -169,68 +169,78 @@ applicable.
 
 ## Product visual language
 
-Pisto uses the ink, muted sage, warm paper, white, and semantic status palette defined in `global.css`.
-The owner's public-page redesign replaces the highlighter-lime accent and green-tinted page background
-with quieter shared tokens. Build
-hierarchy with type, spacing, alignment, and dividers before adding another decorated surface.
+[The design system](design-system.md) owns current visual decisions, component responsibilities,
+brand assets and acceptance checks. It distinguishes standards from Pisto's local design choices.
+The owner requires React Native Reusables throughout the application and prohibits blue. The public
+page and operating screens share neutral semantic tokens; no earlier palette or assistant proposal
+is an approved alternative.
 
-The owner prefers restrained product UI. Use shared `Heading` variants instead of
-inventing oversized, tightly tracked titles per screen. `global.css` owns adaptive semantic colors;
-`ink` and `accent` remain theme-independent brand colors. `Page` owns bounded layout, while components in
-`components/ui` own visual variants. Screen-level classes primarily compose layout. Decorative
-vertical rules, promotional auth panels and numbered feature ornament are not default product UI.
+### Content and composition rules
 
-- A card, pill, icon, shadow, gradient, or illustration must communicate grouping, interaction,
-  state, hierarchy, feedback, or established brand character. If removing it preserves meaning and
-  usability, simplify it.
-- Do not combine decorative glows, floating or tilted cards, oversized rounding, sparkle icons,
-  status-like pills, or repeated icon tiles merely to make a screen feel complete.
-- Status badges remain appropriate for real states such as entitlement, verification, connection,
-  and session status. Do not use them as ornamental section labels.
-- Never invent progress, account activity, timing, plan names, catalog descriptions, testimonials,
-  or security claims. Missing remote data receives an explicit loading, empty, unavailable, or
-  error state.
-- Do not expose controls that only mutate temporary component state while implying that a setting
-  was saved. Implement persistence first or omit the control.
-- Cards and rounded controls are not banned. Use them where a surface is independently actionable
-  or where containment materially improves comprehension.
+Follow [screen composition](design-system.md#domain-behavior-that-design-must-preserve). Expenses separates history filters
+from its independent period summary; Cash separates accounts from movements. A view switch is local
+presentation, not a new destination or a change to query/financial semantics.
 
-Visual cleanup preserves approved copy, product behavior, accessibility, and responsive intent. It
-does not justify an unrelated redesign.
+### Typography
+
+Use [the shared typography contract](design-system.md#palette-typography-and-layout). IBM Plex Sans
+400/500/600 are loaded through Expo Font as PistoRegular/PistoMedium/PistoSemibold. Native text scaling
+stays enabled. The root keeps the native splash visible during font loading and shows a localized
+system-font error/retry if loading fails; it does not silently substitute the regular product font.
+Web retry reloads the document because an injected font-face rule can outlive a failed request;
+native retry uses the Router boundary. Keep the existing font recovery tests when editing the root.
+
+### Palette
+
+[Semantic tokens](design-system.md#palette-typography-and-layout) are defined in global.css. The sidebar
+now follows the active theme. Neutral selection is not a positive financial state. Primary-action
+labels use ButtonText or the label prop, not fixed white text that disappears in dark mode.
+
+### Spacing and responsive rules
+
+The [design-system defaults](design-system.md#palette-typography-and-layout) and Page own workspace
+spacing. Public header, hero, sections and footer share their container gutters. Tables adapt to their
+available container width and keep all values in compact records, not hidden columns.
+
+### Visual acceptance checklist
+
+Use [the verification contract](design-system.md#validation-and-upgrade-costs). Typechecks and exports do
+not establish visual approval, native device behavior or accessibility conformance.
 
 ### Public product page and appearance
 
 The public `/` route composes `features/welcome/welcome-screen.tsx` inside the same Expo application.
-It is not a second marketing deployment or an authenticated workspace. Its four product areas reuse
-the public module names from the Operate destination model; no account, permission or business data is
-read by the page. All public copy, example descriptions, document metadata and accessibility labels
-come from the typed `es-SV` catalog. The illustrative record selector never submits a business command.
+It is not a second marketing deployment or an authenticated workspace. Its four tabbed product areas
+reuse the public module names from the Operate destination model; no account, permission or business
+data is read by the page. All public copy, document metadata and accessibility labels come from the
+typed `es-SV` catalog. Local static captures illustrate the real forms with example configuration,
+not financial results. Their provenance and layout rules live in the design-system guide. The tabs
+and FAQ use adapted React Native Reusables Uniwind source with RN Primitives interactions.
 The FAQ states the current sales/cash/stock separation, accounting limits and unimplemented AI/voice
 and native-store release. It must change when the capability matrix changes, not before.
 
-Use system UI typography: `web:font-sans` resolves to `system-ui` (Segoe UI on Windows, San Francisco
-on Apple systems); native text keeps its platform system font. Do not download a font merely to make
-the public page look different. Moderate weights, readable line lengths and shared `Heading` variants
-own hierarchy. The page has one primary heading, real account links, section-navigation actions and
-no decorative charts, fabricated metrics, testimonials or prices.
-
-`AppearanceControl` is shared by the public page, authentication and Account. Uniwind owns effective
+`AppearanceControl` is shared by the public page, authentication, workspace shell and Account. Uniwind owns effective
 light/dark/system state; `AppearanceProvider` restores and saves the preference through browser
 localStorage or the already-installed native SecureStore. Only this non-sensitive preference is
 stored. Absent storage means system appearance; corrupt or blocked storage produces an explicit
 localized error. A failed write does not change the selected theme. Restoration is asynchronous and
 does not block product access; an initial system-to-saved-theme transition may be visible on reload.
+The compact control switches to the named light/dark destination. Full light/dark/system choices
+remain in the public footer and Account. Its error state must not push the header outside the viewport.
 
 The page remains a single-page web export, not an SEO-oriented static/SSR marketing site. Its localized
 title and description are set through the installed Expo Router Head API at runtime. A separate public
 site or static rendering strategy requires its own routing and hosting decision.
 
-Theme switching and typography were checked against the installed Uniwind 1.11.0 source and its
-[theming API](https://docs.uniwind.dev/theming/basics),
-[global style rules](https://docs.uniwind.dev/theming/global-css) and
-[platform typography](https://docs.uniwind.dev/api/platform-select) on 2026-09-26. Native persistence
-uses the existing [Expo SecureStore API](https://docs.expo.dev/versions/latest/sdk/securestore/), not
-a new dependency. Recheck these boundaries when upgrading the styling or Expo stack.
+Source review on 2026-09-26: [IBM Plex](https://github.com/IBM/plex),
+[Expo runtime fonts](https://docs.expo.dev/develop/user-interface/fonts/),
+[Uniwind classes and inheritance](https://docs.uniwind.dev/class-names),
+[WCAG reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html),
+[text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
+SDK 57 uses static font faces and runtime loading rather than a config-plugin-only path that would
+exclude Expo Go. Native persistence uses the existing
+[Expo SecureStore API](https://docs.expo.dev/versions/latest/sdk/securestore/).
+Recheck these boundaries when upgrading the font, styling or Expo stack.
 
 The manual increment uses neutral Latin American Spanish copy and Salvadoran `es-SV` money/date
 formatting as its explicit initial product choice. Validate terminology and comprehension with
@@ -350,25 +360,23 @@ mandatory until a release-specific policy review explicitly approves another pat
 
 ## Component stack and cross-platform rendering
 
-Pisto does not use the web `shadcn/ui` components directly. Its component source is owned in
-`apps/app/src/components/ui`, built with React Native primitives and styled through Uniwind.
-The shadcn-like part is the source-owned composition and variant approach, not a browser component
-library running on a phone. The app README's reference to React Native Reusables describes these
-conventions; it is not evidence that the entire Reusables registry is installed.
+Pisto uses installed React Native Reusables Uniwind source in `apps/app/src/components/ui`, not merely
+similar conventions. Its exact registry revision, component inventory, adaptations and license are
+recorded in [the design system](design-system.md#installation-and-source-ownership).
 
 | Layer | Current implementation | Source of truth |
 | --- | --- | --- |
-| Shared controls | Local Button, Field, Card, Heading and Alert built from React Native components | `apps/app/src/components/ui` |
-| Composition primitive | `@rn-primitives/slot` 1.5.2 for `asChild` | `components/ui/button.tsx` |
+| Shared controls | RNR Button, Text, Input, Card, Alert, selection and overlay components; domain-specific compositions | `apps/app/src/components/ui` |
+| Interaction primitives | Explicit RN Primitives dependencies, plus the Radix web Accordion adapter | App manifest and the design-system guide |
 | Styling | Tailwind CSS 4.3.3 and the free, JavaScript-based Uniwind 1.11.0 | App manifest, lockfile and Metro config |
 | Variants and class merging | CVA, `clsx`, `tailwind-merge` and the local `cn` function | `components/ui/button.tsx`, `lib/cn.ts` |
 | Icons | `lucide-react-native` backed by `react-native-svg` | App manifest and component imports |
 | Platform rendering | React Native 0.86.3 on Android/iOS; React Native Web on browsers | Expo SDK 57 and installed dependencies |
 
-There is no NativeWind integration or direct Radix/Base UI dependency in this app. Slot is the only
-direct RN Primitives package currently installed; menus, dialogs and selects are not implicitly
-provided. Evaluate a maintained native-compatible primitive when a real interaction needs it,
-rather than pasting a web shadcn component into a shared native screen.
+There is no NativeWind integration or Base UI dependency. Installed RNR Dialog, Select, Tabs,
+Checkbox, Switch, RadioGroup and related components own their platform interactions. The existing
+direct Radix Accordion dependency is restricted to the explicit web adapter. No separate UI framework
+or source registry is required for native screens.
 
 Standalone actions, actionable list rows and icon actions use the shared `Button`; its `icon` size
 retains a 44-unit target. Inputs use `Field`, and list filters use `FilterBar`. A passive row remains
@@ -393,8 +401,10 @@ Use the documented [supported class names](https://docs.uniwind.dev/class-names)
 that every browser CSS feature or third-party DOM component works on native. Browser selectors such
 as `html`, `body` and `:focus-visible` in `global.css` do not establish native accessibility behavior.
 
-The app shell currently uses a web-only wide sidebar and a shared compact/native bottom bar composed
-of `Link`, `Pressable` and `SafeAreaView`. It is not a separate platform-native tab implementation.
+The app shell uses a web-only wide sidebar and a compact/native RNR Dialog menu with the same
+permission-filtered destinations, plus two primary bottom links composed from RNR Button and Expo
+Link. It is not a separate platform-native tab implementation. The menu closes on navigation and
+breakpoint changes. Hover-only appearance tooltips are web-only; a native theme change is a direct tap.
 Billing is resolved through `.web.ts` and `.native.ts` adapters; authentication and lifecycle handling
 also contain explicit platform branches. Shared code preserves business meaning, not guaranteed
 pixel identity, keyboard behavior or screen-reader acceptance. Windows currently uses the web target;

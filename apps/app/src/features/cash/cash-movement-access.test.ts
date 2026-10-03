@@ -4,7 +4,17 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 
-vi.mock("react-native", () => ({ View: "div", Text: "span", ActivityIndicator: "span" }));
+vi.mock("react-native", async () => ({
+  ...(await vi.importActual("react-native-web")),
+  View: "div",
+  Text: "span",
+  ActivityIndicator: "span",
+}));
+vi.mock("uniwind", () => ({
+  withUniwind: (component: unknown) => component,
+  useCSSVariable: () => "#62626B",
+}));
+vi.mock("@/components/ui/select-field", () => ({ SelectField: () => null }));
 vi.mock("@/components/page", () => ({
   Page: ({ children }: { children: React.ReactNode }) => createElement("main", {}, children),
 }));

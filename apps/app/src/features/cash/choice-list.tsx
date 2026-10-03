@@ -1,4 +1,8 @@
-import { Pressable, Text, View } from "react-native";
+import { useId } from "react";
+import { View } from "react-native";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Text } from "@/components/ui/text";
 
 export type ChoiceOption<T extends string> = { label: string; value: T };
 
@@ -7,6 +11,7 @@ type ChoiceListProps<T extends string> = {
   options: readonly ChoiceOption<T>[];
   value: T;
   onChange: (value: T) => void;
+  disabled?: boolean;
 };
 
 export function ChoiceList<T extends string>({
@@ -14,34 +19,54 @@ export function ChoiceList<T extends string>({
   options,
   value,
   onChange,
+  disabled = false,
 }: ChoiceListProps<T>) {
+  const id = useId();
+  if (!options.some((option) => option.value === value)) {
+    throw new Error("The selected cash choice is unavailable.");
+  }
+  const select = (nextValue: string) => {
+    if (disabled) return;
+    const option = options.find((candidate) => candidate.value === nextValue);
+    if (!option) throw new Error("The selected cash choice is unavailable.");
+    onChange(option.value);
+  };
   return (
     <View className="gap-2">
-      <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">{label}</Text>
-      <View accessibilityRole="radiogroup" className="border-y border-border">
-        {options.map((option) => {
-          const selected = option.value === value;
-          return (
-            <Pressable
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected }}
-              aria-checked={selected}
-              className="min-h-12 flex-row items-center justify-between border-b border-line py-3 last:border-b-0 dark:border-[#304239]"
-              key={option.value}
-              onPress={() => onChange(option.value)}
-            >
-              <Text className="font-semibold text-foreground">{option.label}</Text>
-              <View
-                className={`h-5 w-5 items-center justify-center rounded-full border ${
-                  selected ? "border-positive" : "border-line dark:border-[#526159]"
-                }`}
+      <Text className="text-sm font-ui text-foreground">{label}</Text>
+      <RadioGroup
+        accessibilityLabel={label}
+        className="border-y border-border"
+        disabled={disabled}
+        onValueChange={select}
+        value={value}
+      >
+        {options.map((option) => (
+          <View
+            className="min-h-12 flex-row items-center gap-3 border-b border-border last:border-b-0"
+            key={option.value}
+          >
+            <RadioGroupItem
+              accessibilityLabel={option.label}
+              aria-labelledby={`${id}-${option.value}-label`}
+              disabled={disabled}
+              hitSlop={14}
+              nativeID={`${id}-${option.value}`}
+              value={option.value}
+            />
+            <View className="min-w-0 flex-1">
+              <Label
+                className="min-h-11 flex-1 py-3 leading-5"
+                disabled={disabled}
+                nativeID={`${id}-${option.value}-label`}
+                onPress={() => select(option.value)}
               >
-                {selected ? <View className="h-2.5 w-2.5 rounded-full bg-positive" /> : null}
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
+                {option.label}
+              </Label>
+            </View>
+          </View>
+        ))}
+      </RadioGroup>
     </View>
   );
 }

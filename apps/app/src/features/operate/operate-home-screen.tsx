@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, Redirect, useRouter } from "expo-router";
+import { Link, Redirect } from "expo-router";
 import {
   Boxes,
   ChartColumn,
@@ -14,12 +14,15 @@ import {
 } from "lucide-react-native";
 import type { ComponentType } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { View } from "react-native";
+import { useCSSVariable } from "uniwind";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
 import {
   getVisibleOperateModules,
@@ -48,8 +51,10 @@ const moduleIcons: Record<OperateModuleId, OperateIcon> = {
 };
 
 export default function OperateHomeScreen() {
+  const foregroundColor = useCSSVariable("--color-foreground") as string;
+  const mutedColor = useCSSVariable("--color-muted-foreground") as string;
+  const primaryForegroundColor = useCSSVariable("--color-primary-foreground") as string;
   const { t } = useTranslation();
-  const router = useRouter();
   const businesses = useQuery(businessesQueryOptions);
   const activeBusiness = getActiveBusiness(businesses.data);
 
@@ -60,7 +65,7 @@ export default function OperateHomeScreen() {
   if (businesses.isPending) {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <ActivityIndicator color="#237A55" size="large" />
+        <LoadingIndicator color={foregroundColor} size="large" />
         <Text className="text-sm text-muted-foreground">{t("operate.loading")}</Text>
       </View>
     );
@@ -75,11 +80,7 @@ export default function OperateHomeScreen() {
             {t("operate.unavailableDescription")}
           </Text>
         </View>
-        <Button
-          label={t("common.retry")}
-          onPress={() => businesses.refetch()}
-          variant="secondary"
-        />
+        <Button label={t("common.retry")} onPress={() => businesses.refetch()} variant="outline" />
       </View>
     );
   }
@@ -94,10 +95,12 @@ export default function OperateHomeScreen() {
       <ScreenHeader
         action={
           canCreateSale ? (
-            <Button onPress={() => router.push("/operate/sales/new")} variant="accent">
-              <Plus color="#14241D" size={18} strokeWidth={2.6} />
-              <ButtonText variant="accent">{t("sales.register")}</ButtonText>
-            </Button>
+            <Link href="/operate/sales/new" asChild>
+              <Button accessibilityRole="link" variant="default">
+                <Plus color={primaryForegroundColor} size={18} strokeWidth={2.6} />
+                <Text>{t("sales.register")}</Text>
+              </Button>
+            </Link>
           ) : undefined
         }
         description={t("operate.description")}
@@ -110,20 +113,20 @@ export default function OperateHomeScreen() {
       <View className="flex-row flex-wrap items-center gap-x-4 gap-y-2 border-y border-border py-3">
         <View className="flex-row items-baseline gap-2">
           <Text className="text-sm text-muted-foreground">{t("common.currency")}</Text>
-          <Text className="text-sm font-semibold text-foreground">{activeBusiness.currency}</Text>
+          <Text className="text-sm font-ui text-foreground">{activeBusiness.currency}</Text>
         </View>
         <View className="flex-row items-baseline gap-2">
           <Text className="text-sm text-muted-foreground">{t("common.timeZone")}</Text>
-          <Text className="text-sm font-semibold text-foreground">{activeBusiness.timeZone}</Text>
+          <Text className="text-sm font-ui text-foreground">{activeBusiness.timeZone}</Text>
         </View>
       </View>
 
       {modules.length === 0 ? (
-        <View className="max-w-[560px] gap-2 border-l-4 border-warning bg-[#FFF6E8] p-5 dark:bg-[#3A2A18]">
+        <View className="max-w-[560px] gap-2 border-l-4 border-warning bg-warning-surface p-5 ">
           <Heading level={2} size="section">
             {t("operate.noAccessTitle")}
           </Heading>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
+          <Text className="text-sm leading-5 text-muted-foreground ">
             {t("operate.noAccessDescription")}
           </Text>
         </View>
@@ -143,23 +146,25 @@ export default function OperateHomeScreen() {
                     const Icon = moduleIcons[module.id];
                     return (
                       <Link href={module.href} asChild key={module.id}>
-                        <Pressable
+                        <Button
+                          accessibilityRole="link"
+                          variant="ghost"
                           className={cn(
-                            "min-h-16 flex-row items-center gap-3 px-1 py-3 active:bg-muted",
+                            "h-auto min-h-16 w-full flex-row items-center justify-start gap-3 rounded-none px-1 py-3",
                             index > 0 && "border-t border-border",
                           )}
                         >
-                          <Icon color="#237A55" size={20} strokeWidth={2} />
+                          <Icon color={foregroundColor} size={20} strokeWidth={2} />
                           <View className="min-w-0 flex-1 gap-1">
-                            <Text className="text-base font-semibold text-foreground">
+                            <Text className="text-left text-base font-ui text-foreground">
                               {t(module.labelKey)}
                             </Text>
-                            <Text className="text-sm leading-5 text-muted-foreground">
+                            <Text className="text-left text-sm leading-5 text-muted-foreground">
                               {t(module.descriptionKey)}
                             </Text>
                           </View>
-                          <ChevronRight color="#7E8D84" size={20} />
-                        </Pressable>
+                          <ChevronRight color={mutedColor} size={20} />
+                        </Button>
                       </Link>
                     );
                   })}

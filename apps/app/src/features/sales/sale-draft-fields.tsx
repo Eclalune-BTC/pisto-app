@@ -1,6 +1,6 @@
-import { Text, View } from "react-native";
-
+import { View } from "react-native";
 import { Field } from "@/components/ui/field";
+import { Text } from "@/components/ui/text";
 import type { SaleDraftValues } from "@/features/sales/sale-draft";
 
 type Props = {
@@ -28,7 +28,7 @@ export function SaleDraftFields({ currency, errors, labels, onChange, values }: 
         label={labels.amount}
         onChangeText={(value) => onChange("amount", value)}
         placeholder="0.00"
-        trailing={<Text className="text-sm font-bold text-muted-foreground">{currency}</Text>}
+        trailing={<Text className="text-sm font-ui text-muted-foreground">{currency}</Text>}
         value={values.amount}
       />
       <View className="gap-5 sm:flex-row">

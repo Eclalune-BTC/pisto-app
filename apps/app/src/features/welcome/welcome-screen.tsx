@@ -2,15 +2,20 @@ import { Link } from "expo-router";
 import Head from "expo-router/head";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, ScrollView, Text, View } from "react-native";
+import { type LayoutChangeEvent, Platform, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 import { AppearanceControl } from "@/components/appearance-control";
 import { Brand } from "@/components/brand";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
-import { OPERATE_GROUPS, OPERATE_MODULES } from "@/features/operate/navigation";
-import { RecordExample } from "./record-example";
+import { Text } from "@/components/ui/text";
+import { ProductShowcase } from "./product-showcase";
 
 type Section = "product" | "workflow" | "questions";
 const sections: readonly Section[] = ["product", "workflow", "questions"];
@@ -22,13 +27,25 @@ export default function WelcomeScreen() {
   const scroll = useRef<ScrollView>(null);
   const sectionViews = useRef<Partial<Record<Section, View | null>>>({});
   const [offsets, setOffsets] = useState<Partial<Record<Section, number>>>({});
-
   const openSection = (section: Section) => {
     const y = offsets[section];
-    if (!scroll.current || y === undefined) throw new Error("Public section layout is not ready");
+    const target = sectionViews.current[section];
+    if (!scroll.current || y === undefined || !target) return;
     scroll.current.scrollTo({ y, animated: false });
-    if (Platform.OS === "web") sectionViews.current[section]?.focus();
+    if (Platform.OS === "web") target.focus();
   };
+  const sectionProps = (id: Section) => ({
+    nativeID: id,
+    accessibilityLabel: t(`welcome.sectionLinks.${id}`),
+    tabIndex: -1 as const,
+    ref: (node: View | null) => {
+      sectionViews.current[id] = node;
+    },
+    onLayout: ({ nativeEvent }: LayoutChangeEvent) => {
+      const y = nativeEvent.layout.y;
+      setOffsets((current) => (current[id] === y ? current : { ...current, [id]: y }));
+    },
+  });
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
@@ -38,15 +55,12 @@ export default function WelcomeScreen() {
           <meta name="description" content={t("welcome.description")} />
         </Head>
       ) : null}
-      <View className="border-b border-border" role="banner">
-        <View className="mx-auto w-full max-w-[1200px] gap-3 px-5 py-3 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
-          <View className="min-w-0 flex-row flex-wrap items-center justify-between gap-6 lg:max-w-[36%]">
-            <Brand />
-            <AppearanceControl compact />
-          </View>
+      <View className="border-b border-border bg-background" role="banner">
+        <View className="mx-auto w-full max-w-[1200px] flex-row items-center justify-between gap-3 px-5 py-4 sm:px-8">
+          <Brand />
           <View
             accessibilityLabel={t("welcome.navigation")}
-            className="hidden flex-row lg:flex"
+            className="hidden flex-row gap-2 lg:flex"
             role="navigation"
           >
             {sections.map((section) => (
@@ -60,13 +74,19 @@ export default function WelcomeScreen() {
               />
             ))}
           </View>
-          <View className="flex-row justify-between gap-3 lg:justify-end">
+          <View className="min-w-0 flex-row items-center gap-1 sm:gap-3">
             <Link href="/sign-in" asChild>
-              <Button label={t("welcome.signIn")} size="sm" variant="ghost" />
+              <Button
+                className="px-2 sm:px-4"
+                label={t("welcome.signIn")}
+                size="sm"
+                variant="ghost"
+              />
             </Link>
-            <Link href="/sign-up" asChild>
-              <Button label={t("welcome.createAccount")} size="sm" />
+            <Link href="/sign-up" className="hidden sm:flex" asChild>
+              <Button label={t("welcome.createAccount")} size="sm" variant="default" />
             </Link>
+            <AppearanceControl compact />
           </View>
         </View>
       </View>
@@ -76,202 +96,152 @@ export default function WelcomeScreen() {
         contentContainerClassName="flex-grow"
         keyboardShouldPersistTaps="handled"
       >
-        <View className="mx-auto w-full max-w-[1200px] px-5 sm:px-8" role="main">
-          <View className="gap-10 py-12 sm:py-16 lg:flex-row lg:items-center lg:gap-16 lg:py-20">
-            <View className="min-w-0 flex-1 gap-6">
-              <Text className="web:font-sans text-sm font-medium text-link">
-                {t("welcome.eyebrow")}
-              </Text>
-              <Heading size="welcome">{t("welcome.title")}</Heading>
-              <Text className="web:font-sans max-w-[520px] text-lg leading-8 text-muted-foreground">
-                {t("welcome.description")}
-              </Text>
-              <View className="gap-3 sm:flex-row sm:flex-wrap">
-                <Link href="/sign-up" asChild>
-                  <Button label={t("welcome.setupBusiness")} size="lg" />
-                </Link>
-                <Button
-                  disabled={offsets.product === undefined}
-                  label={t("welcome.explore")}
-                  onPress={() => openSection("product")}
-                  size="lg"
-                  variant="secondary"
-                />
-              </View>
-              <Text className="web:font-sans text-sm text-muted-foreground">
+        <View role="main">
+          <View className="bg-background">
+            <View className="mx-auto w-full max-w-[1200px] items-center gap-6 px-5 pb-14 pt-12 sm:px-8 sm:pb-16 sm:pt-20 lg:pt-24">
+              <Text className="font-ui text-center text-sm text-muted-foreground">
                 {t("welcome.audience")}
               </Text>
-            </View>
-            <View className="min-w-0 flex-1 lg:max-w-[460px]">
-              <RecordExample />
+              <Heading className="max-w-[900px] text-center font-heading text-[40px] leading-[48px] tracking-[-0.5px] text-foreground sm:text-[60px] sm:leading-[68px] lg:text-[72px] lg:leading-[80px]">
+                {t("welcome.title")}
+              </Heading>
+              <Text className="max-w-[650px] text-center text-lg leading-8 text-muted-foreground">
+                {t("welcome.description")}
+              </Text>
+              <View className="flex-row flex-wrap justify-center gap-3 pt-2">
+                <Link href="/sign-up" asChild>
+                  <Button label={t("welcome.createAccount")} size="lg" variant="default" />
+                </Link>
+                <Button
+                  label={t("welcome.explore")}
+                  disabled={offsets.product === undefined}
+                  onPress={() => openSection("product")}
+                  size="lg"
+                  variant="outline"
+                />
+              </View>
+              <Text className="max-w-[500px] text-center text-sm leading-6 text-muted-foreground">
+                {t("welcome.availability")}
+              </Text>
             </View>
           </View>
 
-          <View
-            accessibilityLabel={t("welcome.sectionLinks.product")}
-            className="border-t border-border py-12 sm:py-16"
-            nativeID="product"
-            onLayout={({ nativeEvent }) =>
-              setOffsets((current) => ({ ...current, product: nativeEvent.layout.y }))
-            }
-            ref={(value) => {
-              sectionViews.current.product = value;
-            }}
-            tabIndex={-1}
-          >
-            <View className="gap-5 pb-10 lg:flex-row lg:items-end lg:justify-between">
-              <View className="gap-3 lg:max-w-[540px]">
-                <Text className="web:font-sans text-xs font-semibold uppercase tracking-[1.3px] text-muted-foreground">
-                  {t("welcome.product.eyebrow")}
-                </Text>
+          <View {...sectionProps("product")} className="bg-background">
+            <View className="mx-auto w-full max-w-[1200px] gap-8 px-5 py-14 sm:px-8 sm:py-20">
+              <View className="items-center gap-3">
                 <Heading
-                  className="text-[30px] leading-9 sm:text-[36px] sm:leading-[44px]"
+                  className="max-w-[760px] text-center text-foreground"
                   level={2}
-                  size="section"
+                  size="marketing"
                 >
                   {t("welcome.product.title")}
                 </Heading>
+                <Text className="max-w-[660px] text-center text-base leading-7 text-muted-foreground">
+                  {t("welcome.product.description")}
+                </Text>
               </View>
-              <Text className="web:font-sans max-w-[390px] text-base leading-7 text-muted-foreground">
-                {t("welcome.product.description")}
-              </Text>
+              <ProductShowcase />
             </View>
-            {OPERATE_GROUPS.map(({ id }) => (
-              <View className="gap-5 border-t border-border py-7 sm:flex-row sm:gap-10" key={id}>
-                <View className="gap-2 sm:w-[38%]">
-                  <Text className="web:font-sans text-xs font-medium text-link">
-                    {OPERATE_MODULES.filter((module) => module.group === id)
-                      .map((module) => t(module.labelKey))
-                      .join(" · ")}
-                  </Text>
-                  <Heading className="text-[23px] leading-8" level={3} size="section">
-                    {t(`welcome.product.${id}.title`)}
-                  </Heading>
-                </View>
-                <View className="min-w-0 flex-1 gap-3">
-                  <Text className="web:font-sans text-base leading-7 text-foreground">
-                    {t(`welcome.product.${id}.description`)}
-                  </Text>
-                  <Text className="web:font-sans text-sm leading-6 text-muted-foreground">
-                    {t(`welcome.product.${id}.detail`)}
-                  </Text>
-                </View>
+          </View>
+
+          <View {...sectionProps("workflow")} className="border-y border-border bg-muted">
+            <View className="mx-auto w-full max-w-[1200px] gap-10 px-5 py-14 sm:px-8 sm:py-20">
+              <View className="gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-10">
+                <Heading className="max-w-[520px] text-foreground" level={2} size="marketing">
+                  {t("welcome.workflow.title")}
+                </Heading>
+                <Text className="max-w-[390px] text-base leading-7 text-muted-foreground">
+                  {t("welcome.workflow.description")}
+                </Text>
               </View>
-            ))}
-          </View>
-
-          <View
-            accessibilityLabel={t("welcome.sectionLinks.workflow")}
-            className="gap-9 border-t border-border py-12 sm:py-16"
-            nativeID="workflow"
-            onLayout={({ nativeEvent }) =>
-              setOffsets((current) => ({ ...current, workflow: nativeEvent.layout.y }))
-            }
-            ref={(value) => {
-              sectionViews.current.workflow = value;
-            }}
-            tabIndex={-1}
-          >
-            <View className="gap-3">
-              <Text className="web:font-sans text-xs font-semibold uppercase tracking-[1.3px] text-muted-foreground">
-                {t("welcome.workflow.eyebrow")}
-              </Text>
-              <Heading
-                className="text-[30px] leading-9 sm:text-[36px] sm:leading-[44px]"
-                level={2}
-                size="section"
-              >
-                {t("welcome.workflow.title")}
-              </Heading>
-            </View>
-            <View className="gap-8 lg:flex-row lg:gap-10">
-              {steps.map((step) => (
-                <View className="min-w-0 flex-1 gap-3" key={step}>
-                  <Heading level={3} size="section">
-                    {t(`welcome.workflow.${step}.title`)}
-                  </Heading>
-                  <Text className="web:font-sans text-base leading-7 text-muted-foreground">
-                    {t(`welcome.workflow.${step}.description`)}
-                  </Text>
-                </View>
-              ))}
-            </View>
-            <View className="gap-4 rounded-lg bg-muted p-6 sm:p-8 lg:flex-row lg:gap-10">
-              <Heading className="lg:w-[34%]" level={3} size="section">
-                {t("welcome.workflow.controlTitle")}
-              </Heading>
-              <Text className="web:font-sans min-w-0 flex-1 text-base leading-7 text-foreground">
-                {t("welcome.workflow.controlDescription")}
-              </Text>
+              <View className="gap-8 md:flex-row md:gap-10">
+                {steps.map((step, index) => (
+                  <View key={step} className="min-w-0 gap-4 md:flex-1">
+                    <Text className="font-heading text-3xl text-foreground dark:text-foreground">
+                      {String(index + 1).padStart(2, "0")}
+                    </Text>
+                    <View className="gap-2 border-t border-border pt-5">
+                      <Heading
+                        className="font-heading text-xl text-foreground"
+                        level={3}
+                        size="section"
+                      >
+                        {t(`welcome.workflow.${step}.title`)}
+                      </Heading>
+                      <Text className="text-base leading-7 text-muted-foreground">
+                        {t(`welcome.workflow.${step}.description`)}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
 
-          <View
-            accessibilityLabel={t("welcome.sectionLinks.questions")}
-            className="gap-8 border-t border-border py-12 sm:py-16 lg:flex-row lg:gap-16"
-            nativeID="questions"
-            onLayout={({ nativeEvent }) =>
-              setOffsets((current) => ({ ...current, questions: nativeEvent.layout.y }))
-            }
-            ref={(value) => {
-              sectionViews.current.questions = value;
-            }}
-            tabIndex={-1}
-          >
-            <View className="gap-3 lg:w-[35%]">
-              <Text className="web:font-sans text-xs font-semibold uppercase tracking-[1.3px] text-muted-foreground">
-                {t("welcome.questions.eyebrow")}
-              </Text>
-              <Heading
-                className="text-[30px] leading-9 sm:text-[36px] sm:leading-[44px]"
-                level={2}
-                size="section"
-              >
-                {t("welcome.questions.title")}
-              </Heading>
-            </View>
-            <View className="min-w-0 flex-1 gap-7">
-              {questions.map((question) => (
-                <View className="gap-3 border-b border-border pb-7" key={question}>
-                  <Heading level={3} size="section">
-                    {t(`welcome.questions.${question}.question`)}
-                  </Heading>
-                  <Text className="web:font-sans text-base leading-7 text-muted-foreground">
-                    {t(`welcome.questions.${question}.answer`)}
-                  </Text>
-                </View>
-              ))}
+          <View {...sectionProps("questions")} className="bg-background">
+            <View className="mx-auto w-full max-w-[1200px] gap-8 px-5 py-14 sm:px-8 sm:py-20 lg:flex-row lg:gap-16">
+              <View className="gap-3 lg:w-[32%]">
+                <Heading className="text-foreground" level={2} size="marketing">
+                  {t("welcome.questions.title")}
+                </Heading>
+                <Text className="text-base leading-7 text-muted-foreground">
+                  {t("welcome.questions.description")}
+                </Text>
+              </View>
+              <Accordion className="min-w-0 lg:flex-1" type="single" collapsible>
+                {questions.map((question) => (
+                  <AccordionItem key={question} value={question} className="border-border">
+                    <AccordionTrigger>
+                      <Text className="min-w-0 flex-1 font-ui text-base leading-6 text-foreground">
+                        {t(`welcome.questions.${question}.question`)}
+                      </Text>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <Text className="text-base leading-7 text-muted-foreground">
+                        {t(`welcome.questions.${question}.answer`)}
+                      </Text>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             </View>
           </View>
 
-          <View className="gap-7 border-y border-border py-12 sm:py-16 lg:flex-row lg:items-center lg:justify-between">
-            <View className="min-w-0 flex-1 gap-3">
-              <Heading className="text-[30px] leading-9" level={2} size="section">
-                {t("welcome.closing.title")}
-              </Heading>
-              <Text className="web:font-sans text-base leading-7 text-muted-foreground">
-                {t("welcome.closing.description")}
-              </Text>
-            </View>
-            <View className="gap-3 sm:flex-row">
+          <View className="bg-background px-5 pb-14 sm:px-8 sm:pb-20">
+            <View className="mx-auto w-full max-w-[1136px] gap-6 rounded-2xl bg-foreground px-6 py-10 sm:flex-row sm:items-center sm:justify-between sm:gap-12 sm:p-12">
+              <View className="min-w-0 gap-3 sm:flex-1">
+                <Heading className="text-background" level={2} size="marketing">
+                  {t("welcome.closing.title")}
+                </Heading>
+                <Text className="max-w-[540px] text-base leading-7 text-background">
+                  {t("welcome.closing.description")}
+                </Text>
+              </View>
               <Link href="/sign-up" asChild>
-                <Button label={t("welcome.createAccount")} size="lg" />
-              </Link>
-              <Link href="/sign-in" asChild>
-                <Button label={t("welcome.closing.account")} size="lg" variant="ghost" />
+                <Button
+                  className="self-start bg-background sm:self-center"
+                  size="lg"
+                  variant="ghost"
+                >
+                  <Text className="font-ui text-base text-foreground">
+                    {t("welcome.createAccount")}
+                  </Text>
+                </Button>
               </Link>
             </View>
           </View>
         </View>
-        <SafeAreaView edges={["bottom"]}>
+
+        <SafeAreaView className="border-t border-border bg-background" edges={["bottom"]}>
           <View
-            className="mx-auto w-full max-w-[1200px] flex-row flex-wrap items-center justify-between gap-4 px-5 py-8 sm:px-8"
+            className="mx-auto w-full max-w-[1200px] gap-6 px-5 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8"
             role="contentinfo"
           >
-            <Brand />
-            <Text className="web:font-sans text-sm text-muted-foreground">
-              {t("welcome.footer")}
-            </Text>
+            <View className="gap-3">
+              <Brand />
+              <Text className="text-sm leading-6 text-muted-foreground">{t("welcome.footer")}</Text>
+            </View>
+            <AppearanceControl />
           </View>
         </SafeAreaView>
       </ScrollView>

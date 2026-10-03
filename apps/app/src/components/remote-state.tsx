@@ -1,10 +1,10 @@
-import { WifiOff } from "lucide-react-native";
+import { AlertTriangle, WifiOff } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
-
-import { Alert } from "@/components/ui/alert";
+import { View } from "react-native";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
+import { Text } from "@/components/ui/text";
 
 export function OfflineState({ level = 1, title }: { level?: 1 | 2 | 3; title?: string }) {
   const { t } = useTranslation();
@@ -29,7 +29,11 @@ export function StaleNotice({
   loading?: boolean;
 } = {}) {
   const { t } = useTranslation();
-  const notice = <Alert tone="warning">{t("remote.stale")}</Alert>;
+  const notice = (
+    <Alert icon={AlertTriangle} variant="default">
+      <AlertDescription>{t("remote.stale")}</AlertDescription>
+    </Alert>
+  );
   if (!onRetry) return notice;
   return (
     <View className="gap-3">
@@ -40,7 +44,7 @@ export function StaleNotice({
         loading={loading}
         onPress={loading ? undefined : onRetry}
         size="sm"
-        variant="secondary"
+        variant="outline"
       />
     </View>
   );

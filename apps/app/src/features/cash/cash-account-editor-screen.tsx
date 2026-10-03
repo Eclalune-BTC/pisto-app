@@ -4,11 +4,12 @@ import type {
   CreateCashAccountRequest,
   UpdateCashAccountRequest,
 } from "@pisto/contracts";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Text } from "@/components/ui/text";
 import { CashOperationReview, type CashOperationReviewCopy } from "./cash-operation-review";
 import { ChoiceList, type ChoiceOption } from "./choice-list";
 import {
@@ -195,7 +196,7 @@ export function CashAccountEditorScreen({
             state={confirmation}
           />
         ) : (
-          <View className="gap-7 border-y border-line py-7 dark:border-[#304239]">
+          <View className="gap-7 border-y border-border py-7 ">
             <Field
               error={errors.name}
               label={copy.name}
@@ -238,7 +239,7 @@ export function CashAccountEditorScreen({
                       keyboardType="decimal-pad"
                       label={copy.openingAmount}
                       onChangeText={(openingAmount) => onDraftChange({ ...draft, openingAmount })}
-                      trailing={<Text className="font-bold text-ink-muted">{currency}</Text>}
+                      trailing={<Text className="font-ui text-muted-foreground">{currency}</Text>}
                       value={draft.openingAmount}
                     />
                     <Field
@@ -276,11 +277,11 @@ export function CashAccountEditorScreen({
             ) : null}
 
             <View className="gap-3 sm:flex-row">
-              <Button label={copy.review} onPress={onPrepareReview} variant="accent" />
-              <Button label={copy.cancel} onPress={onCancel} variant="secondary" />
+              <Button label={copy.review} onPress={onPrepareReview} variant="default" />
+              <Button label={copy.cancel} onPress={onCancel} variant="outline" />
             </View>
             {errors.form ? (
-              <Text accessibilityRole="alert" className="text-xs text-danger">
+              <Text accessibilityRole="alert" className="text-xs text-destructive">
                 {errors.form}
               </Text>
             ) : null}

@@ -4,9 +4,12 @@ import type {
   ExpenseCategory,
   OperatingReport,
 } from "@pisto/contracts";
-import { Text, View } from "react-native";
-
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Heading } from "@/components/ui/heading";
+import { Text } from "@/components/ui/text";
 import { formatBusinessLocalDate } from "@/features/receivables/presentation";
 import { formatLocalizedDateTime } from "@/i18n/format";
 import { formatMinorUnits } from "@/lib/money";
@@ -78,7 +81,7 @@ function countText(value: string, locale: string): string {
 }
 
 function MoneyValue({
-  className = "text-2xl font-black text-foreground",
+  className = "font-heading text-2xl text-foreground",
   locale,
   report,
   value,
@@ -96,9 +99,7 @@ function MoneyValue({
 }
 
 function CountValue({ locale, value }: { locale: string; value: string }) {
-  return (
-    <Text className="text-sm font-semibold text-muted-foreground">{countText(value, locale)}</Text>
-  );
+  return <Text className="text-sm font-ui text-muted-foreground">{countText(value, locale)}</Text>;
 }
 
 function SectionHeading({ description, title }: { description: string; title: string }) {
@@ -129,10 +130,10 @@ function Metadata({ copy, locale, report }: SectionProps) {
     <View className="flex-row flex-wrap gap-x-8 gap-y-4">
       {items.map((item) => (
         <View className="min-w-[180px] gap-1" key={item.label}>
-          <Text className="text-xs font-bold uppercase tracking-[0.5px] text-ink-muted dark:text-[#91A198]">
+          <Text className="text-xs font-ui uppercase tracking-[0.5px] text-muted-foreground ">
             {item.label}
           </Text>
-          <Text className="font-semibold text-foreground">{item.value}</Text>
+          <Text className="font-ui text-foreground">{item.value}</Text>
         </View>
       ))}
     </View>
@@ -153,17 +154,17 @@ function PeriodFacts({ copy, locale, report }: SectionProps) {
     <View className="gap-5">
       <SectionHeading description={copy.period.description} title={copy.period.title} />
       {noPeriodFlows ? (
-        <View className="gap-1 border-l-4 border-positive bg-[#EFF8F1] p-4 dark:bg-[#183127]">
-          <Text className="font-bold text-foreground">{copy.period.zeroTitle}</Text>
+        <View className="gap-1 border-l-4 border-positive bg-positive-surface p-4 ">
+          <Text className="font-ui text-foreground">{copy.period.zeroTitle}</Text>
           <Text className="text-sm leading-5 text-muted-foreground">
             {copy.period.zeroDescription}
           </Text>
         </View>
       ) : null}
       <View className="border-y border-border">
-        <View className="gap-4 border-b border-line py-5 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between">
+        <View className="gap-4 border-b border-border py-5  sm:flex-row sm:items-center sm:justify-between">
           <View className="gap-1">
-            <Text className="font-bold text-foreground">{copy.period.salesGross}</Text>
+            <Text className="font-ui text-foreground">{copy.period.salesGross}</Text>
             <View className="flex-row gap-2">
               <Text className="text-sm text-muted-foreground">{copy.period.salesCount}</Text>
               <CountValue locale={locale} value={report.sales.saleCount} />
@@ -171,9 +172,9 @@ function PeriodFacts({ copy, locale, report }: SectionProps) {
           </View>
           <MoneyValue locale={locale} report={report} value={report.sales.grossMinorUnits} />
         </View>
-        <View className="gap-4 border-b border-line py-5 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between">
+        <View className="gap-4 border-b border-border py-5  sm:flex-row sm:items-center sm:justify-between">
           <View className="gap-1">
-            <Text className="font-bold text-foreground">{copy.period.expensesTotal}</Text>
+            <Text className="font-ui text-foreground">{copy.period.expensesTotal}</Text>
             <View className="flex-row gap-2">
               <Text className="text-sm text-muted-foreground">{copy.period.expenseCount}</Text>
               <CountValue locale={locale} value={report.expenses.expenseCount} />
@@ -183,14 +184,14 @@ function PeriodFacts({ copy, locale, report }: SectionProps) {
         </View>
         <View className="gap-5 py-5 lg:flex-row lg:items-end lg:justify-between">
           <View className="gap-1">
-            <Text className="font-bold text-foreground">{copy.period.cashNet}</Text>
+            <Text className="font-ui text-foreground">{copy.period.cashNet}</Text>
             <MoneyValue locale={locale} report={report} value={report.cash.netMovementMinorUnits} />
           </View>
           <View className="gap-4 sm:flex-row sm:gap-10">
             <View className="gap-1 sm:items-end">
               <Text className="text-sm text-muted-foreground">{copy.period.cashInflow}</Text>
               <MoneyValue
-                className="text-lg font-bold text-positive dark:text-[#8DDEAF]"
+                className="text-lg font-ui text-positive-foreground "
                 locale={locale}
                 report={report}
                 value={report.cash.inflowMinorUnits}
@@ -199,7 +200,7 @@ function PeriodFacts({ copy, locale, report }: SectionProps) {
             <View className="gap-1 sm:items-end">
               <Text className="text-sm text-muted-foreground">{copy.period.cashOutflow}</Text>
               <MoneyValue
-                className="text-lg font-bold text-danger dark:text-[#FFBABA]"
+                className="text-lg font-ui text-destructive "
                 locale={locale}
                 report={report}
                 value={report.cash.outflowMinorUnits}
@@ -216,111 +217,131 @@ function PeriodFacts({ copy, locale, report }: SectionProps) {
 }
 
 function ExpenseBreakdown({ copy, locale, report }: SectionProps) {
+  const { t } = useTranslation();
+  const columns = useMemo<DataTableColumn<OperatingReport["expenses"]["categories"][number]>[]>(
+    () => [
+      {
+        id: "category",
+        header: t("dataTable.columns.category"),
+        meta: { primary: true },
+        cell: ({ row }) => (
+          <Text className="font-ui text-sm text-foreground">
+            {copy.categories[row.original.category]}
+          </Text>
+        ),
+      },
+      {
+        id: "records",
+        header: copy.expenses.records,
+        meta: { align: "end" },
+        cell: ({ row }) => <CountValue locale={locale} value={row.original.expenseCount} />,
+      },
+      {
+        id: "amount",
+        header: copy.expenses.amount,
+        meta: { align: "end" },
+        cell: ({ row }) => (
+          <MoneyValue
+            className="font-ui text-sm text-foreground"
+            locale={locale}
+            report={report}
+            value={row.original.totalMinorUnits}
+          />
+        ),
+      },
+    ],
+    [copy, locale, report, t],
+  );
   return (
-    <View className="gap-5">
+    <View className="gap-4">
       <SectionHeading description={copy.expenses.description} title={copy.expenses.title} />
-      {report.expenses.categories.length === 0 ? (
-        <Text className="border-y border-line py-6 text-sm text-ink-muted dark:border-[#304239] dark:text-[#AAB8B0]">
-          {copy.expenses.empty}
-        </Text>
-      ) : (
-        <View className="border-t border-border">
-          {report.expenses.categories.map((category) => (
-            <View
-              className="gap-2 border-b border-line py-4 dark:border-[#304239] sm:flex-row sm:items-center"
-              key={category.category}
-            >
-              <Text className="min-w-0 flex-1 font-semibold text-foreground">
-                {copy.categories[category.category]}
-              </Text>
-              <View className="flex-row items-center justify-between gap-5 sm:w-[280px]">
-                <View className="gap-1">
-                  <Text className="text-xs text-ink-muted dark:text-[#91A198]">
-                    {copy.expenses.records}
-                  </Text>
-                  <CountValue locale={locale} value={category.expenseCount} />
-                </View>
-                <View className="items-end gap-1">
-                  <Text className="text-xs text-ink-muted dark:text-[#91A198]">
-                    {copy.expenses.amount}
-                  </Text>
-                  <MoneyValue
-                    className="font-bold text-foreground"
-                    locale={locale}
-                    report={report}
-                    value={category.totalMinorUnits}
-                  />
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
+      <DataTable
+        caption={copy.expenses.title}
+        columns={columns}
+        data={report.expenses.categories}
+        empty={
+          <Text className="font-sans py-3 text-sm text-muted-foreground">
+            {copy.expenses.empty}
+          </Text>
+        }
+        getRowId={(category) => category.category}
+      />
     </View>
   );
 }
 
 function CashBreakdown({ copy, locale, report }: SectionProps) {
+  const { t } = useTranslation();
+  const columns = useMemo<DataTableColumn<OperatingReport["cash"]["accounts"][number]>[]>(
+    () => [
+      {
+        id: "account",
+        header: t("dataTable.columns.account"),
+        meta: { primary: true },
+        cell: ({ row }) => (
+          <View className="gap-1">
+            <Text className="font-ui text-sm text-foreground">{row.original.accountName}</Text>
+            <Text className="font-sans text-xs text-muted-foreground">
+              {copy.accountKinds[row.original.accountKind]} ·{" "}
+              {copy.accountStatuses[row.original.accountStatus]}
+            </Text>
+          </View>
+        ),
+      },
+      {
+        id: "inflow",
+        header: copy.cash.inflow,
+        meta: { align: "end" },
+        cell: ({ row }) => (
+          <MoneyValue
+            className="font-ui text-sm text-foreground"
+            locale={locale}
+            report={report}
+            value={row.original.inflowMinorUnits}
+          />
+        ),
+      },
+      {
+        id: "outflow",
+        header: copy.cash.outflow,
+        meta: { align: "end" },
+        cell: ({ row }) => (
+          <MoneyValue
+            className="font-ui text-sm text-foreground"
+            locale={locale}
+            report={report}
+            value={row.original.outflowMinorUnits}
+          />
+        ),
+      },
+      {
+        id: "net",
+        header: copy.cash.net,
+        meta: { align: "end" },
+        cell: ({ row }) => (
+          <MoneyValue
+            className="font-ui text-sm text-foreground"
+            locale={locale}
+            report={report}
+            value={row.original.netMovementMinorUnits}
+          />
+        ),
+      },
+    ],
+    [copy, locale, report, t],
+  );
   return (
-    <View className="gap-5">
+    <View className="gap-4">
       <SectionHeading description={copy.cash.description} title={copy.cash.title} />
-      {report.cash.accounts.length === 0 ? (
-        <Text className="border-y border-line py-6 text-sm text-ink-muted dark:border-[#304239] dark:text-[#AAB8B0]">
-          {copy.cash.empty}
-        </Text>
-      ) : (
-        <View className="border-t border-border">
-          {report.cash.accounts.map((account) => (
-            <View
-              className="gap-4 border-b border-line py-5 dark:border-[#304239] lg:flex-row lg:items-center"
-              key={account.accountId}
-            >
-              <View className="min-w-0 flex-1 gap-1">
-                <Text className="font-bold text-foreground">{account.accountName}</Text>
-                <Text className="text-sm text-muted-foreground">
-                  {copy.accountKinds[account.accountKind]} ·{" "}
-                  {copy.accountStatuses[account.accountStatus]}
-                </Text>
-              </View>
-              <View className="gap-4 sm:flex-row sm:gap-9 lg:min-w-[510px] lg:justify-end">
-                <View className="min-w-[130px] gap-1 lg:items-end">
-                  <Text className="text-xs text-ink-muted dark:text-[#91A198]">
-                    {copy.cash.inflow}
-                  </Text>
-                  <MoneyValue
-                    className="font-bold text-positive dark:text-[#8DDEAF]"
-                    locale={locale}
-                    report={report}
-                    value={account.inflowMinorUnits}
-                  />
-                </View>
-                <View className="min-w-[130px] gap-1 lg:items-end">
-                  <Text className="text-xs text-ink-muted dark:text-[#91A198]">
-                    {copy.cash.outflow}
-                  </Text>
-                  <MoneyValue
-                    className="font-bold text-danger dark:text-[#FFBABA]"
-                    locale={locale}
-                    report={report}
-                    value={account.outflowMinorUnits}
-                  />
-                </View>
-                <View className="min-w-[130px] gap-1 lg:items-end">
-                  <Text className="text-xs text-ink-muted dark:text-[#91A198]">
-                    {copy.cash.net}
-                  </Text>
-                  <MoneyValue
-                    className="font-black text-foreground"
-                    locale={locale}
-                    report={report}
-                    value={account.netMovementMinorUnits}
-                  />
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
+      <DataTable
+        caption={copy.cash.title}
+        columns={columns}
+        data={report.cash.accounts}
+        empty={
+          <Text className="font-sans py-3 text-sm text-muted-foreground">{copy.cash.empty}</Text>
+        }
+        getRowId={(account) => account.accountId}
+      />
     </View>
   );
 }
@@ -341,9 +362,9 @@ function PositionFacts({ copy, locale, report }: SectionProps) {
         title={copy.position.title}
       />
       <View className="border-y border-border">
-        <View className="gap-5 border-b border-line py-5 dark:border-[#304239] sm:flex-row sm:justify-between">
+        <View className="gap-5 border-b border-border py-5  sm:flex-row sm:justify-between">
           <View className="gap-1">
-            <Text className="font-bold text-foreground">{copy.position.outstanding}</Text>
+            <Text className="font-ui text-foreground">{copy.position.outstanding}</Text>
             <MoneyValue
               locale={locale}
               report={report}
@@ -351,7 +372,7 @@ function PositionFacts({ copy, locale, report }: SectionProps) {
             />
           </View>
           <View className="gap-1 sm:items-end">
-            <Text className="font-bold text-foreground">{copy.position.overdue}</Text>
+            <Text className="font-ui text-foreground">{copy.position.overdue}</Text>
             <MoneyValue
               locale={locale}
               report={report}
@@ -362,7 +383,7 @@ function PositionFacts({ copy, locale, report }: SectionProps) {
         <View className="flex-row flex-wrap py-2">
           {countFacts.map((fact) => (
             <View className="w-full gap-1 py-4 sm:w-1/2 lg:w-1/4" key={fact.label}>
-              <Text className="text-2xl font-black text-foreground">
+              <Text className="text-2xl font-heading text-foreground">
                 {countText(fact.value, locale)}
               </Text>
               <Text className="max-w-[220px] text-sm leading-5 text-muted-foreground">

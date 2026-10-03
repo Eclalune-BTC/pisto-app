@@ -1,14 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Building2, Check } from "lucide-react-native";
+import { Building2 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { View } from "react-native";
+import { useCSSVariable } from "uniwind";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 import { buildBusinessCommand } from "@/features/business/business-draft";
 import { api, isAmbiguousMutationError } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
@@ -25,6 +30,7 @@ async function selectActiveBusiness(organizationId: string) {
 }
 
 export default function BusinessSetupScreen() {
+  const foregroundColor = useCSSVariable("--color-foreground") as string;
   const { t } = useTranslation();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -86,8 +92,8 @@ export default function BusinessSetupScreen() {
   if (businesses.isPending) {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <ActivityIndicator color="#237A55" size="large" />
-        <Text className="text-sm font-semibold text-muted-foreground">{t("business.loading")}</Text>
+        <LoadingIndicator color={foregroundColor} size="large" />
+        <Text className="text-sm font-ui text-muted-foreground">{t("business.loading")}</Text>
       </View>
     );
   }
@@ -103,23 +109,21 @@ export default function BusinessSetupScreen() {
       {businesses.isError && businesses.data ? <StaleNotice /> : null}
 
       {businesses.isError && !businesses.data ? (
-        <View className="gap-3 border-l-4 border-danger bg-[#FFF1F1] p-4 dark:bg-[#3A2020]">
-          <Text className="font-bold text-danger dark:text-[#FFBABA]">
-            {t("business.loadFailed")}
-          </Text>
+        <View className="gap-3 border-l-4 border-destructive bg-destructive-surface p-4 ">
+          <Text className="font-ui text-destructive ">{t("business.loadFailed")}</Text>
           <Button
             className="self-start"
             label={t("common.retry")}
             onPress={() => businesses.refetch()}
-            variant="secondary"
+            variant="outline"
           />
         </View>
       ) : businesses.data && businesses.data.items.length > 0 ? (
-        <View className="gap-6 border-y border-line py-6 dark:border-[#304239]">
+        <View className="gap-6 border-y border-border py-6 ">
           <View className="flex-row items-start gap-4">
-            <Building2 color="#237A55" size={24} />
+            <Building2 color={foregroundColor} size={24} />
             <View className="min-w-0 flex-1 gap-1">
-              <Text className="text-xl font-black text-foreground">
+              <Text className="text-xl font-heading text-foreground">
                 {businesses.data.items[0]?.name}
               </Text>
               <Text className="text-sm leading-5 text-muted-foreground">
@@ -135,16 +139,14 @@ export default function BusinessSetupScreen() {
               const business = businesses.data?.items[0];
               if (business) selection.mutate(business.id);
             }}
-            variant="accent"
+            variant="default"
           />
           {selection.error ? (
-            <Text className="text-sm text-danger dark:text-[#FFBABA]">
-              {t("business.continueFailed")}
-            </Text>
+            <Text className="text-sm text-destructive ">{t("business.continueFailed")}</Text>
           ) : null}
         </View>
       ) : (
-        <View className="gap-7 border-y border-line py-7 dark:border-[#304239]">
+        <View className="gap-7 border-y border-border py-7 ">
           <View className="gap-5">
             <Field
               autoCapitalize="words"
@@ -183,28 +185,31 @@ export default function BusinessSetupScreen() {
             </View>
           </View>
 
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: acknowledged, disabled: creationLocked }}
-            aria-checked={acknowledged}
-            className="flex-row items-start gap-3"
-            disabled={creationLocked}
-            onPress={() => {
-              if (!creationLocked) setAcknowledged((value) => !value);
-            }}
-          >
-            <View
-              className={`mt-0.5 h-6 w-6 items-center justify-center border ${
-                acknowledged ? "border-positive bg-positive" : "border-[#87958D] bg-white"
-              }`}
-              style={{ height: 24, width: 24 }}
-            >
-              {acknowledged ? <Check color="#FFFFFF" size={16} strokeWidth={3} /> : null}
+          <View className="min-h-12 flex-row items-start gap-3">
+            <Checkbox
+              accessibilityLabel={t("business.acknowledgment")}
+              aria-labelledby="business-acknowledgment-label"
+              checked={acknowledged}
+              className="mt-3"
+              disabled={creationLocked}
+              nativeID="business-acknowledgment"
+              onCheckedChange={(checked) => {
+                if (!creationLocked) setAcknowledged(checked);
+              }}
+            />
+            <View className="min-w-0 flex-1">
+              <Label
+                className="min-h-11 flex-1 py-3 leading-5"
+                disabled={creationLocked}
+                nativeID="business-acknowledgment-label"
+                onPress={() => {
+                  if (!creationLocked) setAcknowledged((value) => !value);
+                }}
+              >
+                {t("business.acknowledgment")}
+              </Label>
             </View>
-            <Text className="min-w-0 flex-1 text-sm leading-5 text-ink dark:text-[#DCE6E0]">
-              {t("business.acknowledgment")}
-            </Text>
-          </Pressable>
+          </View>
 
           <View className="gap-3">
             <Button
@@ -213,10 +218,10 @@ export default function BusinessSetupScreen() {
               label={uncertainCreation ? t("common.retrySameConfirmation") : t("business.create")}
               loading={creation.isPending}
               onPress={createBusiness}
-              variant="accent"
+              variant="default"
             />
             {creation.error ? (
-              <Text accessibilityRole="alert" className="text-sm text-danger dark:text-[#FFBABA]">
+              <Text accessibilityRole="alert" className="text-sm text-destructive ">
                 {uncertainCreation
                   ? t("business.uncertain")
                   : productErrorMessage(creation.error, t("business.createFailed"), t, "business")}
@@ -226,7 +231,7 @@ export default function BusinessSetupScreen() {
         </View>
       )}
 
-      <Text className="text-xs leading-5 text-ink-muted dark:text-[#91A198]">
+      <Text className="text-xs leading-5 text-muted-foreground ">
         {t("business.incrementNote")}
       </Text>
     </Page>

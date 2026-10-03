@@ -1,9 +1,8 @@
-import { Platform, Pressable, Text, View } from "react-native";
-
-import { cn } from "@/lib/cn";
+import { View } from "react-native";
+import { Text } from "./text";
+import { ToggleGroup, ToggleGroupItem } from "./toggle-group";
 
 export type FilterOption<T extends string> = { label: string; value: T };
-
 type FilterBarProps<T extends string> = {
   disabled?: boolean;
   label: string;
@@ -13,7 +12,6 @@ type FilterBarProps<T extends string> = {
   value: T;
 };
 
-/** A small, mutually exclusive filter set. Each button keeps its full context. */
 export function FilterBar<T extends string>({
   disabled = false,
   label,
@@ -23,41 +21,34 @@ export function FilterBar<T extends string>({
   value,
 }: FilterBarProps<T>) {
   return (
-    <View className="gap-2">
-      {showLabel ? (
-        <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">{label}</Text>
-      ) : null}
-      <View className="flex-row flex-wrap border-b border-border">
-        {options.map((option) => {
-          const selected = option.value === value;
-          return (
-            <Pressable
-              accessibilityLabel={`${label}: ${option.label}`}
-              accessibilityRole={Platform.OS === "web" ? "button" : "togglebutton"}
-              accessibilityState={
-                Platform.OS === "web" ? { disabled } : { checked: selected, disabled }
-              }
-              aria-pressed={Platform.OS === "web" ? selected : undefined}
-              className={cn(
-                "min-h-12 max-w-full justify-center border-b-2 px-4 py-3 active:opacity-70 disabled:opacity-45",
-                selected ? "border-positive" : "border-transparent",
-              )}
-              disabled={disabled}
-              key={option.value}
-              onPress={() => onChange(option.value)}
-            >
-              <Text
-                className={cn(
-                  "text-sm font-bold",
-                  selected ? "text-positive dark:text-[#8DDEAF]" : "text-muted-foreground",
-                )}
-              >
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+    <View className="min-w-0 max-w-full gap-2">
+      {showLabel ? <Text className="font-ui text-sm">{label}</Text> : null}
+      <ToggleGroup
+        type="single"
+        value={value}
+        disabled={disabled}
+        accessibilityLabel={label}
+        variant="outline"
+        className="max-w-full flex-wrap gap-2 shadow-none"
+        onValueChange={(next) => {
+          if (next === "") return;
+          const option = options.find((entry) => entry.value === next);
+          if (!option) throw new Error("The selected filter is not in the current option set.");
+          onChange(option.value);
+        }}
+      >
+        {options.map((option) => (
+          <ToggleGroupItem
+            key={option.value}
+            value={option.value}
+            disabled={disabled}
+            accessibilityLabel={`${label}: ${option.label}`}
+            className="h-auto min-h-11 max-w-full rounded-md border-l px-3 py-2 shadow-none sm:h-auto sm:px-3 sm:py-2 web:flex-none web:whitespace-normal"
+          >
+            <Text>{option.label}</Text>
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
     </View>
   );
 }

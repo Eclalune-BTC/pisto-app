@@ -5,12 +5,13 @@ import type {
   CashMovement,
   CashMovementAction,
 } from "@pisto/contracts";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 import { CashMovementList } from "./cash-movement-list";
 import { CashOperationReview, type CashOperationReviewCopy } from "./cash-operation-review";
 import {
@@ -123,8 +124,8 @@ export function CashAccountDetailScreen({
         {isStale ? <StaleNotice /> : null}
 
         {account === null ? (
-          <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
-            <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+          <View className="gap-3 border-y border-border py-8 ">
+            <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
               {copy.notFoundTitle}
             </Text>
             <Text className="text-sm leading-5 text-muted-foreground">
@@ -180,19 +181,23 @@ export function CashAccountDetailScreen({
 
             {account.status === "active" && operation.canStart ? (
               <View className="gap-3 sm:flex-row sm:flex-wrap">
-                <Button label={copy.editAccount} onPress={onEditAccount} variant="secondary" />
+                <Button label={copy.editAccount} onPress={onEditAccount} variant="outline" />
                 <Button
                   label={copy.recordAdjustment}
                   onPress={onRecordAdjustment}
-                  variant="accent"
+                  variant="default"
                 />
-                <Button label={copy.transfer} onPress={onTransfer} variant="secondary" />
-                <Button label={copy.archiveAccount} onPress={onBeginArchive} variant="danger" />
+                <Button label={copy.transfer} onPress={onTransfer} variant="outline" />
+                <Button
+                  label={copy.archiveAccount}
+                  onPress={onBeginArchive}
+                  variant="destructive"
+                />
               </View>
             ) : null}
 
             <View className="gap-4">
-              <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+              <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
                 {copy.movementsTitle}
               </Text>
               <CashMovementList
@@ -208,7 +213,7 @@ export function CashAccountDetailScreen({
                   label={isLoadingMoreMovements ? copy.loadingMore : copy.loadMore}
                   loading={isLoadingMoreMovements}
                   onPress={onLoadMoreMovements}
-                  variant="secondary"
+                  variant="outline"
                 />
               ) : null}
             </View>

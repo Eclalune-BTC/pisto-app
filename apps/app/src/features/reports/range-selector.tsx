@@ -1,9 +1,5 @@
-import { CalendarDays } from "lucide-react-native";
-import { Text, View } from "react-native";
-
-import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
-import { Heading } from "@/components/ui/heading";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateRangeFilter } from "@/components/ui/date-range-filter";
 
 import type { ReportRangeIssue } from "./date-range";
 
@@ -62,53 +58,28 @@ export function ReportRangeSelector({
 }: ReportRangeSelectorProps) {
   const errors = rangeErrors(copy, issue);
   return (
-    <View className="gap-5 border-y border-line py-5 dark:border-[#304239]">
-      <View className="flex-row items-start gap-3">
-        <CalendarDays color="#237A55" size={20} />
-        <View className="min-w-0 flex-1 gap-1">
-          <Heading level={2} size="section">
-            {copy.title}
-          </Heading>
-          <Text className="text-sm leading-5 text-muted-foreground">{copy.description}</Text>
-        </View>
-      </View>
-      <View className="gap-4 sm:flex-row sm:items-start">
-        <View className="min-w-0 flex-1">
-          <Field
-            autoCapitalize="none"
-            autoCorrect={false}
-            error={errors.start}
-            keyboardType="numbers-and-punctuation"
-            label={copy.startLabel}
-            maxLength={10}
-            onChangeText={onStartLocalDateChange}
-            onSubmitEditing={onApply}
-            placeholder={copy.datePlaceholder}
-            value={startLocalDate}
-          />
-        </View>
-        <View className="min-w-0 flex-1">
-          <Field
-            autoCapitalize="none"
-            autoCorrect={false}
-            error={errors.end}
-            keyboardType="numbers-and-punctuation"
-            label={copy.endLabel}
-            maxLength={10}
-            onChangeText={onEndLocalDateChange}
-            onSubmitEditing={onApply}
-            placeholder={copy.datePlaceholder}
-            value={endLocalDate}
-          />
-        </View>
-        <Button
-          className="sm:mt-7"
-          label={applying ? copy.applying : copy.apply}
-          loading={applying}
-          onPress={onApply}
-          variant="accent"
+    <Card className="gap-4 py-4 shadow-none">
+      <CardHeader className="gap-1 px-4">
+        <CardTitle aria-level={2} className="text-lg leading-6">
+          {copy.title}
+        </CardTitle>
+        <CardDescription className="leading-6">{copy.description}</CardDescription>
+      </CardHeader>
+      <CardContent className="px-4">
+        <DateRangeFilter
+          applying={applying}
+          applyLabel={applying ? copy.applying : copy.apply}
+          endDate={endLocalDate}
+          endLabel={copy.endLabel}
+          endError={errors.end}
+          error={errors.start}
+          onApply={onApply}
+          onEndDateChange={onEndLocalDateChange}
+          onStartDateChange={onStartLocalDateChange}
+          startDate={startLocalDate}
+          startLabel={copy.startLabel}
         />
-      </View>
-    </View>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,10 +1,13 @@
 import type { ProductDetail, ProductUnitKind } from "@pisto/contracts";
 import { AlertTriangle, ArrowLeft } from "lucide-react-native";
-import { ActivityIndicator, Text, View } from "react-native";
+import { View } from "react-native";
+import { useCSSVariable } from "uniwind";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 import { formatMinorUnits } from "@/lib/money";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
 import { ReadOnlyNotice } from "./route-state";
@@ -104,10 +107,13 @@ export function ProductDetailScreen({
   showReadOnlyNotice,
   state,
 }: ProductDetailProps) {
+  const foregroundColor = useCSSVariable("--color-foreground") as string;
+  const mutedColor = useCSSVariable("--color-muted-foreground") as string;
+  const destructiveColor = useCSSVariable("--color-destructive") as string;
   if (state.status === "loading") {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <ActivityIndicator color="#237A55" />
+        <LoadingIndicator color={foregroundColor} />
         <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
       </View>
     );
@@ -131,12 +137,12 @@ export function ProductDetailScreen({
             : copy.errorDescription;
     return (
       <View className="flex-1 items-start justify-center gap-4 px-5 sm:px-8 lg:px-10">
-        <Text accessibilityRole="alert" className="text-xl font-black text-foreground">
+        <Text accessibilityRole="alert" className="text-xl font-heading text-foreground">
           {title}
         </Text>
         <Text className="max-w-[460px] text-sm leading-5 text-muted-foreground">{description}</Text>
         {state.status === "error" ? (
-          <Button label={copy.retry} onPress={onRetry} variant="secondary" />
+          <Button label={copy.retry} onPress={onRetry} variant="outline" />
         ) : null}
       </View>
     );
@@ -152,15 +158,13 @@ export function ProductDetailScreen({
         size="sm"
         variant="ghost"
       >
-        <ArrowLeft color="#617168" size={18} />
-        <ButtonText className="text-muted-foreground" variant="ghost">
-          {copy.back}
-        </ButtonText>
+        <ArrowLeft color={mutedColor} size={18} />
+        <Text className="text-muted-foreground">{copy.back}</Text>
       </Button>
       <ScreenHeader description={copy.description} eyebrow={copy.title} title={product.name} />
       {state.stale ? (
-        <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
-          <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
+        <View className="border-l-4 border-warning bg-warning-surface p-3">
+          <Text className="text-sm text-foreground">{copy.stale}</Text>
         </View>
       ) : null}
       <DetailList
@@ -208,9 +212,9 @@ export function ProductDetailScreen({
       />
 
       {archiveReview ? (
-        <View className="gap-5 border-y border-line py-6 dark:border-[#304239]">
+        <View className="gap-5 border-y border-border py-6 ">
           <View className="gap-1">
-            <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+            <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
               {copy.archiveTitle}
             </Text>
             <Text className="text-sm leading-5 text-muted-foreground">
@@ -218,16 +222,13 @@ export function ProductDetailScreen({
             </Text>
           </View>
           {archiveState === "error" || archiveState === "uncertain" ? (
-            <View className="flex-row items-start gap-3 border-l-4 border-danger bg-[#FFF1F1] p-4 dark:bg-[#3A2020]">
-              <AlertTriangle color="#B94242" size={20} />
+            <View className="flex-row items-start gap-3 border-l-4 border-destructive bg-destructive-surface p-4">
+              <AlertTriangle color={destructiveColor} size={20} />
               <View className="min-w-0 flex-1 gap-1">
-                <Text
-                  accessibilityRole="alert"
-                  className="font-bold text-danger dark:text-[#FFBABA]"
-                >
+                <Text accessibilityRole="alert" className="font-ui text-destructive ">
                   {archiveState === "uncertain" ? copy.uncertainTitle : copy.archiveFailedTitle}
                 </Text>
-                <Text className="text-sm text-ink-muted dark:text-[#C9D4CE]">
+                <Text className="text-sm text-muted-foreground">
                   {archiveState === "uncertain"
                     ? copy.uncertainDescription
                     : (mutationMessage ?? copy.archiveFailedDescription)}
@@ -240,7 +241,7 @@ export function ProductDetailScreen({
               <Button
                 label={copy.retrySameConfirmation}
                 onPress={onResolveUncertain}
-                variant="secondary"
+                variant="outline"
               />
             ) : (
               <>
@@ -248,13 +249,13 @@ export function ProductDetailScreen({
                   label={copy.confirmArchive}
                   loading={archiveState === "pending"}
                   onPress={onArchive}
-                  variant="danger"
+                  variant="destructive"
                 />
                 <Button
                   disabled={archiveState === "pending"}
                   label={copy.cancel}
                   onPress={archiveState === "pending" ? undefined : onCancelArchive}
-                  variant="secondary"
+                  variant="outline"
                 />
               </>
             )}
@@ -262,8 +263,8 @@ export function ProductDetailScreen({
         </View>
       ) : canManage && product.status === "active" ? (
         <View className="gap-3 sm:flex-row">
-          <Button label={copy.edit} onPress={onEdit} variant="accent" />
-          <Button label={copy.archive} onPress={onRequestArchive} variant="danger" />
+          <Button label={copy.edit} onPress={onEdit} variant="default" />
+          <Button label={copy.archive} onPress={onRequestArchive} variant="destructive" />
         </View>
       ) : showReadOnlyNotice && product.status === "active" ? (
         <ReadOnlyNotice description={copy.readOnlyDescription} />

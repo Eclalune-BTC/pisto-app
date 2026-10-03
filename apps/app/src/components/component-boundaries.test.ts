@@ -11,6 +11,7 @@ describe("shared component boundaries", () => {
   test("keeps native inputs and action buttons inside the shared UI implementation", () => {
     const violations: string[] = [];
     for (const [path, source] of Object.entries(sources)) {
+      if (/\.test\./.test(path)) continue;
       if (path.startsWith("./ui/") || path.includes("/components/ui/")) continue;
       const tree = ts.createSourceFile(
         path,
@@ -37,34 +38,19 @@ describe("shared component boundaries", () => {
         if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
           const tag = node.tagName.getText(tree);
           const native = nativeNames.get(tag);
-          let invalid =
-            ["button", "input", "textarea"].includes(tag) ||
+          const invalid =
+            ["button", "input", "textarea", "select"].includes(tag) ||
             (native !== undefined &&
               [
                 "Button",
+                "ActivityIndicator",
+                "Pressable",
+                "Switch",
                 "TextInput",
                 "TouchableOpacity",
                 "TouchableHighlight",
                 "TouchableWithoutFeedback",
               ].includes(native));
-          if (native === "Pressable") {
-            const role = node.attributes.properties.find(
-              (attribute) =>
-                ts.isJsxAttribute(attribute) &&
-                attribute.name.getText(tree) === "accessibilityRole",
-            );
-            const specialized =
-              role &&
-              ts.isJsxAttribute(role) &&
-              role.initializer &&
-              ts.isStringLiteral(role.initializer) &&
-              ["radio", "checkbox"].includes(role.initializer.text);
-            const element = ts.isJsxElement(node.parent) ? node.parent : node;
-            const parent = element.parent;
-            const linked =
-              ts.isJsxElement(parent) && parent.openingElement.tagName.getText(tree) === "Link";
-            invalid = !specialized && !linked;
-          }
           if (invalid)
             violations.push(
               `${path}:${tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1} ${tag}`,
@@ -73,6 +59,40 @@ describe("shared component boundaries", () => {
         ts.forEachChild(node, visit);
       }
       visit(tree);
+    }
+    expect(violations).toEqual([]);
+  });
+
+  test("uses the RNR Text and installed controls outside their implementation boundary", () => {
+    const violations: string[] = [];
+    for (const [path, source] of Object.entries(sources)) {
+      if (/\.test\./.test(path) || path.includes("/components/ui/") || path.startsWith("./ui/"))
+        continue;
+      const tree = ts.createSourceFile(
+        path,
+        source,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TSX,
+      );
+      for (const statement of tree.statements) {
+        if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier))
+          continue;
+        const module = statement.moduleSpecifier.text;
+        const startup = path.endsWith("/app/_layout.tsx");
+        if (
+          module.startsWith("@rn-primitives/") &&
+          !(startup && module === "@rn-primitives/portal")
+        )
+          violations.push(path);
+        const bindings = statement.importClause?.namedBindings;
+        if (module === "react-native" && !startup && bindings && ts.isNamedImports(bindings)) {
+          for (const binding of bindings.elements) {
+            if ((binding.propertyName ?? binding.name).text === "Text")
+              violations.push(`${path}: Text`);
+          }
+        }
+      }
     }
     expect(violations).toEqual([]);
   });

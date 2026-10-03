@@ -1,6 +1,6 @@
-import { Text, View } from "react-native";
-
+import { View } from "react-native";
 import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 
 import { type CustomerFormCopy, customerPrimaryAction, type MutationState } from "./types";
 
@@ -24,18 +24,18 @@ export function CustomerArchiveReview({
   const action = customerPrimaryAction(mutation);
   return (
     <View className="gap-5">
-      <Text accessibilityRole="header" className="text-2xl font-black text-foreground">
+      <Text accessibilityRole="header" className="text-2xl font-heading text-foreground">
         {copy.confirmArchive}
       </Text>
-      <Text className="border-y border-line py-5 text-base font-bold text-ink dark:border-[#304239] dark:text-white">
+      <Text className="border-y border-border py-5 text-base font-ui text-foreground  dark:text-white">
         {customerName}
       </Text>
       {mutation.kind === "uncertain" || mutation.kind === "error" ? (
         <View
           className={`gap-2 border-l-4 p-4 ${
             mutation.kind === "uncertain"
-              ? "border-warning bg-[#FFF6E8] dark:bg-[#3A2A18]"
-              : "border-danger bg-[#FFF1F1] dark:bg-[#3A2020]"
+              ? "border-warning bg-warning-surface "
+              : "border-danger bg-destructive-surface "
           }`}
         >
           <Text accessibilityRole="alert" className="text-sm text-foreground">
@@ -56,14 +56,14 @@ export function CustomerArchiveReview({
           <Button
             label={copy.retrySameConfirmation}
             onPress={onRetrySameRequest}
-            variant="danger"
+            variant="destructive"
           />
         ) : action === "submit" || action === "waiting" ? (
           <Button
             label={copy.confirmArchive}
             loading={action === "waiting"}
             onPress={onConfirm}
-            variant="danger"
+            variant="destructive"
           />
         ) : null}
       </View>

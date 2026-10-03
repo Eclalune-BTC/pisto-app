@@ -1,5 +1,44 @@
 export const esSV = {
+  dataTable: {
+    openRecord: "Ver {{name}}",
+    columns: {
+      description: "Descripción",
+      category: "Categoría",
+      date: "Fecha",
+      account: "Cuenta",
+      amount: "Importe",
+      status: "Estado",
+      actions: "Acciones",
+      name: "Nombre",
+      currency: "Moneda",
+      reference: "Referencia",
+      type: "Tipo",
+      balance: "Saldo",
+      phone: "Teléfono",
+      email: "Correo",
+      price: "Precio",
+      stock: "Existencias",
+      customer: "Cliente",
+      outstanding: "Pendiente",
+      quantity: "Cantidad",
+      sku: "SKU",
+      minimum: "Mínimo",
+    },
+  },
+  filters: {
+    reset: "Limpiar filtros",
+    history: "Historial",
+    periodSummary: "Resumen del período",
+    views: "Vistas",
+    selectOption: "Selecciona una opción",
+    selectionUnavailable:
+      "La opción seleccionada no está disponible. Actualiza la lista o elige otra.",
+    accounts: "Cuentas",
+    movements: "Movimientos",
+    dateFormat: "AAAA-MM-DD",
+  },
   common: {
+    close: "Cerrar",
     appName: "Pisto",
     retry: "Volver a intentar",
     retrySameConfirmation: "Reintentar la misma confirmación",
@@ -33,94 +72,74 @@ export const esSV = {
     createAccount: "Crear cuenta",
     pageTitle: "Pisto · Ventas, gastos, inventario y cobros",
     navigation: "Conoce Pisto",
-    sectionLinks: { product: "Producto", workflow: "Cómo funciona", questions: "Preguntas" },
-    eyebrow: "Para el día a día de tu negocio",
-    title: "Lleva tu negocio.\nNo solo tus ventas.",
+    sectionLinks: { product: "Funciones", workflow: "Cómo empezar", questions: "Preguntas" },
+    title: "Tu negocio, en orden.",
     description:
-      "Registra lo que entra y sale, controla existencias y da seguimiento a lo que te deben. Pisto reúne la operación diaria de tu negocio en un mismo lugar.",
-    setupBusiness: "Crear mi negocio",
-    explore: "Conocer el producto",
-    audience: "Para tiendas, servicios y pequeños negocios.",
-    preview: {
-      label: "Ejemplo ilustrativo",
-      title: "Cada registro tiene su lugar.",
-      selector: "Ver un ejemplo de",
-      amount: "Importe del ejemplo · USD",
-      description: "Descripción",
-      effect: "Qué registra Pisto",
-      note: "Ejemplos de uso, no datos de tu negocio. Aquí no se guarda ninguna operación.",
-      sales: {
-        description: "Venta de mostrador",
-        effect: "El total de la venta y su historial.",
-        detail: "La caja y el inventario se registran por separado.",
-      },
-      expenses: {
-        description: "Compra de insumos",
-        effect: "El gasto y la salida en la cuenta elegida.",
-        detail: "Ambos se guardan juntos al confirmar el gasto pagado.",
-      },
-      receivables: {
-        description: "Abono de un cliente",
-        effect: "El pago recibido y la entrada en caja.",
-        detail: "El abono reduce el saldo pendiente de ese cliente.",
-      },
-    },
+      "Registra tus ventas y gastos, organiza el inventario y da seguimiento a lo que te deben. Todo desde el mismo lugar.",
+    explore: "Ver funciones",
+    audience: "Gestión para pequeños negocios",
+    availability: "Desde la web, en tu computadora o teléfono.",
     product: {
-      eyebrow: "El producto completo",
-      title: "De la primera venta\nal cobro pendiente.",
+      title: "Una herramienta para cada parte de tu negocio.",
       description:
-        "Empieza por la tarea que necesitas. Tus registros quedan organizados en cuatro áreas de trabajo.",
+        "Explora cómo se llevan las operaciones, los productos, los clientes y los reportes en Pisto.",
+      navigation: "Explorar funciones de Pisto",
+      captureNote: "Interfaz de Pisto · configuración de ejemplo.",
       money: {
-        title: "Sigue el movimiento de tu dinero.",
+        tab: "Dinero",
+        title: "Cada movimiento, en su lugar.",
         description:
-          "Registra ventas por importe total y gastos pagados. Consulta tus cuentas de efectivo o banco, sus movimientos y las transferencias que registres entre ellas.",
-        detail: "Historial de ventas y correcciones, gastos por categoría y saldos por cuenta.",
+          "Registra lo que vendes y lo que pagas. Vuelve al historial cuando necesites revisar una operación.",
+        imageAlt:
+          "Formulario de Pisto para registrar un gasto, con una cuenta de ejemplo y el monto y la descripción sin completar.",
       },
       stock: {
-        title: "Ten a mano lo que vendes y lo que queda.",
+        tab: "Productos",
+        title: "Ten claro qué tienes disponible.",
         description:
-          "Organiza productos, precios y categorías. Registra entradas y ajustes de inventario; consulta las existencias y los productos que están por debajo de su umbral.",
-        detail: "Catálogo con SKU y unidades, movimientos de inventario y reversión de errores.",
+          "Organiza tu catálogo y lleva las entradas y ajustes de inventario con un historial de movimientos.",
+        imageAlt:
+          "Formulario de nuevo producto en Pisto: nombre, SKU y precio vacíos, con el selector de categoría.",
       },
       relationships: {
-        title: "No pierdas de vista lo que te deben.",
+        tab: "Clientes",
+        title: "Dale seguimiento a cada cobro.",
         description:
-          "Guarda los datos de tus clientes, registra cargos y aplica abonos. Distingue lo pendiente, lo vencido y lo pagado, con el historial de cada cuenta por cobrar.",
-        detail: "Contactos, fechas de vencimiento, pagos parciales y reversión de pagos.",
+          "Mantén los contactos y sus cargos en orden. Distingue lo pendiente, lo vencido y lo que ya se pagó.",
+        imageAlt:
+          "Formulario real de Pisto para agregar un cliente, con los campos de contacto vacíos.",
       },
       insight: {
-        title: "Mira tus registros con perspectiva.",
+        tab: "Reportes",
+        title: "Consulta el período que te interesa.",
         description:
-          "Consulta ventas, gastos y movimientos de caja para un período. Revisa por separado las existencias y las cuentas por cobrar actuales, con la moneda y las fechas del negocio.",
-        detail:
-          "Reportes de operación basados en tus registros, sin confundir ingresos con utilidad.",
+          "Revisa ventas, gastos y movimientos de caja por fechas. Los saldos y existencias actuales se presentan por separado.",
+        imageAlt:
+          "Selector de fechas de un reporte de Pisto. La captura muestra los controles, no cifras de operaciones.",
       },
     },
     workflow: {
-      eyebrow: "Una forma de trabajar",
-      title: "Configura. Registra. Consulta.",
+      title: "Empieza por lo que necesitas hoy.",
+      description: "Configura tu negocio una vez. Después, registra y consulta a tu ritmo.",
       setup: {
-        title: "Dale contexto a tus cuentas",
+        title: "Crea tu cuenta y tu negocio",
         description:
-          "Crea tu negocio y elige su moneda y zona horaria. Añade las cuentas, productos o clientes que necesites.",
+          "Elige la moneda y la zona horaria. Añade las cuentas, productos o clientes con los que vas a trabajar.",
       },
       record: {
-        title: "Revisa antes de confirmar",
+        title: "Registra una operación",
         description:
-          "Escribe la operación, comprueba los datos y confírmala. Las correcciones conservan la relación con el registro original.",
+          "Completa el formulario y revisa los datos antes de confirmar. Cada registro conserva su historial.",
       },
       understand: {
-        title: "Vuelve al detalle cuando lo necesites",
+        title: "Consulta el historial",
         description:
-          "Busca un registro, cambia un filtro o consulta un período. Revisa de dónde viene cada movimiento, no solo un número final.",
+          "Busca una operación o un cliente, filtra tus registros y consulta los reportes del período que te interesa.",
       },
-      controlTitle: "La última palabra la tienes tú.",
-      controlDescription:
-        "Una revisión no es una operación confirmada. Si se interrumpe la respuesta al guardar una venta nueva, Pisto permite recuperar su revisión o su resultado al volver.",
     },
     questions: {
-      eyebrow: "Antes de empezar",
-      title: "Qué hace Pisto.\nY qué no hace todavía.",
+      title: "Preguntas frecuentes",
+      description: "Qué incluye Pisto hoy y qué conviene tener claro antes de empezar.",
       sales: {
         question: "¿Una venta descuenta inventario o entra a caja automáticamente?",
         answer:
@@ -143,13 +162,18 @@ export const esSV = {
       },
     },
     closing: {
-      title: "Empieza por tu próximo registro.",
-      description: "Crea tu negocio y organiza la operación a tu ritmo.",
-      account: "Ya tengo una cuenta",
+      title: "Dale un lugar a las cuentas de tu negocio.",
+      description: "Crea tu cuenta, configura tu negocio y comienza con tu primer registro.",
     },
     footer: "Gestión para pequeños negocios.",
   },
+  startup: {
+    errorTitle: "No pudimos abrir Pisto",
+    errorDescription:
+      "La aplicación no terminó de cargar. Revisa tu conexión y vuelve a intentarlo.",
+  },
   appearance: {
+    switchTo: { light: "Cambiar a modo claro", dark: "Cambiar a modo oscuro" },
     errors: {
       restore:
         "No pudimos recuperar tu apariencia guardada. Elige una opción para volver a guardarla.",
@@ -197,6 +221,9 @@ export const esSV = {
       "Pisto no pudo confirmar el cierre de sesión. Revisa tu conexión e inténtalo de nuevo.",
   },
   shell: {
+    openNavigation: "Abrir navegación",
+    closeNavigation: "Cerrar navegación",
+    navigationDescription: "Accede a las áreas disponibles de tu negocio.",
     primaryNavigation: "Navegación principal",
     signingOut: "Cerrando sesión…",
   },
@@ -730,8 +757,7 @@ export const esSV = {
     overview: {
       eyebrow: "Operar",
       title: "Gastos",
-      description:
-        "Consulta los gastos pagados y registrados en {{business}} sin confundirlos con utilidad.",
+      description: "Consulta y registra los gastos pagados de {{business}}.",
       accountFilter: "Cuenta",
       allAccounts: "Todas las cuentas",
       allCategories: "Todas las categorías",
@@ -740,14 +766,16 @@ export const esSV = {
       categoryBreakdown: "Por categoría",
       categoryFilter: "Categoría",
       emptyTitle: "No encontramos gastos con estos filtros",
-      emptyDescription: "Registra el primer gasto pagado para empezar un historial verificable.",
+      emptyDescription:
+        "Los gastos registrados aparecerán aquí. También puedes ajustar los filtros.",
       endDate: "Fecha final",
       expensesNotProfit:
         "Estos son gastos pagados registrados. No representan por sí solos costo total ni utilidad.",
-      filtersTitle: "Filtros y período",
+      filtersTitle: "Filtrar historial",
       historyTitle: "Historial",
       noCategoryData: "No encontramos gastos registrados en este período.",
-      periodScope: "El período actualiza el resumen; los filtros actualizan el historial.",
+      periodScope:
+        "El resumen incluye los gastos registrados del período, independientemente de los filtros del historial.",
       periodTotal: "Total del período",
       posted: "Registrado",
       postedStatus: "Registrados",
@@ -870,13 +898,11 @@ export const esSV = {
       noPrice: "Sin precio de venta",
       stockNotTracked: "Existencia no controlada",
       lowStock: "Existencia baja",
-      onHand: "Existencia",
       loadMore: "Cargar más productos",
       loadingMore: "Cargando más productos…",
       loadMoreCategories: "Mostrar más categorías",
       categoriesLoading: "Cargando categorías…",
       categoriesUnavailable: "No pudimos cargar todas las categorías.",
-      openProduct: "Abrir {{name}}",
     },
     categories: {
       title: "Categorías",

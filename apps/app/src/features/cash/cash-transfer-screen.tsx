@@ -1,11 +1,12 @@
 import type { CashAccount, TransferCashRequest } from "@pisto/contracts";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { SelectField } from "@/components/ui/select-field";
+import { Text } from "@/components/ui/text";
 import { CashOperationReview, type CashOperationReviewCopy } from "./cash-operation-review";
-import { ChoiceList } from "./choice-list";
 import {
   FeatureBoundary,
   type FeatureBoundaryCopy,
@@ -130,8 +131,8 @@ export function CashTransferScreen({
         />
 
         {activeAccounts.length < 2 && !reviewing ? (
-          <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
-            <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+          <View className="gap-3 border-y border-border py-8 ">
+            <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
               {copy.accountsUnavailableTitle}
             </Text>
             <Text className="text-sm leading-5 text-muted-foreground">
@@ -141,7 +142,7 @@ export function CashTransferScreen({
               className="self-start"
               label={copy.createAccount}
               onPress={onCreateAccount}
-              variant="accent"
+              variant="default"
             />
           </View>
         ) : reviewing ? (
@@ -166,26 +167,26 @@ export function CashTransferScreen({
             state={confirmation}
           />
         ) : (
-          <View className="gap-7 border-y border-line py-7 dark:border-[#304239]">
-            <ChoiceList
+          <View className="gap-7 border-y border-border py-7 ">
+            <SelectField
               label={copy.fromAccount}
               onChange={(fromAccountId) => onDraftChange({ ...draft, fromAccountId })}
               options={options}
               value={draft.fromAccountId}
             />
             {errors.fromAccountId ? (
-              <Text accessibilityRole="alert" className="text-xs text-danger">
+              <Text accessibilityRole="alert" className="text-xs text-destructive">
                 {errors.fromAccountId}
               </Text>
             ) : null}
-            <ChoiceList
+            <SelectField
               label={copy.toAccount}
               onChange={(toAccountId) => onDraftChange({ ...draft, toAccountId })}
               options={options}
               value={draft.toAccountId}
             />
             {errors.toAccountId ? (
-              <Text accessibilityRole="alert" className="text-xs text-danger">
+              <Text accessibilityRole="alert" className="text-xs text-destructive">
                 {errors.toAccountId}
               </Text>
             ) : null}
@@ -196,7 +197,7 @@ export function CashTransferScreen({
                 loading={isLoadingMoreAccounts}
                 onPress={onLoadMoreAccounts}
                 size="sm"
-                variant="secondary"
+                variant="outline"
               />
             ) : null}
             <Field
@@ -206,7 +207,7 @@ export function CashTransferScreen({
               onChangeText={(amount) => onDraftChange({ ...draft, amount })}
               trailing={
                 draftCurrency ? (
-                  <Text className="font-bold text-ink-muted">{draftCurrency}</Text>
+                  <Text className="font-ui text-muted-foreground">{draftCurrency}</Text>
                 ) : undefined
               }
               value={draft.amount}
@@ -237,8 +238,8 @@ export function CashTransferScreen({
               </View>
             </View>
             <View className="gap-3 sm:flex-row">
-              <Button label={copy.review} onPress={onPrepareReview} variant="accent" />
-              <Button label={copy.cancel} onPress={onCancel} variant="secondary" />
+              <Button label={copy.review} onPress={onPrepareReview} variant="default" />
+              <Button label={copy.cancel} onPress={onCancel} variant="outline" />
             </View>
           </View>
         )}

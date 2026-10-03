@@ -4,10 +4,10 @@ import * as Crypto from "expo-crypto";
 import { ArrowLeft } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Text } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 import { isAmbiguousMutationError } from "@/lib/api-client";
 
 import { customersApi } from "./api";
@@ -160,7 +160,7 @@ export function CustomerEditor({ businessId, customer, onBack, onConfirmed }: Cu
             phone={values.phone}
           />
           {formError ? (
-            <Text accessibilityRole="alert" className="text-sm text-danger dark:text-[#FFBABA]">
+            <Text accessibilityRole="alert" className="text-sm text-destructive ">
               {formError}
             </Text>
           ) : null}

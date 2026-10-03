@@ -2,12 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, CheckCircle2, Pencil, Plus } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Text, View } from "react-native";
+import { View } from "react-native";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { saleQueryOptions } from "@/features/sales/queries";
 import { requireSupportedLocale } from "@/i18n/locale";
@@ -42,7 +45,7 @@ export default function SaleResultScreen() {
   if (businesses.isPending || (business !== undefined && result.isPending)) {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <ActivityIndicator color="#237A55" size="large" />
+        <LoadingIndicator color="#237A55" size="large" />
         <Text className="text-sm text-muted-foreground">{t("sales.resultLoading")}</Text>
       </View>
     );
@@ -51,7 +54,7 @@ export default function SaleResultScreen() {
   if (!result.data) {
     return (
       <View className="flex-1 items-start justify-center gap-4 px-5 sm:px-8 lg:px-10">
-        <Text className="text-xl font-black text-foreground">{t("sales.resultFailedTitle")}</Text>
+        <Text className="text-xl font-heading text-foreground">{t("sales.resultFailedTitle")}</Text>
         <Text className="max-w-[460px] text-sm leading-5 text-muted-foreground">
           {t("sales.resultFailedDescription")}
         </Text>
@@ -62,7 +65,7 @@ export default function SaleResultScreen() {
               void businesses.refetch();
               void result.refetch();
             }}
-            variant="secondary"
+            variant="outline"
           />
           <Button label={t("sales.goToSales")} onPress={() => router.replace("/operate/sales")} />
         </View>
@@ -162,10 +165,10 @@ export default function SaleResultScreen() {
                 params: { saleId: sale.id },
               })
             }
-            variant="secondary"
+            variant="outline"
           >
             <Pencil color="#237A55" size={18} />
-            <ButtonText variant="secondary">{t("sales.correction.open")}</ButtonText>
+            <ButtonText variant="outline">{t("sales.correction.open")}</ButtonText>
           </Button>
         ) : null}
         <Button
@@ -173,15 +176,15 @@ export default function SaleResultScreen() {
           onPress={() => {
             if (!isStale) router.replace("/operate/sales/new");
           }}
-          variant="accent"
+          variant="default"
         >
-          <Plus color="#14241D" size={18} />
-          <ButtonText variant="accent">{t("sales.registerAnother")}</ButtonText>
+          <Icon as={Plus} className="text-primary-foreground" size={18} />
+          <ButtonText variant="default">{t("sales.registerAnother")}</ButtonText>
         </Button>
         <Button
           label={t("sales.viewSummary")}
           onPress={() => router.replace("/operate/sales")}
-          variant="secondary"
+          variant="outline"
         />
       </View>
     </Page>

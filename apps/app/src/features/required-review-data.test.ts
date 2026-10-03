@@ -1,10 +1,18 @@
 import type { ComponentProps } from "react";
 import { createElement } from "react";
+
+// These tests exercise review invariants, not the interactive draft selector.
+vi.mock("@/components/ui/select-field", () => ({ SelectField: () => null }));
+
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
-vi.mock("uniwind", () => ({ useUniwind: () => ({ theme: "light" }) }));
+vi.mock("uniwind", () => ({
+  withUniwind: (component: unknown) => component,
+  useUniwind: () => ({ theme: "light" }),
+  useCSSVariable: () => "#62626B",
+}));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 

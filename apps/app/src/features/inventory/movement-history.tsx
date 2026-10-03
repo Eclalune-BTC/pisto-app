@@ -1,9 +1,15 @@
 import type { InventoryMovement, Product, ProductStock, ProductUnitKind } from "@pisto/contracts";
-import { AlertTriangle, ArrowLeft, Plus } from "lucide-react-native";
-import { ActivityIndicator, Text, View } from "react-native";
+import { AlertTriangle, ArrowLeft } from "lucide-react-native";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
+import { useCSSVariable } from "uniwind";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 import { ReadOnlyNotice } from "../catalog/route-state";
 import { formatQuantityMinorUnits } from "./quantity";
 
@@ -75,11 +81,12 @@ function Failure({
   onRetry: () => void;
   status: "denied" | "error" | "loading" | "offline";
 }) {
+  const destructiveColor = useCSSVariable("--color-destructive") as string;
   if (status === "loading") {
     return (
       <View className="min-h-56 items-start justify-center gap-3">
-        <ActivityIndicator color="#237A55" />
-        <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
+        <LoadingIndicator />
+        <Text className="font-sans text-sm text-muted-foreground">{copy.loading}</Text>
       </View>
     );
   }
@@ -96,20 +103,18 @@ function Failure({
         ? copy.offlineDescription
         : copy.errorDescription;
   return (
-    <View className="gap-4 border-l-4 border-danger bg-[#FFF1F1] p-5 dark:bg-[#3A2020]">
+    <View className="gap-4 border-l-4 border-destructive bg-muted p-5">
       <View className="flex-row items-start gap-3">
-        <AlertTriangle color="#B94242" size={20} />
+        <AlertTriangle color={destructiveColor} size={20} />
         <View className="min-w-0 flex-1 gap-1">
-          <Text accessibilityRole="alert" className="font-bold text-danger dark:text-[#FFBABA]">
+          <Text accessibilityRole="alert" className="font-ui text-destructive">
             {title}
           </Text>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
-            {description}
-          </Text>
+          <Text className="font-sans text-sm leading-5 text-muted-foreground">{description}</Text>
         </View>
       </View>
       {status === "error" ? (
-        <Button className="self-start" label={copy.retry} onPress={onRetry} variant="secondary" />
+        <Button className="self-start" label={copy.retry} onPress={onRetry} variant="outline" />
       ) : null}
     </View>
   );
@@ -128,6 +133,85 @@ export function MovementHistory({
   state,
   stock,
 }: MovementHistoryProps) {
+  const mutedColor = useCSSVariable("--color-muted-foreground") as string;
+  const { t } = useTranslation();
+  const columns = useMemo<DataTableColumn<InventoryMovement>[]>(
+    () => [
+      {
+        id: "type",
+        header: t("dataTable.columns.type"),
+        meta: { primary: true },
+        cell: ({ row: { original: movement } }) => (
+          <Text className="font-ui text-sm text-foreground">
+            {copy.actions[movement.action]}
+            {movement.reversedByMovementId ? `\n${copy.reversed}` : null}
+          </Text>
+        ),
+      },
+      {
+        id: "description",
+        header: t("dataTable.columns.description"),
+        cell: ({ row: { original: movement } }) => (
+          <Text className="font-sans text-sm text-foreground">{movement.reason}</Text>
+        ),
+      },
+      {
+        id: "date",
+        header: t("dataTable.columns.date"),
+        cell: ({ row: { original: movement } }) => (
+          <Text className="font-sans text-sm text-muted-foreground">
+            {copy.occurrence(
+              movement.occurredLocalDate,
+              movement.occurredLocalTime,
+              movement.timeZone,
+            )}
+          </Text>
+        ),
+      },
+      {
+        id: "quantity",
+        header: t("dataTable.columns.quantity"),
+        meta: { align: "end" },
+        cell: ({ row: { original: movement } }) => (
+          <Text className="font-ui text-sm text-foreground">
+            {movement.deltaMinorUnits.startsWith("-") ? "−" : "+"}
+            {formatQuantityMinorUnits(
+              movement.deltaMinorUnits.replace("-", ""),
+              movement.quantityPrecision,
+            )}
+          </Text>
+        ),
+      },
+      {
+        id: "reference",
+        header: t("dataTable.columns.reference"),
+        cell: ({ row: { original: movement } }) =>
+          movement.reversesMovementId ? (
+            <Text className="font-sans text-sm text-muted-foreground">
+              {copy.reverses}: {movement.reversesMovementId}
+            </Text>
+          ) : null,
+      },
+      ...(canManage && product.status === "active"
+        ? [
+            {
+              id: "actions",
+              header: t("dataTable.columns.actions"),
+              cell: ({ row: { original: movement } }) =>
+                movement.action !== "reverse" && movement.reversedByMovementId === null ? (
+                  <Button
+                    label={copy.reverse}
+                    onPress={() => onReverse(movement)}
+                    size="sm"
+                    variant="outline"
+                  />
+                ) : null,
+            } satisfies DataTableColumn<InventoryMovement>,
+          ]
+        : []),
+    ],
+    [canManage, copy, onReverse, product.status, t],
+  );
   if (state.status === "denied") {
     return (
       <Page>
@@ -138,18 +222,13 @@ export function MovementHistory({
   return (
     <Page contentContainerClassName="gap-8">
       <Button className="self-start px-0" onPress={onBack} size="sm" variant="ghost">
-        <ArrowLeft color="#617168" size={18} />
-        <ButtonText className="text-muted-foreground" variant="ghost">
-          {copy.back}
-        </ButtonText>
+        <ArrowLeft color={mutedColor} size={18} />
+        <Text className="text-muted-foreground">{copy.back}</Text>
       </Button>
       <ScreenHeader
         action={
           canManage && product.status === "active" ? (
-            <Button onPress={onAddMovement} variant="accent">
-              <Plus color="#14241D" size={18} />
-              <ButtonText variant="accent">{copy.addMovement}</ButtonText>
-            </Button>
+            <Button label={copy.addMovement} onPress={onAddMovement} variant="default" />
           ) : undefined
         }
         description={copy.description}
@@ -159,27 +238,21 @@ export function MovementHistory({
 
       {showReadOnlyNotice ? <ReadOnlyNotice description={copy.readOnlyDescription} /> : null}
 
-      <View className="gap-2 border-y border-line py-6 dark:border-[#304239] sm:flex-row sm:items-end sm:justify-between">
+      <View className="gap-2 border-y border-border py-6 sm:flex-row sm:items-end sm:justify-between">
         <View className="gap-1">
-          <Text className="text-sm font-semibold text-muted-foreground">{copy.onHand}</Text>
-          <Text className="text-[38px] font-black leading-[44px] text-foreground">
+          <Text className="text-sm font-ui text-muted-foreground">{copy.onHand}</Text>
+          <Text className="text-[38px] font-heading leading-[44px] text-foreground">
             {formatQuantityMinorUnits(stock.onHandMinorUnits, stock.quantityPrecision)}{" "}
-            <Text className="text-base font-semibold text-muted-foreground">
+            <Text className="text-base font-ui text-muted-foreground">
               {copy.unitLabels[product.unitKind]}
             </Text>
           </Text>
         </View>
         <View className="gap-1 sm:items-end">
-          <Text
-            className={
-              stock.lowStock
-                ? "font-bold text-danger dark:text-[#FFBABA]"
-                : "font-semibold text-foreground"
-            }
-          >
+          <Text className={stock.lowStock ? "font-ui text-destructive" : "font-ui text-foreground"}>
             {stock.lowStock ? copy.lowStock : copy.onHand}
           </Text>
-          <Text className="text-sm text-muted-foreground">
+          <Text className="font-sans text-sm text-muted-foreground">
             {stock.lowStockThresholdMinorUnits === null
               ? copy.noThreshold
               : `${copy.threshold}: ${formatQuantityMinorUnits(
@@ -195,80 +268,24 @@ export function MovementHistory({
       ) : (
         <View>
           {state.stale ? (
-            <View className="mb-5 border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
-              <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
+            <View className="mb-5 border-l-4 border-warning bg-muted p-3">
+              <Text className="font-sans text-sm text-foreground">{copy.stale}</Text>
             </View>
           ) : null}
           {state.items.length === 0 ? (
             <View className="gap-2 py-12">
-              <Text className="text-xl font-black text-foreground">{copy.emptyTitle}</Text>
-              <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
+              <Text className="text-xl font-heading text-foreground">{copy.emptyTitle}</Text>
+              <Text className="font-sans max-w-[560px] text-sm leading-5 text-muted-foreground">
                 {copy.emptyDescription}
               </Text>
             </View>
           ) : (
-            state.items.map((movement) => {
-              const canReverse =
-                canManage &&
-                product.status === "active" &&
-                movement.action !== "reverse" &&
-                movement.reversedByMovementId === null;
-              return (
-                <View
-                  className="gap-3 border-b border-line py-5 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
-                  key={movement.id}
-                >
-                  <View className="min-w-0 flex-1 gap-1">
-                    <View className="flex-row flex-wrap items-center gap-2">
-                      <Text className="font-black text-foreground">
-                        {copy.actions[movement.action]}
-                      </Text>
-                      {movement.reversedByMovementId ? (
-                        <Text className="text-xs font-semibold text-danger dark:text-[#FFBABA]">
-                          {copy.reversed}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <Text className="text-sm text-muted-foreground">{movement.reason}</Text>
-                    <Text className="text-xs text-ink-muted dark:text-[#91A198]">
-                      {copy.occurrence(
-                        movement.occurredLocalDate,
-                        movement.occurredLocalTime,
-                        movement.timeZone,
-                      )}
-                    </Text>
-                    {movement.reversesMovementId ? (
-                      <Text className="text-xs text-ink-muted dark:text-[#91A198]">
-                        {copy.reverses}: {movement.reversesMovementId}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <View className="gap-2 sm:items-end">
-                    <Text
-                      className={
-                        movement.deltaMinorUnits.startsWith("-")
-                          ? "text-lg font-black text-danger dark:text-[#FFBABA]"
-                          : "text-lg font-black text-positive dark:text-[#8DDEAF]"
-                      }
-                    >
-                      {movement.deltaMinorUnits.startsWith("-") ? "−" : "+"}
-                      {formatQuantityMinorUnits(
-                        movement.deltaMinorUnits.replace("-", ""),
-                        movement.quantityPrecision,
-                      )}
-                    </Text>
-                    {canReverse ? (
-                      <Button
-                        label={copy.reverse}
-                        onPress={() => onReverse(movement)}
-                        size="sm"
-                        variant="secondary"
-                      />
-                    ) : null}
-                  </View>
-                </View>
-              );
-            })
+            <DataTable
+              caption={copy.title}
+              columns={columns}
+              data={state.items}
+              getRowId={(movement) => movement.id}
+            />
           )}
           {state.hasNextPage ? (
             <Button
@@ -276,7 +293,7 @@ export function MovementHistory({
               label={state.loadingMore ? copy.loadingMore : copy.loadMore}
               loading={state.loadingMore}
               onPress={onLoadMore}
-              variant="secondary"
+              variant="outline"
             />
           ) : null}
         </View>

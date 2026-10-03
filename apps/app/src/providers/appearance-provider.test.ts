@@ -28,6 +28,8 @@ vi.mock("react", async (importOriginal) => ({
   useEffect: (effect: () => (() => void) | undefined) => fixture.effects.push(effect),
 }));
 vi.mock("uniwind", () => ({
+  withUniwind: (component: unknown) => component,
+  useCSSVariable: () => "#525252",
   Uniwind: { setTheme: fixture.setTheme },
   useUniwind: () => ({ hasAdaptiveThemes: fixture.adaptive, theme: fixture.theme }),
 }));

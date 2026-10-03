@@ -1,9 +1,9 @@
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
-
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 
 export default function NotFoundRoute() {
   const { t } = useTranslation();
@@ -12,7 +12,7 @@ export default function NotFoundRoute() {
   return (
     <Page width="reading">
       <View className="min-h-64 items-start justify-center gap-4">
-        <Text accessibilityRole="header" className="text-2xl font-black text-foreground">
+        <Text accessibilityRole="header" className="text-2xl font-heading text-foreground">
           {t("notFound.title")}
         </Text>
         <Text className="max-w-[520px] text-sm leading-5 text-muted-foreground">
@@ -21,7 +21,7 @@ export default function NotFoundRoute() {
         <Button
           label={t("notFound.action")}
           onPress={() => router.replace("/")}
-          variant="secondary"
+          variant="outline"
         />
       </View>
     </Page>

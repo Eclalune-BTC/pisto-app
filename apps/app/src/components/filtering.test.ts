@@ -3,10 +3,16 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
-vi.mock("uniwind", () => ({ useUniwind: () => ({ theme: "light" }) }));
+vi.mock("uniwind", () => ({
+  useUniwind: () => ({ theme: "light" }),
+  useCSSVariable: () => "#71717A",
+  withUniwind: (component: unknown) => component,
+}));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 vi.mock("lucide-react-native", () => ({
+  Check: () => null,
+  ChevronDown: () => null,
   AlertTriangle: () => null,
   CalendarDays: () => null,
   ChevronRight: () => null,
@@ -91,7 +97,7 @@ describe("stable query controls rendered through result transitions", () => {
       expect(markup).toContain(`aria-label="${copy.searchLabel}"`);
       expect(markup).toContain('value="Mar"');
       expect(markup).toContain(`aria-label="${copy.filterLabel}: ${copy.active}"`);
-      expect(markup).toContain('aria-pressed="true"');
+      expect(markup).toContain('aria-checked="true"');
       expect(markup).not.toContain(`>${copy.create}<`);
     },
   );

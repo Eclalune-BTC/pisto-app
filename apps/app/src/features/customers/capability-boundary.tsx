@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Text, View } from "react-native";
-
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 
 import { buildCustomersCopy } from "./copy";
 
@@ -32,22 +33,22 @@ export function CapabilityBoundary({ children, onRetry, state }: CapabilityBound
   if (state === "loading") {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <ActivityIndicator color="#237A55" size="large" />
-        <Text className="text-sm font-semibold text-muted-foreground">{copy.common.loading}</Text>
+        <LoadingIndicator color="#237A55" size="large" />
+        <Text className="text-sm font-ui text-muted-foreground">{copy.common.loading}</Text>
       </View>
     );
   }
   return (
     <Page>
-      <View className="min-h-56 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-        <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+      <View className="min-h-56 items-start justify-center gap-3 border-y border-border py-8 ">
+        <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
           {content.title}
         </Text>
         <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
           {content.description}
         </Text>
         {state === "error" ? (
-          <Button label={copy.common.retry} onPress={onRetry} variant="secondary" />
+          <Button label={copy.common.retry} onPress={onRetry} variant="outline" />
         ) : null}
       </View>
     </Page>

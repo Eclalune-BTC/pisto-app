@@ -6,10 +6,16 @@ import { I18nextProvider } from "react-i18next";
 import { describe, expect, test, vi } from "vitest";
 
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
-vi.mock("uniwind", () => ({ useUniwind: () => ({ theme: "light" }) }));
+vi.mock("uniwind", () => ({
+  useUniwind: () => ({ theme: "light" }),
+  useCSSVariable: () => "#71717A",
+  withUniwind: (component: unknown) => component,
+}));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 vi.mock("lucide-react-native", () => ({
+  Check: () => null,
+  ChevronDown: () => null,
   AlertTriangle: () => null,
   FolderCog: () => null,
   Info: () => null,
@@ -102,7 +108,7 @@ describe("catalog translations", () => {
         },
       }),
     );
-    expect(markup).toContain(i18n.t("catalog.list.openProduct", { name: "Coffee &amp; tea" }));
+    expect(markup).toContain(i18n.t("dataTable.openRecord", { name: "Coffee &amp; tea" }));
     expect(markup).toContain("$12.50");
     expect(markup).toContain(`2.500 ${i18n.t("catalog.unitLabels.kilogram")}`);
     expect(markup).toContain(i18n.t("catalog.list.archived"));

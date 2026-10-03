@@ -1,11 +1,19 @@
-import { ChevronRight, Plus, Search } from "lucide-react-native";
-import { ActivityIndicator, Text, View } from "react-native";
-
+import type { Customer } from "@pisto/contracts";
+import { Search } from "lucide-react-native";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { FilterBar } from "@/components/ui/filter-bar";
+import { FilterToolbar } from "@/components/ui/filter-toolbar";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 
 import type { CustomersCopy, CustomersLoadState } from "./types";
 
@@ -35,13 +43,19 @@ function StateMessage({
   title: string;
 }) {
   return (
-    <View className="min-h-56 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-      <Text accessibilityRole="header" className="text-xl font-black text-foreground">
-        {title}
-      </Text>
-      <Text className="max-w-[540px] text-sm leading-5 text-muted-foreground">{description}</Text>
-      {action ? <Button label={action.label} onPress={action.onPress} variant="secondary" /> : null}
-    </View>
+    <Card className="gap-4 py-6 shadow-none">
+      <CardHeader className="gap-2 px-4">
+        <CardTitle aria-level={2} className="text-lg leading-6">
+          {title}
+        </CardTitle>
+        <CardDescription className="max-w-[540px] leading-6">{description}</CardDescription>
+      </CardHeader>
+      {action ? (
+        <CardFooter className="px-4">
+          <Button label={action.label} onPress={action.onPress} variant="outline" />
+        </CardFooter>
+      ) : null}
+    </Card>
   );
 }
 
@@ -58,16 +72,58 @@ export function CustomersScreen({
   state,
   status,
 }: CustomersScreenProps) {
+  const { t } = useTranslation();
+  const columns = useMemo<DataTableColumn<Customer>[]>(
+    () => [
+      {
+        id: "name",
+        header: t("dataTable.columns.name"),
+        meta: { primary: true },
+        cell: ({ row: { original: item } }) => (
+          <Button
+            accessibilityHint={copy.contact}
+            accessibilityLabel={t("dataTable.openRecord", { name: item.name })}
+            className="justify-start px-0"
+            label={item.name}
+            onPress={() => onOpenCustomer(item.id)}
+            size="sm"
+            variant="ghost"
+          />
+        ),
+      },
+      {
+        id: "email",
+        header: t("dataTable.columns.email"),
+        cell: ({ row: { original: item } }) => (
+          <Text className="font-sans text-sm text-foreground">{item.email ?? copy.noContact}</Text>
+        ),
+      },
+      {
+        id: "phone",
+        header: t("dataTable.columns.phone"),
+        cell: ({ row: { original: item } }) => (
+          <Text className="font-sans text-sm text-foreground">{item.phone ?? copy.noContact}</Text>
+        ),
+      },
+      {
+        id: "status",
+        header: t("dataTable.columns.status"),
+        cell: ({ row: { original: item } }) => (
+          <Text className="font-sans text-sm text-muted-foreground">
+            {item.status === "archived" ? copy.archived : copy.active}
+          </Text>
+        ),
+      },
+    ],
+    [copy, onOpenCustomer, t],
+  );
   const hasSuccessfulRead = state.kind === "empty" || state.kind === "ready";
   return (
     <Page contentContainerClassName="gap-8">
       <ScreenHeader
         action={
           canManage && hasSuccessfulRead ? (
-            <Button onPress={onCreate} variant="accent">
-              <Plus color="#14241D" size={18} />
-              <ButtonText variant="accent">{copy.create}</ButtonText>
-            </Button>
+            <Button label={copy.create} onPress={onCreate} variant="default" />
           ) : undefined
         }
         description={copy.description}
@@ -75,8 +131,8 @@ export function CustomersScreen({
       />
 
       {state.kind !== "denied" ? (
-        <View className="gap-5">
-          <View className="max-w-[620px]">
+        <FilterToolbar label={copy.filterLabel}>
+          <View className="min-w-0 flex-1 sm:min-w-64">
             <Field
               accessibilityLabel={copy.searchLabel}
               label={copy.searchLabel}
@@ -96,19 +152,19 @@ export function CustomersScreen({
             ]}
             value={status}
           />
-        </View>
+        </FilterToolbar>
       ) : null}
 
       {hasSuccessfulRead && state.stale ? (
-        <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
-          <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
+        <View className="border-l-4 border-warning bg-muted p-3">
+          <Text className="font-sans text-sm text-foreground">{copy.stale}</Text>
         </View>
       ) : null}
 
       {state.kind === "loading" ? (
         <View className="min-h-56 items-start justify-center gap-3 border-y border-border">
-          <ActivityIndicator color="#237A55" />
-          <Text className="text-sm font-semibold text-muted-foreground">{copy.loading}</Text>
+          <LoadingIndicator />
+          <Text className="text-sm font-ui text-muted-foreground">{copy.loading}</Text>
         </View>
       ) : state.kind === "offline" ? (
         <StateMessage description={copy.offlineDescription} title={copy.offlineTitle} />
@@ -121,48 +177,29 @@ export function CustomersScreen({
           title={copy.errorTitle}
         />
       ) : state.kind === "empty" ? (
-        <StateMessage
+        <EmptyState
           action={
-            canManage && !searchQuery ? { label: copy.emptyAction, onPress: onCreate } : undefined
+            canManage && !searchQuery ? (
+              <Button label={copy.emptyAction} onPress={onCreate} variant="outline" />
+            ) : undefined
           }
           description={searchQuery ? copy.searchEmptyDescription : copy.emptyDescription}
           title={searchQuery ? copy.searchEmptyTitle : copy.emptyTitle}
         />
       ) : (
         <View className="gap-4">
-          <View className="border-t border-border">
-            {state.items.map((item) => {
-              const contact = item.email ?? item.phone;
-              return (
-                <Button
-                  accessibilityHint={copy.contact}
-                  className="min-h-16 justify-start gap-4 rounded-none border-b border-line px-0 py-4 dark:border-[#304239]"
-                  key={item.id}
-                  onPress={() => onOpenCustomer(item.id)}
-                  variant="ghost"
-                >
-                  <View className="min-w-0 flex-1 gap-1">
-                    <Text className="text-base font-bold text-foreground">{item.name}</Text>
-                    <Text className="text-sm text-muted-foreground">
-                      {contact ?? copy.noContact}
-                    </Text>
-                  </View>
-                  {item.status === "archived" ? (
-                    <Text className="text-sm font-semibold text-muted-foreground">
-                      {copy.archived}
-                    </Text>
-                  ) : null}
-                  <ChevronRight color="#617168" size={19} />
-                </Button>
-              );
-            })}
-          </View>
+          <DataTable
+            caption={copy.title}
+            columns={columns}
+            data={state.items}
+            getRowId={(item) => item.id}
+          />
           {state.nextCursor ? (
             <Button
               label={copy.loadMore}
               loading={state.loadingMore}
               onPress={onLoadMore}
-              variant="secondary"
+              variant="outline"
             />
           ) : null}
         </View>

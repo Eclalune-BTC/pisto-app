@@ -1,10 +1,12 @@
 import type { ExpenseCategory, PostExpenseRequest } from "@pisto/contracts";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import { ChoiceList, type ChoiceOption } from "../cash/choice-list";
+import { SelectField } from "@/components/ui/select-field";
+import { Text } from "@/components/ui/text";
+import type { ChoiceOption } from "../cash/choice-list";
 import {
   FeatureBoundary,
   type FeatureBoundaryCopy,
@@ -143,8 +145,8 @@ export function ExpenseEditorScreen({
         />
 
         {accounts.length === 0 && stage !== "review" ? (
-          <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
-            <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+          <View className="gap-3 border-y border-border py-8 ">
+            <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
               {copy.accountsEmptyTitle}
             </Text>
             <Text className="text-sm leading-5 text-muted-foreground">
@@ -154,7 +156,7 @@ export function ExpenseEditorScreen({
               className="self-start"
               label={copy.createAccount}
               onPress={onCreateAccount}
-              variant="accent"
+              variant="default"
             />
           </View>
         ) : stage === "review" && command && selectedAccount && selectedCategory ? (
@@ -172,15 +174,15 @@ export function ExpenseEditorScreen({
             state={confirmation}
           />
         ) : (
-          <View className="gap-7 border-y border-line py-7 dark:border-[#304239]">
-            <ChoiceList
+          <View className="gap-7 border-y border-border py-7 ">
+            <SelectField
               label={copy.account}
               onChange={(accountId) => onDraftChange({ ...draft, accountId })}
               options={accountOptions}
               value={draft.accountId}
             />
             {errors.accountId ? (
-              <Text accessibilityRole="alert" className="text-xs text-danger">
+              <Text accessibilityRole="alert" className="text-xs text-destructive">
                 {errors.accountId}
               </Text>
             ) : null}
@@ -191,10 +193,10 @@ export function ExpenseEditorScreen({
                 loading={isLoadingMoreAccounts}
                 onPress={onLoadMoreAccounts}
                 size="sm"
-                variant="secondary"
+                variant="outline"
               />
             ) : null}
-            <ChoiceList
+            <SelectField
               label={copy.category}
               onChange={(category) => onDraftChange({ ...draft, category })}
               options={categoryOptions}
@@ -205,7 +207,7 @@ export function ExpenseEditorScreen({
               keyboardType="decimal-pad"
               label={copy.amount}
               onChangeText={(amount) => onDraftChange({ ...draft, amount })}
-              trailing={<Text className="font-bold text-ink-muted">{currency}</Text>}
+              trailing={<Text className="font-ui text-muted-foreground">{currency}</Text>}
               value={draft.amount}
             />
             <Field
@@ -244,7 +246,7 @@ export function ExpenseEditorScreen({
               className="self-start"
               label={copy.review}
               onPress={onPrepareReview}
-              variant="accent"
+              variant="default"
             />
           </View>
         )}

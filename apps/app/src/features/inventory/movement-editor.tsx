@@ -1,12 +1,16 @@
 import type { RecordInventoryMovementRequest } from "@pisto/contracts";
 import { AlertTriangle, ArrowLeft, Check } from "lucide-react-native";
-import { Pressable, Text, View } from "react-native";
+import { View } from "react-native";
+import { useCSSVariable } from "uniwind";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Text } from "@/components/ui/text";
 
 export type InventoryDraftAction = Exclude<RecordInventoryMovementRequest["action"], "reverse">;
 
@@ -88,7 +92,18 @@ export function MovementEditor({
   quantityPrecision,
   reviewItems,
 }: MovementEditorProps) {
+  const mutedColor = useCSSVariable("--color-muted-foreground") as string;
+  const destructiveColor = useCSSVariable("--color-destructive") as string;
+  const primaryForegroundColor = useCSSVariable("--color-primary-foreground") as string;
   const review = reviewItems !== null;
+  const controlsDisabled = mutationState === "pending" || mutationState === "uncertain";
+  const actions = Object.keys(copy.actions) as InventoryDraftAction[];
+  const selectAction = (value: string) => {
+    if (controlsDisabled) return;
+    const action = actions.find((candidate) => candidate === value);
+    if (!action) throw new Error("The selected inventory action is unavailable.");
+    onDraftChange({ ...draft, action });
+  };
   return (
     <Page width="form">
       <Button
@@ -98,10 +113,8 @@ export function MovementEditor({
         size="sm"
         variant="ghost"
       >
-        <ArrowLeft color="#617168" size={18} />
-        <ButtonText className="text-muted-foreground" variant="ghost">
-          {copy.back}
-        </ButtonText>
+        <ArrowLeft color={mutedColor} size={18} />
+        <Text className="text-muted-foreground">{copy.back}</Text>
       </Button>
       <ScreenHeader
         description={review ? copy.reviewDescription : copy.description}
@@ -115,16 +128,13 @@ export function MovementEditor({
         <View className="gap-7">
           <DetailList items={reviewItems} />
           {mutationState === "error" || mutationState === "uncertain" ? (
-            <View className="flex-row items-start gap-3 border-l-4 border-danger bg-[#FFF1F1] p-4 dark:bg-[#3A2020]">
-              <AlertTriangle color="#B94242" size={20} />
+            <View className="flex-row items-start gap-3 border-l-4 border-destructive bg-destructive-surface p-4 ">
+              <AlertTriangle color={destructiveColor} size={20} />
               <View className="min-w-0 flex-1 gap-1">
-                <Text
-                  accessibilityRole="alert"
-                  className="font-bold text-danger dark:text-[#FFBABA]"
-                >
+                <Text accessibilityRole="alert" className="font-ui text-destructive ">
                   {mutationState === "uncertain" ? copy.uncertainTitle : copy.failedTitle}
                 </Text>
-                <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
+                <Text className="text-sm leading-5 text-muted-foreground ">
                   {mutationState === "uncertain"
                     ? copy.uncertainDescription
                     : (mutationMessage ?? copy.failedDescription)}
@@ -137,7 +147,7 @@ export function MovementEditor({
               <Button
                 label={copy.retrySameConfirmation}
                 onPress={onResolveUncertain}
-                variant="secondary"
+                variant="outline"
               />
             ) : (
               <>
@@ -145,45 +155,55 @@ export function MovementEditor({
                   disabled={isStale}
                   loading={mutationState === "pending"}
                   onPress={mutationState === "pending" || isStale ? undefined : onConfirm}
-                  variant="accent"
+                  variant="default"
                 >
-                  <Check color="#14241D" size={18} strokeWidth={2.8} />
-                  <ButtonText variant="accent">{copy.confirm}</ButtonText>
+                  <Check color={primaryForegroundColor} size={18} strokeWidth={2.8} />
+                  <Text>{copy.confirm}</Text>
                 </Button>
                 <Button
                   disabled={mutationState === "pending"}
                   label={copy.edit}
                   onPress={mutationState === "pending" ? undefined : onEditReview}
-                  variant="secondary"
+                  variant="outline"
                 />
               </>
             )}
           </View>
         </View>
       ) : (
-        <View className="gap-7 border-y border-line py-7 dark:border-[#304239]">
+        <View className="gap-7 border-y border-border py-7 ">
           <View className="gap-2">
-            <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">
-              {copy.actionLabel}
-            </Text>
-            <View accessibilityRole="radiogroup" className="flex-row flex-wrap gap-x-6 gap-y-1">
-              {(Object.keys(copy.actions) as InventoryDraftAction[]).map((action) => (
-                <Pressable
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: draft.action === action }}
-                  aria-checked={draft.action === action}
-                  className={
-                    draft.action === action
-                      ? "min-h-11 justify-center border-b-2 border-positive py-2"
-                      : "min-h-11 justify-center py-2"
-                  }
-                  key={action}
-                  onPress={() => onDraftChange({ ...draft, action })}
-                >
-                  <Text className="font-semibold text-foreground">{copy.actions[action]}</Text>
-                </Pressable>
+            <Text className="text-sm font-ui text-foreground ">{copy.actionLabel}</Text>
+            <RadioGroup
+              accessibilityLabel={copy.actionLabel}
+              className="gap-2"
+              disabled={controlsDisabled}
+              onValueChange={selectAction}
+              value={draft.action}
+            >
+              {actions.map((action) => (
+                <View className="min-h-12 flex-row items-center gap-3" key={action}>
+                  <RadioGroupItem
+                    accessibilityLabel={copy.actions[action]}
+                    aria-labelledby={`inventory-action-${action}-label`}
+                    disabled={controlsDisabled}
+                    hitSlop={14}
+                    nativeID={`inventory-action-${action}`}
+                    value={action}
+                  />
+                  <View className="min-w-0 flex-1">
+                    <Label
+                      className="min-h-11 flex-1 py-3 leading-5"
+                      disabled={controlsDisabled}
+                      nativeID={`inventory-action-${action}-label`}
+                      onPress={() => selectAction(action)}
+                    >
+                      {copy.actions[action]}
+                    </Label>
+                  </View>
+                </View>
               ))}
-            </View>
+            </RadioGroup>
           </View>
           <Field
             error={errors.quantity}
@@ -193,7 +213,7 @@ export function MovementEditor({
             placeholder={copy.quantityPlaceholder}
             value={draft.quantity}
           />
-          <Text className="-mt-5 text-xs leading-5 text-ink-muted dark:text-[#91A198]">
+          <Text className="-mt-5 text-xs leading-5 text-muted-foreground ">
             {copy.precisionHint(quantityPrecision)}
           </Text>
           <Field
@@ -235,7 +255,7 @@ export function MovementEditor({
                 ? undefined
                 : onReview
             }
-            variant="accent"
+            variant="default"
           />
         </View>
       )}

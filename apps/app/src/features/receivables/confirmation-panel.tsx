@@ -1,6 +1,6 @@
-import { Text, View } from "react-native";
-
+import { View } from "react-native";
 import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 
 import {
   type ConfirmationCopy,
@@ -29,36 +29,36 @@ export function ConfirmationPanel({
   const action = financialMutationAction(mutation);
   return (
     <View className="gap-6">
-      <Text accessibilityRole="header" className="text-2xl font-black text-foreground">
+      <Text accessibilityRole="header" className="text-2xl font-heading text-foreground">
         {copy.reviewTitle}
       </Text>
       <View className="border-y border-border">
         {fields.map((field) => (
           <View
-            className="gap-1 border-b border-line py-4 last:border-b-0 sm:flex-row sm:items-start sm:justify-between sm:gap-8 dark:border-[#304239]"
+            className="gap-1 border-b border-border py-4 last:border-b-0 sm:flex-row sm:items-start sm:justify-between sm:gap-8 "
             key={field.label}
           >
-            <Text className="text-sm font-semibold text-muted-foreground">{field.label}</Text>
-            <Text className="max-w-[540px] text-base font-bold text-ink sm:text-right dark:text-white">
+            <Text className="text-sm font-ui text-muted-foreground">{field.label}</Text>
+            <Text className="max-w-[540px] text-base font-ui text-foreground sm:text-right dark:text-white">
               {field.value}
             </Text>
           </View>
         ))}
       </View>
       {mutation.kind === "uncertain" ? (
-        <View className="gap-2 border-l-4 border-warning bg-[#FFF6E8] p-4 dark:bg-[#3A2A18]">
-          <Text className="font-bold text-foreground">{copy.uncertainTitle}</Text>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#D5C8B8]">
+        <View className="gap-2 border-l-4 border-warning bg-warning-surface p-4 ">
+          <Text className="font-ui text-foreground">{copy.uncertainTitle}</Text>
+          <Text className="text-sm leading-5 text-muted-foreground text-warning-foreground">
             {copy.uncertainDescription}
           </Text>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#D5C8B8]">
+          <Text className="text-sm leading-5 text-muted-foreground text-warning-foreground">
             {mutation.message}
           </Text>
         </View>
       ) : mutation.kind === "error" ? (
-        <View className="gap-1 border-l-4 border-danger bg-[#FFF1F1] p-4 dark:bg-[#3A2020]">
-          <Text className="font-bold text-danger dark:text-[#FFBABA]">{copy.errorTitle}</Text>
-          <Text accessibilityRole="alert" className="text-sm text-ink-muted dark:text-[#C9D4CE]">
+        <View className="gap-1 border-l-4 border-danger bg-destructive-surface p-4 ">
+          <Text className="font-ui text-destructive ">{copy.errorTitle}</Text>
+          <Text accessibilityRole="alert" className="text-sm text-muted-foreground ">
             {mutation.message}
           </Text>
         </View>
@@ -76,14 +76,14 @@ export function ConfirmationPanel({
           <Button
             label={copy.retrySameConfirmation}
             onPress={onRetrySameCommand}
-            variant="accent"
+            variant="default"
           />
         ) : action === "confirm" || action === "waiting" ? (
           <Button
             label={action === "waiting" ? copy.confirming : copy.confirm}
             loading={action === "waiting"}
             onPress={onConfirm}
-            variant="accent"
+            variant="default"
           />
         ) : null}
       </View>

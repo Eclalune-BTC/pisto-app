@@ -1,12 +1,19 @@
 import type { Category } from "@pisto/contracts";
-import { AlertTriangle, ArrowLeft, Check, Plus, Search } from "lucide-react-native";
-import { ActivityIndicator, Text, View } from "react-native";
+import { AlertTriangle, ArrowLeft, Search } from "lucide-react-native";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
+import { useCSSVariable } from "uniwind";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
 import { FilterBar } from "@/components/ui/filter-bar";
+import { FilterToolbar } from "@/components/ui/filter-toolbar";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 
 import type { CatalogStatusFilter } from "./query-keys";
 import { ReadOnlyNotice } from "./route-state";
@@ -116,14 +123,15 @@ interface CategoryManagerProps {
 }
 
 function FailureNotice({ description, title }: { description: string; title: string }) {
+  const destructiveColor = useCSSVariable("--color-destructive") as string;
   return (
-    <View className="flex-row items-start gap-3 border-l-4 border-danger bg-[#FFF1F1] p-4 dark:bg-[#3A2020]">
-      <AlertTriangle color="#B94242" size={20} />
+    <View className="flex-row items-start gap-3 border-l-4 border-destructive bg-muted p-4">
+      <AlertTriangle color={destructiveColor} size={20} />
       <View className="min-w-0 flex-1 gap-1">
-        <Text accessibilityRole="alert" className="font-bold text-danger dark:text-[#FFBABA]">
+        <Text accessibilityRole="alert" className="font-ui text-destructive">
           {title}
         </Text>
-        <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">{description}</Text>
+        <Text className="font-sans text-sm leading-5 text-muted-foreground">{description}</Text>
       </View>
     </View>
   );
@@ -176,6 +184,55 @@ export function CategoryManager({
   state,
   status,
 }: CategoryManagerProps) {
+  const mutedColor = useCSSVariable("--color-muted-foreground") as string;
+  const { t } = useTranslation();
+  const columns = useMemo<DataTableColumn<Category>[]>(
+    () => [
+      {
+        id: "name",
+        header: t("dataTable.columns.name"),
+        meta: { primary: true },
+        cell: ({ row: { original: category } }) => (
+          <Text className="font-ui text-sm text-foreground">{category.name}</Text>
+        ),
+      },
+      {
+        id: "status",
+        header: t("dataTable.columns.status"),
+        cell: ({ row: { original: category } }) => (
+          <Text className="font-sans text-sm text-muted-foreground">
+            {category.status === "active" ? copy.active : copy.archived}
+          </Text>
+        ),
+      },
+      ...(canManage
+        ? [
+            {
+              id: "actions",
+              header: t("dataTable.columns.actions"),
+              cell: ({ row: { original: category } }) =>
+                category.status === "active" ? (
+                  <View className="flex-row flex-wrap gap-2">
+                    <Button
+                      label={copy.edit}
+                      onPress={() => onEdit(category)}
+                      size="sm"
+                      variant="outline"
+                    />
+                    <Button
+                      label={copy.archive}
+                      onPress={() => onArchive(category)}
+                      size="sm"
+                      variant="destructive"
+                    />
+                  </View>
+                ) : null,
+            } satisfies DataTableColumn<Category>,
+          ]
+        : []),
+    ],
+    [canManage, copy, onArchive, onEdit, t],
+  );
   const mutationState = editor?.mutationState ?? archiveView?.mutationState;
   const confirmationLocked = mutationState === "pending" || mutationState === "uncertain";
   if (state.status === "denied") {
@@ -194,18 +251,13 @@ export function CategoryManager({
         size="sm"
         variant="ghost"
       >
-        <ArrowLeft color="#617168" size={18} />
-        <ButtonText className="text-muted-foreground" variant="ghost">
-          {copy.back}
-        </ButtonText>
+        <ArrowLeft color={mutedColor} size={18} />
+        <Text className="text-muted-foreground">{copy.back}</Text>
       </Button>
       <ScreenHeader
         action={
           canManage && !editor && !archiveView ? (
-            <Button onPress={onCreate} variant="accent">
-              <Plus color="#14241D" size={18} />
-              <ButtonText variant="accent">{copy.create}</ButtonText>
-            </Button>
+            <Button label={copy.create} onPress={onCreate} variant="default" />
           ) : undefined
         }
         description={copy.description}
@@ -229,7 +281,7 @@ export function CategoryManager({
       {editor ? (
         editor.reviewName ? (
           <View className="gap-6">
-            <Text className="text-sm leading-5 text-muted-foreground">
+            <Text className="font-sans text-sm leading-5 text-muted-foreground">
               {editor.mode === "create" ? copy.reviewCreateDescription : copy.reviewEditDescription}
             </Text>
             <DetailList items={[{ label: copy.name, value: editor.reviewName }]} />
@@ -243,32 +295,31 @@ export function CategoryManager({
                 <Button
                   label={copy.retrySameConfirmation}
                   onPress={onResolveEditor}
-                  variant="secondary"
+                  variant="outline"
                 />
               ) : (
                 <>
                   <Button
                     loading={editor.mutationState === "pending"}
                     onPress={onConfirmEditor}
-                    variant="accent"
+                    variant="default"
                   >
-                    <Check color="#14241D" size={18} />
-                    <ButtonText variant="accent">
+                    <Text>
                       {editor.mode === "create" ? copy.confirmCreate : copy.confirmUpdate}
-                    </ButtonText>
+                    </Text>
                   </Button>
                   <Button
                     disabled={editor.mutationState === "pending"}
                     label={copy.edit}
                     onPress={editor.mutationState === "pending" ? undefined : onEditReview}
-                    variant="secondary"
+                    variant="outline"
                   />
                 </>
               )}
             </View>
           </View>
         ) : (
-          <View className="gap-6 border-y border-line py-7 dark:border-[#304239]">
+          <View className="gap-6 border-y border-border py-7">
             <Field
               error={editor.error}
               label={copy.name}
@@ -278,14 +329,14 @@ export function CategoryManager({
               value={editor.name}
             />
             <View className="gap-3 sm:flex-row">
-              <Button label={copy.review} onPress={onReviewEditor} variant="accent" />
-              <Button label={copy.back} onPress={onCancelEditor} variant="secondary" />
+              <Button label={copy.review} onPress={onReviewEditor} variant="default" />
+              <Button label={copy.back} onPress={onCancelEditor} variant="outline" />
             </View>
           </View>
         )
       ) : archiveView ? (
         <View className="gap-6">
-          <Text className="text-sm leading-5 text-muted-foreground">
+          <Text className="font-sans text-sm leading-5 text-muted-foreground">
             {copy.archiveDescription(archiveView.category.name)}
           </Text>
           <DetailList
@@ -304,7 +355,7 @@ export function CategoryManager({
               <Button
                 label={copy.retrySameConfirmation}
                 onPress={onResolveArchive}
-                variant="secondary"
+                variant="outline"
               />
             ) : (
               <>
@@ -312,13 +363,13 @@ export function CategoryManager({
                   label={copy.confirmArchive}
                   loading={archiveView.mutationState === "pending"}
                   onPress={onConfirmArchive}
-                  variant="danger"
+                  variant="destructive"
                 />
                 <Button
                   disabled={archiveView.mutationState === "pending"}
                   label={copy.back}
                   onPress={archiveView.mutationState === "pending" ? undefined : onCancelArchive}
-                  variant="secondary"
+                  variant="outline"
                 />
               </>
             )}
@@ -326,13 +377,13 @@ export function CategoryManager({
         </View>
       ) : (
         <>
-          <View className="gap-5 border-y border-line py-5 dark:border-[#304239] lg:flex-row lg:items-end lg:justify-between">
+          <FilterToolbar label={copy.status}>
             <View className="min-w-0 flex-1 lg:max-w-[620px]">
               <Field
                 label={copy.searchLabel}
                 onChangeText={onSearchChange}
                 placeholder={copy.searchPlaceholder}
-                trailing={<Search color="#617168" size={18} />}
+                trailing={<Search color={mutedColor} size={18} />}
                 value={search}
               />
             </View>
@@ -345,12 +396,17 @@ export function CategoryManager({
               }))}
               value={status}
             />
-          </View>
+          </FilterToolbar>
 
+          {state.status === "ready" && state.stale ? (
+            <View className="border-l-4 border-warning bg-muted p-3">
+              <Text className="font-sans text-sm text-foreground">{copy.stale}</Text>
+            </View>
+          ) : null}
           {state.status === "loading" ? (
             <View className="min-h-56 items-start justify-center gap-3">
-              <ActivityIndicator color="#237A55" />
-              <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
+              <LoadingIndicator />
+              <Text className="font-sans text-sm text-muted-foreground">{copy.loading}</Text>
             </View>
           ) : state.status === "offline" ? (
             <FailureNotice description={copy.offlineDescription} title={copy.offlineTitle} />
@@ -361,59 +417,31 @@ export function CategoryManager({
                 className="self-start"
                 label={copy.retry}
                 onPress={onRetry}
-                variant="secondary"
+                variant="outline"
               />
             </View>
           ) : state.items.length === 0 ? (
             <View className="gap-2 py-12">
-              <Text className="text-xl font-black text-foreground">{copy.emptyTitle}</Text>
-              <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
+              <Text className="text-xl font-heading text-foreground">{copy.emptyTitle}</Text>
+              <Text className="font-sans max-w-[560px] text-sm leading-5 text-muted-foreground">
                 {copy.emptyDescription}
               </Text>
             </View>
           ) : (
             <View>
-              {state.stale ? (
-                <View className="mb-4 border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
-                  <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
-                </View>
-              ) : null}
-              {state.items.map((category) => (
-                <View
-                  className="gap-3 border-b border-line py-5 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
-                  key={category.id}
-                >
-                  <View className="min-w-0 flex-1 gap-1">
-                    <Text className="text-lg font-black text-foreground">{category.name}</Text>
-                    <Text className="text-sm text-muted-foreground">
-                      {category.status === "active" ? copy.active : copy.archived}
-                    </Text>
-                  </View>
-                  {canManage && category.status === "active" ? (
-                    <View className="gap-2 sm:flex-row">
-                      <Button
-                        label={copy.edit}
-                        onPress={() => onEdit(category)}
-                        size="sm"
-                        variant="secondary"
-                      />
-                      <Button
-                        label={copy.archive}
-                        onPress={() => onArchive(category)}
-                        size="sm"
-                        variant="danger"
-                      />
-                    </View>
-                  ) : null}
-                </View>
-              ))}
+              <DataTable
+                caption={copy.title}
+                columns={columns}
+                data={state.items}
+                getRowId={(category) => category.id}
+              />
               {state.hasNextPage ? (
                 <Button
                   className="mt-6 self-start"
                   label={state.loadingMore ? copy.loadingMore : copy.loadMore}
                   loading={state.loadingMore}
                   onPress={onLoadMore}
-                  variant="secondary"
+                  variant="outline"
                 />
               ) : null}
             </View>

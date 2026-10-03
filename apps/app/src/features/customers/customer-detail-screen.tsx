@@ -1,9 +1,14 @@
+import type { Receivable } from "@pisto/contracts";
 import { Archive, ArrowLeft, Pencil } from "lucide-react-native";
-import { ActivityIndicator, Text, View } from "react-native";
-
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 
 import type { CustomerDetailLoadState, CustomersCopy } from "./types";
 
@@ -36,11 +41,51 @@ export function CustomerDetailScreen({
   onRetry,
   state,
 }: CustomerDetailScreenProps) {
+  const { t } = useTranslation();
+  const columns = useMemo<DataTableColumn<Receivable>[]>(
+    () => [
+      {
+        id: "description",
+        header: t("dataTable.columns.description"),
+        meta: { primary: true },
+        cell: ({ row: { original: item } }) => (
+          <Button
+            accessibilityLabel={t("dataTable.openRecord", { name: item.description })}
+            className="justify-start px-0"
+            label={item.description}
+            onPress={() => onOpenReceivable(item.id)}
+            size="sm"
+            variant="ghost"
+          />
+        ),
+      },
+      {
+        id: "date",
+        header: t("dataTable.columns.date"),
+        cell: ({ row: { original: item } }) => (
+          <Text className="font-sans text-sm text-muted-foreground">
+            {formatDate(item.postedDate)}
+          </Text>
+        ),
+      },
+      {
+        id: "outstanding",
+        header: t("dataTable.columns.outstanding"),
+        meta: { align: "end" },
+        cell: ({ row: { original: item } }) => (
+          <Text className="font-ui text-sm text-foreground">
+            {formatMoney(item.outstandingMinorUnits, item.currency, item.currencyMinorUnitDigits)}
+          </Text>
+        ),
+      },
+    ],
+    [formatDate, formatMoney, onOpenReceivable, t],
+  );
   if (state.kind === "loading") {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <ActivityIndicator color="#237A55" />
-        <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
+        <LoadingIndicator />
+        <Text className="font-sans text-sm text-muted-foreground">{copy.loading}</Text>
       </View>
     );
   }
@@ -56,13 +101,15 @@ export function CustomerDetailScreen({
     return (
       <Page>
         <Button label={copy.back} onPress={onBack} variant="ghost" />
-        <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
-          <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+        <View className="gap-3 border-y border-border py-8">
+          <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
             {content.title}
           </Text>
-          <Text className="text-sm leading-5 text-muted-foreground">{content.description}</Text>
+          <Text className="font-sans text-sm leading-5 text-muted-foreground">
+            {content.description}
+          </Text>
           {state.kind === "error" ? (
-            <Button label={copy.retry} onPress={onRetry} variant="secondary" />
+            <Button label={copy.retry} onPress={onRetry} variant="outline" />
           ) : null}
         </View>
       </Page>
@@ -79,21 +126,21 @@ export function CustomerDetailScreen({
         size="sm"
         variant="ghost"
       >
-        <ArrowLeft color="#237A55" size={18} />
-        <Text className="font-bold text-positive dark:text-[#8DDEAF]">{copy.back}</Text>
+        <ArrowLeft color="#71717A" size={18} />
+        <Text className="font-ui text-foreground">{copy.back}</Text>
       </Button>
       <ScreenHeader
         action={
           canManage && customer.status === "active" ? (
             <View className="flex-row flex-wrap gap-2">
-              <Button label={copy.newReceivable} onPress={onCreateReceivable} variant="accent" />
-              <Button onPress={onEdit} variant="secondary">
+              <Button label={copy.newReceivable} onPress={onCreateReceivable} variant="default" />
+              <Button onPress={onEdit} variant="outline">
                 <Pencil color="#14241D" size={17} />
-                <ButtonText variant="secondary">{copy.update}</ButtonText>
+                <ButtonText variant="outline">{copy.update}</ButtonText>
               </Button>
               <Button onPress={onArchive} variant="ghost">
                 <Archive color="#B94242" size={17} />
-                <ButtonText className="text-danger" variant="ghost">
+                <ButtonText className="text-destructive" variant="ghost">
                   {copy.archive}
                 </ButtonText>
               </Button>
@@ -104,106 +151,86 @@ export function CustomerDetailScreen({
         title={customer.name}
       />
       {state.stale ? (
-        <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
-          <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
+        <View className="border-l-4 border-warning bg-muted p-3">
+          <Text className="font-sans text-sm text-foreground">{copy.stale}</Text>
         </View>
       ) : null}
-      <View className="gap-6 border-y border-line py-6 lg:flex-row dark:border-[#304239]">
+      <View className="gap-6 border-y border-border py-6 lg:flex-row">
         <View className="min-w-0 flex-1 gap-2">
-          <Text className="text-xs font-bold uppercase tracking-[1px] text-ink-muted dark:text-[#91A198]">
-            {copy.balance}
-          </Text>
-          <Text className="text-3xl font-black text-foreground">
+          <Text className="text-xs font-ui text-muted-foreground">{copy.balance}</Text>
+          <Text className="text-3xl font-heading text-foreground">
             {formatMoney(
               balance.outstandingMinorUnits,
               balance.currency,
               balance.currencyMinorUnitDigits,
             )}
           </Text>
-          <Text className="text-sm text-muted-foreground">
+          <Text className="font-sans text-sm text-muted-foreground">
             {copy.openReceivables}: {balance.openReceivableCount}
           </Text>
         </View>
-        <View className="min-w-0 flex-1 gap-2 border-t border-line pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0 dark:border-[#304239]">
-          <Text className="text-xs font-bold uppercase tracking-[1px] text-ink-muted dark:text-[#91A198]">
-            {copy.overdue}
-          </Text>
-          <Text className="text-2xl font-black text-danger dark:text-[#FFBABA]">
+        <View className="min-w-0 flex-1 gap-2 border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+          <Text className="text-xs font-ui text-muted-foreground">{copy.overdue}</Text>
+          <Text className="text-2xl font-heading text-destructive">
             {formatMoney(
               balance.overdueMinorUnits,
               balance.currency,
               balance.currencyMinorUnitDigits,
             )}
           </Text>
-          <Text className="text-sm text-muted-foreground">{balance.overdueReceivableCount}</Text>
+          <Text className="font-sans text-sm text-muted-foreground">
+            {balance.overdueReceivableCount}
+          </Text>
         </View>
       </View>
       <View className="gap-3">
-        <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+        <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
           {copy.contact}
         </Text>
-        <View className="gap-3 border-t border-line pt-4 dark:border-[#304239]">
+        <View className="gap-3 border-t border-border pt-4">
           {customer.phone ? (
-            <Text className="text-sm text-foreground">
+            <Text className="font-sans text-sm text-foreground">
               {copy.phone}: {customer.phone}
             </Text>
           ) : null}
           {customer.email ? (
-            <Text className="text-sm text-foreground">
+            <Text className="font-sans text-sm text-foreground">
               {copy.email}: {customer.email}
             </Text>
           ) : null}
           {customer.notes ? (
-            <Text className="text-sm leading-5 text-muted-foreground">
+            <Text className="font-sans text-sm leading-5 text-muted-foreground">
               {copy.notes}: {customer.notes}
             </Text>
           ) : null}
           {!customer.phone && !customer.email && !customer.notes ? (
-            <Text className="text-sm text-muted-foreground">{copy.noContact}</Text>
+            <Text className="font-sans text-sm text-muted-foreground">{copy.noContact}</Text>
           ) : null}
         </View>
       </View>
       <View className="gap-3">
-        <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+        <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
           {copy.receivableHistory}
         </Text>
         {state.receivables.length === 0 ? (
-          <Text className="border-t border-line py-5 text-sm text-ink-muted dark:border-[#304239] dark:text-[#AAB8B0]">
+          <Text className="font-sans border-t border-border py-5 text-sm text-muted-foreground">
             {copy.noReceivables}
           </Text>
         ) : (
           <View className="gap-4">
-            <View className="border-t border-border">
-              {state.receivables.map((item) => (
-                <Button
-                  className="min-h-16 justify-between gap-4 rounded-none border-b border-line px-0 py-4 dark:border-[#304239]"
-                  key={item.id}
-                  onPress={() => onOpenReceivable(item.id)}
-                  variant="ghost"
-                >
-                  <View className="min-w-0 flex-1 gap-1">
-                    <Text className="font-bold text-foreground">{item.description}</Text>
-                    <Text className="text-sm text-muted-foreground">
-                      {formatDate(item.postedDate)}
-                    </Text>
-                  </View>
-                  <Text className="font-bold text-foreground">
-                    {formatMoney(
-                      item.outstandingMinorUnits,
-                      item.currency,
-                      item.currencyMinorUnitDigits,
-                    )}
-                  </Text>
-                </Button>
-              ))}
-            </View>
+            <DataTable
+              caption={copy.receivableHistory}
+              columns={columns}
+              data={state.receivables}
+              getRowId={(item) => item.id}
+            />
             {state.receivablesNextCursor ? (
               <Button
                 disabled={state.receivablesLoadingMore}
                 label={copy.loadMore}
                 loading={state.receivablesLoadingMore}
                 onPress={onLoadMoreReceivables}
-                variant="secondary"
+                variant="outline"
               />
             ) : null}
           </View>

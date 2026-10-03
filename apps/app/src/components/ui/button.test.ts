@@ -1,10 +1,15 @@
 import type { ComponentProps } from "react";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
+const appearance = vi.hoisted(() => ({ theme: "light" }));
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
-vi.mock("uniwind", () => ({ useUniwind: () => ({ theme: "light" }) }));
+vi.mock("uniwind", () => ({
+  withUniwind: (component: unknown) => component,
+  useCSSVariable: () => "#525252",
+  useUniwind: () => appearance,
+}));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: () => "cargando" }) }));
 
@@ -12,7 +17,21 @@ import { CashMovementList } from "@/features/cash/cash-movement-list";
 import { Badge } from "./badge";
 import { Button, ButtonText } from "./button";
 
+beforeEach(() => {
+  appearance.theme = "light";
+});
+
 describe("shared button", () => {
+  test.each([
+    ["light", "destructive", "#FFFFFF"],
+    ["dark", "destructive", "#FFFFFF"],
+    ["dark", "default", "#171717"],
+    ["light", "default", "#FFFFFF"],
+  ] as const)("preserves loading contrast for %s %s controls", (theme, variant, color) => {
+    appearance.theme = theme;
+    const rendered = Button({ loading: true, variant, label: "Guardar" });
+    expect(rendered.props.children.props.children.props.children[0].props.color).toBe(color);
+  });
   test("preserves the link role and destination supplied by a router", () => {
     const markup = renderToStaticMarkup(
       createElement(Button, {
@@ -49,7 +68,7 @@ describe("shared button", () => {
     expect(markup).toContain('aria-label="Mostrar contraseña"');
     expect(markup).toContain('data-testid="password-toggle"');
     expect(markup).toContain('aria-disabled="true"');
-    const element = Button(props);
+    const element = Button(props).props.children;
     expect(element.props.className).toContain("min-h-11");
     expect(element.props.className).toContain("w-11");
     expect(element.props.className).toContain("rounded-none");
@@ -87,7 +106,7 @@ describe("shared button", () => {
       createElement(
         Badge,
         { accessibilityLabel: "Estado de la cuenta", testID: "account-status" },
-        "Confirmada",
+        createElement(ButtonText, {}, "Confirmada"),
       ),
     );
     expect(markup).toContain('aria-label="Estado de la cuenta"');

@@ -4,12 +4,15 @@ import type {
   ReverseInventoryMovementRequest,
 } from "@pisto/contracts";
 import { AlertTriangle, ArrowLeft, Check } from "lucide-react-native";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { useCSSVariable } from "uniwind";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
 
 import { formatQuantityMinorUnits } from "./quantity";
 import type { ReversalDraft, ReversalDraftErrors } from "./reversal-draft";
@@ -82,6 +85,8 @@ export function ReversalEditor({
   productName: string;
   timeZone: string;
 }) {
+  const mutedColor = useCSSVariable("--color-muted-foreground") as string;
+  const destructiveColor = useCSSVariable("--color-destructive") as string;
   const reversalDelta = movement.deltaMinorUnits.startsWith("-")
     ? movement.deltaMinorUnits.slice(1)
     : `-${movement.deltaMinorUnits}`;
@@ -95,10 +100,8 @@ export function ReversalEditor({
         size="sm"
         variant="ghost"
       >
-        <ArrowLeft color="#617168" size={18} />
-        <ButtonText className="text-muted-foreground" variant="ghost">
-          {copy.back}
-        </ButtonText>
+        <ArrowLeft color={mutedColor} size={18} />
+        <Text className="text-muted-foreground">{copy.back}</Text>
       </Button>
       <ScreenHeader
         description={command ? copy.reviewDescription : copy.description}
@@ -134,16 +137,13 @@ export function ReversalEditor({
             ]}
           />
           {mutationState === "error" || mutationState === "uncertain" ? (
-            <View className="flex-row items-start gap-3 border-l-4 border-danger bg-[#FFF1F1] p-4 dark:bg-[#3A2020]">
-              <AlertTriangle color="#B94242" size={20} />
+            <View className="flex-row items-start gap-3 border-l-4 border-destructive bg-destructive-surface p-4 ">
+              <AlertTriangle color={destructiveColor} size={20} />
               <View className="min-w-0 flex-1 gap-1">
-                <Text
-                  accessibilityRole="alert"
-                  className="font-bold text-danger dark:text-[#FFBABA]"
-                >
+                <Text accessibilityRole="alert" className="font-ui text-destructive ">
                   {mutationState === "uncertain" ? copy.uncertainTitle : copy.failedTitle}
                 </Text>
-                <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
+                <Text className="text-sm leading-5 text-muted-foreground ">
                   {mutationState === "uncertain"
                     ? copy.uncertainDescription
                     : (mutationMessage ?? copy.failedDescription)}
@@ -156,30 +156,30 @@ export function ReversalEditor({
               <Button
                 label={copy.retrySameConfirmation}
                 onPress={onResolveUncertain}
-                variant="secondary"
+                variant="outline"
               />
             ) : (
               <>
                 <Button
                   loading={mutationState === "pending"}
                   onPress={mutationState === "pending" ? undefined : onConfirm}
-                  variant="danger"
+                  variant="destructive"
                 >
-                  <Check color="#FFFFFF" size={18} />
-                  <ButtonText variant="danger">{copy.confirm}</ButtonText>
+                  <Icon as={Check} size={18} />
+                  <Text>{copy.confirm}</Text>
                 </Button>
                 <Button
                   disabled={mutationState === "pending"}
                   label={copy.cancel}
                   onPress={mutationState === "pending" ? undefined : onCancelReview}
-                  variant="secondary"
+                  variant="outline"
                 />
               </>
             )}
           </View>
         </View>
       ) : (
-        <View className="gap-7 border-y border-line py-7 dark:border-[#304239]">
+        <View className="gap-7 border-y border-border py-7 ">
           <Field
             error={errors.reason}
             label={copy.reason}
@@ -210,7 +210,7 @@ export function ReversalEditor({
               />
             </View>
           </View>
-          <Button className="self-start" label={copy.review} onPress={onReview} variant="accent" />
+          <Button className="self-start" label={copy.review} onPress={onReview} variant="default" />
         </View>
       )}
     </Page>

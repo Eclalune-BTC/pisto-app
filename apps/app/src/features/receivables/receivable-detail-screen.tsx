@@ -1,9 +1,14 @@
-import { ArrowLeft, RotateCcw } from "lucide-react-native";
-import { ActivityIndicator, Text, View } from "react-native";
-
+import type { ReceivablePayment } from "@pisto/contracts";
+import { ArrowLeft } from "lucide-react-native";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 
 import type { ReceivableDetailLoadState, ReceivablesCopy } from "./types";
 
@@ -38,11 +43,81 @@ export function ReceivableDetailScreen({
   onVoid,
   state,
 }: ReceivableDetailScreenProps) {
+  const { t } = useTranslation();
+  const payments = state.kind === "ready" ? state.payments : undefined;
+  const columns = useMemo<DataTableColumn<ReceivablePayment>[]>(
+    () => [
+      {
+        id: "type",
+        header: t("dataTable.columns.type"),
+        meta: { primary: true },
+        cell: ({ row: { original: payment } }) => (
+          <Text className="font-ui text-sm text-foreground">
+            {payment.kind === "reversal" ? copy.reversedPayment : copy.applyPayment}
+          </Text>
+        ),
+      },
+      {
+        id: "date",
+        header: t("dataTable.columns.date"),
+        cell: ({ row: { original: payment } }) => (
+          <Text className="font-sans text-sm text-muted-foreground">
+            {formatDate(payment.occurredLocalDate)}
+          </Text>
+        ),
+      },
+      {
+        id: "account",
+        header: t("dataTable.columns.account"),
+        cell: ({ row: { original: payment } }) => (
+          <Text className="font-sans text-sm text-foreground">
+            {cashAccountNameFor(payment.cashAccountId)}
+          </Text>
+        ),
+      },
+      {
+        id: "amount",
+        header: t("dataTable.columns.amount"),
+        meta: { align: "end" },
+        cell: ({ row: { original: payment } }) => (
+          <Text className="font-ui text-sm text-foreground">
+            {formatMoney(
+              payment.amountMinorUnits,
+              payment.currency,
+              payment.currencyMinorUnitDigits,
+            )}
+          </Text>
+        ),
+      },
+      ...(canManage
+        ? [
+            {
+              id: "actions",
+              header: t("dataTable.columns.actions"),
+              cell: ({ row: { original: payment } }) =>
+                payment.kind === "payment" &&
+                !payments?.some(
+                  (candidate) =>
+                    candidate.kind === "reversal" && candidate.reversesPaymentId === payment.id,
+                ) ? (
+                  <Button
+                    label={copy.reverse}
+                    onPress={() => onReversePayment(payment.id)}
+                    size="sm"
+                    variant="outline"
+                  />
+                ) : null,
+            } satisfies DataTableColumn<ReceivablePayment>,
+          ]
+        : []),
+    ],
+    [canManage, cashAccountNameFor, copy, formatDate, formatMoney, onReversePayment, payments, t],
+  );
   if (state.kind === "loading") {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <ActivityIndicator color="#237A55" />
-        <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
+        <LoadingIndicator />
+        <Text className="font-sans text-sm text-muted-foreground">{copy.loading}</Text>
       </View>
     );
   }
@@ -66,13 +141,13 @@ export function ReceivableDetailScreen({
     return (
       <Page>
         <Button label={copy.back} onPress={onBack} variant="ghost" />
-        <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
-          <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+        <View className="gap-3 border-y border-border py-8">
+          <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
             {title}
           </Text>
-          <Text className="text-sm leading-5 text-muted-foreground">{description}</Text>
+          <Text className="font-sans text-sm leading-5 text-muted-foreground">{description}</Text>
           {state.kind === "error" ? (
-            <Button label={copy.retry} onPress={onRetry} variant="secondary" />
+            <Button label={copy.retry} onPress={onRetry} variant="outline" />
           ) : null}
         </View>
       </Page>
@@ -95,15 +170,15 @@ export function ReceivableDetailScreen({
         size="sm"
         variant="ghost"
       >
-        <ArrowLeft color="#237A55" size={18} />
-        <Text className="font-bold text-positive dark:text-[#8DDEAF]">{copy.back}</Text>
+        <ArrowLeft color="#71717A" size={18} />
+        <Text className="font-ui text-foreground">{copy.back}</Text>
       </Button>
       <ScreenHeader
         action={
           canManage && item.state !== "voided" ? (
             <View className="flex-row gap-2">
               {customerActive && item.outstandingMinorUnits !== "0" ? (
-                <Button label={copy.applyPayment} onPress={onApplyPayment} variant="accent" />
+                <Button label={copy.applyPayment} onPress={onApplyPayment} variant="default" />
               ) : null}
               {item.paidMinorUnits === "0" ? (
                 <Button label={copy.void} onPress={onVoid} variant="ghost" />
@@ -115,88 +190,45 @@ export function ReceivableDetailScreen({
         title={customerName}
       />
       {state.stale ? (
-        <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
-          <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
+        <View className="border-l-4 border-warning bg-muted p-3">
+          <Text className="font-sans text-sm text-foreground">{copy.stale}</Text>
         </View>
       ) : null}
-      <View className="gap-5 border-y border-line py-6 lg:flex-row dark:border-[#304239]">
+      <View className="gap-5 border-y border-border py-6 lg:flex-row">
         <View className="min-w-0 flex-1 gap-1">
-          <Text className="text-xs font-bold uppercase tracking-[1px] text-ink-muted dark:text-[#91A198]">
-            {copy.outstanding}
-          </Text>
-          <Text className="text-3xl font-black text-foreground">
+          <Text className="text-xs font-ui text-muted-foreground">{copy.outstanding}</Text>
+          <Text className="text-3xl font-heading text-foreground">
             {formatMoney(item.outstandingMinorUnits, item.currency, item.currencyMinorUnitDigits)}
           </Text>
         </View>
-        <View className="min-w-0 flex-1 gap-2 border-t border-line pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0 dark:border-[#304239]">
-          <Text className="text-sm text-muted-foreground">
+        <View className="min-w-0 flex-1 gap-2 border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+          <Text className="font-sans text-sm text-muted-foreground">
             {copy.originalAmount}:{" "}
             {formatMoney(item.originalMinorUnits, item.currency, item.currencyMinorUnitDigits)}
           </Text>
-          <Text className="text-sm text-muted-foreground">
+          <Text className="font-sans text-sm text-muted-foreground">
             {copy.postedDate}: {formatDate(item.postedDate)}
           </Text>
-          <Text className="text-sm text-muted-foreground">
+          <Text className="font-sans text-sm text-muted-foreground">
             {copy.dueDate}: {item.dueDate ? formatDate(item.dueDate) : copy.noDueDate}
           </Text>
         </View>
       </View>
       <View className="gap-3">
-        <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+        <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
           {copy.paymentHistory}
         </Text>
         {state.payments.length === 0 ? (
-          <Text className="border-t border-line py-5 text-sm text-ink-muted dark:border-[#304239] dark:text-[#AAB8B0]">
+          <Text className="font-sans border-t border-border py-5 text-sm text-muted-foreground">
             {copy.noPayments}
           </Text>
         ) : (
-          <View className="border-t border-border">
-            {state.payments.map((payment) => {
-              const alreadyReversed = state.payments.some(
-                (candidate) =>
-                  candidate.kind === "reversal" && candidate.reversesPaymentId === payment.id,
-              );
-              return (
-                <View
-                  className="gap-3 border-b border-line py-4 sm:flex-row sm:items-center sm:justify-between dark:border-[#304239]"
-                  key={payment.id}
-                >
-                  <View className="min-w-0 flex-1 gap-1">
-                    <Text className="font-bold text-foreground">
-                      {payment.kind === "reversal" ? copy.reversedPayment : copy.applyPayment}
-                    </Text>
-                    <Text className="text-sm text-muted-foreground">
-                      {formatDate(payment.occurredLocalDate)}
-                    </Text>
-                    <Text className="text-sm text-muted-foreground">
-                      {copy.cashAccount}: {cashAccountNameFor(payment.cashAccountId)}
-                    </Text>
-                  </View>
-                  <View className="items-start gap-2 sm:items-end">
-                    <Text className="font-black text-foreground">
-                      {formatMoney(
-                        payment.amountMinorUnits,
-                        payment.currency,
-                        payment.currencyMinorUnitDigits,
-                      )}
-                    </Text>
-                    {canManage && payment.kind === "payment" && !alreadyReversed ? (
-                      <Button
-                        onPress={() => onReversePayment(payment.id)}
-                        size="sm"
-                        variant="ghost"
-                      >
-                        <RotateCcw color="#B94242" size={16} />
-                        <ButtonText className="text-danger" variant="ghost">
-                          {copy.reverse}
-                        </ButtonText>
-                      </Button>
-                    ) : null}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
+          <DataTable
+            caption={copy.paymentHistory}
+            columns={columns}
+            data={state.payments}
+            getRowId={(payment) => payment.id}
+          />
         )}
       </View>
     </Page>

@@ -1,6 +1,10 @@
 import type { CashMovement, CashMovementAction } from "@pisto/contracts";
-import { Text, View } from "react-native";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Text } from "@/components/ui/text";
 
 type CashMovementListProps = {
   movements: CashMovement[];
@@ -17,46 +21,66 @@ export function CashMovementList({
   formatMoney,
   onOpenMovement,
 }: CashMovementListProps) {
-  if (movements.length === 0) {
-    return <Text className="text-sm leading-5 text-muted-foreground">{noMovements}</Text>;
-  }
+  const { t } = useTranslation();
+  const columns = useMemo<DataTableColumn<CashMovement>[]>(
+    () => [
+      {
+        id: "type",
+        header: t("dataTable.columns.type"),
+        meta: { primary: true },
+        cell: ({ row: { original } }) => (
+          <Text className="font-ui text-foreground">{actionLabels[original.action]}</Text>
+        ),
+      },
+      {
+        id: "date",
+        header: t("dataTable.columns.date"),
+        cell: ({ row: { original } }) => (
+          <Text className="font-sans text-muted-foreground">
+            {original.occurredLocalDate} {original.occurredLocalTime}
+          </Text>
+        ),
+      },
+      {
+        id: "amount",
+        header: t("dataTable.columns.amount"),
+        meta: { align: "end" },
+        cell: ({ row: { original } }) => (
+          <Text className="font-ui text-foreground">
+            {formatMoney(
+              original.deltaMinorUnits,
+              original.currency,
+              original.currencyMinorUnitDigits,
+            )}
+          </Text>
+        ),
+      },
+      ...(onOpenMovement
+        ? [
+            {
+              id: "actions",
+              header: t("dataTable.columns.actions"),
+              cell: ({ row: { original } }) => (
+                <Button
+                  label={t("dataTable.openRecord", { name: actionLabels[original.action] })}
+                  onPress={() => onOpenMovement(original.id)}
+                  size="sm"
+                  variant="ghost"
+                />
+              ),
+            } satisfies DataTableColumn<CashMovement>,
+          ]
+        : []),
+    ],
+    [t, actionLabels, formatMoney, onOpenMovement],
+  );
   return (
-    <View className="border-y border-border">
-      {movements.map((movement) => {
-        const content = (
-          <>
-            <View className="min-w-0 flex-1 gap-1">
-              <Text className="font-bold text-foreground">{actionLabels[movement.action]}</Text>
-              <Text className="text-xs text-ink-muted dark:text-[#91A198]">
-                {movement.occurredLocalDate} · {movement.occurredLocalTime}
-              </Text>
-            </View>
-            <Text className="font-black text-foreground">
-              {formatMoney(
-                movement.deltaMinorUnits,
-                movement.currency,
-                movement.currencyMinorUnitDigits,
-              )}
-            </Text>
-          </>
-        );
-        const className =
-          "flex-col items-stretch justify-start gap-2 rounded-none border-b border-line px-0 py-4 last:border-b-0 dark:border-[#304239] sm:flex-row sm:items-baseline sm:justify-between";
-        return onOpenMovement ? (
-          <Button
-            className={className}
-            key={movement.id}
-            onPress={() => onOpenMovement(movement.id)}
-            variant="ghost"
-          >
-            {content}
-          </Button>
-        ) : (
-          <View className={className} key={movement.id}>
-            {content}
-          </View>
-        );
-      })}
-    </View>
+    <DataTable
+      caption={t("filters.movements")}
+      columns={columns}
+      data={movements}
+      empty={<EmptyState title={t("filters.movements")} description={noMovements} />}
+      getRowId={(movement) => movement.id}
+    />
   );
 }

@@ -16,6 +16,65 @@ targets, not a statement that every process is currently running.
 
 ## Validation
 
+### RNR composition and spacing follow-up, 2026-09-27
+
+The Cash screenshot prompted a composition audit rather than another palette or component-library
+change. Filter surfaces, empty states, compact table records, report range controls and authentication
+now use the installed Card slots. Filter labels retain intrinsic width and consistent padding.
+Pointer-only tab-panel outlines are suppressed; visible neutral keyboard focus remains rounded.
+
+- The final `bun run check` passed, including **474 application tests in 79 files**, types,
+  documentation and web export. Unchanged task results were reused from local Turbo cache.
+- Fifty-two mounted browser assertion groups passed with isolated responses: Cash empty states at
+  320, 390, 768, 1024 and 1357 CSS pixels; nine operating routes at wide/compact widths; and sign-in
+  and sign-up. Both themes were exercised. Checks measured at least 12 px filter side padding,
+  44 px control height, 24 px authentication inset, no horizontal page overflow and preserved focus.
+- Independent read-only review identified default-blue activity indicators and duplicate H1s in
+  nested states. Shared neutral loading feedback and explicit heading levels address those findings;
+  selected remaining financial/failure notices now compose the installed Alert components.
+- The original staged patch remains unchanged. No dependencies, backend contracts, database records,
+  main-branch commits, publication or deployment were changed. These browser and export checks do not
+  establish physical-device or complete screen-reader acceptance.
+
+### React Native Reusables migration, 2026-09-27
+
+The owner requires React Native Reusables throughout the application and prohibits blue. The current
+source uses the official Uniwind registry, a single neutral palette, a desktop sidebar and a compact
+Dialog navigation menu. [The design system](design-system.md) records the actual source revision,
+manual installation, component ownership and the registry's missing Sidebar/DataTable boundaries.
+The earlier cobalt proposal is rejected and no longer an active design direction.
+
+- `bun run check` passed with Bun 1.4.0: application types, **469 tests in 77 files**, documentation
+  validation and Expo web export. Unchanged workspace tasks reused local Turbo cache.
+- `audit:ci` checked 823 packages with the same four pre-existing advisory exceptions; no new
+  exception was added. This is not a zero-advisory assertion.
+- The final all-platform Expo export completed with exit 0 and emitted web assets plus Android/iOS
+  Hermes bundles. This is not a signed native binary, installation or physical-device test.
+- Isolated browser responses exercised fifteen operating routes at 1440 and 390 CSS pixels in both
+  themes, with no horizontal document overflow or reported console errors. Expense selection,
+  tab navigation, the mobile menu's routes, Escape dismissal and focus restoration were exercised.
+  Menu navigation closed the overlay and reached the selected route in both themes.
+- A mounted business setup check verified the actual checkbox role, Space activation, label-based
+  deselection and the corresponding create-button enabled/disabled state. No create operation was
+  submitted. Unit tests separately retain pending and uncertain-response guards and exact retries.
+- The public page was inspected at 320, 390, 768, 1024 and 1440 CSS pixels in both themes. Its static
+  product captures were regenerated from the actual RNR forms with isolated example configuration,
+  no customer contacts and no balances or transaction results. Captures are not live controls.
+  Final mounted assertions passed for arrow-key tab selection, Tab focus into the selected panel
+  and Enter activation of the FAQ controls; no duplicated document IDs were reported.
+- Independent read-only review found native selection-highlight contrast, primary-button icon
+  contrast, native tooltip side effects and outdated stack documentation. These were corrected;
+  additional tests cover neutral highlight/cursor/handle props and the web-only hover-tooltip boundary.
+  The reviewer did not independently run browser or device checks.
+- Source guards cover blue utilities/literal colors and the explicitly neutral Expo navigation
+  theme. Brand geometry and asset transparency tests remain. These checks do not establish physical
+  device appearance, OS-controlled UI colors or full accessibility conformance.
+- The original staged patch was verified unchanged. API, database packages, contracts and root
+  scripts were unchanged from the migration baseline. Browser fixtures wrote no records to the
+  configured database. No main-branch commit, push, hosted deployment or store release was performed.
+
+### Manual core and recovery, 2026-09-26
+
 Recorded on 2026-09-26 for the implemented manual core and new-sale recovery:
 
 - `bun run check`, with Bun 1.4.0 and Turbo task cache bypassed: 524 tests passed (39 scripts,

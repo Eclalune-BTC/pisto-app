@@ -3,6 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const setup = vi.hoisted(() => ({
+  groups: [] as {
+    value: string | undefined;
+    disabled?: boolean;
+    onValueChange: (value: string) => void;
+  }[],
+  labels: [] as { children?: unknown; onPress?: () => void }[],
   buttons: [] as { label?: string; onPress?: () => void }[],
   mutation: {
     error: null as Error | null,
@@ -13,11 +19,43 @@ const setup = vi.hoisted(() => ({
 }));
 
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
-vi.mock("uniwind", () => ({ useUniwind: () => ({ theme: "light" }) }));
-vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
+vi.mock("uniwind", () => ({
+  useUniwind: () => ({ theme: "light" }),
+  useCSSVariable: () => "#71717A",
+  withUniwind: (component: unknown) => component,
+}));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 vi.mock("expo-router", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
-vi.mock("lucide-react-native", () => ({ Building2: () => null, Check: () => null }));
+vi.mock("lucide-react-native", () => ({
+  Building2: () => null,
+  Check: () => null,
+  CheckIcon: () => null,
+  Circle: () => null,
+  CircleIcon: () => null,
+}));
+vi.mock("@/components/ui/radio-group", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/ui/radio-group")>();
+  return {
+    ...actual,
+    RadioGroup: (props: ComponentProps<typeof actual.RadioGroup>) => {
+      setup.groups.push(props);
+      return createElement(actual.RadioGroup, props);
+    },
+  };
+});
+vi.mock("@/components/ui/label", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/ui/label")>();
+  return {
+    ...actual,
+    Label: (props: ComponentProps<typeof actual.Label>) => {
+      setup.labels.push({
+        children: props.children,
+        onPress: props.onPress as (() => void) | undefined,
+      });
+      return createElement(actual.Label, props);
+    },
+  };
+});
 vi.mock("@tanstack/react-query", () => ({
   useMutation: () => setup.mutation,
   useQuery: () => ({
@@ -60,6 +98,8 @@ import { i18n } from "@/i18n/config";
 
 beforeEach(() => {
   setup.buttons.length = 0;
+  setup.groups.length = 0;
+  setup.labels.length = 0;
   setup.mutation.error = null;
   setup.mutation.isPending = false;
   setup.mutation.variables = undefined;
@@ -69,18 +109,19 @@ beforeEach(() => {
 describe("checked controls rendered by React Native Web", () => {
   test("exposes the business acknowledgment as an explicitly unchecked checkbox", () => {
     const markup = renderToStaticMarkup(createElement(BusinessSetupScreen));
-    const checkbox = markup.match(/<[^>]+\brole="checkbox"[^>]*>/)?.[0];
-    expect(checkbox).toContain('aria-checked="false"');
+    // The primitive assigns its web checkbox role in a layout effect; SSR retains its stable ID and checked state.
+    const checkbox = markup.match(/<[^>]+\bid="business-acknowledgment"[^>]*>/)?.[0];
+    expect(checkbox, markup).toContain('aria-checked="false"');
     expect(markup).toContain(i18n.t("business.acknowledgment"));
   });
 
   test("freezes all business inputs and acknowledgment while creation is pending", () => {
     setup.mutation.isPending = true;
     const markup = renderToStaticMarkup(createElement(BusinessSetupScreen));
-    const inputs = markup.match(/<input\b[^>]*>/g);
-    expect(inputs).toHaveLength(3);
+    const inputs = markup.match(/<input\b(?![^>]*\btype="checkbox")[^>]*>/g);
+    expect(inputs, markup).toHaveLength(3);
     for (const input of inputs ?? []) expect(input).toContain("readOnly");
-    const checkbox = markup.match(/<[^>]+\brole="checkbox"[^>]*>/)?.[0];
+    const checkbox = markup.match(/<[^>]+\bid="business-acknowledgment"[^>]*>/)?.[0];
     expect(checkbox).toContain('aria-disabled="true"');
     setup.buttons.find((button) => button.label === i18n.t("business.create"))?.onPress?.();
     expect(setup.mutation.mutate).not.toHaveBeenCalled();
@@ -94,7 +135,10 @@ describe("checked controls rendered by React Native Web", () => {
     };
     setup.mutation.error = new Error("The response was lost");
     setup.mutation.variables = submitted;
-    renderToStaticMarkup(createElement(BusinessSetupScreen));
+    const markup = renderToStaticMarkup(createElement(BusinessSetupScreen));
+    const checkbox = markup.match(/<[^>]+\bid="business-acknowledgment"[^>]*>/)?.[0];
+    expect(checkbox).toContain('aria-disabled="true"');
+    expect(markup).toContain(i18n.t("business.acknowledgment"));
     const retry = setup.buttons.find(
       (button) => button.label === i18n.t("common.retrySameConfirmation"),
     );
@@ -124,4 +168,59 @@ describe("checked controls rendered by React Native Web", () => {
       expect(radios?.[1]).toContain(`aria-checked="${value === "second"}"`);
     },
   );
+});
+
+describe("cash RNR selection behavior", () => {
+  const options = [
+    { label: "First account with a complete label", value: "first" },
+    { label: "Second account with a complete label", value: "second" },
+  ] as const;
+
+  test("selects exact domain values through both the group and visible labels", () => {
+    const onChange = vi.fn();
+    const markup = renderToStaticMarkup(
+      createElement(ChoiceList, { label: "Account", options, value: "first", onChange }),
+    );
+    expect(markup).toContain('aria-label="Account"');
+    for (const option of options) expect(markup).toContain(option.label);
+    setup.groups[0]?.onValueChange("second");
+    expect(onChange).toHaveBeenLastCalledWith("second");
+    setup.labels.find((label) => label.children === options[0].label)?.onPress?.();
+    expect(onChange).toHaveBeenLastCalledWith("first");
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(() => setup.groups[0]?.onValueChange("missing")).toThrow("unavailable");
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  test("disables every radio and prevents changes through group or label handlers", () => {
+    const onChange = vi.fn();
+    const markup = renderToStaticMarkup(
+      createElement(ChoiceList, {
+        disabled: true,
+        label: "Account",
+        options,
+        value: "second",
+        onChange,
+      }),
+    );
+    const radios = markup.match(/<[^>]+\brole="radio"[^>]*>/g);
+    expect(radios).toHaveLength(2);
+    for (const radio of radios ?? []) {
+      expect(radio).toMatch(/(?:aria-disabled="true"|\sdisabled(?:="")?)/);
+    }
+    expect(radios?.[1]).toContain('aria-checked="true"');
+    setup.groups[0]?.onValueChange("first");
+    for (const label of setup.labels) label.onPress?.();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test("rejects an unavailable selected value without selecting the first option", () => {
+    const onChange = vi.fn();
+    expect(() =>
+      renderToStaticMarkup(
+        createElement(ChoiceList, { label: "Account", options, value: "missing", onChange }),
+      ),
+    ).toThrow("The selected cash choice is unavailable.");
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

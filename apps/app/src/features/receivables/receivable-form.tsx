@@ -1,8 +1,8 @@
 import { ChevronRight } from "lucide-react-native";
-import { Text, View } from "react-native";
-
+import { View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Text } from "@/components/ui/text";
 
 import type { ReceivableFormCopy } from "./types";
 
@@ -38,11 +38,11 @@ export function ReceivableForm({
   return (
     <View className="gap-5">
       <View className="gap-2">
-        <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">{copy.customer}</Text>
+        <Text className="text-sm font-ui text-foreground ">{copy.customer}</Text>
         <Button
           accessibilityLabel={copy.chooseCustomer}
-          className={`min-h-14 flex-row items-center justify-between gap-3 rounded-lg border bg-white px-4 active:opacity-75 dark:bg-[#14241D] ${
-            errors.customer ? "border-danger" : "border-line dark:border-[#3B4A43]"
+          className={`min-h-14 flex-row items-center justify-between gap-3 rounded-md border bg-background px-4 active:opacity-75 ${
+            errors.customer ? "border-destructive" : "border-border "
           }`}
           onPress={onChooseCustomer}
           variant="ghost"
@@ -53,7 +53,7 @@ export function ReceivableForm({
           <ChevronRight color="#617168" size={18} />
         </Button>
         {errors.customer ? (
-          <Text accessibilityRole="alert" className="text-xs text-danger">
+          <Text accessibilityRole="alert" className="text-xs text-destructive">
             {errors.customer}
           </Text>
         ) : null}
@@ -96,7 +96,7 @@ export function ReceivableForm({
       />
       <View className="gap-3 sm:flex-row sm:justify-end">
         <Button label={copy.cancel} onPress={onCancel} variant="ghost" />
-        <Button disabled={!canReview} label={copy.review} onPress={onReview} variant="accent" />
+        <Button disabled={!canReview} label={copy.review} onPress={onReview} variant="default" />
       </View>
     </View>
   );

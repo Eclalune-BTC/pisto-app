@@ -3,11 +3,13 @@ import type {
   CashMovementDirection,
   RecordCashAdjustmentRequest,
 } from "@pisto/contracts";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { SelectField } from "@/components/ui/select-field";
+import { Text } from "@/components/ui/text";
 import { CashOperationReview, type CashOperationReviewCopy } from "./cash-operation-review";
 import { ChoiceList } from "./choice-list";
 import {
@@ -135,8 +137,8 @@ export function CashAdjustmentScreen({
         />
 
         {activeAccounts.length === 0 && !reviewing ? (
-          <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
-            <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+          <View className="gap-3 border-y border-border py-8 ">
+            <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
               {copy.accountUnavailableTitle}
             </Text>
             <Text className="text-sm leading-5 text-muted-foreground">
@@ -146,7 +148,7 @@ export function CashAdjustmentScreen({
               className="self-start"
               label={copy.createAccount}
               onPress={onCreateAccount}
-              variant="accent"
+              variant="default"
             />
           </View>
         ) : reviewing && account ? (
@@ -174,15 +176,15 @@ export function CashAdjustmentScreen({
             state={confirmation}
           />
         ) : (
-          <View className="gap-7 border-y border-line py-7 dark:border-[#304239]">
-            <ChoiceList
+          <View className="gap-7 border-y border-border py-7 ">
+            <SelectField
               label={copy.account}
               onChange={(accountId) => onDraftChange({ ...draft, accountId })}
               options={accountOptions}
               value={draft.accountId}
             />
             {errors.accountId ? (
-              <Text accessibilityRole="alert" className="text-xs text-danger">
+              <Text accessibilityRole="alert" className="text-xs text-destructive">
                 {errors.accountId}
               </Text>
             ) : null}
@@ -193,7 +195,7 @@ export function CashAdjustmentScreen({
                 loading={isLoadingMoreAccounts}
                 onPress={onLoadMoreAccounts}
                 size="sm"
-                variant="secondary"
+                variant="outline"
               />
             ) : null}
             <ChoiceList
@@ -212,7 +214,7 @@ export function CashAdjustmentScreen({
               onChangeText={(amount) => onDraftChange({ ...draft, amount })}
               trailing={
                 account ? (
-                  <Text className="font-bold text-ink-muted">{account.currency}</Text>
+                  <Text className="font-ui text-muted-foreground">{account.currency}</Text>
                 ) : undefined
               }
               value={draft.amount}
@@ -243,8 +245,8 @@ export function CashAdjustmentScreen({
               </View>
             </View>
             <View className="gap-3 sm:flex-row">
-              <Button label={copy.review} onPress={onPrepareReview} variant="accent" />
-              <Button label={copy.cancel} onPress={onCancel} variant="secondary" />
+              <Button label={copy.review} onPress={onPrepareReview} variant="default" />
+              <Button label={copy.cancel} onPress={onCancel} variant="outline" />
             </View>
           </View>
         )}

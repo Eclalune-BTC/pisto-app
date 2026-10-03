@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { Text, View } from "react-native";
-
+import { View } from "react-native";
 import { Heading } from "@/components/ui/heading";
+import { Text } from "@/components/ui/text";
 
 type ScreenHeaderProps = {
   action?: ReactNode;

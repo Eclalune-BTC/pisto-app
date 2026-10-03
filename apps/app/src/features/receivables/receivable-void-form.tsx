@@ -36,7 +36,12 @@ export function ReceivableVoidForm({
       />
       <View className="gap-3 sm:flex-row sm:justify-end">
         <Button label={copy.cancel} onPress={onCancel} variant="ghost" />
-        <Button disabled={!canReview} label={copy.review} onPress={onReview} variant="danger" />
+        <Button
+          disabled={!canReview}
+          label={copy.review}
+          onPress={onReview}
+          variant="destructive"
+        />
       </View>
     </View>
   );

@@ -1,12 +1,18 @@
 import type { Category, ProductUnitKind } from "@pisto/contracts";
 import { AlertTriangle, ArrowLeft, Check } from "lucide-react-native";
-import { Pressable, Text, View } from "react-native";
+import { View } from "react-native";
+import { useCSSVariable } from "uniwind";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SelectField } from "@/components/ui/select-field";
+import { Switch } from "@/components/ui/switch";
+import { Text } from "@/components/ui/text";
 
 export interface ProductDraftFields {
   categoryId: string | null;
@@ -89,32 +95,6 @@ interface ProductEditorProps {
   reviewItems: { label: string; value: string }[] | null;
 }
 
-function Choice({
-  label,
-  onPress,
-  selected,
-}: {
-  label: string;
-  onPress: () => void;
-  selected: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ checked: selected }}
-      aria-checked={selected}
-      className={
-        selected
-          ? "min-h-11 justify-center border-b-2 border-positive px-1"
-          : "min-h-11 justify-center px-1"
-      }
-      onPress={onPress}
-    >
-      <Text className="font-semibold text-foreground">{label}</Text>
-    </Pressable>
-  );
-}
-
 export function ProductEditor({
   categories,
   categoriesError,
@@ -140,7 +120,20 @@ export function ProductEditor({
   onReview,
   reviewItems,
 }: ProductEditorProps) {
+  const mutedColor = useCSSVariable("--color-muted-foreground") as string;
+  const destructiveColor = useCSSVariable("--color-destructive") as string;
+  const primaryForegroundColor = useCSSVariable("--color-primary-foreground") as string;
   const review = reviewItems !== null;
+  const controlsDisabled = mutationState === "pending" || mutationState === "uncertain";
+  const unitKinds = Object.keys(copy.unitLabels) as ProductUnitKind[];
+  const precisions = [0, 1, 2, 3] as const;
+  const selectPrecision = (value: string) => {
+    if (controlsDisabled) return;
+    const quantityPrecision = precisions.find((precision) => String(precision) === value);
+    if (quantityPrecision === undefined)
+      throw new Error("The selected quantity precision is unavailable.");
+    onDraftChange({ ...draft, quantityPrecision });
+  };
   return (
     <Page width="form">
       <Button
@@ -150,10 +143,8 @@ export function ProductEditor({
         size="sm"
         variant="ghost"
       >
-        <ArrowLeft color="#617168" size={18} />
-        <ButtonText className="text-muted-foreground" variant="ghost">
-          {copy.back}
-        </ButtonText>
+        <ArrowLeft color={mutedColor} size={18} />
+        <Text className="text-muted-foreground">{copy.back}</Text>
       </Button>
 
       <ScreenHeader
@@ -173,16 +164,13 @@ export function ProductEditor({
         <View className="gap-7">
           <DetailList items={reviewItems} />
           {mutationState === "error" || mutationState === "uncertain" ? (
-            <View className="flex-row items-start gap-3 border-l-4 border-danger bg-[#FFF1F1] p-4 dark:bg-[#3A2020]">
-              <AlertTriangle color="#B94242" size={20} />
+            <View className="flex-row items-start gap-3 border-l-4 border-destructive bg-destructive-surface p-4">
+              <AlertTriangle color={destructiveColor} size={20} />
               <View className="min-w-0 flex-1 gap-1">
-                <Text
-                  accessibilityRole="alert"
-                  className="font-bold text-danger dark:text-[#FFBABA]"
-                >
+                <Text accessibilityRole="alert" className="font-ui text-destructive ">
                   {mutationState === "uncertain" ? copy.uncertainTitle : copy.failedTitle}
                 </Text>
-                <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
+                <Text className="text-sm leading-5 text-muted-foreground">
                   {mutationState === "uncertain"
                     ? copy.uncertainDescription
                     : (mutationMessage ?? copy.failedDescription)}
@@ -195,7 +183,7 @@ export function ProductEditor({
               <Button
                 label={copy.retrySameConfirmation}
                 onPress={onResolveUncertain}
-                variant="secondary"
+                variant="outline"
               />
             ) : (
               <>
@@ -203,28 +191,26 @@ export function ProductEditor({
                   disabled={isStale}
                   loading={mutationState === "pending"}
                   onPress={mutationState === "pending" || isStale ? undefined : onConfirm}
-                  variant="accent"
+                  variant="default"
                 >
-                  <Check color="#14241D" size={18} strokeWidth={2.8} />
-                  <ButtonText variant="accent">
-                    {mode === "create" ? copy.confirmCreate : copy.confirmUpdate}
-                  </ButtonText>
+                  <Check color={primaryForegroundColor} size={18} strokeWidth={2.8} />
+                  <Text>{mode === "create" ? copy.confirmCreate : copy.confirmUpdate}</Text>
                 </Button>
                 <Button
                   disabled={mutationState === "pending"}
                   label={copy.edit}
                   onPress={mutationState === "pending" ? undefined : onEditReview}
-                  variant="secondary"
+                  variant="outline"
                 />
               </>
             )}
           </View>
         </View>
       ) : (
-        <View className="gap-7 border-y border-line py-7 dark:border-[#304239]">
+        <View className="gap-7 border-y border-border py-7 ">
           {errors.form ? (
-            <View className="border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
-              <Text accessibilityRole="alert" className="text-sm text-ink dark:text-[#F2E4D2]">
+            <View className="border-l-4 border-warning bg-warning-surface p-3">
+              <Text accessibilityRole="alert" className="text-sm text-foreground">
                 {errors.form}
               </Text>
             </View>
@@ -252,37 +238,32 @@ export function ProductEditor({
             label={copy.price}
             onChangeText={(sellingPrice) => onDraftChange({ ...draft, sellingPrice })}
             placeholder={copy.pricePlaceholder}
-            trailing={<Text className="font-bold text-muted-foreground">{currency}</Text>}
+            trailing={<Text className="font-ui text-muted-foreground">{currency}</Text>}
             value={draft.sellingPrice}
           />
 
           <View className="gap-2">
-            <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">
-              {copy.category}
-            </Text>
-            <View accessibilityRole="radiogroup" className="flex-row flex-wrap gap-x-5 gap-y-1">
-              <Choice
-                label={copy.noCategory}
-                onPress={() => onDraftChange({ ...draft, categoryId: null })}
-                selected={draft.categoryId === null}
-              />
-              {categories
-                .filter(
-                  (category) => category.status === "active" || category.id === draft.categoryId,
-                )
-                .map((category) => (
-                  <Choice
-                    key={category.id}
-                    label={
+            <SelectField
+              label={copy.category}
+              onChange={(value) =>
+                onDraftChange({ ...draft, categoryId: value === "none" ? null : value })
+              }
+              options={[
+                { value: "none", label: copy.noCategory },
+                ...categories
+                  .filter(
+                    (category) => category.status === "active" || category.id === draft.categoryId,
+                  )
+                  .map((category) => ({
+                    value: category.id,
+                    label:
                       category.status === "archived"
                         ? `${category.name} · ${copy.archivedCategory}`
-                        : category.name
-                    }
-                    onPress={() => onDraftChange({ ...draft, categoryId: category.id })}
-                    selected={draft.categoryId === category.id}
-                  />
-                ))}
-            </View>
+                        : category.name,
+                  })),
+              ]}
+              value={draft.categoryId ?? "none"}
+            />
             {categoriesHasNextPage ? (
               <Button
                 className="self-start"
@@ -294,61 +275,90 @@ export function ProductEditor({
               />
             ) : null}
             {categoriesError ? (
-              <View className="gap-2 border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18] sm:flex-row sm:items-center sm:justify-between">
-                <Text accessibilityRole="alert" className="text-sm text-ink dark:text-[#F2E4D2]">
+              <View className="gap-2 border-l-4 border-warning bg-warning-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+                <Text accessibilityRole="alert" className="text-sm text-foreground">
                   {copy.categoriesUnavailable}
                 </Text>
                 <Button
                   label={copy.retryCategories}
                   onPress={onRetryCategories}
                   size="sm"
-                  variant="secondary"
+                  variant="outline"
                 />
               </View>
             ) : null}
           </View>
 
-          <View className="gap-2">
-            <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">{copy.unit}</Text>
-            <View accessibilityRole="radiogroup" className="flex-row flex-wrap gap-x-5 gap-y-1">
-              {(Object.keys(copy.unitLabels) as ProductUnitKind[]).map((unitKind) => (
-                <Choice
-                  key={unitKind}
-                  label={copy.unitLabels[unitKind]}
-                  onPress={() => onDraftChange({ ...draft, unitKind })}
-                  selected={draft.unitKind === unitKind}
-                />
-              ))}
-            </View>
-          </View>
+          <SelectField
+            disabled={controlsDisabled}
+            label={copy.unit}
+            onChange={(value) => {
+              if (controlsDisabled) return;
+              const unitKind = unitKinds.find((kind) => kind === value);
+              if (!unitKind) throw new Error("The selected product unit is unavailable.");
+              onDraftChange({ ...draft, unitKind });
+            }}
+            options={unitKinds.map((value) => ({ value, label: copy.unitLabels[value] }))}
+            value={draft.unitKind}
+          />
 
           <View className="gap-2">
-            <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">
-              {copy.precision}
-            </Text>
-            <View accessibilityRole="radiogroup" className="flex-row gap-6">
-              {([0, 1, 2, 3] as const).map((quantityPrecision) => (
-                <Choice
-                  key={quantityPrecision}
-                  label={String(quantityPrecision)}
-                  onPress={() => onDraftChange({ ...draft, quantityPrecision })}
-                  selected={draft.quantityPrecision === quantityPrecision}
-                />
+            <Text className="text-sm font-ui text-foreground">{copy.precision}</Text>
+            <RadioGroup
+              accessibilityLabel={copy.precision}
+              className="flex-row flex-wrap gap-x-6 gap-y-2"
+              disabled={controlsDisabled}
+              onValueChange={selectPrecision}
+              value={String(draft.quantityPrecision)}
+            >
+              {precisions.map((quantityPrecision) => (
+                <View className="min-h-12 flex-row items-center gap-3" key={quantityPrecision}>
+                  <RadioGroupItem
+                    accessibilityLabel={String(quantityPrecision)}
+                    aria-labelledby={`product-precision-${quantityPrecision}-label`}
+                    disabled={controlsDisabled}
+                    hitSlop={14}
+                    nativeID={`product-precision-${quantityPrecision}`}
+                    value={String(quantityPrecision)}
+                  />
+                  <Label
+                    className="min-h-11 min-w-11 py-3 leading-5"
+                    disabled={controlsDisabled}
+                    nativeID={`product-precision-${quantityPrecision}-label`}
+                    onPress={() => selectPrecision(String(quantityPrecision))}
+                  >
+                    {String(quantityPrecision)}
+                  </Label>
+                </View>
               ))}
-            </View>
+            </RadioGroup>
           </View>
 
-          <View className="gap-3 border-t border-line pt-5 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between">
+          <View className="gap-3 border-t border-border pt-5  sm:flex-row sm:items-center sm:justify-between">
             <View className="max-w-[520px] gap-1">
-              <Text className="font-bold text-foreground">{copy.tracked}</Text>
+              <Label
+                className="min-h-11 flex-1 py-3 leading-5"
+                disabled={controlsDisabled}
+                nativeID="product-tracked-label"
+                onPress={() => {
+                  if (!controlsDisabled) onDraftChange({ ...draft, tracked: !draft.tracked });
+                }}
+              >
+                {copy.tracked}
+              </Label>
               <Text className="text-sm leading-5 text-muted-foreground">
                 {copy.trackedDescription}
               </Text>
             </View>
-            <Button
-              label={draft.tracked ? copy.disableTracking : copy.enableTracking}
-              onPress={() => onDraftChange({ ...draft, tracked: !draft.tracked })}
-              variant="secondary"
+            <Switch
+              accessibilityLabel={copy.tracked}
+              aria-labelledby="product-tracked-label"
+              hitSlop={14}
+              checked={draft.tracked}
+              disabled={controlsDisabled}
+              onCheckedChange={(tracked) => {
+                if (!controlsDisabled) onDraftChange({ ...draft, tracked });
+              }}
             />
           </View>
 
@@ -372,7 +382,7 @@ export function ProductEditor({
                 ? undefined
                 : onReview
             }
-            variant="accent"
+            variant="default"
           />
         </View>
       )}

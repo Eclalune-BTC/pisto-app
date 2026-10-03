@@ -2,16 +2,18 @@ import type { Business, SaleReview } from "@pisto/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
+import { AlertTriangle } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Text, View } from "react-native";
-
+import { View } from "react-native";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { reportsQueryKeys } from "@/features/reports/queries";
 import { saleQueryKeys, saleReviewQueryOptions } from "@/features/sales/queries";
@@ -35,7 +37,7 @@ export default function NewSaleScreen() {
   const business = getActiveBusiness(businesses.data);
   if (hasDeniedRead([businesses])) return <CapabilityRouteState kind="denied" />;
   if (businesses.fetchStatus === "paused" && !businesses.data) return <OfflineState />;
-  if (businesses.isPending) return <ActivityIndicator />;
+  if (businesses.isPending) return <LoadingIndicator />;
   if (businesses.isError && !businesses.data)
     return (
       <CapabilityRouteState
@@ -235,10 +237,12 @@ export function SaleReviewScreen({
       />
       {contextChanged ? (
         <View className="gap-3">
-          <Alert>{t("sales.recovery.contextChanged")}</Alert>
+          <Alert icon={AlertTriangle} variant="default">
+            <AlertDescription>{t("sales.recovery.contextChanged")}</AlertDescription>
+          </Alert>
           <Button
             label={t("common.retry")}
-            variant="secondary"
+            variant="outline"
             onPress={() => {
               onRefreshBusiness();
               void recovery.refetch();
@@ -258,16 +262,22 @@ export function SaleReviewScreen({
       {recovery.isPending ? <Text>{t("sales.recovery.loading")}</Text> : null}
       {recovery.isError || (preparation.isError && !review) || actionError ? (
         <View className="gap-3">
-          <Alert tone="danger">
-            {actionError
-              ? isAmbiguousMutationError(actionError)
-                ? t("common.uncertainTitle")
-                : productErrorMessage(actionError, t("sales.recovery.actionFailed"), t, "sale")
-              : t(recovery.isError ? "sales.recovery.unavailable" : "sales.recovery.prepareFailed")}
+          <Alert icon={AlertTriangle} variant="destructive">
+            <AlertDescription>
+              {actionError
+                ? isAmbiguousMutationError(actionError)
+                  ? t("common.uncertainTitle")
+                  : productErrorMessage(actionError, t("sales.recovery.actionFailed"), t, "sale")
+                : t(
+                    recovery.isError
+                      ? "sales.recovery.unavailable"
+                      : "sales.recovery.prepareFailed",
+                  )}
+            </AlertDescription>
           </Alert>
           <Button
             label={t("sales.recovery.refresh")}
-            variant="secondary"
+            variant="outline"
             loading={recovery.isFetching}
             onPress={() => {
               onRefreshBusiness();
@@ -278,7 +288,11 @@ export function SaleReviewScreen({
       ) : null}
       {review && !contextChanged ? (
         <View className="gap-6">
-          <Alert>{t(review.saleId ? "sales.recovery.saved" : "sales.recovery.retained")}</Alert>
+          <Alert icon={AlertTriangle} variant="default">
+            <AlertDescription>
+              {t(review.saleId ? "sales.recovery.saved" : "sales.recovery.retained")}
+            </AlertDescription>
+          </Alert>
           <DetailList
             items={[
               {
@@ -300,19 +314,23 @@ export function SaleReviewScreen({
               },
             ]}
           />
-          {settingsChanged ? <Alert>{t("sales.recovery.settingsChanged")}</Alert> : null}
+          {settingsChanged ? (
+            <Alert icon={AlertTriangle} variant="default">
+              <AlertDescription>{t("sales.recovery.settingsChanged")}</AlertDescription>
+            </Alert>
+          ) : null}
           {review.saleId ? (
             <View className="gap-3">
               <Button
                 label={t("sales.recovery.open")}
-                variant="accent"
+                variant="default"
                 onPress={() => {
                   if (review.saleId) openSale(review.saleId);
                 }}
               />
               <Button
                 label={t("sales.registerAnother")}
-                variant="secondary"
+                variant="outline"
                 disabled={blocked}
                 loading={dismissal.isPending}
                 onPress={() => act(() => dismissal.mutate({ review, edit: false }))}
@@ -322,7 +340,7 @@ export function SaleReviewScreen({
             <View className="gap-3">
               <Button
                 label={t("sales.confirm")}
-                variant="accent"
+                variant="default"
                 disabled={blocked || settingsChanged}
                 loading={confirmation.isPending}
                 onPress={() => {
@@ -331,7 +349,7 @@ export function SaleReviewScreen({
               />
               <Button
                 label={t("sales.edit")}
-                variant="secondary"
+                variant="outline"
                 disabled={blocked}
                 loading={dismissal.isPending}
                 onPress={() => act(() => dismissal.mutate({ review, edit: true }))}
@@ -364,7 +382,7 @@ export function SaleReviewScreen({
           />
           <Button
             label={t("sales.review")}
-            variant="accent"
+            variant="default"
             disabled={blocked}
             loading={preparation.isPending}
             onPress={prepareReview}

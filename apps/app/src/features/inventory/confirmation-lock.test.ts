@@ -11,7 +11,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
-vi.mock("uniwind", () => ({ useUniwind: () => ({ theme: "light" }) }));
+vi.mock("uniwind", () => ({
+  useUniwind: () => ({ theme: "light" }),
+  useCSSVariable: () => "#71717A",
+  withUniwind: (component: unknown) => component,
+}));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 vi.mock("lucide-react-native", () => ({
@@ -127,7 +131,7 @@ describe("reviewed inventory confirmation", () => {
       });
     };
 
-    const confirm = buttons(render()).find((button) => button.props.variant === "accent");
+    const confirm = buttons(render()).find((button) => button.props.variant === "default");
     (confirm?.props.onPress as (() => void) | undefined)?.();
     await vi.waitFor(() => expect(requests).toHaveLength(1));
 

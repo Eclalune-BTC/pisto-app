@@ -26,7 +26,8 @@ cloud provisioning, hosted deployment and store submission require separate appr
 
 | Task | Guides to read |
 | --- | --- |
-| Styling, components, Expo Go, native/web behavior | [Frontend](frontend-expo-ui.md), [UX requirements](ux-requirements.md), [app README](../apps/app/README.md) |
+| Styling, components, logo and responsive workspaces | [Design system](design-system.md), [frontend](frontend-expo-ui.md), [UX requirements](ux-requirements.md) |
+| Expo Go and native/web runtime | [Frontend](frontend-expo-ui.md), [app README](../apps/app/README.md) |
 | Sales, confirmation, history or correction | [Sales](sales.md), [review recovery ADR](adrs/0018-durable-sale-review.md) |
 | Catalog or stock | [Catalog/inventory contract](product-slices/catalog-inventory-v1.md) |
 | Cash or expenses | [Expenses/cash contract](product-slices/expenses-cash-v1.md) |

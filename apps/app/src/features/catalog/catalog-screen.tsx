@@ -1,12 +1,21 @@
 import type { Category, ProductDetail } from "@pisto/contracts";
-import { AlertTriangle, FolderCog, Plus, Search } from "lucide-react-native";
+import { AlertTriangle, Search } from "lucide-react-native";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Text, View } from "react-native";
+import { View } from "react-native";
+import { useCSSVariable } from "uniwind";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { FilterBar } from "@/components/ui/filter-bar";
+import { FilterToolbar } from "@/components/ui/filter-toolbar";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { SelectField } from "@/components/ui/select-field";
+import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import { formatQuantityMinorUnits } from "../inventory/quantity";
@@ -61,8 +70,8 @@ function StatusState({
   if (status === "loading") {
     return (
       <View className="min-h-56 items-start justify-center gap-3 border-y border-border">
-        <ActivityIndicator color="#237A55" />
-        <Text className="text-sm text-muted-foreground">{t("catalog.list.loading")}</Text>
+        <LoadingIndicator />
+        <Text className="font-sans text-sm text-muted-foreground">{t("catalog.list.loading")}</Text>
       </View>
     );
   }
@@ -79,27 +88,18 @@ function StatusState({
         ? t("remote.offlineDescription")
         : t("catalog.list.errorDescription");
   return (
-    <View className="gap-4 border-l-4 border-danger bg-[#FFF1F1] p-5 dark:bg-[#3A2020]">
-      <View className="flex-row items-start gap-3">
-        <AlertTriangle color="#B94242" size={20} />
-        <View className="min-w-0 flex-1 gap-1">
-          <Text accessibilityRole="alert" className="font-bold text-danger dark:text-[#FFBABA]">
-            {title}
-          </Text>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
-            {description}
-          </Text>
-        </View>
-      </View>
+    <Alert icon={AlertTriangle} variant="destructive">
+      <AlertTitle className="leading-6">{title}</AlertTitle>
+      <AlertDescription>{description}</AlertDescription>
       {status === "error" ? (
         <Button
-          className="self-start"
+          className="mb-2 ml-6 mt-2 self-start"
           label={t("common.retry")}
           onPress={onRetry}
-          variant="secondary"
+          variant="outline"
         />
       ) : null}
-    </View>
+    </Alert>
   );
 }
 
@@ -126,8 +126,106 @@ export function CatalogScreen({
   state,
   status,
 }: CatalogScreenProps) {
+  const mutedColor = useCSSVariable("--color-muted-foreground") as string;
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
+  const columns = useMemo<DataTableColumn<ProductDetail>[]>(
+    () => [
+      {
+        id: "name",
+        header: t("dataTable.columns.name"),
+        meta: { primary: true },
+        cell: ({
+          row: {
+            original: { product },
+          },
+        }) => (
+          <Button
+            accessibilityLabel={t("dataTable.openRecord", { name: product.name })}
+            className="justify-start px-0"
+            label={product.name}
+            onPress={() => onOpenProduct(product.id)}
+            size="sm"
+            variant="ghost"
+          />
+        ),
+      },
+      {
+        id: "sku",
+        header: t("dataTable.columns.sku"),
+        cell: ({
+          row: {
+            original: { product },
+          },
+        }) => (
+          <Text className="font-sans text-sm text-muted-foreground">
+            {product.sku ?? t("catalog.list.noSku")}
+          </Text>
+        ),
+      },
+      {
+        id: "price",
+        header: t("dataTable.columns.price"),
+        meta: { align: "end" },
+        cell: ({
+          row: {
+            original: { product },
+          },
+        }) => (
+          <Text className="font-ui text-sm text-foreground">
+            {product.sellingPriceMinorUnits === null ||
+            product.sellingPriceCurrency === null ||
+            product.sellingPriceCurrencyMinorUnitDigits === null
+              ? t("catalog.list.noPrice")
+              : formatMinorUnits(
+                  product.sellingPriceMinorUnits,
+                  product.sellingPriceCurrency,
+                  product.sellingPriceCurrencyMinorUnitDigits,
+                  locale,
+                )}
+          </Text>
+        ),
+      },
+      {
+        id: "stock",
+        header: t("dataTable.columns.stock"),
+        meta: { align: "end" },
+        cell: ({
+          row: {
+            original: { product, stock },
+          },
+        }) => (
+          <Text
+            className={
+              stock?.lowStock
+                ? "font-ui text-sm text-destructive"
+                : "font-sans text-sm text-foreground"
+            }
+          >
+            {stock
+              ? `${formatQuantityMinorUnits(stock.onHandMinorUnits, stock.quantityPrecision)} ${t(`catalog.unitLabels.${product.unitKind}`)}${stock.lowStock ? ` · ${t("catalog.list.lowStock")}` : ""}`
+              : t("catalog.list.stockNotTracked")}
+          </Text>
+        ),
+      },
+      {
+        id: "status",
+        header: t("dataTable.columns.status"),
+        cell: ({
+          row: {
+            original: { product },
+          },
+        }) => (
+          <Text className="font-sans text-sm text-muted-foreground">
+            {product.status === "archived"
+              ? t("catalog.list.archived")
+              : t("catalog.productDetail.active")}
+          </Text>
+        ),
+      },
+    ],
+    [locale, onOpenProduct, t],
+  );
   if (state.status === "denied") {
     return (
       <Page>
@@ -140,15 +238,17 @@ export function CatalogScreen({
       <ScreenHeader
         action={
           <View className="gap-3 sm:flex-row sm:flex-wrap">
-            <Button onPress={onManageCategories} variant="secondary">
-              <FolderCog color="#237A55" size={18} />
-              <ButtonText variant="secondary">{t("catalog.list.manageCategories")}</ButtonText>
-            </Button>
+            <Button
+              label={t("catalog.list.manageCategories")}
+              onPress={onManageCategories}
+              variant="outline"
+            />
             {canManage ? (
-              <Button onPress={onCreateProduct} variant="accent">
-                <Plus color="#14241D" size={18} strokeWidth={2.6} />
-                <ButtonText variant="accent">{t("catalog.list.createProduct")}</ButtonText>
-              </Button>
+              <Button
+                label={t("catalog.list.createProduct")}
+                onPress={onCreateProduct}
+                variant="default"
+              />
             ) : null}
           </View>
         }
@@ -161,23 +261,21 @@ export function CatalogScreen({
         <ReadOnlyNotice description={t("catalog.remote.catalogReadOnly")} />
       ) : null}
 
-      <View className="gap-5 border-y border-line py-5 dark:border-[#304239]">
-        <View className="gap-4 lg:flex-row lg:items-end">
+      <FilterToolbar label={t("catalog.list.statusLabel")}>
+        <View className="min-w-0 flex-1 gap-4 lg:flex-row lg:items-end">
           <View className="min-w-0 flex-1">
             <Field
               accessibilityLabel={t("catalog.list.searchLabel")}
               label={t("catalog.list.searchLabel")}
               onChangeText={onSearchChange}
               placeholder={t("catalog.list.searchPlaceholder")}
-              trailing={<Search color="#617168" size={18} />}
+              trailing={<Search color={mutedColor} size={18} />}
               value={search}
             />
           </View>
-          <View className="gap-1 lg:max-w-[48%]">
-            <Text className="text-xs font-semibold text-muted-foreground">
-              {t("catalog.list.statusLabel")}
-            </Text>
+          <View className="lg:max-w-[48%]">
             <FilterBar
+              showLabel
               label={t("catalog.list.statusLabel")}
               onChange={onStatusChange}
               options={(["active", "archived", "all"] as const).map((value) => ({
@@ -189,8 +287,8 @@ export function CatalogScreen({
           </View>
         </View>
 
-        <View className="gap-2">
-          <FilterBar
+        <View className="min-w-0 sm:w-64 gap-2">
+          <SelectField
             label={t("catalog.categories.title")}
             onChange={(value) => onCategoryChange(value === "all" ? null : value)}
             options={[
@@ -202,7 +300,7 @@ export function CatalogScreen({
             value={categoryId ?? "all"}
           />
           {categoriesLoading ? (
-            <Text className="py-2 text-sm text-muted-foreground">
+            <Text className="font-sans py-2 text-sm text-muted-foreground">
               {t("catalog.list.categoriesLoading")}
             </Text>
           ) : null}
@@ -217,98 +315,51 @@ export function CatalogScreen({
           ) : null}
         </View>
         {categoriesError ? (
-          <View className="gap-2 border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18] sm:flex-row sm:items-center sm:justify-between">
-            <Text accessibilityRole="alert" className="text-sm text-ink dark:text-[#F2E4D2]">
+          <View className="gap-2 border-l-4 border-warning bg-muted p-3 sm:flex-row sm:items-center sm:justify-between">
+            <Text accessibilityRole="alert" className="font-sans text-sm text-foreground">
               {t("catalog.list.categoriesUnavailable")}
             </Text>
             <Button
               label={t("common.retry")}
               onPress={onRetryCategories}
               size="sm"
-              variant="secondary"
+              variant="outline"
             />
           </View>
         ) : null}
-      </View>
+      </FilterToolbar>
 
       {state.status !== "ready" ? (
         <StatusState onRetry={onRetry} status={state.status} />
       ) : (
         <View className="gap-0">
           {state.stale ? (
-            <View className="mb-5 border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
-              <Text className="text-sm text-ink dark:text-[#F2E4D2]">{t("remote.stale")}</Text>
+            <View className="mb-5 border-l-4 border-warning bg-muted p-3">
+              <Text className="font-sans text-sm text-foreground">{t("remote.stale")}</Text>
             </View>
           ) : null}
           {state.items.length === 0 ? (
-            <View className="gap-2 py-12">
-              <Text className="text-xl font-black text-foreground">
-                {t("catalog.list.emptyTitle")}
-              </Text>
-              <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
-                {t("catalog.list.emptyDescription")}
-              </Text>
-              {canManage ? (
-                <Button
-                  className="mt-3 self-start"
-                  label={t("catalog.list.createProduct")}
-                  onPress={onCreateProduct}
-                  variant="accent"
-                />
-              ) : null}
-            </View>
+            <EmptyState
+              title={t("catalog.list.emptyTitle")}
+              description={t("catalog.list.emptyDescription")}
+              action={
+                canManage ? (
+                  <Button
+                    className="self-start"
+                    label={t("catalog.list.createProduct")}
+                    onPress={onCreateProduct}
+                    variant="default"
+                  />
+                ) : undefined
+              }
+            />
           ) : (
-            state.items.map(({ product, stock }) => (
-              <Button
-                accessibilityLabel={t("catalog.list.openProduct", { name: product.name })}
-                className="flex-col items-stretch justify-start gap-3 rounded-none border-b border-line px-0 py-5 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
-                key={product.id}
-                onPress={() => onOpenProduct(product.id)}
-                variant="ghost"
-              >
-                <View className="min-w-0 flex-1 gap-1">
-                  <View className="flex-row flex-wrap items-center gap-2">
-                    <Text className="text-lg font-black text-foreground">{product.name}</Text>
-                    {product.status === "archived" ? (
-                      <Text className="text-xs font-semibold text-danger dark:text-[#FFBABA]">
-                        {t("catalog.list.archived")}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <Text className="text-sm text-muted-foreground">
-                    {product.sku ?? t("catalog.list.noSku")}
-                  </Text>
-                </View>
-                <View className="gap-1 sm:min-w-[220px] sm:items-end">
-                  <Text className="font-bold text-foreground">
-                    {product.sellingPriceMinorUnits === null ||
-                    product.sellingPriceCurrency === null ||
-                    product.sellingPriceCurrencyMinorUnitDigits === null
-                      ? t("catalog.list.noPrice")
-                      : formatMinorUnits(
-                          product.sellingPriceMinorUnits,
-                          product.sellingPriceCurrency,
-                          product.sellingPriceCurrencyMinorUnitDigits,
-                          locale,
-                        )}
-                  </Text>
-                  <Text
-                    className={
-                      stock?.lowStock
-                        ? "text-sm font-semibold text-danger dark:text-[#FFBABA]"
-                        : "text-sm text-muted-foreground"
-                    }
-                  >
-                    {stock
-                      ? `${t("catalog.list.onHand")}: ${formatQuantityMinorUnits(
-                          stock.onHandMinorUnits,
-                          stock.quantityPrecision,
-                        )} ${t(`catalog.unitLabels.${product.unitKind}`)}${stock.lowStock ? ` · ${t("catalog.list.lowStock")}` : ""}`
-                      : t("catalog.list.stockNotTracked")}
-                  </Text>
-                </View>
-              </Button>
-            ))
+            <DataTable
+              caption={t("catalog.list.title")}
+              columns={columns}
+              data={state.items}
+              getRowId={({ product }) => product.id}
+            />
           )}
           {state.hasNextPage ? (
             <Button
@@ -316,7 +367,7 @@ export function CatalogScreen({
               label={state.loadingMore ? t("catalog.list.loadingMore") : t("catalog.list.loadMore")}
               loading={state.loadingMore}
               onPress={onLoadMore}
-              variant="secondary"
+              variant="outline"
             />
           ) : null}
         </View>

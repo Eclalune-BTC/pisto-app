@@ -1,9 +1,10 @@
-import { Check, RefreshCw } from "lucide-react-native";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
-
-import { Button, ButtonText } from "@/components/ui/button";
+import { View } from "react-native";
+import { Button } from "@/components/ui/button";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { SelectField } from "@/components/ui/select-field";
+import { Text } from "@/components/ui/text";
 import { buildCustomersCopy } from "@/features/customers/copy";
 
 import type { CashAccountChoice } from "./cash-account-source";
@@ -40,63 +41,54 @@ export function CashAccountPicker({
   return (
     <View className="gap-6">
       <View className="gap-2">
-        <Text accessibilityRole="header" className="text-2xl font-black text-foreground">
+        <Text accessibilityRole="header" className="text-2xl font-heading text-foreground">
           {copy.receivables.picker.activeAccountsTitle}
         </Text>
-        <Text className="text-sm leading-5 text-muted-foreground">
+        <Text className="font-sans text-sm leading-5 text-muted-foreground">
           {copy.receivables.picker.activeAccountsDescription}
         </Text>
       </View>
       {isLoading ? (
-        <ActivityIndicator color="#237A55" />
+        <LoadingIndicator />
       ) : isOffline ? (
-        <View className="gap-3 border-y border-line py-5 dark:border-[#304239]">
-          <Text className="text-sm text-muted-foreground">{copy.access.offlineDescription}</Text>
+        <View className="gap-3 border-y border-border py-5">
+          <Text className="font-sans text-sm text-muted-foreground">
+            {copy.access.offlineDescription}
+          </Text>
         </View>
       ) : isError ? (
-        <View className="gap-3 border-y border-line py-5 dark:border-[#304239]">
-          <Text className="text-sm text-muted-foreground">
+        <View className="gap-3 border-y border-border py-5">
+          <Text className="font-sans text-sm text-muted-foreground">
             {copy.common.unavailableDescription}
           </Text>
-          <Button label={copy.common.retry} onPress={onRetry} variant="secondary" />
+          <Button label={copy.common.retry} onPress={onRetry} variant="outline" />
         </View>
       ) : items.length === 0 ? (
-        <Text className="border-y border-line py-5 text-sm text-ink-muted dark:border-[#304239] dark:text-[#AAB8B0]">
+        <Text className="font-sans border-y border-border py-5 text-sm text-muted-foreground">
           {copy.receivables.picker.noAccounts}
         </Text>
       ) : (
-        <View accessibilityRole="radiogroup" className="border-t border-border">
-          {items.map((account) => {
-            const selected = account.id === selectedAccountId;
-            return (
-              <Pressable
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selected }}
-                aria-checked={selected}
-                className="min-h-14 flex-row items-center justify-between gap-4 border-b border-line py-3 active:opacity-70 dark:border-[#304239]"
-                key={account.id}
-                onPress={() => onSelect(account)}
-              >
-                <Text className="min-w-0 flex-1 font-bold text-foreground">{account.name}</Text>
-                {selected ? <Check color="#237A55" size={19} strokeWidth={3} /> : null}
-              </Pressable>
-            );
-          })}
-        </View>
+        <SelectField
+          label={copy.receivables.picker.activeAccountsTitle}
+          onChange={(id) => {
+            const selected = items.find((item) => item.id === id);
+            if (!selected) throw new Error("The selected account is not in the loaded result.");
+            onSelect(selected);
+          }}
+          options={items.map((account) => ({
+            value: account.id,
+            label: account.name,
+          }))}
+          value={selectedAccountId}
+        />
       )}
       {hasNextPage ? (
-        <Button disabled={isLoadingMore} onPress={onLoadMore} variant="secondary">
-          {isLoadingMore ? (
-            <ActivityIndicator color="#14241D" />
-          ) : (
-            <>
-              <RefreshCw color="#14241D" size={17} />
-              <ButtonText variant="secondary">
-                {copy.receivables.picker.loadMoreAccounts}
-              </ButtonText>
-            </>
-          )}
-        </Button>
+        <Button
+          label={copy.receivables.picker.loadMoreAccounts}
+          loading={isLoadingMore}
+          onPress={onLoadMore}
+          variant="outline"
+        />
       ) : null}
       <Button label={copy.common.back} onPress={onBack} variant="ghost" />
     </View>

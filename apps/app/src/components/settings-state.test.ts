@@ -12,12 +12,15 @@ vi.mock("@/hooks/use-sign-out", () => ({
 }));
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("uniwind", () => ({
+  withUniwind: (component: unknown) => component,
+  useCSSVariable: () => "#525252",
   Uniwind: { setTheme: vi.fn() },
   useUniwind: () => ({ theme: "light", hasAdaptiveThemes: false }),
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 vi.mock("lucide-react-native", () => ({
+  AlertTriangle: () => null,
   CreditCard: () => null,
   Laptop: () => null,
   LockKeyhole: () => null,

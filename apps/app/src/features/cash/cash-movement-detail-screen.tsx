@@ -3,13 +3,14 @@ import type {
   CashMovementAction,
   ReverseCashMovementRequest,
 } from "@pisto/contracts";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Text } from "@/components/ui/text";
 import { CashOperationReview, type CashOperationReviewCopy } from "./cash-operation-review";
 import {
   FeatureBoundary,
@@ -132,8 +133,8 @@ export function CashMovementDetailScreen({
         {isStale ? <StaleNotice /> : null}
 
         {movement === null ? (
-          <View className="gap-3 border-y border-line py-8 dark:border-[#304239]">
-            <Text accessibilityRole="header" className="text-xl font-black text-foreground">
+          <View className="gap-3 border-y border-border py-8 ">
+            <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
               {copy.notFoundTitle}
             </Text>
             <Text className="text-sm leading-5 text-muted-foreground">
@@ -166,7 +167,7 @@ export function CashMovementDetailScreen({
             state={confirmation}
           />
         ) : editingReversal ? (
-          <View className="gap-7 border-y border-line py-7 dark:border-[#304239]">
+          <View className="gap-7 border-y border-border py-7 ">
             <Field
               error={reversalErrors.reason}
               label={copy.reason}
@@ -200,9 +201,9 @@ export function CashMovementDetailScreen({
               <Button
                 label={copy.reviewReversal}
                 onPress={onPrepareReversalReview}
-                variant="danger"
+                variant="destructive"
               />
-              <Button label={copy.cancel} onPress={onCancelReversal} variant="secondary" />
+              <Button label={copy.cancel} onPress={onCancelReversal} variant="outline" />
             </View>
           </View>
         ) : (
@@ -230,7 +231,7 @@ export function CashMovementDetailScreen({
                 className="self-start"
                 label={copy.reverseAdjustment}
                 onPress={onBeginReversal}
-                variant="danger"
+                variant="destructive"
               />
             ) : adjustment && !canReverse ? (
               <Text className="text-sm leading-5 text-muted-foreground">

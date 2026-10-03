@@ -48,8 +48,12 @@
 - Before adding a product capability, complete the slice contract in
   `docs/product-capability-architecture.md`. Keep application-owned composition explicit; do not add
   a self-registering module/plugin system, one top-level tab per feature, or an empty future package.
-- Follow the product visual language in `docs/frontend-expo-ui.md`; preserve the Pisto palette and
-  inspect rendered UI before making visual judgments.
+- Follow the component, brand, typography and spacing contract in `docs/design-system.md` and the
+  platform guidance in `docs/frontend-expo-ui.md`. The owner's latest direction overrides historical palettes and screenshots;
+  a passing test suite does not establish aesthetic approval. Inspect rendered UI before visual claims.
+- Blue is prohibited in all application-owned UI, including links, focus rings, navigation themes,
+  illustrations and captures. Use the React Native Reusables Uniwind registry as the component base;
+  do not retain a separate handmade or marketing-only theme. Reuse installed components before adding one.
 - Do not add decorative glows, floating cards, gradients, pills, shadows, or icon tiles without a
   concrete hierarchy, interaction, state, feedback, or brand purpose.
 - Never invent plan data, progress, account activity, saved settings, or success-shaped fallbacks to
@@ -57,7 +61,7 @@
 - Missing translations, currency metadata, provider event identity/time, and required query results
   are errors, not empty strings, guessed values or successful empty data. Preserve documented defaults
   and optional values; test both legitimate absence and invalid required data before consolidating paths.
-- Use shared `Button`, `Field` and `FilterBar` for their existing jobs. Keep real links and checked
+- Use shared `Button`, `Field`, `SelectField`, `DataTable` and `FilterBar` for their existing jobs. Keep real links and checked
   selection controls semantically distinct; forward accessibility props instead of overwriting them.
 - Missing query context disables the query with `skipToken`; never substitute a fictitious business,
   record identifier or date to satisfy a type. An empty result requires a successful read.
@@ -78,6 +82,8 @@
 - For a material change, ask an independent read-only reviewer or subagent to try to falsify the
   result when that capability is available. Resolve findings against evidence; do not delegate
   trivial edits merely to satisfy a ritual.
+- Work directly in the primary `main` checkout. Do not create additional worktrees unless the owner
+  explicitly requests them.
 - Prefer read-heavy parallel agents. The lead resolves product/data/permission decisions and freezes
   public contracts before parallel writing. Every parallel writer uses a separate Git worktree on
   its own branch with non-overlapping file ownership; one integration owner reviews and integrates

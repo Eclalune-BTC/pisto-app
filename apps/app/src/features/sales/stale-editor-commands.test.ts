@@ -64,7 +64,11 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
-vi.mock("uniwind", () => ({ useUniwind: () => ({ theme: "light" }) }));
+vi.mock("uniwind", () => ({
+  withUniwind: (component: unknown) => component,
+  useCSSVariable: () => "#525252",
+  useUniwind: () => ({ theme: "light" }),
+}));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("lucide-react-native", () => ({
   AlertTriangle: () => null,
@@ -205,7 +209,7 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       expect(fixture.randomUUID).toHaveBeenCalledTimes(1);
       setFailure(dependency, failure);
       tree = render(component);
-      const confirmation = button(tree, ({ variant }) => variant === "accent");
+      const confirmation = button(tree, ({ variant }) => variant === "default");
       expect(confirmation.disabled).toBe(true);
       press(confirmation);
       expect(fixture.mutation.mutate).not.toHaveBeenCalled();
@@ -240,14 +244,14 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       fixture.states.forEach((value, index) => {
         expect(value).toBe(beforeRefresh[index]);
       });
-      press(button(render(component), ({ variant }) => variant === "accent"));
+      press(button(render(component), ({ variant }) => variant === "default"));
       expect(fixture.mutation.mutate).toHaveBeenCalledTimes(1);
       const originalCommand = fixture.mutation.mutate.mock.calls[0]?.[0];
       expect(originalCommand.command.idempotencyKey).toBe("11111111-1111-4111-8111-111111111111");
       fixture.mutation.isPending = true;
       setFailure(dependency, failure);
       tree = render(component);
-      press(button(tree, ({ variant }) => variant === "accent"));
+      press(button(tree, ({ variant }) => variant === "default"));
       press(button(tree, ({ label }) => label === "sales.edit"));
       expect(fixture.mutation.mutate).toHaveBeenCalledTimes(1);
       fixture.mutation.isPending = false;
@@ -259,7 +263,7 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
           ({ props }) => props.label === "sales.edit",
         ),
       ).toBe(false);
-      const retry = button(tree, ({ variant }) => variant === "accent");
+      const retry = button(tree, ({ variant }) => variant === "default");
       expect(retry.disabled).toBe(false);
       press(retry);
       expect(fixture.mutation.mutate).toHaveBeenCalledTimes(2);
@@ -287,7 +291,7 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       expect(fixture.queries.sale?.refetch).toHaveBeenCalledTimes(1);
       expect(fixture.navigate).not.toHaveBeenCalled();
       recover(dependency);
-      press(button(render(SaleDetailScreen), ({ variant }) => variant === "accent"));
+      press(button(render(SaleDetailScreen), ({ variant }) => variant === "default"));
       expect(fixture.navigate).toHaveBeenCalledWith("/operate/sales/new");
     },
   );

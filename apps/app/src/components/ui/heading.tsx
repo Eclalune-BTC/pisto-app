@@ -1,16 +1,16 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps } from "react";
-import { Text } from "react-native";
-
 import { cn } from "@/lib/cn";
+import { Text } from "./text";
 
-const headingVariants = cva("web:font-sans font-semibold text-foreground", {
+const headingVariants = cva("font-heading font-normal text-foreground", {
   variants: {
     size: {
       page: "text-[26px] leading-8 sm:text-[30px] sm:leading-9",
       section: "text-lg leading-6",
       welcome:
-        "text-[36px] leading-[42px] tracking-[-0.8px] sm:text-[48px] sm:leading-[54px] lg:text-[56px] lg:leading-[62px]",
+        "font-ui text-[36px] leading-[42px] tracking-[-0.5px] sm:text-[48px] sm:leading-[54px] lg:text-[56px] lg:leading-[62px]",
+      marketing: "font-ui text-[28px] leading-9 sm:text-[32px] sm:leading-10",
     },
   },
   defaultVariants: { size: "page" },

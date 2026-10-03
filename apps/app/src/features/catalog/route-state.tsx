@@ -1,10 +1,12 @@
 import { AlertTriangle, Info, WifiOff } from "lucide-react-native";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Text, View } from "react-native";
-
+import { View } from "react-native";
+import { useCSSVariable } from "uniwind";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 
 import { catalogRemoteCopy } from "./copy";
 
@@ -25,13 +27,16 @@ export function CapabilityRouteState({
   kind: CapabilityRouteStateKind;
   onRetry?: () => void;
 }) {
+  const foregroundColor = useCSSVariable("--color-foreground") as string;
+  const mutedColor = useCSSVariable("--color-muted-foreground") as string;
+  const destructiveColor = useCSSVariable("--color-destructive") as string;
   const { t } = useTranslation();
   const copy = useMemo(() => catalogRemoteCopy(t), [t]);
   if (kind === "loading") {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <ActivityIndicator color="#237A55" size="large" />
-        <Text className="text-sm font-semibold text-muted-foreground">{copy.loadingBusiness}</Text>
+        <LoadingIndicator color={foregroundColor} size="large" />
+        <Text className="text-sm font-ui text-muted-foreground">{copy.loadingBusiness}</Text>
       </View>
     );
   }
@@ -61,9 +66,9 @@ export function CapabilityRouteState({
   return (
     <Page width="reading">
       <View className="min-h-64 items-start justify-center gap-4">
-        <Icon color={kind === "offline" ? "#617168" : "#B94242"} size={24} />
+        <Icon color={kind === "offline" ? mutedColor : destructiveColor} size={24} />
         <View className="gap-2">
-          <Text accessibilityRole="header" className="text-2xl font-black text-foreground">
+          <Text accessibilityRole="header" className="text-2xl font-heading text-foreground">
             {title}
           </Text>
           <Text className="max-w-[520px] text-sm leading-5 text-muted-foreground">
@@ -72,9 +77,9 @@ export function CapabilityRouteState({
         </View>
         <View className="gap-3 sm:flex-row">
           {kind === "error" && onRetry ? (
-            <Button label={copy.retry} onPress={onRetry} variant="secondary" />
+            <Button label={copy.retry} onPress={onRetry} variant="outline" />
           ) : null}
-          {back ? <Button label={back.label} onPress={back.onPress} variant="secondary" /> : null}
+          {back ? <Button label={back.label} onPress={back.onPress} variant="outline" /> : null}
         </View>
       </View>
     </Page>
@@ -82,13 +87,14 @@ export function CapabilityRouteState({
 }
 
 export function ReadOnlyNotice({ description }: { description: string }) {
+  const foregroundColor = useCSSVariable("--color-foreground") as string;
   const { t } = useTranslation();
   return (
-    <View className="flex-row items-start gap-3 border-l-4 border-positive bg-[#EAF5ED] p-4 dark:bg-[#18352A]">
-      <Info color="#237A55" size={19} />
+    <View className="flex-row items-start gap-3 border-l-4 border-positive bg-positive-surface p-4">
+      <Info color={foregroundColor} size={19} />
       <View className="min-w-0 flex-1 gap-1">
-        <Text className="font-bold text-foreground">{t("catalog.remote.readOnlyTitle")}</Text>
-        <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">{description}</Text>
+        <Text className="font-ui text-foreground">{t("catalog.remote.readOnlyTitle")}</Text>
+        <Text className="text-sm leading-5 text-muted-foreground">{description}</Text>
       </View>
     </View>
   );

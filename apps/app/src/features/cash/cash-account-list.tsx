@@ -1,6 +1,10 @@
 import type { CashAccount } from "@pisto/contracts";
-import { Text, View } from "react-native";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 import { Button } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { Text } from "@/components/ui/text";
 
 type CashAccountListProps = {
   accounts: CashAccount[];
@@ -19,32 +23,75 @@ export function CashAccountList({
   formatMoney,
   onOpenAccount,
 }: CashAccountListProps) {
-  return (
-    <View className="border-y border-border">
-      {accounts.map((account) => (
-        <Button
-          accessibilityLabel={`${account.name}, ${formatMoney(account.balanceMinorUnits, account.currency, account.currencyMinorUnitDigits)}`}
-          className="min-h-16 flex-col items-stretch justify-start gap-2 rounded-none border-b border-line px-0 py-4 last:border-b-0 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
-          key={account.id}
-          onPress={() => onOpenAccount(account.id)}
-          variant="ghost"
-        >
-          <View className="min-w-0 flex-1 gap-1">
-            <Text className="text-base font-bold text-foreground">{account.name}</Text>
-            <Text className="text-xs text-ink-muted dark:text-[#91A198]">
-              {account.status === "active" ? activeLabel : archivedLabel}
-              {account.allowNegativeBalance ? ` · ${negativeAllowedLabel}` : ""}
+  const { t } = useTranslation();
+  const columns = useMemo<DataTableColumn<CashAccount>[]>(
+    () => [
+      {
+        id: "name",
+        header: t("dataTable.columns.name"),
+        meta: { primary: true },
+        cell: ({ row: { original } }) => (
+          <Text className="font-ui text-foreground">{original.name}</Text>
+        ),
+      },
+      {
+        id: "status",
+        header: t("dataTable.columns.status"),
+        cell: ({ row: { original } }) => (
+          <View className="gap-1">
+            <Text className="font-sans text-foreground">
+              {original.status === "active" ? activeLabel : archivedLabel}
             </Text>
+            {original.allowNegativeBalance ? (
+              <Text className="font-sans text-sm text-muted-foreground">
+                {negativeAllowedLabel}
+              </Text>
+            ) : null}
           </View>
-          <Text className="text-lg font-black text-foreground">
+        ),
+      },
+      {
+        id: "currency",
+        header: t("dataTable.columns.currency"),
+        cell: ({ row: { original } }) => (
+          <Text className="font-sans text-muted-foreground">{original.currency}</Text>
+        ),
+      },
+      {
+        id: "balance",
+        header: t("dataTable.columns.balance"),
+        meta: { align: "end" },
+        cell: ({ row: { original } }) => (
+          <Text className="font-ui text-foreground">
             {formatMoney(
-              account.balanceMinorUnits,
-              account.currency,
-              account.currencyMinorUnitDigits,
+              original.balanceMinorUnits,
+              original.currency,
+              original.currencyMinorUnitDigits,
             )}
           </Text>
-        </Button>
-      ))}
-    </View>
+        ),
+      },
+      {
+        id: "actions",
+        header: t("dataTable.columns.actions"),
+        cell: ({ row: { original } }) => (
+          <Button
+            label={t("dataTable.openRecord", { name: original.name })}
+            onPress={() => onOpenAccount(original.id)}
+            size="sm"
+            variant="ghost"
+          />
+        ),
+      },
+    ],
+    [t, activeLabel, archivedLabel, negativeAllowedLabel, formatMoney, onOpenAccount],
+  );
+  return (
+    <DataTable
+      caption={t("filters.accounts")}
+      columns={columns}
+      data={accounts}
+      getRowId={(account) => account.id}
+    />
   );
 }

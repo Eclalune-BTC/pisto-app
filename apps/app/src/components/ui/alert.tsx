@@ -1,35 +1,74 @@
-import { cva, type VariantProps } from "class-variance-authority";
-import type { ReactNode } from "react";
-import { Text, View } from "react-native";
+// React Native Reusables / Uniwind. MIT attribution: licenses/react-native-reusables.txt.
 
+import type { LucideIcon } from "lucide-react-native";
+import * as React from "react";
+import { View } from "react-native";
+import { Icon } from "@/components/ui/icon";
+import { Text, TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 
-const alertVariants = cva("rounded-lg border p-4", {
-  variants: {
-    tone: {
-      danger: "border-destructive bg-destructive-surface",
-      warning: "border-warning bg-warning-surface",
-    },
-  },
-  defaultVariants: { tone: "warning" },
-});
-
-export function Alert({
+function Alert({
+  className,
+  variant,
   children,
-  tone = "warning",
-}: VariantProps<typeof alertVariants> & { children: ReactNode }) {
+  icon,
+  iconClassName,
+  ...props
+}: React.ComponentProps<typeof View> &
+  React.RefAttributes<View> & {
+    icon: LucideIcon;
+    variant?: "default" | "destructive";
+    iconClassName?: string;
+  }) {
   return (
-    <View className={alertVariants({ tone })}>
-      <Text
-        accessibilityLiveRegion="polite"
-        accessibilityRole="alert"
+    <TextClassContext.Provider
+      value={cn(
+        "text-sm text-foreground",
+        variant === "destructive" && "text-destructive",
+        className,
+      )}
+    >
+      <View
+        role="alert"
         className={cn(
-          "text-sm leading-5",
-          tone === "danger" ? "text-destructive" : "text-warning-foreground",
+          "bg-card border-border relative w-full rounded-lg border px-4 pb-2 pt-3.5",
+          className,
         )}
+        {...props}
       >
+        <View className="absolute left-3.5 top-3">
+          <Icon
+            as={icon}
+            className={cn("size-4", variant === "destructive" && "text-destructive", iconClassName)}
+          />
+        </View>
         {children}
-      </Text>
-    </View>
+      </View>
+    </TextClassContext.Provider>
   );
 }
+
+function AlertTitle({ className, ...props }: React.ComponentProps<typeof Text>) {
+  return (
+    <Text
+      className={cn("mb-1 ml-0.5 min-h-4 pl-6 font-ui leading-none tracking-tight", className)}
+      {...props}
+    />
+  );
+}
+
+function AlertDescription({ className, ...props }: React.ComponentProps<typeof Text>) {
+  const textClass = React.useContext(TextClassContext);
+  return (
+    <Text
+      className={cn(
+        "text-muted-foreground ml-0.5 pb-1.5 pl-6 text-sm leading-relaxed",
+        textClass?.includes("text-destructive") && "text-destructive/90",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export { Alert, AlertDescription, AlertTitle };

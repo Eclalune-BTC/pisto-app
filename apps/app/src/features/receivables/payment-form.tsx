@@ -1,8 +1,8 @@
 import { ChevronRight } from "lucide-react-native";
-import { Text, View } from "react-native";
-
+import { View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Text } from "@/components/ui/text";
 
 import type { PaymentFormCopy } from "./types";
 
@@ -46,13 +46,11 @@ export function PaymentForm({
         value={amount}
       />
       <View className="gap-2">
-        <Text className="text-sm font-semibold text-ink dark:text-[#E7EEE9]">
-          {copy.cashAccount}
-        </Text>
+        <Text className="text-sm font-ui text-foreground ">{copy.cashAccount}</Text>
         <Button
           accessibilityLabel={copy.chooseCashAccount}
-          className={`min-h-14 flex-row items-center justify-between gap-3 rounded-lg border bg-white px-4 active:opacity-75 dark:bg-[#14241D] ${
-            errors.cashAccount ? "border-danger" : "border-line dark:border-[#3B4A43]"
+          className={`min-h-14 flex-row items-center justify-between gap-3 rounded-md border bg-background px-4 active:opacity-75 ${
+            errors.cashAccount ? "border-destructive" : "border-border "
           }`}
           onPress={onChooseCashAccount}
           variant="ghost"
@@ -63,7 +61,7 @@ export function PaymentForm({
           <ChevronRight color="#617168" size={18} />
         </Button>
         {errors.cashAccount ? (
-          <Text accessibilityRole="alert" className="text-xs text-danger">
+          <Text accessibilityRole="alert" className="text-xs text-destructive">
             {errors.cashAccount}
           </Text>
         ) : null}
@@ -97,7 +95,7 @@ export function PaymentForm({
       />
       <View className="gap-3 sm:flex-row sm:justify-end">
         <Button label={copy.cancel} onPress={onCancel} variant="ghost" />
-        <Button disabled={!canReview} label={copy.review} onPress={onReview} variant="accent" />
+        <Button disabled={!canReview} label={copy.review} onPress={onReview} variant="default" />
       </View>
     </View>
   );

@@ -5,13 +5,16 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { AlertTriangle, ArrowLeft, Check } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Text, View } from "react-native";
+import { View } from "react-native";
 import { DetailList } from "@/components/detail-list";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { reportsQueryKeys } from "@/features/reports/queries";
 import { saleQueryKeys, saleQueryOptions } from "@/features/sales/queries";
@@ -91,7 +94,7 @@ export default function CorrectSaleScreen() {
   if (businesses.isPending || (business !== undefined && saleResult.isPending)) {
     return (
       <View className="flex-1 items-start justify-center px-5 sm:px-8 lg:px-10">
-        <ActivityIndicator color="#237A55" size="large" />
+        <LoadingIndicator color="#237A55" size="large" />
       </View>
     );
   }
@@ -114,7 +117,7 @@ export default function CorrectSaleScreen() {
               params: { saleId: saleId as string },
             })
           }
-          variant="secondary"
+          variant="outline"
         />
       </Page>
     );
@@ -214,8 +217,8 @@ export default function CorrectSaleScreen() {
         />
       ) : null}
 
-      <View className="gap-3 border-y border-line py-5 dark:border-[#304239]">
-        <Text className="text-xs font-black uppercase tracking-[1.4px] text-muted-foreground">
+      <View className="gap-3 border-y border-border py-5 ">
+        <Text className="text-xs font-heading uppercase tracking-[1.4px] text-muted-foreground">
           {t("sales.correction.original")}
         </Text>
         <DetailList
@@ -268,9 +271,9 @@ export default function CorrectSaleScreen() {
           />
 
           {correction.error ? (
-            <View className="flex-row items-start gap-3 border-l-4 border-danger bg-[#FFF1F1] p-4 dark:bg-[#3A2020]">
+            <View className="flex-row items-start gap-3 border-l-4 border-danger bg-destructive-surface p-4 ">
               <AlertTriangle color="#B94242" size={20} />
-              <Text accessibilityRole="alert" className="min-w-0 flex-1 text-sm text-danger">
+              <Text accessibilityRole="alert" className="min-w-0 flex-1 text-sm text-destructive">
                 {ambiguousFailure
                   ? t("sales.correction.uncertain")
                   : productErrorMessage(correction.error, t("sales.correction.failed"), t, "sale")}
@@ -286,10 +289,10 @@ export default function CorrectSaleScreen() {
                 if (!correction.isPending && (!isStale || ambiguousFailure))
                   correction.mutate(review);
               }}
-              variant="accent"
+              variant="default"
             >
-              <Check color="#14241D" size={18} strokeWidth={2.8} />
-              <ButtonText variant="accent">{t("sales.correction.confirm")}</ButtonText>
+              <Icon as={Check} className="text-primary-foreground" size={18} strokeWidth={2.8} />
+              <ButtonText variant="default">{t("sales.correction.confirm")}</ButtonText>
             </Button>
             {!ambiguousFailure ? (
               <Button
@@ -300,7 +303,7 @@ export default function CorrectSaleScreen() {
                   setReview(null);
                   correction.reset();
                 }}
-                variant="secondary"
+                variant="outline"
               />
             ) : null}
           </View>
@@ -311,12 +314,12 @@ export default function CorrectSaleScreen() {
             <Button
               label={t("sales.correction.voidAction")}
               onPress={() => setMode("void")}
-              variant={mode === "void" ? "accent" : "secondary"}
+              variant={mode === "void" ? "default" : "outline"}
             />
             <Button
               label={t("sales.correction.replaceAction")}
               onPress={() => setMode("replacement")}
-              variant={mode === "replacement" ? "accent" : "secondary"}
+              variant={mode === "replacement" ? "default" : "outline"}
             />
           </View>
           <Field
@@ -354,7 +357,7 @@ export default function CorrectSaleScreen() {
             disabled={isStale || confirmationLocked}
             label={t("sales.correction.review")}
             onPress={prepareReview}
-            variant="accent"
+            variant="default"
           />
         </View>
       )}

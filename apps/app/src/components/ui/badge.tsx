@@ -1,37 +1,69 @@
-import type { ComponentProps } from "react";
-import { Text, View } from "react-native";
+// React Native Reusables / Uniwind. MIT attribution: licenses/react-native-reusables.txt.
 
+import { Slot } from "@rn-primitives/slot";
+import { cva, type VariantProps } from "class-variance-authority";
+import { Platform, View } from "react-native";
+import { TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 
-type BadgeTone = "neutral" | "positive" | "warning";
+const badgeVariants = cva(
+  cn(
+    "border-border group shrink-0 flex-row items-center justify-center gap-1 overflow-hidden rounded-full border px-2 py-0.5",
+    Platform.select({
+      web: "focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive w-fit whitespace-nowrap transition-[color,box-shadow] focus-visible:ring-[3px] [&>svg]:pointer-events-none [&>svg]:size-3",
+    }),
+  ),
+  {
+    variants: {
+      variant: {
+        default: cn(
+          "bg-primary border-transparent",
+          Platform.select({ web: "[a&]:hover:bg-primary/90" }),
+        ),
+        secondary: cn(
+          "bg-secondary border-transparent",
+          Platform.select({ web: "[a&]:hover:bg-secondary/90" }),
+        ),
+        destructive: cn(
+          "bg-destructive border-transparent",
+          Platform.select({ web: "[a&]:hover:bg-destructive/90" }),
+        ),
+        outline: Platform.select({ web: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground" }),
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+);
 
-const toneClasses: Record<BadgeTone, { container: string; text: string }> = {
-  neutral: {
-    container: "bg-[#EDF1ED] dark:bg-[#26372F]",
-    text: "text-ink-muted dark:text-[#C3CDC7]",
+const badgeTextVariants = cva("text-xs font-ui", {
+  variants: {
+    variant: {
+      default: "text-primary-foreground",
+      secondary: "text-secondary-foreground",
+      destructive: "text-white",
+      outline: "text-foreground",
+    },
   },
-  positive: {
-    container: "bg-[#DCF4E6] dark:bg-[#214533]",
-    text: "text-positive dark:text-[#8DDEAF]",
+  defaultVariants: {
+    variant: "default",
   },
-  warning: {
-    container: "bg-[#FFF0DA] dark:bg-[#4A3320]",
-    text: "text-warning dark:text-[#F6BB76]",
-  },
-};
+});
 
-export function Badge({
-  children,
-  className,
-  tone = "neutral",
-  ...props
-}: ComponentProps<typeof View> & { tone?: BadgeTone }) {
+type BadgeProps = React.ComponentProps<typeof View> &
+  React.RefAttributes<View> & {
+    asChild?: boolean;
+  } & VariantProps<typeof badgeVariants>;
+
+function Badge({ className, variant, asChild, ...props }: BadgeProps) {
+  const Component = asChild ? Slot : View;
   return (
-    <View
-      {...props}
-      className={cn("self-start rounded-full px-3 py-1.5", toneClasses[tone].container, className)}
-    >
-      <Text className={cn("text-xs font-bold", toneClasses[tone].text)}>{children}</Text>
-    </View>
+    <TextClassContext.Provider value={badgeTextVariants({ variant })}>
+      <Component className={cn(badgeVariants({ variant }), className)} {...props} />
+    </TextClassContext.Provider>
   );
 }
+
+export type { BadgeProps };
+export { Badge, badgeTextVariants, badgeVariants };

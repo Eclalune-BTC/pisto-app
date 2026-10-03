@@ -58,7 +58,11 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
-vi.mock("uniwind", () => ({ useUniwind: () => ({ theme: "light" }) }));
+vi.mock("uniwind", () => ({
+  withUniwind: (component: unknown) => component,
+  useUniwind: () => ({ theme: "light" }),
+  useCSSVariable: () => "#62626B",
+}));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("lucide-react-native", () => ({
   AlertTriangle: () => null,

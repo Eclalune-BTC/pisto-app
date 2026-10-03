@@ -1,14 +1,15 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ExternalLink } from "lucide-react-native";
+import { AlertTriangle, ExternalLink } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
-
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
+import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
 import { api } from "@/lib/api-client";
 import { deriveBillingAccessState } from "@/lib/billing/billing-access";
 import { platformBilling } from "@/lib/billing/platform-billing";
@@ -75,7 +76,11 @@ export default function BillingScreen() {
         title={t("billing.title")}
       />
 
-      {notice ? <Alert tone="warning">{notice}</Alert> : null}
+      {notice ? (
+        <Alert icon={AlertTriangle} variant="default">
+          <AlertDescription>{notice}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <View className="gap-10 lg:flex-row lg:items-start lg:gap-12">
         <View className="border-y border-border lg:w-[40%]">
@@ -94,26 +99,26 @@ export default function BillingScreen() {
                       : t("billing.accessStandard")}
               </Text>
             </View>
-            <Text className="text-sm font-semibold text-link">{accessLabel}</Text>
+            <Text className="text-sm font-ui text-link">{accessLabel}</Text>
           </View>
 
           {accessState === "active" ? (
-            <View className="flex-row items-center justify-between border-t border-line py-4 dark:border-[#304239]">
-              <Text className="font-bold text-foreground">{t("billing.activeAccess")}</Text>
-              <Text className="text-sm font-bold text-positive dark:text-[#8DDEAF]">
+            <View className="flex-row items-center justify-between border-t border-border py-4 ">
+              <Text className="font-ui text-foreground">{t("billing.activeAccess")}</Text>
+              <Text className="text-sm font-ui text-positive-foreground ">
                 {t("billing.stateActive")}
               </Text>
             </View>
           ) : null}
 
-          <View className="border-t border-line py-5 dark:border-[#304239]">
+          <View className="border-t border-border py-5 ">
             {accessState === "unknown" ? (
               <Button
                 className="self-start"
                 label={t("billing.retryAccess")}
                 loading={entitlements.isFetching}
                 onPress={() => entitlements.refetch()}
-                variant="secondary"
+                variant="outline"
               />
             ) : (
               <Button
@@ -122,14 +127,14 @@ export default function BillingScreen() {
                 label={webCheckout ? t("billing.manage") : t("billing.manageUnavailable")}
                 loading={manage.isPending}
                 onPress={() => manage.mutate()}
-                variant="secondary"
+                variant="outline"
               />
             )}
           </View>
         </View>
 
         <View className="min-w-0 flex-1 gap-8">
-          <View className="gap-6 border-b border-line pb-8 dark:border-[#304239]">
+          <View className="gap-6 border-b border-border pb-8 ">
             <View className="gap-2">
               <Text className="text-sm text-muted-foreground">
                 {webCheckout
@@ -172,39 +177,42 @@ export default function BillingScreen() {
                     label={t("billing.retryPlan")}
                     loading={catalog.isFetching}
                     onPress={() => catalog.refetch()}
-                    variant="secondary"
+                    variant="outline"
                   />
                 ) : canPurchase ? (
                   <Button
                     className="self-start"
                     loading={purchase.isPending}
                     onPress={() => purchase.mutate()}
-                    variant="accent"
+                    variant="default"
                   >
-                    <ButtonText variant="accent">{t("billing.continueCheckout")}</ButtonText>
-                    <ExternalLink color="#14241D" size={16} strokeWidth={2.4} />
+                    <ButtonText variant="default">{t("billing.continueCheckout")}</ButtonText>
+                    <Icon
+                      as={ExternalLink}
+                      className="text-primary-foreground"
+                      size={16}
+                      strokeWidth={2.4}
+                    />
                   </Button>
                 ) : (
                   <Text className="text-sm leading-5 text-muted-foreground">
                     {t("billing.noCheckoutAction")}
                   </Text>
                 )}
-                <Text className="text-xs leading-5 text-ink-muted dark:text-[#91A198]">
+                <Text className="text-xs leading-5 text-muted-foreground ">
                   {t("billing.checkoutSecurity")}
                 </Text>
               </View>
             ) : nativeBilling ? (
               <View className="gap-2">
-                <Text className="font-bold text-foreground">
-                  {t("billing.nativeDisabledTitle")}
-                </Text>
+                <Text className="font-ui text-foreground">{t("billing.nativeDisabledTitle")}</Text>
                 <Text className="text-sm leading-5 text-muted-foreground">
                   {t("billing.nativeDisabledDescription")}
                 </Text>
               </View>
             ) : (
               <View className="gap-2">
-                <Text className="font-bold text-foreground">{t("billing.unresolvedTitle")}</Text>
+                <Text className="font-ui text-foreground">{t("billing.unresolvedTitle")}</Text>
                 <Text className="text-sm leading-5 text-muted-foreground">
                   {t("billing.unresolvedDescription")}
                 </Text>
@@ -213,7 +221,7 @@ export default function BillingScreen() {
           </View>
 
           <View className="gap-2">
-            <Text className="font-bold text-foreground">{t("billing.howTitle")}</Text>
+            <Text className="font-ui text-foreground">{t("billing.howTitle")}</Text>
             <Text className="text-sm leading-5 text-muted-foreground">
               {t("billing.howDescription")}
             </Text>

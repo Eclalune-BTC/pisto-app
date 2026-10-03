@@ -42,6 +42,7 @@ Desktop.ini
 CLAUDE.local.md
 .claude/settings.local.json
 .claude/worktrees/
+.kilo/
 
 # Infrastructure local state and variable values (commit reviewed *.tfvars.example files only)
 *.tfstate

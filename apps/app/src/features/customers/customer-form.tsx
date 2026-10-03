@@ -71,7 +71,7 @@ export function CustomerForm({
       />
       <View className="gap-3 sm:flex-row sm:justify-end">
         <Button label={copy.cancel} onPress={onCancel} variant="ghost" />
-        <Button label={copy.save} onPress={onSubmit} variant="accent" />
+        <Button label={copy.save} onPress={onSubmit} variant="default" />
       </View>
     </View>
   );

@@ -274,8 +274,24 @@ mandatory with that seam:
 
 ## Dependency audit snapshot
 
-`bun audit` was rerun against the delivery lockfile on 2026-09-10. It reports four unresolved
-advisories in three transitive development/build-tool packages; it does not report a direct
+The 2026-10-02 workspace cleanup reran `bun run audit:ci` with Bun 1.4.0. It failed with
+six additional findings beyond the four existing exceptions: four high and two moderate.
+The locked packages and advisory references are:
+
+- `brace-expansion@5.0.9`: [GHSA-qhr7-859c-m2p7](https://github.com/advisories/GHSA-qhr7-859c-m2p7),
+  [GHSA-6j4f-fj2g-mc7p](https://github.com/advisories/GHSA-6j4f-fj2g-mc7p), and
+  [GHSA-q2hr-2g5m-vwhr](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr).
+- `braces@3.0.3`: [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).
+- `hono@4.13.5`: [GHSA-hxh3-vqpv-xpqv](https://github.com/advisories/GHSA-hxh3-vqpv-xpqv).
+- `node-forge@1.4.0`: [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv).
+
+These references were checked on 2026-10-02. Cleanup preserves the existing dependency versions;
+it neither remediates these findings nor adds audit exceptions. Reassess affected paths and
+compatible updates before release. The earlier exception review below is historical evidence,
+not a passing current audit.
+
+`bun audit` was rerun against the delivery lockfile on 2026-09-10. At that time it reported four
+unresolved advisories in three transitive development/build-tool packages and no direct
 application-runtime dependency finding.
 
 | Locked path | Advisory | Current reachability and required control |

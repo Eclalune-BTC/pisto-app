@@ -1,11 +1,17 @@
 import type { CashAccountStatus, CashMovementAction } from "@pisto/contracts";
-import type { ReactNode } from "react";
-import { Text, View } from "react-native";
+import { AlertTriangle } from "lucide-react-native";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
+import { FilterToolbar } from "@/components/ui/filter-toolbar";
+import { WorkspaceTabs } from "@/components/ui/workspace-tabs";
 import { CashAccountList } from "./cash-account-list";
 import { CashMovementList } from "./cash-movement-list";
 import { FeatureBoundary } from "./feature-boundary";
@@ -63,26 +69,6 @@ type CashScreenProps = {
   onLoadMoreMovements: () => void;
 };
 
-function StateMessage({
-  action,
-  description,
-  title,
-}: {
-  action?: ReactNode;
-  description: string;
-  title: string;
-}) {
-  return (
-    <View className="min-h-56 items-start justify-center gap-3 border-y border-line py-8 dark:border-[#304239]">
-      <Text accessibilityRole="header" className="text-xl font-black text-foreground">
-        {title}
-      </Text>
-      <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">{description}</Text>
-      {action}
-    </View>
-  );
-}
-
 export function CashScreen({
   state,
   accountStatus,
@@ -101,135 +87,140 @@ export function CashScreen({
   onLoadMoreMovements,
 }: CashScreenProps) {
   const presentation = cashScreenPresentation(state);
+  const { t } = useTranslation();
+  const [view, setView] = useState<"accounts" | "movements">("accounts");
   return (
-    <Page contentContainerClassName="gap-9">
+    <Page contentContainerClassName="gap-6">
       <ScreenHeader
         action={
           presentation.showCreate ? (
-            <Button label={copy.createAccount} onPress={onCreateAccount} variant="accent" />
+            <Button label={copy.createAccount} onPress={onCreateAccount} variant="default" />
           ) : undefined
         }
-        description={copy.description}
+        description={state.kind === "denied" ? copy.deniedDescription : copy.description}
         eyebrow={copy.eyebrow}
         title={copy.title}
       />
-
       {state.kind === "ready" && state.isStale ? <StaleNotice /> : null}
-
-      {state.kind !== "denied" ? (
-        <View className="max-w-[560px] border-y border-line py-5 dark:border-[#304239]">
-          <FilterBar
-            showLabel
-            label={copy.accountFilter}
-            onChange={onAccountStatusChange}
-            options={[
-              { label: copy.activeAccounts, value: "active" },
-              { label: copy.archivedAccounts, value: "archived" },
-              { label: copy.allAccounts, value: "all" },
-            ]}
-            value={accountStatus}
+      {state.kind === "ready" && state.confirmation === "uncertain" ? (
+        <Alert icon={AlertTriangle}>
+          <AlertTitle className="leading-6">{copy.uncertainTitle}</AlertTitle>
+          <AlertDescription>{copy.uncertainDescription}</AlertDescription>
+          <Button
+            className="mb-2 ml-6 mt-2 self-start"
+            label={copy.retrySameConfirmation}
+            onPress={onCheckMutationStatus}
+            variant="outline"
           />
-        </View>
+        </Alert>
+      ) : state.kind === "ready" && state.confirmation === "failed" ? (
+        <Alert icon={AlertTriangle} variant="destructive">
+          <AlertTitle className="leading-6">{copy.mutationFailedTitle}</AlertTitle>
+          {state.mutationMessage ? (
+            <AlertDescription>{state.mutationMessage}</AlertDescription>
+          ) : null}
+          <Button
+            className="mb-2 ml-6 mt-2 self-start"
+            label={copy.retry}
+            onPress={onRetry}
+            variant="outline"
+          />
+        </Alert>
       ) : null}
-
-      <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
-        {state.kind === "ready" ? (
-          <View className="gap-9">
-            {state.confirmation === "uncertain" ? (
-              <View className="gap-3 border-l-4 border-warning bg-[#FFF6E8] p-4 dark:bg-[#3A2A18]">
-                <Text accessibilityRole="alert" className="font-bold text-ink dark:text-[#F2E4D2]">
-                  {copy.uncertainTitle}
-                </Text>
-                <Text className="text-sm leading-5 text-ink-muted dark:text-[#D7C7B4]">
-                  {copy.uncertainDescription}
-                </Text>
-                <Button
-                  className="self-start"
-                  label={copy.retrySameConfirmation}
-                  onPress={onCheckMutationStatus}
-                  variant="secondary"
-                />
-              </View>
-            ) : state.confirmation === "failed" ? (
-              <View className="gap-3 border-l-4 border-danger bg-[#FFF1F1] p-4 dark:bg-[#3A2020]">
-                <Text
-                  accessibilityRole="alert"
-                  className="font-bold text-danger dark:text-[#FFBABA]"
-                >
-                  {copy.mutationFailedTitle}
-                </Text>
-                {state.mutationMessage ? (
-                  <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
-                    {state.mutationMessage}
-                  </Text>
-                ) : null}
-                <Button
-                  className="self-start"
-                  label={copy.retry}
-                  onPress={onRetry}
-                  variant="secondary"
-                />
-              </View>
-            ) : null}
-
-            {state.accounts.length === 0 ? (
-              <StateMessage
-                action={
-                  presentation.showCreate ? (
-                    <Button label={copy.createAccount} onPress={onCreateAccount} variant="accent" />
-                  ) : undefined
-                }
-                description={copy.emptyDescription}
-                title={copy.emptyTitle}
-              />
-            ) : (
-              <View className="gap-4">
-                <Text accessibilityRole="header" className="text-xl font-black text-foreground">
-                  {copy.accountsTitle}
-                </Text>
-                <CashAccountList
-                  accounts={state.accounts}
-                  activeLabel={copy.active}
-                  archivedLabel={copy.archived}
-                  formatMoney={formatMoney}
-                  negativeAllowedLabel={copy.negativeAllowed}
-                  onOpenAccount={onOpenAccount}
-                />
-                {hasMoreAccounts ? (
-                  <Button
-                    className="self-start"
-                    label={isLoadingMoreAccounts ? copy.loadingMore : copy.loadMore}
-                    loading={isLoadingMoreAccounts}
-                    onPress={onLoadMoreAccounts}
-                    variant="secondary"
-                  />
-                ) : null}
-              </View>
-            )}
-
-            <View className="gap-4">
-              <Text accessibilityRole="header" className="text-xl font-black text-foreground">
-                {copy.movementsTitle}
-              </Text>
-              <CashMovementList
-                actionLabels={copy.movementActions}
-                formatMoney={formatMoney}
-                movements={state.movements}
-                noMovements={copy.noMovements}
-              />
-              {hasMoreMovements ? (
-                <Button
-                  className="self-start"
-                  label={isLoadingMoreMovements ? copy.loadingMore : copy.loadMore}
-                  loading={isLoadingMoreMovements}
-                  onPress={onLoadMoreMovements}
-                  variant="secondary"
-                />
-              ) : null}
-            </View>
-          </View>
-        ) : null}
-      </FeatureBoundary>
+      {state.kind === "denied" ? (
+        <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
+          {null}
+        </FeatureBoundary>
+      ) : (
+        <WorkspaceTabs
+          label={t("filters.views")}
+          value={view}
+          onChange={setView}
+          items={[
+            {
+              value: "accounts",
+              label: t("filters.accounts"),
+              content: (
+                <>
+                  <FilterToolbar
+                    label={copy.accountFilter}
+                    onReset={
+                      accountStatus !== "active" ? () => onAccountStatusChange("active") : undefined
+                    }
+                    resetLabel={t("filters.reset")}
+                  >
+                    <FilterBar
+                      showLabel
+                      label={copy.accountFilter}
+                      onChange={onAccountStatusChange}
+                      options={[
+                        { label: copy.activeAccounts, value: "active" },
+                        { label: copy.archivedAccounts, value: "archived" },
+                        { label: copy.allAccounts, value: "all" },
+                      ]}
+                      value={accountStatus}
+                    />
+                  </FilterToolbar>
+                  <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
+                    {state.kind === "ready" ? (
+                      <View className="min-w-0 gap-4">
+                        {state.accounts.length === 0 ? (
+                          <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
+                        ) : (
+                          <CashAccountList
+                            accounts={state.accounts}
+                            activeLabel={copy.active}
+                            archivedLabel={copy.archived}
+                            formatMoney={formatMoney}
+                            negativeAllowedLabel={copy.negativeAllowed}
+                            onOpenAccount={onOpenAccount}
+                          />
+                        )}
+                        {hasMoreAccounts ? (
+                          <Button
+                            className="self-start"
+                            label={isLoadingMoreAccounts ? copy.loadingMore : copy.loadMore}
+                            loading={isLoadingMoreAccounts}
+                            onPress={onLoadMoreAccounts}
+                            variant="outline"
+                          />
+                        ) : null}
+                      </View>
+                    ) : null}
+                  </FeatureBoundary>
+                </>
+              ),
+            },
+            {
+              value: "movements",
+              label: t("filters.movements"),
+              content: (
+                <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
+                  {state.kind === "ready" ? (
+                    <View className="min-w-0 gap-4">
+                      <CashMovementList
+                        actionLabels={copy.movementActions}
+                        formatMoney={formatMoney}
+                        movements={state.movements}
+                        noMovements={copy.noMovements}
+                      />
+                      {hasMoreMovements ? (
+                        <Button
+                          className="self-start"
+                          label={isLoadingMoreMovements ? copy.loadingMore : copy.loadMore}
+                          loading={isLoadingMoreMovements}
+                          onPress={onLoadMoreMovements}
+                          variant="outline"
+                        />
+                      ) : null}
+                    </View>
+                  ) : null}
+                </FeatureBoundary>
+              ),
+            },
+          ]}
+        />
+      )}
     </Page>
   );
 }

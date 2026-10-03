@@ -1,7 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import Svg, { Path, Rect } from "react-native-svg";
+import { Text } from "@/components/ui/text";
 
 import { cn } from "@/lib/cn";
+import mark from "../../assets/brand/mark.json";
 
 type BrandProps = {
   compact?: boolean;
@@ -12,14 +15,19 @@ export function Brand({ compact = false, inverse = false }: BrandProps) {
   const { t } = useTranslation();
 
   return (
-    <View accessibilityLabel={t("common.appName")} className="flex-row items-center gap-3">
-      <View className="h-9 w-9 items-center justify-center rounded-lg bg-accent">
-        <Text className="web:font-sans text-xl font-semibold text-ink">P</Text>
-      </View>
+    <View
+      accessible
+      accessibilityLabel={t("common.appName")}
+      className="flex-row items-center gap-2.5"
+    >
+      <Svg aria-hidden height={compact ? 36 : 32} viewBox={mark.viewBox} width={compact ? 36 : 32}>
+        <Rect fill={inverse ? mark.paper : mark.ink} height={64} rx={8} width={64} />
+        <Path d={mark.path} fill={inverse ? mark.ink : mark.paper} fillRule="evenodd" />
+      </Svg>
       {!compact ? (
         <Text
           className={cn(
-            "web:font-sans text-2xl font-semibold tracking-[-0.6px]",
+            "font-heading font-normal text-[26px] leading-8 tracking-[-0.5px]",
             inverse ? "text-white" : "text-foreground",
           )}
         >

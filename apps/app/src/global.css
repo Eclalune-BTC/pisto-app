@@ -2,15 +2,16 @@
 @import "uniwind";
 
 @theme {
-  --font-sans: system-ui;
-  --color-ink: #14241d;
-  --color-ink-muted: #617168;
-  --color-canvas: #f3f6f1;
+  --font-sans: PistoRegular;
+  --font-ui: PistoMedium;
+  --font-heading: PistoSemibold;
+  --color-ink: #171717;
+  --color-ink-muted: #525252;
+  --color-canvas: #fafafa;
   --color-surface: #ffffff;
-  --color-line: #dce5dd;
-  --color-accent: #d2e0bd;
-  --color-accent-strong: #bfd09f;
-  --color-positive: #237a55;
+  --color-line: #e5e5e5;
+  --color-accent-strong: #d4d4d4;
+  --color-positive: #166534;
   --color-warning: #b86718;
   --color-danger: #b94242;
   --radius-card: 16px;
@@ -19,41 +20,73 @@
 @layer theme {
   :root {
     @variant light {
-      --color-background: #f8f7f4;
-      --color-foreground: #242d27;
-      --color-muted-foreground: #616960;
+      --color-background: #ffffff;
+      --color-foreground: #171717;
+      --color-muted-foreground: #525252;
       --color-card: #ffffff;
-      --color-muted: #efeee9;
-      --color-border: #dcded5;
-      --color-input: #ffffff;
-      --color-input-border: #babfb4;
-      --color-primary: #14241d;
+      --color-card-foreground: #171717;
+      --color-popover: #ffffff;
+      --color-popover-foreground: #171717;
+      --color-muted: #f5f5f5;
+      --color-border: #e5e5e5;
+      --color-input: #a3a3a3;
+      --color-input-border: #a3a3a3;
+      --color-ring: #525252;
+      --color-secondary: #f5f5f5;
+      --color-secondary-foreground: #171717;
+      --color-accent: #f5f5f5;
+      --color-accent-foreground: #171717;
+      --color-primary: #171717;
       --color-primary-foreground: #ffffff;
-      --color-link: #237a55;
+      --color-link: #171717;
+      --color-sidebar: #fafafa;
+      --color-sidebar-foreground: #171717;
+      --color-sidebar-accent: #e5e5e5;
+      --color-sidebar-accent-foreground: #171717;
+      --color-sidebar-border: #e5e5e5;
+      --color-selection: #d4d4d4;
       --color-destructive: #b94242;
       --color-destructive-surface: #fff4f4;
       --color-warning-surface: #fff6e8;
       --color-warning-foreground: #80501d;
+      --color-positive-surface: #edf7f1;
+      --color-positive-foreground: #196441;
     }
   }
 
   :root {
     @variant dark {
-      --color-background: #171d19;
-      --color-foreground: #e7eee9;
-      --color-muted-foreground: #aab8b0;
-      --color-card: #202923;
-      --color-muted: #2b352e;
-      --color-border: #3c473f;
-      --color-input: #1c251f;
-      --color-input-border: #4b5d53;
-      --color-primary: #237a55;
-      --color-primary-foreground: #ffffff;
-      --color-link: #8ddeaf;
+      --color-background: #0a0a0a;
+      --color-foreground: #fafafa;
+      --color-muted-foreground: #a3a3a3;
+      --color-card: #171717;
+      --color-card-foreground: #fafafa;
+      --color-popover: #171717;
+      --color-popover-foreground: #fafafa;
+      --color-muted: #262626;
+      --color-border: #404040;
+      --color-input: #737373;
+      --color-input-border: #737373;
+      --color-ring: #a3a3a3;
+      --color-secondary: #262626;
+      --color-secondary-foreground: #fafafa;
+      --color-accent: #262626;
+      --color-accent-foreground: #fafafa;
+      --color-primary: #fafafa;
+      --color-primary-foreground: #171717;
+      --color-link: #fafafa;
+      --color-sidebar: #171717;
+      --color-sidebar-foreground: #fafafa;
+      --color-sidebar-accent: #262626;
+      --color-sidebar-accent-foreground: #fafafa;
+      --color-sidebar-border: #404040;
+      --color-selection: #404040;
       --color-destructive: #ffbaba;
       --color-destructive-surface: #3b2323;
       --color-warning-surface: #3a2a18;
       --color-warning-foreground: #f6bb76;
+      --color-positive-surface: #183329;
+      --color-positive-foreground: #a1dfbb;
     }
   }
 }
@@ -63,9 +96,28 @@
 }
 
 *:focus-visible {
-  outline: 3px solid #0b57d0;
+  outline: 2px solid var(--color-ring);
   outline-offset: 3px;
-  box-shadow: 0 0 0 2px #ffffff;
+  box-shadow: 0 0 0 2px var(--color-background);
+}
+
+[role="tabpanel"]:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+[role="tabpanel"]:focus-visible {
+  border-radius: 12px;
+  outline-offset: 4px;
+}
+
+::selection {
+  background: var(--color-selection);
+  color: var(--color-foreground);
+}
+
+html {
+  accent-color: var(--color-primary);
 }
 
 html,
@@ -79,4 +131,83 @@ html.light {
 
 html.dark {
   color-scheme: dark;
+}
+
+.pisto-data-table-container {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-card);
+}
+
+.pisto-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: PistoRegular, sans-serif;
+  font-size: 14px;
+  color: var(--color-foreground);
+}
+
+.pisto-data-table th {
+  background: var(--color-muted);
+  color: var(--color-muted-foreground);
+  font-family: PistoMedium, sans-serif;
+  font-weight: normal;
+  text-align: left;
+}
+
+.pisto-data-table th,
+.pisto-data-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.pisto-data-table [data-align="end"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pisto-data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.pisto-data-table tbody tr:hover {
+  background: var(--color-muted);
+}
+
+.pisto-date-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  font-family: PistoRegular, sans-serif;
+}
+
+.pisto-date-field label {
+  font-family: PistoMedium, sans-serif;
+  font-size: 14px;
+  color: var(--color-foreground);
+}
+
+.pisto-date-field input {
+  min-height: 48px;
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--color-input-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font: inherit;
+  font-size: 16px;
+}
+
+.pisto-date-field input[aria-invalid="true"] {
+  border-color: var(--color-destructive);
+}
+
+.pisto-date-field [role="alert"] {
+  color: var(--color-destructive);
+  font-size: 14px;
 }

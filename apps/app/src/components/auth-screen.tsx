@@ -1,17 +1,18 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useRouter } from "expo-router";
-import { Eye, EyeOff } from "lucide-react-native";
+import { AlertTriangle, Eye, EyeOff } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppearanceControl } from "@/components/appearance-control";
 import { Brand } from "@/components/brand";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Heading } from "@/components/ui/heading";
+import { Text } from "@/components/ui/text";
 import { authClient } from "@/lib/auth-client";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -166,14 +167,14 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
               </View>
 
               <Card className="gap-6">
-                <View className="gap-2">
+                <CardHeader className="gap-2">
                   <Heading>{isSignUp ? t("auth.signUpTitle") : t("auth.signInTitle")}</Heading>
                   <CardDescription>
                     {isSignUp ? t("auth.signUpDescription") : t("auth.signInDescription")}
                   </CardDescription>
-                </View>
+                </CardHeader>
 
-                <View className="gap-5">
+                <CardContent className="gap-5">
                   {isSignUp ? (
                     <Field
                       autoCapitalize="words"
@@ -226,28 +227,32 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                     value={password}
                   />
 
-                  {formError ? <Alert tone="danger">{formError}</Alert> : null}
+                  {formError ? (
+                    <Alert icon={AlertTriangle} variant="destructive">
+                      <AlertDescription>{formError}</AlertDescription>
+                    </Alert>
+                  ) : null}
 
                   <Button
                     label={isSignUp ? t("auth.createAccount") : t("auth.signIn")}
                     loading={submitting}
                     onPress={submit}
-                    variant="accent"
+                    variant="default"
                   />
-                </View>
+                </CardContent>
 
-                <View className="flex-row flex-wrap items-center gap-x-1">
+                <CardFooter className="flex-wrap gap-x-2 gap-y-1">
                   <Text className="text-sm text-muted-foreground">
                     {isSignUp ? t("auth.alreadyRegistered") : t("auth.newToPisto")}
                   </Text>
                   <Link href={isSignUp ? "/sign-in" : "/sign-up"} replace asChild>
                     <Button className="px-0" size="sm" variant="ghost">
-                      <Text className="text-sm font-semibold text-link underline">
+                      <Text className="text-sm font-ui text-link underline">
                         {isSignUp ? t("auth.signInLink") : t("auth.createAccountLink")}
                       </Text>
                     </Button>
                   </Link>
-                </View>
+                </CardFooter>
               </Card>
             </View>
           </View>

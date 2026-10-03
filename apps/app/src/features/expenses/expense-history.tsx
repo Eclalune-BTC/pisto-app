@@ -1,6 +1,10 @@
 import type { Expense, ExpenseCategory } from "@pisto/contracts";
-import { Text, View } from "react-native";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 import { Button } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { Text } from "@/components/ui/text";
 
 type ExpenseHistoryProps = {
   expenses: Expense[];
@@ -25,46 +29,96 @@ export function ExpenseHistory({
   onOpenExpense,
   onVoidExpense,
 }: ExpenseHistoryProps) {
-  return (
-    <View className="border-y border-border">
-      {expenses.map((expense) => (
-        <View
-          className="gap-3 border-b border-line py-4 last:border-b-0 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
-          key={expense.id}
-        >
+  const { t } = useTranslation();
+  const columns = useMemo<DataTableColumn<Expense>[]>(
+    () => [
+      {
+        id: "description",
+        header: t("dataTable.columns.description"),
+        meta: { primary: true },
+        cell: ({ row: { original } }) => (
           <Button
-            accessibilityLabel={`${expense.description}, ${formatMoney(expense.amountMinorUnits, expense.currency, expense.currencyMinorUnitDigits)}`}
-            className="min-h-10 min-w-0 flex-1 items-start justify-start px-0"
-            onPress={() => onOpenExpense(expense.id)}
+            accessibilityLabel={t("dataTable.openRecord", { name: original.description })}
+            className="justify-start px-0"
+            label={original.description}
+            onPress={() => onOpenExpense(original.id)}
+            size="sm"
             variant="ghost"
-          >
-            <View className="min-w-0 flex-1 gap-1">
-              <Text className="font-bold text-foreground">{expense.description}</Text>
-              <Text className="text-xs text-ink-muted dark:text-[#91A198]">
-                {categoryLabels[expense.category]} · {expense.occurredLocalDate} ·{" "}
-                {expense.status === "posted" ? postedLabel : voidedLabel}
-              </Text>
-            </View>
-          </Button>
-          <View className="items-start gap-2 sm:items-end">
-            <Text className="font-black text-foreground">
-              {formatMoney(
-                expense.amountMinorUnits,
-                expense.currency,
-                expense.currencyMinorUnitDigits,
-              )}
-            </Text>
-            {canManage && expense.status === "posted" ? (
+          />
+        ),
+      },
+      {
+        id: "category",
+        header: t("dataTable.columns.category"),
+        cell: ({ row: { original } }) => (
+          <Text className="font-sans text-foreground">{categoryLabels[original.category]}</Text>
+        ),
+      },
+      {
+        id: "date",
+        header: t("dataTable.columns.date"),
+        cell: ({ row: { original } }) => (
+          <Text className="font-sans text-muted-foreground">{original.occurredLocalDate}</Text>
+        ),
+      },
+      {
+        id: "status",
+        header: t("dataTable.columns.status"),
+        cell: ({ row: { original } }) => (
+          <Text className="font-sans text-foreground">
+            {original.status === "posted" ? postedLabel : voidedLabel}
+          </Text>
+        ),
+      },
+      {
+        id: "amount",
+        header: t("dataTable.columns.amount"),
+        meta: { align: "end" },
+        cell: ({ row: { original } }) => (
+          <Text className="font-ui text-foreground">
+            {formatMoney(
+              original.amountMinorUnits,
+              original.currency,
+              original.currencyMinorUnitDigits,
+            )}
+          </Text>
+        ),
+      },
+      {
+        id: "actions",
+        header: t("dataTable.columns.actions"),
+        cell: ({ row: { original } }) => (
+          <View className="min-w-0 items-start gap-2">
+            {canManage && original.status === "posted" ? (
               <Button
                 label={voidActionLabel}
-                onPress={() => onVoidExpense(expense.id)}
+                onPress={() => onVoidExpense(original.id)}
                 size="sm"
-                variant="danger"
+                variant="ghost"
               />
             ) : null}
           </View>
-        </View>
-      ))}
-    </View>
+        ),
+      },
+    ],
+    [
+      t,
+      categoryLabels,
+      postedLabel,
+      voidedLabel,
+      formatMoney,
+      canManage,
+      onOpenExpense,
+      onVoidExpense,
+      voidActionLabel,
+    ],
+  );
+  return (
+    <DataTable
+      caption={t("filters.history")}
+      columns={columns}
+      data={expenses}
+      getRowId={(expense) => expense.id}
+    />
   );
 }

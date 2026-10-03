@@ -1,50 +1,52 @@
+// React Native Reusables / Uniwind. MIT attribution: licenses/react-native-reusables.txt.
 import { Slot } from "@rn-primitives/slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, Text } from "react-native";
+import { ActivityIndicator, Platform, Pressable } from "react-native";
 import { useUniwind } from "uniwind";
-
+import { Text, TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 
 const buttonVariants = cva(
-  "min-h-12 max-w-full flex-row items-center justify-center gap-2 rounded-lg px-5 py-2 active:opacity-80 disabled:opacity-45",
+  cn(
+    "group max-w-full shrink-0 flex-row items-center justify-center gap-2 rounded-md active:opacity-80",
+    Platform.select({
+      web: "transition-colors focus-visible:ring-ring/50 disabled:pointer-events-none",
+    }),
+  ),
   {
     variants: {
       variant: {
-        primary: "bg-primary",
-        accent: "bg-accent",
-        secondary: "border border-border bg-card",
-        ghost: "bg-transparent",
-        danger: "bg-danger",
+        default: "bg-primary web:hover:bg-primary/90",
+        destructive: "bg-danger web:hover:bg-danger/90",
+        outline: "border border-input bg-background active:bg-accent web:hover:bg-accent",
+        secondary: "bg-secondary active:bg-secondary/80 web:hover:bg-secondary/80",
+        ghost: "active:bg-accent web:hover:bg-accent",
+        link: "",
       },
       size: {
-        icon: "h-11 min-h-11 w-11 px-0",
-        sm: "min-h-11 px-4",
-        md: "min-h-12 px-5",
-        lg: "min-h-14 px-7",
+        default: "min-h-11 px-4 py-2",
+        sm: "min-h-11 gap-1.5 px-3 py-2",
+        lg: "min-h-12 px-6 py-3",
+        icon: "min-h-11 w-11 px-2 py-2",
       },
     },
-    defaultVariants: {
-      variant: "primary",
-      size: "md",
-    },
+    defaultVariants: { variant: "default", size: "default" },
   },
 );
-
-const textVariants = cva("web:font-sans shrink text-center text-[15px] font-semibold", {
+const buttonTextVariants = cva("font-ui font-normal shrink text-center text-sm", {
   variants: {
     variant: {
-      primary: "text-primary-foreground",
-      accent: "text-ink",
-      secondary: "text-foreground",
-      ghost: "text-foreground",
-      danger: "text-white",
+      default: "text-primary-foreground",
+      destructive: "text-white",
+      outline: "text-foreground",
+      secondary: "text-secondary-foreground",
+      ghost: "text-accent-foreground",
+      link: "text-link underline web:underline-offset-4",
     },
   },
-  defaultVariants: {
-    variant: "primary",
-  },
+  defaultVariants: { variant: "default" },
 });
 
 type ButtonProps = Omit<ComponentProps<typeof Pressable>, "children"> &
@@ -55,7 +57,7 @@ type ButtonProps = Omit<ComponentProps<typeof Pressable>, "children"> &
     loading?: boolean;
   };
 
-export function Button({
+function Button({
   accessibilityLabel,
   accessibilityRole = "button",
   accessibilityState,
@@ -66,55 +68,67 @@ export function Button({
   label,
   loading,
   size,
-  variant,
+  variant = "default",
   ...props
 }: ButtonProps) {
   const { t } = useTranslation();
   const { theme } = useUniwind();
   const Component = asChild ? Slot : Pressable;
-
+  const spinnerColor =
+    variant === "destructive"
+      ? "#FFFFFF"
+      : variant === "default"
+        ? theme === "dark"
+          ? "#171717"
+          : "#FFFFFF"
+        : theme === "dark"
+          ? "#FAFAFA"
+          : "#171717";
   return (
-    <Component
+    <TextClassContext.Provider value={buttonTextVariants({ variant })}>
+      <Component
+        {...props}
+        accessibilityLabel={
+          accessibilityLabel ?? (loading && label ? `${label}, ${t("common.loading")}` : undefined)
+        }
+        accessibilityRole={accessibilityRole}
+        accessibilityState={{
+          ...accessibilityState,
+          disabled: Boolean(disabled || loading),
+          busy: Boolean(loading),
+        }}
+        aria-busy={Boolean(loading)}
+        disabled={disabled || loading}
+        className={cn(
+          buttonVariants({ size, variant }),
+          (disabled || loading) && "opacity-50",
+          className,
+        )}
+      >
+        {asChild ? (
+          children
+        ) : (
+          <>
+            {loading ? <ActivityIndicator color={spinnerColor} /> : null}
+            {label ? <Text>{label}</Text> : children}
+          </>
+        )}
+      </Component>
+    </TextClassContext.Provider>
+  );
+}
+function ButtonText({
+  className,
+  variant,
+  ...props
+}: Omit<ComponentProps<typeof Text>, "variant"> & VariantProps<typeof buttonTextVariants>) {
+  return (
+    <Text
       {...props}
-      accessibilityLabel={
-        accessibilityLabel ?? (loading && label ? `${label}, ${t("common.loading")}` : undefined)
-      }
-      accessibilityRole={accessibilityRole}
-      aria-busy={Boolean(loading)}
-      accessibilityState={{
-        ...accessibilityState,
-        busy: Boolean(loading),
-        disabled: Boolean(disabled || loading),
-      }}
-      className={cn(buttonVariants({ size, variant }), className)}
-      disabled={disabled || loading}
-    >
-      {asChild ? (
-        children
-      ) : (
-        <>
-          {loading ? (
-            <ActivityIndicator
-              color={
-                variant === "accent"
-                  ? "#14241D"
-                  : (variant === "secondary" || variant === "ghost") && theme !== "dark"
-                    ? "#237A55"
-                    : "#FFFFFF"
-              }
-            />
-          ) : null}
-          {label ? <Text className={textVariants({ variant })}>{label}</Text> : children}
-        </>
-      )}
-    </Component>
+      className={cn(variant ? buttonTextVariants({ variant }) : undefined, className)}
+    />
   );
 }
 
-export function ButtonText({
-  className,
-  variant = "primary",
-  ...props
-}: ComponentProps<typeof Text> & VariantProps<typeof textVariants>) {
-  return <Text className={cn(textVariants({ variant }), className)} {...props} />;
-}
+export type { ButtonProps };
+export { Button, ButtonText, buttonTextVariants, buttonVariants };

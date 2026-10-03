@@ -1,11 +1,20 @@
 import type { ProductUnitKind, StockListResponse } from "@pisto/contracts";
 import { AlertTriangle, Search } from "lucide-react-native";
-import { ActivityIndicator, Text, View } from "react-native";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
+import { useCSSVariable } from "uniwind";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { FilterBar } from "@/components/ui/filter-bar";
+import { FilterToolbar } from "@/components/ui/filter-toolbar";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 import { ReadOnlyNotice } from "../catalog/route-state";
 import { formatQuantityMinorUnits } from "./quantity";
 
@@ -80,8 +89,8 @@ function InventoryFailure({
   if (status === "loading") {
     return (
       <View className="min-h-56 items-start justify-center gap-3 border-y border-border">
-        <ActivityIndicator color="#237A55" />
-        <Text className="text-sm text-muted-foreground">{copy.loading}</Text>
+        <LoadingIndicator />
+        <Text className="font-sans text-sm text-muted-foreground">{copy.loading}</Text>
       </View>
     );
   }
@@ -98,22 +107,18 @@ function InventoryFailure({
         ? copy.offlineDescription
         : copy.errorDescription;
   return (
-    <View className="gap-4 border-l-4 border-danger bg-[#FFF1F1] p-5 dark:bg-[#3A2020]">
-      <View className="flex-row items-start gap-3">
-        <AlertTriangle color="#B94242" size={20} />
-        <View className="min-w-0 flex-1 gap-1">
-          <Text accessibilityRole="alert" className="font-bold text-danger dark:text-[#FFBABA]">
-            {title}
-          </Text>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
-            {description}
-          </Text>
-        </View>
-      </View>
+    <Alert icon={AlertTriangle} variant="destructive">
+      <AlertTitle className="leading-6">{title}</AlertTitle>
+      <AlertDescription>{description}</AlertDescription>
       {status === "error" ? (
-        <Button className="self-start" label={copy.retry} onPress={onRetry} variant="secondary" />
+        <Button
+          className="mb-2 ml-6 mt-2 self-start"
+          label={copy.retry}
+          onPress={onRetry}
+          variant="outline"
+        />
       ) : null}
-    </View>
+    </Alert>
   );
 }
 
@@ -129,6 +134,99 @@ export function InventoryScreen({
   showReadOnlyNotice,
   state,
 }: InventoryScreenProps) {
+  const mutedColor = useCSSVariable("--color-muted-foreground") as string;
+  const { t } = useTranslation();
+  const columns = useMemo<DataTableColumn<StockItem>[]>(
+    () => [
+      {
+        id: "name",
+        header: t("dataTable.columns.name"),
+        meta: { primary: true },
+        cell: ({
+          row: {
+            original: { product },
+          },
+        }) => (
+          <Button
+            accessibilityLabel={t("dataTable.openRecord", { name: product.name })}
+            accessibilityHint={copy.openHistory(product.name)}
+            className="justify-start px-0"
+            label={product.name}
+            onPress={() => onOpenHistory(product.id)}
+            size="sm"
+            variant="ghost"
+          />
+        ),
+      },
+      {
+        id: "sku",
+        header: t("dataTable.columns.sku"),
+        cell: ({
+          row: {
+            original: { product },
+          },
+        }) => (
+          <Text className="font-sans text-sm text-muted-foreground">
+            {product.sku ?? t("catalog.list.noSku")}
+          </Text>
+        ),
+      },
+      {
+        id: "stock",
+        header: t("dataTable.columns.stock"),
+        meta: { align: "end" },
+        cell: ({
+          row: {
+            original: { product, stock },
+          },
+        }) => (
+          <Text className="font-ui text-sm text-foreground">
+            {formatQuantityMinorUnits(stock.onHandMinorUnits, stock.quantityPrecision)}{" "}
+            {copy.unitLabels[product.unitKind]}
+          </Text>
+        ),
+      },
+      {
+        id: "minimum",
+        header: t("dataTable.columns.minimum"),
+        meta: { align: "end" },
+        cell: ({
+          row: {
+            original: { stock },
+          },
+        }) => (
+          <Text className="font-sans text-sm text-muted-foreground">
+            {stock.lowStockThresholdMinorUnits === null
+              ? copy.noThreshold
+              : formatQuantityMinorUnits(
+                  stock.lowStockThresholdMinorUnits,
+                  stock.quantityPrecision,
+                )}
+          </Text>
+        ),
+      },
+      {
+        id: "status",
+        header: t("dataTable.columns.status"),
+        cell: ({
+          row: {
+            original: { stock },
+          },
+        }) => (
+          <Text
+            className={
+              stock.lowStock
+                ? "font-ui text-sm text-destructive"
+                : "font-sans text-sm text-muted-foreground"
+            }
+          >
+            {stock.lowStock ? copy.lowStock : copy.onHand}
+          </Text>
+        ),
+      },
+    ],
+    [copy, onOpenHistory, t],
+  );
   if (state.status === "denied") {
     return (
       <Page>
@@ -142,14 +240,14 @@ export function InventoryScreen({
 
       {showReadOnlyNotice ? <ReadOnlyNotice description={copy.readOnlyDescription} /> : null}
 
-      <View className="gap-4 border-y border-line py-5 dark:border-[#304239] lg:flex-row lg:items-end lg:justify-between">
+      <FilterToolbar label={copy.title}>
         <View className="min-w-0 flex-1 lg:max-w-[620px]">
           <Field
             accessibilityLabel={copy.searchLabel}
             label={copy.searchLabel}
             onChangeText={onSearchChange}
             placeholder={copy.searchPlaceholder}
-            trailing={<Search color="#617168" size={18} />}
+            trailing={<Search color={mutedColor} size={18} />}
             value={search}
           />
         </View>
@@ -162,66 +260,26 @@ export function InventoryScreen({
           ]}
           value={lowStockOnly ? "low-stock" : "all"}
         />
-      </View>
+      </FilterToolbar>
 
       {state.status !== "ready" ? (
         <InventoryFailure copy={copy} onRetry={onRetry} status={state.status} />
       ) : (
         <View>
           {state.stale ? (
-            <View className="mb-5 border-l-4 border-warning bg-[#FFF6E8] p-3 dark:bg-[#3A2A18]">
-              <Text className="text-sm text-ink dark:text-[#F2E4D2]">{copy.stale}</Text>
+            <View className="mb-5 border-l-4 border-warning bg-muted p-3">
+              <Text className="font-sans text-sm text-foreground">{copy.stale}</Text>
             </View>
           ) : null}
           {state.items.length === 0 ? (
-            <View className="gap-2 py-12">
-              <Text className="text-xl font-black text-foreground">{copy.emptyTitle}</Text>
-              <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">
-                {copy.emptyDescription}
-              </Text>
-            </View>
+            <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
           ) : (
-            state.items.map(({ product, stock }) => (
-              <Button
-                accessibilityLabel={copy.openHistory(product.name)}
-                className="flex-col items-stretch justify-start gap-3 rounded-none border-b border-line px-0 py-5 dark:border-[#304239] sm:flex-row sm:items-center sm:justify-between"
-                key={product.id}
-                onPress={() => onOpenHistory(product.id)}
-                variant="ghost"
-              >
-                <View className="min-w-0 flex-1 gap-1">
-                  <Text className="text-lg font-black text-foreground">{product.name}</Text>
-                  <Text className="text-sm text-muted-foreground">
-                    {product.sku ?? copy.unitLabels[product.unitKind]}
-                  </Text>
-                </View>
-                <View className="gap-1 sm:min-w-[220px] sm:items-end">
-                  <Text className="text-2xl font-black text-foreground">
-                    {formatQuantityMinorUnits(stock.onHandMinorUnits, stock.quantityPrecision)}{" "}
-                    <Text className="text-base font-semibold text-muted-foreground">
-                      {copy.unitLabels[product.unitKind]}
-                    </Text>
-                  </Text>
-                  <Text
-                    className={
-                      stock.lowStock
-                        ? "text-sm font-semibold text-danger dark:text-[#FFBABA]"
-                        : "text-sm text-muted-foreground"
-                    }
-                  >
-                    {stock.lowStock ? copy.lowStock : copy.onHand}
-                  </Text>
-                  <Text className="text-xs text-ink-muted dark:text-[#91A198]">
-                    {stock.lowStockThresholdMinorUnits === null
-                      ? copy.noThreshold
-                      : `${copy.threshold}: ${formatQuantityMinorUnits(
-                          stock.lowStockThresholdMinorUnits,
-                          stock.quantityPrecision,
-                        )}`}
-                  </Text>
-                </View>
-              </Button>
-            ))
+            <DataTable
+              caption={copy.title}
+              columns={columns}
+              data={state.items}
+              getRowId={({ product }) => product.id}
+            />
           )}
           {state.hasNextPage ? (
             <Button
@@ -229,7 +287,7 @@ export function InventoryScreen({
               label={state.loadingMore ? copy.loadingMore : copy.loadMore}
               loading={state.loadingMore}
               onPress={onLoadMore}
-              variant="secondary"
+              variant="outline"
             />
           ) : null}
         </View>

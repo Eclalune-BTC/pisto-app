@@ -148,9 +148,13 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ i18n: { resolvedLanguage: "es-SV" }, t: (key: string) => key }),
 }));
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
-vi.mock("uniwind", () => ({ useUniwind: () => ({ theme: "light" }) }));
+vi.mock("uniwind", () => ({
+  withUniwind: (component: unknown) => component,
+  useCSSVariable: () => "#525252",
+  useUniwind: () => ({ theme: "light" }),
+}));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
-vi.mock("lucide-react-native", () => ({ WifiOff: () => null }));
+vi.mock("lucide-react-native", () => ({ AlertTriangle: () => null, WifiOff: () => null }));
 vi.mock("@/lib/queries/businesses", () => ({
   businessesQueryOptions: { queryKey: ["businesses"] },
   getActiveBusiness: (data: { business: unknown } | undefined) => data?.business,

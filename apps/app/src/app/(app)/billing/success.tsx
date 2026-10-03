@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { AlertCircle, CheckCircle2, Clock3, RefreshCw } from "lucide-react-native";
+import { AlertCircle, CheckCircle2, Clock3 } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
-
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 import { api } from "@/lib/api-client";
 import { deriveBillingAccessState } from "@/lib/billing/billing-access";
 
@@ -58,12 +58,12 @@ export default function BillingSuccessScreen() {
       <View className="flex-row items-start gap-4">
         <StateIcon color={iconColor} size={32} strokeWidth={2.4} />
         <View className="min-w-0 flex-1 gap-2">
-          <Text className="text-xs font-extrabold uppercase tracking-[1.6px] text-positive dark:text-[#8DDEAF]">
+          <Text className="text-xs font-ui uppercase tracking-[1.6px] text-positive-foreground ">
             {t("billing.returnEyebrow")}
           </Text>
           <Text
             accessibilityRole="header"
-            className="text-[30px] font-black leading-[36px] tracking-[-1px] text-foreground"
+            className="text-[30px] font-heading leading-[36px] tracking-[-1px] text-foreground"
           >
             {t(`billing.returnTitle.${accessState}`)}
           </Text>
@@ -71,28 +71,24 @@ export default function BillingSuccessScreen() {
             {t(`billing.returnDescription.${accessState}`)}
           </Text>
           {checkoutId ? (
-            <Text className="text-xs text-ink-muted dark:text-[#91A198]">
-              {t("billing.returnReference")}
-            </Text>
+            <Text className="text-xs text-muted-foreground ">{t("billing.returnReference")}</Text>
           ) : null}
         </View>
       </View>
 
-      <View className="gap-3 border-y border-line py-6 dark:border-[#304239] sm:flex-row">
+      <View className="gap-3 border-y border-border py-6  sm:flex-row">
         <Button
           label={t("billing.back")}
           onPress={() => router.replace("/billing")}
-          variant="secondary"
+          variant="outline"
         />
         {accessState !== "active" ? (
           <Button
+            label={t("billing.refresh")}
             loading={entitlements.isFetching}
             onPress={() => void verifyAccess()}
-            variant="primary"
-          >
-            <RefreshCw color="#FFFFFF" size={16} />
-            <Text className="text-[15px] font-bold text-white">{t("billing.refresh")}</Text>
-          </Button>
+            variant="default"
+          />
         ) : null}
       </View>
     </Page>

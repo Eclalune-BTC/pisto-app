@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
-
+import { View } from "react-native";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 
 import { buildCustomersCopy } from "./copy";
 
@@ -21,7 +21,7 @@ export function ActionUnavailable({ description, onBack, title }: ActionUnavaila
     <Page width="form">
       <Button label={copy.common.back} onPress={onBack} variant="ghost" />
       <ScreenHeader description={description} title={title} />
-      <View className="border-y border-line py-5 dark:border-[#304239]">
+      <View className="border-y border-border py-5 ">
         <Text className="text-sm leading-5 text-muted-foreground">{description}</Text>
       </View>
     </Page>

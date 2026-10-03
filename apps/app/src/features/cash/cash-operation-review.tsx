@@ -1,7 +1,7 @@
-import { Text, View } from "react-native";
-
+import { View } from "react-native";
 import { DetailList } from "@/components/detail-list";
 import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 
 import type { CashConfirmationState } from "./state";
 
@@ -43,11 +43,14 @@ export function CashOperationReview({
       <Text className="text-sm leading-5 text-muted-foreground">{effect}</Text>
 
       {state === "uncertain" ? (
-        <View className="gap-3 border-l-4 border-warning bg-[#FFF6E8] p-4 dark:bg-[#3A2A18]">
-          <Text accessibilityRole="alert" className="font-bold text-ink dark:text-[#F2E4D2]">
+        <View className="gap-3 border-l-4 border-warning bg-warning-surface p-4 ">
+          <Text
+            accessibilityRole="alert"
+            className="font-ui text-foreground text-warning-foreground"
+          >
             {copy.uncertainTitle}
           </Text>
-          <Text className="text-sm leading-5 text-ink-muted dark:text-[#D7C7B4]">
+          <Text className="text-sm leading-5 text-muted-foreground text-warning-foreground">
             {copy.uncertainDescription}
           </Text>
           <Button
@@ -55,18 +58,16 @@ export function CashOperationReview({
             disabled={disabled}
             label={copy.retrySameConfirmation}
             onPress={onCheckStatus}
-            variant="secondary"
+            variant="outline"
           />
         </View>
       ) : state === "failed" ? (
-        <View className="gap-2 border-l-4 border-danger bg-[#FFF1F1] p-4 dark:bg-[#3A2020]">
-          <Text accessibilityRole="alert" className="font-bold text-danger dark:text-[#FFBABA]">
+        <View className="gap-2 border-l-4 border-danger bg-destructive-surface p-4 ">
+          <Text accessibilityRole="alert" className="font-ui text-destructive ">
             {copy.failedTitle}
           </Text>
           {errorMessage ? (
-            <Text className="text-sm leading-5 text-ink-muted dark:text-[#C9D4CE]">
-              {errorMessage}
-            </Text>
+            <Text className="text-sm leading-5 text-muted-foreground ">{errorMessage}</Text>
           ) : null}
         </View>
       ) : null}
@@ -78,13 +79,13 @@ export function CashOperationReview({
             disabled={disabled}
             loading={state === "pending"}
             onPress={onConfirm}
-            variant="accent"
+            variant="default"
           />
           <Button
             disabled={state === "pending"}
             label={copy.edit}
             onPress={onEdit}
-            variant="secondary"
+            variant="outline"
           />
         </View>
       ) : null}
