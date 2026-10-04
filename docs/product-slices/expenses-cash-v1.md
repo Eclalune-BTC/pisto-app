@@ -32,8 +32,9 @@ Ambiguous, nonexistent, and invalid business-local minutes fail rather than bein
 | --- | --- |
 | Transport schemas and public types | `packages/contracts/src/cash.ts` |
 | PostgreSQL tables and constraints | `packages/db/src/schema/cash.ts` |
-| Session, membership, permission, balance, and operation policy | `packages/db/src/cash/access.ts` |
-| Money, fingerprint, date, cursor, and replay codecs | `packages/db/src/cash/codec.ts` |
+| Session, membership, and permission policy | `packages/db/src/business-access.ts` |
+| Account locks, balances, and operation log | `packages/db/src/cash/records.ts` |
+| Shared money, cursor, and replay primitives | `packages/db/src/money.ts`, `pagination.ts`, `operation-log.ts` |
 | Public record mapping | `packages/db/src/cash/mappers.ts` |
 | Account commands | `packages/db/src/cash/account-commands.ts` |
 | Paid-expense commands | `packages/db/src/cash/expense-commands.ts` |
