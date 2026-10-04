@@ -10,6 +10,7 @@ import { ScreenState } from "@/features/customers/screen-state";
 import { PaymentEditor } from "@/features/receivables/payment-editor";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
 import { acceptsPayment } from "@/features/receivables/rules";
+import { hasDeniedRead } from "@/lib/query-state";
 
 export default function ApplyPaymentRoute() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function ApplyPaymentRoute() {
   );
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
   const businessId = access.business?.id;
-  const enabled = Boolean(access.business && access.canManage);
+  const enabled = Boolean(access.business && access.hasManagePermission);
   const detail = useQuery({
     ...receivableDetailQueryOptions(businessId, receivableId),
     enabled: enabled && receivableId !== undefined,
@@ -28,7 +29,12 @@ export default function ApplyPaymentRoute() {
     ...customerDetailQueryOptions(businessId, customerId),
     enabled: enabled && customerId !== undefined,
   });
-  useRouteLabel("/operate/receivables/[receivableId]", detail.data?.receivable.description);
+  useRouteLabel(
+    "/operate/receivables/[receivableId]",
+    access.isDenied || hasDeniedRead([detail, customer])
+      ? undefined
+      : detail.data?.receivable.description,
+  );
 
   const accessState = manageCapabilityBoundaryState(access);
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
@@ -67,17 +73,18 @@ export default function ApplyPaymentRoute() {
   return (
     <PaymentEditor
       availability={
-        read.stale
-          ? "stale"
-          : acceptsPayment(detail.data.receivable, customer.data.customer.status === "active")
-            ? "available"
-            : "unavailable"
+        !acceptsPayment(detail.data.receivable, customer.data.customer.status === "active")
+          ? "unavailable"
+          : read.stale || access.isStale
+            ? "stale"
+            : "available"
       }
       business={access.business}
       cancelHref={detailHref}
       customerName={customer.data.customer.name}
       onConfirmed={() => router.replace(detailHref)}
       onRetryRead={() => {
+        void access.refetch();
         void detail.refetch();
         void customer.refetch();
       }}

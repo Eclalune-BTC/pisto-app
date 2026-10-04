@@ -1,3 +1,4 @@
+import type { Business } from "@pisto/contracts";
 import { describe, expect, test, vi } from "vitest";
 
 vi.mock("@/lib/queries/businesses", () => ({
@@ -5,13 +6,18 @@ vi.mock("@/lib/queries/businesses", () => ({
   getActiveBusiness: () => undefined,
 }));
 
-import { type CapabilityAccess, capabilityBoundaryState } from "./access";
+import {
+  type CapabilityAccess,
+  capabilityBoundaryState,
+  manageCapabilityBoundaryState,
+} from "./access";
 
 describe("customer and receivable access recovery", () => {
   const access: CapabilityAccess = {
     business: undefined,
     canManage: false,
     canRead: false,
+    hasManagePermission: false,
     isDenied: false,
     isError: false,
     isOffline: false,
@@ -30,5 +36,20 @@ describe("customer and receivable access recovery", () => {
     expect(
       capabilityBoundaryState({ ...access, isDenied: true, isOffline: true, canRead: true }),
     ).toBe("denied");
+  });
+
+  test("keeps a command route mounted while granted access only fails to refresh", () => {
+    const stale: CapabilityAccess = {
+      ...access,
+      business: { id: "business-a" } as Business,
+      canManage: false,
+      canRead: true,
+      hasManagePermission: true,
+      isPending: false,
+      isStale: true,
+    };
+    expect(manageCapabilityBoundaryState(stale)).toBe("ready");
+    expect(manageCapabilityBoundaryState({ ...stale, hasManagePermission: false })).toBe("denied");
+    expect(manageCapabilityBoundaryState({ ...stale, isDenied: true })).toBe("denied");
   });
 });

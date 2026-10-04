@@ -1,14 +1,17 @@
 import type { VoidReceivableRequest } from "@pisto/contracts";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { firstParam } from "@/features/customers/list-params";
+import type { MenuTrigger } from "@/features/customers/overflow-action-menu";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { readState } from "@/features/customers/read-state";
 import { ScreenState } from "@/features/customers/screen-state";
+import { UncertainCommandNotice } from "@/features/customers/uncertain-command-notice";
 import { useConfirmableCommand } from "@/features/customers/use-confirmable-command";
 import { receivablesApi } from "@/features/receivables/api";
 import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-account-source";
@@ -20,6 +23,7 @@ import { ReceivableVoidDialog } from "@/features/receivables/receivable-void-dia
 import { acceptsVoid } from "@/features/receivables/rules";
 import type { AccountNameCell, ReceivableDetailLoadState } from "@/features/receivables/types";
 import { notify } from "@/lib/notify";
+import { hasDeniedRead } from "@/lib/query-state";
 
 export default function ReceivableDetailRoute() {
   const { t } = useTranslation();
@@ -29,6 +33,7 @@ export default function ReceivableDetailRoute() {
     useLocalSearchParams<{ receivableId?: string | string[] }>().receivableId,
   );
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
+  const menuTriggerRef = useRef<MenuTrigger>(null);
   const businessId = access.business?.id;
   const enabled = Boolean(access.business && access.canRead);
   const detail = useQuery({
@@ -64,7 +69,13 @@ export default function ReceivableDetailRoute() {
       notify.success(t("receivables.void.done"), { description: receivable.description });
     },
   });
-  useRouteLabel("/operate/receivables/[receivableId]", detail.data?.receivable.description);
+  // A rejected read must not leave the record's description behind in the breadcrumb.
+  useRouteLabel(
+    "/operate/receivables/[receivableId]",
+    access.isDenied || hasDeniedRead([detail, customer, ...accounts])
+      ? undefined
+      : detail.data?.receivable.description,
+  );
 
   const accessState = capabilityBoundaryState(access);
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
@@ -103,8 +114,14 @@ export default function ReceivableDetailRoute() {
   } else {
     state = { kind: read.kind === "ready" ? "error" : read.kind };
   }
-  const writable = access.canManage && !(state.kind === "ready" && state.stale);
+  const retry = () => {
+    void access.refetch();
+    void detail.refetch();
+    void customer.refetch();
+    for (const query of accounts) void query.refetch();
+  };
 
+  // Actions follow permission; a stale read blocks only the confirmation of a new command.
   return (
     <>
       <ReceivableDetailScreen
@@ -115,12 +132,17 @@ export default function ReceivableDetailRoute() {
             ? { kind: "loading" }
             : { kind: "unavailable" };
         }}
-        canManage={writable}
-        onRetry={() => {
-          void detail.refetch();
-          void customer.refetch();
-          for (const query of accounts) void query.refetch();
-        }}
+        canManage={access.hasManagePermission}
+        menuTriggerRef={menuTriggerRef}
+        notice={
+          voidCommand.state.phase === "uncertain" && !voidCommand.open ? (
+            <UncertainCommandNotice
+              message={voidCommand.state.message}
+              onResume={() => voidCommand.onOpenChange(true)}
+            />
+          ) : null
+        }
+        onRetry={retry}
         onReversePayment={(paymentId) => {
           if (!receivableId) return;
           router.push({
@@ -136,7 +158,10 @@ export default function ReceivableDetailRoute() {
         <ReceivableVoidDialog
           action={voidCommand}
           key={voidCommand.session}
+          onRetryRead={retry}
           receivable={state.receivable}
+          returnFocusRef={menuTriggerRef}
+          stale={state.stale}
         />
       ) : null}
     </>

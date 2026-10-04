@@ -9,24 +9,27 @@ import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
-import { cn } from "@/lib/cn";
 
+import { CellText } from "./cell-text";
 import { CustomerStatusBadge } from "./customer-status-badge";
-import { isPositiveAmount, type RecordFormat, useRecordFormat } from "./format";
-import type { CustomerStatusFilter } from "./list-params";
+import { type FittedColumn, fitColumns } from "./fit-columns";
+import { CUSTOMER_SEARCH_MAX_LENGTH, type CustomerStatusFilter } from "./list-params";
+import { MoneyText } from "./money-text";
 import { SearchField } from "./search-field";
 import type { CustomerBalanceCell, CustomersLoadState } from "./types";
+import { useMeasuredWidth } from "./use-measured-width";
 
 type CustomersScreenProps = {
   balanceFor: (customerId: string) => CustomerBalanceCell;
-  canManage: boolean;
+  /** Permission to create customers; it does not depend on the state of the list read. */
+  canCreate: boolean;
   onLoadMore: () => void;
   onRetry: () => void;
   onSearchChange: (query: string) => void;
@@ -34,6 +37,8 @@ type CustomersScreenProps = {
   /** The search applied to the current result; `search` is what the input holds right now. */
   query: string;
   search: string;
+  /** The typed search has not been applied yet or its result is still being read. */
+  searching: boolean;
   state: CustomersLoadState;
   status: CustomerStatusFilter;
 };
@@ -44,11 +49,9 @@ type CustomerRow = { balance: CustomerBalanceCell; customer: Customer };
 
 function BalanceAmount({
   cell,
-  format,
   overdue = false,
 }: {
   cell: CustomerBalanceCell;
-  format: RecordFormat;
   overdue?: boolean;
 }) {
   const { t } = useTranslation();
@@ -61,25 +64,22 @@ function BalanceAmount({
     );
   }
   const { balance } = cell;
-  const value = overdue ? balance.overdueMinorUnits : balance.outstandingMinorUnits;
   return (
-    <Text
-      className={cn(
-        "font-ui text-[13px] tabular-nums",
-        overdue && isPositiveAmount(value) && "text-destructive",
-      )}
-    >
-      {format.money(value, balance.currency, balance.currencyMinorUnitDigits)}
-    </Text>
+    <MoneyText
+      currency={balance.currency}
+      digits={balance.currencyMinorUnitDigits}
+      minorUnits={overdue ? balance.overdueMinorUnits : balance.outstandingMinorUnits}
+      overdue={overdue}
+    />
   );
 }
 
-function ContactValue({ value }: { value: string | null }) {
+function ContactValue({ maxWidth, value }: { maxWidth: string; value: string | null }) {
   const { t } = useTranslation();
   return value ? (
-    <Text className="text-[13px] text-muted-foreground" numberOfLines={1}>
+    <CellText className="text-muted-foreground" maxWidth={maxWidth}>
       {value}
-    </Text>
+    </CellText>
   ) : (
     <Text
       accessibilityLabel={t("customers.list.noContact")}
@@ -90,12 +90,20 @@ function ContactValue({ value }: { value: string | null }) {
   );
 }
 
-function NewCustomerLink() {
+function NewCustomerLink({ variant = "default" }: { variant?: "default" | "outline" }) {
   const { t } = useTranslation();
   return (
     <Link asChild href={NEW_CUSTOMER}>
-      <Button accessibilityRole="link">
-        <Icon as={Plus} className="text-primary-foreground" size={16} />
+      <Button
+        accessibilityRole="link"
+        size={variant === "outline" ? "sm" : "default"}
+        variant={variant}
+      >
+        <Icon
+          as={Plus}
+          className={variant === "outline" ? "text-foreground" : "text-primary-foreground"}
+          size={16}
+        />
         <Text>{t("customers.list.create")}</Text>
       </Button>
     </Link>
@@ -104,65 +112,86 @@ function NewCustomerLink() {
 
 export function CustomersScreen({
   balanceFor,
-  canManage,
+  canCreate,
   onLoadMore,
   onRetry,
   onSearchChange,
   onStatusChange,
   query,
   search,
+  searching,
   state,
   status,
 }: CustomersScreenProps) {
   const { t } = useTranslation();
-  const format = useRecordFormat();
-  const columns: DataTableColumn<CustomerRow>[] = [
+  const { onLayout, width } = useMeasuredWidth();
+  const entries: FittedColumn<CustomerRow>[] = [
     {
-      id: "name",
-      header: t("dataTable.columns.name"),
-      meta: { primary: true },
-      cell: ({ row: { original } }) => (
-        <Text className="text-[13px]" numberOfLines={1}>
-          {original.customer.name}
-        </Text>
-      ),
+      estimate: 248,
+      column: {
+        id: "name",
+        header: t("dataTable.columns.name"),
+        meta: { primary: true },
+        cell: ({ row: { original } }) => (
+          <CellText maxWidth="max-w-[14rem]">{original.customer.name}</CellText>
+        ),
+      },
     },
     {
-      id: "phone",
-      header: t("dataTable.columns.phone"),
-      cell: ({ row: { original } }) => <ContactValue value={original.customer.phone} />,
+      estimate: 134,
+      dropRank: 1,
+      column: {
+        id: "phone",
+        header: t("dataTable.columns.phone"),
+        cell: ({ row: { original } }) => (
+          <ContactValue maxWidth="max-w-[9rem]" value={original.customer.phone} />
+        ),
+      },
     },
     {
-      id: "email",
-      header: t("dataTable.columns.email"),
-      meta: { hideOnCompact: true },
-      cell: ({ row: { original } }) => <ContactValue value={original.customer.email} />,
+      estimate: 248,
+      dropRank: 0,
+      only: "table",
+      column: {
+        id: "email",
+        header: t("dataTable.columns.email"),
+        cell: ({ row: { original } }) => (
+          <ContactValue maxWidth="max-w-[14rem]" value={original.customer.email} />
+        ),
+      },
     },
-    // Every row of the active filter is active, so the column only appears when it can differ.
-    ...(status === "active"
-      ? []
-      : [
+    // A filter on one status makes the column identical on every row.
+    ...(status === "all"
+      ? [
           {
-            id: "status",
-            header: t("dataTable.columns.status"),
-            cell: ({ row: { original } }) => (
-              <CustomerStatusBadge status={original.customer.status} />
-            ),
-          } satisfies DataTableColumn<CustomerRow>,
-        ]),
+            estimate: 104,
+            column: {
+              id: "status",
+              header: t("dataTable.columns.status"),
+              cell: ({ row: { original } }) => (
+                <CustomerStatusBadge status={original.customer.status} />
+              ),
+            },
+          } satisfies FittedColumn<CustomerRow>,
+        ]
+      : []),
     {
-      id: "outstanding",
-      header: t("dataTable.columns.outstanding"),
-      meta: { align: "end" },
-      cell: ({ row: { original } }) => <BalanceAmount cell={original.balance} format={format} />,
+      estimate: 96,
+      column: {
+        id: "outstanding",
+        header: t("dataTable.columns.outstanding"),
+        meta: { align: "end" },
+        cell: ({ row: { original } }) => <BalanceAmount cell={original.balance} />,
+      },
     },
     {
-      id: "overdue",
-      header: t("customers.list.overdueColumn"),
-      meta: { align: "end" },
-      cell: ({ row: { original } }) => (
-        <BalanceAmount cell={original.balance} format={format} overdue />
-      ),
+      estimate: 96,
+      column: {
+        id: "overdue",
+        header: t("customers.list.overdueColumn"),
+        meta: { align: "end" },
+        cell: ({ row: { original } }) => <BalanceAmount cell={original.balance} overdue />,
+      },
     },
   ];
   const read = state.kind === "empty" || state.kind === "ready";
@@ -175,7 +204,7 @@ export function CustomersScreen({
   return (
     <Page>
       <PageHeader
-        actions={canManage && read ? <NewCustomerLink /> : undefined}
+        actions={canCreate && state.kind !== "denied" ? <NewCustomerLink /> : undefined}
         description={t("customers.list.description")}
         title={t("customers.list.title")}
       />
@@ -195,8 +224,10 @@ export function CustomersScreen({
           >
             <View className="min-w-0 grow basis-[220px] sm:max-w-[340px]">
               <SearchField
+                busy={searching}
                 clearLabel={t("relationships.common.clearSearch")}
                 label={t("customers.list.searchLabel")}
+                maxLength={CUSTOMER_SEARCH_MAX_LENGTH}
                 onChangeText={onSearchChange}
                 placeholder={t("customers.list.searchPlaceholder")}
                 value={search}
@@ -246,15 +277,7 @@ export function CustomersScreen({
               />
             ) : status === "active" ? (
               <EmptyState
-                action={
-                  canManage ? (
-                    <Link asChild href={NEW_CUSTOMER}>
-                      <Button accessibilityRole="link" size="sm">
-                        <Text>{t("customers.list.create")}</Text>
-                      </Button>
-                    </Link>
-                  ) : undefined
-                }
+                action={canCreate ? <NewCustomerLink variant="outline" /> : undefined}
                 description={t("customers.list.emptyDescription")}
                 icon={Users}
                 title={t("customers.list.emptyTitle")}
@@ -267,10 +290,10 @@ export function CustomersScreen({
               />
             )
           ) : (
-            <View className="gap-3">
+            <View className="gap-3" onLayout={onLayout}>
               <DataTable
                 caption={t("customers.list.title")}
-                columns={columns}
+                columns={fitColumns(entries, width)}
                 data={rows}
                 getRowHref={({ customer }): Href => ({
                   pathname: "/operate/customers/[customerId]",
@@ -281,7 +304,7 @@ export function CustomersScreen({
               {state.nextCursor ? (
                 <View className="items-center">
                   <Button
-                    label={t("customers.list.loadMore")}
+                    label={t("common.loadMore")}
                     loading={state.loadingMore}
                     onPress={onLoadMore}
                     size="sm"

@@ -1,4 +1,5 @@
 import type { Href } from "expo-router";
+import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
@@ -18,6 +19,8 @@ type ReceivableFormProps = {
   cancelHref: Href;
   currency: string;
   customer: { detail?: string; name: string } | null;
+  /** The customer control, where focus returns after the customer picker closes. */
+  customerFieldRef: RefObject<View | null>;
   /** The customer a charge was started from is still being read. */
   customerLoading: boolean;
   draft: PostReceivableDraft;
@@ -25,6 +28,8 @@ type ReceivableFormProps = {
   onChange: (field: keyof PostReceivableDraft, value: string) => void;
   onChooseCustomer: () => void;
   onReview: () => void;
+  /** Reviewing waits while the reads behind the form are stale. */
+  reviewDisabled?: boolean;
 };
 
 export function ReceivableForm({
@@ -32,12 +37,14 @@ export function ReceivableForm({
   cancelHref,
   currency,
   customer,
+  customerFieldRef,
   customerLoading,
   draft,
   errors,
   onChange,
   onChooseCustomer,
   onReview,
+  reviewDisabled = false,
 }: ReceivableFormProps) {
   const { t } = useTranslation();
   return (
@@ -53,6 +60,7 @@ export function ReceivableForm({
               ? t("receivables.list.customerLoading")
               : t("receivables.form.chooseCustomer")
           }
+          ref={customerFieldRef}
           value={customer?.name}
         />
         <Field
@@ -98,6 +106,7 @@ export function ReceivableForm({
       </Section>
       <FormActions
         cancelHref={cancelHref}
+        disabled={reviewDisabled}
         onSubmit={onReview}
         submitLabel={t("receivables.form.review")}
       />

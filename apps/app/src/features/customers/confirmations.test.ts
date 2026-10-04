@@ -80,6 +80,8 @@ function confirmable<T>(overrides: Omit<Partial<ConfirmableCommand<T>>, "confirm
   return { action, confirm };
 }
 
+const dialogContext = { onRetryRead: vi.fn(), returnFocusRef: { current: null }, stale: false };
+
 beforeEach(() => {
   captured.dialog = {};
   captured.stats = [];
@@ -88,7 +90,9 @@ beforeEach(() => {
 describe("archive confirmation", () => {
   test("is an explicit destructive confirmation that builds a fresh idempotency key", () => {
     const { action, confirm } = confirmable<ArchiveCustomerRequest>();
-    renderToStaticMarkup(createElement(CustomerArchiveDialog, { action, customerName: "Ana" }));
+    renderToStaticMarkup(
+      createElement(CustomerArchiveDialog, { ...dialogContext, action, customerName: "Ana" }),
+    );
     expect(captured.dialog).toMatchObject({
       confirmLabel: i18n.t("customers.archive.confirm"),
       destructive: true,
@@ -106,7 +110,9 @@ describe("archive confirmation", () => {
       command: { idempotencyKey: "kept" },
       state: { phase: "uncertain", message: "Connection lost" },
     });
-    renderToStaticMarkup(createElement(CustomerArchiveDialog, { action, customerName: "Ana" }));
+    renderToStaticMarkup(
+      createElement(CustomerArchiveDialog, { ...dialogContext, action, customerName: "Ana" }),
+    );
     expect(captured.dialog.confirmLabel).toBe(i18n.t("common.retrySameConfirmation"));
     expect(captured.dialog.error).toBeUndefined();
     expect(renderToStaticMarkup(captured.dialog.children)).toContain("Connection lost");
@@ -119,6 +125,7 @@ describe("archive confirmation", () => {
           state: { phase: "failed", message: "Has a balance" },
         }).action,
         customerName: "Ana",
+        ...dialogContext,
       }),
     );
     expect(captured.dialog).toMatchObject({ error: "Has a balance", pending: false });
@@ -126,16 +133,44 @@ describe("archive confirmation", () => {
       createElement(CustomerArchiveDialog, {
         action: confirmable<ArchiveCustomerRequest>({ state: { phase: "pending" } }).action,
         customerName: "Ana",
+        ...dialogContext,
       }),
     );
     expect(captured.dialog.pending).toBe(true);
+  });
+
+  test("blocks a first archive on stale data but never the retry of an uncertain one", () => {
+    renderToStaticMarkup(
+      createElement(CustomerArchiveDialog, {
+        ...dialogContext,
+        action: confirmable<ArchiveCustomerRequest>().action,
+        customerName: "Ana",
+        stale: true,
+      }),
+    );
+    expect(captured.dialog.confirmDisabled).toBe(true);
+    expect(renderToStaticMarkup(captured.dialog.children)).toContain(i18n.t("remote.stale"));
+    renderToStaticMarkup(
+      createElement(CustomerArchiveDialog, {
+        ...dialogContext,
+        action: confirmable<ArchiveCustomerRequest>({
+          command: { idempotencyKey: "kept" },
+          state: { phase: "uncertain", message: "Connection lost" },
+        }).action,
+        customerName: "Ana",
+        stale: true,
+      }),
+    );
+    expect(captured.dialog.confirmDisabled).toBe(false);
   });
 });
 
 describe("void confirmation", () => {
   test("sends nothing until a reason is written", () => {
     const { action, confirm } = confirmable<VoidReceivableRequest>();
-    renderToStaticMarkup(createElement(ReceivableVoidDialog, { action, receivable }));
+    renderToStaticMarkup(
+      createElement(ReceivableVoidDialog, { ...dialogContext, action, receivable }),
+    );
     const [reason] = elements<ComponentProps<typeof Field>>(captured.dialog.children, Field);
     expect(reason?.props.editable).toBe(true);
     captured.dialog.onConfirm?.();
@@ -147,10 +182,25 @@ describe("void confirmation", () => {
       command: { idempotencyKey: "kept", reason: "Cargo duplicado" },
       state: { phase: "uncertain", message: "Connection lost" },
     });
-    renderToStaticMarkup(createElement(ReceivableVoidDialog, { action, receivable }));
+    renderToStaticMarkup(
+      createElement(ReceivableVoidDialog, { ...dialogContext, action, receivable }),
+    );
     const [reason] = elements<ComponentProps<typeof Field>>(captured.dialog.children, Field);
     expect(reason?.props).toMatchObject({ editable: false, value: "Cargo duplicado" });
     expect(captured.dialog.confirmLabel).toBe(i18n.t("common.retrySameConfirmation"));
+  });
+
+  test("returns focus to the menu that opened it", () => {
+    const returnFocusRef = { current: { focus: vi.fn() } };
+    renderToStaticMarkup(
+      createElement(ReceivableVoidDialog, {
+        ...dialogContext,
+        action: confirmable<VoidReceivableRequest>().action,
+        receivable,
+        returnFocusRef,
+      }),
+    );
+    expect(captured.dialog.returnFocusRef).toBe(returnFocusRef);
   });
 });
 
@@ -168,6 +218,7 @@ describe("money tones", () => {
     createElement(CustomerDetailScreen, {
       canCharge: true,
       canManage: true,
+      menuTriggerRef: { current: null },
       onArchive: vi.fn(),
       onLoadMoreReceivables: vi.fn(),
       onRetry: vi.fn(),
@@ -209,8 +260,9 @@ describe("money tones", () => {
     };
     const list = (overdueMinorUnits: string) =>
       createElement(ReceivablesScreen, {
-        canManage: true,
+        canCreate: true,
         customerFilter: null,
+        customerFilterRef: { current: null },
         customerNameFor: () => ({ kind: "ready", name: "Ana" }) as const,
         filters: { state: "all" },
         onChooseCustomer: vi.fn(),
@@ -233,6 +285,7 @@ describe("money tones", () => {
       createElement(ReceivableDetailScreen, {
         accountNameFor: () => ({ kind: "unavailable" }) as const,
         canManage: true,
+        menuTriggerRef: { current: null },
         onRetry: vi.fn(),
         onReversePayment: vi.fn(),
         onVoid: vi.fn(),

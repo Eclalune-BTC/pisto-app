@@ -65,18 +65,19 @@ describe("stable query controls rendered through result transitions", () => {
   });
   const customerList = {
     balanceFor: () => ({ kind: "loading" }) as const,
-    canManage: true,
+    canCreate: true,
     onLoadMore: noop,
     onRetry: noop,
     onSearchChange: noop,
     onStatusChange: noop,
     query: "Mar",
     search: "Mar",
+    searching: false,
     status: "active",
   } as const;
 
   test.each(["loading", "error", "offline"] as const)(
-    "keeps customer search and filters available during %s without a create action",
+    "keeps customer search, filters and creation available during %s",
     (kind) => {
       const markup = renderToStaticMarkup(
         createElement(CustomersScreen, { ...customerList, state: { kind } }),
@@ -88,15 +89,16 @@ describe("stable query controls rendered through result transitions", () => {
         `aria-label="${i18n.t("customers.list.statusFilter")}: ${i18n.t("customers.list.filterActive")}"`,
       );
       expect(markup).toContain('aria-checked="true"');
-      expect(markup).not.toContain(`>${i18n.t("customers.list.create")}<`);
+      expect(markup).toContain(`>${i18n.t("customers.list.create")}<`);
     },
   );
 
   test("keeps the selected receivable filter available after its request fails", () => {
     const markup = renderToStaticMarkup(
       createElement(ReceivablesScreen, {
-        canManage: true,
+        canCreate: true,
         customerFilter: null,
+        customerFilterRef: { current: null },
         customerNameFor: () => ({ kind: "unavailable" }) as const,
         filters: { state: "overdue" },
         onChooseCustomer: noop,
@@ -111,7 +113,7 @@ describe("stable query controls rendered through result transitions", () => {
     expect(markup).toContain(
       `aria-label="${i18n.t("receivables.list.stateFilter")}: ${i18n.t("receivables.list.filterOverdue")}"`,
     );
-    expect(markup).not.toContain(`>${i18n.t("receivables.list.create")}<`);
+    expect(markup).toContain(`>${i18n.t("receivables.list.create")}<`);
   });
 
   test("does not expose customer filters or creation after a denied read", () => {

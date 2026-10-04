@@ -3,15 +3,22 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import type { Href } from "expo-router";
 import type { TFunction } from "i18next";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
+import { StaleNotice } from "@/components/remote-state";
 import { CommandReview } from "@/features/customers/command-review";
-import { commandState } from "@/features/customers/command-state";
+import {
+  commandInFlight,
+  commandState,
+  type EditorAvailability,
+} from "@/features/customers/command-state";
 import { useRecordFormat } from "@/features/customers/format";
 import { ScreenState } from "@/features/customers/screen-state";
+import { useFirstInvalidFocus } from "@/features/customers/use-first-invalid-focus";
 import { currentLocalDateTime, toDecimalString } from "@/lib/money";
 import { notify } from "@/lib/notify";
 
@@ -24,8 +31,8 @@ import { PaymentForm, type PaymentFormErrors } from "./payment-form";
 import { amountInputPlaceholder } from "./presentation";
 
 type PaymentEditorProps = {
-  /** Whether the latest read still accepts a payment; a command already under review is kept. */
-  availability: "available" | "stale" | "unavailable";
+  /** Whether the latest reads still accept a payment. */
+  availability: EditorAvailability;
   business: Business;
   cancelHref: Href;
   customerName: string;
@@ -34,14 +41,14 @@ type PaymentEditorProps = {
   receivable: Receivable;
 };
 
-function issueMessage(t: TFunction, issue: ReceivableDraftIssue | undefined) {
+function issueMessage(t: TFunction, issue: ReceivableDraftIssue | undefined, digits: number) {
   if (!issue) return undefined;
   if (issue === "cash-account") return t("receivables.validation.cashAccount");
   if (issue === "date") return t("receivables.validation.date");
   if (issue === "time") return t("receivables.validation.time");
   if (issue === "reference") return t("receivables.validation.reference");
   if (issue === "overpayment") return t("receivables.validation.overpayment");
-  return t("receivables.validation.amount");
+  return t("receivables.validation.amount", { count: digits });
 }
 
 export function PaymentEditor({
@@ -57,6 +64,8 @@ export function PaymentEditor({
   const format = useRecordFormat();
   const queryClient = useQueryClient();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const accountFieldRef = useRef<View>(null);
+  const { containerRef, focusFirstInvalid } = useFirstInvalidFocus();
   const [account, setAccount] = useState<CashAccountChoice | null>(null);
   const [draft, setDraft] = useState<PaymentDraft>(() => {
     const now = currentLocalDateTime(business.timeZone);
@@ -88,8 +97,10 @@ export function PaymentEditor({
     },
   });
   const state = commandState(t, mutation, t("receivables.payment.conflict"));
+  const stale = availability === "stale";
 
   const prepareReview = () => {
+    if (stale) return;
     const result = buildPaymentCommand(
       draft,
       account,
@@ -97,26 +108,24 @@ export function PaymentEditor({
       receivable.outstandingMinorUnits,
       Crypto.randomUUID(),
     );
+    const digits = receivable.currencyMinorUnitDigits;
     setErrors({
-      amount: issueMessage(t, result.issues.amount),
-      cashAccount: issueMessage(t, result.issues.cashAccount),
-      date: issueMessage(t, result.issues.date),
-      reference: issueMessage(t, result.issues.reference),
-      time: issueMessage(t, result.issues.time),
+      amount: issueMessage(t, result.issues.amount, digits),
+      cashAccount: issueMessage(t, result.issues.cashAccount, digits),
+      date: issueMessage(t, result.issues.date, digits),
+      reference: issueMessage(t, result.issues.reference, digits),
+      time: issueMessage(t, result.issues.time, digits),
     });
-    if (!("command" in result)) return;
+    if (!("command" in result)) {
+      focusFirstInvalid();
+      return;
+    }
     mutation.reset();
     setCommand(result.command);
   };
 
-  if (!command && availability !== "available") {
-    return (
-      <ScreenState
-        kind={availability === "stale" ? "error" : "unavailable"}
-        onRetry={onRetryRead}
-        width="form"
-      />
-    );
+  if (availability === "unavailable" && !commandInFlight(state)) {
+    return <ScreenState kind="unavailable" width="form" />;
   }
 
   return (
@@ -128,6 +137,7 @@ export function PaymentEditor({
         })}
         title={t("receivables.payment.title")}
       />
+      {stale ? <StaleNotice onRetry={onRetryRead} /> : null}
       {command && account ? (
         <CommandReview
           confirmLabel={t("receivables.payment.confirm")}
@@ -156,35 +166,40 @@ export function PaymentEditor({
             setCommand(null);
             mutation.reset();
           }}
+          stale={stale}
           state={state}
           title={t("receivables.payment.reviewTitle")}
         />
       ) : (
-        <PaymentForm
-          accountName={account?.name ?? null}
-          amountPlaceholder={amountInputPlaceholder(receivable.currencyMinorUnitDigits)}
-          cancelHref={cancelHref}
-          currency={receivable.currency}
-          draft={draft}
-          errors={errors}
-          onChange={(field, value) => {
-            setDraft((current) => ({ ...current, [field]: value }));
-            setErrors((current) => ({ ...current, [field]: undefined }));
-          }}
-          onChooseAccount={() => setPickerOpen(true)}
-          onPayInFull={() => {
-            setDraft((current) => ({
-              ...current,
-              amount: toDecimalString(
-                receivable.outstandingMinorUnits,
-                receivable.currencyMinorUnitDigits,
-              ),
-            }));
-            setErrors((current) => ({ ...current, amount: undefined }));
-          }}
-          onReview={prepareReview}
-          outstanding={money(receivable.outstandingMinorUnits)}
-        />
+        <View ref={containerRef}>
+          <PaymentForm
+            accountFieldRef={accountFieldRef}
+            accountName={account?.name ?? null}
+            amountPlaceholder={amountInputPlaceholder(receivable.currencyMinorUnitDigits)}
+            cancelHref={cancelHref}
+            currency={receivable.currency}
+            draft={draft}
+            errors={errors}
+            onChange={(field, value) => {
+              setDraft((current) => ({ ...current, [field]: value }));
+              setErrors((current) => ({ ...current, [field]: undefined }));
+            }}
+            onChooseAccount={() => setPickerOpen(true)}
+            onPayInFull={() => {
+              setDraft((current) => ({
+                ...current,
+                amount: toDecimalString(
+                  receivable.outstandingMinorUnits,
+                  receivable.currencyMinorUnitDigits,
+                ),
+              }));
+              setErrors((current) => ({ ...current, amount: undefined }));
+            }}
+            onReview={prepareReview}
+            outstanding={money(receivable.outstandingMinorUnits)}
+            reviewDisabled={stale}
+          />
+        </View>
       )}
       <CashAccountPickerDialog
         businessId={business.id}
@@ -194,6 +209,7 @@ export function PaymentEditor({
           setErrors((current) => ({ ...current, cashAccount: undefined }));
         }}
         open={pickerOpen}
+        returnFocusRef={accountFieldRef}
         selectedId={account?.id ?? null}
       />
     </Page>

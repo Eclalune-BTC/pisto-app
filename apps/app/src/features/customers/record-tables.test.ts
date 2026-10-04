@@ -45,13 +45,14 @@ const balance = {
 };
 const customerProps: ComponentProps<typeof CustomersScreen> = {
   balanceFor: () => ({ kind: "ready", balance }),
-  canManage: false,
+  canCreate: false,
   onLoadMore: noop,
   onRetry: noop,
   onSearchChange: noop,
   onStatusChange: noop,
   query: "Long",
   search: "Long",
+  searching: false,
   status: "all",
   state: { kind: "ready", items: [customer], stale: true, nextCursor: "next", loadingMore: false },
 };
@@ -92,6 +93,7 @@ const payment: ReceivablePayment = {
 const detailProps: ComponentProps<typeof ReceivableDetailScreen> = {
   accountNameFor: () => ({ kind: "ready", name: "Operating account" }),
   canManage: true,
+  menuTriggerRef: { current: null },
   onRetry: noop,
   onReversePayment: noop,
   onVoid: noop,
@@ -116,7 +118,7 @@ describe("record table presentation", () => {
     expect(markup).toContain("$12.50");
     expect(markup).toContain(i18n.t("customers.status.archived"));
     expect(markup).toContain(i18n.t("remote.stale"));
-    expect(markup).toContain(i18n.t("customers.list.loadMore"));
+    expect(markup).toContain(i18n.t("common.loadMore"));
     expect(markup).toContain('role="listitem"');
     expect(markup).toContain("/operate/customers/[customerId]");
     expect(markup).not.toContain(`>${i18n.t("customers.list.create")}<`);
@@ -158,11 +160,36 @@ describe("record table presentation", () => {
     expect(markup).not.toContain(`aria-label="${i18n.t("customers.list.statusFilter")}`);
   });
 
+  test("keeps creation in the header while the list is loading or failed", () => {
+    for (const kind of ["loading", "offline", "error"] as const) {
+      const markup = renderToStaticMarkup(
+        createElement(CustomersScreen, { ...customerProps, canCreate: true, state: { kind } }),
+      );
+      expect(markup).toContain(`>${i18n.t("customers.list.create")}<`);
+    }
+    const denied = renderToStaticMarkup(
+      createElement(CustomersScreen, {
+        ...customerProps,
+        canCreate: true,
+        state: { kind: "denied" },
+      }),
+    );
+    expect(denied).not.toContain(`>${i18n.t("customers.list.create")}<`);
+  });
+
+  test("marks a search that has not been applied yet as busy", () => {
+    const markup = renderToStaticMarkup(
+      createElement(CustomersScreen, { ...customerProps, search: "Longer", searching: true }),
+    );
+    expect(markup).toContain('aria-busy="true"');
+    expect(markup).toContain('maxLength="80"');
+  });
+
   test("distinguishes an empty search from a business without customers", () => {
     const search = renderToStaticMarkup(
       createElement(CustomersScreen, {
         ...customerProps,
-        canManage: true,
+        canCreate: true,
         state: { kind: "empty", stale: false },
       }),
     );
@@ -172,7 +199,7 @@ describe("record table presentation", () => {
     const first = renderToStaticMarkup(
       createElement(CustomersScreen, {
         ...customerProps,
-        canManage: true,
+        canCreate: true,
         query: "",
         search: "",
         state: { kind: "empty", stale: false },
@@ -238,8 +265,9 @@ describe("record table presentation", () => {
   test("keeps current business totals separate from a filtered receivable history", () => {
     const markup = renderToStaticMarkup(
       createElement(ReceivablesScreen, {
-        canManage: false,
+        canCreate: false,
         customerFilter: { kind: "ready", name: customer.name } as const,
+        customerFilterRef: { current: null },
         customerNameFor: () => ({ kind: "ready", name: customer.name }) as const,
         filters: { customerId: customer.id, state: "open" },
         onChooseCustomer: noop,
@@ -270,22 +298,26 @@ describe("record table presentation", () => {
     );
     expect(markup).toContain("$99.00");
     expect(markup).toContain("$50.00");
-    expect(markup).toContain("$25.00");
+    // A compact record leads with what is still owed, not with the original amount.
     expect(markup).toContain("$12.50");
+    expect(markup).not.toContain("$25.00");
     expect(markup).toContain(
       i18n.t("receivables.summary.position", { date: formatLocalDate(date, "es-SV") }),
     );
-    expect(markup).toContain(i18n.t("receivables.states.open"));
+    // Filtered to one customer and one state, rows name the charge and repeat neither.
+    expect(markup).toContain(receivable.description);
+    expect(markup).not.toContain(`>${i18n.t("receivables.states.open")}<`);
     expect(markup).toContain(`aria-label="${i18n.t("receivables.list.clearCustomer")}"`);
-    expect(markup).toContain(i18n.t("receivables.list.loadMore"));
+    expect(markup).toContain(i18n.t("common.loadMore"));
     expect(markup).not.toContain(`>${i18n.t("receivables.list.create")}<`);
   });
 
   test("offers clearing filters when a filtered history is empty", () => {
     const markup = renderToStaticMarkup(
       createElement(ReceivablesScreen, {
-        canManage: true,
+        canCreate: true,
         customerFilter: null,
+        customerFilterRef: { current: null },
         customerNameFor: () => ({ kind: "unavailable" }) as const,
         filters: { state: "voided" },
         onChooseCustomer: noop,

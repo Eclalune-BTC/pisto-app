@@ -17,6 +17,8 @@ type PaymentReversalFormProps = {
   errors: PaymentReversalFormErrors;
   onChange: (field: keyof PaymentReversalDraft, value: string) => void;
   onReview: () => void;
+  /** Reviewing waits while the reads behind the form are stale. */
+  reviewDisabled?: boolean;
 };
 
 export function PaymentReversalForm({
@@ -25,6 +27,7 @@ export function PaymentReversalForm({
   errors,
   onChange,
   onReview,
+  reviewDisabled = false,
 }: PaymentReversalFormProps) {
   const { t } = useTranslation();
   return (
@@ -66,6 +69,7 @@ export function PaymentReversalForm({
       <FormActions
         cancelHref={cancelHref}
         destructive
+        disabled={reviewDisabled}
         onSubmit={onReview}
         submitLabel={t("receivables.reversal.review")}
       />

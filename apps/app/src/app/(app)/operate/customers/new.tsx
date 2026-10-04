@@ -23,6 +23,7 @@ export default function NewCustomerRoute() {
 
   return (
     <CustomerEditor
+      availability={access.isStale ? "stale" : "available"}
       businessId={access.business.id}
       cancelHref="/operate/customers"
       onConfirmed={(customer) =>
@@ -31,6 +32,7 @@ export default function NewCustomerRoute() {
           params: { customerId: customer.id },
         })
       }
+      onRetryRead={() => void access.refetch()}
     />
   );
 }

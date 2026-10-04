@@ -4,11 +4,15 @@ import { View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
 
 type SearchFieldProps = {
   autoFocus?: boolean;
+  /** The typed search is still being applied; the leading icon becomes a spinner. */
+  busy?: boolean;
   clearLabel: string;
   label: string;
+  maxLength?: number;
   onChangeText: (value: string) => void;
   placeholder: string;
   value: string;
@@ -17,8 +21,10 @@ type SearchFieldProps = {
 /** A labelled search box with a leading icon and a clear action once it holds text. */
 export function SearchField({
   autoFocus,
+  busy = false,
   clearLabel,
   label,
+  maxLength,
   onChangeText,
   placeholder,
   value,
@@ -29,16 +35,22 @@ export function SearchField({
         className="absolute inset-y-0 left-2.5 z-10 justify-center"
         style={{ pointerEvents: "none" }}
       >
-        <Icon as={Search} className="text-muted-foreground" size={15} />
+        {busy ? (
+          <LoadingIndicator size="small" />
+        ) : (
+          <Icon as={Search} className="text-muted-foreground" size={15} />
+        )}
       </View>
       <Input
         accessibilityLabel={label}
+        aria-busy={busy}
         autoCapitalize="none"
         autoCorrect={false}
         autoFocus={autoFocus}
         className="pl-8 pr-9"
         enterKeyHint="search"
         inputMode="search"
+        maxLength={maxLength}
         onChangeText={onChangeText}
         placeholder={placeholder}
         role="searchbox"

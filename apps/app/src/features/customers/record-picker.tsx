@@ -1,8 +1,9 @@
 import { Check, Lock, TriangleAlert, WifiOff } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { ScrollView, View } from "react-native";
+import { Platform, ScrollView, View } from "react-native";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 
+import type { FocusReturnRef } from "./focus-return";
 import type { ReadState } from "./read-state";
 import { SearchField } from "./search-field";
 
@@ -37,7 +39,8 @@ export type RecordPickerListProps<T> = {
   onLoadMore: () => void;
   onRetry: () => void;
   onSelect: (item: T) => void;
-  renderItem: (item: T) => { detail?: string; label: string };
+  /** `tag` marks a choice that differs from the rest, such as an archived record. */
+  renderItem: (item: T) => { detail?: string; label: string; tag?: string };
   selectedKey: string | null;
   status: PickerStatus;
 };
@@ -119,12 +122,14 @@ export function RecordPickerList<T>({
           return (
             <PressableSurface
               accessibilityLabel={
-                content.detail ? `${content.label}, ${content.detail}` : undefined
+                [content.label, content.tag, content.detail].filter(Boolean).join(", ") || undefined
               }
               accessibilityRole="radio"
               accessibilityState={{ checked: selected }}
               className={cn(
-                "flex-row items-center gap-3 px-3 py-2",
+                "min-h-11 flex-row items-center gap-3 px-3 py-2",
+                // The list clips an outside focus ring, so the ring is drawn inside the option.
+                Platform.select({ web: "focus-visible:bg-accent focus-visible:-outline-offset-2" }),
                 index > 0 && "border-t border-border",
                 selected && "bg-accent",
               )}
@@ -141,6 +146,11 @@ export function RecordPickerList<T>({
                   </Text>
                 ) : null}
               </View>
+              {content.tag ? (
+                <Badge variant="outline">
+                  <Text>{content.tag}</Text>
+                </Badge>
+              ) : null}
               {selected ? <Icon as={Check} className="text-foreground" size={15} /> : null}
             </PressableSurface>
           );
@@ -166,7 +176,17 @@ type RecordPickerProps<T> = RecordPickerListProps<T> & {
   description: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
-  search?: { label: string; onChange: (value: string) => void; placeholder: string; value: string };
+  /** The control that opened the picker; focus returns to it when the picker closes. */
+  returnFocusRef?: FocusReturnRef;
+  search?: {
+    /** A typed search that is not applied yet or is still being read. */
+    busy: boolean;
+    label: string;
+    maxLength: number;
+    onChange: (value: string) => void;
+    placeholder: string;
+    value: string;
+  };
   title: string;
 };
 
@@ -175,6 +195,7 @@ export function RecordPicker<T>({
   description,
   onOpenChange,
   open,
+  returnFocusRef,
   search,
   title,
   ...list
@@ -182,7 +203,16 @@ export function RecordPicker<T>({
   const { t } = useTranslation();
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="gap-3 p-4 sm:max-w-md">
+      <DialogContent
+        // A fixed width keeps the dialog still while results narrow.
+        className="gap-3 p-4 sm:max-w-md web:w-[28rem]"
+        onCloseAutoFocus={(event) => {
+          // Opened without a trigger, the dialog would otherwise return focus to the page body.
+          if (!returnFocusRef?.current) return;
+          event.preventDefault();
+          returnFocusRef.current.focus();
+        }}
+      >
         <DialogHeader className="pr-8">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -190,8 +220,10 @@ export function RecordPicker<T>({
         {search ? (
           <SearchField
             autoFocus
+            busy={search.busy}
             clearLabel={t("relationships.common.clearSearch")}
             label={search.label}
+            maxLength={search.maxLength}
             onChangeText={search.onChange}
             placeholder={search.placeholder}
             value={search.value}

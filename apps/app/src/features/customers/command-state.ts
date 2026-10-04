@@ -14,6 +14,13 @@ export type CommandState =
 
 export type CommandAction = "confirm" | "none" | "retry" | "waiting";
 
+/**
+ * Whether the latest reads still allow a command editor to prepare and send a command. A stale
+ * read blocks new reviews and first sends; an unavailable one closes the editor unless a command
+ * may already have reached the server.
+ */
+export type EditorAvailability = "available" | "stale" | "unavailable";
+
 export function commandState(
   t: TFunction,
   mutation: { error: unknown; isPending: boolean; isSuccess: boolean },
@@ -37,6 +44,11 @@ export function commandAction(state: CommandState): CommandAction {
   if (state.phase === "uncertain") return "retry";
   if (state.phase === "pending") return "waiting";
   return "none";
+}
+
+/** The command reached or may have reached the server, so its review must stay on screen. */
+export function commandInFlight(state: CommandState): boolean {
+  return state.phase === "pending" || state.phase === "uncertain" || state.phase === "confirmed";
 }
 
 /** An uncertain outcome resends the identical command; any other confirmation builds a new one. */

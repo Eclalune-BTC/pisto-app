@@ -3,17 +3,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { type Href, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
+import { StaleNotice } from "@/components/remote-state";
 import { CommandReview } from "@/features/customers/command-review";
 import { commandState } from "@/features/customers/command-state";
 import { CustomerPickerDialog } from "@/features/customers/customer-picker";
 import { customerContact, useRecordFormat } from "@/features/customers/format";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { ScreenState } from "@/features/customers/screen-state";
+import { useFirstInvalidFocus } from "@/features/customers/use-first-invalid-focus";
 import { currentLocalDateTime } from "@/lib/money";
 import { notify } from "@/lib/notify";
 import { hasDeniedRead } from "@/lib/query-state";
@@ -28,6 +31,8 @@ import { invalidateReceivableMutation } from "./mutation-state";
 import { amountInputPlaceholder } from "./presentation";
 import { ReceivableForm, type ReceivableFormErrors } from "./receivable-form";
 
+type ChargeReview = { command: PostReceivableRequest; customerName: string };
+
 type ReceivableEditorProps = {
   business: Business;
   /** Where the charge was started from; cancelling and confirming both return there. */
@@ -35,28 +40,35 @@ type ReceivableEditorProps = {
   /** Preselects the customer a charge was started from. */
   initialCustomerId?: string;
   onConfirmed: () => void;
+  onRetryRead: () => void;
+  /** Access could not be refreshed; new reviews and first sends wait. */
+  stale: boolean;
 };
 
-function issueMessage(t: TFunction, issue: ReceivableDraftIssue | undefined) {
+function issueMessage(t: TFunction, issue: ReceivableDraftIssue | undefined, digits: number) {
   if (!issue) return undefined;
   if (issue === "customer") return t("receivables.validation.customer");
   if (issue === "description") return t("receivables.validation.description");
   if (issue === "due-date") return t("receivables.validation.dueDate");
   if (issue === "date") return t("receivables.validation.date");
-  return t("receivables.validation.amount");
+  return t("receivables.validation.amount", { count: digits });
 }
 
 export function ReceivableEditor({
   business,
   initialCustomerId,
   onConfirmed,
+  onRetryRead,
   originHref,
+  stale,
 }: ReceivableEditorProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const format = useRecordFormat();
   const queryClient = useQueryClient();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const customerFieldRef = useRef<View>(null);
+  const { containerRef, focusFirstInvalid } = useFirstInvalidFocus();
   const [picked, setPicked] = useState<Customer | null>(null);
   const [draft, setDraft] = useState<PostReceivableDraft>(() => ({
     amount: "",
@@ -65,7 +77,8 @@ export function ReceivableEditor({
     postedDate: currentLocalDateTime(business.timeZone).date,
   }));
   const [errors, setErrors] = useState<ReceivableFormErrors>({});
-  const [command, setCommand] = useState<PostReceivableRequest | null>(null);
+  // The reviewed command keeps the customer it was built for, whatever later reads return.
+  const [review, setReview] = useState<ChargeReview | null>(null);
   const initial = useQuery({
     ...customerDetailQueryOptions(business.id, initialCustomerId),
     enabled: initialCustomerId !== undefined,
@@ -87,8 +100,7 @@ export function ReceivableEditor({
           : undefined;
 
   const mutation = useMutation({
-    mutationFn: ({ command: next }: { command: PostReceivableRequest; customerName: string }) =>
-      receivablesApi.post(next),
+    mutationFn: ({ command }: ChargeReview) => receivablesApi.post(command),
     onSuccess: async ({ receivable }, { customerName }) => {
       await invalidateReceivableMutation(queryClient, {
         businessId: business.id,
@@ -119,8 +131,10 @@ export function ReceivableEditor({
   }
 
   const prepareReview = () => {
+    if (stale) return;
     if (initialUnconfirmed) {
       setErrors((current) => ({ ...current, customer: t("receivables.form.customerUnavailable") }));
+      focusFirstInvalid();
       return;
     }
     const result = buildPostReceivableCommand(
@@ -129,16 +143,20 @@ export function ReceivableEditor({
       business.currencyMinorUnitDigits,
       Crypto.randomUUID(),
     );
+    const digits = business.currencyMinorUnitDigits;
     setErrors({
-      amount: issueMessage(t, result.issues.amount),
-      customer: issueMessage(t, result.issues.customer),
-      description: issueMessage(t, result.issues.description),
-      dueDate: issueMessage(t, result.issues.dueDate),
-      postedDate: issueMessage(t, result.issues.postedDate),
+      amount: issueMessage(t, result.issues.amount, digits),
+      customer: issueMessage(t, result.issues.customer, digits),
+      description: issueMessage(t, result.issues.description, digits),
+      dueDate: issueMessage(t, result.issues.dueDate, digits),
+      postedDate: issueMessage(t, result.issues.postedDate, digits),
     });
-    if (!("command" in result)) return;
+    if (!("command" in result) || !customer) {
+      focusFirstInvalid();
+      return;
+    }
     mutation.reset();
-    setCommand(result.command);
+    setReview({ command: result.command, customerName: customer.name });
   };
 
   if (hasDeniedRead([initial])) return <ScreenState kind="denied" width="form" />;
@@ -149,64 +167,70 @@ export function ReceivableEditor({
         description={t("receivables.form.pageDescription")}
         title={t("receivables.form.title")}
       />
-      {command && customer ? (
+      {stale ? <StaleNotice onRetry={onRetryRead} /> : null}
+      {review ? (
         <CommandReview
           confirmLabel={t("receivables.form.confirm")}
           description={t("receivables.form.reviewDescription")}
           items={[
-            { label: t("receivables.form.customer"), value: customer.name },
+            { label: t("receivables.form.customer"), value: review.customerName },
             {
               label: t("receivables.form.amount"),
               numeric: true,
               value: format.money(
-                command.originalMinorUnits,
+                review.command.originalMinorUnits,
                 business.currency,
                 business.currencyMinorUnitDigits,
               ),
             },
-            { label: t("receivables.form.descriptionLabel"), value: command.description },
+            { label: t("receivables.form.descriptionLabel"), value: review.command.description },
             {
               label: t("receivables.form.postedDate"),
               numeric: true,
-              value: format.date(command.postedDate),
+              value: format.date(review.command.postedDate),
             },
             {
               label: t("receivables.form.dueDate"),
-              numeric: Boolean(command.dueDate),
-              value: command.dueDate
-                ? format.date(command.dueDate)
+              numeric: Boolean(review.command.dueDate),
+              value: review.command.dueDate
+                ? format.date(review.command.dueDate)
                 : t("receivables.list.noDueDate"),
             },
           ]}
-          onConfirm={() => mutation.mutate({ command, customerName: customer.name })}
+          onConfirm={() => mutation.mutate(review)}
           onEdit={() => {
-            setCommand(null);
+            setReview(null);
             mutation.reset();
           }}
+          stale={stale}
           state={state}
           title={t("receivables.form.reviewTitle")}
         />
       ) : (
-        <ReceivableForm
-          amountPlaceholder={amountInputPlaceholder(business.currencyMinorUnitDigits)}
-          cancelHref={originHref}
-          currency={business.currency}
-          customer={customer ? { detail: customerContact(customer), name: customer.name } : null}
-          customerLoading={
-            picked === null &&
-            initialCustomerId !== undefined &&
-            initial.isPending &&
-            initial.fetchStatus !== "paused"
-          }
-          draft={draft}
-          errors={{ ...errors, customer: errors.customer ?? customerNotice }}
-          onChange={(field, value) => {
-            setDraft((current) => ({ ...current, [field]: value }));
-            setErrors((current) => ({ ...current, [field]: undefined }));
-          }}
-          onChooseCustomer={() => setPickerOpen(true)}
-          onReview={prepareReview}
-        />
+        <View ref={containerRef}>
+          <ReceivableForm
+            amountPlaceholder={amountInputPlaceholder(business.currencyMinorUnitDigits)}
+            cancelHref={originHref}
+            currency={business.currency}
+            customer={customer ? { detail: customerContact(customer), name: customer.name } : null}
+            customerFieldRef={customerFieldRef}
+            customerLoading={
+              picked === null &&
+              initialCustomerId !== undefined &&
+              initial.isPending &&
+              initial.fetchStatus !== "paused"
+            }
+            draft={draft}
+            errors={{ ...errors, customer: errors.customer ?? customerNotice }}
+            onChange={(field, value) => {
+              setDraft((current) => ({ ...current, [field]: value }));
+              setErrors((current) => ({ ...current, [field]: undefined }));
+            }}
+            onChooseCustomer={() => setPickerOpen(true)}
+            onReview={prepareReview}
+            reviewDisabled={stale}
+          />
+        </View>
       )}
       <CustomerPickerDialog
         businessId={business.id}
@@ -216,6 +240,7 @@ export function ReceivableEditor({
           setErrors((current) => ({ ...current, customer: undefined }));
         }}
         open={pickerOpen}
+        returnFocusRef={customerFieldRef}
         selectedId={customer?.id ?? null}
         status="active"
       />

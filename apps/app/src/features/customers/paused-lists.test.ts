@@ -11,7 +11,7 @@ const setup = vi.hoisted(() => ({
   customerFilters: [] as unknown[],
   receivableFilters: [] as unknown[],
   screen: {} as Record<string, unknown> & {
-    canManage: boolean;
+    canCreate: boolean;
     state: { kind: string; stale?: boolean };
   },
 }));
@@ -36,6 +36,7 @@ vi.mock("@/features/customers/access", () => ({
     business: { id: "business-a" },
     canManage: true,
     canRead: true,
+    hasManagePermission: true,
     isStale: false,
     refetch: vi.fn(),
   }),
@@ -103,17 +104,18 @@ describe("customer and receivable lists with cached reads", () => {
     (Route) => {
       renderToStaticMarkup(createElement(Route));
       expect(setup.screen.state).toMatchObject({ kind: "ready", stale: false });
-      expect(setup.screen.canManage).toBe(true);
+      expect(setup.screen.canCreate).toBe(true);
     },
   );
 
+  // Creation follows permission; the command route itself waits for fresh reads.
   test.each([CustomersRoute, ReceivablesRoute])(
-    "%s labels a paused cached list stale and disables management actions",
+    "%s labels a paused cached list stale and keeps creation by permission",
     (Route) => {
       setup.list.fetchStatus = "paused";
       renderToStaticMarkup(createElement(Route));
       expect(setup.screen.state).toMatchObject({ kind: "ready", stale: true });
-      expect(setup.screen.canManage).toBe(false);
+      expect(setup.screen.canCreate).toBe(true);
     },
   );
 
@@ -123,15 +125,25 @@ describe("customer and receivable lists with cached reads", () => {
       setup[dependency].fetchStatus = "paused";
       renderToStaticMarkup(createElement(ReceivablesRoute));
       expect(setup.screen.state).toMatchObject({ kind: "ready", stale: true });
-      expect(setup.screen.canManage).toBe(false);
     },
   );
 
-  test("keeps unavailable customer metadata read-only even without a cached name", () => {
+  test("marks receivables stale when a customer name is unavailable even without a cache", () => {
     setup.customer = { ...cached(undefined), fetchStatus: "paused", isPending: true };
     renderToStaticMarkup(createElement(ReceivablesRoute));
     expect(setup.screen.state).toMatchObject({ kind: "ready", stale: true });
-    expect(setup.screen.canManage).toBe(false);
+  });
+
+  test("a filter customer that does not exist is not a stale read", () => {
+    setup.params = { customerId };
+    setup.customer = {
+      ...cached(undefined),
+      error: new ApiClientError("Missing", 404, "NOT_FOUND"),
+      isError: true,
+    };
+    renderToStaticMarkup(createElement(ReceivablesRoute));
+    expect(setup.screen.state).toMatchObject({ kind: "ready", stale: false });
+    expect(setup.screen.customerFilter).toEqual({ kind: "unavailable" });
   });
 
   test.each([CustomersRoute, ReceivablesRoute])(

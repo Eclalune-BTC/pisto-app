@@ -1,4 +1,5 @@
 import type { Href } from "expo-router";
+import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
@@ -15,6 +16,8 @@ import type { PaymentDraft } from "./draft";
 export type PaymentFormErrors = Partial<Record<keyof PaymentDraft | "cashAccount", string>>;
 
 type PaymentFormProps = {
+  /** The account control, where focus returns after the account picker closes. */
+  accountFieldRef: RefObject<View | null>;
   accountName: string | null;
   amountPlaceholder: string;
   cancelHref: Href;
@@ -27,9 +30,12 @@ type PaymentFormProps = {
   onChooseAccount: () => void;
   onPayInFull: () => void;
   onReview: () => void;
+  /** Reviewing waits while the reads behind the form are stale. */
+  reviewDisabled?: boolean;
 };
 
 export function PaymentForm({
+  accountFieldRef,
   accountName,
   amountPlaceholder,
   cancelHref,
@@ -41,6 +47,7 @@ export function PaymentForm({
   onPayInFull,
   onReview,
   outstanding,
+  reviewDisabled = false,
 }: PaymentFormProps) {
   const { t } = useTranslation();
   return (
@@ -60,11 +67,11 @@ export function PaymentForm({
             value={draft.amount}
           />
           <Button
-            className="self-start px-1"
+            className="self-start"
             label={t("receivables.payment.payInFull", { amount: outstanding })}
             onPress={onPayInFull}
             size="sm"
-            variant="ghost"
+            variant="outline"
           />
         </View>
         <PickerField
@@ -72,6 +79,7 @@ export function PaymentForm({
           label={t("receivables.payment.account")}
           onPress={onChooseAccount}
           placeholder={t("receivables.payment.chooseAccount")}
+          ref={accountFieldRef}
           value={accountName ?? undefined}
         />
       </Section>
@@ -111,6 +119,7 @@ export function PaymentForm({
       </Section>
       <FormActions
         cancelHref={cancelHref}
+        disabled={reviewDisabled}
         onSubmit={onReview}
         submitLabel={t("receivables.payment.review")}
       />

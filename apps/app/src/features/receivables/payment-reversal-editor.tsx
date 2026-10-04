@@ -9,15 +9,22 @@ import type { Href } from "expo-router";
 import type { TFunction } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 
 import { DescriptionList } from "@/components/layout/description-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
+import { StaleNotice } from "@/components/remote-state";
 import { CommandReview } from "@/features/customers/command-review";
-import { commandState } from "@/features/customers/command-state";
+import {
+  commandInFlight,
+  commandState,
+  type EditorAvailability,
+} from "@/features/customers/command-state";
 import { useRecordFormat } from "@/features/customers/format";
 import { ScreenState } from "@/features/customers/screen-state";
+import { useFirstInvalidFocus } from "@/features/customers/use-first-invalid-focus";
 import { currentLocalDateTime } from "@/lib/money";
 import { notify } from "@/lib/notify";
 
@@ -32,8 +39,8 @@ import { PaymentReversalForm, type PaymentReversalFormErrors } from "./payment-r
 
 type PaymentReversalEditorProps = {
   accountName: string;
-  /** Whether the latest read still accepts a reversal; a command already under review is kept. */
-  availability: "available" | "stale" | "unavailable";
+  /** Whether the latest reads still accept a reversal. */
+  availability: EditorAvailability;
   business: Business;
   cancelHref: Href;
   onConfirmed: () => void;
@@ -65,6 +72,7 @@ export function PaymentReversalEditor({
     return { date: now.date, reference: "", time: now.time };
   });
   const [errors, setErrors] = useState<PaymentReversalFormErrors>({});
+  const { containerRef, focusFirstInvalid } = useFirstInvalidFocus();
   const [command, setCommand] = useState<ReverseReceivablePaymentRequest | null>(null);
   const amount = format.money(
     payment.amountMinorUnits,
@@ -86,15 +94,20 @@ export function PaymentReversalEditor({
     },
   });
   const state = commandState(t, mutation, t("receivables.reversal.conflict"));
+  const stale = availability === "stale";
 
   const prepareReview = () => {
+    if (stale) return;
     const result = buildPaymentReversalCommand(draft, Crypto.randomUUID());
     setErrors({
       date: issueMessage(t, result.issues.date),
       reference: issueMessage(t, result.issues.reference),
       time: issueMessage(t, result.issues.time),
     });
-    if (!("command" in result)) return;
+    if (!("command" in result)) {
+      focusFirstInvalid();
+      return;
+    }
     mutation.reset();
     setCommand(result.command);
   };
@@ -115,14 +128,8 @@ export function PaymentReversalEditor({
       : []),
   ];
 
-  if (!command && availability !== "available") {
-    return (
-      <ScreenState
-        kind={availability === "stale" ? "error" : "unavailable"}
-        onRetry={onRetryRead}
-        width="form"
-      />
-    );
+  if (availability === "unavailable" && !commandInFlight(state)) {
+    return <ScreenState kind="unavailable" width="form" />;
   }
 
   return (
@@ -131,13 +138,16 @@ export function PaymentReversalEditor({
         description={t("receivables.reversal.description")}
         title={t("receivables.reversal.title")}
       />
+      {stale ? <StaleNotice onRetry={onRetryRead} /> : null}
+      <Section title={t("receivables.reversal.originalSection")}>
+        <DescriptionList items={original} />
+      </Section>
       {command ? (
         <CommandReview
           confirmLabel={t("receivables.reversal.confirm")}
-          description={t("receivables.reversal.reviewDescription")}
+          description={t("receivables.reversal.reviewDescription", { amount })}
           destructive
           items={[
-            ...original,
             {
               label: t("receivables.reversal.occurred"),
               numeric: true,
@@ -155,14 +165,12 @@ export function PaymentReversalEditor({
             setCommand(null);
             mutation.reset();
           }}
+          stale={stale}
           state={state}
           title={t("receivables.reversal.reviewTitle")}
         />
       ) : (
-        <>
-          <Section title={t("receivables.reversal.originalSection")}>
-            <DescriptionList items={original} />
-          </Section>
+        <View ref={containerRef}>
           <PaymentReversalForm
             cancelHref={cancelHref}
             draft={draft}
@@ -172,8 +180,9 @@ export function PaymentReversalEditor({
               setErrors((current) => ({ ...current, [field]: undefined }));
             }}
             onReview={prepareReview}
+            reviewDisabled={stale}
           />
-        </>
+        </View>
       )}
     </Page>
   );

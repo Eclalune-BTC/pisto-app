@@ -1,5 +1,5 @@
 import type { Href } from "expo-router";
-import { CircleAlert } from "lucide-react-native";
+import { Info } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
@@ -18,6 +18,8 @@ type CustomerFormProps = {
   formError?: string;
   onChange: (field: keyof CustomerDraftValues, value: string) => void;
   onSubmit: () => void;
+  /** Reviewing waits while the reads behind the form are stale. */
+  reviewDisabled?: boolean;
   values: CustomerDraftValues;
 };
 
@@ -27,6 +29,7 @@ export function CustomerForm({
   formError,
   onChange,
   onSubmit,
+  reviewDisabled = false,
   values,
 }: CustomerFormProps) {
   const { t } = useTranslation();
@@ -52,7 +55,7 @@ export function CustomerForm({
             <Field
               error={errors.phone}
               keyboardType="phone-pad"
-              label={t("customers.form.phone")}
+              label={t("customers.fields.phone")}
               maxLength={40}
               onChangeText={(value) => onChange("phone", value)}
               placeholder={t("customers.form.phonePlaceholder")}
@@ -65,7 +68,7 @@ export function CustomerForm({
               autoCorrect={false}
               error={errors.email}
               keyboardType="email-address"
-              label={t("customers.form.email")}
+              label={t("customers.fields.email")}
               maxLength={254}
               onChangeText={(value) => onChange("email", value)}
               placeholder={t("customers.form.emailPlaceholder")}
@@ -75,7 +78,7 @@ export function CustomerForm({
         </View>
         <Field
           error={errors.notes}
-          label={t("customers.form.notes")}
+          label={t("customers.fields.notes")}
           maxLength={1000}
           multiline
           onChangeText={(value) => onChange("notes", value)}
@@ -84,12 +87,13 @@ export function CustomerForm({
         />
       </Section>
       {formError ? (
-        <Alert icon={CircleAlert} variant="destructive">
+        <Alert icon={Info}>
           <AlertDescription>{formError}</AlertDescription>
         </Alert>
       ) : null}
       <FormActions
         cancelHref={cancelHref}
+        disabled={reviewDisabled}
         onSubmit={onSubmit}
         submitLabel={t("customers.form.review")}
       />

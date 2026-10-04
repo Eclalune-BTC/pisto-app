@@ -5,9 +5,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { DescriptionList } from "@/components/layout/description-list";
+import { StaleNotice } from "@/components/remote-state";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Field } from "@/components/ui/field";
 import { ConfirmCommandDialog } from "@/features/customers/confirm-command-dialog";
+import type { FocusReturnRef } from "@/features/customers/focus-return";
 import { useRecordFormat } from "@/features/customers/format";
 import type { ConfirmableCommand } from "@/features/customers/use-confirmable-command";
 
@@ -19,10 +21,17 @@ import { buildVoidReceivableCommand } from "./draft";
  */
 export function ReceivableVoidDialog({
   action,
+  onRetryRead,
   receivable,
+  returnFocusRef,
+  stale,
 }: {
   action: ConfirmableCommand<VoidReceivableRequest>;
+  onRetryRead: () => void;
   receivable: Receivable;
+  returnFocusRef: FocusReturnRef;
+  /** The receivable could not be refreshed; only an uncertain void may be resent meanwhile. */
+  stale: boolean;
 }) {
   const { t } = useTranslation();
   const format = useRecordFormat();
@@ -30,10 +39,12 @@ export function ReceivableVoidDialog({
   const [reasonError, setReasonError] = useState<string>();
   const { state } = action;
   const locked = state.phase === "uncertain" || state.phase === "pending";
+  const blocked = stale && state.phase !== "uncertain";
 
   return (
     <ConfirmCommandDialog
       cancelLabel={t("common.cancel")}
+      confirmDisabled={blocked}
       confirmLabel={
         state.phase === "uncertain"
           ? t("common.retrySameConfirmation")
@@ -52,8 +63,10 @@ export function ReceivableVoidDialog({
       onOpenChange={action.onOpenChange}
       open={action.open}
       pending={state.phase === "pending"}
+      returnFocusRef={returnFocusRef}
       title={t("receivables.void.title")}
     >
+      {blocked ? <StaleNotice onRetry={onRetryRead} /> : null}
       <DescriptionList
         items={[
           { label: t("receivables.void.charge"), value: receivable.description },

@@ -10,8 +10,9 @@ import {
   UserRound,
   X,
 } from "lucide-react-native";
+import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { ContentSkeleton } from "@/components/layout/skeletons";
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { Icon } from "@/components/ui/icon";
+import { SelectField } from "@/components/ui/select-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
@@ -32,9 +34,12 @@ import { type CustomerNameCell, ReceivablesTable } from "./receivables-table";
 import type { ReceivablesLoadState } from "./types";
 
 type ReceivablesScreenProps = {
-  canManage: boolean;
+  /** Permission to post receivables; it does not depend on the state of the list read. */
+  canCreate: boolean;
   /** The customer the list is filtered by, when there is one. */
   customerFilter: CustomerNameCell | null;
+  /** The customer filter control, where focus returns after the customer picker closes. */
+  customerFilterRef: RefObject<View | null>;
   customerNameFor: (customerId: string) => CustomerNameCell;
   filters: ReceivableListParams;
   onChooseCustomer: () => void;
@@ -47,6 +52,9 @@ type ReceivablesScreenProps = {
 };
 
 const NEW_RECEIVABLE: Href = "/operate/receivables/new";
+
+/** Below this window width the five state options no longer fit on one segmented row. */
+const SEGMENTED_FILTER_MIN_WIDTH = 520;
 
 function PositionStats({ summary }: { summary: ReceivablesSummary }) {
   const { t } = useTranslation();
@@ -97,15 +105,17 @@ function CustomerFilter({
   customer,
   onChoose,
   onClear,
+  triggerRef,
 }: {
   customer: CustomerNameCell | null;
   onChoose: () => void;
   onClear: () => void;
+  triggerRef: RefObject<View | null>;
 }) {
   const { t } = useTranslation();
   if (!customer) {
     return (
-      <Button onPress={onChoose} variant="outline">
+      <Button onPress={onChoose} ref={triggerRef} variant="outline">
         <Icon as={UserRound} className="text-muted-foreground" size={14} />
         <Text>{t("receivables.list.allCustomers")}</Text>
         <Icon as={ChevronDown} className="text-muted-foreground" size={14} />
@@ -124,6 +134,7 @@ function CustomerFilter({
         accessibilityLabel={t("receivables.list.changeCustomer", { name })}
         className="max-w-[260px]"
         onPress={onChoose}
+        ref={triggerRef}
         variant="outline"
       >
         <Icon as={UserRound} className="text-muted-foreground" size={14} />
@@ -141,9 +152,30 @@ function CustomerFilter({
   );
 }
 
+function NewReceivableLink({ variant = "default" }: { variant?: "default" | "outline" }) {
+  const { t } = useTranslation();
+  return (
+    <Link asChild href={NEW_RECEIVABLE}>
+      <Button
+        accessibilityRole="link"
+        size={variant === "outline" ? "sm" : "default"}
+        variant={variant}
+      >
+        <Icon
+          as={Plus}
+          className={variant === "outline" ? "text-foreground" : "text-primary-foreground"}
+          size={16}
+        />
+        <Text>{t("receivables.list.create")}</Text>
+      </Button>
+    </Link>
+  );
+}
+
 export function ReceivablesScreen({
-  canManage,
+  canCreate,
   customerFilter,
+  customerFilterRef,
   customerNameFor,
   filters,
   onChooseCustomer,
@@ -155,22 +187,21 @@ export function ReceivablesScreen({
   state,
 }: ReceivablesScreenProps) {
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
   const read = state.kind === "empty" || state.kind === "ready";
   const filtered = filters.state !== "all" || filters.customerId !== undefined;
+  const stateOptions = [
+    { value: "all", label: t("receivables.list.filterAll") },
+    { value: "open", label: t("receivables.list.filterOpen") },
+    { value: "overdue", label: t("receivables.list.filterOverdue") },
+    { value: "paid", label: t("receivables.list.filterPaid") },
+    { value: "voided", label: t("receivables.list.filterVoided") },
+  ] as const;
 
   return (
     <Page>
       <PageHeader
-        actions={
-          canManage && read ? (
-            <Link asChild href={NEW_RECEIVABLE}>
-              <Button accessibilityRole="link">
-                <Icon as={Plus} className="text-primary-foreground" size={16} />
-                <Text>{t("receivables.list.create")}</Text>
-              </Button>
-            </Link>
-          ) : undefined
-        }
+        actions={canCreate && state.kind !== "denied" ? <NewReceivableLink /> : undefined}
         description={t("receivables.list.description")}
         title={t("receivables.list.title")}
       />
@@ -190,25 +221,32 @@ export function ReceivablesScreen({
           ) : null}
           <View
             accessibilityLabel={t("receivables.list.filters")}
-            className="flex-row flex-wrap items-center gap-2"
+            className="flex-row flex-wrap items-end gap-2"
             role="toolbar"
           >
-            <FilterBar
-              label={t("receivables.list.stateFilter")}
-              onChange={onStateChange}
-              options={[
-                { value: "all", label: t("receivables.list.filterAll") },
-                { value: "open", label: t("receivables.list.filterOpen") },
-                { value: "overdue", label: t("receivables.list.filterOverdue") },
-                { value: "paid", label: t("receivables.list.filterPaid") },
-                { value: "voided", label: t("receivables.list.filterVoided") },
-              ]}
-              value={filters.state}
-            />
+            {/* A server render has no window yet and keeps the segmented control. */}
+            {width > 0 && width < SEGMENTED_FILTER_MIN_WIDTH ? (
+              <View className="min-w-0 basis-full">
+                <SelectField
+                  label={t("receivables.list.stateFilter")}
+                  onChange={onStateChange}
+                  options={stateOptions}
+                  value={filters.state}
+                />
+              </View>
+            ) : (
+              <FilterBar
+                label={t("receivables.list.stateFilter")}
+                onChange={onStateChange}
+                options={stateOptions}
+                value={filters.state}
+              />
+            )}
             <CustomerFilter
               customer={customerFilter}
               onChoose={onChooseCustomer}
               onClear={onClearCustomer}
+              triggerRef={customerFilterRef}
             />
           </View>
           {read && state.stale ? <StaleNotice onRetry={onRetry} /> : null}
@@ -244,15 +282,7 @@ export function ReceivablesScreen({
               />
             ) : (
               <EmptyState
-                action={
-                  canManage ? (
-                    <Link asChild href={NEW_RECEIVABLE}>
-                      <Button accessibilityRole="link" size="sm">
-                        <Text>{t("receivables.list.create")}</Text>
-                      </Button>
-                    </Link>
-                  ) : undefined
-                }
+                action={canCreate ? <NewReceivableLink variant="outline" /> : undefined}
                 description={t("receivables.list.emptyDescription")}
                 icon={ReceiptText}
                 title={t("receivables.list.emptyTitle")}
@@ -262,13 +292,15 @@ export function ReceivablesScreen({
             <View className="gap-3">
               <ReceivablesTable
                 caption={t("receivables.list.title")}
-                customerNameFor={customerNameFor}
+                // A list of one customer's receivables does not repeat the customer on every row.
+                customerNameFor={filters.customerId ? undefined : customerNameFor}
                 items={state.items}
+                showState={filters.state === "all"}
               />
               {state.nextCursor ? (
                 <View className="items-center">
                   <Button
-                    label={t("receivables.list.loadMore")}
+                    label={t("common.loadMore")}
                     loading={state.loadingMore}
                     onPress={onLoadMore}
                     size="sm"

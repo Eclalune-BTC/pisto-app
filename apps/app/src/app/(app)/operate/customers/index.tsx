@@ -83,20 +83,24 @@ export default function CustomersRoute() {
       ? { kind: "loading" }
       : { kind: "unavailable" };
   };
-  const stale = (state.kind === "ready" || state.kind === "empty") && state.stale;
 
   return (
     <CustomersScreen
       balanceFor={balanceFor}
-      canManage={access.canManage && !stale}
+      canCreate={access.hasManagePermission}
       onLoadMore={() => void customers.fetchNextPage()}
-      onRetry={() => void customers.refetch()}
+      onRetry={() => {
+        void access.refetch();
+        void customers.refetch();
+        for (const balance of balances) void balance.refetch();
+      }}
       onSearchChange={setSearch}
       onStatusChange={(status) =>
         router.setParams(customerListSearchParams({ query: filters.query, status }))
       }
       query={filters.query}
       search={search}
+      searching={search.trim() !== filters.query}
       state={state}
       status={filters.status}
     />

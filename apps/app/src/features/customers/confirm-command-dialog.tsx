@@ -14,9 +14,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 
+import type { FocusReturnRef } from "./focus-return";
+
 type ConfirmCommandDialogProps = {
   cancelLabel: string;
   children?: ReactNode;
+  /** Blocks the confirmation, for example while the reads behind it are stale. */
+  confirmDisabled?: boolean;
   confirmLabel: string;
   description: string;
   destructive?: boolean;
@@ -25,6 +29,8 @@ type ConfirmCommandDialogProps = {
   onOpenChange: (open: boolean) => void;
   open: boolean;
   pending: boolean;
+  /** The control that opened the dialog; focus returns to it when the dialog closes. */
+  returnFocusRef?: FocusReturnRef;
   title: string;
 };
 
@@ -36,6 +42,7 @@ type ConfirmCommandDialogProps = {
 export function ConfirmCommandDialog({
   cancelLabel,
   children,
+  confirmDisabled = false,
   confirmLabel,
   description,
   destructive = false,
@@ -44,11 +51,20 @@ export function ConfirmCommandDialog({
   onOpenChange,
   open,
   pending,
+  returnFocusRef,
   title,
 }: ConfirmCommandDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={(next) => (pending ? undefined : onOpenChange(next))}>
-      <AlertDialogContent className="web:max-w-md">
+      <AlertDialogContent
+        className="web:max-w-md"
+        onCloseAutoFocus={(event) => {
+          // Opened from a menu that is already gone, the dialog would return focus to the body.
+          if (!returnFocusRef?.current) return;
+          event.preventDefault();
+          returnFocusRef.current.focus();
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
@@ -64,6 +80,7 @@ export function ConfirmCommandDialog({
             <Text>{cancelLabel}</Text>
           </AlertDialogCancel>
           <Button
+            disabled={confirmDisabled}
             label={confirmLabel}
             loading={pending}
             onPress={onConfirm}

@@ -8,8 +8,11 @@ export type AccessState = "denied" | "error" | "loading" | "offline" | "ready";
 
 export type CapabilityAccess = {
   business: Business | undefined;
+  /** Management is granted and confirmed by a fresh read; new commands require it. */
   canManage: boolean;
   canRead: boolean;
+  /** Management is granted by the last read, even if refreshing it failed. */
+  hasManagePermission: boolean;
   isDenied: boolean;
   isError: boolean;
   isOffline: boolean;
@@ -33,15 +36,13 @@ export function useCapabilityAccess(
   const business = getActiveBusiness(businesses.data);
   const hasReadPermission = resolveBusinessPermission(business, readPermission);
   const isDenied = isAccessDeniedError(businesses.error);
+  const hasManagePermission = !isDenied && resolveBusinessPermission(business, managePermission);
 
   return {
     business,
-    canManage:
-      !isDenied &&
-      !businesses.isError &&
-      businesses.fetchStatus !== "paused" &&
-      resolveBusinessPermission(business, managePermission),
+    canManage: hasManagePermission && !businesses.isError && businesses.fetchStatus !== "paused",
     canRead: !isDenied && hasReadPermission,
+    hasManagePermission,
     isDenied,
     isError: businesses.isError && !businesses.data,
     isOffline: businesses.fetchStatus === "paused" && !businesses.data,
@@ -61,8 +62,12 @@ export function capabilityBoundaryState(access: CapabilityAccess): AccessState {
   return "ready";
 }
 
+/**
+ * A command route stays mounted while its access read is only stale, so a reviewed or uncertain
+ * command is never discarded by a failed refresh; the route itself blocks new commands meanwhile.
+ */
 export function manageCapabilityBoundaryState(access: CapabilityAccess): AccessState {
   const state = capabilityBoundaryState(access);
   if (state !== "ready") return state;
-  return access.business && !access.canManage ? "denied" : "ready";
+  return access.business && !access.hasManagePermission ? "denied" : "ready";
 }

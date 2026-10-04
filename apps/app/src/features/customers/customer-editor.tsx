@@ -15,12 +15,13 @@ import { View } from "react-native";
 import type { DescriptionItem } from "@/components/layout/description-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
+import { StaleNotice } from "@/components/remote-state";
 import { Text } from "@/components/ui/text";
 import { notify } from "@/lib/notify";
 
 import { customersApi } from "./api";
 import { CommandReview } from "./command-review";
-import { commandState } from "./command-state";
+import { commandInFlight, commandState, type EditorAvailability } from "./command-state";
 import { CustomerForm, type CustomerFormErrors } from "./customer-form";
 import {
   buildCreateCustomerCommand,
@@ -30,15 +31,19 @@ import {
   customerValues,
 } from "./draft";
 import { customerQueryKeys } from "./queries";
+import { ScreenState } from "./screen-state";
+import { useFirstInvalidFocus } from "./use-first-invalid-focus";
 
 type CustomerCommand = CreateCustomerRequest | UpdateCustomerRequest;
 
 type CustomerEditorProps = {
+  availability: EditorAvailability;
   businessId: string;
   cancelHref: Href;
   /** Present when editing; a new customer starts from empty values. */
   customer?: Customer;
   onConfirmed: (customer: Customer) => void;
+  onRetryRead: () => void;
 };
 
 function fieldErrors(t: TFunction, issues: CustomerDraftIssues): CustomerFormErrors {
@@ -90,10 +95,12 @@ function reviewItems(
 }
 
 export function CustomerEditor({
+  availability,
   businessId,
   cancelHref,
   customer,
   onConfirmed,
+  onRetryRead,
 }: CustomerEditorProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -101,7 +108,11 @@ export function CustomerEditor({
   const [values, setValues] = useState<CustomerDraftValues>(() => customerValues(customer));
   const [errors, setErrors] = useState<CustomerFormErrors>({});
   const [formError, setFormError] = useState<string>();
-  const [command, setCommand] = useState<CustomerCommand | null>(null);
+  const { containerRef, focusFirstInvalid } = useFirstInvalidFocus();
+  // An edit is reviewed against the record it was prepared from, not a later refetch.
+  const [review, setReview] = useState<{ command: CustomerCommand; previous?: Customer } | null>(
+    null,
+  );
 
   const mutation = useMutation({
     mutationFn: (next: CustomerCommand): Promise<CustomerResponse["data"]> =>
@@ -117,18 +128,27 @@ export function CustomerEditor({
     },
   });
   const state = commandState(t, mutation, editing ? t("customers.editor.conflict") : undefined);
+  const stale = availability === "stale";
 
   const prepareReview = () => {
+    if (stale) return;
     const idempotencyKey = Crypto.randomUUID();
     const result = customer
       ? buildUpdateCustomerCommand(customer, values, idempotencyKey)
       : buildCreateCustomerCommand(values, idempotencyKey);
     setErrors(fieldErrors(t, result.issues));
     setFormError(result.issues.form === "no-changes" ? t("customers.editor.noChanges") : undefined);
-    if (!("command" in result)) return;
+    if (!("command" in result)) {
+      focusFirstInvalid();
+      return;
+    }
     mutation.reset();
-    setCommand(result.command as CustomerCommand);
+    setReview({ command: result.command as CustomerCommand, previous: customer });
   };
+
+  if (availability === "unavailable" && !commandInFlight(state)) {
+    return <ScreenState kind="unavailable" width="form" />;
+  }
 
   return (
     <Page width="form">
@@ -138,7 +158,8 @@ export function CustomerEditor({
         }
         title={editing ? t("customers.editor.editTitle") : t("customers.editor.createTitle")}
       />
-      {command ? (
+      {stale ? <StaleNotice onRetry={onRetryRead} /> : null}
+      {review ? (
         <CommandReview
           confirmLabel={
             editing ? t("customers.editor.confirmEdit") : t("customers.editor.confirmCreate")
@@ -148,28 +169,32 @@ export function CustomerEditor({
               ? t("customers.editor.reviewEditDescription")
               : t("customers.editor.reviewCreateDescription")
           }
-          items={reviewItems(t, command, customer)}
-          onConfirm={() => mutation.mutate(command)}
+          items={reviewItems(t, review.command, review.previous)}
+          onConfirm={() => mutation.mutate(review.command)}
           onEdit={() => {
-            setCommand(null);
+            setReview(null);
             mutation.reset();
           }}
+          stale={stale}
           state={state}
           title={t("customers.editor.reviewTitle")}
         />
       ) : (
-        <CustomerForm
-          cancelHref={cancelHref}
-          errors={errors}
-          formError={formError}
-          onChange={(field, value) => {
-            setValues((current) => ({ ...current, [field]: value }));
-            setErrors((current) => ({ ...current, [field]: undefined }));
-            setFormError(undefined);
-          }}
-          onSubmit={prepareReview}
-          values={values}
-        />
+        <View ref={containerRef}>
+          <CustomerForm
+            cancelHref={cancelHref}
+            errors={errors}
+            formError={formError}
+            onChange={(field, value) => {
+              setValues((current) => ({ ...current, [field]: value }));
+              setErrors((current) => ({ ...current, [field]: undefined }));
+              setFormError(undefined);
+            }}
+            onSubmit={prepareReview}
+            reviewDisabled={stale}
+            values={values}
+          />
+        </View>
       )}
     </Page>
   );

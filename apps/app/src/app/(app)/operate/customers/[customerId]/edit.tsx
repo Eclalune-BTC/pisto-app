@@ -8,6 +8,7 @@ import { firstParam } from "@/features/customers/list-params";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { readState } from "@/features/customers/read-state";
 import { ScreenState } from "@/features/customers/screen-state";
+import { hasDeniedRead } from "@/lib/query-state";
 
 export default function EditCustomerRoute() {
   const router = useRouter();
@@ -18,9 +19,12 @@ export default function EditCustomerRoute() {
   const businessId = access.business?.id;
   const customer = useQuery({
     ...customerDetailQueryOptions(businessId, customerId),
-    enabled: Boolean(access.business && access.canManage && customerId),
+    enabled: Boolean(access.business && access.hasManagePermission && customerId),
   });
-  useRouteLabel("/operate/customers/[customerId]", customer.data?.customer.name);
+  useRouteLabel(
+    "/operate/customers/[customerId]",
+    access.isDenied || hasDeniedRead([customer]) ? undefined : customer.data?.customer.name,
+  );
 
   const accessState = manageCapabilityBoundaryState(access);
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
@@ -46,9 +50,6 @@ export default function EditCustomerRoute() {
       />
     );
   }
-  if (customer.data.customer.status === "archived") {
-    return <ScreenState kind="unavailable" width="form" />;
-  }
 
   const detailHref: Href = {
     pathname: "/operate/customers/[customerId]",
@@ -56,10 +57,21 @@ export default function EditCustomerRoute() {
   };
   return (
     <CustomerEditor
+      availability={
+        customer.data.customer.status === "archived"
+          ? "unavailable"
+          : read.stale || access.isStale
+            ? "stale"
+            : "available"
+      }
       businessId={access.business.id}
       cancelHref={detailHref}
       customer={customer.data.customer}
       onConfirmed={() => router.replace(detailHref)}
+      onRetryRead={() => {
+        void access.refetch();
+        void customer.refetch();
+      }}
     />
   );
 }

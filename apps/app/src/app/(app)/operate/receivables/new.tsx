@@ -36,7 +36,9 @@ export default function NewReceivableRoute() {
       business={access.business}
       initialCustomerId={customerId}
       onConfirmed={() => router.replace(originHref)}
+      onRetryRead={() => void access.refetch()}
       originHref={originHref}
+      stale={access.isStale}
     />
   );
 }

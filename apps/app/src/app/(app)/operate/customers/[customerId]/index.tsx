@@ -1,6 +1,7 @@
 import type { ArchiveCustomerRequest } from "@pisto/contracts";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams } from "expo-router";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useRouteLabel } from "@/components/shell/shell-context";
@@ -13,13 +14,16 @@ import { customersApi } from "@/features/customers/api";
 import { CustomerArchiveDialog } from "@/features/customers/customer-archive-dialog";
 import { CustomerDetailScreen } from "@/features/customers/customer-detail-screen";
 import { firstParam } from "@/features/customers/list-params";
+import type { MenuTrigger } from "@/features/customers/overflow-action-menu";
 import { customerDetailQueryOptions, customerQueryKeys } from "@/features/customers/queries";
 import { readState } from "@/features/customers/read-state";
 import { ScreenState } from "@/features/customers/screen-state";
 import type { CustomerDetailLoadState, CustomerReceivablesState } from "@/features/customers/types";
+import { UncertainCommandNotice } from "@/features/customers/uncertain-command-notice";
 import { useConfirmableCommand } from "@/features/customers/use-confirmable-command";
 import { receivablesQueryOptions } from "@/features/receivables/queries";
 import { notify } from "@/lib/notify";
+import { hasDeniedRead } from "@/lib/query-state";
 
 export default function CustomerDetailRoute() {
   const { t } = useTranslation();
@@ -28,6 +32,7 @@ export default function CustomerDetailRoute() {
     useLocalSearchParams<{ customerId?: string | string[] }>().customerId,
   );
   const access = useCapabilityAccess("customers:read", "customers:manage");
+  const menuTriggerRef = useRef<MenuTrigger>(null);
   const businessId = access.business?.id;
   const enabled = Boolean(access.business && access.canRead && customerId);
   const customer = useQuery({ ...customerDetailQueryOptions(businessId, customerId), enabled });
@@ -46,7 +51,13 @@ export default function CustomerDetailRoute() {
       notify.success(t("customers.archive.done"), { description: archived.name });
     },
   });
-  useRouteLabel("/operate/customers/[customerId]", customer.data?.customer.name);
+  // A rejected read must not leave the record's name behind in the breadcrumb.
+  useRouteLabel(
+    "/operate/customers/[customerId]",
+    access.isDenied || hasDeniedRead([customer, receivables])
+      ? undefined
+      : customer.data?.customer.name,
+  );
 
   const accessState = capabilityBoundaryState(access);
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
@@ -56,7 +67,12 @@ export default function CustomerDetailRoute() {
     );
   }
 
-  const read = customerId ? readState([customer]) : { kind: "notFound" as const };
+  // Both reads come from the same business access, so a rejected one hides the whole record.
+  const read = !customerId
+    ? { kind: "notFound" as const }
+    : hasDeniedRead([receivables])
+      ? { kind: "denied" as const }
+      : readState([customer]);
   const receivablesRead = readState([receivables]);
   let receivablesState: CustomerReceivablesState;
   if (receivablesRead.kind === "ready" && receivables.data) {
@@ -87,23 +103,40 @@ export default function CustomerDetailRoute() {
   } else {
     state = { kind: read.kind === "ready" ? "error" : read.kind };
   }
-  const writable = !(state.kind === "ready" && state.stale);
+  const retry = () => {
+    void access.refetch();
+    void customer.refetch();
+    void receivables.refetch();
+  };
 
+  // Actions follow permission; a stale read blocks only the confirmation of a new command.
   return (
     <>
       <CustomerDetailScreen
-        canCharge={writable && resolveBusinessPermission(access.business, "receivables:manage")}
-        canManage={access.canManage && writable}
+        canCharge={resolveBusinessPermission(access.business, "receivables:manage")}
+        canManage={access.hasManagePermission}
+        menuTriggerRef={menuTriggerRef}
+        notice={
+          archive.state.phase === "uncertain" && !archive.open ? (
+            <UncertainCommandNotice
+              message={archive.state.message}
+              onResume={() => archive.onOpenChange(true)}
+            />
+          ) : null
+        }
         onArchive={() => archive.onOpenChange(true)}
         onLoadMoreReceivables={() => void receivables.fetchNextPage()}
-        onRetry={() => {
-          void customer.refetch();
-          void receivables.refetch();
-        }}
+        onRetry={retry}
         state={state}
       />
       {state.kind === "ready" ? (
-        <CustomerArchiveDialog action={archive} customerName={state.detail.customer.name} />
+        <CustomerArchiveDialog
+          action={archive}
+          customerName={state.detail.customer.name}
+          onRetryRead={retry}
+          returnFocusRef={menuTriggerRef}
+          stale={state.stale}
+        />
       ) : null}
     </>
   );

@@ -1,18 +1,12 @@
 import type { Customer } from "@pisto/contracts";
 import { type Href, Link } from "expo-router";
-import {
-  Archive,
-  Ellipsis,
-  Lock,
-  Pencil,
-  Plus,
-  ReceiptText,
-  TriangleAlert,
-} from "lucide-react-native";
+import type { TFunction } from "i18next";
+import { Archive, Lock, Pencil, Plus, ReceiptText, TriangleAlert } from "lucide-react-native";
+import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
-import { DescriptionList } from "@/components/layout/description-list";
+import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { ContentSkeleton } from "@/components/layout/skeletons";
@@ -20,12 +14,6 @@ import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { StatePanel } from "@/components/ui/state-panel";
@@ -34,60 +22,26 @@ import { ReceivablesTable } from "@/features/receivables/receivables-table";
 
 import { CustomerStatusBadge } from "./customer-status-badge";
 import { isPositiveAmount, useRecordFormat } from "./format";
+import { type MenuTrigger, OverflowActionMenu } from "./overflow-action-menu";
 import { ScreenState } from "./screen-state";
 import type { CustomerDetailLoadState, CustomerReceivablesState } from "./types";
 
 type CustomerDetailScreenProps = {
-  /** Charges need receivable management; contact changes need customer management. */
+  /** Permission to post charges; contact changes and archiving need `canManage`. */
   canCharge: boolean;
   canManage: boolean;
+  /** The overflow menu trigger, where focus returns after the archive dialog closes. */
+  menuTriggerRef: RefObject<MenuTrigger | null>;
+  /** An unresolved command shown above the record, such as an archive whose outcome is unknown. */
+  notice?: ReactNode;
   onArchive: () => void;
   onLoadMoreReceivables: () => void;
   onRetry: () => void;
   state: CustomerDetailLoadState;
 };
 
-function NotProvided() {
-  const { t } = useTranslation();
-  return (
-    <Text className="text-sm leading-5 text-muted-foreground">
-      {t("customers.detail.notProvided")}
-    </Text>
-  );
-}
-
 function newChargeHref(customerId: string): Href {
   return { pathname: "/operate/receivables/new", params: { customerId } };
-}
-
-function ArchiveMenu({ hasBalance, onArchive }: { hasBalance: boolean; onArchive: () => void }) {
-  const { t } = useTranslation();
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          accessibilityLabel={t("customers.detail.moreActions")}
-          size="icon"
-          variant="outline"
-        >
-          <Icon as={Ellipsis} className="text-foreground" size={16} />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60" sideOffset={4}>
-        <DropdownMenuItem disabled={hasBalance} onPress={onArchive} variant="destructive">
-          <Icon as={Archive} className="text-destructive" size={15} />
-          <View className="min-w-0 flex-1">
-            <Text>{t("customers.detail.archive")}</Text>
-            {hasBalance ? (
-              <Text className="text-xs leading-4 text-muted-foreground">
-                {t("customers.detail.archiveNeedsZeroBalance")}
-              </Text>
-            ) : null}
-          </View>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
 }
 
 function ReceivablesSection({
@@ -105,6 +59,7 @@ function ReceivablesSection({
 }) {
   const { t } = useTranslation();
   const title = t("customers.detail.receivables");
+  const active = customer.status === "active";
   return (
     <Section title={title}>
       {receivables.kind === "loading" ? (
@@ -132,15 +87,19 @@ function ReceivablesSection({
       ) : receivables.items.length === 0 ? (
         <EmptyState
           action={
-            canCharge && customer.status === "active" ? (
+            canCharge && active ? (
               <Link asChild href={newChargeHref(customer.id)}>
-                <Button accessibilityRole="link" size="sm">
+                <Button accessibilityRole="link" size="sm" variant="outline">
                   <Text>{t("customers.detail.newCharge")}</Text>
                 </Button>
               </Link>
             ) : undefined
           }
-          description={t("customers.detail.noReceivablesDescription")}
+          description={
+            active
+              ? t("customers.detail.noReceivablesDescription")
+              : t("customers.detail.noReceivablesArchived")
+          }
           icon={ReceiptText}
           title={t("customers.detail.noReceivablesTitle")}
         />
@@ -150,7 +109,7 @@ function ReceivablesSection({
           {receivables.nextCursor ? (
             <View className="items-center">
               <Button
-                label={t("customers.detail.loadMoreReceivables")}
+                label={t("common.loadMore")}
                 loading={receivables.loadingMore}
                 onPress={onLoadMore}
                 size="sm"
@@ -164,9 +123,20 @@ function ReceivablesSection({
   );
 }
 
+/** Only the contact data on record; missing fields are not listed one by one. */
+function contactItems(t: TFunction, customer: Customer): DescriptionItem[] {
+  const items: DescriptionItem[] = [];
+  if (customer.phone) items.push({ label: t("customers.fields.phone"), value: customer.phone });
+  if (customer.email) items.push({ label: t("customers.fields.email"), value: customer.email });
+  if (customer.notes) items.push({ label: t("customers.fields.notes"), value: customer.notes });
+  return items;
+}
+
 export function CustomerDetailScreen({
   canCharge,
   canManage,
+  menuTriggerRef,
+  notice,
   onArchive,
   onLoadMoreReceivables,
   onRetry,
@@ -187,6 +157,7 @@ export function CustomerDetailScreen({
     pathname: "/operate/customers/[customerId]/edit",
     params: { customerId: customer.id },
   };
+  const contact = contactItems(t, customer);
 
   return (
     <Page>
@@ -203,9 +174,17 @@ export function CustomerDetailScreen({
                 </Link>
               ) : null}
               {canManage ? (
-                <ArchiveMenu
-                  hasBalance={isPositiveAmount(balance.outstandingMinorUnits)}
-                  onArchive={onArchive}
+                <OverflowActionMenu
+                  action={{
+                    disabledReason: isPositiveAmount(balance.outstandingMinorUnits)
+                      ? t("customers.detail.archiveNeedsZeroBalance")
+                      : undefined,
+                    icon: Archive,
+                    label: t("customers.detail.archive"),
+                    onPress: onArchive,
+                  }}
+                  label={t("customers.detail.moreActions")}
+                  triggerRef={menuTriggerRef}
                 />
               ) : null}
               {canCharge ? (
@@ -224,6 +203,7 @@ export function CustomerDetailScreen({
         title={customer.name}
       />
       {state.stale ? <StaleNotice onRetry={onRetry} /> : null}
+      {notice}
       <StatGroup>
         <Stat
           detail={t("customers.detail.openCount", { count: Number(balance.openReceivableCount) })}
@@ -240,22 +220,13 @@ export function CustomerDetailScreen({
         />
       </StatGroup>
       <Section title={t("customers.detail.contact")}>
-        <DescriptionList
-          items={[
-            {
-              label: t("customers.fields.phone"),
-              value: customer.phone ?? <NotProvided />,
-            },
-            {
-              label: t("customers.fields.email"),
-              value: customer.email ?? <NotProvided />,
-            },
-            {
-              label: t("customers.fields.notes"),
-              value: customer.notes ?? <NotProvided />,
-            },
-          ]}
-        />
+        {contact.length > 0 ? (
+          <DescriptionList items={contact} />
+        ) : (
+          <Text className="text-sm leading-5 text-muted-foreground">
+            {t("customers.detail.noContact")}
+          </Text>
+        )}
       </Section>
       <ReceivablesSection
         canCharge={canCharge}

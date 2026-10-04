@@ -10,6 +10,7 @@ import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-accou
 import { PaymentReversalEditor } from "@/features/receivables/payment-reversal-editor";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
 import { isReversed } from "@/features/receivables/rules";
+import { hasDeniedRead } from "@/lib/query-state";
 
 export default function ReversePaymentRoute() {
   const router = useRouter();
@@ -21,14 +22,21 @@ export default function ReversePaymentRoute() {
   const paymentId = firstParam(params.paymentId);
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
   const businessId = access.business?.id;
-  const enabled = Boolean(access.business && access.canManage && receivableId && paymentId);
+  const enabled = Boolean(
+    access.business && access.hasManagePermission && receivableId && paymentId,
+  );
   const detail = useQuery({ ...receivableDetailQueryOptions(businessId, receivableId), enabled });
   const payment = detail.data?.payments.find((item) => item.id === paymentId);
   const account = useQuery({
     ...cashAccountDetailQueryOptions(businessId, payment?.cashAccountId),
     enabled: enabled && payment !== undefined,
   });
-  useRouteLabel("/operate/receivables/[receivableId]", detail.data?.receivable.description);
+  useRouteLabel(
+    "/operate/receivables/[receivableId]",
+    access.isDenied || hasDeniedRead([detail, account])
+      ? undefined
+      : detail.data?.receivable.description,
+  );
 
   const accessState = manageCapabilityBoundaryState(access);
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
@@ -72,16 +80,17 @@ export default function ReversePaymentRoute() {
     <PaymentReversalEditor
       accountName={account.data.account.name}
       availability={
-        read.stale
-          ? "stale"
-          : payment.kind === "payment" && !isReversed(payment, detail.data.payments)
-            ? "available"
-            : "unavailable"
+        payment.kind !== "payment" || isReversed(payment, detail.data.payments)
+          ? "unavailable"
+          : read.stale || access.isStale
+            ? "stale"
+            : "available"
       }
       business={access.business}
       cancelHref={detailHref}
       onConfirmed={() => router.replace(detailHref)}
       onRetryRead={() => {
+        void access.refetch();
         void detail.refetch();
         void account.refetch();
       }}

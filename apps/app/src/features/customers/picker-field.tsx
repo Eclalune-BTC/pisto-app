@@ -1,4 +1,5 @@
 import { ChevronsUpDown } from "lucide-react-native";
+import type { Ref } from "react";
 import { View } from "react-native";
 
 import { Icon } from "@/components/ui/icon";
@@ -12,6 +13,8 @@ type PickerFieldProps = {
   label: string;
   onPress: () => void;
   placeholder: string;
+  /** The control itself, so the picker it opens can return focus to it. */
+  ref?: Ref<View>;
   value?: string;
 };
 
@@ -22,6 +25,7 @@ export function PickerField({
   label,
   onPress,
   placeholder,
+  ref,
   value,
 }: PickerFieldProps) {
   return (
@@ -31,11 +35,13 @@ export function PickerField({
         accessibilityHint={error}
         accessibilityLabel={`${label}: ${value ?? placeholder}`}
         accessibilityRole="button"
+        aria-invalid={Boolean(error)}
         className={cn(
           "min-h-9 flex-row items-center gap-2 rounded-md border bg-card px-2.5 py-1.5 native:min-h-11",
           error ? "border-destructive" : "border-input",
         )}
         onPress={onPress}
+        ref={ref}
       >
         <View className="min-w-0 flex-1">
           <Text

@@ -1,7 +1,12 @@
 import { describe, expect, test } from "vitest";
 
 import { isPositiveAmount } from "./format";
-import { customerListSearchParams, firstParam, parseCustomerListParams } from "./list-params";
+import {
+  CUSTOMER_SEARCH_MAX_LENGTH,
+  customerListSearchParams,
+  firstParam,
+  parseCustomerListParams,
+} from "./list-params";
 
 describe("customer list filters in the URL", () => {
   test("restores the search and status a record was opened from", () => {
@@ -22,6 +27,12 @@ describe("customer list filters in the URL", () => {
       status: "active",
     });
     expect(firstParam(undefined)).toBeUndefined();
+  });
+
+  test("cuts a search longer than the contract allows instead of sending it", () => {
+    const query = parseCustomerListParams({ q: `${"a".repeat(79)} ${"b".repeat(20)}` }).query;
+    expect(query).toBe("a".repeat(79));
+    expect(query.length).toBeLessThanOrEqual(CUSTOMER_SEARCH_MAX_LENGTH);
   });
 
   test("keeps the plain list URL canonical by omitting defaults", () => {
