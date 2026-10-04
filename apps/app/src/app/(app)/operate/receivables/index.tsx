@@ -1,79 +1,90 @@
 import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
-import { Redirect, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
+
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
-import { CapabilityBoundary } from "@/features/customers/capability-boundary";
-import { buildCustomersCopy } from "@/features/customers/copy";
+import { CustomerPickerDialog } from "@/features/customers/customer-picker";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
+import { type ReadQuery, readState } from "@/features/customers/read-state";
+import { ScreenState } from "@/features/customers/screen-state";
+import {
+  parseReceivableListParams,
+  type ReceivableListParams,
+  receivableListSearchParams,
+} from "@/features/receivables/list-params";
 import { uniqueValues } from "@/features/receivables/presentation";
 import {
   receivablesQueryOptions,
   receivablesSummaryQueryOptions,
 } from "@/features/receivables/queries";
 import { ReceivablesScreen } from "@/features/receivables/receivables-screen";
+import type { CustomerNameCell } from "@/features/receivables/receivables-table";
 import type { ReceivablesLoadState } from "@/features/receivables/types";
-import { formatLocalDate } from "@/i18n/format";
-import { requireSupportedLocale } from "@/i18n/locale";
-import { formatMinorUnits } from "@/lib/money";
-import {
-  hasDeniedRead,
-  isPausedWithoutData,
-  queryHasStaleData,
-  readFailureKind,
-} from "@/lib/query-state";
 
-type ReceivableFilter = "all" | "open" | "overdue" | "paid" | "voided";
+function customerName(
+  query: ReadQuery & { data?: { customer: { name: string } } },
+): CustomerNameCell {
+  if (query.data) return { kind: "ready", name: query.data.customer.name };
+  return query.isPending && query.fetchStatus !== "paused"
+    ? { kind: "loading" }
+    : { kind: "unavailable" };
+}
 
 export default function ReceivablesRoute() {
-  const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
-  const locale = requireSupportedLocale(i18n.resolvedLanguage);
+  const filters = parseReceivableListParams(
+    useLocalSearchParams<{ customerId?: string; state?: string }>(),
+  );
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
-  const [filter, setFilter] = useState<ReceivableFilter>("all");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const businessId = access.business?.id;
+  const enabled = Boolean(access.business && access.canRead);
   const list = useInfiniteQuery({
-    ...receivablesQueryOptions(businessId, { state: filter }),
-    enabled: Boolean(access.business && access.canRead),
+    ...receivablesQueryOptions(businessId, {
+      customerId: filters.customerId,
+      state: filters.state,
+    }),
+    enabled,
   });
-  const summary = useQuery({
-    ...receivablesSummaryQueryOptions(businessId),
-    enabled: Boolean(access.business && access.canRead),
+  const summary = useQuery({ ...receivablesSummaryQueryOptions(businessId), enabled });
+  const filterCustomer = useQuery({
+    ...customerDetailQueryOptions(businessId, filters.customerId),
+    enabled: enabled && filters.customerId !== undefined,
   });
   const items = list.data?.pages.flatMap((page) => page.items) ?? [];
-  const customerIds = useMemo(() => uniqueValues(items.map((item) => item.customerId)), [items]);
-  const customerQueries = useQueries({
+  const customerIds = uniqueValues(items.map((item) => item.customerId));
+  const customers = useQueries({
     queries: customerIds.map((customerId) => ({
       ...customerDetailQueryOptions(businessId, customerId),
-      enabled: Boolean(access.business && access.canRead),
+      enabled,
     })),
   });
-  const boundaryState = capabilityBoundaryState(access);
 
-  if (!access.business && boundaryState === "ready") return <Redirect href="/business" />;
+  const accessState = capabilityBoundaryState(access);
+  if (!access.business && accessState === "ready") return <Redirect href="/business" />;
+  if (accessState !== "ready" || !access.business) {
+    return (
+      <ScreenState
+        kind={accessState === "ready" ? "error" : accessState}
+        onRetry={() => void access.refetch()}
+      />
+    );
+  }
 
+  const setFilters = (next: ReceivableListParams) =>
+    router.setParams(receivableListSearchParams(next));
+  const read = readState([list, summary]);
+  const names = filters.customerId ? [filterCustomer, ...customers] : customers;
+  const namesDenied = readState(names).kind === "denied";
   let state: ReceivablesLoadState;
-  const hasCombinedData = Boolean(list.data && summary.data);
-  if ((!access.canRead && access.business) || hasDeniedRead([list, summary, ...customerQueries])) {
+  if (namesDenied) {
     state = { kind: "denied" };
-  } else if (
-    isPausedWithoutData(list.fetchStatus, Boolean(list.data)) ||
-    isPausedWithoutData(summary.fetchStatus, Boolean(summary.data))
-  ) {
-    state = { kind: "offline" };
-  } else if (list.isPending || summary.isPending) {
-    state = { kind: "loading" };
-  } else if ((list.isError || summary.isError) && !hasCombinedData) {
-    const failure = list.isError ? readFailureKind(list.error) : readFailureKind(summary.error);
-    state = { kind: failure === "denied" ? "denied" : "error" };
-  } else if (list.data && summary.data) {
+  } else if (read.kind === "ready" && list.data && summary.data) {
+    // A customer name that cannot be confirmed leaves the list read-only, like any stale read.
     const stale =
+      read.stale ||
       access.isStale ||
-      [list, summary, ...customerQueries].some(queryHasStaleData) ||
-      customerQueries.some(
-        (query) => query.isError || isPausedWithoutData(query.fetchStatus, Boolean(query.data)),
-      );
+      names.some((query) => query.isError || query.fetchStatus === "paused");
     state =
       items.length === 0
         ? { kind: "empty", stale, summary: summary.data.summary }
@@ -86,47 +97,40 @@ export default function ReceivablesRoute() {
             summary: summary.data.summary,
           };
   } else {
-    state = { kind: "error" };
+    state = { kind: read.kind === "ready" || read.kind === "notFound" ? "error" : read.kind };
   }
+  const stale = (state.kind === "ready" || state.kind === "empty") && state.stale;
 
   return (
-    <CapabilityBoundary onRetry={() => access.refetch()} state={boundaryState}>
+    <>
       <ReceivablesScreen
-        canManage={
-          access.canManage && !((state.kind === "ready" || state.kind === "empty") && state.stale)
-        }
-        copy={copy.receivables.list}
+        canManage={access.canManage && !stale}
+        customerFilter={filters.customerId ? customerName(filterCustomer) : null}
         customerNameFor={(customerId) => {
-          const index = customerIds.indexOf(customerId);
-          const query = index >= 0 ? customerQueries[index] : undefined;
-          return (
-            query?.data?.customer.name ??
-            (query?.isPending
-              ? copy.receivables.list.customerLoading
-              : copy.receivables.list.customerUnavailable)
-          );
+          const query = customers[customerIds.indexOf(customerId)];
+          return query ? customerName(query) : { kind: "unavailable" };
         }}
-        filter={filter}
-        formatDate={(date) => formatLocalDate(date, locale)}
-        formatMoney={(minorUnits, currency, digits) =>
-          formatMinorUnits(minorUnits, currency, digits, locale)
-        }
-        onCreate={() => router.push("/operate/receivables/new")}
-        onFilterChange={setFilter}
-        onLoadMore={() => list.fetchNextPage()}
-        onOpenReceivable={(receivableId) =>
-          router.push({
-            pathname: "/operate/receivables/[receivableId]",
-            params: { receivableId },
-          })
-        }
+        filters={filters}
+        onChooseCustomer={() => setPickerOpen(true)}
+        onClearCustomer={() => setFilters({ ...filters, customerId: undefined })}
+        onClearFilters={() => setFilters({ state: "all" })}
+        onLoadMore={() => void list.fetchNextPage()}
         onRetry={() => {
           void list.refetch();
           void summary.refetch();
-          for (const query of customerQueries) void query.refetch();
+          for (const query of names) void query.refetch();
         }}
+        onStateChange={(next) => setFilters({ ...filters, state: next })}
         state={state}
       />
-    </CapabilityBoundary>
+      <CustomerPickerDialog
+        businessId={access.business.id}
+        onOpenChange={setPickerOpen}
+        onSelect={(customer) => setFilters({ ...filters, customerId: customer.id })}
+        open={pickerOpen}
+        selectedId={filters.customerId ?? null}
+        status="all"
+      />
+    </>
   );
 }

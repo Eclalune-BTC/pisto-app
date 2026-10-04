@@ -1,20 +1,21 @@
-import type { Business, Customer, PostReceivableRequest } from "@pisto/contracts";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Business, Customer, PostReceivableRequest, Receivable } from "@pisto/contracts";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
-import { ArrowLeft } from "lucide-react-native";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { type Href, useRouter } from "expo-router";
+import type { TFunction } from "i18next";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+
+import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
-import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
-import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { buildCustomersCopy, type CustomersReceivablesCopy } from "@/features/customers/copy";
-import { CustomerPicker } from "@/features/customers/customer-picker";
-import { customerDetailQueryOptions, customersQueryOptions } from "@/features/customers/queries";
-import { requireSupportedLocale } from "@/i18n/locale";
-import { isAmbiguousMutationError } from "@/lib/api-client";
-import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { CommandReview } from "@/features/customers/command-review";
+import { commandState } from "@/features/customers/command-state";
+import { CustomerPickerDialog } from "@/features/customers/customer-picker";
+import { customerContact, useRecordFormat } from "@/features/customers/format";
+import { customerDetailQueryOptions } from "@/features/customers/queries";
+import { ScreenState } from "@/features/customers/screen-state";
+import { currentLocalDateTime } from "@/lib/money";
+import { notify } from "@/lib/notify";
 import { hasDeniedRead } from "@/lib/query-state";
 
 import { receivablesApi } from "./api";
@@ -23,222 +24,201 @@ import {
   type PostReceivableDraft,
   type ReceivableDraftIssue,
 } from "./draft";
-import { financialMutationState, invalidateReceivableMutation } from "./mutation-state";
+import { invalidateReceivableMutation } from "./mutation-state";
 import { amountInputPlaceholder } from "./presentation";
-import { ReceivableForm } from "./receivable-form";
-import { PostReceivableReview } from "./receivable-reviews";
+import { ReceivableForm, type ReceivableFormErrors } from "./receivable-form";
 
 type ReceivableEditorProps = {
   business: Business;
+  /** Where the charge was started from; cancelling and confirming both return there. */
+  originHref: Href;
+  /** Preselects the customer a charge was started from. */
   initialCustomerId?: string;
-  onBack: () => void;
-  onConfirmed: (receivableId: string) => void;
+  onConfirmed: () => void;
 };
 
-type DraftErrors = Partial<
-  Record<"amount" | "customer" | "description" | "dueDate" | "postedDate", string>
->;
-
-type SelectionSource = "initial" | "list" | null;
-
-function issueMessage(
-  copy: CustomersReceivablesCopy,
-  issue: ReceivableDraftIssue | undefined,
-): string | undefined {
+function issueMessage(t: TFunction, issue: ReceivableDraftIssue | undefined) {
   if (!issue) return undefined;
-  const validation = copy.receivables.validation;
-  if (issue === "customer") return validation.customer;
-  if (issue === "description") return validation.description;
-  if (issue === "due-date") return validation.dueDate;
-  if (issue === "date") return validation.date;
-  return validation.amount;
+  if (issue === "customer") return t("receivables.validation.customer");
+  if (issue === "description") return t("receivables.validation.description");
+  if (issue === "due-date") return t("receivables.validation.dueDate");
+  if (issue === "date") return t("receivables.validation.date");
+  return t("receivables.validation.amount");
 }
 
 export function ReceivableEditor({
   business,
   initialCustomerId,
-  onBack,
   onConfirmed,
+  originHref,
 }: ReceivableEditorProps) {
-  const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildCustomersCopy(t), [t]);
+  const { t } = useTranslation();
+  const router = useRouter();
+  const format = useRecordFormat();
   const queryClient = useQueryClient();
-  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const deferredSearch = useDeferredValue(search.trim());
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [selectionSource, setSelectionSource] = useState<SelectionSource>(null);
+  const [picked, setPicked] = useState<Customer | null>(null);
   const [draft, setDraft] = useState<PostReceivableDraft>(() => ({
     amount: "",
     description: "",
     dueDate: "",
     postedDate: currentLocalDateTime(business.timeZone).date,
   }));
-  const [errors, setErrors] = useState<DraftErrors>({});
+  const [errors, setErrors] = useState<ReceivableFormErrors>({});
   const [command, setCommand] = useState<PostReceivableRequest | null>(null);
-  const customers = useInfiniteQuery(
-    customersQueryOptions(business.id, {
-      query: deferredSearch || undefined,
-      status: "active",
-    }),
-  );
-  const initialCustomer = useQuery({
+  const initial = useQuery({
     ...customerDetailQueryOptions(business.id, initialCustomerId),
-    enabled: Boolean(initialCustomerId),
+    enabled: initialCustomerId !== undefined,
   });
-
-  useEffect(() => {
-    if (
-      !selectedCustomer &&
-      !initialCustomer.isError &&
-      initialCustomer.data?.customer.status === "active"
-    ) {
-      setSelectedCustomer(initialCustomer.data.customer);
-      setSelectionSource("initial");
-    }
-  }, [initialCustomer.data, initialCustomer.isError, selectedCustomer]);
+  const initialCustomer = initial.data?.customer;
+  const customer = picked ?? (initialCustomer?.status === "active" ? initialCustomer : null);
+  // The preselected customer is only trusted while its read is confirmed.
+  const initialUnconfirmed =
+    picked === null &&
+    initialCustomerId !== undefined &&
+    (initial.isError || initial.fetchStatus === "paused");
+  const customerNotice =
+    picked !== null || initialCustomerId === undefined
+      ? undefined
+      : initialUnconfirmed
+        ? t("receivables.form.customerUnavailable")
+        : initialCustomer?.status === "archived"
+          ? t("receivables.form.customerArchived")
+          : undefined;
 
   const mutation = useMutation({
-    mutationFn: receivablesApi.post,
-    onSuccess: async ({ receivable }) => {
+    mutationFn: ({ command: next }: { command: PostReceivableRequest; customerName: string }) =>
+      receivablesApi.post(next),
+    onSuccess: async ({ receivable }, { customerName }) => {
       await invalidateReceivableMutation(queryClient, {
         businessId: business.id,
         customerId: receivable.customerId,
-        receivableId: receivable.id,
       });
-      onConfirmed(receivable.id);
+      announce(receivable, customerName);
+      onConfirmed();
     },
   });
+  const state = commandState(t, mutation, t("receivables.form.conflict"));
 
-  const selectionReadFailed =
-    selectionSource === "initial"
-      ? initialCustomer.isError || initialCustomer.fetchStatus === "paused"
-      : selectionSource === "list"
-        ? customers.isError || customers.fetchStatus === "paused"
-        : false;
-
-  const confirmationLocked = mutation.isPending || isAmbiguousMutationError(mutation.error);
+  function announce(receivable: Receivable, customerName: string) {
+    const href: Href = {
+      pathname: "/operate/receivables/[receivableId]",
+      params: { receivableId: receivable.id },
+    };
+    notify.success(t("receivables.form.posted"), {
+      action: { label: t("receivables.form.viewPosted"), onPress: () => router.push(href) },
+      description: t("receivables.form.postedDescription", {
+        amount: format.money(
+          receivable.originalMinorUnits,
+          receivable.currency,
+          receivable.currencyMinorUnitDigits,
+        ),
+        customer: customerName,
+      }),
+    });
+  }
 
   const prepareReview = () => {
-    if (confirmationLocked) return;
-    if (selectionReadFailed) {
-      setErrors((current) => ({
-        ...current,
-        customer: copy.common.unavailableDescription,
-      }));
+    if (initialUnconfirmed) {
+      setErrors((current) => ({ ...current, customer: t("receivables.form.customerUnavailable") }));
       return;
     }
     const result = buildPostReceivableCommand(
       draft,
-      selectedCustomer,
+      customer,
       business.currencyMinorUnitDigits,
       Crypto.randomUUID(),
     );
     setErrors({
-      amount: issueMessage(copy, result.issues.amount),
-      customer: issueMessage(copy, result.issues.customer),
-      description: issueMessage(copy, result.issues.description),
-      dueDate: issueMessage(copy, result.issues.dueDate),
-      postedDate: issueMessage(copy, result.issues.postedDate),
+      amount: issueMessage(t, result.issues.amount),
+      customer: issueMessage(t, result.issues.customer),
+      description: issueMessage(t, result.issues.description),
+      dueDate: issueMessage(t, result.issues.dueDate),
+      postedDate: issueMessage(t, result.issues.postedDate),
     });
     if (!("command" in result)) return;
-    setCommand(result.command);
     mutation.reset();
+    setCommand(result.command);
   };
 
-  if (hasDeniedRead([customers, initialCustomer])) {
-    return <CapabilityRouteState kind="denied" />;
-  }
-
-  if (pickerOpen) {
-    const items = customers.data?.pages.flatMap((page) => page.items) ?? [];
-    return (
-      <Page width="form">
-        <CustomerPicker
-          hasNextPage={Boolean(customers.hasNextPage)}
-          isError={customers.isError}
-          isLoading={customers.isPending && customers.fetchStatus !== "paused"}
-          isLoadingMore={customers.isFetchingNextPage}
-          isOffline={customers.fetchStatus === "paused"}
-          items={items}
-          onBack={() => setPickerOpen(false)}
-          onLoadMore={() => customers.fetchNextPage()}
-          onRetry={() => customers.refetch()}
-          onSearchChange={setSearch}
-          onSelect={(customer) => {
-            setSelectedCustomer(customer);
-            setSelectionSource("list");
-            setErrors((current) => ({ ...current, customer: undefined }));
-            setPickerOpen(false);
-          }}
-          search={search}
-          selectedCustomerId={selectedCustomer?.id ?? null}
-        />
-      </Page>
-    );
-  }
+  if (hasDeniedRead([initial])) return <ScreenState kind="denied" width="form" />;
 
   return (
     <Page width="form">
-      <Button
-        className="self-start px-0"
-        disabled={confirmationLocked}
-        onPress={confirmationLocked ? undefined : onBack}
-        variant="ghost"
-      >
-        <Icon as={ArrowLeft} className="text-primary" size={18} />
-        <ButtonText variant="ghost">{copy.common.back}</ButtonText>
-      </Button>
-      <ScreenHeader
-        description={copy.receivables.route.newDescription}
-        title={copy.receivables.route.newTitle}
+      <PageHeader
+        description={t("receivables.form.pageDescription")}
+        title={t("receivables.form.title")}
       />
-      {command && selectedCustomer ? (
-        <PostReceivableReview
-          amount={formatMinorUnits(
-            command.originalMinorUnits,
-            business.currency,
-            business.currencyMinorUnitDigits,
-            locale,
-          )}
-          copy={copy.receivables.review}
-          customerName={selectedCustomer.name}
-          description={command.description}
-          dueDate={command.dueDate ?? null}
-          mutation={financialMutationState(t, mutation)}
-          onCancel={() => {
+      {command && customer ? (
+        <CommandReview
+          confirmLabel={t("receivables.form.confirm")}
+          description={t("receivables.form.reviewDescription")}
+          items={[
+            { label: t("receivables.form.customer"), value: customer.name },
+            {
+              label: t("receivables.form.amount"),
+              numeric: true,
+              value: format.money(
+                command.originalMinorUnits,
+                business.currency,
+                business.currencyMinorUnitDigits,
+              ),
+            },
+            { label: t("receivables.form.descriptionLabel"), value: command.description },
+            {
+              label: t("receivables.form.postedDate"),
+              numeric: true,
+              value: format.date(command.postedDate),
+            },
+            {
+              label: t("receivables.form.dueDate"),
+              numeric: Boolean(command.dueDate),
+              value: command.dueDate
+                ? format.date(command.dueDate)
+                : t("receivables.list.noDueDate"),
+            },
+          ]}
+          onConfirm={() => mutation.mutate({ command, customerName: customer.name })}
+          onEdit={() => {
             setCommand(null);
             mutation.reset();
           }}
-          onConfirm={() => mutation.mutate(command)}
-          onRetrySameCommand={() => mutation.mutate(command)}
-          postedDate={command.postedDate}
+          state={state}
+          title={t("receivables.form.reviewTitle")}
         />
       ) : (
         <ReceivableForm
-          amount={draft.amount}
-          canReview={Boolean(
-            selectedCustomer && draft.amount && draft.description.trim() && !selectionReadFailed,
-          )}
-          copy={{
-            ...copy.receivables.form,
-            amountPlaceholder: amountInputPlaceholder(business.currencyMinorUnitDigits),
-          }}
-          description={draft.description}
-          dueDate={draft.dueDate}
-          errors={errors}
-          onCancel={onBack}
+          amountPlaceholder={amountInputPlaceholder(business.currencyMinorUnitDigits)}
+          cancelHref={originHref}
+          currency={business.currency}
+          customer={customer ? { detail: customerContact(customer), name: customer.name } : null}
+          customerLoading={
+            picked === null &&
+            initialCustomerId !== undefined &&
+            initial.isPending &&
+            initial.fetchStatus !== "paused"
+          }
+          draft={draft}
+          errors={{ ...errors, customer: errors.customer ?? customerNotice }}
           onChange={(field, value) => {
             setDraft((current) => ({ ...current, [field]: value }));
             setErrors((current) => ({ ...current, [field]: undefined }));
           }}
           onChooseCustomer={() => setPickerOpen(true)}
           onReview={prepareReview}
-          postedDate={draft.postedDate}
-          selectedCustomerName={selectedCustomer?.name ?? null}
         />
       )}
+      <CustomerPickerDialog
+        businessId={business.id}
+        onOpenChange={setPickerOpen}
+        onSelect={(selection) => {
+          setPicked(selection);
+          setErrors((current) => ({ ...current, customer: undefined }));
+        }}
+        open={pickerOpen}
+        selectedId={customer?.id ?? null}
+        status="active"
+      />
     </Page>
   );
 }

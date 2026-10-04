@@ -1,71 +1,74 @@
+import type { Href } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
-import { Button } from "@/components/ui/button";
+import { Section } from "@/components/layout/section";
+import { DateField } from "@/components/ui/date-field";
 import { Field } from "@/components/ui/field";
+import { FormActions } from "@/features/customers/form-actions";
 
-import type { PaymentReversalFormCopy } from "./types";
+import type { PaymentReversalDraft } from "./draft";
+
+export type PaymentReversalFormErrors = Partial<Record<keyof PaymentReversalDraft, string>>;
 
 type PaymentReversalFormProps = {
-  canReview: boolean;
-  copy: PaymentReversalFormCopy;
-  date: string;
-  errors: Partial<Record<"date" | "reference" | "time", string>>;
-  onCancel: () => void;
-  onChange: (field: "date" | "reference" | "time", value: string) => void;
+  cancelHref: Href;
+  draft: PaymentReversalDraft;
+  errors: PaymentReversalFormErrors;
+  onChange: (field: keyof PaymentReversalDraft, value: string) => void;
   onReview: () => void;
-  reference: string;
-  time: string;
 };
 
 export function PaymentReversalForm({
-  canReview,
-  copy,
-  date,
+  cancelHref,
+  draft,
   errors,
-  onCancel,
   onChange,
   onReview,
-  reference,
-  time,
 }: PaymentReversalFormProps) {
+  const { t } = useTranslation();
   return (
-    <View className="gap-5">
-      <View className="gap-5 sm:flex-row">
-        <View className="min-w-0 flex-1">
-          <Field
-            error={errors.date}
-            label={copy.date}
-            onChangeText={(value) => onChange("date", value)}
-            placeholder={copy.datePlaceholder}
-            value={date}
-          />
+    <View className="gap-8">
+      <Section
+        description={t("receivables.reversal.whenDescription")}
+        title={t("receivables.reversal.whenSection")}
+      >
+        <View className="gap-4 sm:flex-row">
+          <View className="min-w-0 flex-1">
+            <DateField
+              error={errors.date}
+              label={t("receivables.reversal.date")}
+              onChange={(value) => onChange("date", value)}
+              value={draft.date}
+            />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Field
+              error={errors.time}
+              keyboardType="numbers-and-punctuation"
+              label={t("receivables.reversal.time")}
+              maxLength={5}
+              onChangeText={(value) => onChange("time", value)}
+              placeholder={t("receivables.payment.timePlaceholder")}
+              value={draft.time}
+            />
+          </View>
         </View>
-        <View className="min-w-0 flex-1">
-          <Field
-            error={errors.time}
-            label={copy.time}
-            onChangeText={(value) => onChange("time", value)}
-            placeholder={copy.timePlaceholder}
-            value={time}
-          />
-        </View>
-      </View>
-      <Field
-        error={errors.reference}
-        label={`${copy.reference} (${copy.optional})`}
-        onChangeText={(value) => onChange("reference", value)}
-        placeholder={copy.referencePlaceholder}
-        value={reference}
-      />
-      <View className="gap-3 sm:flex-row sm:justify-end">
-        <Button label={copy.cancel} onPress={onCancel} variant="ghost" />
-        <Button
-          disabled={!canReview}
-          label={copy.review}
-          onPress={onReview}
-          variant="destructive"
+        <Field
+          error={errors.reference}
+          label={t("receivables.reversal.reference")}
+          maxLength={120}
+          onChangeText={(value) => onChange("reference", value)}
+          placeholder={t("receivables.reversal.referencePlaceholder")}
+          value={draft.reference}
         />
-      </View>
+      </Section>
+      <FormActions
+        cancelHref={cancelHref}
+        destructive
+        onSubmit={onReview}
+        submitLabel={t("receivables.reversal.review")}
+      />
     </View>
   );
 }

@@ -1,33 +1,42 @@
-import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { uuidSchema } from "@pisto/contracts";
+import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-router";
 
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
-import { CapabilityBoundary } from "@/features/customers/capability-boundary";
+import { firstParam } from "@/features/customers/list-params";
+import { ScreenState } from "@/features/customers/screen-state";
 import { ReceivableEditor } from "@/features/receivables/receivable-editor";
 
 export default function NewReceivableRoute() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ customerId?: string | string[] }>();
-  const customerId = Array.isArray(params.customerId) ? params.customerId[0] : params.customerId;
+  const requested = firstParam(
+    useLocalSearchParams<{ customerId?: string | string[] }>().customerId,
+  );
+  const customerId = uuidSchema.safeParse(requested).success ? requested : undefined;
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
-  const boundaryState = manageCapabilityBoundaryState(access);
+  const accessState = manageCapabilityBoundaryState(access);
 
-  if (!access.business && boundaryState === "ready") return <Redirect href="/business" />;
+  if (!access.business && accessState === "ready") return <Redirect href="/business" />;
+  if (accessState !== "ready" || !access.business) {
+    return (
+      <ScreenState
+        kind={accessState === "ready" ? "error" : accessState}
+        onRetry={() => void access.refetch()}
+        skeleton="form"
+        width="form"
+      />
+    );
+  }
 
+  // A charge started from a customer returns to that customer; otherwise to the list.
+  const originHref: Href = customerId
+    ? { pathname: "/operate/customers/[customerId]", params: { customerId } }
+    : "/operate/receivables";
   return (
-    <CapabilityBoundary onRetry={() => access.refetch()} state={boundaryState}>
-      {access.business ? (
-        <ReceivableEditor
-          business={access.business}
-          initialCustomerId={customerId}
-          onBack={() => router.replace("/operate/receivables")}
-          onConfirmed={(receivableId) =>
-            router.replace({
-              pathname: "/operate/receivables/[receivableId]",
-              params: { receivableId },
-            })
-          }
-        />
-      ) : null}
-    </CapabilityBoundary>
+    <ReceivableEditor
+      business={access.business}
+      initialCustomerId={customerId}
+      onConfirmed={() => router.replace(originHref)}
+      originHref={originHref}
+    />
   );
 }

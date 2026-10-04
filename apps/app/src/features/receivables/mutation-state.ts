@@ -1,39 +1,18 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { TFunction } from "i18next";
+
+import { cashQueryKeys } from "@/features/cash/queries";
 import { customerQueryKeys } from "@/features/customers/queries";
 import { reportsQueryKeys } from "@/features/reports/queries";
-import { isAmbiguousMutationError } from "@/lib/api-error";
-import { productErrorMessage } from "@/lib/product-errors";
 
 import { receivableQueryKeys } from "./queries";
-import type { FinancialMutationState } from "./types";
 
-export function financialMutationState(
-  t: TFunction,
-  input: {
-    error: unknown;
-    isPending: boolean;
-    isSuccess: boolean;
-  },
-): FinancialMutationState {
-  if (input.isPending) return { kind: "submitting" };
-  if (input.isSuccess) return { kind: "confirmed" };
-  if (input.error) {
-    const message = productErrorMessage(
-      input.error,
-      t("relationships.common.unavailableDescription"),
-      t,
-    );
-    return isAmbiguousMutationError(input.error)
-      ? { kind: "uncertain", message }
-      : { kind: "error", message };
-  }
-  return { kind: "review" };
-}
-
+/**
+ * Every receivable command changes derived balances; payments and reversals also move money in a
+ * cash account, so the business-scoped cash reads refresh with them.
+ */
 export async function invalidateReceivableMutation(
   queryClient: QueryClient,
-  input: { businessId: string; customerId: string; receivableId?: string },
+  input: { businessId: string; customerId: string },
 ): Promise<void> {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: reportsQueryKeys.all(input.businessId) }),
@@ -41,6 +20,6 @@ export async function invalidateReceivableMutation(
     queryClient.invalidateQueries({
       queryKey: customerQueryKeys.detail(input.businessId, input.customerId),
     }),
-    queryClient.invalidateQueries({ queryKey: ["cash", input.businessId] }),
+    queryClient.invalidateQueries({ queryKey: cashQueryKeys.all(input.businessId) }),
   ]);
 }

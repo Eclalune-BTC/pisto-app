@@ -1,110 +1,78 @@
 import type { Customer } from "@pisto/contracts";
-import { Search } from "lucide-react-native";
-import { useMemo } from "react";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
-import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
-import { Icon } from "@/components/ui/icon";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
-import { SelectField } from "@/components/ui/select-field";
-import { Text } from "@/components/ui/text";
 
-import { buildCustomersCopy } from "./copy";
+import { customerContact } from "./format";
+import { customersQueryOptions } from "./queries";
+import { readState } from "./read-state";
+import { pickerStatus, RecordPicker } from "./record-picker";
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "./use-debounced-value";
 
-type CustomerPickerProps = {
-  hasNextPage: boolean;
-  isError: boolean;
-  isLoading: boolean;
-  isLoadingMore: boolean;
-  isOffline: boolean;
-  items: Customer[];
-  onBack: () => void;
-  onLoadMore: () => void;
-  onRetry: () => void;
-  onSearchChange: (value: string) => void;
+type CustomerPickerDialogProps = {
+  businessId: string;
+  onOpenChange: (open: boolean) => void;
   onSelect: (customer: Customer) => void;
-  search: string;
-  selectedCustomerId: string | null;
+  open: boolean;
+  selectedId: string | null;
+  /** New charges accept only active customers; history filters may also pick archived ones. */
+  status: "active" | "all";
 };
 
-export function CustomerPicker({
-  hasNextPage,
-  isError,
-  isLoading,
-  isLoadingMore,
-  isOffline,
-  items,
-  onBack,
-  onLoadMore,
-  onRetry,
-  onSearchChange,
+export function CustomerPickerDialog({
+  businessId,
+  onOpenChange,
   onSelect,
-  search,
-  selectedCustomerId,
-}: CustomerPickerProps) {
+  open,
+  selectedId,
+  status,
+}: CustomerPickerDialogProps) {
   const { t } = useTranslation();
-  const copy = useMemo(() => buildCustomersCopy(t), [t]);
+  const [search, setSearch] = useState("");
+  const query = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
+  const customers = useInfiniteQuery({
+    ...customersQueryOptions(businessId, { query: query || undefined, status }),
+    enabled: open,
+    // Narrowing a search keeps the previous choices visible instead of flashing placeholders.
+    placeholderData: keepPreviousData,
+  });
+  const close = (next: boolean) => {
+    if (!next) setSearch("");
+    onOpenChange(next);
+  };
+
   return (
-    <View className="gap-6">
-      <View className="gap-2">
-        <Text accessibilityRole="header" className="text-2xl font-heading text-foreground">
-          {copy.receivables.picker.activeCustomersTitle}
-        </Text>
-        <Text className="font-sans text-sm leading-5 text-muted-foreground">
-          {copy.receivables.picker.activeCustomersDescription}
-        </Text>
-      </View>
-      <Field
-        label={copy.customers.list.searchLabel}
-        onChangeText={onSearchChange}
-        placeholder={copy.customers.list.searchPlaceholder}
-        trailing={<Icon as={Search} className="text-muted-foreground" size={18} />}
-        value={search}
-      />
-      {isLoading ? (
-        <LoadingIndicator />
-      ) : isOffline ? (
-        <View className="gap-3 border-y border-border py-5">
-          <Text className="font-sans text-sm text-muted-foreground">
-            {copy.access.offlineDescription}
-          </Text>
-        </View>
-      ) : isError ? (
-        <View className="gap-3 border-y border-border py-5">
-          <Text className="font-sans text-sm text-muted-foreground">
-            {copy.common.unavailableDescription}
-          </Text>
-          <Button label={copy.common.retry} onPress={onRetry} variant="outline" />
-        </View>
-      ) : items.length === 0 ? (
-        <Text className="font-sans border-y border-border py-5 text-sm text-muted-foreground">
-          {copy.receivables.picker.noCustomers}
-        </Text>
-      ) : (
-        <SelectField
-          label={copy.receivables.form.customer}
-          onChange={(id) => {
-            const selected = items.find((item) => item.id === id);
-            if (!selected) throw new Error("The selected customer is not in the loaded result.");
-            onSelect(selected);
-          }}
-          options={items.map((customer) => ({
-            value: customer.id,
-            label: [customer.name, customer.email, customer.phone].filter(Boolean).join(" · "),
-          }))}
-          value={selectedCustomerId}
-        />
-      )}
-      {hasNextPage ? (
-        <Button
-          label={copy.customers.list.loadMore}
-          loading={isLoadingMore}
-          onPress={onLoadMore}
-          variant="outline"
-        />
-      ) : null}
-      <Button label={copy.common.back} onPress={onBack} variant="ghost" />
-    </View>
+    <RecordPicker
+      description={
+        status === "active"
+          ? t("customers.picker.activeDescription")
+          : t("customers.picker.allDescription")
+      }
+      emptyText={query ? t("customers.picker.noMatches") : t("customers.picker.empty")}
+      getKey={(customer) => customer.id}
+      hasNextPage={customers.hasNextPage}
+      items={customers.data?.pages.flatMap((page) => page.items) ?? []}
+      label={t("customers.picker.title")}
+      loadMoreLabel={t("customers.list.loadMore")}
+      loadingMore={customers.isFetchingNextPage}
+      onLoadMore={() => void customers.fetchNextPage()}
+      onOpenChange={close}
+      onRetry={() => void customers.refetch()}
+      onSelect={(customer) => {
+        onSelect(customer);
+        close(false);
+      }}
+      open={open}
+      renderItem={(customer) => ({ detail: customerContact(customer), label: customer.name })}
+      search={{
+        label: t("customers.list.searchLabel"),
+        onChange: setSearch,
+        placeholder: t("customers.list.searchPlaceholder"),
+        value: search,
+      }}
+      selectedKey={selectedId}
+      status={pickerStatus(readState([customers]))}
+      title={t("customers.picker.title")}
+    />
   );
 }

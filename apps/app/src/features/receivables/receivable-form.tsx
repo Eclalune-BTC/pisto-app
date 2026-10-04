@@ -1,104 +1,106 @@
-import { ChevronRight } from "lucide-react-native";
+import type { Href } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
-import { Icon } from "@/components/ui/icon";
-import { Text } from "@/components/ui/text";
 
-import type { ReceivableFormCopy } from "./types";
+import { Section } from "@/components/layout/section";
+import { DateField } from "@/components/ui/date-field";
+import { Field } from "@/components/ui/field";
+import { Text } from "@/components/ui/text";
+import { FormActions } from "@/features/customers/form-actions";
+import { PickerField } from "@/features/customers/picker-field";
+
+import type { PostReceivableDraft } from "./draft";
+
+export type ReceivableFormErrors = Partial<Record<keyof PostReceivableDraft | "customer", string>>;
 
 type ReceivableFormProps = {
-  amount: string;
-  canReview: boolean;
-  copy: ReceivableFormCopy;
-  description: string;
-  dueDate: string;
-  errors: Partial<Record<"amount" | "customer" | "description" | "dueDate" | "postedDate", string>>;
-  onCancel: () => void;
-  onChange: (field: "amount" | "description" | "dueDate" | "postedDate", value: string) => void;
+  amountPlaceholder: string;
+  cancelHref: Href;
+  currency: string;
+  customer: { detail?: string; name: string } | null;
+  /** The customer a charge was started from is still being read. */
+  customerLoading: boolean;
+  draft: PostReceivableDraft;
+  errors: ReceivableFormErrors;
+  onChange: (field: keyof PostReceivableDraft, value: string) => void;
   onChooseCustomer: () => void;
   onReview: () => void;
-  postedDate: string;
-  selectedCustomerName: string | null;
 };
 
 export function ReceivableForm({
-  amount,
-  canReview,
-  copy,
-  description,
-  dueDate,
+  amountPlaceholder,
+  cancelHref,
+  currency,
+  customer,
+  customerLoading,
+  draft,
   errors,
-  onCancel,
   onChange,
   onChooseCustomer,
   onReview,
-  postedDate,
-  selectedCustomerName,
 }: ReceivableFormProps) {
+  const { t } = useTranslation();
   return (
-    <View className="gap-5">
-      <View className="gap-2">
-        <Text className="text-sm font-ui text-foreground ">{copy.customer}</Text>
-        <Button
-          accessibilityLabel={copy.chooseCustomer}
-          className={`min-h-14 flex-row items-center justify-between gap-3 rounded-md border bg-background px-4 active:opacity-75 ${
-            errors.customer ? "border-destructive" : "border-border "
-          }`}
+    <View className="gap-8">
+      <Section title={t("receivables.form.chargeSection")}>
+        <PickerField
+          detail={customer?.detail}
+          error={errors.customer}
+          label={t("receivables.form.customer")}
           onPress={onChooseCustomer}
-          variant="ghost"
-        >
-          <Text className="min-w-0 flex-1 text-base text-foreground">
-            {selectedCustomerName ?? copy.chooseCustomer}
-          </Text>
-          <Icon as={ChevronRight} className="text-muted-foreground" size={18} />
-        </Button>
-        {errors.customer ? (
-          <Text accessibilityRole="alert" className="text-xs text-destructive">
-            {errors.customer}
-          </Text>
-        ) : null}
-      </View>
-      <View className="gap-5 sm:flex-row">
-        <View className="min-w-0 flex-1">
-          <Field
-            error={errors.amount}
-            keyboardType="decimal-pad"
-            label={copy.amount}
-            onChangeText={(value) => onChange("amount", value)}
-            placeholder={copy.amountPlaceholder}
-            value={amount}
-          />
+          placeholder={
+            customerLoading
+              ? t("receivables.list.customerLoading")
+              : t("receivables.form.chooseCustomer")
+          }
+          value={customer?.name}
+        />
+        <Field
+          error={errors.amount}
+          keyboardType="decimal-pad"
+          label={t("receivables.form.amount")}
+          onChangeText={(value) => onChange("amount", value)}
+          placeholder={amountPlaceholder}
+          trailing={<Text className="text-xs text-muted-foreground">{currency}</Text>}
+          value={draft.amount}
+        />
+        <Field
+          error={errors.description}
+          label={t("receivables.form.descriptionLabel")}
+          maxLength={240}
+          onChangeText={(value) => onChange("description", value)}
+          placeholder={t("receivables.form.descriptionPlaceholder")}
+          value={draft.description}
+        />
+      </Section>
+      <Section
+        description={t("receivables.form.datesDescription")}
+        title={t("receivables.form.datesSection")}
+      >
+        <View className="gap-4 sm:flex-row">
+          <View className="min-w-0 flex-1">
+            <DateField
+              error={errors.postedDate}
+              label={t("receivables.form.postedDate")}
+              onChange={(value) => onChange("postedDate", value)}
+              value={draft.postedDate}
+            />
+          </View>
+          <View className="min-w-0 flex-1">
+            <DateField
+              error={errors.dueDate}
+              label={t("receivables.form.dueDateOptional")}
+              onChange={(value) => onChange("dueDate", value)}
+              value={draft.dueDate}
+            />
+          </View>
         </View>
-        <View className="min-w-0 flex-1">
-          <Field
-            error={errors.postedDate}
-            label={copy.postedDate}
-            onChangeText={(value) => onChange("postedDate", value)}
-            placeholder={copy.datePlaceholder}
-            value={postedDate}
-          />
-        </View>
-      </View>
-      <Field
-        error={errors.dueDate}
-        label={`${copy.dueDate} (${copy.optional})`}
-        onChangeText={(value) => onChange("dueDate", value)}
-        placeholder={copy.datePlaceholder}
-        value={dueDate}
+      </Section>
+      <FormActions
+        cancelHref={cancelHref}
+        onSubmit={onReview}
+        submitLabel={t("receivables.form.review")}
       />
-      <Field
-        error={errors.description}
-        label={copy.description}
-        multiline
-        onChangeText={(value) => onChange("description", value)}
-        placeholder={copy.descriptionPlaceholder}
-        value={description}
-      />
-      <View className="gap-3 sm:flex-row sm:justify-end">
-        <Button label={copy.cancel} onPress={onCancel} variant="ghost" />
-        <Button disabled={!canReview} label={copy.review} onPress={onReview} variant="default" />
-      </View>
     </View>
   );
 }

@@ -1,102 +1,87 @@
 import { useQuery } from "@tanstack/react-query";
-import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-router";
 
+import { useRouteLabel } from "@/components/shell/shell-context";
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
-import { ActionUnavailable } from "@/features/customers/action-unavailable";
-import { CapabilityBoundary } from "@/features/customers/capability-boundary";
-import { buildCustomersCopy } from "@/features/customers/copy";
+import { firstParam } from "@/features/customers/list-params";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
-import { RecordBoundary, type RecordBoundaryState } from "@/features/customers/record-boundary";
+import { readState } from "@/features/customers/read-state";
+import { ScreenState } from "@/features/customers/screen-state";
 import { PaymentEditor } from "@/features/receivables/payment-editor";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
-import { isPausedWithoutData, readFailureKind } from "@/lib/query-state";
+import { acceptsPayment } from "@/features/receivables/rules";
 
 export default function ApplyPaymentRoute() {
-  const { t } = useTranslation();
-  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const router = useRouter();
-  const params = useLocalSearchParams<{ receivableId?: string | string[] }>();
-  const receivableId = Array.isArray(params.receivableId)
-    ? params.receivableId[0]
-    : params.receivableId;
+  const receivableId = firstParam(
+    useLocalSearchParams<{ receivableId?: string | string[] }>().receivableId,
+  );
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
   const businessId = access.business?.id;
+  const enabled = Boolean(access.business && access.canManage);
   const detail = useQuery({
     ...receivableDetailQueryOptions(businessId, receivableId),
-    enabled: Boolean(access.business && access.canManage && receivableId),
+    enabled: enabled && receivableId !== undefined,
   });
   const customerId = detail.data?.receivable.customerId;
   const customer = useQuery({
     ...customerDetailQueryOptions(businessId, customerId),
-    enabled: Boolean(access.business && access.canManage && customerId),
+    enabled: enabled && customerId !== undefined,
   });
-  const boundaryState = manageCapabilityBoundaryState(access);
+  useRouteLabel("/operate/receivables/[receivableId]", detail.data?.receivable.description);
 
-  if (!access.business && boundaryState === "ready") return <Redirect href="/business" />;
-
-  function goBack() {
-    if (receivableId) {
-      router.replace({
-        pathname: "/operate/receivables/[receivableId]",
-        params: { receivableId },
-      });
-    } else {
-      router.replace("/operate/receivables");
-    }
+  const accessState = manageCapabilityBoundaryState(access);
+  if (!access.business && accessState === "ready") return <Redirect href="/business" />;
+  if (accessState !== "ready" || !access.business) {
+    return (
+      <ScreenState
+        kind={accessState === "ready" ? "error" : accessState}
+        onRetry={() => void access.refetch()}
+        skeleton="form"
+        width="form"
+      />
+    );
   }
 
-  let recordState: RecordBoundaryState;
-  const hasCombinedData = Boolean(detail.data && customer.data);
-  if (!receivableId) recordState = "notFound";
-  else if (
-    isPausedWithoutData(detail.fetchStatus, Boolean(detail.data)) ||
-    (customerId && isPausedWithoutData(customer.fetchStatus, Boolean(customer.data)))
-  ) {
-    recordState = "offline";
-  } else if (detail.isPending || (customerId && customer.isPending)) {
-    recordState = "loading";
-  } else if (detail.isError || customer.isError) {
-    recordState = detail.isError ? readFailureKind(detail.error) : readFailureKind(customer.error);
-  } else {
-    recordState = hasCombinedData ? "ready" : "error";
-  }
-
-  const receivable = detail.data?.receivable;
-  const actionAllowed =
-    receivable &&
-    customer.data?.customer.status === "active" &&
-    (receivable.state === "open" || receivable.state === "overdue") &&
-    receivable.outstandingMinorUnits !== "0";
-
-  return (
-    <CapabilityBoundary onRetry={() => access.refetch()} state={boundaryState}>
-      <RecordBoundary
-        onBack={goBack}
+  const read = receivableId
+    ? readState(customerId ? [detail, customer] : [detail])
+    : { kind: "notFound" as const };
+  if (read.kind !== "ready" || !receivableId || !detail.data || !customer.data) {
+    return (
+      <ScreenState
+        kind={read.kind === "ready" ? "error" : read.kind}
         onRetry={() => {
           void detail.refetch();
           void customer.refetch();
         }}
-        state={recordState}
-      >
-        {access.business && receivable ? (
-          actionAllowed ? (
-            <PaymentEditor
-              business={access.business}
-              onBack={goBack}
-              onConfirmed={goBack}
-              receivable={receivable}
-            />
-          ) : (
-            <ActionUnavailable
-              description={copy.receivables.route.actionUnavailableDescription}
-              onBack={goBack}
-              title={copy.receivables.route.actionUnavailableTitle}
-            />
-          )
-        ) : null}
-      </RecordBoundary>
-    </CapabilityBoundary>
+        skeleton="form"
+        width="form"
+      />
+    );
+  }
+
+  const detailHref: Href = {
+    pathname: "/operate/receivables/[receivableId]",
+    params: { receivableId },
+  };
+  return (
+    <PaymentEditor
+      availability={
+        read.stale
+          ? "stale"
+          : acceptsPayment(detail.data.receivable, customer.data.customer.status === "active")
+            ? "available"
+            : "unavailable"
+      }
+      business={access.business}
+      cancelHref={detailHref}
+      customerName={customer.data.customer.name}
+      onConfirmed={() => router.replace(detailHref)}
+      onRetryRead={() => {
+        void detail.refetch();
+        void customer.refetch();
+      }}
+      receivable={detail.data.receivable}
+    />
   );
 }

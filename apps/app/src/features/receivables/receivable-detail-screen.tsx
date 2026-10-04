@@ -1,237 +1,334 @@
 import type { ReceivablePayment } from "@pisto/contracts";
-import { ArrowLeft } from "lucide-react-native";
-import { useMemo } from "react";
+import { type Href, Link } from "expo-router";
+import type { TFunction } from "i18next";
+import { Ban, Banknote, Ellipsis, Undo2 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+
+import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
+import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
-import { ScreenHeader } from "@/components/screen-header";
+import { StaleNotice } from "@/components/remote-state";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { RowActions } from "@/components/ui/row-actions";
 import { Text } from "@/components/ui/text";
+import { isPositiveAmount, type RecordFormat, useRecordFormat } from "@/features/customers/format";
+import { ScreenState } from "@/features/customers/screen-state";
 
-import type { ReceivableDetailLoadState, ReceivablesCopy } from "./types";
+import { ReceivableStateBadge } from "./receivable-state-badge";
+import { acceptsPayment, acceptsVoid, isReversed } from "./rules";
+import type { AccountNameCell, ReceivableDetailLoadState } from "./types";
 
 type ReceivableDetailScreenProps = {
+  accountNameFor: (accountId: string) => AccountNameCell;
   canManage: boolean;
-  cashAccountNameFor: (cashAccountId: string) => string;
-  copy: ReceivablesCopy;
-  customerActive: boolean;
-  customerName: string;
-  formatDate: (date: string) => string;
-  formatMoney: (minorUnits: string, currency: string, digits: number) => string;
-  onApplyPayment: () => void;
-  onBack: () => void;
   onRetry: () => void;
   onReversePayment: (paymentId: string) => void;
   onVoid: () => void;
   state: ReceivableDetailLoadState;
+  timeZone: string;
 };
 
+function VoidMenu({ blocked, onVoid }: { blocked: boolean; onVoid: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          accessibilityLabel={t("receivables.detail.moreActions")}
+          size="icon"
+          variant="outline"
+        >
+          <Icon as={Ellipsis} className="text-foreground" size={16} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64" sideOffset={4}>
+        <DropdownMenuItem disabled={blocked} onPress={onVoid} variant="destructive">
+          <Icon as={Ban} className="text-destructive" size={15} />
+          <View className="min-w-0 flex-1">
+            <Text>{t("receivables.detail.void")}</Text>
+            {blocked ? (
+              <Text className="text-xs leading-4 text-muted-foreground">
+                {t("receivables.detail.voidNeedsNoPayments")}
+              </Text>
+            ) : null}
+          </View>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+type PaymentRow = { account: AccountNameCell; payment: ReceivablePayment; reversed: boolean };
+
+function AccountName({ account }: { account: AccountNameCell }) {
+  const { t } = useTranslation();
+  return account.kind === "ready" ? (
+    <Text className="text-[13px]" numberOfLines={1}>
+      {account.name}
+    </Text>
+  ) : (
+    <Text className="text-[13px] text-muted-foreground" numberOfLines={1}>
+      {account.kind === "loading"
+        ? t("receivables.payments.accountLoading")
+        : t("receivables.payments.accountUnavailable")}
+    </Text>
+  );
+}
+
+function paymentColumns(format: RecordFormat, t: TFunction): DataTableColumn<PaymentRow>[] {
+  return [
+    {
+      id: "kind",
+      header: t("dataTable.columns.type"),
+      meta: { primary: true },
+      cell: ({ row: { original } }) => (
+        <View className="min-w-0 flex-row flex-wrap items-center gap-1.5">
+          <Text className="text-[13px]">
+            {original.payment.kind === "reversal"
+              ? t("receivables.payments.reversal")
+              : t("receivables.payments.payment")}
+          </Text>
+          {original.reversed ? (
+            <Badge variant="outline">
+              <Text>{t("receivables.payments.reversed")}</Text>
+            </Badge>
+          ) : null}
+        </View>
+      ),
+    },
+    {
+      id: "occurred",
+      header: t("dataTable.columns.date"),
+      cell: ({ row: { original } }) => (
+        <Text className="text-[13px] text-muted-foreground tabular-nums">
+          {t("receivables.payments.occurredAt", {
+            date: format.date(original.payment.occurredLocalDate),
+            time: original.payment.occurredLocalTime,
+          })}
+        </Text>
+      ),
+    },
+    {
+      id: "account",
+      header: t("dataTable.columns.account"),
+      cell: ({ row: { original } }) => <AccountName account={original.account} />,
+    },
+    {
+      id: "reference",
+      header: t("dataTable.columns.reference"),
+      meta: { hideOnCompact: true },
+      cell: ({ row: { original } }) =>
+        original.payment.reference ? (
+          <Text className="text-[13px] text-muted-foreground" numberOfLines={1}>
+            {original.payment.reference}
+          </Text>
+        ) : (
+          <Text
+            accessibilityLabel={t("receivables.payments.noReference")}
+            className="text-[13px] text-muted-foreground"
+          >
+            —
+          </Text>
+        ),
+    },
+    {
+      id: "amount",
+      header: t("dataTable.columns.amount"),
+      meta: { align: "end" },
+      cell: ({ row: { original } }) => (
+        <Text className="font-ui text-[13px] tabular-nums">
+          {format.money(
+            original.payment.amountMinorUnits,
+            original.payment.currency,
+            original.payment.currencyMinorUnitDigits,
+          )}
+        </Text>
+      ),
+    },
+  ];
+}
+
 export function ReceivableDetailScreen({
+  accountNameFor,
   canManage,
-  cashAccountNameFor,
-  copy,
-  customerActive,
-  customerName,
-  formatDate,
-  formatMoney,
-  onApplyPayment,
-  onBack,
   onRetry,
   onReversePayment,
   onVoid,
   state,
+  timeZone,
 }: ReceivableDetailScreenProps) {
   const { t } = useTranslation();
-  const payments = state.kind === "ready" ? state.payments : undefined;
-  const columns = useMemo<DataTableColumn<ReceivablePayment>[]>(
-    () => [
-      {
-        id: "type",
-        header: t("dataTable.columns.type"),
-        meta: { primary: true },
-        cell: ({ row: { original: payment } }) => (
-          <Text className="font-ui text-sm text-foreground">
-            {payment.kind === "reversal" ? copy.reversedPayment : copy.applyPayment}
-          </Text>
-        ),
-      },
-      {
-        id: "date",
-        header: t("dataTable.columns.date"),
-        cell: ({ row: { original: payment } }) => (
-          <Text className="font-sans text-sm text-muted-foreground">
-            {formatDate(payment.occurredLocalDate)}
-          </Text>
-        ),
-      },
-      {
-        id: "account",
-        header: t("dataTable.columns.account"),
-        cell: ({ row: { original: payment } }) => (
-          <Text className="font-sans text-sm text-foreground">
-            {cashAccountNameFor(payment.cashAccountId)}
-          </Text>
-        ),
-      },
-      {
-        id: "amount",
-        header: t("dataTable.columns.amount"),
-        meta: { align: "end" },
-        cell: ({ row: { original: payment } }) => (
-          <Text className="font-ui text-sm text-foreground">
-            {formatMoney(
-              payment.amountMinorUnits,
-              payment.currency,
-              payment.currencyMinorUnitDigits,
-            )}
-          </Text>
-        ),
-      },
-      ...(canManage
-        ? [
-            {
-              id: "actions",
-              header: t("dataTable.columns.actions"),
-              cell: ({ row: { original: payment } }) =>
-                payment.kind === "payment" &&
-                !payments?.some(
-                  (candidate) =>
-                    candidate.kind === "reversal" && candidate.reversesPaymentId === payment.id,
-                ) ? (
-                  <Button
-                    label={copy.reverse}
-                    onPress={() => onReversePayment(payment.id)}
-                    size="sm"
-                    variant="outline"
-                  />
-                ) : null,
-            } satisfies DataTableColumn<ReceivablePayment>,
-          ]
-        : []),
-    ],
-    [canManage, cashAccountNameFor, copy, formatDate, formatMoney, onReversePayment, payments, t],
-  );
-  if (state.kind === "loading") {
-    return (
-      <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <LoadingIndicator />
-        <Text className="font-sans text-sm text-muted-foreground">{copy.loading}</Text>
-      </View>
-    );
-  }
+  const format = useRecordFormat();
   if (state.kind !== "ready") {
-    const title =
-      state.kind === "offline"
-        ? copy.offlineTitle
-        : state.kind === "denied"
-          ? copy.deniedTitle
-          : state.kind === "notFound"
-            ? copy.unavailableTitle
-            : copy.errorTitle;
-    const description =
-      state.kind === "offline"
-        ? copy.offlineDescription
-        : state.kind === "denied"
-          ? copy.deniedDescription
-          : state.kind === "notFound"
-            ? copy.unavailableDescription
-            : copy.errorDescription;
-    return (
-      <Page>
-        <Button label={copy.back} onPress={onBack} variant="ghost" />
-        <View className="gap-3 border-y border-border py-8">
-          <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
-            {title}
-          </Text>
-          <Text className="font-sans text-sm leading-5 text-muted-foreground">{description}</Text>
-          {state.kind === "error" ? (
-            <Button label={copy.retry} onPress={onRetry} variant="outline" />
-          ) : null}
-        </View>
-      </Page>
-    );
+    return <ScreenState kind={state.kind} onRetry={onRetry} skeleton="detail" />;
   }
 
-  const item = state.receivable;
-  const stateLabel = {
-    open: copy.open,
-    overdue: copy.overdue,
-    paid: copy.paid,
-    voided: copy.voided,
-  }[item.state];
+  const { customer, payments, receivable } = state;
+  const money = (minorUnits: string) =>
+    format.money(minorUnits, receivable.currency, receivable.currencyMinorUnitDigits);
+  const payable = canManage && acceptsPayment(receivable, customer.active);
+  const voidable = canManage && receivable.state !== "voided";
+  const paymentHref: Href = {
+    pathname: "/operate/receivables/[receivableId]/payment",
+    params: { receivableId: receivable.id },
+  };
+  const customerHref: Href = {
+    pathname: "/operate/customers/[customerId]",
+    params: { customerId: customer.id },
+  };
+  const facts: DescriptionItem[] = [
+    {
+      label: t("receivables.detail.customer"),
+      value: (
+        <Link asChild href={customerHref}>
+          <Text className="self-start text-sm leading-5 text-foreground underline web:underline-offset-4">
+            {customer.name}
+          </Text>
+        </Link>
+      ),
+    },
+    {
+      label: t("receivables.detail.postedDate"),
+      numeric: true,
+      value: format.date(receivable.postedDate),
+    },
+    {
+      label: t("receivables.detail.dueDate"),
+      numeric: Boolean(receivable.dueDate),
+      value: receivable.dueDate ? format.date(receivable.dueDate) : t("receivables.list.noDueDate"),
+    },
+    ...(receivable.voidedAt
+      ? [
+          {
+            label: t("receivables.detail.voidedAt"),
+            numeric: true,
+            value: format.instant(receivable.voidedAt, timeZone),
+          },
+        ]
+      : []),
+    ...(receivable.voidReason
+      ? [{ label: t("receivables.detail.voidReason"), value: receivable.voidReason }]
+      : []),
+  ];
+  const dueDate = receivable.dueDate ? format.date(receivable.dueDate) : undefined;
+
   return (
-    <Page contentContainerClassName="gap-8">
-      <Button
-        accessibilityLabel={copy.back}
-        className="self-start px-0"
-        onPress={onBack}
-        size="sm"
-        variant="ghost"
-      >
-        <Icon as={ArrowLeft} className="text-muted-foreground" size={18} />
-        <Text className="font-ui text-foreground">{copy.back}</Text>
-      </Button>
-      <ScreenHeader
-        action={
-          canManage && item.state !== "voided" ? (
-            <View className="flex-row gap-2">
-              {customerActive && item.outstandingMinorUnits !== "0" ? (
-                <Button label={copy.applyPayment} onPress={onApplyPayment} variant="default" />
+    <Page>
+      <PageHeader
+        actions={
+          payable || voidable ? (
+            <>
+              {voidable ? <VoidMenu blocked={!acceptsVoid(receivable)} onVoid={onVoid} /> : null}
+              {payable ? (
+                <Link asChild href={paymentHref}>
+                  <Button accessibilityRole="link">
+                    <Icon as={Banknote} className="text-primary-foreground" size={16} />
+                    <Text>{t("receivables.detail.applyPayment")}</Text>
+                  </Button>
+                </Link>
               ) : null}
-              {item.paidMinorUnits === "0" ? (
-                <Button label={copy.void} onPress={onVoid} variant="ghost" />
-              ) : null}
-            </View>
+            </>
           ) : undefined
         }
-        description={`${item.description} — ${stateLabel}`}
-        title={customerName}
+        adornment={<ReceivableStateBadge state={receivable.state} />}
+        description={receivable.description}
+        title={customer.name}
       />
-      {state.stale ? (
-        <View className="border-l-4 border-warning bg-muted p-3">
-          <Text className="font-sans text-sm text-foreground">{copy.stale}</Text>
-        </View>
-      ) : null}
-      <View className="gap-5 border-y border-border py-6 lg:flex-row">
-        <View className="min-w-0 flex-1 gap-1">
-          <Text className="text-xs font-ui text-muted-foreground">{copy.outstanding}</Text>
-          <Text className="text-3xl font-heading text-foreground">
-            {formatMoney(item.outstandingMinorUnits, item.currency, item.currencyMinorUnitDigits)}
-          </Text>
-        </View>
-        <View className="min-w-0 flex-1 gap-2 border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-          <Text className="font-sans text-sm text-muted-foreground">
-            {copy.originalAmount}:{" "}
-            {formatMoney(item.originalMinorUnits, item.currency, item.currencyMinorUnitDigits)}
-          </Text>
-          <Text className="font-sans text-sm text-muted-foreground">
-            {copy.postedDate}: {formatDate(item.postedDate)}
-          </Text>
-          <Text className="font-sans text-sm text-muted-foreground">
-            {copy.dueDate}: {item.dueDate ? formatDate(item.dueDate) : copy.noDueDate}
-          </Text>
-        </View>
-      </View>
-      <View className="gap-3">
-        <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
-          {copy.paymentHistory}
-        </Text>
-        {state.payments.length === 0 ? (
-          <Text className="font-sans border-t border-border py-5 text-sm text-muted-foreground">
-            {copy.noPayments}
-          </Text>
+      {state.stale ? <StaleNotice onRetry={onRetry} /> : null}
+      <StatGroup>
+        <Stat
+          detail={t("receivables.detail.postedOn", { date: format.date(receivable.postedDate) })}
+          label={t("receivables.detail.amount")}
+          value={money(receivable.originalMinorUnits)}
+        />
+        <Stat label={t("receivables.detail.paid")} value={money(receivable.paidMinorUnits)} />
+        <Stat
+          detail={
+            receivable.state === "overdue" && dueDate
+              ? t("receivables.detail.overdueSince", { date: dueDate })
+              : receivable.state === "open" && dueDate
+                ? t("receivables.detail.dueOn", { date: dueDate })
+                : undefined
+          }
+          label={t("receivables.detail.outstanding")}
+          tone={
+            receivable.state === "overdue" && isPositiveAmount(receivable.outstandingMinorUnits)
+              ? "destructive"
+              : "default"
+          }
+          value={money(receivable.outstandingMinorUnits)}
+        />
+      </StatGroup>
+      <Section title={t("receivables.detail.facts")}>
+        <DescriptionList items={facts} />
+      </Section>
+      <Section
+        description={t("receivables.payments.description")}
+        title={t("receivables.payments.title")}
+      >
+        {payments.length === 0 ? (
+          <EmptyState
+            action={
+              payable ? (
+                <Link asChild href={paymentHref}>
+                  <Button accessibilityRole="link" size="sm">
+                    <Text>{t("receivables.detail.applyPayment")}</Text>
+                  </Button>
+                </Link>
+              ) : undefined
+            }
+            description={
+              receivable.state === "voided"
+                ? t("receivables.payments.emptyVoided")
+                : t("receivables.payments.emptyDescription")
+            }
+            icon={Banknote}
+            title={t("receivables.payments.emptyTitle")}
+          />
         ) : (
           <DataTable
-            caption={copy.paymentHistory}
-            columns={columns}
-            data={state.payments}
-            getRowId={(payment) => payment.id}
+            caption={t("receivables.payments.title")}
+            columns={paymentColumns(format, t)}
+            data={payments.map((payment) => ({
+              account: accountNameFor(payment.cashAccountId),
+              payment,
+              reversed: isReversed(payment, payments),
+            }))}
+            getRowId={({ payment }) => payment.id}
+            rowActions={
+              canManage
+                ? ({ payment, reversed }) =>
+                    payment.kind === "payment" && !reversed ? (
+                      <RowActions
+                        actions={[
+                          {
+                            destructive: true,
+                            icon: Undo2,
+                            label: t("receivables.payments.reverse"),
+                            onPress: () => onReversePayment(payment.id),
+                          },
+                        ]}
+                        label={t("receivables.payments.actions")}
+                      />
+                    ) : null
+                : undefined
+            }
           />
         )}
-      </View>
+      </Section>
     </Page>
   );
 }

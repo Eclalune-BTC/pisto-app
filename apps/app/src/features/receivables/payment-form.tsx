@@ -1,103 +1,119 @@
-import { ChevronRight } from "lucide-react-native";
+import type { Href } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
-import { Icon } from "@/components/ui/icon";
-import { Text } from "@/components/ui/text";
 
-import type { PaymentFormCopy } from "./types";
+import { Section } from "@/components/layout/section";
+import { Button } from "@/components/ui/button";
+import { DateField } from "@/components/ui/date-field";
+import { Field } from "@/components/ui/field";
+import { Text } from "@/components/ui/text";
+import { FormActions } from "@/features/customers/form-actions";
+import { PickerField } from "@/features/customers/picker-field";
+
+import type { PaymentDraft } from "./draft";
+
+export type PaymentFormErrors = Partial<Record<keyof PaymentDraft | "cashAccount", string>>;
 
 type PaymentFormProps = {
-  amount: string;
-  canReview: boolean;
-  copy: PaymentFormCopy;
-  date: string;
-  errors: Partial<Record<"amount" | "cashAccount" | "date" | "reference" | "time", string>>;
-  onCancel: () => void;
-  onChange: (field: "amount" | "date" | "reference" | "time", value: string) => void;
-  onChooseCashAccount: () => void;
+  accountName: string | null;
+  amountPlaceholder: string;
+  cancelHref: Href;
+  currency: string;
+  draft: PaymentDraft;
+  errors: PaymentFormErrors;
+  /** The confirmed outstanding balance, already formatted, offered as the full payment. */
+  outstanding: string;
+  onChange: (field: keyof PaymentDraft, value: string) => void;
+  onChooseAccount: () => void;
+  onPayInFull: () => void;
   onReview: () => void;
-  reference: string;
-  selectedCashAccountName: string | null;
-  time: string;
 };
 
 export function PaymentForm({
-  amount,
-  canReview,
-  copy,
-  date,
+  accountName,
+  amountPlaceholder,
+  cancelHref,
+  currency,
+  draft,
   errors,
-  onCancel,
   onChange,
-  onChooseCashAccount,
+  onChooseAccount,
+  onPayInFull,
   onReview,
-  reference,
-  selectedCashAccountName,
-  time,
+  outstanding,
 }: PaymentFormProps) {
+  const { t } = useTranslation();
   return (
-    <View className="gap-5">
-      <Field
-        error={errors.amount}
-        keyboardType="decimal-pad"
-        label={copy.amount}
-        onChangeText={(value) => onChange("amount", value)}
-        placeholder={copy.amountPlaceholder}
-        value={amount}
-      />
-      <View className="gap-2">
-        <Text className="text-sm font-ui text-foreground ">{copy.cashAccount}</Text>
-        <Button
-          accessibilityLabel={copy.chooseCashAccount}
-          className={`min-h-14 flex-row items-center justify-between gap-3 rounded-md border bg-background px-4 active:opacity-75 ${
-            errors.cashAccount ? "border-destructive" : "border-border "
-          }`}
-          onPress={onChooseCashAccount}
-          variant="ghost"
-        >
-          <Text className="min-w-0 flex-1 text-base text-foreground">
-            {selectedCashAccountName ?? copy.chooseCashAccount}
-          </Text>
-          <Icon as={ChevronRight} className="text-muted-foreground" size={18} />
-        </Button>
-        {errors.cashAccount ? (
-          <Text accessibilityRole="alert" className="text-xs text-destructive">
-            {errors.cashAccount}
-          </Text>
-        ) : null}
-      </View>
-      <View className="gap-5 sm:flex-row">
-        <View className="min-w-0 flex-1">
+    <View className="gap-8">
+      <Section
+        description={t("receivables.payment.paymentDescription", { amount: outstanding })}
+        title={t("receivables.payment.paymentSection")}
+      >
+        <View className="gap-1.5">
           <Field
-            error={errors.date}
-            label={copy.date}
-            onChangeText={(value) => onChange("date", value)}
-            placeholder={copy.datePlaceholder}
-            value={date}
+            error={errors.amount}
+            keyboardType="decimal-pad"
+            label={t("receivables.payment.amount")}
+            onChangeText={(value) => onChange("amount", value)}
+            placeholder={amountPlaceholder}
+            trailing={<Text className="text-xs text-muted-foreground">{currency}</Text>}
+            value={draft.amount}
+          />
+          <Button
+            className="self-start px-1"
+            label={t("receivables.payment.payInFull", { amount: outstanding })}
+            onPress={onPayInFull}
+            size="sm"
+            variant="ghost"
           />
         </View>
-        <View className="min-w-0 flex-1">
-          <Field
-            error={errors.time}
-            label={copy.time}
-            onChangeText={(value) => onChange("time", value)}
-            placeholder={copy.timePlaceholder}
-            value={time}
-          />
+        <PickerField
+          error={errors.cashAccount}
+          label={t("receivables.payment.account")}
+          onPress={onChooseAccount}
+          placeholder={t("receivables.payment.chooseAccount")}
+          value={accountName ?? undefined}
+        />
+      </Section>
+      <Section
+        description={t("receivables.payment.whenDescription")}
+        title={t("receivables.payment.whenSection")}
+      >
+        <View className="gap-4 sm:flex-row">
+          <View className="min-w-0 flex-1">
+            <DateField
+              error={errors.date}
+              label={t("receivables.payment.date")}
+              onChange={(value) => onChange("date", value)}
+              value={draft.date}
+            />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Field
+              error={errors.time}
+              keyboardType="numbers-and-punctuation"
+              label={t("receivables.payment.time")}
+              maxLength={5}
+              onChangeText={(value) => onChange("time", value)}
+              placeholder={t("receivables.payment.timePlaceholder")}
+              value={draft.time}
+            />
+          </View>
         </View>
-      </View>
-      <Field
-        error={errors.reference}
-        label={`${copy.reference} (${copy.optional})`}
-        onChangeText={(value) => onChange("reference", value)}
-        placeholder={copy.referencePlaceholder}
-        value={reference}
+        <Field
+          error={errors.reference}
+          label={t("receivables.payment.reference")}
+          maxLength={120}
+          onChangeText={(value) => onChange("reference", value)}
+          placeholder={t("receivables.payment.referencePlaceholder")}
+          value={draft.reference}
+        />
+      </Section>
+      <FormActions
+        cancelHref={cancelHref}
+        onSubmit={onReview}
+        submitLabel={t("receivables.payment.review")}
       />
-      <View className="gap-3 sm:flex-row sm:justify-end">
-        <Button label={copy.cancel} onPress={onCancel} variant="ghost" />
-        <Button disabled={!canReview} label={copy.review} onPress={onReview} variant="default" />
-      </View>
     </View>
   );
 }

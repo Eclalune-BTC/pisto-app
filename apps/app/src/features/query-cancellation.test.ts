@@ -12,6 +12,13 @@ const requests = vi.hoisted(
 );
 
 vi.mock("@/lib/api-client", () => ({
+  parseRequestPayload: (schema: { parse: (payload: unknown) => unknown }, payload: unknown) =>
+    schema.parse(payload),
+  pathWithQuery: (path: string, query: Record<string, unknown>) =>
+    `${path}?${Object.entries(query)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
+      .join("&")}`,
   apiRequest: (path: string, options: { method?: string; signal?: AbortSignal }) =>
     new Promise((resolve, reject) => {
       requests.push({ path, ...options, resolve });

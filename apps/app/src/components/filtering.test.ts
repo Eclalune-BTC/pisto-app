@@ -13,7 +13,6 @@ vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 
 import { CatalogScreen } from "@/features/catalog/catalog-screen";
-import { buildCustomersCopy } from "@/features/customers/copy";
 import { CustomersScreen } from "@/features/customers/customers-screen";
 import { ReceivablesScreen } from "@/features/receivables/receivables-screen";
 import { buildReportsCopy } from "@/features/reports/copy";
@@ -64,76 +63,64 @@ describe("stable query controls rendered through result transitions", () => {
     expect(markup).not.toContain(`>${i18n.t("catalog.list.createProduct")}<`);
     expect(markup).not.toContain(`>${i18n.t("catalog.list.manageCategories")}<`);
   });
+  const customerList = {
+    balanceFor: () => ({ kind: "loading" }) as const,
+    canManage: true,
+    onLoadMore: noop,
+    onRetry: noop,
+    onSearchChange: noop,
+    onStatusChange: noop,
+    query: "Mar",
+    search: "Mar",
+    status: "active",
+  } as const;
+
   test.each(["loading", "error", "offline"] as const)(
     "keeps customer search and filters available during %s without a create action",
     (kind) => {
-      const copy = buildCustomersCopy(i18n.t).customers.list;
       const markup = renderToStaticMarkup(
-        createElement(CustomersScreen, {
-          canManage: true,
-          copy,
-          onCreate: noop,
-          onLoadMore: noop,
-          onOpenCustomer: noop,
-          onRetry: noop,
-          onSearchChange: noop,
-          onStatusChange: noop,
-          searchQuery: "Mar",
-          state: { kind },
-          status: "active",
-        }),
+        createElement(CustomersScreen, { ...customerList, state: { kind } }),
       );
 
-      expect(markup).toContain(`aria-label="${copy.searchLabel}"`);
+      expect(markup).toContain(`aria-label="${i18n.t("customers.list.searchLabel")}"`);
       expect(markup).toContain('value="Mar"');
-      expect(markup).toContain(`aria-label="${copy.filterLabel}: ${copy.active}"`);
+      expect(markup).toContain(
+        `aria-label="${i18n.t("customers.list.statusFilter")}: ${i18n.t("customers.list.filterActive")}"`,
+      );
       expect(markup).toContain('aria-checked="true"');
-      expect(markup).not.toContain(`>${copy.create}<`);
+      expect(markup).not.toContain(`>${i18n.t("customers.list.create")}<`);
     },
   );
 
   test("keeps the selected receivable filter available after its request fails", () => {
-    const copy = buildCustomersCopy(i18n.t).receivables.list;
     const markup = renderToStaticMarkup(
       createElement(ReceivablesScreen, {
         canManage: true,
-        copy,
-        customerNameFor: () => "",
-        filter: "overdue",
-        formatDate: (value: string) => value,
-        formatMoney: (value: string) => value,
-        onCreate: noop,
-        onFilterChange: noop,
+        customerFilter: null,
+        customerNameFor: () => ({ kind: "unavailable" }) as const,
+        filters: { state: "overdue" },
+        onChooseCustomer: noop,
+        onClearCustomer: noop,
+        onClearFilters: noop,
         onLoadMore: noop,
-        onOpenReceivable: noop,
         onRetry: noop,
+        onStateChange: noop,
         state: { kind: "error" },
       }),
     );
-    expect(markup).toContain(`aria-label="${copy.filterLabel}: ${copy.overdue}"`);
-    expect(markup).not.toContain(`>${copy.charge}<`);
+    expect(markup).toContain(
+      `aria-label="${i18n.t("receivables.list.stateFilter")}: ${i18n.t("receivables.list.filterOverdue")}"`,
+    );
+    expect(markup).not.toContain(`>${i18n.t("receivables.list.create")}<`);
   });
 
   test("does not expose customer filters or creation after a denied read", () => {
-    const copy = buildCustomersCopy(i18n.t).customers.list;
     const markup = renderToStaticMarkup(
-      createElement(CustomersScreen, {
-        canManage: true,
-        copy,
-        onCreate: noop,
-        onLoadMore: noop,
-        onOpenCustomer: noop,
-        onRetry: noop,
-        onSearchChange: noop,
-        onStatusChange: noop,
-        searchQuery: "Mar",
-        state: { kind: "denied" },
-        status: "active",
-      }),
+      createElement(CustomersScreen, { ...customerList, state: { kind: "denied" } }),
     );
-    expect(markup).toContain(copy.deniedTitle);
-    expect(markup).not.toContain(`aria-label="${copy.searchLabel}"`);
-    expect(markup).not.toContain(`>${copy.create}<`);
+    expect(markup).toContain(i18n.t("customers.list.deniedTitle"));
+    expect(markup).not.toContain(`aria-label="${i18n.t("customers.list.searchLabel")}"`);
+    expect(markup).not.toContain(`>${i18n.t("customers.list.create")}<`);
   });
 
   test.each(["loading", "error", "offline"] as const)(

@@ -1,78 +1,98 @@
+import type { Href } from "expo-router";
+import { CircleAlert } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
-import { Button } from "@/components/ui/button";
+import { Section } from "@/components/layout/section";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Field } from "@/components/ui/field";
 
-import type { CustomerFormCopy } from "./types";
+import type { CustomerDraftValues } from "./draft";
+import { FormActions } from "./form-actions";
+
+export type CustomerFormErrors = Partial<Record<keyof CustomerDraftValues, string>>;
 
 type CustomerFormProps = {
-  copy: CustomerFormCopy;
-  email: string;
-  errors: Partial<Record<"email" | "name" | "notes" | "phone", string>>;
-  name: string;
-  notes: string;
-  onCancel: () => void;
-  onChange: (field: "email" | "name" | "notes" | "phone", value: string) => void;
+  cancelHref: Href;
+  errors: CustomerFormErrors;
+  formError?: string;
+  onChange: (field: keyof CustomerDraftValues, value: string) => void;
   onSubmit: () => void;
-  phone: string;
+  values: CustomerDraftValues;
 };
 
 export function CustomerForm({
-  copy,
-  email,
+  cancelHref,
   errors,
-  name,
-  notes,
-  onCancel,
+  formError,
   onChange,
   onSubmit,
-  phone,
+  values,
 }: CustomerFormProps) {
+  const { t } = useTranslation();
   return (
-    <View className="gap-5">
-      <Field
-        autoCapitalize="words"
-        error={errors.name}
-        label={copy.name}
-        onChangeText={(value) => onChange("name", value)}
-        placeholder={copy.namePlaceholder}
-        value={name}
-      />
-      <View className="gap-5 sm:flex-row">
-        <View className="min-w-0 flex-1">
-          <Field
-            error={errors.phone}
-            keyboardType="phone-pad"
-            label={copy.phone}
-            onChangeText={(value) => onChange("phone", value)}
-            placeholder={copy.phonePlaceholder}
-            value={phone}
-          />
+    <View className="gap-8">
+      <Section title={t("customers.form.identity")}>
+        <Field
+          autoCapitalize="words"
+          error={errors.name}
+          label={t("customers.fields.name")}
+          maxLength={120}
+          onChangeText={(value) => onChange("name", value)}
+          placeholder={t("customers.form.namePlaceholder")}
+          value={values.name}
+        />
+      </Section>
+      <Section
+        description={t("customers.form.contactDescription")}
+        title={t("customers.form.contact")}
+      >
+        <View className="gap-4 sm:flex-row">
+          <View className="min-w-0 flex-1">
+            <Field
+              error={errors.phone}
+              keyboardType="phone-pad"
+              label={t("customers.form.phone")}
+              maxLength={40}
+              onChangeText={(value) => onChange("phone", value)}
+              placeholder={t("customers.form.phonePlaceholder")}
+              value={values.phone}
+            />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Field
+              autoCapitalize="none"
+              autoCorrect={false}
+              error={errors.email}
+              keyboardType="email-address"
+              label={t("customers.form.email")}
+              maxLength={254}
+              onChangeText={(value) => onChange("email", value)}
+              placeholder={t("customers.form.emailPlaceholder")}
+              value={values.email}
+            />
+          </View>
         </View>
-        <View className="min-w-0 flex-1">
-          <Field
-            autoCapitalize="none"
-            error={errors.email}
-            keyboardType="email-address"
-            label={copy.email}
-            onChangeText={(value) => onChange("email", value)}
-            placeholder={copy.emailPlaceholder}
-            value={email}
-          />
-        </View>
-      </View>
-      <Field
-        error={errors.notes}
-        label={copy.notes}
-        multiline
-        onChangeText={(value) => onChange("notes", value)}
-        placeholder={copy.notesPlaceholder}
-        value={notes}
+        <Field
+          error={errors.notes}
+          label={t("customers.form.notes")}
+          maxLength={1000}
+          multiline
+          onChangeText={(value) => onChange("notes", value)}
+          placeholder={t("customers.form.notesPlaceholder")}
+          value={values.notes}
+        />
+      </Section>
+      {formError ? (
+        <Alert icon={CircleAlert} variant="destructive">
+          <AlertDescription>{formError}</AlertDescription>
+        </Alert>
+      ) : null}
+      <FormActions
+        cancelHref={cancelHref}
+        onSubmit={onSubmit}
+        submitLabel={t("customers.form.review")}
       />
-      <View className="gap-3 sm:flex-row sm:justify-end">
-        <Button label={copy.cancel} onPress={onCancel} variant="ghost" />
-        <Button label={copy.save} onPress={onSubmit} variant="default" />
-      </View>
     </View>
   );
 }

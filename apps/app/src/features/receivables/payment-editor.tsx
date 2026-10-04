@@ -1,200 +1,201 @@
 import type { ApplyReceivablePaymentRequest, Business, Receivable } from "@pisto/contracts";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
-import { ArrowLeft } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import type { Href } from "expo-router";
+import type { TFunction } from "i18next";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+
+import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
-import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
-import { buildCustomersCopy, type CustomersReceivablesCopy } from "@/features/customers/copy";
-import { requireSupportedLocale } from "@/i18n/locale";
-import { isAmbiguousMutationError } from "@/lib/api-client";
-import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { CommandReview } from "@/features/customers/command-review";
+import { commandState } from "@/features/customers/command-state";
+import { useRecordFormat } from "@/features/customers/format";
+import { ScreenState } from "@/features/customers/screen-state";
+import { currentLocalDateTime, toDecimalString } from "@/lib/money";
+import { notify } from "@/lib/notify";
 
 import { receivablesApi } from "./api";
-import { CashAccountPicker } from "./cash-account-picker";
-import { type CashAccountChoice, cashAccountChoicesQueryOptions } from "./cash-account-source";
+import { CashAccountPickerDialog } from "./cash-account-picker";
+import type { CashAccountChoice } from "./cash-account-source";
 import { buildPaymentCommand, type PaymentDraft, type ReceivableDraftIssue } from "./draft";
-import { financialMutationState, invalidateReceivableMutation } from "./mutation-state";
-import { PaymentForm } from "./payment-form";
+import { invalidateReceivableMutation } from "./mutation-state";
+import { PaymentForm, type PaymentFormErrors } from "./payment-form";
 import { amountInputPlaceholder } from "./presentation";
-import { PaymentReview } from "./receivable-reviews";
 
 type PaymentEditorProps = {
+  /** Whether the latest read still accepts a payment; a command already under review is kept. */
+  availability: "available" | "stale" | "unavailable";
   business: Business;
-  onBack: () => void;
+  cancelHref: Href;
+  customerName: string;
   onConfirmed: () => void;
+  onRetryRead: () => void;
   receivable: Receivable;
 };
 
-type PaymentErrors = Partial<
-  Record<"amount" | "cashAccount" | "date" | "reference" | "time", string>
->;
-
-function issueMessage(
-  copy: CustomersReceivablesCopy,
-  issue: ReceivableDraftIssue | undefined,
-): string | undefined {
+function issueMessage(t: TFunction, issue: ReceivableDraftIssue | undefined) {
   if (!issue) return undefined;
-  const validation = copy.receivables.validation;
-  if (issue === "cash-account") return validation.cashAccount;
-  if (issue === "date") return validation.date;
-  if (issue === "time") return validation.time;
-  if (issue === "reference") return validation.reference;
-  if (issue === "overpayment") return validation.overpayment;
-  return validation.amount;
+  if (issue === "cash-account") return t("receivables.validation.cashAccount");
+  if (issue === "date") return t("receivables.validation.date");
+  if (issue === "time") return t("receivables.validation.time");
+  if (issue === "reference") return t("receivables.validation.reference");
+  if (issue === "overpayment") return t("receivables.validation.overpayment");
+  return t("receivables.validation.amount");
 }
 
-export function PaymentEditor({ business, onBack, onConfirmed, receivable }: PaymentEditorProps) {
-  const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildCustomersCopy(t), [t]);
+export function PaymentEditor({
+  availability,
+  business,
+  cancelHref,
+  customerName,
+  onConfirmed,
+  onRetryRead,
+  receivable,
+}: PaymentEditorProps) {
+  const { t } = useTranslation();
+  const format = useRecordFormat();
   const queryClient = useQueryClient();
-  const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const now = currentLocalDateTime(business.timeZone);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState<CashAccountChoice | null>(null);
-  const [draft, setDraft] = useState<PaymentDraft>({
-    amount: "",
-    date: now.date,
-    reference: "",
-    time: now.time,
+  const [account, setAccount] = useState<CashAccountChoice | null>(null);
+  const [draft, setDraft] = useState<PaymentDraft>(() => {
+    const now = currentLocalDateTime(business.timeZone);
+    return { amount: "", date: now.date, reference: "", time: now.time };
   });
-  const [errors, setErrors] = useState<PaymentErrors>({});
+  const [errors, setErrors] = useState<PaymentFormErrors>({});
   const [command, setCommand] = useState<ApplyReceivablePaymentRequest | null>(null);
-  const accounts = useInfiniteQuery(cashAccountChoicesQueryOptions(business.id, "active"));
+  const money = (minorUnits: string) =>
+    format.money(minorUnits, receivable.currency, receivable.currencyMinorUnitDigits);
   const mutation = useMutation({
-    mutationFn: (nextCommand: ApplyReceivablePaymentRequest) =>
-      receivablesApi.applyPayment(receivable.id, nextCommand),
-    onSuccess: async ({ receivable: confirmedReceivable }) => {
+    mutationFn: ({
+      command: next,
+    }: {
+      accountName: string;
+      command: ApplyReceivablePaymentRequest;
+    }) => receivablesApi.applyPayment(receivable.id, next),
+    onSuccess: async ({ payment, receivable: confirmed }, { accountName }) => {
       await invalidateReceivableMutation(queryClient, {
         businessId: business.id,
-        customerId: confirmedReceivable.customerId,
-        receivableId: confirmedReceivable.id,
+        customerId: confirmed.customerId,
+      });
+      notify.success(t("receivables.payment.done"), {
+        description: t("receivables.payment.doneDescription", {
+          account: accountName,
+          amount: money(payment.amountMinorUnits),
+        }),
       });
       onConfirmed();
     },
   });
-
-  const confirmationLocked = mutation.isPending || isAmbiguousMutationError(mutation.error);
+  const state = commandState(t, mutation, t("receivables.payment.conflict"));
 
   const prepareReview = () => {
-    if (confirmationLocked) return;
-    if (accounts.isError || accounts.fetchStatus === "paused") {
-      setErrors((current) => ({
-        ...current,
-        cashAccount: copy.common.unavailableDescription,
-      }));
-      return;
-    }
     const result = buildPaymentCommand(
       draft,
-      selectedAccount,
+      account,
       receivable.currencyMinorUnitDigits,
       receivable.outstandingMinorUnits,
       Crypto.randomUUID(),
     );
     setErrors({
-      amount: issueMessage(copy, result.issues.amount),
-      cashAccount: issueMessage(copy, result.issues.cashAccount),
-      date: issueMessage(copy, result.issues.date),
-      reference: issueMessage(copy, result.issues.reference),
-      time: issueMessage(copy, result.issues.time),
+      amount: issueMessage(t, result.issues.amount),
+      cashAccount: issueMessage(t, result.issues.cashAccount),
+      date: issueMessage(t, result.issues.date),
+      reference: issueMessage(t, result.issues.reference),
+      time: issueMessage(t, result.issues.time),
     });
     if (!("command" in result)) return;
-    setCommand(result.command);
     mutation.reset();
+    setCommand(result.command);
   };
 
-  if (pickerOpen) {
+  if (!command && availability !== "available") {
     return (
-      <Page width="form">
-        <CashAccountPicker
-          hasNextPage={Boolean(accounts.hasNextPage)}
-          isError={accounts.isError}
-          isLoading={accounts.isPending && accounts.fetchStatus !== "paused"}
-          isLoadingMore={accounts.isFetchingNextPage}
-          isOffline={accounts.fetchStatus === "paused"}
-          items={accounts.data?.pages.flatMap((page) => page.items) ?? []}
-          onBack={() => setPickerOpen(false)}
-          onLoadMore={() => accounts.fetchNextPage()}
-          onRetry={() => accounts.refetch()}
-          onSelect={(account) => {
-            setSelectedAccount(account);
-            setErrors((current) => ({ ...current, cashAccount: undefined }));
-            setPickerOpen(false);
-          }}
-          selectedAccountId={selectedAccount?.id ?? null}
-        />
-      </Page>
+      <ScreenState
+        kind={availability === "stale" ? "error" : "unavailable"}
+        onRetry={onRetryRead}
+        width="form"
+      />
     );
   }
 
   return (
     <Page width="form">
-      <Button
-        className="self-start px-0"
-        disabled={confirmationLocked}
-        onPress={confirmationLocked ? undefined : onBack}
-        variant="ghost"
-      >
-        <Icon as={ArrowLeft} className="text-primary" size={18} />
-        <ButtonText variant="ghost">{copy.common.back}</ButtonText>
-      </Button>
-      <ScreenHeader
-        description={copy.receivables.route.paymentDescription}
-        title={copy.receivables.route.paymentTitle}
+      <PageHeader
+        description={t("receivables.payment.description", {
+          charge: receivable.description,
+          customer: customerName,
+        })}
+        title={t("receivables.payment.title")}
       />
-      {command && selectedAccount ? (
-        <PaymentReview
-          amount={formatMinorUnits(
-            command.amountMinorUnits,
-            receivable.currency,
-            receivable.currencyMinorUnitDigits,
-            locale,
-          )}
-          cashAccountName={selectedAccount.name}
-          copy={copy.receivables.review}
-          mutation={financialMutationState(t, mutation)}
-          occurrence={`${command.occurredLocalDate} ${command.occurredLocalTime}`}
-          onCancel={() => {
+      {command && account ? (
+        <CommandReview
+          confirmLabel={t("receivables.payment.confirm")}
+          description={t("receivables.payment.reviewDescription")}
+          items={[
+            {
+              label: t("receivables.payment.amount"),
+              numeric: true,
+              value: money(command.amountMinorUnits),
+            },
+            { label: t("receivables.payment.account"), value: account.name },
+            {
+              label: t("receivables.payment.occurred"),
+              numeric: true,
+              value: t("receivables.payments.occurredAt", {
+                date: format.date(command.occurredLocalDate),
+                time: command.occurredLocalTime,
+              }),
+            },
+            ...(command.reference
+              ? [{ label: t("receivables.payment.referenceLabel"), value: command.reference }]
+              : []),
+          ]}
+          onConfirm={() => mutation.mutate({ accountName: account.name, command })}
+          onEdit={() => {
             setCommand(null);
             mutation.reset();
           }}
-          onConfirm={() => mutation.mutate(command)}
-          onRetrySameCommand={() => mutation.mutate(command)}
-          reference={command.reference ?? null}
+          state={state}
+          title={t("receivables.payment.reviewTitle")}
         />
       ) : (
         <PaymentForm
-          amount={draft.amount}
-          canReview={Boolean(
-            selectedAccount &&
-              draft.amount &&
-              draft.date &&
-              draft.time &&
-              !accounts.isError &&
-              accounts.fetchStatus !== "paused",
-          )}
-          copy={{
-            ...copy.receivables.paymentForm,
-            amountPlaceholder: amountInputPlaceholder(receivable.currencyMinorUnitDigits),
-          }}
-          date={draft.date}
+          accountName={account?.name ?? null}
+          amountPlaceholder={amountInputPlaceholder(receivable.currencyMinorUnitDigits)}
+          cancelHref={cancelHref}
+          currency={receivable.currency}
+          draft={draft}
           errors={errors}
-          onCancel={onBack}
           onChange={(field, value) => {
             setDraft((current) => ({ ...current, [field]: value }));
             setErrors((current) => ({ ...current, [field]: undefined }));
           }}
-          onChooseCashAccount={() => setPickerOpen(true)}
+          onChooseAccount={() => setPickerOpen(true)}
+          onPayInFull={() => {
+            setDraft((current) => ({
+              ...current,
+              amount: toDecimalString(
+                receivable.outstandingMinorUnits,
+                receivable.currencyMinorUnitDigits,
+              ),
+            }));
+            setErrors((current) => ({ ...current, amount: undefined }));
+          }}
           onReview={prepareReview}
-          reference={draft.reference}
-          selectedCashAccountName={selectedAccount?.name ?? null}
-          time={draft.time}
+          outstanding={money(receivable.outstandingMinorUnits)}
         />
       )}
+      <CashAccountPickerDialog
+        businessId={business.id}
+        onOpenChange={setPickerOpen}
+        onSelect={(selection) => {
+          setAccount(selection);
+          setErrors((current) => ({ ...current, cashAccount: undefined }));
+        }}
+        open={pickerOpen}
+        selectedId={account?.id ?? null}
+      />
     </Page>
   );
 }

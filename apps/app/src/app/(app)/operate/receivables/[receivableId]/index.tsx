@@ -1,147 +1,144 @@
-import { useQueries, useQuery } from "@tanstack/react-query";
+import type { VoidReceivableRequest } from "@pisto/contracts";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+
+import { useRouteLabel } from "@/components/shell/shell-context";
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
-import { CapabilityBoundary } from "@/features/customers/capability-boundary";
-import { buildCustomersCopy } from "@/features/customers/copy";
+import { firstParam } from "@/features/customers/list-params";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
+import { readState } from "@/features/customers/read-state";
+import { ScreenState } from "@/features/customers/screen-state";
+import { useConfirmableCommand } from "@/features/customers/use-confirmable-command";
+import { receivablesApi } from "@/features/receivables/api";
 import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-account-source";
+import { invalidateReceivableMutation } from "@/features/receivables/mutation-state";
 import { uniqueValues } from "@/features/receivables/presentation";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
 import { ReceivableDetailScreen } from "@/features/receivables/receivable-detail-screen";
-import type { ReceivableDetailLoadState } from "@/features/receivables/types";
-import { formatLocalDate } from "@/i18n/format";
-import { requireSupportedLocale } from "@/i18n/locale";
-import { formatMinorUnits } from "@/lib/money";
-import {
-  hasDeniedRead,
-  isPausedWithoutData,
-  queryHasStaleData,
-  readFailureKind,
-} from "@/lib/query-state";
+import { ReceivableVoidDialog } from "@/features/receivables/receivable-void-dialog";
+import { acceptsVoid } from "@/features/receivables/rules";
+import type { AccountNameCell, ReceivableDetailLoadState } from "@/features/receivables/types";
+import { notify } from "@/lib/notify";
 
 export default function ReceivableDetailRoute() {
-  const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildCustomersCopy(t), [t]);
+  const { t } = useTranslation();
   const router = useRouter();
-  const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const params = useLocalSearchParams<{ receivableId?: string | string[] }>();
-  const receivableId = Array.isArray(params.receivableId)
-    ? params.receivableId[0]
-    : params.receivableId;
+  const queryClient = useQueryClient();
+  const receivableId = firstParam(
+    useLocalSearchParams<{ receivableId?: string | string[] }>().receivableId,
+  );
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
   const businessId = access.business?.id;
+  const enabled = Boolean(access.business && access.canRead);
   const detail = useQuery({
     ...receivableDetailQueryOptions(businessId, receivableId),
-    enabled: Boolean(access.business && access.canRead && receivableId),
+    enabled: enabled && receivableId !== undefined,
   });
   const customerId = detail.data?.receivable.customerId;
   const customer = useQuery({
     ...customerDetailQueryOptions(businessId, customerId),
-    enabled: Boolean(access.business && access.canRead && customerId),
+    enabled: enabled && customerId !== undefined,
   });
-  const accountIds = useMemo(
-    () => uniqueValues(detail.data?.payments.map((payment) => payment.cashAccountId) ?? []),
-    [detail.data?.payments],
+  const accountIds = uniqueValues(
+    detail.data?.payments.map((payment) => payment.cashAccountId) ?? [],
   );
-  const accountQueries = useQueries({
+  const accounts = useQueries({
     queries: accountIds.map((accountId) => ({
       ...cashAccountDetailQueryOptions(businessId, accountId),
-      enabled: Boolean(access.business && access.canRead),
+      enabled,
     })),
   });
-  const boundaryState = capabilityBoundaryState(access);
+  const voidCommand = useConfirmableCommand({
+    conflictMessage: t("receivables.void.conflict"),
+    mutationFn: (command: VoidReceivableRequest) => {
+      if (!receivableId) throw new Error("Voiding a receivable requires its identifier");
+      return receivablesApi.void(receivableId, command);
+    },
+    onConfirmed: async ({ receivable }) => {
+      if (!businessId) throw new Error("Receivable invalidation requires its business");
+      await invalidateReceivableMutation(queryClient, {
+        businessId,
+        customerId: receivable.customerId,
+      });
+      notify.success(t("receivables.void.done"), { description: receivable.description });
+    },
+  });
+  useRouteLabel("/operate/receivables/[receivableId]", detail.data?.receivable.description);
 
-  if (!access.business && boundaryState === "ready") return <Redirect href="/business" />;
+  const accessState = capabilityBoundaryState(access);
+  if (!access.business && accessState === "ready") return <Redirect href="/business" />;
+  if (accessState !== "ready" || !access.business) {
+    return (
+      <ScreenState
+        kind={accessState === "ready" ? "error" : accessState}
+        onRetry={() => void access.refetch()}
+        skeleton="detail"
+      />
+    );
+  }
 
+  const read = receivableId
+    ? readState(customerId ? [detail, customer] : [detail])
+    : { kind: "notFound" as const };
+  const accountsDenied = readState(accounts).kind === "denied";
   let state: ReceivableDetailLoadState;
-  const hasCombinedData = Boolean(detail.data && customer.data);
-  if (
-    (!access.canRead && access.business) ||
-    hasDeniedRead([detail, customer, ...accountQueries])
-  ) {
+  if (accountsDenied) {
     state = { kind: "denied" };
-  } else if (!receivableId) {
-    state = { kind: "notFound" };
-  } else if (
-    isPausedWithoutData(detail.fetchStatus, Boolean(detail.data)) ||
-    (customerId && isPausedWithoutData(customer.fetchStatus, Boolean(customer.data)))
-  ) {
-    state = { kind: "offline" };
-  } else if (detail.isPending || (customerId && customer.isPending)) {
-    state = { kind: "loading" };
-  } else if ((detail.isError || customer.isError) && !hasCombinedData) {
-    const failure = detail.isError
-      ? readFailureKind(detail.error)
-      : readFailureKind(customer.error);
-    state = {
-      kind: failure === "notFound" ? "notFound" : failure === "denied" ? "denied" : "error",
-    };
-  } else if (detail.data && customer.data) {
+  } else if (read.kind === "ready" && detail.data && customer.data) {
     state = {
       kind: "ready",
+      customer: {
+        active: customer.data.customer.status === "active",
+        id: customer.data.customer.id,
+        name: customer.data.customer.name,
+      },
       payments: detail.data.payments,
       receivable: detail.data.receivable,
       stale:
+        read.stale ||
         access.isStale ||
-        [detail, customer, ...accountQueries].some(queryHasStaleData) ||
-        accountQueries.some((query) => query.isError || query.fetchStatus === "paused"),
+        accounts.some((query) => query.isError || query.fetchStatus === "paused"),
     };
   } else {
-    state = { kind: "error" };
+    state = { kind: read.kind === "ready" ? "error" : read.kind };
   }
+  const writable = access.canManage && !(state.kind === "ready" && state.stale);
 
   return (
-    <CapabilityBoundary onRetry={() => access.refetch()} state={boundaryState}>
+    <>
       <ReceivableDetailScreen
-        canManage={access.canManage && !(state.kind === "ready" && state.stale)}
-        cashAccountNameFor={(accountId) => {
-          const index = accountIds.indexOf(accountId);
-          const query = index >= 0 ? accountQueries[index] : undefined;
-          return (
-            query?.data?.account.name ??
-            (query?.isPending
-              ? copy.receivables.list.cashAccountLoading
-              : copy.receivables.list.cashAccountUnavailable)
-          );
+        accountNameFor={(accountId): AccountNameCell => {
+          const query = accounts[accountIds.indexOf(accountId)];
+          if (query?.data) return { kind: "ready", name: query.data.account.name };
+          return query?.isPending && query.fetchStatus !== "paused"
+            ? { kind: "loading" }
+            : { kind: "unavailable" };
         }}
-        copy={copy.receivables.list}
-        customerActive={customer.data?.customer.status === "active"}
-        customerName={customer.data?.customer.name ?? copy.receivables.list.customerLoading}
-        formatDate={(date) => formatLocalDate(date, locale)}
-        formatMoney={(minorUnits, currency, digits) =>
-          formatMinorUnits(minorUnits, currency, digits, locale)
-        }
-        onApplyPayment={() => {
-          if (state.kind !== "ready") return;
-          router.push({
-            pathname: "/operate/receivables/[receivableId]/payment",
-            params: { receivableId: state.receivable.id },
-          });
-        }}
-        onBack={() => router.replace("/operate/receivables")}
+        canManage={writable}
         onRetry={() => {
           void detail.refetch();
           void customer.refetch();
-          for (const query of accountQueries) void query.refetch();
+          for (const query of accounts) void query.refetch();
         }}
         onReversePayment={(paymentId) => {
-          if (state.kind !== "ready") return;
+          if (!receivableId) return;
           router.push({
             pathname: "/operate/receivables/[receivableId]/payments/[paymentId]/reverse",
-            params: { paymentId, receivableId: state.receivable.id },
+            params: { paymentId, receivableId },
           });
         }}
-        onVoid={() => {
-          if (state.kind !== "ready") return;
-          router.push({
-            pathname: "/operate/receivables/[receivableId]/void",
-            params: { receivableId: state.receivable.id },
-          });
-        }}
+        onVoid={() => voidCommand.onOpenChange(true)}
         state={state}
+        timeZone={access.business.timeZone}
       />
-    </CapabilityBoundary>
+      {state.kind === "ready" && (acceptsVoid(state.receivable) || voidCommand.open) ? (
+        <ReceivableVoidDialog
+          action={voidCommand}
+          key={voidCommand.session}
+          receivable={state.receivable}
+        />
+      ) : null}
+    </>
   );
 }

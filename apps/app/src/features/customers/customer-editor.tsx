@@ -1,20 +1,27 @@
-import type { CreateCustomerRequest, Customer, UpdateCustomerRequest } from "@pisto/contracts";
+import type {
+  CreateCustomerRequest,
+  Customer,
+  CustomerResponse,
+  UpdateCustomerRequest,
+} from "@pisto/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
-import { ArrowLeft } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import type { Href } from "expo-router";
+import type { TFunction } from "i18next";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { View } from "react-native";
+
+import type { DescriptionItem } from "@/components/layout/description-list";
+import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
-import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { isAmbiguousMutationError } from "@/lib/api-client";
+import { notify } from "@/lib/notify";
 
 import { customersApi } from "./api";
-import { buildCustomersCopy, type CustomersReceivablesCopy } from "./copy";
-import { CustomerForm } from "./customer-form";
-import { CustomerReview, type CustomerReviewField } from "./customer-review";
+import { CommandReview } from "./command-review";
+import { commandState } from "./command-state";
+import { CustomerForm, type CustomerFormErrors } from "./customer-form";
 import {
   buildCreateCustomerCommand,
   buildUpdateCustomerCommand,
@@ -22,150 +29,147 @@ import {
   type CustomerDraftValues,
   customerValues,
 } from "./draft";
-import { customerMutationState } from "./mutation-state";
 import { customerQueryKeys } from "./queries";
 
 type CustomerCommand = CreateCustomerRequest | UpdateCustomerRequest;
 
 type CustomerEditorProps = {
   businessId: string;
+  cancelHref: Href;
+  /** Present when editing; a new customer starts from empty values. */
   customer?: Customer;
-  onBack: () => void;
-  onConfirmed: (customerId: string) => void;
+  onConfirmed: (customer: Customer) => void;
 };
 
-function issueMessages(
-  copy: CustomersReceivablesCopy,
-  issues: CustomerDraftIssues,
-): Partial<Record<keyof CustomerDraftValues, string>> {
+function fieldErrors(t: TFunction, issues: CustomerDraftIssues): CustomerFormErrors {
   return {
-    email: issues.email ? copy.customers.validation.email : undefined,
-    name: issues.name ? copy.customers.validation.name : undefined,
-    notes: issues.notes ? copy.customers.validation.notes : undefined,
-    phone: issues.phone ? copy.customers.validation.phone : undefined,
+    email: issues.email ? t("customers.validation.email") : undefined,
+    name: issues.name ? t("customers.validation.name") : undefined,
+    notes: issues.notes ? t("customers.validation.notes") : undefined,
+    phone: issues.phone ? t("customers.validation.phone") : undefined,
   };
 }
 
-function reviewFields(
-  copy: CustomersReceivablesCopy,
-  command: CustomerCommand,
-): CustomerReviewField[] {
-  const fields: CustomerReviewField[] = [];
-  if (command.name !== undefined) {
-    fields.push({ label: copy.customers.list.name, value: command.name });
-  }
-  for (const [field, label] of [
-    ["phone", copy.customers.list.phone],
-    ["email", copy.customers.list.email],
-    ["notes", copy.customers.list.notes],
-  ] as const) {
-    const value = command[field];
-    if (value !== undefined) {
-      fields.push({
-        label,
-        value: value === null ? copy.common.clearValue : value,
-      });
-    }
-  }
-  return fields;
+function ChangedValue({ next, previous }: { next: string; previous: string | null }) {
+  const { t } = useTranslation();
+  return (
+    <View className="min-w-0 gap-0.5">
+      <Text className="text-sm leading-5">{next}</Text>
+      {previous ? (
+        <Text className="text-xs leading-4 text-muted-foreground">
+          {t("customers.editor.previous", { value: previous })}
+        </Text>
+      ) : null}
+    </View>
+  );
 }
 
-export function CustomerEditor({ businessId, customer, onBack, onConfirmed }: CustomerEditorProps) {
+/** The fields the command sets; an edit also shows the value each one replaces. */
+function reviewItems(
+  t: TFunction,
+  command: CustomerCommand,
+  customer: Customer | undefined,
+): DescriptionItem[] {
+  const fields = [
+    ["name", t("customers.fields.name")],
+    ["phone", t("customers.fields.phone")],
+    ["email", t("customers.fields.email")],
+    ["notes", t("customers.fields.notes")],
+  ] as const;
+  return fields.flatMap(([field, label]) => {
+    const value = command[field];
+    if (value === undefined) return [];
+    const next = value ?? t("customers.editor.cleared");
+    return [
+      {
+        label,
+        value: customer ? <ChangedValue next={next} previous={customer[field]} /> : next,
+      },
+    ];
+  });
+}
+
+export function CustomerEditor({
+  businessId,
+  cancelHref,
+  customer,
+  onConfirmed,
+}: CustomerEditorProps) {
   const { t } = useTranslation();
-  const copy = useMemo(() => buildCustomersCopy(t), [t]);
   const queryClient = useQueryClient();
-  const editing = Boolean(customer);
+  const editing = customer !== undefined;
   const [values, setValues] = useState<CustomerDraftValues>(() => customerValues(customer));
-  const [errors, setErrors] = useState<Partial<Record<keyof CustomerDraftValues, string>>>({});
+  const [errors, setErrors] = useState<CustomerFormErrors>({});
   const [formError, setFormError] = useState<string>();
   const [command, setCommand] = useState<CustomerCommand | null>(null);
 
   const mutation = useMutation({
-    mutationFn: (nextCommand: CustomerCommand) =>
+    mutationFn: (next: CustomerCommand): Promise<CustomerResponse["data"]> =>
       customer
-        ? customersApi.update(customer.id, nextCommand as UpdateCustomerRequest)
-        : customersApi.create(nextCommand as CreateCustomerRequest),
-    onSuccess: async ({ customer: confirmedCustomer }) => {
+        ? customersApi.update(customer.id, next as UpdateCustomerRequest)
+        : customersApi.create(next as CreateCustomerRequest),
+    onSuccess: async ({ customer: confirmed }) => {
       await queryClient.invalidateQueries({ queryKey: customerQueryKeys.all(businessId) });
-      onConfirmed(confirmedCustomer.id);
+      notify.success(editing ? t("customers.editor.updated") : t("customers.editor.created"), {
+        description: confirmed.name,
+      });
+      onConfirmed(confirmed);
     },
   });
-  const mutationState = customerMutationState(t, mutation);
-
-  const confirmationLocked = mutation.isPending || isAmbiguousMutationError(mutation.error);
+  const state = commandState(t, mutation, editing ? t("customers.editor.conflict") : undefined);
 
   const prepareReview = () => {
-    if (confirmationLocked) return;
     const idempotencyKey = Crypto.randomUUID();
     const result = customer
       ? buildUpdateCustomerCommand(customer, values, idempotencyKey)
       : buildCreateCustomerCommand(values, idempotencyKey);
-    setErrors(issueMessages(copy, result.issues));
-    setFormError(result.issues.form === "no-changes" ? copy.customers.editor.noChanges : undefined);
+    setErrors(fieldErrors(t, result.issues));
+    setFormError(result.issues.form === "no-changes" ? t("customers.editor.noChanges") : undefined);
     if (!("command" in result)) return;
-    setCommand(result.command as CustomerCommand);
     mutation.reset();
+    setCommand(result.command as CustomerCommand);
   };
 
   return (
     <Page width="form">
-      <Button
-        className="self-start px-0"
-        disabled={confirmationLocked}
-        onPress={confirmationLocked ? undefined : onBack}
-        variant="ghost"
-      >
-        <Icon as={ArrowLeft} className="text-primary" size={18} />
-        <ButtonText variant="ghost">{copy.common.back}</ButtonText>
-      </Button>
-      <ScreenHeader
+      <PageHeader
         description={
-          editing ? copy.customers.editor.editDescription : copy.customers.editor.createDescription
+          editing ? t("customers.editor.editDescription") : t("customers.editor.createDescription")
         }
-        title={editing ? copy.customers.editor.editTitle : copy.customers.editor.createTitle}
+        title={editing ? t("customers.editor.editTitle") : t("customers.editor.createTitle")}
       />
       {command ? (
-        <CustomerReview
+        <CommandReview
           confirmLabel={
-            editing ? copy.customers.editor.confirmEdit : copy.customers.editor.confirmCreate
+            editing ? t("customers.editor.confirmEdit") : t("customers.editor.confirmCreate")
           }
-          fields={reviewFields(copy, command)}
-          mutation={mutationState}
+          description={
+            editing
+              ? t("customers.editor.reviewEditDescription")
+              : t("customers.editor.reviewCreateDescription")
+          }
+          items={reviewItems(t, command, customer)}
           onConfirm={() => mutation.mutate(command)}
           onEdit={() => {
             setCommand(null);
             mutation.reset();
           }}
-          onRetrySameRequest={() => mutation.mutate(command)}
-          title={
-            editing
-              ? copy.customers.editor.reviewEditTitle
-              : copy.customers.editor.reviewCreateTitle
-          }
+          state={state}
+          title={t("customers.editor.reviewTitle")}
         />
       ) : (
-        <>
-          <CustomerForm
-            copy={copy.customers.form}
-            email={values.email}
-            errors={errors}
-            name={values.name}
-            notes={values.notes}
-            onCancel={onBack}
-            onChange={(field, value) => {
-              setValues((current) => ({ ...current, [field]: value }));
-              setErrors((current) => ({ ...current, [field]: undefined }));
-              setFormError(undefined);
-            }}
-            onSubmit={prepareReview}
-            phone={values.phone}
-          />
-          {formError ? (
-            <Text accessibilityRole="alert" className="text-sm text-destructive ">
-              {formError}
-            </Text>
-          ) : null}
-        </>
+        <CustomerForm
+          cancelHref={cancelHref}
+          errors={errors}
+          formError={formError}
+          onChange={(field, value) => {
+            setValues((current) => ({ ...current, [field]: value }));
+            setErrors((current) => ({ ...current, [field]: undefined }));
+            setFormError(undefined);
+          }}
+          onSubmit={prepareReview}
+          values={values}
+        />
       )}
     </Page>
   );

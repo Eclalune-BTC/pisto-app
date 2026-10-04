@@ -10,14 +10,13 @@ vi.mock("uniwind", () => ({
     Array.isArray(names) ? names.map(() => "#71717A") : "#71717A",
   withUniwind: (component: unknown) => component,
 }));
-vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 
 import { ReceivableDetailScreen } from "@/features/receivables/receivable-detail-screen";
 import { ReceivablesScreen } from "@/features/receivables/receivables-screen";
 import { i18n } from "@/i18n/config";
+import { formatLocalDate } from "@/i18n/format";
 import { formatMinorUnits } from "@/lib/money";
-import { buildCustomersCopy } from "./copy";
 import { CustomersScreen } from "./customers-screen";
 
 const noop = () => undefined;
@@ -25,7 +24,6 @@ const date = "2026-09-27";
 const timestamp = `${date}T18:00:00.000Z`;
 const money = (value: string, currency: string, digits: number) =>
   formatMinorUnits(value, currency, digits, "es-SV");
-const copy = buildCustomersCopy(i18n.t);
 const customer: Customer = {
   id: "customer-a",
   name: "Long customer name that must remain fully readable",
@@ -36,16 +34,24 @@ const customer: Customer = {
   createdAt: timestamp,
   updatedAt: timestamp,
 };
+const balance = {
+  currency: "USD",
+  currencyMinorUnitDigits: 2,
+  outstandingMinorUnits: "1250",
+  overdueMinorUnits: "0",
+  openReceivableCount: "1",
+  overdueReceivableCount: "0",
+  queriedAt: timestamp,
+};
 const customerProps: ComponentProps<typeof CustomersScreen> = {
+  balanceFor: () => ({ kind: "ready", balance }),
   canManage: false,
-  copy: copy.customers.list,
-  onCreate: noop,
   onLoadMore: noop,
-  onOpenCustomer: noop,
   onRetry: noop,
   onSearchChange: noop,
   onStatusChange: noop,
-  searchQuery: "Long",
+  query: "Long",
+  search: "Long",
   status: "all",
   state: { kind: "ready", items: [customer], stale: true, nextCursor: "next", loadingMore: false },
 };
@@ -83,33 +89,48 @@ const payment: ReceivablePayment = {
   reversesPaymentId: null,
   createdAt: timestamp,
 };
-const paymentProps: ComponentProps<typeof ReceivableDetailScreen> = {
+const detailProps: ComponentProps<typeof ReceivableDetailScreen> = {
+  accountNameFor: () => ({ kind: "ready", name: "Operating account" }),
   canManage: true,
-  cashAccountNameFor: () => "Operating account",
-  copy: copy.receivables.list,
-  customerActive: true,
-  customerName: customer.name,
-  formatDate: (value) => value,
-  formatMoney: money,
-  onApplyPayment: noop,
-  onBack: noop,
   onRetry: noop,
   onReversePayment: noop,
   onVoid: noop,
-  state: { kind: "ready", receivable, payments: [payment], stale: false },
+  state: {
+    kind: "ready",
+    customer: { active: true, id: customer.id, name: customer.name },
+    payments: [payment],
+    receivable,
+    stale: false,
+  },
+  timeZone: "America/El_Salvador",
 };
+const paymentActions = `aria-label="${i18n.t("receivables.payments.actions")}"`;
 
 describe("record table presentation", () => {
-  test("keeps both customer contacts, full names, stale notice and the real cursor action", () => {
+  test("keeps full names, the phone, balances, stale notice and the real cursor", () => {
     const markup = renderToStaticMarkup(createElement(CustomersScreen, customerProps));
     expect(markup).toContain(customer.name);
-    expect(markup).toContain(customer.email);
     expect(markup).toContain(customer.phone);
-    expect(markup).toContain(copy.customers.list.archived);
-    expect(markup).toContain(copy.customers.list.stale);
-    expect(markup).toContain(copy.customers.list.loadMore);
+    // Compact rows keep the phone; the email stays in the wide table and on the record.
+    expect(markup).not.toContain(customer.email);
+    expect(markup).toContain("$12.50");
+    expect(markup).toContain(i18n.t("customers.status.archived"));
+    expect(markup).toContain(i18n.t("remote.stale"));
+    expect(markup).toContain(i18n.t("customers.list.loadMore"));
     expect(markup).toContain('role="listitem"');
-    expect(markup).not.toContain(`>${copy.customers.list.create}<`);
+    expect(markup).toContain("/operate/customers/[customerId]");
+    expect(markup).not.toContain(`>${i18n.t("customers.list.create")}<`);
+  });
+
+  test("never presents an unconfirmed balance as an amount", () => {
+    const markup = renderToStaticMarkup(
+      createElement(CustomersScreen, {
+        ...customerProps,
+        balanceFor: () => ({ kind: "unavailable" }) as const,
+      }),
+    );
+    expect(markup).toContain(i18n.t("customers.list.balanceUnavailable"));
+    expect(markup).not.toContain("$");
   });
 
   test.each(["loading", "offline", "error"] as const)(
@@ -120,10 +141,10 @@ describe("record table presentation", () => {
       );
       expect(markup).toContain('value="Long"');
       expect(markup).toContain(
-        `aria-label="${copy.customers.list.filterLabel}: ${copy.customers.list.all}"`,
+        `aria-label="${i18n.t("customers.list.statusFilter")}: ${i18n.t("customers.list.filterAll")}"`,
       );
       expect(markup).not.toContain(customer.email);
-      expect(markup).not.toContain(copy.customers.list.emptyTitle);
+      expect(markup).not.toContain(i18n.t("customers.list.emptyTitle"));
     },
   );
 
@@ -131,10 +152,35 @@ describe("record table presentation", () => {
     const markup = renderToStaticMarkup(
       createElement(CustomersScreen, { ...customerProps, state: { kind: "denied" } }),
     );
-    expect(markup).toContain(copy.customers.list.deniedTitle);
+    expect(markup).toContain(i18n.t("customers.list.deniedTitle"));
     expect(markup).not.toContain(customer.name);
     expect(markup).not.toContain('value="Long"');
-    expect(markup).not.toContain(`aria-label="${copy.customers.list.filterLabel}`);
+    expect(markup).not.toContain(`aria-label="${i18n.t("customers.list.statusFilter")}`);
+  });
+
+  test("distinguishes an empty search from a business without customers", () => {
+    const search = renderToStaticMarkup(
+      createElement(CustomersScreen, {
+        ...customerProps,
+        canManage: true,
+        state: { kind: "empty", stale: false },
+      }),
+    );
+    expect(search).toContain(i18n.t("customers.list.searchEmptyTitle"));
+    expect(search).toContain(`>${i18n.t("relationships.common.clearSearch")}<`);
+    expect(search).not.toContain(i18n.t("customers.list.emptyTitle"));
+    const first = renderToStaticMarkup(
+      createElement(CustomersScreen, {
+        ...customerProps,
+        canManage: true,
+        query: "",
+        search: "",
+        state: { kind: "empty", stale: false },
+        status: "active",
+      }),
+    );
+    expect(first).toContain(i18n.t("customers.list.emptyTitle"));
+    expect(first).toContain(`>${i18n.t("customers.list.create")}<`);
   });
 
   test.each([false, true])(
@@ -148,41 +194,60 @@ describe("record table presentation", () => {
         : [payment];
       const markup = renderToStaticMarkup(
         createElement(ReceivableDetailScreen, {
-          ...paymentProps,
-          state: { kind: "ready", receivable, payments, stale: false },
+          ...detailProps,
+          state: { ...detailProps.state, payments } as typeof detailProps.state,
         }),
       );
       expect(markup).toContain("Operating account");
       expect(markup).toContain("$12.50");
-      expect(markup.includes(`>${copy.receivables.list.reverse}<`)).toBe(!reversed);
-      expect(markup).toContain(copy.receivables.list.applyPayment);
+      expect(markup.includes(paymentActions)).toBe(!reversed);
+      expect(markup.includes(i18n.t("receivables.payments.reversed"))).toBe(reversed);
+      expect(markup).toContain(i18n.t("receivables.detail.applyPayment"));
     },
   );
 
+  test("offers no payment or correction without management or to an archived customer", () => {
+    const readOnly = renderToStaticMarkup(
+      createElement(ReceivableDetailScreen, { ...detailProps, canManage: false }),
+    );
+    expect(readOnly).not.toContain(paymentActions);
+    expect(readOnly).not.toContain(`>${i18n.t("receivables.detail.applyPayment")}<`);
+    const archived = renderToStaticMarkup(
+      createElement(ReceivableDetailScreen, {
+        ...detailProps,
+        state: {
+          ...detailProps.state,
+          customer: { active: false, id: customer.id, name: customer.name },
+        } as typeof detailProps.state,
+      }),
+    );
+    expect(archived).not.toContain(`>${i18n.t("receivables.detail.applyPayment")}<`);
+    expect(archived).toContain(paymentActions);
+  });
+
   test("hides cached payment and customer identity on denial", () => {
     const markup = renderToStaticMarkup(
-      createElement(ReceivableDetailScreen, { ...paymentProps, state: { kind: "denied" } }),
+      createElement(ReceivableDetailScreen, { ...detailProps, state: { kind: "denied" } }),
     );
-    expect(markup).toContain(copy.receivables.list.deniedTitle);
+    expect(markup).toContain(i18n.t("relationships.access.deniedTitle"));
     expect(markup).not.toContain(customer.name);
     expect(markup).not.toContain("Operating account");
-    expect(markup).not.toContain(copy.receivables.list.reverse);
+    expect(markup).not.toContain(paymentActions);
   });
 
   test("keeps current business totals separate from a filtered receivable history", () => {
     const markup = renderToStaticMarkup(
       createElement(ReceivablesScreen, {
         canManage: false,
-        copy: copy.receivables.list,
-        customerNameFor: () => customer.name,
-        filter: "open",
-        formatDate: (value) => value,
-        formatMoney: money,
-        onCreate: noop,
-        onFilterChange: noop,
+        customerFilter: { kind: "ready", name: customer.name } as const,
+        customerNameFor: () => ({ kind: "ready", name: customer.name }) as const,
+        filters: { customerId: customer.id, state: "open" },
+        onChooseCustomer: noop,
+        onClearCustomer: noop,
+        onClearFilters: noop,
         onLoadMore: noop,
-        onOpenReceivable: noop,
         onRetry: noop,
+        onStateChange: noop,
         state: {
           kind: "ready",
           items: [receivable],
@@ -204,9 +269,50 @@ describe("record table presentation", () => {
       }),
     );
     expect(markup).toContain("$99.00");
+    expect(markup).toContain("$50.00");
+    expect(markup).toContain("$25.00");
     expect(markup).toContain("$12.50");
-    expect(markup).toContain(i18n.t("reports.position.title"));
-    expect(markup).toContain(i18n.t("filters.history"));
-    expect(markup).toContain(copy.receivables.list.loadMore);
+    expect(markup).toContain(
+      i18n.t("receivables.summary.position", { date: formatLocalDate(date, "es-SV") }),
+    );
+    expect(markup).toContain(i18n.t("receivables.states.open"));
+    expect(markup).toContain(`aria-label="${i18n.t("receivables.list.clearCustomer")}"`);
+    expect(markup).toContain(i18n.t("receivables.list.loadMore"));
+    expect(markup).not.toContain(`>${i18n.t("receivables.list.create")}<`);
+  });
+
+  test("offers clearing filters when a filtered history is empty", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ReceivablesScreen, {
+        canManage: true,
+        customerFilter: null,
+        customerNameFor: () => ({ kind: "unavailable" }) as const,
+        filters: { state: "voided" },
+        onChooseCustomer: noop,
+        onClearCustomer: noop,
+        onClearFilters: noop,
+        onLoadMore: noop,
+        onRetry: noop,
+        onStateChange: noop,
+        state: {
+          kind: "empty",
+          stale: false,
+          summary: {
+            currency: "USD",
+            currencyMinorUnitDigits: 2,
+            outstandingMinorUnits: "0",
+            overdueMinorUnits: "0",
+            openReceivableCount: "0",
+            overdueReceivableCount: "0",
+            businessLocalDate: date,
+            timeZone: "America/El_Salvador",
+            queriedAt: timestamp,
+          },
+        },
+      }),
+    );
+    expect(markup).toContain(i18n.t("receivables.list.filteredEmptyTitle"));
+    expect(markup).toContain(i18n.t("receivables.list.clearFilters"));
+    expect(markup).not.toContain(i18n.t("receivables.list.emptyTitle"));
   });
 });

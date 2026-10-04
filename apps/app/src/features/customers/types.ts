@@ -1,10 +1,13 @@
 import type { Customer, CustomerDetail, Receivable } from "@pisto/contracts";
 
-export type CustomersLoadState =
-  | { kind: "loading" }
-  | { kind: "offline" }
+type ReadFailure =
   | { kind: "denied" }
   | { kind: "error" }
+  | { kind: "loading" }
+  | { kind: "offline" };
+
+export type CustomersLoadState =
+  | ReadFailure
   | { kind: "empty"; stale: boolean }
   | {
       kind: "ready";
@@ -14,94 +17,22 @@ export type CustomersLoadState =
       stale: boolean;
     };
 
-export type CustomerDetailLoadState =
+/** A list row's balance comes from its own detail read, so each cell owns its state. */
+export type CustomerBalanceCell =
   | { kind: "loading" }
-  | { kind: "offline" }
-  | { kind: "denied" }
+  | { kind: "unavailable" }
+  | { kind: "ready"; balance: CustomerDetail["balance"] };
+
+export type CustomerReceivablesState =
+  | ReadFailure
+  | { kind: "ready"; items: Receivable[]; loadingMore: boolean; nextCursor: string | null };
+
+export type CustomerDetailLoadState =
+  | ReadFailure
   | { kind: "notFound" }
-  | { kind: "error" }
   | {
       kind: "ready";
       detail: CustomerDetail;
-      receivables: Receivable[];
-      receivablesLoadingMore: boolean;
-      receivablesNextCursor: string | null;
+      receivables: CustomerReceivablesState;
       stale: boolean;
     };
-
-export type MutationState =
-  | { kind: "idle" }
-  | { kind: "submitting" }
-  | { kind: "error"; message: string }
-  | { kind: "uncertain"; message: string }
-  | { kind: "succeeded" };
-
-export type CustomersCopy = {
-  active: string;
-  all: string;
-  archive: string;
-  archived: string;
-  archivedDescription: string;
-  back: string;
-  balance: string;
-  contact: string;
-  create: string;
-  deniedDescription: string;
-  deniedTitle: string;
-  description: string;
-  email: string;
-  emptyAction: string;
-  emptyDescription: string;
-  emptyTitle: string;
-  errorDescription: string;
-  errorTitle: string;
-  filterLabel: string;
-  loadMore: string;
-  loading: string;
-  name: string;
-  newReceivable: string;
-  noContact: string;
-  noReceivables: string;
-  notes: string;
-  offlineDescription: string;
-  offlineTitle: string;
-  openReceivables: string;
-  overdue: string;
-  phone: string;
-  receivableHistory: string;
-  retry: string;
-  searchEmptyDescription: string;
-  searchEmptyTitle: string;
-  searchLabel: string;
-  searchPlaceholder: string;
-  stale: string;
-  title: string;
-  unavailableDescription: string;
-  unavailableTitle: string;
-  update: string;
-};
-
-export type CustomerFormCopy = {
-  cancel: string;
-  confirmArchive: string;
-  email: string;
-  emailPlaceholder: string;
-  name: string;
-  namePlaceholder: string;
-  notes: string;
-  notesPlaceholder: string;
-  phone: string;
-  phonePlaceholder: string;
-  retrySameConfirmation: string;
-  save: string;
-  uncertainTitle: string;
-};
-
-export function customerPrimaryAction(
-  state: MutationState,
-): "submit" | "retry" | "waiting" | "none" {
-  if (state.kind === "idle" || state.kind === "error") return "submit";
-  if (state.kind === "uncertain") return "retry";
-  if (state.kind === "submitting") return "waiting";
-  return "none";
-}

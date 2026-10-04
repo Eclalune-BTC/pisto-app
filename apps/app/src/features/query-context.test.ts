@@ -8,6 +8,13 @@ import { describe, expect, test, vi } from "vitest";
 
 const request = vi.hoisted(() => vi.fn(async (_path: string) => ({ items: [], nextCursor: null })));
 vi.mock("@/lib/api-client", () => ({
+  parseRequestPayload: (schema: { parse: (payload: unknown) => unknown }, payload: unknown) =>
+    schema.parse(payload),
+  pathWithQuery: (path: string, query: Record<string, unknown>) =>
+    `${path}?${Object.entries(query)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
+      .join("&")}`,
   apiRequest: request,
   api: {
     sales: { get: request, list: request, previousMonthSummary: request, review: { get: request } },

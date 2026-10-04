@@ -16,22 +16,13 @@ import {
   listCustomersQuerySchema,
   updateCustomerRequestSchema,
 } from "@pisto/contracts";
-import { apiRequest } from "@/lib/api-client";
 
-function encodeQuery(query: ListCustomersQuery): string {
-  const parsed = listCustomersQuerySchema.parse(query);
-  const params = new URLSearchParams();
-  params.set("limit", String(parsed.limit));
-  params.set("status", parsed.status);
-  if (parsed.cursor) params.set("cursor", parsed.cursor);
-  if (parsed.query) params.set("query", parsed.query);
-  return params.toString();
-}
+import { apiRequest, parseRequestPayload, pathWithQuery } from "@/lib/api-client";
 
 export const customersApi = {
   list: (query: ListCustomersQuery, signal?: AbortSignal) =>
     apiRequest<CustomersResponse, CustomersResponse["data"]>(
-      `/v1/customers?${encodeQuery(query)}`,
+      pathWithQuery("/v1/customers", parseRequestPayload(listCustomersQuerySchema, query)),
       { authenticated: true, signal },
       customersResponseSchema,
     ),
@@ -46,7 +37,7 @@ export const customersApi = {
       "/v1/customers",
       {
         authenticated: true,
-        body: createCustomerRequestSchema.parse(command),
+        body: parseRequestPayload(createCustomerRequestSchema, command),
         method: "POST",
       },
       customerResponseSchema,
@@ -56,7 +47,7 @@ export const customersApi = {
       `/v1/customers/${encodeURIComponent(customerId)}/update`,
       {
         authenticated: true,
-        body: updateCustomerRequestSchema.parse(command),
+        body: parseRequestPayload(updateCustomerRequestSchema, command),
         method: "POST",
       },
       customerResponseSchema,
@@ -66,7 +57,7 @@ export const customersApi = {
       `/v1/customers/${encodeURIComponent(customerId)}/archive`,
       {
         authenticated: true,
-        body: archiveCustomerRequestSchema.parse(command),
+        body: parseRequestPayload(archiveCustomerRequestSchema, command),
         method: "POST",
       },
       customerResponseSchema,

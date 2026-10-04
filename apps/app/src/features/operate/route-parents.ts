@@ -20,7 +20,6 @@ export const OPERATE_ROUTE_PARENTS = {
   "/operate/catalog/new": "/operate/catalog",
   "/operate/customers": "/operate",
   "/operate/customers/[customerId]": "/operate/customers",
-  "/operate/customers/[customerId]/archive": "/operate/customers/[customerId]",
   "/operate/customers/[customerId]/edit": "/operate/customers/[customerId]",
   "/operate/customers/new": "/operate/customers",
   "/operate/expenses": "/operate",
@@ -35,7 +34,6 @@ export const OPERATE_ROUTE_PARENTS = {
   "/operate/receivables/[receivableId]/payment": "/operate/receivables/[receivableId]",
   "/operate/receivables/[receivableId]/payments/[paymentId]/reverse":
     "/operate/receivables/[receivableId]",
-  "/operate/receivables/[receivableId]/void": "/operate/receivables/[receivableId]",
   "/operate/receivables/new": "/operate/receivables",
   "/operate/reports": "/operate",
   "/operate/sales": "/operate",

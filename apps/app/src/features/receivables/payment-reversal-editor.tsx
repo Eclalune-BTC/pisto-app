@@ -5,17 +5,21 @@ import type {
 } from "@pisto/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
-import { ArrowLeft } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import type { Href } from "expo-router";
+import type { TFunction } from "i18next";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+
+import { DescriptionList } from "@/components/layout/description-list";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
-import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
-import { buildCustomersCopy, type CustomersReceivablesCopy } from "@/features/customers/copy";
-import { requireSupportedLocale } from "@/i18n/locale";
-import { isAmbiguousMutationError } from "@/lib/api-client";
-import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { CommandReview } from "@/features/customers/command-review";
+import { commandState } from "@/features/customers/command-state";
+import { useRecordFormat } from "@/features/customers/format";
+import { ScreenState } from "@/features/customers/screen-state";
+import { currentLocalDateTime } from "@/lib/money";
+import { notify } from "@/lib/notify";
 
 import { receivablesApi } from "./api";
 import {
@@ -23,128 +27,153 @@ import {
   type PaymentReversalDraft,
   type ReceivableDraftIssue,
 } from "./draft";
-import { financialMutationState, invalidateReceivableMutation } from "./mutation-state";
-import { PaymentReversalForm } from "./payment-reversal-form";
-import { PaymentReversalReview } from "./receivable-reviews";
+import { invalidateReceivableMutation } from "./mutation-state";
+import { PaymentReversalForm, type PaymentReversalFormErrors } from "./payment-reversal-form";
 
 type PaymentReversalEditorProps = {
+  accountName: string;
+  /** Whether the latest read still accepts a reversal; a command already under review is kept. */
+  availability: "available" | "stale" | "unavailable";
   business: Business;
-  cashAccountName: string;
-  onBack: () => void;
+  cancelHref: Href;
   onConfirmed: () => void;
+  onRetryRead: () => void;
   payment: ReceivablePayment;
 };
 
-type ReversalErrors = Partial<Record<"date" | "reference" | "time", string>>;
-
-function issueMessage(
-  copy: CustomersReceivablesCopy,
-  issue: ReceivableDraftIssue | undefined,
-): string | undefined {
+function issueMessage(t: TFunction, issue: ReceivableDraftIssue | undefined) {
   if (!issue) return undefined;
-  if (issue === "date") return copy.receivables.validation.date;
-  if (issue === "time") return copy.receivables.validation.time;
-  return copy.receivables.validation.reference;
+  if (issue === "date") return t("receivables.validation.date");
+  if (issue === "time") return t("receivables.validation.time");
+  return t("receivables.validation.reference");
 }
 
 export function PaymentReversalEditor({
+  accountName,
+  availability,
   business,
-  cashAccountName,
-  onBack,
+  cancelHref,
   onConfirmed,
+  onRetryRead,
   payment,
 }: PaymentReversalEditorProps) {
-  const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildCustomersCopy(t), [t]);
+  const { t } = useTranslation();
+  const format = useRecordFormat();
   const queryClient = useQueryClient();
-  const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const now = currentLocalDateTime(business.timeZone);
-  const [draft, setDraft] = useState<PaymentReversalDraft>({
-    date: now.date,
-    reference: "",
-    time: now.time,
+  const [draft, setDraft] = useState<PaymentReversalDraft>(() => {
+    const now = currentLocalDateTime(business.timeZone);
+    return { date: now.date, reference: "", time: now.time };
   });
-  const [errors, setErrors] = useState<ReversalErrors>({});
+  const [errors, setErrors] = useState<PaymentReversalFormErrors>({});
   const [command, setCommand] = useState<ReverseReceivablePaymentRequest | null>(null);
+  const amount = format.money(
+    payment.amountMinorUnits,
+    payment.currency,
+    payment.currencyMinorUnitDigits,
+  );
   const mutation = useMutation({
-    mutationFn: (nextCommand: ReverseReceivablePaymentRequest) =>
-      receivablesApi.reversePayment(payment.id, nextCommand),
-    onSuccess: async ({ receivable: confirmedReceivable }) => {
+    mutationFn: (next: ReverseReceivablePaymentRequest) =>
+      receivablesApi.reversePayment(payment.id, next),
+    onSuccess: async ({ receivable }) => {
       await invalidateReceivableMutation(queryClient, {
         businessId: business.id,
-        customerId: confirmedReceivable.customerId,
-        receivableId: confirmedReceivable.id,
+        customerId: receivable.customerId,
+      });
+      notify.success(t("receivables.reversal.done"), {
+        description: t("receivables.reversal.doneDescription", { amount, account: accountName }),
       });
       onConfirmed();
     },
   });
-
-  const confirmationLocked = mutation.isPending || isAmbiguousMutationError(mutation.error);
+  const state = commandState(t, mutation, t("receivables.reversal.conflict"));
 
   const prepareReview = () => {
-    if (confirmationLocked) return;
     const result = buildPaymentReversalCommand(draft, Crypto.randomUUID());
     setErrors({
-      date: issueMessage(copy, result.issues.date),
-      reference: issueMessage(copy, result.issues.reference),
-      time: issueMessage(copy, result.issues.time),
+      date: issueMessage(t, result.issues.date),
+      reference: issueMessage(t, result.issues.reference),
+      time: issueMessage(t, result.issues.time),
     });
     if (!("command" in result)) return;
-    setCommand(result.command);
     mutation.reset();
+    setCommand(result.command);
   };
+
+  const original = [
+    {
+      label: t("receivables.reversal.originalOccurred"),
+      numeric: true,
+      value: t("receivables.payments.occurredAt", {
+        date: format.date(payment.occurredLocalDate),
+        time: payment.occurredLocalTime,
+      }),
+    },
+    { label: t("receivables.reversal.amount"), numeric: true, value: amount },
+    { label: t("receivables.reversal.account"), value: accountName },
+    ...(payment.reference
+      ? [{ label: t("receivables.reversal.originalReference"), value: payment.reference }]
+      : []),
+  ];
+
+  if (!command && availability !== "available") {
+    return (
+      <ScreenState
+        kind={availability === "stale" ? "error" : "unavailable"}
+        onRetry={onRetryRead}
+        width="form"
+      />
+    );
+  }
 
   return (
     <Page width="form">
-      <Button
-        className="self-start px-0"
-        disabled={confirmationLocked}
-        onPress={confirmationLocked ? undefined : onBack}
-        variant="ghost"
-      >
-        <Icon as={ArrowLeft} className="text-primary" size={18} />
-        <ButtonText variant="ghost">{copy.common.back}</ButtonText>
-      </Button>
-      <ScreenHeader
-        description={copy.receivables.route.reversalDescription}
-        title={copy.receivables.route.reversalTitle}
+      <PageHeader
+        description={t("receivables.reversal.description")}
+        title={t("receivables.reversal.title")}
       />
       {command ? (
-        <PaymentReversalReview
-          amount={formatMinorUnits(
-            payment.amountMinorUnits,
-            payment.currency,
-            payment.currencyMinorUnitDigits,
-            locale,
-          )}
-          cashAccountName={cashAccountName}
-          copy={copy.receivables.review}
-          mutation={financialMutationState(t, mutation)}
-          occurrence={`${command.occurredLocalDate} ${command.occurredLocalTime}`}
-          onCancel={() => {
+        <CommandReview
+          confirmLabel={t("receivables.reversal.confirm")}
+          description={t("receivables.reversal.reviewDescription")}
+          destructive
+          items={[
+            ...original,
+            {
+              label: t("receivables.reversal.occurred"),
+              numeric: true,
+              value: t("receivables.payments.occurredAt", {
+                date: format.date(command.occurredLocalDate),
+                time: command.occurredLocalTime,
+              }),
+            },
+            ...(command.reference
+              ? [{ label: t("receivables.reversal.referenceLabel"), value: command.reference }]
+              : []),
+          ]}
+          onConfirm={() => mutation.mutate(command)}
+          onEdit={() => {
             setCommand(null);
             mutation.reset();
           }}
-          onConfirm={() => mutation.mutate(command)}
-          onRetrySameCommand={() => mutation.mutate(command)}
-          originalPayment={`${payment.occurredLocalDate} ${payment.occurredLocalTime}`}
-          reference={command.reference ?? null}
+          state={state}
+          title={t("receivables.reversal.reviewTitle")}
         />
       ) : (
-        <PaymentReversalForm
-          canReview={Boolean(draft.date && draft.time)}
-          copy={copy.receivables.reversalForm}
-          date={draft.date}
-          errors={errors}
-          onCancel={onBack}
-          onChange={(field, value) => {
-            setDraft((current) => ({ ...current, [field]: value }));
-            setErrors((current) => ({ ...current, [field]: undefined }));
-          }}
-          onReview={prepareReview}
-          reference={draft.reference}
-          time={draft.time}
-        />
+        <>
+          <Section title={t("receivables.reversal.originalSection")}>
+            <DescriptionList items={original} />
+          </Section>
+          <PaymentReversalForm
+            cancelHref={cancelHref}
+            draft={draft}
+            errors={errors}
+            onChange={(field, value) => {
+              setDraft((current) => ({ ...current, [field]: value }));
+              setErrors((current) => ({ ...current, [field]: undefined }));
+            }}
+            onReview={prepareReview}
+          />
+        </>
       )}
     </Page>
   );

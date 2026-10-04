@@ -1,242 +1,269 @@
-import type { Receivable } from "@pisto/contracts";
-import { Archive, ArrowLeft, Pencil } from "lucide-react-native";
-import { useMemo } from "react";
+import type { Customer } from "@pisto/contracts";
+import { type Href, Link } from "expo-router";
+import {
+  Archive,
+  Ellipsis,
+  Lock,
+  Pencil,
+  Plus,
+  ReceiptText,
+  TriangleAlert,
+} from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { Page } from "@/components/page";
-import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
-import { Icon } from "@/components/ui/icon";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
-import { Text } from "@/components/ui/text";
 
-import type { CustomerDetailLoadState, CustomersCopy } from "./types";
+import { DescriptionList } from "@/components/layout/description-list";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
+import { ContentSkeleton } from "@/components/layout/skeletons";
+import { Stat, StatGroup } from "@/components/layout/stat-group";
+import { Page } from "@/components/page";
+import { OfflineState, StaleNotice } from "@/components/remote-state";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
+import { StatePanel } from "@/components/ui/state-panel";
+import { Text } from "@/components/ui/text";
+import { ReceivablesTable } from "@/features/receivables/receivables-table";
+
+import { CustomerStatusBadge } from "./customer-status-badge";
+import { isPositiveAmount, useRecordFormat } from "./format";
+import { ScreenState } from "./screen-state";
+import type { CustomerDetailLoadState, CustomerReceivablesState } from "./types";
 
 type CustomerDetailScreenProps = {
+  /** Charges need receivable management; contact changes need customer management. */
+  canCharge: boolean;
   canManage: boolean;
-  copy: CustomersCopy;
-  formatDate: (date: string) => string;
-  formatMoney: (minorUnits: string, currency: string, digits: number) => string;
   onArchive: () => void;
-  onBack: () => void;
-  onCreateReceivable: () => void;
-  onEdit: () => void;
   onLoadMoreReceivables: () => void;
-  onOpenReceivable: (receivableId: string) => void;
   onRetry: () => void;
   state: CustomerDetailLoadState;
 };
 
+function NotProvided() {
+  const { t } = useTranslation();
+  return (
+    <Text className="text-sm leading-5 text-muted-foreground">
+      {t("customers.detail.notProvided")}
+    </Text>
+  );
+}
+
+function newChargeHref(customerId: string): Href {
+  return { pathname: "/operate/receivables/new", params: { customerId } };
+}
+
+function ArchiveMenu({ hasBalance, onArchive }: { hasBalance: boolean; onArchive: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          accessibilityLabel={t("customers.detail.moreActions")}
+          size="icon"
+          variant="outline"
+        >
+          <Icon as={Ellipsis} className="text-foreground" size={16} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60" sideOffset={4}>
+        <DropdownMenuItem disabled={hasBalance} onPress={onArchive} variant="destructive">
+          <Icon as={Archive} className="text-destructive" size={15} />
+          <View className="min-w-0 flex-1">
+            <Text>{t("customers.detail.archive")}</Text>
+            {hasBalance ? (
+              <Text className="text-xs leading-4 text-muted-foreground">
+                {t("customers.detail.archiveNeedsZeroBalance")}
+              </Text>
+            ) : null}
+          </View>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function ReceivablesSection({
+  canCharge,
+  customer,
+  onLoadMore,
+  onRetry,
+  receivables,
+}: {
+  canCharge: boolean;
+  customer: Customer;
+  onLoadMore: () => void;
+  onRetry: () => void;
+  receivables: CustomerReceivablesState;
+}) {
+  const { t } = useTranslation();
+  const title = t("customers.detail.receivables");
+  return (
+    <Section title={title}>
+      {receivables.kind === "loading" ? (
+        <ContentSkeleton variant="section" />
+      ) : receivables.kind === "offline" ? (
+        <OfflineState level={3} />
+      ) : receivables.kind === "denied" ? (
+        <StatePanel
+          description={t("customers.detail.receivablesDenied")}
+          icon={Lock}
+          level={3}
+          title={t("relationships.access.deniedTitle")}
+        />
+      ) : receivables.kind === "error" ? (
+        <StatePanel
+          action={
+            <Button label={t("common.retry")} onPress={onRetry} size="sm" variant="outline" />
+          }
+          description={t("relationships.common.unavailableDescription")}
+          icon={TriangleAlert}
+          level={3}
+          title={t("customers.detail.receivablesUnavailable")}
+          tone="destructive"
+        />
+      ) : receivables.items.length === 0 ? (
+        <EmptyState
+          action={
+            canCharge && customer.status === "active" ? (
+              <Link asChild href={newChargeHref(customer.id)}>
+                <Button accessibilityRole="link" size="sm">
+                  <Text>{t("customers.detail.newCharge")}</Text>
+                </Button>
+              </Link>
+            ) : undefined
+          }
+          description={t("customers.detail.noReceivablesDescription")}
+          icon={ReceiptText}
+          title={t("customers.detail.noReceivablesTitle")}
+        />
+      ) : (
+        <View className="gap-3">
+          <ReceivablesTable caption={title} items={receivables.items} />
+          {receivables.nextCursor ? (
+            <View className="items-center">
+              <Button
+                label={t("customers.detail.loadMoreReceivables")}
+                loading={receivables.loadingMore}
+                onPress={onLoadMore}
+                size="sm"
+                variant="outline"
+              />
+            </View>
+          ) : null}
+        </View>
+      )}
+    </Section>
+  );
+}
+
 export function CustomerDetailScreen({
+  canCharge,
   canManage,
-  copy,
-  formatDate,
-  formatMoney,
   onArchive,
-  onBack,
-  onCreateReceivable,
-  onEdit,
   onLoadMoreReceivables,
-  onOpenReceivable,
   onRetry,
   state,
 }: CustomerDetailScreenProps) {
   const { t } = useTranslation();
-  const columns = useMemo<DataTableColumn<Receivable>[]>(
-    () => [
-      {
-        id: "description",
-        header: t("dataTable.columns.description"),
-        meta: { primary: true },
-        cell: ({ row: { original: item } }) => (
-          <Button
-            accessibilityLabel={t("dataTable.openRecord", { name: item.description })}
-            className="justify-start px-0"
-            label={item.description}
-            onPress={() => onOpenReceivable(item.id)}
-            size="sm"
-            variant="ghost"
-          />
-        ),
-      },
-      {
-        id: "date",
-        header: t("dataTable.columns.date"),
-        cell: ({ row: { original: item } }) => (
-          <Text className="font-sans text-sm text-muted-foreground">
-            {formatDate(item.postedDate)}
-          </Text>
-        ),
-      },
-      {
-        id: "outstanding",
-        header: t("dataTable.columns.outstanding"),
-        meta: { align: "end" },
-        cell: ({ row: { original: item } }) => (
-          <Text className="font-ui text-sm text-foreground">
-            {formatMoney(item.outstandingMinorUnits, item.currency, item.currencyMinorUnitDigits)}
-          </Text>
-        ),
-      },
-    ],
-    [formatDate, formatMoney, onOpenReceivable, t],
-  );
-  if (state.kind === "loading") {
-    return (
-      <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <LoadingIndicator />
-        <Text className="font-sans text-sm text-muted-foreground">{copy.loading}</Text>
-      </View>
-    );
-  }
+  const format = useRecordFormat();
   if (state.kind !== "ready") {
-    const content =
-      state.kind === "denied"
-        ? { title: copy.deniedTitle, description: copy.deniedDescription }
-        : state.kind === "offline"
-          ? { title: copy.offlineTitle, description: copy.offlineDescription }
-          : state.kind === "notFound"
-            ? { title: copy.unavailableTitle, description: copy.unavailableDescription }
-            : { title: copy.errorTitle, description: copy.errorDescription };
-    return (
-      <Page>
-        <Button label={copy.back} onPress={onBack} variant="ghost" />
-        <View className="gap-3 border-y border-border py-8">
-          <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
-            {content.title}
-          </Text>
-          <Text className="font-sans text-sm leading-5 text-muted-foreground">
-            {content.description}
-          </Text>
-          {state.kind === "error" ? (
-            <Button label={copy.retry} onPress={onRetry} variant="outline" />
-          ) : null}
-        </View>
-      </Page>
-    );
+    return <ScreenState kind={state.kind} onRetry={onRetry} skeleton="detail" />;
   }
 
   const { balance, customer } = state.detail;
+  const active = customer.status === "active";
+  const money = (minorUnits: string) =>
+    format.money(minorUnits, balance.currency, balance.currencyMinorUnitDigits);
+  const overdue = isPositiveAmount(balance.overdueMinorUnits);
+  const editHref: Href = {
+    pathname: "/operate/customers/[customerId]/edit",
+    params: { customerId: customer.id },
+  };
+
   return (
-    <Page contentContainerClassName="gap-8">
-      <Button
-        accessibilityLabel={copy.back}
-        className="self-start px-0"
-        onPress={onBack}
-        size="sm"
-        variant="ghost"
-      >
-        <Icon as={ArrowLeft} className="text-muted-foreground" size={18} />
-        <Text className="font-ui text-foreground">{copy.back}</Text>
-      </Button>
-      <ScreenHeader
-        action={
-          canManage && customer.status === "active" ? (
-            <View className="flex-row flex-wrap gap-2">
-              <Button label={copy.newReceivable} onPress={onCreateReceivable} variant="default" />
-              <Button onPress={onEdit} variant="outline">
-                <Icon as={Pencil} size={17} />
-                <ButtonText variant="outline">{copy.update}</ButtonText>
-              </Button>
-              <Button onPress={onArchive} variant="ghost">
-                <Icon as={Archive} className="text-destructive" size={17} />
-                <ButtonText className="text-destructive" variant="ghost">
-                  {copy.archive}
-                </ButtonText>
-              </Button>
-            </View>
+    <Page>
+      <PageHeader
+        actions={
+          active && (canManage || canCharge) ? (
+            <>
+              {canManage ? (
+                <Link asChild href={editHref}>
+                  <Button accessibilityRole="link" variant="outline">
+                    <Icon as={Pencil} className="text-foreground" size={15} />
+                    <Text>{t("customers.detail.edit")}</Text>
+                  </Button>
+                </Link>
+              ) : null}
+              {canManage ? (
+                <ArchiveMenu
+                  hasBalance={isPositiveAmount(balance.outstandingMinorUnits)}
+                  onArchive={onArchive}
+                />
+              ) : null}
+              {canCharge ? (
+                <Link asChild href={newChargeHref(customer.id)}>
+                  <Button accessibilityRole="link">
+                    <Icon as={Plus} className="text-primary-foreground" size={16} />
+                    <Text>{t("customers.detail.newCharge")}</Text>
+                  </Button>
+                </Link>
+              ) : null}
+            </>
           ) : undefined
         }
-        description={customer.status === "archived" ? copy.archivedDescription : copy.contact}
+        adornment={<CustomerStatusBadge status={customer.status} />}
+        description={active ? undefined : t("customers.detail.archivedDescription")}
         title={customer.name}
       />
-      {state.stale ? (
-        <View className="border-l-4 border-warning bg-muted p-3">
-          <Text className="font-sans text-sm text-foreground">{copy.stale}</Text>
-        </View>
-      ) : null}
-      <View className="gap-6 border-y border-border py-6 lg:flex-row">
-        <View className="min-w-0 flex-1 gap-2">
-          <Text className="text-xs font-ui text-muted-foreground">{copy.balance}</Text>
-          <Text className="text-3xl font-heading text-foreground">
-            {formatMoney(
-              balance.outstandingMinorUnits,
-              balance.currency,
-              balance.currencyMinorUnitDigits,
-            )}
-          </Text>
-          <Text className="font-sans text-sm text-muted-foreground">
-            {copy.openReceivables}: {balance.openReceivableCount}
-          </Text>
-        </View>
-        <View className="min-w-0 flex-1 gap-2 border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-          <Text className="text-xs font-ui text-muted-foreground">{copy.overdue}</Text>
-          <Text className="text-2xl font-heading text-destructive">
-            {formatMoney(
-              balance.overdueMinorUnits,
-              balance.currency,
-              balance.currencyMinorUnitDigits,
-            )}
-          </Text>
-          <Text className="font-sans text-sm text-muted-foreground">
-            {balance.overdueReceivableCount}
-          </Text>
-        </View>
-      </View>
-      <View className="gap-3">
-        <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
-          {copy.contact}
-        </Text>
-        <View className="gap-3 border-t border-border pt-4">
-          {customer.phone ? (
-            <Text className="font-sans text-sm text-foreground">
-              {copy.phone}: {customer.phone}
-            </Text>
-          ) : null}
-          {customer.email ? (
-            <Text className="font-sans text-sm text-foreground">
-              {copy.email}: {customer.email}
-            </Text>
-          ) : null}
-          {customer.notes ? (
-            <Text className="font-sans text-sm leading-5 text-muted-foreground">
-              {copy.notes}: {customer.notes}
-            </Text>
-          ) : null}
-          {!customer.phone && !customer.email && !customer.notes ? (
-            <Text className="font-sans text-sm text-muted-foreground">{copy.noContact}</Text>
-          ) : null}
-        </View>
-      </View>
-      <View className="gap-3">
-        <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
-          {copy.receivableHistory}
-        </Text>
-        {state.receivables.length === 0 ? (
-          <Text className="font-sans border-t border-border py-5 text-sm text-muted-foreground">
-            {copy.noReceivables}
-          </Text>
-        ) : (
-          <View className="gap-4">
-            <DataTable
-              caption={copy.receivableHistory}
-              columns={columns}
-              data={state.receivables}
-              getRowId={(item) => item.id}
-            />
-            {state.receivablesNextCursor ? (
-              <Button
-                disabled={state.receivablesLoadingMore}
-                label={copy.loadMore}
-                loading={state.receivablesLoadingMore}
-                onPress={onLoadMoreReceivables}
-                variant="outline"
-              />
-            ) : null}
-          </View>
-        )}
-      </View>
+      {state.stale ? <StaleNotice onRetry={onRetry} /> : null}
+      <StatGroup>
+        <Stat
+          detail={t("customers.detail.openCount", { count: Number(balance.openReceivableCount) })}
+          label={t("customers.detail.outstanding")}
+          value={money(balance.outstandingMinorUnits)}
+        />
+        <Stat
+          detail={t("customers.detail.overdueCount", {
+            count: Number(balance.overdueReceivableCount),
+          })}
+          label={t("customers.detail.overdue")}
+          tone={overdue ? "destructive" : "default"}
+          value={money(balance.overdueMinorUnits)}
+        />
+      </StatGroup>
+      <Section title={t("customers.detail.contact")}>
+        <DescriptionList
+          items={[
+            {
+              label: t("customers.fields.phone"),
+              value: customer.phone ?? <NotProvided />,
+            },
+            {
+              label: t("customers.fields.email"),
+              value: customer.email ?? <NotProvided />,
+            },
+            {
+              label: t("customers.fields.notes"),
+              value: customer.notes ?? <NotProvided />,
+            },
+          ]}
+        />
+      </Section>
+      <ReceivablesSection
+        canCharge={canCharge}
+        customer={customer}
+        onLoadMore={onLoadMoreReceivables}
+        onRetry={onRetry}
+        receivables={state.receivables}
+      />
     </Page>
   );
 }

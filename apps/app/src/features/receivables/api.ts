@@ -22,22 +22,13 @@ import {
   reverseReceivablePaymentRequestSchema,
   voidReceivableRequestSchema,
 } from "@pisto/contracts";
-import { apiRequest } from "@/lib/api-client";
 
-function encodeQuery(query: ListReceivablesQuery): string {
-  const parsed = listReceivablesQuerySchema.parse(query);
-  const params = new URLSearchParams();
-  params.set("limit", String(parsed.limit));
-  params.set("state", parsed.state);
-  if (parsed.cursor) params.set("cursor", parsed.cursor);
-  if (parsed.customerId) params.set("customerId", parsed.customerId);
-  return params.toString();
-}
+import { apiRequest, parseRequestPayload, pathWithQuery } from "@/lib/api-client";
 
 export const receivablesApi = {
   list: (query: ListReceivablesQuery, signal?: AbortSignal) =>
     apiRequest<ReceivablesResponse, ReceivablesResponse["data"]>(
-      `/v1/receivables?${encodeQuery(query)}`,
+      pathWithQuery("/v1/receivables", parseRequestPayload(listReceivablesQuerySchema, query)),
       { authenticated: true, signal },
       receivablesResponseSchema,
     ),
@@ -58,7 +49,7 @@ export const receivablesApi = {
       "/v1/receivables",
       {
         authenticated: true,
-        body: postReceivableRequestSchema.parse(command),
+        body: parseRequestPayload(postReceivableRequestSchema, command),
         method: "POST",
       },
       receivableResponseSchema,
@@ -68,7 +59,7 @@ export const receivablesApi = {
       `/v1/receivables/${encodeURIComponent(receivableId)}/void`,
       {
         authenticated: true,
-        body: voidReceivableRequestSchema.parse(command),
+        body: parseRequestPayload(voidReceivableRequestSchema, command),
         method: "POST",
       },
       receivableResponseSchema,
@@ -78,7 +69,7 @@ export const receivablesApi = {
       `/v1/receivables/${encodeURIComponent(receivableId)}/payments`,
       {
         authenticated: true,
-        body: applyReceivablePaymentRequestSchema.parse(command),
+        body: parseRequestPayload(applyReceivablePaymentRequestSchema, command),
         method: "POST",
       },
       receivablePaymentResponseSchema,
@@ -88,7 +79,7 @@ export const receivablesApi = {
       `/v1/receivable-payments/${encodeURIComponent(paymentId)}/reverse`,
       {
         authenticated: true,
-        body: reverseReceivablePaymentRequestSchema.parse(command),
+        body: parseRequestPayload(reverseReceivablePaymentRequestSchema, command),
         method: "POST",
       },
       receivablePaymentResponseSchema,

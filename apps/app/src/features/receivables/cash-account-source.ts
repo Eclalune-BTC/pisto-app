@@ -1,34 +1,23 @@
+import {
+  type CashAccount,
+  type CashAccountListQuery,
+  cashAccountDetailResponseSchema,
+  cashAccountListQuerySchema,
+  cashAccountListResponseSchema,
+} from "@pisto/contracts";
 import { infiniteQueryOptions, queryOptions, skipToken } from "@tanstack/react-query";
-import { z } from "zod";
-import { apiRequest } from "@/lib/api-client";
-import { cashQueryKeys } from "../cash/queries";
+import type { z } from "zod";
 
-const cashAccountChoiceSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().trim().min(1).max(80),
-  status: z.enum(["active", "archived"]),
-});
+import { cashQueryKeys } from "@/features/cash/queries";
+import { apiRequest, parseRequestPayload, pathWithQuery } from "@/lib/api-client";
 
-const cashAccountChoicesResponseSchema = z.object({
-  data: z.object({
-    items: z.array(cashAccountChoiceSchema),
-    nextCursor: z.string().min(1).nullable(),
-    queriedAt: z.string().datetime({ offset: true }),
-  }),
-});
+type CashAccountListResponse = z.infer<typeof cashAccountListResponseSchema>;
+type CashAccountDetailResponse = z.infer<typeof cashAccountDetailResponseSchema>;
 
-const cashAccountChoiceDetailResponseSchema = z.object({
-  data: z.object({ account: cashAccountChoiceSchema }),
-});
+export type CashAccountChoice = Pick<CashAccount, "id" | "name" | "status">;
 
-export type CashAccountChoice = z.infer<typeof cashAccountChoiceSchema>;
-type CashAccountChoicesResponse = z.infer<typeof cashAccountChoicesResponseSchema>;
-type CashAccountChoiceDetailResponse = z.infer<typeof cashAccountChoiceDetailResponseSchema>;
-
-// Nested under the cash accounts key on purpose: invalidateCashLedger
-// invalidates cashQueryKeys.accounts(businessId), and TanStack matches by
-// prefix. A sibling namespace was never reached, so archiving a cash account
-// left it selectable here.
+// Nested under the cash accounts key so that every cash-ledger invalidation also refreshes the
+// accounts a payment may be recorded into.
 export const receivableCashAccountKeys = {
   all: (businessId: string | undefined) =>
     [...cashQueryKeys.accounts(businessId), "receivable-account-choice"] as const,
@@ -38,21 +27,20 @@ export const receivableCashAccountKeys = {
     [...receivableCashAccountKeys.all(businessId), "list", status] as const,
 };
 
+const CHOICE_PAGE_SIZE = 50;
+
 export const receivableCashAccountSource = {
-  list: (input: { cursor?: string; status: "active" | "all" }, signal?: AbortSignal) => {
-    const params = new URLSearchParams({ limit: "50", status: input.status });
-    if (input.cursor) params.set("cursor", input.cursor);
-    return apiRequest<CashAccountChoicesResponse, CashAccountChoicesResponse["data"]>(
-      `/v1/cash/accounts?${params.toString()}`,
+  list: (query: CashAccountListQuery, signal?: AbortSignal) =>
+    apiRequest<CashAccountListResponse, CashAccountListResponse["data"]>(
+      pathWithQuery("/v1/cash/accounts", parseRequestPayload(cashAccountListQuerySchema, query)),
       { authenticated: true, signal },
-      cashAccountChoicesResponseSchema,
-    );
-  },
+      cashAccountListResponseSchema,
+    ),
   get: (accountId: string, signal?: AbortSignal) =>
-    apiRequest<CashAccountChoiceDetailResponse, CashAccountChoiceDetailResponse["data"]>(
+    apiRequest<CashAccountDetailResponse, CashAccountDetailResponse["data"]>(
       `/v1/cash/accounts/${encodeURIComponent(accountId)}`,
       { authenticated: true, signal },
-      cashAccountChoiceDetailResponseSchema,
+      cashAccountDetailResponseSchema,
     ),
 } as const;
 
@@ -78,7 +66,10 @@ export function cashAccountChoicesQueryOptions(
     queryKey: receivableCashAccountKeys.list(businessId, status),
     queryFn: businessId
       ? ({ pageParam, signal }) =>
-          receivableCashAccountSource.list({ cursor: pageParam ?? undefined, status }, signal)
+          receivableCashAccountSource.list(
+            { cursor: pageParam ?? undefined, limit: CHOICE_PAGE_SIZE, status },
+            signal,
+          )
       : skipToken,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
