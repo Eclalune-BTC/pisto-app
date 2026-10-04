@@ -33,6 +33,41 @@ working method. When a lesson below becomes a durable rule, move it into the des
 5. Spawn the `ui-critic` agent on those routes. Fix every P0/P1 before moving on.
 6. Append what the round taught to the lessons log: concrete, checkable, with the screen.
 
+## Building blocks (apps/app/src)
+
+| Need | Use | Notes |
+| --- | --- | --- |
+| Route body | `components/page.tsx` `Page` | `width="content" \| "form" \| "reading"`; reserves the top-bar inset |
+| H1 + actions | `components/layout/page-header.tsx` | `title`, one-line `description`, `actions` (primary last), `adornment` (badge). Never an eyebrow |
+| H2 region | `components/layout/section.tsx` | `title`, optional `description`, `actions`; no borders |
+| Exact figures | `components/layout/stat-group.tsx` `StatGroup`/`Stat` | one shared border; `tone` only for overdue/negative/warning |
+| Record facts | `components/layout/description-list.tsx` | label/value rows; `numeric` for money/dates |
+| Loading | `components/layout/skeletons.tsx` `ContentSkeleton` | `list`/`detail`/`form`/`section`; never a page spinner |
+| Remote states | `FeatureBoundary`, `ui/state-panel`, `ui/empty-state`, `remote-state` (`OfflineState`, `StaleNotice`) | empty only after a successful read |
+| Records | `ui/data-table` | `getRowHref` makes the row and its primary cell a real link; `rowActions` + `ui/row-actions`; `meta.primary`, `meta.align: "end"`, `meta.hideOnCompact` |
+| Status | `ui/badge` | `secondary`, `outline`, `positive`, `warning`, `destructive`; status is never plain text |
+| Callouts | `ui/alert` | `default`, `positive`, `warning`, `destructive`; `action` slot. No `border-l-4` boxes |
+| Confirm consequential command | `ui/confirm-dialog` | stays open while pending; caller closes after a definitive result |
+| Short forms | `ui/dialog` (wide) / `ui/sheet` | for create/rename of simple entities; money flows keep their routes |
+| Filters | `ui/filter-bar` (segmented), `ui/select-field`, `ui/input` with search icon | toolbar row above the table |
+| Feedback | `lib/notify.ts` `notify.success/warning/error` | after definitive results; uncertain outcomes stay inline and blocking |
+| Breadcrumb names | `useRouteLabel(route, name)` from `components/shell/shell-context` | call on detail screens once the record loaded |
+| Formatting | `lib/money` `formatMinorUnits`, `i18n/format` (`formatLocalDate`, `formatLocalizedDateTime`) | `tabular-nums` on every amount/date column |
+
+Reference implementation: `features/operate/operate-home-screen.tsx` (home summary).
+
+Screen rules that follow from the owner direction:
+
+- Open a record by clicking its row; no "Ver" button columns. Per-row actions go in `RowActions`,
+  destructive last after a separator.
+- No back buttons: the breadcrumb navigates. Form "Cancelar" returns to the parent route.
+- Forms: `Page width="form"`, fields grouped in titled sections, actions at the end (secondary
+  then primary). Review steps show a `DescriptionList` summary and an explicit confirm.
+- Money: right-aligned, tabular, default text colour; destructive colour only for an overdue or
+  negative value greater than zero, never for zero.
+- List filters live in the URL (`useLocalSearchParams` + `router.setParams`) so returning from a
+  record restores them.
+
 ## Templates by job
 
 | Job | Composition |
