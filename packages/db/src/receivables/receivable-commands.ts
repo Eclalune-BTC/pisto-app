@@ -5,7 +5,7 @@ import {
   reverseReceivablePaymentRequestSchema,
   voidReceivableRequestSchema,
 } from "@pisto/contracts";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import {
   appendReceivablePaymentCashMovement,
@@ -13,7 +13,7 @@ import {
 } from "../cash/receivable-ledger.ts";
 import type { Database } from "../client.ts";
 import { ProductError, parseInput } from "../errors.ts";
-import { requireCalendarDate, resolveLocalDateTime } from "../local-time.ts";
+import { resolveLocalDateTime } from "../local-time.ts";
 import { parseMinorUnits } from "../money.ts";
 import { beginOperation, saveOperation } from "../operation-log.ts";
 import { customer, receivable, receivablePayment } from "../schema/receivables.ts";
@@ -40,8 +40,6 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
         rawCommand,
         "Receivable details are invalid",
       );
-      requireCalendarDate(command.postedDate, "The posted date is invalid");
-      if (command.dueDate) requireCalendarDate(command.dueDate, "The due date is invalid");
       const action = "receivable.posted";
       const commandFingerprint = await receivableCommandFingerprint(action, {
         customerId: command.customerId,
@@ -140,10 +138,9 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
           .update(receivable)
           .set({
             status: "voided",
-            voidedAt: access.queriedAt,
+            voidedAt: sql`transaction_timestamp()`,
             voidedByUserId: actor.userId,
             voidReason: command.reason,
-            updatedAt: access.queriedAt,
           })
           .where(and(eq(receivable.businessId, access.businessId), eq(receivable.id, receivableId)))
           .returning();

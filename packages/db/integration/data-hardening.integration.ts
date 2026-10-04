@@ -2,12 +2,13 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq, inArray, sql } from "drizzle-orm";
 
 import type { DatabaseTransaction } from "../src/business-access.ts";
+import { createBusinessRepository } from "../src/businesses.ts";
 import { createCashRepository } from "../src/cash.ts";
 import { createCatalogRepository } from "../src/catalog.ts";
 import { createDatabase, type Database } from "../src/client.ts";
 import { parseDatabaseConfig } from "../src/env.ts";
-import { createProductRepository } from "../src/product.ts";
 import { createReceivablesRepository } from "../src/receivables.ts";
+import { createSalesRepository } from "../src/sales.ts";
 import { member, organization, session, user } from "../src/schema/auth.ts";
 import { businessSettings } from "../src/schema/business.ts";
 import {
@@ -32,7 +33,8 @@ import {
 import { sale, saleCorrection, saleOperation } from "../src/schema/sales.ts";
 
 const database = createDatabase({ ...parseDatabaseConfig(process.env), maxConnections: 8 });
-const product = createProductRepository(database.db);
+const businesses = createBusinessRepository(database.db);
+const sales = createSalesRepository(database.db);
 const cash = createCashRepository(database.db);
 const catalog = createCatalogRepository(database.db);
 const receivables = createReceivablesRepository(database.db);
@@ -112,7 +114,6 @@ afterAll(async () => {
   await database.close();
 });
 
-/** Delay one real SQL boundary while another connection commits; no query is mocked. */
 /** Runs `hook` around the first raw statement of each transaction opened through `db`. */
 function aroundFirstExecute(
   db: Database,
@@ -145,6 +146,24 @@ function aroundFirstExecute(
               },
             }),
           );
+        }, config);
+    },
+  });
+}
+
+/** Runs `hook` after each transaction callback opened through `db`, before it commits. */
+function beforeCommit(db: Database, hook: (tx: DatabaseTransaction) => Promise<void>): Database {
+  return new Proxy(db, {
+    get(target, property) {
+      if (property !== "transaction") return Reflect.get(target, property);
+      return (
+        callback: (tx: DatabaseTransaction) => Promise<unknown>,
+        config?: Parameters<Database["transaction"]>[1],
+      ) =>
+        target.transaction(async (tx) => {
+          const result = await callback(tx);
+          await hook(tx);
+          return result;
         }, config);
     },
   });
@@ -332,11 +351,11 @@ describe("data integrity regressions on PostgreSQL", () => {
       occurredLocalDate: "2026-09-10",
       occurredLocalTime: "12:00",
     };
-    const created = await product.createSale(actor, command);
-    const reading = createProductRepository(
+    const created = await sales.createSale(actor, command);
+    const reading = createSalesRepository(
       // Session and membership authorization are the first two reads.
       afterSelect(database.db, 3, async () => {
-        await product.voidSale(actor, created.sale.id, {
+        await sales.voidSale(actor, created.sale.id, {
           idempotencyKey: key(),
           reason: "Concurrent correction",
         });
@@ -345,10 +364,10 @@ describe("data integrity regressions on PostgreSQL", () => {
     const before = await reading.getSale(actor, created.sale.id);
     expect(before.status).toBe("posted");
     expect(before.correction).toBeNull();
-    const after = await product.getSale(actor, created.sale.id);
+    const after = await sales.getSale(actor, created.sale.id);
     expect(after.status).toBe("voided");
     expect(after.correction?.kind).toBe("void");
-    const replay = await product.createSale(actor, command);
+    const replay = await sales.createSale(actor, command);
     expect(replay.replayed).toBe(true);
     expect(replay.sale).toEqual(after);
   });
@@ -360,16 +379,16 @@ describe("data integrity regressions on PostgreSQL", () => {
       activeBusinessId: null,
     };
     await expect(
-      product.createBusiness(expiredActor, {
+      businesses.createBusiness(expiredActor, {
         name: "Expired session store",
         currency: "USD",
         timeZone: "America/El_Salvador",
       }),
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
-    await expect(product.listBusinesses(expiredActor)).rejects.toMatchObject({
+    await expect(businesses.listBusinesses(expiredActor)).rejects.toMatchObject({
       code: "UNAUTHORIZED",
     });
-    await expect(product.listBusinesses({ ...actor, sessionId: key() })).rejects.toMatchObject({
+    await expect(businesses.listBusinesses({ ...actor, sessionId: key() })).rejects.toMatchObject({
       code: "UNAUTHORIZED",
     });
     const rows = await database.db.select().from(member).where(eq(member.userId, expiredUserId));
@@ -381,13 +400,15 @@ describe("data integrity regressions on PostgreSQL", () => {
       .where(eq(session.id, ownerSessionId));
     try {
       await expect(
-        product.createBusiness(actor, {
+        businesses.createBusiness(actor, {
           name: "Hardening Store",
           currency: "USD",
           timeZone: "America/El_Salvador",
         }),
       ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
-      await expect(product.listBusinesses(actor)).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+      await expect(businesses.listBusinesses(actor)).rejects.toMatchObject({
+        code: "UNAUTHORIZED",
+      });
     } finally {
       await database.db
         .update(session)
@@ -419,7 +440,7 @@ describe("data integrity regressions on PostgreSQL", () => {
       opening: null,
     });
     const holderPid = await authorized.promise;
-    const saleWrite = product.createSale(actor, {
+    const saleWrite = sales.createSale(actor, {
       idempotencyKey,
       grossMinorUnits: "100",
       occurredLocalDate: "2026-08-01",
@@ -591,6 +612,66 @@ describe("data integrity regressions on PostgreSQL", () => {
     expect(stock.sort()).toEqual(productIds.sort());
     expect(movements.sort()).toEqual(movementIds.sort());
   });
+
+  test("blocks a product create behind a category archive and rejects the archived category", async () => {
+    const { category } = await catalog.createCategory(actor, {
+      idempotencyKey: key(),
+      name: `Archive race ${key()}`,
+    });
+    const archived = Promise.withResolvers<number>();
+    const releaseArchive = Promise.withResolvers<void>();
+    const holdingCatalog = createCatalogRepository(
+      beforeCommit(database.db, async (tx) => {
+        const [row] = await tx.execute<{ pid: number }>(sql`select pg_backend_pid() as pid`);
+        if (!row) throw new Error("Missing backend identifier");
+        archived.resolve(row.pid);
+        await releaseArchive.promise;
+      }),
+    );
+    const archive = holdingCatalog.archiveCategory(actor, category.id, { idempotencyKey: key() });
+    const holderPid = await archived.promise;
+    const productName = `Archive race product ${key()}`;
+    const create = catalog.createProduct(actor, {
+      idempotencyKey: key(),
+      name: productName,
+      categoryId: category.id,
+      sku: null,
+      sellingPriceMinorUnits: null,
+      unitKind: "unit",
+      quantityPrecision: 0,
+      tracked: false,
+      lowStockThresholdMinorUnits: null,
+    });
+    const writes = Promise.allSettled([archive, create]);
+    try {
+      let blocked = false;
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const [row] = await database.db.execute<{ waiting: boolean }>(sql`
+          select exists (select 1 from pg_stat_activity
+            where ${holderPid} = any(pg_blocking_pids(pid))) as waiting
+        `);
+        if (row?.waiting) {
+          blocked = true;
+          break;
+        }
+        await Bun.sleep(10);
+      }
+      expect(blocked).toBe(true);
+    } finally {
+      releaseArchive.resolve();
+    }
+    const [archiveResult, createResult] = await writes;
+    expect(archiveResult.status).toBe("fulfilled");
+    expect(createResult.status).toBe("rejected");
+    if (createResult.status === "rejected") {
+      expect(createResult.reason).toMatchObject({ code: "VALIDATION_ERROR" });
+    }
+    const created = await database.db
+      .select({ id: catalogProduct.id })
+      .from(catalogProduct)
+      .where(eq(catalogProduct.name, productName));
+    expect(created).toEqual([]);
+  }, 10_000);
 
   test("keeps customer identity and balance in one snapshot across a concurrent commit", async () => {
     const { customer: contact } = await receivables.createCustomer(actor, {

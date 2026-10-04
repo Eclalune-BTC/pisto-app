@@ -10,7 +10,7 @@ import { and, desc, eq, getTableColumns, gte, lt, sql } from "drizzle-orm";
 import { authorizeBusinessAction } from "../business-access.ts";
 import type { Database } from "../client.ts";
 import { ProductError, parseInput } from "../errors.ts";
-import { nextCalendarDate, requireCalendarDate, resolveLocalDateTime } from "../local-time.ts";
+import { nextCalendarDate, resolveLocalDateTime } from "../local-time.ts";
 import {
   decodeCursor,
   exactCursorTimestamp,
@@ -139,8 +139,6 @@ export function createCashQueries(db: Database): CashQueries {
 
     async getExpensePeriodSummary(actor, rawQuery) {
       const query = parseInput(expensePeriodQuerySchema, rawQuery, "Expense period is invalid");
-      requireCalendarDate(query.startLocalDate, "The local date is invalid");
-      requireCalendarDate(query.endLocalDate, "The local date is invalid");
       if (query.startLocalDate > query.endLocalDate) {
         throw new ProductError("VALIDATION_ERROR", "Expense period start must not follow its end");
       }

@@ -20,7 +20,7 @@ tax, or establish profit. Product UI and future assistant tools must preserve th
 
 ## HTTP contract
 
-All routes below are relative to `/v1`. Implementation lives in `apps/api/src/routes/product.ts`;
+All routes below are relative to `/v1`. Implementation lives in `apps/api/src/routes/sales.ts`;
 request/response schemas live in `packages/contracts/src/index.ts`.
 
 | Method | Route | Purpose |

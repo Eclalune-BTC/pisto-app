@@ -33,7 +33,7 @@ export const cashAccount = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .defaultNow()
-      .$onUpdate(() => new Date())
+      .$onUpdate(() => sql`transaction_timestamp()`)
       .notNull(),
   },
   (table) => [

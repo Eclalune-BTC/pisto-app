@@ -2,8 +2,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import { eq, inArray } from "drizzle-orm";
 import {
   businessSettings,
+  createBusinessRepository,
   createDatabase,
-  createProductRepository,
+  createSalesRepository,
   member,
   organization,
   type ProductActor,
@@ -17,7 +18,8 @@ import {
 import { postSale } from "../src/sales/posting.ts";
 
 const database = createDatabase({ ...parseDatabaseConfig(process.env), maxConnections: 6 });
-const repository = createProductRepository(database.db);
+const businessRepository = createBusinessRepository(database.db);
+const repository = createSalesRepository(database.db);
 const run = crypto.randomUUID();
 const actors: ProductActor[] = [0, 1, 2].map((n) => ({
   userId: `review-user-${n}-${run}`,
@@ -102,7 +104,7 @@ beforeAll(async () => {
     });
   }
   for (const actor of [owner, outsider]) {
-    const { business } = await repository.createBusiness(actor, {
+    const { business } = await businessRepository.createBusiness(actor, {
       name: "Review fixture",
       currency: "USD",
       timeZone: "America/El_Salvador",
@@ -165,7 +167,7 @@ describe("server-owned sale review recovery", () => {
     const before = (await ownSales()).length;
     const input = command();
     const prepared = await repository.prepareSaleReview(owner, input);
-    expect(await createProductRepository(database.db).getSaleReview(owner)).toEqual(prepared);
+    expect(await createSalesRepository(database.db).getSaleReview(owner)).toEqual(prepared);
     expect(await repository.prepareSaleReview(owner, input)).toEqual(prepared);
     expect((await ownSales()).length).toBe(before);
     await expect(
@@ -181,7 +183,7 @@ describe("server-owned sale review recovery", () => {
     const paused = Promise.withResolvers<void>();
     const release = Promise.withResolvers<void>();
     // Pause the first preparation right after its open-review check returns.
-    const first = createProductRepository(pauseAfterSelect(4, paused.resolve, release.promise));
+    const first = createSalesRepository(pauseAfterSelect(4, paused.resolve, release.promise));
     const firstResult = first.prepareSaleReview(owner, command()).then(
       (review) => ({ review }),
       (error: unknown) => ({ error }),

@@ -183,7 +183,6 @@ export function createAccountCommands(db: Database): AccountCommands {
             ...(command.allowNegativeBalance !== undefined
               ? { allowNegativeBalance: command.allowNegativeBalance }
               : {}),
-            updatedAt: access.queriedAt,
           })
           .where(and(eq(cashAccount.businessId, businessId), eq(cashAccount.id, accountId)))
           .returning();
@@ -226,7 +225,7 @@ export function createAccountCommands(db: Database): AccountCommands {
         const balance = await getAccountBalance(tx, businessId, accountId);
         const [archived] = await tx
           .update(cashAccount)
-          .set({ status: "archived", updatedAt: access.queriedAt })
+          .set({ status: "archived" })
           .where(and(eq(cashAccount.businessId, businessId), eq(cashAccount.id, accountId)))
           .returning();
         if (!archived) throw new Error("Cash account archive returned no record");

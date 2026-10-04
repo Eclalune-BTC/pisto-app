@@ -4,7 +4,7 @@ import {
   postExpenseRequestSchema,
   voidExpenseRequestSchema,
 } from "@pisto/contracts";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { ProductError, parseInput } from "../errors.ts";
@@ -188,10 +188,9 @@ export function createExpenseCommands(db: Database): ExpenseCommands {
           .update(expense)
           .set({
             status: "voided",
-            voidedAt: access.queriedAt,
+            voidedAt: sql`transaction_timestamp()`,
             voidedByUserId: actor.userId,
             voidReason: command.reason,
-            updatedAt: access.queriedAt,
           })
           .where(and(eq(expense.businessId, businessId), eq(expense.id, expenseId)))
           .returning();

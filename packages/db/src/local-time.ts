@@ -1,5 +1,4 @@
 /// <reference types="temporal-spec/global" />
-import { calendarLocalDateSchema } from "@pisto/contracts";
 
 import { ProductError } from "./errors.ts";
 
@@ -41,12 +40,6 @@ export function getCurrencyMinorUnitDigits(currency: string): number | null {
   return digits !== undefined && Number.isInteger(digits) && digits >= 0 && digits <= 4
     ? digits
     : null;
-}
-
-export function requireCalendarDate(value: string, message: string): void {
-  if (!calendarLocalDateSchema.safeParse(value).success) {
-    throw new ProductError("VALIDATION_ERROR", message);
-  }
 }
 
 /** The following calendar day of an already validated local date. */

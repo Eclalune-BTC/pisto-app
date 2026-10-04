@@ -7,7 +7,12 @@ import type {
   ReceivablesRepository,
   ReportsRepository,
 } from "@pisto/db";
-import { type DatabaseHandle, ProductError, type ProductRepository } from "@pisto/db";
+import {
+  type BusinessRepository,
+  type DatabaseHandle,
+  ProductError,
+  type SalesRepository,
+} from "@pisto/db";
 import { createApp } from "../src/app.ts";
 import { sessionPolicyPaths } from "../src/middleware/product-access.ts";
 import { testClient } from "./http-client.ts";
@@ -26,7 +31,8 @@ function testApp(
     authenticated?: boolean;
     polarEnabled?: boolean;
     activeBusinessId?: string | null;
-    product?: ProductRepository;
+    businesses?: BusinessRepository;
+    sales?: SalesRepository;
     onRepositoryCall?: () => void;
     readCustomerState?: BillingRuntime["readCustomerState"];
     onSessionRead?: () => void;
@@ -102,15 +108,21 @@ function testApp(
     ping: options.ping ?? (async () => undefined),
     close: async () => undefined,
   } as unknown as DatabaseHandle;
-  const product =
-    options.product ??
+  const businesses =
+    options.businesses ??
     (options.onRepositoryCall
-      ? unavailableRepository<ProductRepository>("Product repository", options.onRepositoryCall)
+      ? unavailableRepository<BusinessRepository>("Business repository", options.onRepositoryCall)
       : ({
           listBusinesses: async () => ({ activeBusinessId: null, items: [] }),
           createBusiness: async () => {
             throw new ProductError("CONFLICT", "Not configured in this test");
           },
+        } satisfies BusinessRepository));
+  const sales =
+    options.sales ??
+    (options.onRepositoryCall
+      ? unavailableRepository<SalesRepository>("Sales repository", options.onRepositoryCall)
+      : ({
           createSale: async () => {
             throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
           },
@@ -139,7 +151,7 @@ function testApp(
           getPreviousMonthSummary: async () => {
             throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
           },
-        } satisfies ProductRepository));
+        } satisfies SalesRepository));
 
   return testClient(
     createApp({
@@ -162,12 +174,12 @@ function testApp(
       billing,
       database,
       repositories: {
+        businesses,
         cash: unavailableRepository<CashRepository>("Cash repository", options.onRepositoryCall),
         catalog: unavailableRepository<CatalogRepository>(
           "Catalog repository",
           options.onRepositoryCall,
         ),
-        product,
         receivables: unavailableRepository<ReceivablesRepository>(
           "Receivables repository",
           options.onRepositoryCall,
@@ -176,6 +188,7 @@ function testApp(
           "Reports repository",
           options.onRepositoryCall,
         ),
+        sales,
       },
     }),
   );
@@ -396,11 +409,11 @@ describe("Pisto API", () => {
     try {
       const response = await testApp({
         authenticated: true,
-        product: {
+        businesses: {
           listBusinesses: async () => {
             throw new Error(sensitiveText);
           },
-        } as unknown as ProductRepository,
+        } as unknown as BusinessRepository,
       }).request("/v1/businesses");
 
       expect(response.status).toBe(500);
@@ -588,13 +601,13 @@ describe("Pisto API", () => {
 
   test("rejects unsafe product requests before they reach the repository", async () => {
     let repositoryCalled = false;
-    const product = {
+    const sales = {
       createSale: async () => {
         repositoryCalled = true;
         throw new Error("Repository should not be called");
       },
-    } as unknown as ProductRepository;
-    const app = testApp({ authenticated: true, product });
+    } as unknown as SalesRepository;
+    const app = testApp({ authenticated: true, sales });
 
     const plainText = await app.request("/v1/sales", {
       method: "POST",
@@ -641,12 +654,12 @@ describe("Pisto API", () => {
     let commands = 0;
     const app = testApp({
       authenticated: true,
-      product: {
+      businesses: {
         createBusiness: async () => {
           commands += 1;
           return { replayed: false };
         },
-      } as unknown as ProductRepository,
+      } as unknown as BusinessRepository,
     });
     const body = JSON.stringify({
       name: "Test Store",
@@ -711,7 +724,7 @@ describe("Pisto API", () => {
 
   test("validates sale corrections before dispatching them", async () => {
     let repositoryCalled = false;
-    const product = {
+    const sales = {
       voidSale: async () => {
         repositoryCalled = true;
         throw new Error("Repository should not be called");
@@ -720,8 +733,8 @@ describe("Pisto API", () => {
         repositoryCalled = true;
         throw new Error("Repository should not be called");
       },
-    } as unknown as ProductRepository;
-    const app = testApp({ authenticated: true, product });
+    } as unknown as SalesRepository;
+    const app = testApp({ authenticated: true, sales });
     const saleId = "5312a3e6-7c91-486a-9233-0cf4d9d3dcc7";
 
     const invalidVoid = await app.request(`/v1/sales/${saleId}/void`, {
@@ -766,7 +779,7 @@ describe("Pisto API", () => {
       const result = { business: { id: "business-test" }, replayed };
       const response = await testApp({
         authenticated: true,
-        product: { createBusiness: async () => result } as unknown as ProductRepository,
+        businesses: { createBusiness: async () => result } as unknown as BusinessRepository,
       }).request("/v1/businesses", {
         method: "POST",
         headers: { "content-type": "application/json", "x-request-id": "command-test" },
@@ -791,11 +804,11 @@ describe("Pisto API", () => {
       for (const { code, status } of productErrorContract) {
         const response = await testApp({
           authenticated: true,
-          product: {
+          businesses: {
             listBusinesses: async () => {
               throw new ProductError(code, `Domain rejected the request as ${code}`);
             },
-          } as unknown as ProductRepository,
+          } as unknown as BusinessRepository,
         }).request("/v1/businesses");
 
         expect(response.status).toBe(status);
@@ -816,11 +829,11 @@ describe("Pisto API", () => {
     try {
       const response = await testApp({
         authenticated: true,
-        product: {
+        businesses: {
           listBusinesses: async () => {
             throw new TypeError("driver detail that must not reach the client");
           },
-        } as unknown as ProductRepository,
+        } as unknown as BusinessRepository,
       }).request("/v1/businesses");
 
       expect(response.status).toBe(500);
@@ -847,11 +860,11 @@ describe("Pisto API", () => {
       for (const failure of failures) {
         const response = await testApp({
           authenticated: true,
-          product: {
+          businesses: {
             listBusinesses: async () => {
               throw failure;
             },
-          } as unknown as ProductRepository,
+          } as unknown as BusinessRepository,
         }).request("/v1/businesses");
 
         expect(response.status).toBe(500);
@@ -869,11 +882,11 @@ describe("Pisto API", () => {
   test("covers the business listing that previously had no error translation", async () => {
     const response = await testApp({
       authenticated: true,
-      product: {
+      businesses: {
         listBusinesses: async () => {
           throw new ProductError("FORBIDDEN", "The membership is no longer valid");
         },
-      } as unknown as ProductRepository,
+      } as unknown as BusinessRepository,
     }).request("/v1/businesses");
 
     expect(response.status).toBe(403);

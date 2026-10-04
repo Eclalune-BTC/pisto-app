@@ -22,7 +22,8 @@ export type BusinessDatabaseExecutor = Database | DatabaseTransaction;
  * with both revocation paths: a role or active-business change is an UPDATE of a
  * non-key column (FOR NO KEY UPDATE) and a removal is a DELETE (FOR UPDATE). FOR KEY
  * SHARE would let a role downgrade commit mid-command. Exclusive modes would
- * serialize every command of one member without protecting any further invariant.
+ * serialize every command of one member. This lock protects authorization only; a
+ * command that depends on a parent record's state locks that row itself.
  *
  * "none" exists for a `read only` snapshot transaction: PostgreSQL rejects every row
  * lock there with 25006, so such a read authorizes inside its snapshot instead.

@@ -3,8 +3,9 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 import {
   businessSettings,
+  createBusinessRepository,
   createDatabase,
-  createProductRepository,
+  createSalesRepository,
   member,
   organization,
   type ProductActor,
@@ -21,7 +22,8 @@ const database = createDatabase({
   ...parseDatabaseConfig(process.env),
   maxConnections: 4,
 });
-const repository = createProductRepository(database.db);
+const businesses = createBusinessRepository(database.db);
+const repository = createSalesRepository(database.db);
 const runId = crypto.randomUUID();
 const userIds = [
   `integration-owner-a-${runId}`,
@@ -197,7 +199,7 @@ afterAll(async () => {
 describe("product repository on PostgreSQL 18", () => {
   test("rolls back onboarding when its authenticated session disappears", async () => {
     await expect(
-      repository.createBusiness(
+      businesses.createBusiness(
         {
           userId: userIds[2] as string,
           sessionId: `missing-session-${runId}`,
@@ -233,7 +235,7 @@ describe("product repository on PostgreSQL 18", () => {
       role: "owner",
     });
 
-    const adopted = await repository.createBusiness(
+    const adopted = await businesses.createBusiness(
       {
         userId: userIds[3] as string,
         sessionId: sessionIds[2] as string,
@@ -282,7 +284,7 @@ describe("product repository on PostgreSQL 18", () => {
       sessionId: sessionIds[0] as string,
       activeBusinessId: null,
     };
-    const created = await repository.createBusiness(firstActor, {
+    const created = await businesses.createBusiness(firstActor, {
       name: `Integration Store ${runId.slice(0, 8)}`,
       currency: "USD",
       timeZone: "America/El_Salvador",
@@ -409,7 +411,7 @@ describe("product repository on PostgreSQL 18", () => {
       activeBusinessId: created.business.id,
     };
 
-    expect((await repository.listBusinesses(adminActor)).items[0]?.access).toEqual({
+    expect((await businesses.listBusinesses(adminActor)).items[0]?.access).toEqual({
       role: "admin",
       permissions: [
         "business:read",
@@ -433,7 +435,7 @@ describe("product repository on PostgreSQL 18", () => {
         "assistant:use",
       ],
     });
-    expect((await repository.listBusinesses(memberActor)).items[0]?.access).toEqual({
+    expect((await businesses.listBusinesses(memberActor)).items[0]?.access).toEqual({
       role: "member",
       permissions: [
         "business:read",
@@ -445,12 +447,12 @@ describe("product repository on PostgreSQL 18", () => {
         "assistant:use",
       ],
     });
-    expect(await repository.listBusinesses(unsupportedRoleActor)).toEqual({
+    expect(await businesses.listBusinesses(unsupportedRoleActor)).toEqual({
       activeBusinessId: null,
       items: [],
     });
     await expect(
-      repository.createBusiness(adminActor, {
+      businesses.createBusiness(adminActor, {
         name: created.business.name,
         currency: created.business.currency,
         timeZone: created.business.timeZone,
@@ -562,7 +564,7 @@ describe("product repository on PostgreSQL 18", () => {
       sessionId: sessionIds[1] as string,
       activeBusinessId: null,
     };
-    const secondBusiness = await repository.createBusiness(secondActor, {
+    const secondBusiness = await businesses.createBusiness(secondActor, {
       name: `Other Integration Store ${runId.slice(0, 8)}`,
       currency: "USD",
       timeZone: "America/El_Salvador",
@@ -595,7 +597,7 @@ describe("product repository on PostgreSQL 18", () => {
       .update(member)
       .set({ role: "member" })
       .where(eq(member.organizationId, secondBusiness.business.id));
-    const unapprovedMembership = await repository.listBusinesses({
+    const unapprovedMembership = await businesses.listBusinesses({
       ...secondActor,
       activeBusinessId: secondBusiness.business.id,
     });
@@ -680,7 +682,7 @@ describe("sale history list on PostgreSQL 18", () => {
   }
 
   beforeAll(async () => {
-    const created = await repository.createBusiness(
+    const created = await businesses.createBusiness(
       {
         userId: userIds[7] as string,
         sessionId: sessionIds[6] as string,
@@ -700,7 +702,7 @@ describe("sale history list on PostgreSQL 18", () => {
       activeBusinessId: listBusinessId,
     };
 
-    const other = await repository.createBusiness(
+    const other = await businesses.createBusiness(
       {
         userId: userIds[8] as string,
         sessionId: sessionIds[7] as string,

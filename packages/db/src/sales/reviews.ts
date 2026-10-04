@@ -1,5 +1,5 @@
 import { createSaleRequestSchema } from "@pisto/contracts";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import {
   authorizeBusinessAction,
@@ -138,7 +138,7 @@ export function createReviewCommands(db: Database): ReviewCommands {
 
     dismissSaleReview(actor, reviewId, acknowledgedSaleId) {
       return db.transaction(async (tx) => {
-        const { access, record } = await lockOwnReview(tx, actor, reviewId);
+        const { record } = await lockOwnReview(tx, actor, reviewId);
         if (!record) throw new ProductError("NOT_FOUND", "Sale review was not found");
         if (record.saleId && record.saleId !== acknowledgedSaleId) return { saleId: record.saleId };
         if (acknowledgedSaleId && record.saleId !== acknowledgedSaleId) {
@@ -147,7 +147,7 @@ export function createReviewCommands(db: Database): ReviewCommands {
         if (!record.closedAt) {
           await tx
             .update(saleReview)
-            .set({ command: null, closedAt: access.queriedAt })
+            .set({ command: null, closedAt: sql`transaction_timestamp()` })
             .where(eq(saleReview.id, record.id));
         }
         return { saleId: record.saleId };

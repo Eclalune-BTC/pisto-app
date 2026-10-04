@@ -20,8 +20,8 @@ export type SaleCorrectionInput =
   | { kind: "void"; command: VoidSaleRequest }
   | { kind: "replacement"; command: ReplaceSaleRequest };
 
-// Both sale fingerprints keep their original canonical shapes; changing either would
-// invalidate every stored sale receipt.
+// These canonical shapes are part of every stored sale receipt; changing either
+// invalidates replay.
 export function saleFingerprint(command: CreateSaleRequest): Promise<string> {
   return fingerprintValue({
     version: 1,

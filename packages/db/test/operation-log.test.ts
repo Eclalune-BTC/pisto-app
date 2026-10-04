@@ -56,7 +56,7 @@ describe("shared operation log primitives", () => {
   });
 
   test("locks one spelling of a UUID idempotency key", () => {
-    expect(normalizeIdempotencyKey("71402E0C-B17D-4D8C-83AE-8D163D10D51D")).toBe(
+    expect<string>(normalizeIdempotencyKey("71402E0C-B17D-4D8C-83AE-8D163D10D51D")).toBe(
       "71402e0c-b17d-4d8c-83ae-8d163d10d51d",
     );
   });

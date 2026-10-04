@@ -18,6 +18,11 @@ export const catalogOperationLog = {
   table: catalogOperation,
 } satisfies OperationLog<typeof catalogOperation>;
 
+/**
+ * FOR SHARE conflicts with the row update of a concurrent archive, so a product cannot
+ * be assigned to a category whose archive commits in between. The foreign-key check's
+ * FOR KEY SHARE alone would not conflict with a status-only update.
+ */
 export async function requireActiveCategory(
   tx: DatabaseTransaction,
   businessId: string,
@@ -33,7 +38,8 @@ export async function requireActiveCategory(
         eq(catalogCategory.status, "active"),
       ),
     )
-    .limit(1);
+    .limit(1)
+    .for("share");
   if (!category) {
     throw new ProductError("VALIDATION_ERROR", "The selected category is not active");
   }

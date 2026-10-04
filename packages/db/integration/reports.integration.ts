@@ -4,10 +4,11 @@ import { eq, inArray } from "drizzle-orm";
 
 import { authorizeBusinessAction } from "../src/business-access.ts";
 import {
+  createBusinessRepository,
   createCashRepository,
   createCatalogRepository,
   createDatabase,
-  createProductRepository,
+  createSalesRepository,
   member,
   organization,
   parseDatabaseConfig,
@@ -29,7 +30,8 @@ import {
 import { sale, saleCorrection, saleOperation } from "../src/schema/sales.ts";
 
 const database = createDatabase({ ...parseDatabaseConfig(process.env), maxConnections: 8 });
-const product = createProductRepository(database.db);
+const businesses = createBusinessRepository(database.db);
+const sales = createSalesRepository(database.db);
 const cash = createCashRepository(database.db);
 const catalog = createCatalogRepository(database.db);
 const receivables = createReceivablesRepository(database.db);
@@ -97,37 +99,37 @@ async function seedBusinessA(): Promise<void> {
   archivedAccountId = retired.account.id;
   await cash.archiveAccount(owner, archivedAccountId, { idempotencyKey: key() });
 
-  await product.createSale(owner, {
+  await sales.createSale(owner, {
     idempotencyKey: key(),
     grossMinorUnits: "10000",
     occurredLocalDate: "2026-03-01",
     occurredLocalTime: "00:00",
   });
-  await product.createSale(owner, {
+  await sales.createSale(owner, {
     idempotencyKey: key(),
     grossMinorUnits: "2500",
     occurredLocalDate: "2026-03-31",
     occurredLocalTime: "23:00",
   });
-  await product.createSale(owner, {
+  await sales.createSale(owner, {
     idempotencyKey: key(),
     grossMinorUnits: "700",
     occurredLocalDate: "2026-04-01",
     occurredLocalTime: "00:00",
   });
-  await product.createSale(owner, {
+  await sales.createSale(owner, {
     idempotencyKey: key(),
     grossMinorUnits: "300",
     occurredLocalDate: "2026-02-28",
     occurredLocalTime: "23:00",
   });
-  const voidedSale = await product.createSale(owner, {
+  const voidedSale = await sales.createSale(owner, {
     idempotencyKey: key(),
     grossMinorUnits: "5000",
     occurredLocalDate: "2026-03-15",
     occurredLocalTime: "12:00",
   });
-  await product.voidSale(owner, voidedSale.sale.id, {
+  await sales.voidSale(owner, voidedSale.sale.id, {
     idempotencyKey: key(),
     reason: "Duplicated ticket",
   });
@@ -311,7 +313,7 @@ async function seedBusinessB(): Promise<void> {
     opening: null,
   });
   foreignAccountId = account.account.id;
-  await product.createSale(owner, {
+  await sales.createSale(owner, {
     idempotencyKey: key(),
     grossMinorUnits: "999999",
     occurredLocalDate: "2026-03-15",
@@ -414,22 +416,22 @@ beforeAll(async () => {
     })),
   );
 
-  const createdA = await product.createBusiness(actor("ownerA", ""), {
+  const createdA = await businesses.createBusiness(actor("ownerA", ""), {
     name: `Reports Store A ${runId.slice(0, 8)}`,
     currency: "USD",
     timeZone: "America/El_Salvador",
   });
-  const createdB = await product.createBusiness(actor("ownerB", ""), {
+  const createdB = await businesses.createBusiness(actor("ownerB", ""), {
     name: `Reports Store B ${runId.slice(0, 8)}`,
     currency: "USD",
     timeZone: "America/El_Salvador",
   });
-  const createdEmpty = await product.createBusiness(actor("ownerEmpty", ""), {
+  const createdEmpty = await businesses.createBusiness(actor("ownerEmpty", ""), {
     name: `Reports Store Empty ${runId.slice(0, 8)}`,
     currency: "USD",
     timeZone: "America/El_Salvador",
   });
-  const createdTransfer = await product.createBusiness(actor("ownerTransfer", ""), {
+  const createdTransfer = await businesses.createBusiness(actor("ownerTransfer", ""), {
     name: `Reports Store Transfer ${runId.slice(0, 8)}`,
     currency: "USD",
     timeZone: "America/El_Salvador",

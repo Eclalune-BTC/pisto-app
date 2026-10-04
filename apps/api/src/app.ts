@@ -2,13 +2,14 @@ import { cors } from "@elysiajs/cors";
 import type { Auth } from "@pisto/auth";
 import type { BillingRuntime } from "@pisto/billing";
 import type {
+  BusinessRepository,
   CashRepository,
   CatalogRepository,
   ConsumeProductRequest,
   DatabaseHandle,
-  ProductRepository,
   ReceivablesRepository,
   ReportsRepository,
+  SalesRepository,
 } from "@pisto/db";
 import { Elysia } from "elysia";
 
@@ -18,20 +19,22 @@ import { productAccess, sessionPolicyPaths } from "./middleware/product-access.t
 import { requestContext } from "./middleware/request-context.ts";
 import { requestBodyLimit, requestPolicy } from "./middleware/request-policy.ts";
 import { billingRoutes } from "./routes/billing.ts";
+import { businessRoutes } from "./routes/businesses.ts";
 import { cashRoutes } from "./routes/cash.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
-import { productRoutes } from "./routes/product.ts";
 import { receivablesRoutes } from "./routes/receivables.ts";
 import { reportsRoutes } from "./routes/reports.ts";
+import { salesRoutes } from "./routes/sales.ts";
 import { systemRoutes } from "./routes/system.ts";
 import { v1Routes } from "./routes/v1.ts";
 
 export interface ProductRepositories {
+  businesses: BusinessRepository;
   cash: CashRepository;
   catalog: CatalogRepository;
-  product: ProductRepository;
   receivables: ReceivablesRepository;
   reports: ReportsRepository;
+  sales: SalesRepository;
 }
 
 export function createApp(input: {
@@ -138,9 +141,10 @@ export function createApp(input: {
   }
   app.use(systemRoutes({ database: input.database, billing: input.billing }));
   for (const group of sessionPolicyGroups) app.use(group);
-  const { cash, catalog, product, receivables, reports } = input.repositories;
+  const { businesses, cash, catalog, receivables, reports, sales } = input.repositories;
   return app
-    .use(productRoutes({ access, product }))
+    .use(businessRoutes({ access, businesses }))
+    .use(salesRoutes({ access, sales }))
     .use(catalogRoutes({ access, catalog }))
     .use(cashRoutes({ access, cash }))
     .use(receivablesRoutes({ access, receivables }))

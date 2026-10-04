@@ -2,9 +2,9 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 
 import {
+  createBusinessRepository,
   createCashRepository,
   createDatabase,
-  createProductRepository,
   member,
   organization,
   parseDatabaseConfig,
@@ -21,7 +21,7 @@ import {
 } from "../src/schema/receivables.ts";
 
 const database = createDatabase({ ...parseDatabaseConfig(process.env), maxConnections: 8 });
-const product = createProductRepository(database.db);
+const businesses = createBusinessRepository(database.db);
 const cash = createCashRepository(database.db);
 const repository = createReceivablesRepository(database.db);
 const runId = crypto.randomUUID();
@@ -68,12 +68,12 @@ beforeAll(async () => {
     })),
   );
 
-  const createdA = await product.createBusiness(actor("ownerA", ""), {
+  const createdA = await businesses.createBusiness(actor("ownerA", ""), {
     name: `Receivables Store A ${runId.slice(0, 8)}`,
     currency: "USD",
     timeZone: "America/El_Salvador",
   });
-  const createdB = await product.createBusiness(actor("ownerB", ""), {
+  const createdB = await businesses.createBusiness(actor("ownerB", ""), {
     name: `Receivables Store B ${runId.slice(0, 8)}`,
     currency: "USD",
     timeZone: "America/El_Salvador",

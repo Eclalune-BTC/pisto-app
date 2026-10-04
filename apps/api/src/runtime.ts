@@ -1,13 +1,14 @@
 import { createAuth, parseAuthConfig } from "@pisto/auth";
 import { createBillingRuntime, parseBillingConfig } from "@pisto/billing";
 import {
+  createBusinessRepository,
   createCashRepository,
   createCatalogRepository,
   createDatabase,
   createProductRateLimiter,
-  createProductRepository,
   createReceivablesRepository,
   createReportsRepository,
+  createSalesRepository,
   parseDatabaseConfig,
 } from "@pisto/db";
 
@@ -28,11 +29,12 @@ export function createRuntime(env: Record<string, string | undefined>) {
     billing,
     database,
     repositories: {
+      businesses: createBusinessRepository(database.db),
       cash: createCashRepository(database.db),
       catalog: createCatalogRepository(database.db),
-      product: createProductRepository(database.db),
       receivables: createReceivablesRepository(database.db),
       reports: createReportsRepository(database.db),
+      sales: createSalesRepository(database.db),
     },
     consumeProductRequest: createProductRateLimiter(database.db, {
       readLimit: config.productReadLimit,

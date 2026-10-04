@@ -90,7 +90,9 @@ Never edit an already-applied migration. Add a forward migration.
   payment. Composite foreign keys bind it to a same-business receivable, customer, and cash account.
 - `receivable_operation` is the customers/receivables idempotency receipt.
 - The public entitlement contract accepts `polar`, `revenuecat`, and reserved `manual` sources, but
-  no supported manual-grant write workflow is implemented.
+  no supported manual-grant write workflow is implemented. `entitlement_source_check` restricts the
+  stored `source` to that set, so an unknown source fails at write time; the billing read path still
+  rejects one as corrupt.
 
 The Drizzle schema object in `packages/db/src/schema/index.ts` is the authoritative inventory: 30
 tables, of which 8 are Better Auth, 4 are billing, and 18 are Pisto business tables. Migration
@@ -98,8 +100,9 @@ tables, of which 8 are Better Auth, 4 are billing, and 18 are Pisto business tab
 14. Migration `0004` adds sale-history indexes. Migration `0005` strengthens complete optional-price
 and void-record constraints without adding tables. Migration `0006` adds `sale_review`, with one
 open working snapshot per actor/business, a same-business saved-sale reference and closed-key
-retention. See [ADR 0018](adrs/0018-durable-sale-review.md). Reports add no reporting ledger or
-materialized balance.
+retention. See [ADR 0018](adrs/0018-durable-sale-review.md). Migration `0007` adds
+`entitlement_source_check`; it validates existing rows and fails on any other stored source rather
+than rewriting it. Reports add no reporting ledger or materialized balance.
 
 Raw JSON is evidence and forward-compatibility data. Queryable authorization fields remain typed
 columns with indexes; code does not scan provider JSON to authorize each request.
@@ -131,9 +134,19 @@ the server's time-zone resolution or daylight-saving ambiguity checks.
   active-business change is an `UPDATE` of a non-key column (`FOR NO KEY UPDATE`) and a removal is a
   `DELETE` (`FOR UPDATE`); both conflict with `FOR SHARE`, so a revocation waits for in-flight work
   and in-flight work waits for a pending revocation. `FOR KEY SHARE` would let a role downgrade
-  commit mid-command; exclusive modes would serialize every command of one member without protecting
-  another invariant. Read-only snapshot transactions authorize without row locks because PostgreSQL
+  commit mid-command; exclusive modes would serialize every command of one member. The membership
+  lock protects only authorization, not a parent record a command depends on; see the parent-row rule
+  below. Read-only snapshot transactions authorize without row locks because PostgreSQL
   rejects them there. Onboarding alone locks its session `FOR UPDATE`, because it rewrites that row.
+- A command that checks a parent record's state before writing a child locks that parent row in a
+  mode that conflicts with the parent's own state change, because a foreign-key check takes only
+  `FOR KEY SHARE`, which a status-only `UPDATE` does not block. Cash accounts are locked
+  `FOR NO KEY UPDATE`; customers, products, receivables, and expenses `FOR UPDATE` (a payment holds
+  its customer `FOR SHARE`); and a product's category `FOR SHARE`, so a product create or
+  recategorization waits for a concurrent category archive and then rejects the archived category.
+- Command timestamps use the database clock. `updated_at` is set by the column's `$onUpdate`
+  to `transaction_timestamp()`, and `voided_at`/`closed_at` are written the same way, so they never
+  precede a `created_at` from the same clock and are stored with full microsecond precision.
 - Business discovery and onboarding also verify a live, unexpired session in the database; a cached
   auth response cannot authorize a new business or replay after session expiry.
 - Multi-query operating reports and customer/receivable details use a read-only repeatable-read
@@ -148,7 +161,9 @@ the server's time-zone resolution or daylight-saving ambiguity checks.
 - Repositories trust path identifiers the HTTP boundary already validated as UUIDs; a malformed
   identifier reaching PostgreSQL fails loudly instead of being reported as a missing record.
 - Idempotency keys are normalized to lower case before the advisory lock and every receipt lookup,
-  so differently cased retries of one UUID serialize on the same lock.
+  so differently cased retries of one UUID serialize on the same lock. `normalizeIdempotencyKey` is
+  the only producer of the `IdempotencyKey` type that `lockCommandKey` and receipt identities
+  require; the lock does not normalize again.
 
 ## Shared operation-log primitive
 
@@ -187,11 +202,16 @@ tables, one per capability, because their foreign keys and action `CHECK` constr
 Cash, catalog, and receivables share one prologue, `beginOperation`, which authorizes the fresh
 session and membership first, then takes the idempotency lock, then reads the replay.
 
-Each capability lives in its own folder (`cash/`, `catalog/`, `receivables/`, `sales/`) with the
-same roles: `types.ts` for the repository interface, `mappers.ts` for record-to-contract mapping,
-`records.ts` for its operation-log descriptor, row locks and ledger reads, and `*-commands.ts` /
-`*queries.ts` factories that the top-level `cash.ts`, `catalog.ts`, `receivables.ts` and `sales.ts`
-compose. `businesses.ts` owns discovery and onboarding; `product.ts` composes businesses and sales.
+Each capability lives in its own folder (`cash/`, `catalog/`, `receivables/`, `sales/`) and the
+top-level `cash.ts`, `catalog.ts`, `receivables.ts` and `sales.ts` compose its factories. Every
+folder has `types.ts` for the repository interface and `records.ts` for shared row reads and locks.
+`cash/`, `catalog/` and `receivables/` add `mappers.ts` for record-to-contract mapping, keep their
+operation-log descriptor in `records.ts`, and split work into `*-commands.ts` and `queries.ts` /
+`*-queries.ts`; `cash/receivable-ledger.ts` posts receivable payments to cash, and
+`receivables/codec.ts` holds the payment result schema and the receivables fingerprint encoding.
+`sales/` keeps its fingerprints, key checks and record mappers in `records.ts`, with `posting.ts`,
+`corrections.ts`, `reviews.ts` and `queries.ts` beside it. `businesses.ts` owns discovery and
+onboarding as its own repository.
 Shared primitives are `errors.ts`, `business-access.ts`, `local-time.ts`, `money.ts`,
 `pagination.ts`, `operation-log.ts` and `text-search.ts`. The package index exports only what other
 packages use.

@@ -1,0 +1,1 @@
+ALTER TABLE "entitlement" ADD CONSTRAINT "entitlement_source_check" CHECK ("entitlement"."source" in ('polar', 'revenuecat', 'manual'));

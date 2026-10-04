@@ -116,7 +116,6 @@ export function createCustomerCommands(db: Database): CustomerCommands {
             ...(command.phone !== undefined ? { phone: command.phone } : {}),
             ...(command.email !== undefined ? { email: command.email } : {}),
             ...(command.notes !== undefined ? { notes: command.notes } : {}),
-            updatedAt: access.queriedAt,
           })
           .where(and(eq(customer.businessId, access.businessId), eq(customer.id, customerId)))
           .returning();
@@ -176,7 +175,7 @@ export function createCustomerCommands(db: Database): CustomerCommands {
         }
         const [record] = await tx
           .update(customer)
-          .set({ status: "archived", updatedAt: access.queriedAt })
+          .set({ status: "archived" })
           .where(and(eq(customer.businessId, access.businessId), eq(customer.id, customerId)))
           .returning();
         if (!record) throw new Error("Customer archive returned no record");

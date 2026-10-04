@@ -119,7 +119,7 @@ export function createCategoryCommands(db: Database): CategoryCommands {
         await requireUniqueName(tx, access.businessId, command.name, categoryId);
         const [updated] = await tx
           .update(catalogCategory)
-          .set({ name: command.name, updatedAt: access.queriedAt })
+          .set({ name: command.name })
           .where(
             and(
               eq(catalogCategory.businessId, access.businessId),
@@ -162,7 +162,7 @@ export function createCategoryCommands(db: Database): CategoryCommands {
         }
         const [updated] = await tx
           .update(catalogCategory)
-          .set({ status: "archived", updatedAt: access.queriedAt })
+          .set({ status: "archived" })
           .where(
             and(
               eq(catalogCategory.businessId, access.businessId),

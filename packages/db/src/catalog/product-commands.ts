@@ -233,7 +233,6 @@ export function createProductCommands(db: Database): ProductCommands {
               : command.tracked === false
                 ? { lowStockThresholdMinorUnits: null }
                 : {}),
-            updatedAt: access.queriedAt,
           })
           .where(
             and(eq(catalogProduct.businessId, access.businessId), eq(catalogProduct.id, productId)),
@@ -274,7 +273,7 @@ export function createProductCommands(db: Database): ProductCommands {
         }
         const [updated] = await tx
           .update(catalogProduct)
-          .set({ status: "archived", updatedAt: access.queriedAt })
+          .set({ status: "archived" })
           .where(
             and(eq(catalogProduct.businessId, access.businessId), eq(catalogProduct.id, productId)),
           )

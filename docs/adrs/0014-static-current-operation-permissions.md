@@ -65,7 +65,7 @@ financial records merely because the provider recognizes it.
   `GET /v1/reports/operating`, and `/operate/reports` screen. `assistant:use` remains reserved:
   no assistant capability exists, and a granted permission is not evidence of a feature.
 - `admin` and `member` are complete, tested policy branches with no reachable actor. Business
-  onboarding in `packages/db/src/product.ts` is the only code path that writes a `member` row and it
+  onboarding in `packages/db/src/businesses.ts` is the only code path that writes a `member` row and it
   hardcodes `role: "owner"`, and `apps/api/src/app.ts` returns `404` for every Better Auth
   organization route except the active-organization selector. Until invitations and role
   administration exist, every real actor is an `owner`, and the `admin`/`member` branches are

@@ -144,6 +144,7 @@ export const entitlement = pgTable(
       "entitlement_exactly_one_subject_check",
       sql`num_nonnulls(${table.userId}, ${table.organizationId}) = 1`,
     ),
+    check("entitlement_source_check", sql`${table.source} in ('polar', 'revenuecat', 'manual')`),
     uniqueIndex("entitlement_source_id_key_unique").on(table.source, table.sourceId, table.key),
     index("entitlement_user_status_idx").on(table.userId, table.status),
     index("entitlement_organization_status_idx").on(table.organizationId, table.status),

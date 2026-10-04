@@ -5,7 +5,6 @@ import {
   getCurrencyMinorUnitDigits,
   isSupportedTimeZone,
   nextCalendarDate,
-  requireCalendarDate,
   resolveLocalDateTime,
 } from "../src/local-time.ts";
 
@@ -86,19 +85,11 @@ describe("business-local time primitives", () => {
     ).toThrow(ProductError);
   });
 
-  test("advances real calendar dates and rejects impossible dates", () => {
+  test("advances real calendar dates and rejects the day after the last one", () => {
     expect(nextCalendarDate("0099-12-31")).toBe("0100-01-01");
     expect(nextCalendarDate("0001-01-01")).toBe("0001-01-02");
     expect(nextCalendarDate("2024-02-29")).toBe("2024-03-01");
     expect(nextCalendarDate("2026-12-31")).toBe("2027-01-01");
     expect(() => nextCalendarDate("9999-12-31")).toThrow(ProductError);
-    for (const value of ["0001-01-01", "0099-12-31", "2000-02-29", "2028-02-29"]) {
-      expect(() => requireCalendarDate(value, "The posted date is invalid")).not.toThrow();
-    }
-    for (const value of ["0000-01-01", "1900-02-29", "2026-02-30", "2026-04-31", "2026-1-1"]) {
-      expect(() => requireCalendarDate(value, "The posted date is invalid")).toThrow(
-        "The posted date is invalid",
-      );
-    }
   });
 });

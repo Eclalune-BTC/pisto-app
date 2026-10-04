@@ -22,8 +22,11 @@ export interface OperationCommandIdentity<Action extends string = string> {
   actorUserId: string;
   businessId: string;
   commandFingerprint: string;
-  idempotencyKey: string;
+  idempotencyKey: IdempotencyKey;
 }
+
+/** A key that went through `normalizeIdempotencyKey`, the only producer of this type. */
+export type IdempotencyKey = string & { readonly __brand: "IdempotencyKey" };
 
 type OperationIdentityColumns = {
   action: PgColumn;
@@ -74,8 +77,8 @@ export function fingerprintCommand(action: string, payload: unknown): Promise<st
  * Idempotency keys are UUIDs, which PostgreSQL compares case-insensitively. The
  * advisory lock hashes the text, so every command path must lock the same spelling.
  */
-export function normalizeIdempotencyKey(key: string): string {
-  return key.toLowerCase();
+export function normalizeIdempotencyKey(key: string): IdempotencyKey {
+  return key.toLowerCase() as IdempotencyKey;
 }
 
 /**
@@ -86,9 +89,8 @@ export async function lockCommandKey(
   tx: DatabaseTransaction,
   key: Pick<OperationCommandIdentity, "actorUserId" | "businessId" | "idempotencyKey">,
 ): Promise<void> {
-  const idempotencyKey = normalizeIdempotencyKey(key.idempotencyKey);
   await tx.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${`${key.businessId}:${key.actorUserId}:${idempotencyKey}`}, 0))`,
+    sql`select pg_advisory_xact_lock(hashtextextended(${`${key.businessId}:${key.actorUserId}:${key.idempotencyKey}`}, 0))`,
   );
 }
 

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
 import type { SaleList } from "@pisto/contracts";
-import type { ProductRepository } from "@pisto/db";
+import type { SalesRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
-import { productRoutes } from "../src/routes/product.ts";
+import { salesRoutes } from "../src/routes/sales.ts";
 import { testAccess, testClient, testErrorBoundary } from "./http-client.ts";
 
 const emptyPage: SaleList = {
@@ -12,7 +12,7 @@ const emptyPage: SaleList = {
   queriedAt: "2026-08-22T20:30:00.000Z",
 };
 
-function createTestApp(repository: Partial<ProductRepository>, authenticated = true) {
+function createTestApp(repository: Partial<SalesRepository>, authenticated = true) {
   const auth = {
     api: {
       getSession: async () =>
@@ -30,7 +30,7 @@ function createTestApp(repository: Partial<ProductRepository>, authenticated = t
   } as unknown as Auth;
   return testClient(
     testErrorBoundary().use(
-      productRoutes({ access: testAccess(auth), product: repository as ProductRepository }),
+      salesRoutes({ access: testAccess(auth), sales: repository as SalesRepository }),
     ),
   );
 }

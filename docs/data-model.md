@@ -82,7 +82,7 @@ membership authorization.
 | `customer`, `receivable` | Contact details, original debt, due date, posted/voided authority state | Open/paid/overdue and customer balances are derived |
 | `receivable_payment` | Applied payment or reversal, original amount and account relationship | Paid = payments minus reversals; outstanding = original minus paid for a posted charge |
 | Capability operation receipts | Business/actor/key/action fingerprint and the recorded command result | JSON snapshots support exact replay; they do not own current balances or permissions |
-| Billing receipts/projections | Verified event evidence and normalized provider state | Effective access checks status, time validity, subject, and recognized source |
+| Billing receipts/projections | Verified event evidence and normalized provider state | Effective access checks status, time validity, subject, and recognized source; a `CHECK` restricts the stored entitlement source |
 
 Money crosses JSON as canonical integer strings and is stored as PostgreSQL `bigint`. Aggregate
 `sum(bigint)` uses PostgreSQL `numeric`, then returns decimal strings without floating-point
