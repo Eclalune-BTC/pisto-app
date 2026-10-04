@@ -36,6 +36,7 @@ function testApp(
     onRepositoryCall?: () => void;
     readCustomerState?: BillingRuntime["readCustomerState"];
     onSessionRead?: () => void;
+    sessionFailure?: Error;
     authHandler?: Auth["handler"];
     processRevenueCatWebhook?: BillingRuntime["processRevenueCatWebhook"];
     requestBodyLimitBytes?: number;
@@ -69,6 +70,7 @@ function testApp(
     api: {
       getSession: async () => {
         options.onSessionRead?.();
+        if (options.sessionFailure) throw options.sessionFailure;
         return options.authenticated
           ? {
               user: {
@@ -385,6 +387,17 @@ describe("Pisto API", () => {
     expect(await response.json()).toMatchObject({
       error: { code: "UNAUTHORIZED" },
     });
+  });
+
+  test("reports a failed session lookup as a retryable outage without its cause", async () => {
+    const app = testApp({ sessionFailure: new Error("pool exhausted: password=secret") });
+    for (const path of ["/v1/me", "/v1/sales"]) {
+      const response = await app.request(path);
+      expect(response.status).toBe(503);
+      const body = await response.text();
+      expect(JSON.parse(body)).toMatchObject({ error: { code: "SERVICE_UNAVAILABLE" } });
+      expect(body).not.toContain("pool exhausted");
+    }
   });
 
   test("marks account and product responses as non-cacheable", async () => {

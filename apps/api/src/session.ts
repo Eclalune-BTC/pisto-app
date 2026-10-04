@@ -8,10 +8,17 @@ import { ApiError } from "./errors.ts";
 export type AuthSession = NonNullable<Awaited<ReturnType<Auth["api"]["getSession"]>>>;
 
 export async function requireSession(auth: Auth, headers: Headers): Promise<AuthSession> {
-  const session = await auth.api.getSession({
-    headers,
-    query: { disableCookieCache: true, disableRefresh: true },
-  });
+  let session: AuthSession | null;
+  try {
+    session = await auth.api.getSession({
+      headers,
+      query: { disableCookieCache: true, disableRefresh: true },
+    });
+  } catch {
+    // A missing session resolves to null; a throw means the session store itself failed (for
+    // example an exhausted pool). The auth package already logged it, and 503 lets clients retry.
+    throw new ApiError(503, "SERVICE_UNAVAILABLE", "Authentication is temporarily unavailable");
+  }
   if (!session) {
     throw new ApiError(401, "UNAUTHORIZED", "Authentication is required");
   }
