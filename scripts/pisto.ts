@@ -263,10 +263,13 @@ function configuredValue(values: Map<string, string>, key: string): string {
 
 type FeatureFlag = "enabled" | "disabled" | "invalid";
 
+function isConfigured(values: Map<string, string>, key: string): boolean {
+  return Object.hasOwn(process.env, key) || values.has(key);
+}
+
 function parseFeatureFlag(value: string): FeatureFlag {
-  const normalized = value.trim().toLowerCase();
-  if (["1", "true", "yes", "on"].includes(normalized)) return "enabled";
-  if (["", "0", "false", "no", "off"].includes(normalized)) return "disabled";
+  if (value === "true") return "enabled";
+  if (value === "false") return "disabled";
   return "invalid";
 }
 
@@ -290,14 +293,10 @@ function inspectBoolean(
   diagnostics: Diagnostic[],
   key: string,
 ): FeatureFlag {
+  if (!isConfigured(values, key)) return "disabled";
   const result = parseFeatureFlag(configuredValue(values, key));
   if (result === "invalid") {
-    addDiagnostic(
-      diagnostics,
-      "FAIL",
-      key,
-      "Must be one of true, false, 1, 0, yes, no, on, or off.",
-    );
+    addDiagnostic(diagnostics, "FAIL", key, "Must be exactly true or false.");
   }
   return result;
 }
@@ -875,6 +874,7 @@ async function inspectEnvironment(root: string, diagnostics: Diagnostic[]): Prom
       "POLAR_WEBHOOK_SECRET",
       "POLAR_PRODUCTS_JSON",
       "POLAR_SUCCESS_URL",
+      "POLAR_SERVER",
     ];
     const missingPolar = requiredPolar.filter((key) => !configuredValue(server, key));
     if (missingPolar.length > 0) {
@@ -888,7 +888,7 @@ async function inspectEnvironment(root: string, diagnostics: Diagnostic[]): Prom
       const products = jsonValue(configuredValue(server, "POLAR_PRODUCTS_JSON"));
       const successUrl = configuredValue(server, "POLAR_SUCCESS_URL");
       const returnUrl = configuredValue(server, "POLAR_RETURN_URL");
-      const polarServer = configuredValue(server, "POLAR_SERVER") || "sandbox";
+      const polarServer = configuredValue(server, "POLAR_SERVER");
       const polarTheme = configuredValue(server, "POLAR_THEME");
       const production = configuredValue(server, "NODE_ENV") === "production";
       const valid =

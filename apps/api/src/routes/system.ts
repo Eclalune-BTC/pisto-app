@@ -49,7 +49,7 @@ export function systemRoutes(input: { database: DatabaseHandle; billing: Billing
       checks: {
         database,
         billing:
-          input.billing.config.polar.enabled || input.billing.config.revenueCat.enabled
+          input.billing.checkoutEnabled || input.billing.revenueCatEnabled
             ? ("enabled" as const)
             : ("disabled" as const),
       },

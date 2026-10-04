@@ -105,7 +105,7 @@ catalog, inventory, expense, cash, customer, and receivable manage permissions; 
 Unknown/composite roles fail closed. Better Auth role recognition does not itself authorize product
 data, and raw role strings must not be checked ad hoc across routes, tools, or UI.
 
-`admin` and `member` currently have no reachable actor. `packages/db/src/product.ts` is the only code
+`admin` and `member` currently have no reachable actor. `packages/db/src/businesses.ts` is the only code
 path that writes a membership row and it hardcodes `role: "owner"`, and every Better Auth
 organization mutation route returns `404` at the Elysia edge except the active-organization selector.
 So the `admin` and `member` branches are defined, granted, and covered by tests, but no real user can

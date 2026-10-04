@@ -214,7 +214,12 @@ export const productListResponseSchema = z.object({
   }),
 });
 
-const inventoryMovementActionSchema = z.enum(["receive", "adjust_in", "adjust_out", "reverse"]);
+export const inventoryMovementActionSchema = z.enum([
+  "receive",
+  "adjust_in",
+  "adjust_out",
+  "reverse",
+]);
 
 export const inventoryMovementSchema = z.object({
   id: uuidSchema,

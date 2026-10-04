@@ -72,7 +72,7 @@ Doctor is read-only. It checks:
 - required workspace configuration and the PostgreSQL 18 image/volume target;
 - presence of local environment files;
 - PostgreSQL and HTTP URL syntax;
-- API/database numeric ranges, the exact `DATABASE_SSL` enum, and accepted boolean switches;
+- API/database numeric ranges, the exact `DATABASE_SSL` enum, and boolean switches that are exactly `true` or `false`;
 - Better Auth secret length, exact origins, production HTTPS, reserved/example hostnames, and obvious
   placeholders without printing the value;
 - known server-only keys accidentally placed in the Expo local environment;

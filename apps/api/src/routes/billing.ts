@@ -92,17 +92,17 @@ export function billingRoutes(input: {
   billing: BillingRuntime;
   db: Database;
 }) {
-  const enabledPolar = (feature: string) => {
-    const { polar } = input.billing.config;
-    if (!polar.enabled) throw new ApiError(503, "BILLING_DISABLED", `Polar ${feature} is disabled`);
-    return polar;
+  const requireCheckoutEnabled = (feature: string) => {
+    if (!input.billing.checkoutEnabled) {
+      throw new ApiError(503, "BILLING_DISABLED", `Polar ${feature} is disabled`);
+    }
   };
 
   return new Elysia({ strictPath: true })
     .get("/v1/billing/catalog", () => ({
       data: {
-        status: input.billing.config.polar.enabled ? ("enabled" as const) : ("disabled" as const),
-        provider: input.billing.config.polar.enabled ? ("polar" as const) : null,
+        status: input.billing.checkoutEnabled ? ("enabled" as const) : ("disabled" as const),
+        provider: input.billing.checkoutEnabled ? ("polar" as const) : null,
         products: input.billing.catalog,
       },
     }))
@@ -122,7 +122,7 @@ export function billingRoutes(input: {
     .post(
       "/v1/billing/portal",
       async ({ request }) => {
-        enabledPolar("customer portal");
+        requireCheckoutEnabled("customer portal");
         const payload = await callAuthEndpoint({
           auth: input.auth,
           baseUrl: input.authBaseUrl,
@@ -149,7 +149,7 @@ export function billingRoutes(input: {
     }))
     .get("/v1/billing/state", async ({ scope }) => {
       const entitlements = await input.billing.listEntitlements(scope);
-      if (!input.billing.config.polar.enabled) {
+      if (!input.billing.checkoutEnabled) {
         return {
           data: {
             status: "disabled" as const,
@@ -173,7 +173,8 @@ export function billingRoutes(input: {
     .post(
       "/v1/billing/checkout",
       async ({ body, request, scope }) => {
-        if (!enabledPolar("checkout").products.some(({ slug }) => slug === body.slug)) {
+        requireCheckoutEnabled("checkout");
+        if (!input.billing.hasProduct(body.slug)) {
           throw new ApiError(404, "NOT_FOUND", "Billing product was not found");
         }
         const payload = await callAuthEndpoint({

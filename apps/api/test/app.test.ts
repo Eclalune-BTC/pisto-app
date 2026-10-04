@@ -83,10 +83,9 @@ function testApp(
     },
   } as unknown as Auth;
   const billing = {
-    config: {
-      polar: { enabled: options.polarEnabled ?? false, products: [{ slug: "pro" }] },
-      revenueCat: { enabled: false },
-    },
+    checkoutEnabled: options.polarEnabled ?? false,
+    revenueCatEnabled: false,
+    hasProduct: (slug: string) => slug === "pro",
     catalog: [],
     listEntitlements: async () => [],
     readCustomerState: options.readCustomerState ?? (async () => ({ activeSubscriptions: [] })),
@@ -95,7 +94,7 @@ function testApp(
       (async () => {
         throw new Error("RevenueCat is disabled");
       }),
-    polar: { client: null, plugin: null, processWebhook: null },
+    authPlugin: null,
   } as unknown as BillingRuntime;
   const database = {
     db: options.db ?? {},

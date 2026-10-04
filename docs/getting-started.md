@@ -269,11 +269,11 @@ separately in every native workflow.
 | `CORS_ORIGINS` | Exact browser origins allowed by Elysia |
 | `TRUSTED_ORIGINS` | Exact web origins and approved application schemes for Better Auth |
 | `EXPO_SCHEME` | Private app scheme used to add Better Auth deep-link origins |
-| `AUTH_EMAIL_PASSWORD_ENABLED` | Explicit email/password switch |
+| `AUTH_EMAIL_PASSWORD_ENABLED` | Explicit email/password switch; every boolean switch is exactly `true` or `false` |
 | `AUTH_TRUSTED_PROXY_HEADERS` | Trust forwarded headers only behind a reviewed proxy boundary |
 | `BILLING_ENABLED` | Keep `false` until a provider sandbox is deliberately configured |
 | `POLAR_ACCESS_TOKEN`, `POLAR_WEBHOOK_SECRET` | Server-only Polar credentials |
-| `POLAR_SERVER` | `sandbox` or `production` |
+| `POLAR_SERVER` | Required when billing is enabled: exactly `sandbox` or `production` |
 | `POLAR_PRODUCTS_JSON` | Strict non-empty product array with UUID, slug, entitlement key, and optional display text |
 | `POLAR_SUCCESS_URL`, `POLAR_RETURN_URL` | Browser return URLs; production requires HTTPS and a non-reserved hostname |
 | `POLAR_THEME` | Optional `light` or `dark` checkout theme |

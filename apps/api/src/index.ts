@@ -16,8 +16,8 @@ console.info(
     message: "Pisto API listening",
     host: server.hostname,
     port: server.port,
-    polarBilling: runtime.billing.config.polar.enabled ? "enabled" : "disabled",
-    revenueCat: runtime.billing.config.revenueCat.enabled ? "enabled" : "disabled",
+    polarBilling: runtime.billing.checkoutEnabled ? "enabled" : "disabled",
+    revenueCat: runtime.billing.revenueCatEnabled ? "enabled" : "disabled",
   }),
 );
 
