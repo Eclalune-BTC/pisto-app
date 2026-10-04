@@ -52,10 +52,12 @@ export function SalesHistory({
         id: "description",
         header: t("dataTable.columns.description"),
         meta: { primary: true },
+        // A two-line clamp lets a long note wrap; a single-line clamp would force the table
+        // wider than its container on tablets.
         cell: ({ row: { original } }) => (
           <Text
             className={cn("text-[13px]", !original.description && "text-muted-foreground")}
-            numberOfLines={1}
+            numberOfLines={2}
           >
             {original.description ?? t("common.noDescription")}
           </Text>
@@ -65,7 +67,7 @@ export function SalesHistory({
         id: "date",
         header: t("dataTable.columns.date"),
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground tabular-nums">
+          <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
             {formatLocalizedDateTime(original.occurredAt, locale, original.timeZone)}
           </Text>
         ),

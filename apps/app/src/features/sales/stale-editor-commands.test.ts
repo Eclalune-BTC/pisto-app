@@ -5,7 +5,8 @@ import { ApiClientError } from "@/lib/api-error";
 const fixture = vi.hoisted(() => ({
   states: [] as unknown[],
   index: 0,
-  effects: [] as (() => void)[],
+  effects: [] as (() => unknown)[],
+  cleanups: [] as unknown[],
   queries: {} as Record<
     string,
     {
@@ -22,7 +23,13 @@ const fixture = vi.hoisted(() => ({
   >,
   navigate: vi.fn(),
   randomUUID: vi.fn(() => "11111111-1111-4111-8111-111111111111"),
-  mutation: { isPending: false, error: null as unknown, mutate: vi.fn(), reset: vi.fn() },
+  mutation: {
+    isPending: false,
+    isSuccess: false,
+    error: null as unknown,
+    mutate: vi.fn(),
+    reset: vi.fn(),
+  },
   mutationOptions: undefined as
     | { onSuccess: (result: unknown, input: unknown) => Promise<void> }
     | undefined,
@@ -43,7 +50,12 @@ vi.mock("react", async (importOriginal) => ({
       },
     ];
   },
-  useEffect: (effect: () => void) => fixture.effects.push(effect),
+  useRef: (initial: unknown) => {
+    const index = fixture.index++;
+    if (!(index in fixture.states)) fixture.states[index] = { current: initial };
+    return fixture.states[index];
+  },
+  useEffect: (effect: () => unknown) => fixture.effects.push(effect),
 }));
 vi.mock("@tanstack/react-query", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-query")>()),
@@ -58,7 +70,11 @@ vi.mock("@tanstack/react-query", async (importOriginal) => ({
 vi.mock("expo-router", () => ({
   Link: "link",
   Redirect: "redirect",
-  useRouter: () => ({ replace: fixture.navigate, push: fixture.navigate }),
+  useRouter: () => ({
+    replace: fixture.navigate,
+    push: fixture.navigate,
+    navigate: fixture.navigate,
+  }),
   useLocalSearchParams: () => ({ saleId: "sale" }),
 }));
 vi.mock("expo-crypto", () => ({ randomUUID: fixture.randomUUID }));
@@ -90,6 +106,7 @@ import { StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { elements } from "../../../test-support/element-tree";
+import { SalesRouteState } from "./route-state";
 import SaleCorrectionScreen from "./sale-correction-screen";
 import SaleDetailScreen from "./sale-detail-screen";
 
@@ -110,13 +127,14 @@ function render<T>(component: () => T): T {
   fixture.index = 0;
   fixture.effects = [];
   const result = component();
-  for (const effect of fixture.effects) effect();
+  fixture.cleanups = fixture.effects.map((effect) => effect());
   return result;
 }
 
 beforeEach(() => {
   fixture.states = [];
   fixture.mutation.isPending = false;
+  fixture.mutation.isSuccess = false;
   fixture.mutation.error = null;
   vi.clearAllMocks();
   fixture.queries = {
@@ -313,9 +331,28 @@ describe("confirmed sale corrections", () => {
       },
       "void",
     );
-    expect(fixture.notify.success).toHaveBeenCalledWith("sales.correction.voided", {
-      description: "$5.00",
-    });
+    const [title, options] = fixture.notify.success.mock.calls[0] ?? [];
+    expect(title).toBe("sales.correction.voided");
+    expect(options.description).toBe("$5.00");
+    expect(options.action.label).toBe("sales.viewSale");
+    expect(fixture.navigate).toHaveBeenCalledWith(detail("sale"));
+  });
+
+  test("does not pull the person back to the sale after they left the screen", async () => {
+    render(SaleCorrectionScreen);
+    const options = fixture.mutationOptions;
+    if (!options) throw new Error("Missing correction mutation");
+    for (const cleanup of fixture.cleanups) if (typeof cleanup === "function") cleanup();
+    await options.onSuccess(
+      {
+        originalSale: { id: "sale", grossMinorUnits: "500", status: "voided", ...money },
+        replacementSale: null,
+      },
+      { businessId: "business", saleId: "sale", kind: "void", command: { idempotencyKey: key } },
+    );
+    expect(fixture.notify.success).toHaveBeenCalledTimes(1);
+    expect(fixture.navigate).not.toHaveBeenCalled();
+    fixture.notify.success.mock.calls[0]?.[1].action.onPress();
     expect(fixture.navigate).toHaveBeenCalledWith(detail("sale"));
   });
 
@@ -336,8 +373,93 @@ describe("confirmed sale corrections", () => {
     expect(fixture.navigate).toHaveBeenLastCalledWith(detail("replacement"));
   });
 
+  test("keeps the review while a confirmed correction refreshes the sale it voided", () => {
+    let tree = render(SaleCorrectionScreen);
+    const reason = elements<ComponentProps<typeof Field>>(tree, Field).find(
+      ({ props }) => props.label === "sales.correction.reason",
+    );
+    reason?.props.onChangeText?.("Wrong sale");
+    press(button(render(SaleCorrectionScreen), ({ label }) => label === "sales.correction.review"));
+    const sale = fixture.queries.sale?.data as { sale: Record<string, unknown> };
+    sale.sale = {
+      ...sale.sale,
+      status: "voided",
+      correction: {
+        id: "correction",
+        kind: "void",
+        reason: "Wrong sale",
+        originalSaleId: "sale",
+        replacementSaleId: null,
+        correctedAt: "2026-09-10T12:05:00.000Z",
+      },
+    };
+    const confirmLabel = "sales.correction.confirmVoid";
+    for (const phase of ["isPending", "isSuccess"] as const) {
+      fixture.mutation[phase] = true;
+      tree = render(SaleCorrectionScreen);
+      expect(button(tree, ({ label }) => label === confirmLabel).disabled).toBe(
+        phase === "isSuccess",
+      );
+      fixture.mutation[phase] = false;
+    }
+    tree = render(SaleCorrectionScreen);
+    expect(
+      elements<ComponentProps<typeof Button>>(tree, Button).some(
+        ({ props }) => props.label === confirmLabel,
+      ),
+    ).toBe(false);
+  });
+
   test("names the sale in the breadcrumb once it has loaded", () => {
     render(SaleDetailScreen);
     expect(fixture.routeLabel).toHaveBeenCalledWith("/operate/sales/[saleId]", "$5.00");
+  });
+});
+
+describe("sale detail states", () => {
+  test.each([
+    ["notFound", new ApiClientError("Missing", 404, "NOT_FOUND")],
+    ["error", new ApiClientError("Unavailable", 503)],
+    ["denied", new ApiClientError("Forbidden", 403, "FORBIDDEN")],
+  ] as const)("shows %s when the sale read fails without data", (kind, error) => {
+    Object.assign(fixture.queries.sale ?? {}, { data: undefined, error, isError: true });
+    const tree = render(SaleDetailScreen);
+    expect(tree.type).toBe(SalesRouteState);
+    expect(tree.props.kind).toBe(kind);
+  });
+
+  test("tells a paused first read apart from one still loading", () => {
+    Object.assign(fixture.queries.sale ?? {}, { data: undefined, fetchStatus: "paused" });
+    expect(render(SaleDetailScreen).props.kind).toBe("offline");
+    Object.assign(fixture.queries.sale ?? {}, { fetchStatus: "fetching", isPending: true });
+    expect(render(SaleDetailScreen).props.kind).toBe("loading");
+  });
+
+  test("withholds the sale from a role that cannot read sales", () => {
+    const businesses = fixture.queries.businesses;
+    if (!businesses) throw new Error("Missing business fixture");
+    (businesses.data as { business: { access: unknown } }).business.access = {
+      permissions: ["sales:create"],
+    };
+    const tree = render(SaleDetailScreen);
+    expect(tree.type).toBe(SalesRouteState);
+    expect(tree.props.kind).toBe("denied");
+  });
+
+  test("never offers correcting a sale that replaced another one", () => {
+    const data = fixture.queries.sale?.data as { sale: Record<string, unknown> };
+    data.sale = {
+      ...data.sale,
+      correction: {
+        id: "correction",
+        kind: "replacement",
+        reason: "Wrong total",
+        originalSaleId: "original",
+        replacementSaleId: "sale",
+        correctedAt: "2026-09-10T12:05:00.000Z",
+      },
+    };
+    const actions = elements<ComponentProps<typeof Button>>(render(SaleDetailScreen), Button);
+    expect(actions.map(({ props }) => props.variant)).toEqual(["default"]);
   });
 });

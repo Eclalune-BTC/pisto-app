@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { queryHasStaleData } from "@/lib/query-state";
+import { isAccessDeniedError, queryHasStaleData } from "@/lib/query-state";
 import { previousMonthSummaryQueryOptions, salesInfiniteOptions } from "./queries";
 import { SalesRouteState } from "./route-state";
 import { SalesHistory } from "./sales-history";
@@ -71,10 +71,17 @@ export default function SalesOverviewScreen() {
     canRead,
     query: sales,
   });
+  // A rejected read already shows its denied state; retrying it cannot refresh anything.
+  const refreshable = (read: {
+    data: unknown;
+    error: unknown;
+    fetchStatus: "fetching" | "paused" | "idle";
+    isError: boolean;
+  }) => queryHasStaleData(read) && !isAccessDeniedError(read.error);
   const staleReads = [
     ...(accessStale ? [businesses] : []),
-    ...(canSummarize && queryHasStaleData(summary) ? [summary] : []),
-    ...(canRead && queryHasStaleData(sales) ? [sales] : []),
+    ...(canSummarize && refreshable(summary) ? [summary] : []),
+    ...(canRead && refreshable(sales) ? [sales] : []),
   ];
   const changeFilter = (next: SaleStatusFilter) =>
     router.setParams({ status: next === "all" ? undefined : next });

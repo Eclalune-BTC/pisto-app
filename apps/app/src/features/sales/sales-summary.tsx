@@ -37,6 +37,7 @@ export function SalesSummary({ onRetry, read, summary }: SalesSummaryProps) {
       <Section
         description={t("sales.summary.description", {
           date: formatLocalizedDateTime(summary.queriedAt, locale, summary.timeZone),
+          timeZone: summary.timeZone,
         })}
         title={t("sales.summary.title", {
           month: formatMonthYear(summary.periodStartLocal, locale),

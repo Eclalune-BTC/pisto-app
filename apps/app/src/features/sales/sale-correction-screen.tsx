@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Link, Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { CircleAlert, TriangleAlert } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { DescriptionList } from "@/components/layout/description-list";
@@ -62,6 +62,14 @@ export default function SaleCorrectionScreen() {
   const [draft, setDraft] = useState<SaleDraftValues>(emptySaleDraft);
   const [draftErrors, setDraftErrors] = useState<SaleDraftErrors>({});
   const [review, setReview] = useState<CorrectionReview | null>(null);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const saleHref = (id: string) =>
     ({ pathname: "/operate/sales/[saleId]", params: { saleId: id } }) as const;
@@ -73,20 +81,26 @@ export default function SaleCorrectionScreen() {
     onSuccess: async (result, input) => {
       await invalidateSaleReads(queryClient, input.businessId);
       const replacement = result.replacementSale;
-      if (replacement) {
-        notify.success(t("sales.correction.replaced"), {
-          action: {
-            label: t("sales.correction.viewReplacement"),
-            onPress: () => router.push(saleHref(replacement.id)),
-          },
-          description: saleAmount(replacement, locale),
-        });
-      } else {
-        notify.success(t("sales.correction.voided"), {
-          description: saleAmount(result.originalSale, locale),
-        });
-      }
-      router.replace(saleHref(input.saleId));
+      notify.success(
+        replacement ? t("sales.correction.replaced") : t("sales.correction.voided"),
+        replacement
+          ? {
+              action: {
+                label: t("sales.correction.viewReplacement"),
+                onPress: () => router.navigate(saleHref(replacement.id)),
+              },
+              description: saleAmount(replacement, locale),
+            }
+          : {
+              action: {
+                label: t("sales.viewSale"),
+                onPress: () => router.navigate(saleHref(input.saleId)),
+              },
+              description: saleAmount(result.originalSale, locale),
+            },
+      );
+      // The toast links to the result when the person already left this screen.
+      if (mounted.current) router.replace(saleHref(input.saleId));
     },
   });
 
@@ -154,9 +168,9 @@ export default function SaleCorrectionScreen() {
       />
     );
   }
-  // After a confirmed correction the refreshed sale is no longer correctable; the screen keeps
-  // its review until the navigation to the result happens.
-  if (!canCorrectSale(sale) && !correction.isSuccess) {
+  // A confirmed correction refreshes the sale before navigating to it; while that runs the sale is
+  // no longer correctable, but the screen keeps its review instead of claiming it cannot proceed.
+  if (!canCorrectSale(sale) && !correction.isPending && !correction.isSuccess) {
     return (
       <SalesRouteState
         action={
@@ -202,8 +216,9 @@ export default function SaleCorrectionScreen() {
       return;
     }
 
-    const validation = validateSaleDraft(draft, sale.currencyMinorUnitDigits);
-    setDraftErrors(saleDraftErrors(validation.issues, sale.currencyMinorUnitDigits, t));
+    // The server posts the replacement with the business's current currency and time zone.
+    const validation = validateSaleDraft(draft, business.currencyMinorUnitDigits);
+    setDraftErrors(saleDraftErrors(validation.issues, business.currencyMinorUnitDigits, t));
     if (!validation.draft) return;
     setReview({
       businessId: business.id,
@@ -262,8 +277,8 @@ export default function SaleCorrectionScreen() {
               items={saleFactItems(
                 {
                   ...review.command.replacement,
-                  currency: sale.currency,
-                  currencyMinorUnitDigits: sale.currencyMinorUnitDigits,
+                  currency: business.currency,
+                  currencyMinorUnitDigits: business.currencyMinorUnitDigits,
                 },
                 locale,
                 t,
@@ -353,8 +368,8 @@ export default function SaleCorrectionScreen() {
           title={t("sales.correction.replacement")}
         >
           <SaleDraftFields
-            currency={sale.currency}
-            currencyMinorUnitDigits={sale.currencyMinorUnitDigits}
+            currency={business.currency}
+            currencyMinorUnitDigits={business.currencyMinorUnitDigits}
             errors={draftErrors}
             onChange={(field, value) => setDraft((current) => ({ ...current, [field]: value }))}
             timeZone={business.timeZone}

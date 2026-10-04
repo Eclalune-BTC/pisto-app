@@ -12,6 +12,7 @@ type MutationOptions = {
 };
 type Mutation = {
   options: MutationOptions;
+  variables: unknown;
   isPending: boolean;
   isError: boolean;
   error: unknown;
@@ -98,6 +99,7 @@ vi.mock("@tanstack/react-query", async (original) => ({
     if (!fixture.mutations[index]) {
       const state: Mutation = {
         options,
+        variables: undefined,
         isPending: false,
         isError: false,
         error: null,
@@ -106,6 +108,7 @@ vi.mock("@tanstack/react-query", async (original) => ({
           state.error = null;
         },
         mutate(value) {
+          state.variables = value;
           state.isPending = true;
           const current = state.options;
           fixture.tasks.push(
@@ -136,7 +139,7 @@ vi.mock("@tanstack/react-query", async (original) => ({
 }));
 vi.mock("expo-router", () => ({
   Redirect: "redirect",
-  useRouter: () => ({ replace: fixture.navigate, push: fixture.push }),
+  useRouter: () => ({ replace: fixture.navigate, navigate: fixture.push }),
 }));
 vi.mock("expo-crypto", () => ({ randomUUID: fixture.key }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
@@ -161,6 +164,7 @@ vi.mock("@/lib/api-client", async () => ({
   api: { sales: { review: fixture.api } },
 }));
 
+import { AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { elements } from "../../../test-support/element-tree";
 import NewSaleScreen, { SaleReviewScreen } from "./sale-create-screen";
@@ -204,6 +208,11 @@ function button(label: string) {
   );
   if (!found) throw new Error(`Missing button ${label}`);
   return found.props;
+}
+function alerts() {
+  return elements<ComponentProps<typeof AlertDescription>>(render(), AlertDescription).map(
+    ({ props }) => props.children,
+  );
 }
 async function press(label: string) {
   const props = button(label);
@@ -404,11 +413,48 @@ describe("new sale durable recovery screen", () => {
     options.action.onPress();
     expect(fixture.push).toHaveBeenCalledWith(href);
   });
+  test("keeps the review on screen while a confirmed sale is refreshed before opening it", async () => {
+    restore(review());
+    let labels: unknown[] = [];
+    fixture.notify.success.mockImplementationOnce(() => {
+      labels = elements<ComponentProps<typeof Button>>(render(), Button).map(
+        ({ props }) => props.label,
+      );
+    });
+    await press("sales.new.confirm");
+    expect(fixture.recovery.data?.review?.saleId).toBe("22222222-2222-4222-8222-222222222222");
+    expect(labels).toContain("sales.new.confirm");
+    expect(labels).not.toContain("sales.registerAnother");
+    expect(button("sales.registerAnother").disabled).toBe(false);
+  });
+  test("keeps a lost discard response apart from an uncertain sale confirmation", async () => {
+    restore(review());
+    fixture.api.dismiss.mockRejectedValueOnce(new ApiClientError("Lost response", 0));
+    await press("sales.new.discard");
+    expect(alerts()).toEqual(["sales.recovery.dismissUncertain"]);
+    expect(button("sales.new.confirm").disabled).toBe(false);
+    fixture.recovery.refetch.mockResolvedValueOnce({ isError: false });
+    await (button("sales.recovery.refresh").onPress as () => Promise<void>)();
+    expect(alerts()).toEqual([]);
+    expect(fixture.api.confirm).not.toHaveBeenCalled();
+  });
+  test("names a lost acknowledgement as a registered sale, never as a retry", async () => {
+    restore({ ...review(), saleId: "22222222-2222-4222-8222-222222222222" });
+    fixture.api.dismiss.mockRejectedValueOnce(new ApiClientError("Lost response", 0));
+    await press("sales.registerAnother");
+    expect(alerts()).toEqual(["sales.recovery.acknowledgeUncertain"]);
+    expect(
+      elements<ComponentProps<typeof Button>>(render(), Button).some(
+        ({ props }) => props.label === "common.retrySameConfirmation",
+      ),
+    ).toBe(false);
+  });
   test("offers the same confirmation again after a lost response without a new key", async () => {
     restore(review());
     fixture.api.confirm.mockRejectedValueOnce(new ApiClientError("Lost response", 0));
     await press("sales.new.confirm");
     expect(fixture.notify.success).not.toHaveBeenCalled();
+    expect(alerts()).toEqual(["sales.recovery.uncertain"]);
     expect(button("common.retrySameConfirmation").disabled).toBe(false);
     await press("common.retrySameConfirmation");
     expect(fixture.api.confirm.mock.calls.map(([id]) => id)).toEqual([review().id, review().id]);

@@ -125,9 +125,13 @@ export function SaleReviewScreen({
   const saleHref = (saleId: string) =>
     ({ pathname: "/operate/sales/[saleId]", params: { saleId } }) as const;
   const openSale = (saleId: string) => router.replace(saleHref(saleId));
-  const recheck = () => {
+  const recheck = async () => {
+    // Edit and discard stay blocked while this read runs, so no other dismissal can start.
+    const settlesDismissal = dismissal.isError;
     onRefreshBusiness();
-    void recovery.refetch();
+    const result = await recovery.refetch();
+    // A fresh read settles a failed dismissal: the review is either still open or gone.
+    if (settlesDismissal && !result.isError) dismissal.reset();
   };
 
   const preparation = useMutation({
@@ -147,7 +151,7 @@ export function SaleReviewScreen({
     onSuccess: async ({ sale }) => {
       await invalidateSaleReads(client, business.id);
       notify.success(t("sales.new.created"), {
-        action: { label: t("sales.viewSale"), onPress: () => router.push(saleHref(sale.id)) },
+        action: { label: t("sales.viewSale"), onPress: () => router.navigate(saleHref(sale.id)) },
         description: saleAmount(sale, locale),
       });
       if (mounted.current) openSale(sale.id);
@@ -233,19 +237,30 @@ export function SaleReviewScreen({
     if (reviewedDraft)
       act(() => preparation.mutate({ idempotencyKey: Crypto.randomUUID(), ...reviewedDraft }));
   };
-  const actionError = dismissal.error ?? (review?.saleId ? null : confirmation.error);
+  const confirmationError = review?.saleId ? null : confirmation.error;
+  const actionError = dismissal.error ?? confirmationError;
   const uncertain = isAmbiguousMutationError(actionError);
-  const confirmationUncertain = uncertain && actionError === confirmation.error;
+  const confirmationUncertain = uncertain && actionError === confirmationError;
+  // An unanswered discard or edit says nothing about whether a sale was posted, so it keeps its
+  // own wording; only an unanswered confirmation may suggest retrying the same confirmation.
+  const uncertainMessage = confirmationUncertain
+    ? t("sales.recovery.uncertain")
+    : dismissal.variables?.review.saleId
+      ? t("sales.recovery.acknowledgeUncertain")
+      : t("sales.recovery.dismissUncertain");
   const failure = actionError
     ? uncertain
-      ? t("sales.recovery.uncertain")
+      ? uncertainMessage
       : productErrorMessage(actionError, t("sales.recovery.actionFailed"), t, "sale")
     : recovery.isError
       ? t("sales.recovery.unavailable")
       : preparation.isError && !review
         ? t("sales.recovery.prepareFailed")
         : null;
-  const header = review?.saleId
+  // A successful confirmation refreshes the review, which then carries the sale, before the
+  // screen navigates to that sale; the saved-result state is for a sale found on a later visit.
+  const saved = Boolean(review?.saleId) && !confirmation.isPending;
+  const header = saved
     ? { title: t("sales.new.savedTitle"), description: t("sales.new.savedDescription") }
     : review
       ? { title: t("sales.new.reviewTitle"), description: t("sales.new.reviewDescription") }
@@ -299,6 +314,7 @@ export function SaleReviewScreen({
                 locale,
                 t,
               ),
+              { label: t("sales.fields.business"), value: business.name },
               { label: t("common.currency"), value: review.currency },
               { label: t("common.timeZone"), value: review.timeZone },
             ]}
@@ -308,7 +324,7 @@ export function SaleReviewScreen({
               <AlertDescription>{t("sales.recovery.settingsChanged")}</AlertDescription>
             </Alert>
           ) : null}
-          {review.saleId ? (
+          {saved ? (
             <ActionBar>
               <Button
                 disabled={blocked}

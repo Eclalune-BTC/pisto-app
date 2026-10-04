@@ -23,10 +23,11 @@ export const sales = {
     description: "Descripción (opcional)",
     descriptionPlaceholder: "Ej. Pedido del mostrador",
     recordedAt: "Fecha de registro",
+    business: "Negocio",
   },
   summary: {
     title: "Mes anterior · {{month}}",
-    description: "Mes calendario completo · calculado el {{date}}",
+    description: "Mes calendario completo en {{timeZone}} · calculado el {{date}}",
     gross: "Ingresos brutos",
     count: "Ventas",
     average: "Promedio por venta",
@@ -59,7 +60,7 @@ export const sales = {
   },
   new: {
     title: "Nueva venta",
-    description: "Registra el total cobrado. Una venta no descuenta inventario.",
+    description: "Registra el total de la venta. Una venta no descuenta inventario.",
     loading: "Comprobando si hay una venta por completar…",
     deniedTitle: "No puedes registrar ventas",
     deniedDescription: "Tu rol en este negocio no permite registrar ventas.",
@@ -82,6 +83,9 @@ export const sales = {
     actionFailed: "No pudimos completar la acción. Comprueba el estado antes de continuar.",
     uncertain:
       "No sabemos si se registró la venta. Comprueba el estado o reintenta la misma confirmación; no se duplicará.",
+    dismissUncertain: "No sabemos si se cerró la revisión. Comprueba el estado antes de continuar.",
+    acknowledgeUncertain:
+      "La venta ya está registrada, pero no sabemos si se cerró su revisión. Comprueba el estado antes de registrar otra.",
     settingsChanged:
       "La moneda o la zona horaria del negocio cambió desde la revisión. Edita y revisa de nuevo antes de confirmar.",
     contextChanged:
