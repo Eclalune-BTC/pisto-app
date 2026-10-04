@@ -5,7 +5,7 @@ import { authorizeBusinessAction } from "../business-access.ts";
 import type { Database } from "../client.ts";
 import { fingerprintValue } from "../operation-log.ts";
 import { exactCursorTimestamp } from "../pagination.ts";
-import { ProductError } from "../product.ts";
+import { ProductError } from "../product-core.ts";
 import { receivable, receivablePayment } from "../schema/receivables.ts";
 import { authorize, currentReceivable, loadReceivable } from "./access.ts";
 import { decodeCursor, encodeCursor, uuidPattern, validate } from "./codec.ts";

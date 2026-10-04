@@ -11,7 +11,7 @@ import type { ProductRepository } from "@pisto/db";
 
 const saleNotFound = "Sale was not found";
 
-import { commandStatus, contract } from "../http.ts";
+import { commandResponse, contract } from "../http.ts";
 import type { ProductAccess } from "../middleware/product-access.ts";
 import { protectedRoutes } from "./protected.ts";
 
@@ -23,10 +23,8 @@ export function productRoutes(input: { access: ProductAccess; product: ProductRe
 
   routes.post(
     "/businesses",
-    async ({ actor, body, set }) => {
-      const result = await input.product.createBusiness(actor, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body }) => {
+      return commandResponse(await input.product.createBusiness(actor, body));
     },
     {
       parse: "json",
@@ -47,10 +45,8 @@ export function productRoutes(input: { access: ProductAccess; product: ProductRe
 
   routes.post(
     "/sales",
-    async ({ actor, body, set }) => {
-      const result = await input.product.createSale(actor, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body }) => {
+      return commandResponse(await input.product.createSale(actor, body));
     },
     {
       parse: "json",
@@ -77,10 +73,8 @@ export function productRoutes(input: { access: ProductAccess; product: ProductRe
 
   routes.post(
     "/sales/review/:reviewId/confirm",
-    async ({ actor, params, set }) => {
-      const result = await input.product.confirmSaleReview(actor, params.reviewId);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, params }) => {
+      return commandResponse(await input.product.confirmSaleReview(actor, params.reviewId));
     },
     {
       body: contract(saleReviewActionRequestSchema, "Sale review action is invalid"),
@@ -112,10 +106,8 @@ export function productRoutes(input: { access: ProductAccess; product: ProductRe
 
   routes.post(
     "/sales/:saleId/void",
-    async ({ actor, body, params, set }) => {
-      const result = await input.product.voidSale(actor, params.saleId, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body, params }) => {
+      return commandResponse(await input.product.voidSale(actor, params.saleId, body));
     },
     {
       body: contract(voidSaleRequestSchema, "Sale correction is invalid"),
@@ -125,10 +117,8 @@ export function productRoutes(input: { access: ProductAccess; product: ProductRe
 
   routes.post(
     "/sales/:saleId/replace",
-    async ({ actor, body, params, set }) => {
-      const result = await input.product.replaceSale(actor, params.saleId, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body, params }) => {
+      return commandResponse(await input.product.replaceSale(actor, params.saleId, body));
     },
     {
       body: contract(replaceSaleRequestSchema, "Replacement sale is invalid"),

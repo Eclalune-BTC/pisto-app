@@ -38,7 +38,6 @@ export interface SalesCorrectionRepository {
     saleId: string,
     command: ReplaceSaleRequest,
   ): Promise<SaleCorrectionResult>;
-  findForSale(businessId: string, saleId: string): Promise<SaleCorrection | null>;
 }
 
 export function createSalesCorrectionRepository(db: Database): SalesCorrectionRepository {
@@ -222,21 +221,5 @@ export function createSalesCorrectionRepository(db: Database): SalesCorrectionRe
     voidSale: (actor, saleId, command) => correctSale(actor, saleId, { kind: "void", command }),
     replaceSale: (actor, saleId, command) =>
       correctSale(actor, saleId, { kind: "replacement", command }),
-    async findForSale(businessId, saleId) {
-      const [record] = await db
-        .select()
-        .from(saleCorrection)
-        .where(
-          and(
-            eq(saleCorrection.businessId, businessId),
-            or(
-              eq(saleCorrection.originalSaleId, saleId),
-              eq(saleCorrection.replacementSaleId, saleId),
-            ),
-          ),
-        )
-        .limit(1);
-      return record ? toCorrection(record) : null;
-    },
   };
 }

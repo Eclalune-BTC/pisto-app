@@ -23,7 +23,7 @@ import type {
 } from "@pisto/contracts";
 
 import type { Database } from "../client.ts";
-import type { ProductActor } from "../product.ts";
+import type { ProductActor } from "../product-core.ts";
 import type { cashAccount, cashMovement, cashTransfer, expense } from "../schema/cash.ts";
 
 export type CashOperationAction =

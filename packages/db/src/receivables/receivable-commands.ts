@@ -11,7 +11,7 @@ import {
   reverseReceivablePaymentCashMovement,
 } from "../cash/receivable-ledger.ts";
 import type { Database } from "../client.ts";
-import { ProductError, resolveLocalDateTime } from "../product.ts";
+import { ProductError, resolveLocalDateTime } from "../product-core.ts";
 import { customer, receivable, receivablePayment } from "../schema/receivables.ts";
 import {
   beginReceivableOperation,

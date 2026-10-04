@@ -8,9 +8,9 @@ import { and, eq, ne, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { lockSemanticKey } from "../operation-log.ts";
-import { ProductError } from "../product.ts";
+import { ProductError } from "../product-core.ts";
 import { catalogCategory } from "../schema/catalog.ts";
-import { fingerprint, parseMutationReplay, recordSnapshot, toCategory } from "./codec.ts";
+import { fingerprint, parseMutationReplay, toCategory } from "./codec.ts";
 import { beginCatalogOperation, saveOperation } from "./operations.ts";
 import type { CategoryCommands } from "./types.ts";
 
@@ -54,7 +54,7 @@ export function createCategoryCommands(db: Database): CategoryCommands {
         const category = toCategory(created);
         await saveOperation(transaction, identity, {
           categoryId: category.id,
-          resultSnapshot: recordSnapshot({ category }),
+          resultSnapshot: { category },
         });
         return { category, replayed: false };
       });
@@ -120,7 +120,7 @@ export function createCategoryCommands(db: Database): CategoryCommands {
         const category = toCategory(updated);
         await saveOperation(transaction, identity, {
           categoryId,
-          resultSnapshot: recordSnapshot({ category }),
+          resultSnapshot: { category },
         });
         return { category, replayed: false };
       });
@@ -172,7 +172,7 @@ export function createCategoryCommands(db: Database): CategoryCommands {
         const category = toCategory(updated);
         await saveOperation(transaction, identity, {
           categoryId,
-          resultSnapshot: recordSnapshot({ category }),
+          resultSnapshot: { category },
         });
         return { category, replayed: false };
       });

@@ -29,7 +29,7 @@ import {
 
 import type { Database } from "../client.ts";
 import { exactCursorTimestamp } from "../pagination.ts";
-import { type ProductActor, ProductError, resolveLocalDateTime } from "../product.ts";
+import { type ProductActor, ProductError, resolveLocalDateTime } from "../product-core.ts";
 import { cashAccount, cashMovement, expense } from "../schema/cash.ts";
 
 /**

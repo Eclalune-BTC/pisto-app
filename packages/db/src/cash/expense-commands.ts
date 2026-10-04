@@ -8,7 +8,7 @@ import {
 import { and, eq } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
-import { type ProductActor, ProductError, resolveLocalDateTime } from "../product.ts";
+import { type ProductActor, ProductError, resolveLocalDateTime } from "../product-core.ts";
 import { cashMovement, expense } from "../schema/cash.ts";
 import {
   beginCashOperation,

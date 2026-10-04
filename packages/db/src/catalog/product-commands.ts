@@ -8,14 +8,13 @@ import { and, eq, ne, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { lockSemanticKey } from "../operation-log.ts";
-import { ProductError } from "../product.ts";
+import { ProductError } from "../product-core.ts";
 import { catalogProduct, inventoryMovement } from "../schema/catalog.ts";
 import {
   fingerprint,
   normalizeSku,
   parseMutationReplay,
   parseQuantity,
-  recordSnapshot,
   toProduct,
 } from "./codec.ts";
 import { beginCatalogOperation, requireActiveCategory, saveOperation } from "./operations.ts";
@@ -96,7 +95,7 @@ export function createProductCommands(db: Database): ProductCommands {
         const product = toProduct(created);
         await saveOperation(transaction, identity, {
           productId: product.id,
-          resultSnapshot: recordSnapshot({ product }),
+          resultSnapshot: { product },
         });
         return { product, replayed: false };
       });
@@ -235,7 +234,7 @@ export function createProductCommands(db: Database): ProductCommands {
         const product = toProduct(updated);
         await saveOperation(transaction, identity, {
           productId,
-          resultSnapshot: recordSnapshot({ product }),
+          resultSnapshot: { product },
         });
         return { product, replayed: false };
       });
@@ -280,7 +279,7 @@ export function createProductCommands(db: Database): ProductCommands {
         const product = toProduct(updated);
         await saveOperation(transaction, identity, {
           productId,
-          resultSnapshot: recordSnapshot({ product }),
+          resultSnapshot: { product },
         });
         return { product, replayed: false };
       });

@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
-import { BillingProviderError, type BillingRuntime } from "@pisto/billing";
+import { BillingProviderError, type BillingRuntime, RevenueCatWebhookError } from "@pisto/billing";
 import type {
   CashRepository,
   CatalogRepository,
@@ -637,6 +637,30 @@ describe("Pisto API", () => {
     { code: "VALIDATION_ERROR", status: 400 },
   ] as const;
 
+  test("preserves command envelopes and security headers for creation and replay", async () => {
+    for (const replayed of [false, true]) {
+      const result = { business: { id: "business-test" }, replayed };
+      const response = await testApp({
+        authenticated: true,
+        product: { createBusiness: async () => result } as unknown as ProductRepository,
+      }).request("/v1/businesses", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-request-id": "command-test" },
+        body: JSON.stringify({
+          name: "Test Store",
+          currency: "USD",
+          timeZone: "America/El_Salvador",
+        }),
+      });
+
+      expect(response.status).toBe(replayed ? 200 : 201);
+      expect(await response.json()).toEqual({ data: result });
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.headers.get("x-request-id")).toBe("command-test");
+      expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    }
+  });
+
   test("translates every domain failure code to its unchanged public status", async () => {
     const consoleError = spyOn(console, "error").mockImplementation(() => undefined);
     try {
@@ -680,6 +704,39 @@ describe("Pisto API", () => {
         error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred" },
       });
       expect(consoleError).toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  test("keeps unknown failure keys opaque, including object prototype names", async () => {
+    const consoleError = spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const failures = ["FUTURE_FAILURE", "constructor", "toString", "__proto__"].flatMap((key) => [
+        new ProductError(key as never, "Private domain detail"),
+        new RevenueCatWebhookError(
+          key as never,
+          "REVENUECAT_INVALID_PAYLOAD",
+          "Private domain detail",
+        ),
+      ]);
+      for (const failure of failures) {
+        const response = await testApp({
+          authenticated: true,
+          product: {
+            listBusinesses: async () => {
+              throw failure;
+            },
+          } as unknown as ProductRepository,
+        }).request("/v1/businesses");
+
+        expect(response.status).toBe(500);
+        expect(await response.json()).toMatchObject({
+          error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred" },
+        });
+      }
+      expect(consoleError).toHaveBeenCalledTimes(failures.length);
+      expect(JSON.stringify(consoleError.mock.calls)).not.toContain("Private domain detail");
     } finally {
       consoleError.mockRestore();
     }

@@ -63,17 +63,19 @@ export function normalizeError(error: unknown): { apiError: ApiError; unexpected
     };
   }
   if (error instanceof RevenueCatWebhookError) {
-    const code = revenueCatWebhookCodes[error.status];
-    if (code !== undefined) {
+    if (Object.hasOwn(revenueCatWebhookCodes, error.status)) {
+      const code = revenueCatWebhookCodes[error.status];
       return { apiError: new ApiError(error.status, code, error.message), unexpected: false };
     }
   }
   if (error instanceof ProductError) {
     // Untyped callers can supply an unknown code; keep it on the 500 path.
-    const status = productErrorStatuses[error.code] as ApiError["status"] | undefined;
-    if (status !== undefined) {
+    if (Object.hasOwn(productErrorStatuses, error.code)) {
       const code: ApiErrorCode = error.code;
-      return { apiError: new ApiError(status, code, error.message), unexpected: false };
+      return {
+        apiError: new ApiError(productErrorStatuses[error.code], code, error.message),
+        unexpected: false,
+      };
     }
   }
   return {

@@ -86,22 +86,24 @@ export function isRevenueCatEnvironmentAllowed(
   return environment === allowed;
 }
 
+const projectableEventTypes = new Set([
+  "INITIAL_PURCHASE",
+  "RENEWAL",
+  "CANCELLATION",
+  "UNCANCELLATION",
+  "NON_RENEWING_PURCHASE",
+  "SUBSCRIPTION_PAUSED",
+  "EXPIRATION",
+  "BILLING_ISSUE",
+  "REFUND",
+  "REFUND_REVERSED",
+  "PRODUCT_CHANGE",
+  "SUBSCRIPTION_EXTENDED",
+  "TEMPORARY_ENTITLEMENT_GRANT",
+]);
+
 export function isRevenueCatEventProjectable(type: string): boolean {
-  return new Set([
-    "INITIAL_PURCHASE",
-    "RENEWAL",
-    "CANCELLATION",
-    "UNCANCELLATION",
-    "NON_RENEWING_PURCHASE",
-    "SUBSCRIPTION_PAUSED",
-    "EXPIRATION",
-    "BILLING_ISSUE",
-    "REFUND",
-    "REFUND_REVERSED",
-    "PRODUCT_CHANGE",
-    "SUBSCRIPTION_EXTENDED",
-    "TEMPORARY_ENTITLEMENT_GRANT",
-  ]).has(type);
+  return projectableEventTypes.has(type);
 }
 
 export function createRevenueCatWebhookProcessor(input: {
@@ -232,7 +234,9 @@ export function createRevenueCatWebhookProcessor(input: {
       }
 
       const mappedEntitlements = (event.entitlement_ids ?? []).flatMap((providerKey) => {
-        const key = config.entitlementMap[providerKey];
+        const key = Object.hasOwn(config.entitlementMap, providerKey)
+          ? config.entitlementMap[providerKey]
+          : undefined;
         return key ? [{ key, providerKey }] : [];
       });
       if (mappedEntitlements.length === 0) {

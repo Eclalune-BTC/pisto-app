@@ -5,7 +5,7 @@ import { authorizeBusinessAction } from "../business-access.ts";
 import type { Database } from "../client.ts";
 import { fingerprintValue } from "../operation-log.ts";
 import { exactCursorTimestamp } from "../pagination.ts";
-import { ProductError } from "../product.ts";
+import { likePattern, ProductError } from "../product-core.ts";
 import { customer, receivable, receivablePayment } from "../schema/receivables.ts";
 import { authorize } from "./access.ts";
 import { decodeCursor, encodeCursor, uuidPattern, validate } from "./codec.ts";
@@ -34,8 +34,7 @@ export function createCustomerQueries(db: Database): CustomerQueries {
         const conditions = [eq(customer.businessId, access.businessId)];
         if (query.status !== "all") conditions.push(eq(customer.status, query.status));
         if (query.query) {
-          const escaped = query.query.replace(/[\\%_]/g, "\\$&");
-          const pattern = `%${escaped}%`;
+          const pattern = likePattern(query.query);
           conditions.push(
             or(
               sql`${customer.name} ilike ${pattern} escape '\\'`,

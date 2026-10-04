@@ -158,13 +158,29 @@ an arbitrary provider product ID from the client.
 
 1. Web client fetches the public, allowlisted `/v1/billing/catalog` display catalog.
 2. Client posts one allowlisted slug to `/v1/billing/checkout`.
-3. Server binds the checkout to the authenticated subject and returns a Polar URL.
+3. Server binds the checkout to the authenticated user's immutable ID and returns a Polar URL.
 4. Browser navigates to Polar. Success return is UX only, not proof of payment.
 5. Polar sends a signed webhook. Server verifies the exact body and headers before trust.
 6. One transaction records the unique provider event and updates projections/entitlements.
 7. The return screen checks `/v1/billing/entitlements` once on entry and offers an explicit refresh
    action while access is not active; it does not poll automatically. A client that also needs
    normalized Polar customer state may request `/v1/billing/state`.
+
+Automatic customer synchronization on auth sign-up, update and deletion is disabled. The installed
+Polar adapter's sign-up hooks match by email and can replace another customer's `externalId` before
+email ownership is verified. Customer creation/reuse instead belongs to checkout's authenticated
+`externalCustomerId`; do not relink a pre-existing buyer by matching email. Before the first checkout
+has established a customer, provider state/portal reads may return unavailable. Preserve that failure
+instead of inventing empty customer state. Existing purchaser IDs remain the portal identity.
+
+The existing Polar SDK enforces a 10-second request timeout with automatic retries disabled. A timeout
+returns the existing opaque provider-unavailable error; it does not prove that an external checkout
+mutation was rolled back. These boundaries were checked against the installed adapter 1.8.4 and SDK
+0.47.0 on 2026-10-03, including their real hooks/endpoints with isolated SDK doubles. The official
+[adapter documentation](https://polar.sh/docs/integrate/sdk/adapters/better-auth) now targets the
+replacement SDK; its examples do not describe the installed adapter. Follow the pending migration
+gate in [Versioning and upgrades](versioning-upgrades.md#polar-and-revenuecat). Real sandbox purchase
+acceptance remains required after any adapter/SDK or customer-identity change.
 
 For an active organization scope, checkout may send that organization ID to Polar as
 `referenceId`, allowing the verified webhook projection to grant an organization entitlement. The

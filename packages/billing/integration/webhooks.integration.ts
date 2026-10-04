@@ -259,6 +259,55 @@ describe("Polar PostgreSQL webhook projection", () => {
 });
 
 describe("RevenueCat PostgreSQL webhook projection", () => {
+  test("projects only explicitly mapped keys, including names inherited by ordinary objects", () =>
+    withFixture(async (db, userId) => {
+      const send = (entitlementMap: Record<string, string>, providerKeys: string[]) =>
+        createRevenueCatWebhookProcessor({
+          db,
+          config: {
+            enabled: true,
+            authorization: "test-authorization",
+            signatureToleranceSeconds: 300,
+            allowedEnvironment: "PRODUCTION",
+            entitlementMap,
+          },
+        })({
+          authorization: "test-authorization",
+          signature: null,
+          now: new Date("2026-09-10T00:00:00Z"),
+          rawBody: JSON.stringify({
+            api_version: "1.0",
+            event: {
+              id: crypto.randomUUID(),
+              type: "INITIAL_PURCHASE",
+              event_timestamp_ms: Date.parse("2026-09-10T00:00:00Z"),
+              app_user_id: userId,
+              entitlement_ids: providerKeys,
+              environment: "PRODUCTION",
+              product_id: "monthly",
+              original_transaction_id: crypto.randomUUID(),
+              purchased_at_ms: Date.parse("2026-09-01T00:00:00Z"),
+              expiration_at_ms: Date.parse("2026-10-01T00:00:00Z"),
+            },
+          }),
+        });
+
+      expect(await send({ paid: "pro" }, ["constructor", "toString", "__proto__"])).toEqual({
+        duplicate: false,
+        projected: false,
+      });
+      expect(
+        await db.select().from(entitlement).where(eq(entitlement.userId, userId)),
+      ).toHaveLength(0);
+      expect(await send({ constructor: "pro" }, ["constructor"])).toEqual({
+        duplicate: false,
+        projected: true,
+      });
+      const grants = await db.select().from(entitlement).where(eq(entitlement.userId, userId));
+      expect(grants).toHaveLength(1);
+      expect(grants[0]?.key).toBe("pro");
+    }));
+
   test("rejects missing transaction identity or expiration without consuming the retry key", () =>
     withFixture(async (db, userId) => {
       const project = createRevenueCatWebhookProcessor({

@@ -6,7 +6,7 @@ import { type ZodType, z } from "zod";
 
 import { fingerprintCommand, maximumMinorUnits, parseReplaySnapshot } from "../operation-log.ts";
 import { isCursorTimestamp } from "../pagination.ts";
-import { ProductError } from "../product.ts";
+import { ProductError } from "../product-core.ts";
 import type {
   CategoryRecord,
   CursorKind,
@@ -111,10 +111,6 @@ export function normalizeSku(value: string | null | undefined): string | null {
 
 export function fingerprint(action: OperationAction, payload: unknown): Promise<string> {
   return fingerprintCommand(action, payload);
-}
-
-export function recordSnapshot(value: object): Record<string, unknown> {
-  return value as Record<string, unknown>;
 }
 
 function encodeCursor(kind: CursorKind, record: { createdAtExact: string; id: string }): string {

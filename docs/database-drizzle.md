@@ -169,6 +169,8 @@ tables, one per capability, because their foreign keys and action `CHECK` constr
 
 Cash, catalog, and receivables share one prologue, `beginOperation`, which authorizes the fresh
 session and membership first, then takes the idempotency lock, then reads the replay.
+Internal modules import domain primitives from `product-core.ts`, keeping the composition of sales
+repositories out of their dependency path. Public package exports remain stable.
 
 ### Why the two sales paths do not use `beginOperation`
 
@@ -176,7 +178,8 @@ session and membership first, then takes the idempotency lock, then reads the re
 `packages/db/src/sales-correction.ts` deliberately do **not** call `beginOperation`. They use
 `authorizeBusinessAction` and `lockCommandKey` with the same global lock order as other commands:
 live session, membership, then command-key advisory lock. Sales retain `for update` authorization
-locks; the shared prologue uses shared authorization locks. Taking the command key first in either
+locks. The shared prologue preserves the caller's lock strength: catalog uses `update`, while cash
+and receivables use `share`. Taking the command key first in either
 sales path would reintroduce the cross-capability deadlock covered by the PostgreSQL regression suite.
 
 The separate replay code remains necessary because sales share one `(business_id, actor_user_id,

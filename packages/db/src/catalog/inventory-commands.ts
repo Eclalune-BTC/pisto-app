@@ -6,16 +6,9 @@ import {
 import { and, eq } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
-import { ProductError, resolveLocalDateTime } from "../product.ts";
+import { ProductError, resolveLocalDateTime } from "../product-core.ts";
 import { catalogProduct, inventoryMovement } from "../schema/catalog.ts";
-import {
-  fingerprint,
-  parseMutationReplay,
-  parseQuantity,
-  recordSnapshot,
-  stockFor,
-  toMovement,
-} from "./codec.ts";
+import { fingerprint, parseMutationReplay, parseQuantity, stockFor, toMovement } from "./codec.ts";
 import { beginCatalogOperation, currentBalance, saveOperation } from "./operations.ts";
 import type { InventoryCommands } from "./types.ts";
 
@@ -96,7 +89,7 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         await saveOperation(transaction, identity, {
           movementId: movement.id,
           productId,
-          resultSnapshot: recordSnapshot({ movement, stock }),
+          resultSnapshot: { movement, stock },
         });
         return { movement, stock, replayed: false };
       });
@@ -214,7 +207,7 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         await saveOperation(transaction, identity, {
           movementId: movement.id,
           productId: product.id,
-          resultSnapshot: recordSnapshot({ movement, stock }),
+          resultSnapshot: { movement, stock },
         });
         return { movement, stock, replayed: false };
       });

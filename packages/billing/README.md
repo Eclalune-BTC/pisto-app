@@ -33,6 +33,11 @@ All integrations are disabled by default. Enabling one with incomplete
 configuration fails application startup rather than silently accepting an
 unverified billing state.
 
+Polar auth lifecycle customer synchronization is disabled; checkout and portal bind the authenticated
+immutable user ID. Provider calls have a 10-second timeout and no automatic retries. See the
+[identity and failure contract](../../docs/billing-entitlements.md#web-purchase-flow) and the
+[pending SDK migration gate](../../docs/versioning-upgrades.md#polar-and-revenuecat) before enabling billing.
+
 Lifecycle projections compare timestamps through Drizzle's column-aware operators so Postgres.js
 receives encoded timestamp parameters. Polar's subscription row serializes changes across entitlement
 keys; changed or unmapped products retire the previous grants, and stale events cannot create an old

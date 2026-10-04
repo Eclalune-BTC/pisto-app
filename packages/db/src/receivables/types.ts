@@ -16,7 +16,7 @@ import type {
 } from "@pisto/contracts";
 import type { AuthorizedBusinessContext } from "../business-access.ts";
 import type { Database } from "../client.ts";
-import type { ProductActor } from "../product.ts";
+import type { ProductActor } from "../product-core.ts";
 import type { customer, receivable, receivablePayment } from "../schema/receivables.ts";
 
 export type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];

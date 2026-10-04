@@ -9,7 +9,7 @@ import {
   type OperationReplay,
   operationIdentityValues,
 } from "../operation-log.ts";
-import { type ProductActor, ProductError } from "../product.ts";
+import { type ProductActor, ProductError } from "../product-core.ts";
 import { catalogCategory, catalogOperation, inventoryMovement } from "../schema/catalog.ts";
 import type {
   AuthorizedBusiness,

@@ -8,8 +8,7 @@ import { and, desc, eq, getTableColumns, getTableName, or, sql } from "drizzle-o
 
 import type { Database } from "../client.ts";
 import { exactCursorTimestamp } from "../pagination.ts";
-import { ProductError } from "../product.ts";
-import { likePattern } from "../product-core.ts";
+import { likePattern, ProductError } from "../product-core.ts";
 import { catalogCategory, catalogProduct, inventoryMovement } from "../schema/catalog.ts";
 
 /**

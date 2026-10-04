@@ -16,7 +16,7 @@ import {
 
 import { fingerprintCommand, maximumMinorUnits, parseReplaySnapshot } from "../operation-log.ts";
 import { isCursorTimestamp } from "../pagination.ts";
-import { ProductError } from "../product.ts";
+import { ProductError } from "../product-core.ts";
 import type { CashCursorPayload, CashOperationAction } from "./types.ts";
 
 export function parseCashMinorUnits(value: string): bigint {

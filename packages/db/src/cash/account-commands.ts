@@ -8,7 +8,7 @@ import { and, eq, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
 import { lockSemanticKey } from "../operation-log.ts";
-import { type ProductActor, ProductError, resolveLocalDateTime } from "../product.ts";
+import { type ProductActor, ProductError, resolveLocalDateTime } from "../product-core.ts";
 import { cashAccount, cashMovement } from "../schema/cash.ts";
 import {
   beginCashOperation,

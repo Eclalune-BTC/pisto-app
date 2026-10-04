@@ -11,7 +11,7 @@ import {
   operationIdentityValues,
   parseReplaySnapshot,
 } from "../operation-log.ts";
-import { type ProductActor, ProductError } from "../product.ts";
+import { type ProductActor, ProductError } from "../product-core.ts";
 import { receivable, receivableOperation, receivablePayment } from "../schema/receivables.ts";
 import { toReceivable } from "./mappers.ts";
 import type { AccessContext, DatabaseTransaction, ReceivableRecord } from "./types.ts";

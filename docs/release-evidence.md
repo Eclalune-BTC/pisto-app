@@ -41,6 +41,22 @@ Shared Zod contracts, repository authorization, the Expo REST client and databas
   [Security](security.md#dependency-audit-snapshot). No new exception was added. This is local
   implementation/build evidence, not hosted deployment, native acceptance or production release.
 
+The 2026-10-03 backend cleanup after `18f78d0` reduced production source by 60 net lines without
+changing dependency manifests, public contracts or migrations. It consolidated creation/replay
+responses, removed unused database code and casts, and corrected inherited-key error/entitlement
+lookups. Polar auth lifecycle synchronization is disabled; checkout/portal retain the authenticated
+user ID and SDK requests abort after 10 seconds without automatic retries.
+
+- `bun run check` passed with 762 tests, including 81 API and 27 billing tests, plus typechecks,
+  documentation and workspace builds. Unchanged tasks reused validated Turbo cache entries.
+- All seven migrations applied to a disposable PostgreSQL 18 database. Its integration suites passed
+  60 database and 15 billing tests; the container and temporary database were removed afterward.
+- `doctor`, `db:check`, `auth:schema:check` and independent read-only review passed. The configured
+  local API health/readiness and Expo HTML returned 200. No owner business records were written.
+- The dependency audit still reports the same five Expo/toolchain advisories; no exceptions were
+  added. The [replacement Polar SDK migration](versioning-upgrades.md#polar-and-revenuecat) and real
+  provider sandbox acceptance remain pending. No hosted deployment or new portable image is claimed.
+
 GitHub CI separately validates source/tests, migrations/integrations, the configured advisory
 exceptions, schema contracts, credential-free infrastructure tests and the portable API image.
 Inspect the run for the actual commit before asserting its result; old green runs do not validate

@@ -117,7 +117,9 @@ a present `Origin` must match the configured client allowlist, and every `/v1` P
 ## Response contract
 
 Success responses use a top-level `data` object except for operational health probes and provider
-webhook acknowledgements. Errors use:
+webhook acknowledgements. Creation commands use `commandResponse()` to return Elysia's typed
+`status()` result: 201 for a new resource and 200 for an exact replay, with the same `{ data }` envelope.
+This HTTP policy does not select a repository or infer permissions. Errors use:
 
 ```json
 {

@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 
 import type { AuthorizedBusinessContext } from "../business-access.ts";
-import { ProductError } from "../product.ts";
+import { ProductError } from "../product-core.ts";
 import { cashMovement } from "../schema/cash.ts";
 import { getAccountBalance, lockAccount, requireSufficientBalance } from "./access.ts";
 import type { CashMovementRecord, CashTransaction } from "./types.ts";

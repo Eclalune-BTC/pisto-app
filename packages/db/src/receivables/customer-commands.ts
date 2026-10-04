@@ -7,7 +7,7 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
-import { ProductError } from "../product.ts";
+import { ProductError } from "../product-core.ts";
 import { customer, receivable, receivablePayment } from "../schema/receivables.ts";
 import { beginReceivableOperation, insertOperation } from "./access.ts";
 import { commandFingerprint, uuidPattern, validate } from "./codec.ts";

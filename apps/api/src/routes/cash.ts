@@ -18,7 +18,7 @@ const accountNotFound = "Cash account was not found";
 const movementNotFound = "Cash movement was not found";
 const expenseNotFound = "Expense was not found";
 
-import { commandStatus, contract } from "../http.ts";
+import { commandResponse, contract } from "../http.ts";
 import type { ProductAccess } from "../middleware/product-access.ts";
 import { protectedRoutes } from "./protected.ts";
 
@@ -37,10 +37,8 @@ export function cashRoutes(input: { access: ProductAccess; cash: CashRepository 
 
   routes.post(
     "/cash/accounts",
-    async ({ actor, body, set }) => {
-      const result = await input.cash.createAccount(actor, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body }) => {
+      return commandResponse(await input.cash.createAccount(actor, body));
     },
     {
       parse: "json",
@@ -83,10 +81,8 @@ export function cashRoutes(input: { access: ProductAccess; cash: CashRepository 
 
   routes.post(
     "/cash/adjustments",
-    async ({ actor, body, set }) => {
-      const result = await input.cash.recordAdjustment(actor, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body }) => {
+      return commandResponse(await input.cash.recordAdjustment(actor, body));
     },
     {
       parse: "json",
@@ -96,10 +92,8 @@ export function cashRoutes(input: { access: ProductAccess; cash: CashRepository 
 
   routes.post(
     "/cash/movements/:movementId/reverse",
-    async ({ actor, body, params, set }) => {
-      const result = await input.cash.reverseAdjustment(actor, params.movementId, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body, params }) => {
+      return commandResponse(await input.cash.reverseAdjustment(actor, params.movementId, body));
     },
     {
       body: contract(reverseCashMovementRequestSchema, "Cash reversal is invalid"),
@@ -109,10 +103,8 @@ export function cashRoutes(input: { access: ProductAccess; cash: CashRepository 
 
   routes.post(
     "/cash/transfers",
-    async ({ actor, body, set }) => {
-      const result = await input.cash.transfer(actor, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body }) => {
+      return commandResponse(await input.cash.transfer(actor, body));
     },
     {
       parse: "json",
@@ -156,10 +148,8 @@ export function cashRoutes(input: { access: ProductAccess; cash: CashRepository 
 
   routes.post(
     "/expenses",
-    async ({ actor, body, set }) => {
-      const result = await input.cash.postExpense(actor, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body }) => {
+      return commandResponse(await input.cash.postExpense(actor, body));
     },
     {
       parse: "json",

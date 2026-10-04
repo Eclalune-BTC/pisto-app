@@ -82,6 +82,11 @@ Doctor is read-only. It checks:
 - app scheme/identifier syntax and, for `APP_VARIANT=production`, a non-local HTTPS API origin and
   non-example application identifiers.
 
+Doctor is not a substitute for the API's startup parsers. Its current independent validators do not
+check `NODE_ENV`, `PRODUCT_WRITES_ENABLED` or the product read/write budgets, and its Polar product-ID
+pattern is less strict than the runtime UUID schema. Consolidating those validators is pending CLI
+work; a passing doctor result alone does not prove that arbitrary configuration will boot.
+
 Statuses:
 
 - `PASS`: the check is satisfied.

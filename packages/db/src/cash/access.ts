@@ -10,7 +10,7 @@ import {
   type OperationReplay,
   operationIdentityValues,
 } from "../operation-log.ts";
-import { type ProductActor, ProductError } from "../product.ts";
+import { type ProductActor, ProductError } from "../product-core.ts";
 import { cashAccount, cashMovement, cashOperationReceipt } from "../schema/cash.ts";
 import type {
   AuthorizedBusiness,

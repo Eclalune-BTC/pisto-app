@@ -46,6 +46,12 @@ rate-policy upgrades; a key namespace alone does not isolate cleanup.
 
 ## Promotion rule
 
+Billing remains disabled. Its local boundary now binds Polar checkout/portal to the authenticated
+immutable user ID, disables email-based auth lifecycle synchronization, bounds SDK calls to 10 seconds
+without automatic retries, and projects only explicitly configured RevenueCat entitlement keys.
+The [Polar SDK migration](versioning-upgrades.md#polar-and-revenuecat) and provider sandbox acceptance
+remain release gates; local regression tests do not certify real purchases.
+
 Mark implementation as included only with its code, configuration, tests, and updated ownership
 record. Promotion to deployed or production-accepted additionally requires:
 

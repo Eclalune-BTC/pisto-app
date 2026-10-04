@@ -15,7 +15,7 @@ const customerNotFound = "Customer was not found";
 const receivableNotFound = "Receivable was not found";
 const paymentNotFound = "Receivable payment was not found";
 
-import { commandStatus, contract } from "../http.ts";
+import { commandResponse, contract } from "../http.ts";
 import type { ProductAccess } from "../middleware/product-access.ts";
 import { protectedRoutes } from "./protected.ts";
 
@@ -37,10 +37,8 @@ export function receivablesRoutes(input: {
 
   routes.post(
     "/customers",
-    async ({ actor, body, set }) => {
-      const result = await input.receivables.createCustomer(actor, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body }) => {
+      return commandResponse(await input.receivables.createCustomer(actor, body));
     },
     {
       parse: "json",
@@ -102,10 +100,8 @@ export function receivablesRoutes(input: {
 
   routes.post(
     "/receivables",
-    async ({ actor, body, set }) => {
-      const result = await input.receivables.postReceivable(actor, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body }) => {
+      return commandResponse(await input.receivables.postReceivable(actor, body));
     },
     {
       parse: "json",
@@ -138,10 +134,10 @@ export function receivablesRoutes(input: {
 
   routes.post(
     "/receivables/:receivableId/payments",
-    async ({ actor, body, params, set }) => {
-      const result = await input.receivables.applyPayment(actor, params.receivableId, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body, params }) => {
+      return commandResponse(
+        await input.receivables.applyPayment(actor, params.receivableId, body),
+      );
     },
     {
       body: contract(
@@ -154,10 +150,8 @@ export function receivablesRoutes(input: {
 
   routes.post(
     "/receivable-payments/:paymentId/reverse",
-    async ({ actor, body, params, set }) => {
-      const result = await input.receivables.reversePayment(actor, params.paymentId, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body, params }) => {
+      return commandResponse(await input.receivables.reversePayment(actor, params.paymentId, body));
     },
     {
       body: contract(

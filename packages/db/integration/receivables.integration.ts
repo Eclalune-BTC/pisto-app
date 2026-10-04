@@ -149,6 +149,24 @@ afterAll(async () => {
 });
 
 describe("customers and receivables repository on PostgreSQL 18", () => {
+  test("treats customer-search wildcard characters as literal text", async () => {
+    const owner = actor("ownerA", businessA);
+    for (const suffix of ["plain", "%", "_", "\\"]) {
+      await repository.createCustomer(owner, {
+        idempotencyKey: crypto.randomUUID(),
+        name: `Search fixture ${suffix}`,
+      });
+    }
+    for (const suffix of ["plain", "%", "_", "\\"]) {
+      const result = await repository.listCustomers(owner, {
+        query: `Search fixture ${suffix}`,
+        status: "active",
+        limit: 25,
+      });
+      expect(result.items.map(({ name }) => name)).toEqual([`Search fixture ${suffix}`]);
+    }
+  });
+
   test("keeps contacts tenant-private and applies exact owner/admin/member permissions", async () => {
     const key = crypto.randomUUID();
     const command = {

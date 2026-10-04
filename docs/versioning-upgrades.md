@@ -90,6 +90,15 @@ Do not independently bump React Native/React outside the matrix Expo documents f
 
 ### Polar and RevenueCat
 
+Research on 2026-10-03 found that Polar archived the
+[previous SDK repository](https://github.com/polarsource/polar-js) on 2026-09-17. The current
+[Better Auth adapter guide](https://polar.sh/docs/integrate/sdk/adapters/better-auth) targets SDK 1.0.0,
+versioned `createPolarCore` imports and snake_case payloads. Pisto still pins adapter 1.8.4 / SDK
+0.47.0 with camelCase projection fixtures. This is a pending provider migration, not a compatible
+version bump. Before enabling billing, migrate the adapter and SDK together, preserve immutable
+customer identity, recheck timeout/retry options, replay signed lifecycle fixtures and complete
+checkout/portal/webhook sandbox acceptance. Recheck upstream releases when starting that migration.
+
 - Recheck API/webhook schemas, signature/authentication instructions, event identities, retry rules,
   sandbox separation, and product mapping.
 - Replay maintained sanitized fixtures, then run provider sandbox acceptance.

@@ -3,7 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 
 import type { Database } from "./client.ts";
 import { hasBusinessPermission } from "./product-access.ts";
-import { type ProductActor, ProductError } from "./product-core.ts";
+import { type ProductActor, ProductError, requireActiveBusiness } from "./product-core.ts";
 import { member, session } from "./schema/auth.ts";
 import { businessSettings } from "./schema/business.ts";
 
@@ -22,12 +22,7 @@ export interface AuthorizedBusinessContext {
   timeZone: string;
 }
 
-export function requireActiveBusiness(actor: ProductActor): string {
-  if (!actor.activeBusinessId) {
-    throw new ProductError("BUSINESS_REQUIRED", "Select or create a business before continuing");
-  }
-  return actor.activeBusinessId;
-}
+export { requireActiveBusiness } from "./product-core.ts";
 
 export async function authorizeBusinessAction(
   executor: BusinessDatabaseExecutor,

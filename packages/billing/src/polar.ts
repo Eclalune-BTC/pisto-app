@@ -189,29 +189,27 @@ export function createPolarWebhookProcessor(input: {
         organizationId = existingOrganization?.id ?? null;
       }
 
-      if (providerCustomerId) {
-        await tx
-          .insert(billingCustomer)
-          .values({
-            provider: "polar",
-            providerCustomerId,
+      await tx
+        .insert(billingCustomer)
+        .values({
+          provider: "polar",
+          providerCustomerId,
+          userId,
+          email: customer.email ?? null,
+          metadata,
+          syncedAt: eventAt,
+        })
+        .onConflictDoUpdate({
+          target: [billingCustomer.provider, billingCustomer.providerCustomerId],
+          set: {
             userId,
             email: customer.email ?? null,
             metadata,
             syncedAt: eventAt,
-          })
-          .onConflictDoUpdate({
-            target: [billingCustomer.provider, billingCustomer.providerCustomerId],
-            set: {
-              userId,
-              email: customer.email ?? null,
-              metadata,
-              syncedAt: eventAt,
-              updatedAt: new Date(),
-            },
-            setWhere: lte(billingCustomer.syncedAt, eventAt),
-          });
-      }
+            updatedAt: new Date(),
+          },
+          setWhere: lte(billingCustomer.syncedAt, eventAt),
+        });
 
       const status = polarEntitlementStatus({
         eventType,
@@ -219,6 +217,7 @@ export function createPolarWebhookProcessor(input: {
         validUntil: periodEnd,
         now: new Date(),
       });
+      const raw = jsonRecord(data);
       const applied = await tx
         .insert(billingSubscription)
         .values({
@@ -233,7 +232,7 @@ export function createPolarWebhookProcessor(input: {
           cancelAtPeriodEnd: data.cancelAtPeriodEnd,
           currentPeriodStart: periodStart,
           currentPeriodEnd: periodEnd,
-          raw: jsonRecord(data),
+          raw,
         })
         .onConflictDoUpdate({
           target: [billingSubscription.provider, billingSubscription.providerSubscriptionId],
@@ -247,7 +246,7 @@ export function createPolarWebhookProcessor(input: {
             cancelAtPeriodEnd: data.cancelAtPeriodEnd,
             currentPeriodStart: periodStart,
             currentPeriodEnd: periodEnd,
-            raw: jsonRecord(data),
+            raw,
             updatedAt: new Date(),
           },
           setWhere: lte(billingSubscription.sourceEventAt, eventAt),
@@ -321,6 +320,8 @@ export function createPolarIntegration(input: { config: PolarBillingConfig; db: 
   const client = new Polar({
     accessToken: input.config.accessToken,
     server: input.config.server,
+    timeoutMs: 10_000,
+    retryConfig: { strategy: "none" },
   });
   const processWebhook = createPolarWebhookProcessor({
     db: input.db,
@@ -328,7 +329,9 @@ export function createPolarIntegration(input: { config: PolarBillingConfig; db: 
   });
   const plugin = polarPlugin({
     client,
-    createCustomerOnSignUp: true,
+    // The installed adapter's signup hooks match by unverified email and can
+    // reassign another customer's externalId. Checkout uses the immutable user ID.
+    createCustomerOnSignUp: false,
     use: [
       checkout({
         products: input.config.products.map(({ productId, slug }) => ({

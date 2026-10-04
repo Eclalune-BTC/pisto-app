@@ -1,4 +1,5 @@
 import type { Auth } from "@pisto/auth";
+import { status } from "elysia";
 import { z } from "zod";
 
 import { ApiError } from "./errors.ts";
@@ -56,8 +57,8 @@ export function requireRecordId(value: string, notFoundMessage: string): string 
 }
 
 /** An exact idempotent replay is not a new resource, so it answers 200, not 201. */
-export function commandStatus(result: { replayed: boolean }): 200 | 201 {
-  return result.replayed ? 200 : 201;
+export function commandResponse<T extends { replayed: boolean }>(data: T) {
+  return status(data.replayed ? 200 : 201, { data });
 }
 
 function statusForAuthResponse(status: number): 400 | 401 | 403 | 500 | 503 {

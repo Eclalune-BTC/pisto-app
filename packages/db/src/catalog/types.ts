@@ -19,7 +19,7 @@ import type {
 } from "@pisto/contracts";
 
 import type { Database } from "../client.ts";
-import type { ProductActor } from "../product.ts";
+import type { ProductActor } from "../product-core.ts";
 import type { catalogCategory, catalogProduct, inventoryMovement } from "../schema/catalog.ts";
 
 export type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];

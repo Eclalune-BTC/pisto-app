@@ -13,7 +13,7 @@ import {
   updateProductRequestSchema,
 } from "@pisto/contracts";
 import type { CatalogRepository } from "@pisto/db";
-import { commandStatus, contract } from "../http.ts";
+import { commandResponse, contract } from "../http.ts";
 import type { ProductAccess } from "../middleware/product-access.ts";
 import { protectedRoutes } from "./protected.ts";
 
@@ -31,10 +31,8 @@ export function catalogRoutes(input: { access: ProductAccess; catalog: CatalogRe
   );
   routes.post(
     "/catalog/categories",
-    async ({ actor, body, set }) => {
-      const result = await input.catalog.createCategory(actor, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body }) => {
+      return commandResponse(await input.catalog.createCategory(actor, body));
     },
     {
       parse: "json",
@@ -70,10 +68,8 @@ export function catalogRoutes(input: { access: ProductAccess; catalog: CatalogRe
   );
   routes.post(
     "/catalog/products",
-    async ({ actor, body, set }) => {
-      const result = await input.catalog.createProduct(actor, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body }) => {
+      return commandResponse(await input.catalog.createProduct(actor, body));
     },
     {
       parse: "json",
@@ -127,10 +123,8 @@ export function catalogRoutes(input: { access: ProductAccess; catalog: CatalogRe
   );
   routes.post(
     "/inventory/products/:productId/movements",
-    async ({ actor, body, params, set }) => {
-      const result = await input.catalog.recordMovement(actor, params.productId, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body, params }) => {
+      return commandResponse(await input.catalog.recordMovement(actor, params.productId, body));
     },
     {
       record: { productId: productNotFound },
@@ -139,10 +133,8 @@ export function catalogRoutes(input: { access: ProductAccess; catalog: CatalogRe
   );
   routes.post(
     "/inventory/movements/:movementId/reverse",
-    async ({ actor, body, params, set }) => {
-      const result = await input.catalog.reverseMovement(actor, params.movementId, body);
-      set.status = commandStatus(result);
-      return { data: result };
+    async ({ actor, body, params }) => {
+      return commandResponse(await input.catalog.reverseMovement(actor, params.movementId, body));
     },
     {
       record: { movementId: movementNotFound },
