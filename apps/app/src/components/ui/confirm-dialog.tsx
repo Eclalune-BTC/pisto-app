@@ -1,7 +1,6 @@
 import { CircleAlert, TriangleAlert } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useWindowDimensions } from "react-native";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -16,8 +15,6 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { returnFocusOnClose } from "@/lib/focus-return";
 import { isLockedPhase, type MutationPhase } from "@/lib/mutation-phase";
-
-const DIALOG_WIDTH = 448;
 
 type ConfirmDialogProps = {
   children?: ReactNode;
@@ -64,7 +61,6 @@ export function ConfirmDialog({
   uncertainDescription,
 }: ConfirmDialogProps) {
   const { t } = useTranslation();
-  const { width } = useWindowDimensions();
   const locked = isLockedPhase(phase);
   return (
     <AlertDialog
@@ -73,11 +69,7 @@ export function ConfirmDialog({
       }}
       open={open}
     >
-      {/* The shared content ignores its width classes on the web; size it like the shared Sheet. */}
-      <AlertDialogContent
-        onCloseAutoFocus={returnFocusOnClose(returnFocus)}
-        style={{ width: Math.min(DIALOG_WIDTH, width - 32) }}
-      >
+      <AlertDialogContent onCloseAutoFocus={returnFocusOnClose(returnFocus)}>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
