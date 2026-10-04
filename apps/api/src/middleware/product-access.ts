@@ -4,11 +4,7 @@ import { Elysia } from "elysia";
 import { ApiError } from "../errors.ts";
 import { requireSession, toProductActor } from "../session.ts";
 
-/**
- * Exact paths of the mounted `/v1` groups that own their own session policy. Taking them from the
- * mounted instances keeps the business policy fail-closed: any other `/v1/*` path, including a
- * future or unknown one, is authenticated and charged before its body is parsed.
- */
+/** Any `/v1/*` path not declared by a session-policy group is treated as a business route. */
 export function sessionPolicyPaths(
   ...groups: ReadonlyArray<{ routes: ReadonlyArray<{ path: string }> }>
 ) {
@@ -33,9 +29,7 @@ export function productAccess(input: {
       if (context.request.method === "OPTIONS") return;
       const path = new URL(context.request.url).pathname;
       if (!path.startsWith("/v1/") || input.sessionPolicyPaths.has(path)) return;
-      // Elysia's onRequest is global and the only hook before body parsing, so the business
-      // policy is decided here. The actor lives in this request's context; repositories still
-      // authorize in SQL.
+      // onRequest is the only Elysia hook that runs before body parsing.
       const session = await requireSession(input.auth, context.request.headers);
       context.actor = toProductActor(session);
       const write = !["GET", "HEAD"].includes(context.request.method);

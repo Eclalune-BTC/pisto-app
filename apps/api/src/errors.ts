@@ -46,8 +46,7 @@ export function normalizeError(error: unknown): { apiError: ApiError; unexpected
     return { apiError: new ApiError(404, "NOT_FOUND", "Route not found"), unexpected: false };
   }
   if (error instanceof ValidationError) {
-    // Never expose Elysia's submitted-value diagnostics. Contract adapters above
-    // preserve the existing field errors without serializing the request payload.
+    // Elysia's diagnostics echo submitted values; contract() already reports safe field errors.
     return {
       apiError: new ApiError(400, "VALIDATION_ERROR", "The request is invalid"),
       unexpected: false,

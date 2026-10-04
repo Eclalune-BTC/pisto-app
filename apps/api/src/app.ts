@@ -118,8 +118,8 @@ export function createApp(input: {
   const restrictedAuthRoute = () => {
     throw new ApiError(404, "NOT_FOUND", "Route not found");
   };
-  // Pisto owns provider selection and business membership. Preserve exact guards
-  // before mounting Better Auth, and never parse its signed bodies at this edge.
+  // Pisto owns provider selection and business membership, so these Better Auth endpoints are
+  // hidden. Bodies are not parsed here because Better Auth verifies its own signed payloads.
   for (const path of [
     "/api/auth/checkout",
     "/api/auth/checkout/*",

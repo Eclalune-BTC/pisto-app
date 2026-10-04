@@ -2,7 +2,6 @@ import { Elysia } from "elysia";
 import type { ApiConfig } from "../config.ts";
 import { ApiError } from "../errors.ts";
 
-// Preserve the API's existing security policy independently of the HTTP router.
 const secureHeaders = {
   "cross-origin-resource-policy": "same-origin",
   "cross-origin-opener-policy": "same-origin",
