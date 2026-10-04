@@ -5,7 +5,7 @@
 
 ## Decision
 
-Run Expo, the Bun/Hono API and PostgreSQL 18 locally. Use the existing postgres-js driver, Drizzle
+Run Expo, the Bun/Elysia API and PostgreSQL 18 locally. Use the existing postgres-js driver, Drizzle
 schema and standard SQL migrations. GitHub source synchronization is authorized by the owner; it
 does not authorize cloud provisioning, hosted deployment, provider activation or store submission.
 Hosting remains undecided. Do not use retained remote credentials for local startup or tests.
@@ -16,7 +16,7 @@ identity system, provider SQL API or deployment SDK is required by the current p
 
 ## Portability and safety
 
-The Bun/Hono Docker image and Expo single-page web export are separate portable artifacts. Keep
+The Bun/Elysia Docker image and Expo single-page web export are separate portable artifacts. Keep
 runtime identity, secrets and migrations independent of a hosting vendor. A future shared environment
 requires TLS, least-privilege runtime access, a separate migration identity, a bounded connection
 budget and tested backup/restore. Do not migrate on API startup or infer pooler compatibility.

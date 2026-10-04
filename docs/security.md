@@ -46,11 +46,16 @@ secret.
 - Store native session material through the official Better Auth Expo/SecureStore integration.
 - Rate-limit abuse-prone auth routes and use enumeration-resistant public errors.
 - Better Auth deliberately refuses an untrusted comma-separated forwarded-IP chain; when no client
-  address resolves, all clients share one per-path rate-limit bucket. This prevents trivial
-  leftmost-IP spoofing but can cause collateral throttling.
+  address resolves, clients share one per-path rate-limit bucket. This rejects ambiguous chains but
+  can cause collateral throttling. The installed default still accepts a single `X-Forwarded-For`
+  address: a directly reachable listener does not authenticate that header, so rotating it can
+  bypass the IP-based auth budget. The local baseline does not establish public-edge protection.
 - Before production traffic, verify the selected host's exact client-IP header shape and spoofing behavior.
   If deployment needs `advanced.ipAddress.ipAddressHeaders` or `trustedProxies`, add and test that
-  explicit code configuration only for a header/proxy the edge overwrites or sanitizes.
+  explicit code configuration only for a header/proxy the edge overwrites or sanitizes, and prevent
+  direct public access to the origin. This was checked against installed Better Auth 1.7.1 and its
+  [official rate-limit guidance](https://better-auth.com/docs/concepts/rate-limit) on 2026-10-03;
+  recheck when the auth version or hosting topology changes.
 - Do not confuse `AUTH_TRUSTED_PROXY_HEADERS` (forwarded host/protocol URL inference) with a trusted
   rate-limit client-IP contract.
 - Revoke sessions after password/security changes and expose device/session revocation as appropriate.
@@ -59,7 +64,7 @@ secret.
 - Treat active organization as a workspace selector, not authorization proof. Reload membership and
   Pisto action policy before every protected business operation. Business discovery and onboarding
   also check a live, unexpired database session rather than accepting cached session state alone.
-- Disable or intercept organization deletion before financial records exist; no auth endpoint may
+- Keep direct organization deletion blocked; no auth endpoint may
   cascade-delete canonical business history without an approved retention/export/audit policy.
 - Restrict organization creation to the approved onboarding rule, and deny invitation/member
   operations until their verification, delivery, permission, rate-limit, and audit flows exist.
@@ -277,28 +282,18 @@ mandatory with that seam:
 The 2026-10-03 Elysia migration removed Hono from the lockfile. A fresh `bun run audit:ci` still
 fails on five pre-existing Expo/toolchain findings: four high and one moderate across
 brace-expansion, braces and node-forge. No additional audit exception was added. The new Elysia,
-CORS and TypeBox runtime packages produced no findings in this audit. The snapshots below retain
-the earlier evidence; removing Hono does not remediate the remaining packages.
-
-The 2026-10-02 workspace cleanup reran `bun run audit:ci` with Bun 1.4.0. It failed with
-six additional findings beyond the four existing exceptions: four high and two moderate.
-The locked packages and advisory references are:
+CORS and TypeBox runtime packages produced no findings in this audit. The locked packages and
+unexcepted advisory references are:
 
 - `brace-expansion@5.0.9`: [GHSA-qhr7-859c-m2p7](https://github.com/advisories/GHSA-qhr7-859c-m2p7),
   [GHSA-6j4f-fj2g-mc7p](https://github.com/advisories/GHSA-6j4f-fj2g-mc7p), and
   [GHSA-q2hr-2g5m-vwhr](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr).
 - `braces@3.0.3`: [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).
-- `hono@4.13.5`: [GHSA-hxh3-vqpv-xpqv](https://github.com/advisories/GHSA-hxh3-vqpv-xpqv).
 - `node-forge@1.4.0`: [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv).
 
-These references were checked on 2026-10-02. Cleanup preserves the existing dependency versions;
-it neither remediates these findings nor adds audit exceptions. Reassess affected paths and
-compatible updates before release. The earlier exception review below is historical evidence,
-not a passing current audit.
-
-`bun audit` was rerun against the delivery lockfile on 2026-09-10. At that time it reported four
-unresolved advisories in three transitive development/build-tool packages and no direct
-application-runtime dependency finding.
+Reassess affected paths and compatible updates before release. The separate four exceptions below
+remain configured in `audit:ci`; they do not make the current audit pass. Earlier audit snapshots
+remain in Git history.
 
 | Locked path | Advisory | Current reachability and required control |
 | --- | --- | --- |

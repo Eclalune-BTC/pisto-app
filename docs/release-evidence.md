@@ -16,9 +16,8 @@ targets, not a statement that every process is currently running.
 
 ## Validation
 
-### Elysia HTTP composition, 2026-10-03
-
-The API now uses Elysia 1.4.30, CORS 1.4.2 and the required TypeBox 0.34.52 runtime peer under
+The 2026-10-03 baseline at commit `3dc650c` uses Elysia 1.4.30, CORS 1.4.2 and the required
+TypeBox 0.34.52 runtime peer under
 [ADR 0019](adrs/0019-elysia-http-composition.md). Hono was removed from the manifest and lockfile.
 Shared Zod contracts, repository authorization, the Expo REST client and database schema remain intact.
 
@@ -28,111 +27,46 @@ Shared Zod contracts, repository authorization, the Expo REST client and databas
   59 database and 14 billing tests in a disposable database, separate from the owner's local data.
 - The final portable Docker image built with Bun 1.4.0, replayed bundled migrations, served
   health/readiness, denied anonymous requests, handled HEAD/OPTIONS and exited zero on SIGTERM.
-  Its local image ID was `sha256:6e098fe51fe4218e098120091bb2257cf6adb8ae936b422610436195418f5aef`.
+  Its local image ID was `sha256:156468ef6e318a06b0459d5757bc82c1ecc7a935c39fe7d2fcbf3bcec580d4bc`.
 - The isolated container's 23-request smoke passed real Better Auth sign-up/session/sign-out,
   business creation, idempotent sale creation, history, reporting and voiding. Test containers,
   their database volume and network were removed afterward; the owner's runtime was preserved.
 - Independent read-only review and real-listener probes verified raw provider bytes, multiple
   cookies, security headers, early authentication, stream limits, identifier/JSON error precedence,
   scalar/duplicate query semantics, request actor isolation and safe preflight logging.
-- Fifty-two repeated per-handler actor calls were removed. Counting all TypeScript source in
-  `apps/api/src` against the pre-migration revision, line count changed from 1,740 to 1,846 (+106):
-  compatibility and explicit security policies offset route simplification. No total-size or
-  throughput improvement is claimed.
-- Elysia 2.0.0-beta.21 was separately probed with seven compatibility checks; it is not the installed
-  application framework. The stable baseline remains intentional.
+- A fresh Bun bundle graph contained 1,990 source inputs, including 25 Elysia inputs and zero Hono
+  inputs. The lockfile, installed package graph and portable image contained no Hono dependency.
+  Better Auth's telemetry includes the framework name in a detector list; that is not a router or import.
 - `audit:ci` still fails on five existing Expo/toolchain advisories, documented in
   [Security](security.md#dependency-audit-snapshot). No new exception was added. This is local
   implementation/build evidence, not hosted deployment, native acceptance or production release.
-
-### RNR composition and spacing follow-up, 2026-09-27
-
-The Cash screenshot prompted a composition audit rather than another palette or component-library
-change. Filter surfaces, empty states, compact table records, report range controls and authentication
-now use the installed Card slots. Filter labels retain intrinsic width and consistent padding.
-Pointer-only tab-panel outlines are suppressed; visible neutral keyboard focus remains rounded.
-
-- The final `bun run check` passed, including **474 application tests in 79 files**, types,
-  documentation and web export. Unchanged task results were reused from local Turbo cache.
-- Fifty-two mounted browser assertion groups passed with isolated responses: Cash empty states at
-  320, 390, 768, 1024 and 1357 CSS pixels; nine operating routes at wide/compact widths; and sign-in
-  and sign-up. Both themes were exercised. Checks measured at least 12 px filter side padding,
-  44 px control height, 24 px authentication inset, no horizontal page overflow and preserved focus.
-- Independent read-only review identified default-blue activity indicators and duplicate H1s in
-  nested states. Shared neutral loading feedback and explicit heading levels address those findings;
-  selected remaining financial/failure notices now compose the installed Alert components.
-- These browser and export checks do not establish physical-device or complete screen-reader
-  acceptance.
-
-### React Native Reusables migration, 2026-09-27
-
-The owner requires React Native Reusables throughout the application and prohibits blue. The current
-source uses the official Uniwind registry, a single neutral palette, a desktop sidebar and a compact
-Dialog navigation menu. [The design system](design-system.md) records the actual source revision,
-manual installation, component ownership and the registry's missing Sidebar/DataTable boundaries.
-The earlier cobalt proposal is rejected and no longer an active design direction.
-
-- `bun run check` passed with Bun 1.4.0: application types, **469 tests in 77 files**, documentation
-  validation and Expo web export. Unchanged workspace tasks reused local Turbo cache.
-- `audit:ci` checked 823 packages with the same four pre-existing advisory exceptions; no new
-  exception was added. This is not a zero-advisory assertion.
-- The final all-platform Expo export completed with exit 0 and emitted web assets plus Android/iOS
-  Hermes bundles. This is not a signed native binary, installation or physical-device test.
-- Isolated browser responses exercised fifteen operating routes at 1440 and 390 CSS pixels in both
-  themes, with no horizontal document overflow or reported console errors. Expense selection,
-  tab navigation, the mobile menu's routes, Escape dismissal and focus restoration were exercised.
-  Menu navigation closed the overlay and reached the selected route in both themes.
-- A mounted business setup check verified the actual checkbox role, Space activation, label-based
-  deselection and the corresponding create-button enabled/disabled state. No create operation was
-  submitted. Unit tests separately retain pending and uncertain-response guards and exact retries.
-- The public page was inspected at 320, 390, 768, 1024 and 1440 CSS pixels in both themes. Its static
-  product captures were regenerated from the actual RNR forms with isolated example configuration,
-  no customer contacts and no balances or transaction results. Captures are not live controls.
-  Final mounted assertions passed for arrow-key tab selection, Tab focus into the selected panel
-  and Enter activation of the FAQ controls; no duplicated document IDs were reported.
-- Independent read-only review found native selection-highlight contrast, primary-button icon
-  contrast, native tooltip side effects and outdated stack documentation. These were corrected;
-  additional tests cover neutral highlight/cursor/handle props and the web-only hover-tooltip boundary.
-  The reviewer did not independently run browser or device checks.
-- Source guards cover blue utilities/literal colors and the explicitly neutral Expo navigation
-  theme. Brand geometry and asset transparency tests remain. These checks do not establish physical
-  device appearance, OS-controlled UI colors or full accessibility conformance.
-- Browser fixtures wrote no records to the configured database. These checks did not include
-  hosted deployment or store release.
-
-### Manual core and recovery, 2026-09-26
-
-Recorded on 2026-09-26 for the implemented manual core and new-sale recovery:
-
-- `bun run check`, with Bun 1.4.0 and Turbo task cache bypassed: 524 tests passed (39 scripts,
-  70 contracts, 47 database unit, 10 auth, 21 billing, 69 API and 268 app), with workspace types,
-  builds and web export. The subsequent documentation-only styling/startup revision repeated it.
-- PostgreSQL integration: 70 passed, 434 assertions across nine files, using an isolated local
-  database. Eleven recovery cases supplement the existing domain and billing suites.
-- `db:check` and `auth:schema:check` passed. `audit:ci` checked 752 packages with four unresolved
-  exceptions; see [security](security.md#dependency-audit-snapshot), not a zero-advisory claim.
-- The all-platform Expo export produced web assets and Android/iOS Hermes bundles. A first attempt
-  exited nonzero; a second completed with exit 0 without source/dependency changes. Its initial
-  cause was not isolated. Neither attempt was an installed native application or device test.
-- The online Expo install check recommended ten newer patches, which were not installed. The
-  [dated dependency review](frontend-expo-ui.md#dependency-review-on-2026-09-26) lists them.
 
 GitHub CI separately validates source/tests, migrations/integrations, the configured advisory
 exceptions, schema contracts, credential-free infrastructure tests and the portable API image.
 Inspect the run for the actual commit before asserting its result; old green runs do not validate
 new code. The image checks include probes, unauthenticated denial, bundled migrations and shutdown.
 
-The local smoke command uses synthetic records, refuses non-loopback destinations/redirects/proxies,
-revokes its session and retains its voided test sale. Its prior 23-request run passed; it is not
-executed by documentation maintenance or a read-only diagnostic:
-
-```powershell
-$env:SMOKE_API_URL = 'http://localhost:3015'
-$env:SMOKE_WEB_ORIGIN = 'http://localhost:8090'
-bun run smoke:local
-```
-
 ## Browser evidence
+
+The 2026-09-27 RNR browser checks used isolated responses and wrote no records to the configured
+database. They establish bounded behavior for that revision:
+
+- Fifteen operating routes at 1440 and 390 CSS pixels in both themes had no horizontal document
+  overflow or reported console errors. Expense selection, tab navigation, compact-menu routes,
+  Escape dismissal, focus restoration and closing the menu after navigation were exercised.
+- Fifty-two follow-up assertion groups covered Cash empty states at 320, 390, 768, 1024 and 1357
+  CSS pixels; nine operating routes at wide/compact widths; and sign-in/sign-up in both themes.
+  Checks measured at least 12 px filter side padding, 44 px control height, 24 px authentication
+  inset, no horizontal page overflow and preserved focus.
+- Business setup exposed the checkbox role, Space activation, label-based deselection and the
+  corresponding create-button state. No creation was submitted by this fixture.
+- The public page was inspected at 320, 390, 768, 1024 and 1440 CSS pixels in both themes.
+  Product captures use actual RNR forms with isolated example configuration, no customer contacts,
+  balances or transaction results. Captures are not live controls. Arrow-key tab selection,
+  Tab focus into the selected panel and Enter activation of FAQ controls passed, with no duplicate IDs.
+
+The same revision completed an all-platform Expo export with web assets and Android/iOS Hermes
+bundles. This establishes neither a signed native binary nor installation or physical-device acceptance.
 
 The 2026-09-26 recovery check used an isolated Chrome session and synthetic account/business data.
 A prepared review survived reload with the same key and amount. Dropping the POST confirmation
@@ -140,9 +74,7 @@ response after HTTP 201 still allowed recovery after another reload; history con
 additional $12.50 sale. Acknowledging its exact ID cleared the review. Wide and 390 CSS-pixel review
 layouts were inspected, with no compact horizontal page overflow.
 
-Earlier browser checks covered authentication, business confirmation, history, report controls,
-checked-state semantics, a 272 px desktop sidebar, and mounted pending-command controls. Existing
-screenshots are baseline references, not proof of the current revision's full behavior. Browser
+Existing screenshots are baseline references, not proof of the current revision's full behavior. Browser
 checks do not establish screen-reader conformance, physical-device behavior or performance targets.
 
 ## Database evidence

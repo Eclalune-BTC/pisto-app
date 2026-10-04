@@ -7,15 +7,17 @@
 
 ## Context
 
-Web and native clients need one user/session model with a PostgreSQL adapter, Hono integration, Expo
+Web and native clients need one user/session model with a PostgreSQL adapter, Elysia integration, Expo
 cookie storage/deep links, origin/CSRF protections, and extensibility for organizations and billing.
 Building password hashing/session/token protocols locally would add avoidable security risk.
 
 ## Decision
 
-Use Better Auth 1.7.1 in `@pisto/auth`, mounted through Hono at `/api/auth/*`, with its Drizzle schema
+Use Better Auth 1.7.1 in `@pisto/auth`, mounted through Elysia at `/api/auth` and `/api/auth/*`, with its Drizzle schema
 owned by `@pisto/db` and official Expo adapter for native session storage. Use a 32-byte-or-greater
 secret, exact trusted origins, secure cookies in production, and documented secret rotation.
+The HTTP composition follows [ADR 0019](0019-elysia-http-composition.md): explicit method/path guards,
+unparsed provider payloads and preservation of the auth handler's cookies.
 
 Use Better Auth's PostgreSQL-backed rate-limit storage so counters are shared across API
 instances. Keep the synchronized `better-auth`, `@better-auth/expo`, and `auth` CLI packages aligned;
@@ -48,7 +50,7 @@ identity provider.
 
 - [Better Auth installation](https://better-auth.com/docs/installation)
 - [Better Auth security](https://better-auth.com/docs/reference/security)
-- [Better Auth Hono](https://better-auth.com/docs/integrations/hono)
+- [Elysia Better Auth integration](https://elysiajs.com/integrations/better-auth)
 - [Better Auth Expo](https://better-auth.com/docs/integrations/expo)
 - [Better Auth Drizzle adapter](https://better-auth.com/docs/adapters/drizzle)
 - [Better Auth rate limits](https://better-auth.com/docs/concepts/rate-limit)

@@ -126,7 +126,7 @@ short PostgreSQL transaction after fresh authorization.
 | --- | --- |
 | Create customer | Persist an active customer and replay the exact original result |
 | Update customer | Change at least one supplied field; explicit `null` clears an optional contact field |
-| Archive customer | Preserve the record and history; an exact replay remains successful |
+| Archive customer | Require zero outstanding debt, preserve the record and history; an exact replay remains successful |
 | Post receivable | Require an active same-business customer, positive exact amount, and valid dates; snapshot business currency |
 | Apply payment | Lock the receivable, require active customer/posted state, ensure amount is at most outstanding, resolve local time, and persist the selected `cashAccountId` |
 | Reverse payment | Lock the receivable, copy amount/currency/cash-account identity from the original payment, and append one reversal |
@@ -196,8 +196,8 @@ uncertain outcome can retry only the exact same serialized command and idempoten
 input requires a new review and key. Financial actions are not offered from denied, failed, or
 unconfirmed reads.
 
-The surfaces preserve the Pisto ink/lime/cream language with responsive rows, type hierarchy,
-spacing, and dividers. They add no glow, gradient, decorative metric, floating card, ornamental pill,
+The surfaces follow the neutral RNR tokens in [the design system](../design-system.md), with responsive
+rows, type hierarchy, spacing, and dividers. They add no glow, gradient, decorative metric, floating card, ornamental pill,
 or unowned success state.
 
 ## Explicit failures
@@ -210,8 +210,7 @@ success, guessed time, implicit account, or locally invented balance.
 
 ## Integration record
 
-Integration is complete and the cash seam is closed. Every item the original pre-mount checklist
-listed is satisfied on the current branch:
+The current composition and transactional cash boundary are:
 
 1. the contract and the database schema/repository are exported through the shared
    `packages/contracts/src/index.ts` and `packages/db/src/index.ts` barrels; no temporary direct
@@ -235,8 +234,9 @@ listed is satisfied on the current branch:
    directly. This is the owner-port pattern ratified by
    [ADR 0016](../adrs/0016-owner-ports-for-cross-capability-transactions.md).
 
-Responsive-web and physical-device evidence for these screens is not recorded here. Treat those as
-outstanding acceptance checks, not as completed gates.
+Bounded responsive-web checks are recorded in [browser evidence](../release-evidence.md#browser-evidence).
+Physical-device and complete accessibility acceptance remain pending. Archival/correction policy
+limits are recorded in [the data model](../data-model.md#next-bounded-changes-and-unresolved-rules).
 
 ## Validation evidence
 

@@ -49,10 +49,12 @@ Customer-state reads use the scoped SDK boundary directly because the installed 
 organization-list handler prints raw SDK failures outside its configured logger. SDK errors become
 the stable API `BILLING_UNAVAILABLE` response without retaining their private payload.
 
-Run the rollback-only local PostgreSQL regression suite from the repository root:
+Run the rollback-only PostgreSQL regression suite from the repository root with `DATABASE_URL`
+explicitly set to a verified disposable local test database. The localhost guard does not establish
+isolation; do not use the owner's active business database or rely on rollback as that boundary.
 
 ```sh
-bun --env-file=.env run --filter @pisto/billing test:integration
+bun run --filter @pisto/billing test:integration
 ```
 
 Sources reviewed 2026-09-10: [Polar cancellation sequences](https://polar.sh/docs/integrate/webhooks/events),

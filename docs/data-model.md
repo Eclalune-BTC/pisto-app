@@ -164,8 +164,7 @@ Before adding an index or materialized balance, measure the actual authorized qu
 `EXPLAIN (ANALYZE, BUFFERS)` on representative data. In particular, unfiltered cash history and
 catalog history should be measured as businesses grow. A materialized balance would introduce a
 second maintained value, reconciliation, and recovery obligations; current evidence does not justify
-that change. No generic read-model package, background projection worker, or materialized view is
-added by this audit.
+that change. No generic read-model package, background projection worker or materialized view is implemented.
 
 ## Local PostgreSQL and portability
 
@@ -192,7 +191,8 @@ then removal of superseded fields.
 | Team administration approved | Reuse organization memberships; specify invitation delivery, role transitions, and last-owner protection before exposing provider management endpoints |
 | Customer archival followed by payment reversal | Current policy permits reversal after archival but denies new payment to an archived customer. Reversal can reopen uncollectable debt in the product. Decide explicit reactivation or settlement permission; do not silently erase or void debt |
 | Cash account archival followed by receivable payment correction | Current cash port requires an active account for payment reversal; an archived account can therefore block correction. Decide restoration or a documented archived-account correction policy |
-| Billing product change changes entitlement key | Existing projection/tests retire superseded grants and reject stale events; real provider/store acceptance and deliberate product gating remain required |
+| Polar product change changes entitlement key | Polar projection/tests retire superseded grants and reject stale events; real provider acceptance and deliberate product gating remain required |
+| RevenueCat transfer or product change | The webhook delta adapter does not fully reconcile prior entitlement keys; define canonical customer-state reconciliation and store acceptance before enabling the native purchase lifecycle |
 
 ## Validation and primary sources
 

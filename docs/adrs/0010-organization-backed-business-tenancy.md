@@ -2,13 +2,13 @@
 
 - Status: Accepted
 - Date: 2026-08-22
-- Owners: `@pisto/auth`, future product domains, `@pisto/api`
+- Owners: `@pisto/auth`, `@pisto/db`, `@pisto/api`
 - Supersedes: none
 - Research recheck: Better Auth organization model, product role model, or business-deletion policy change
 
 ## Context
 
-Every Pisto sale, setting, report, and future inventory or expense record needs one stable tenant
+Every Pisto sale, setting, report, inventory and expense record needs one stable tenant
 boundary. The repository already contains the Better Auth organization, member, invitation, session
 active-organization, and organization-entitlement schema. Adding a separate workspace-membership
 system for the first product slice would create two access models and ambiguous authorization.
@@ -25,19 +25,18 @@ context and cannot by itself prove permission for a domain action.
   label. A dedicated Pisto business-settings table, keyed by `businessId` and referencing the
   organization, owns operating currency, IANA time zone, and future domain settings. Do not put those
   settings or financial state in Better Auth metadata.
-- The first product slice includes authenticated creation/selection of one business workspace and an
-  owner membership. It authorizes the owner workflow only. Existing `admin`/`member` strings or
-  organization tables do not grant Pisto financial permissions automatically.
-- The server organization plugin currently exposes its Better Auth endpoints even though no client
-  product flow exists. Before business data is introduced, restrict organization creation to the
-  approved onboarding rule, disable direct deletion, and keep invitation/member operations outside
-  the first slice rather than treating unlinked endpoints as a finished feature.
+- Onboarding implements authenticated creation/selection of one business workspace and an owner
+  membership. [ADR 0014](0014-static-current-operation-permissions.md) owns the current operation
+  permissions. Organization tables and provider role strings do not grant financial access by themselves.
+- The HTTP boundary blocks raw organization management endpoints. Only the POST active-organization
+  selector is exposed there; Pisto-owned onboarding controls business creation. Direct deletion,
+  invitations and member administration remain blocked until their product and security flows exist.
 - The server resolves the current business and reloads membership for every protected command/query.
   A client/model-supplied ID or session `activeOrganizationId` is only a requested selector; it is not
   authorization evidence.
-- Product tables reference the business boundary and use restrictive deletion behavior. Before
-  financial records exist, disable or intercept direct organization deletion and add a separately
-  approved export/retention/audited closure policy. An auth route must not cascade-delete a ledger.
+- Product tables reference the business boundary and use restrictive deletion behavior. Direct
+  organization deletion remains blocked. Any future closure flow requires a separately approved
+  export, retention and audit policy. An auth route must not cascade-delete a ledger.
 - A future multi-user brief may define owner, manager, cashier, and accountant permissions. Map those
   permissions centrally at the application authorization boundary rather than scattering raw role
   string checks through routes, repositories, tools, or UI.
@@ -46,10 +45,10 @@ context and cannot by itself prove permission for a domain action.
 
 - Current auth, session, membership, and organization-entitlement foundations are reused.
 - A user can belong to more than one business later without changing financial table ownership.
-- The first slice must install/configure the organization client capability and truthful onboarding;
-  existing server tables alone are not a working business-workspace flow.
+- The installed organization client and Pisto-owned onboarding implement workspace creation/selection;
+  server table presence alone does not establish additional organization-management features.
 - Auth lifecycle and financial retention are deliberately separated. Organization deletion needs
-  domain coordination before product data exists.
+  domain coordination before any closure flow can be enabled.
 - Replacing Better Auth later requires a migration of the identity/membership boundary, but domain
   settings and records remain in Pisto-owned tables and contracts.
 
@@ -64,7 +63,7 @@ context and cannot by itself prove permission for a domain action.
 - **Trust the active organization from the session:** rejected because a selector is not fresh
   action-level authorization and cannot replace membership/permission validation.
 
-## Validation required before implementation promotion
+## Validation and recheck gates
 
 - organization creation/selection and owner membership tests through the exact Better Auth version;
 - direct endpoint tests proving creation limits and denial of deletion/invitation/member operations

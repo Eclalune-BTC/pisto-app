@@ -482,29 +482,19 @@ binary is established by that file. A custom development build is the preferred 
 development workflow for the app's real scheme, configuration and future native capabilities.
 See [local native development builds](getting-started.md#local-native-development-build).
 
-### Dependency review on 2026-09-26
+### Dependency checks
 
-The 20 installed app dependencies listed in the local Expo 57.0.21 compatibility metadata satisfy
-that metadata. Separately, the online `expo install --check` returned exit 1 and recommended these
-newer patches. Local metadata alignment is not the same as satisfying the latest online check.
+The app manifest and root lockfile own the installed versions. During an upgrade review and before
+device acceptance, run the current compatibility check from `apps/app`:
 
-| Package | Installed | Online recommendation |
-| --- | --- | --- |
-| `expo` | 57.0.21 | ~57.0.25 |
-| `expo-constants` | 57.0.17 | ~57.0.19 |
-| `expo-crypto` | 57.0.2 | ~57.0.3 |
-| `expo-linking` | 57.0.9 | ~57.0.11 |
-| `expo-localization` | 57.0.1 | ~57.0.2 |
-| `expo-network` | 57.0.1 | ~57.0.2 |
-| `expo-router` | 57.0.20 | ~57.0.23 |
-| `expo-secure-store` | 57.0.3 | ~57.0.4 |
-| `expo-splash-screen` | 57.0.8 | ~57.0.9 |
-| `expo-web-browser` | 57.0.2 | ~57.0.3 |
+```sh
+node ../../node_modules/expo/bin/cli install --check
+```
 
-These recommendations alone do not establish a native crash or a Tailwind 4 incompatibility.
-Review a coordinated Expo patch update before device acceptance,
-then repeat the version, bundle and runtime checks. This table is a dated observation, not a future
-install command or a reason to bypass the check.
+Review its findings as a coordinated Expo dependency update, including manifest and lockfile changes,
+then repeat the version, bundle and runtime checks. Installed compatibility metadata and historical
+online recommendations do not establish today's upstream patch state. A recommendation alone also
+does not establish a native crash or a Tailwind 4 incompatibility.
 
 Completed validation and remaining device checks are recorded in
 [release evidence](release-evidence.md). Generated export directories are disposable and are not
@@ -524,7 +514,8 @@ Every remote screen handles:
 3. empty state with a useful next action;
 4. recoverable error with retry;
 5. offline or stale state, clearly labeled;
-6. forbidden/expired session by returning to sign-in;
+6. forbidden (`403`) as a denied state; unauthorized (`401`) refreshes session state and the layout
+   handles sign-in when no valid session remains;
 7. billing pending/grace states without promising access that the API has not granted.
 
 Avoid storing authoritative entitlements in generic local persistence. A cached value may improve

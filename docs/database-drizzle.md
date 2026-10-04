@@ -150,8 +150,10 @@ tables, one per capability, because their foreign keys and action `CHECK` constr
 `packages/db/src/operation-log.ts` owns only what those tables share, not the tables themselves:
 
 - **Command identity.** `(action, actorUserId, businessId, commandFingerprint, idempotencyKey)`. The
-  fingerprint is SHA-256 over the canonical `{ version, action, payload }` JSON, so key order is part
-  of the identity.
+  shared fingerprint helper hashes canonical `{ version, action, payload }` JSON with SHA-256.
+  Existing owners retain their established encodings: receivables uses `{ action, payload, version }`
+  and sales uses its own payload shape. Key order is part of command identity; a refactor must not
+  rewrite stored fingerprints or change the serialization of retries.
 - **Advisory locks.** `lockCommandKey` serializes concurrent retries of one
   business/actor/idempotency key inside the transaction, so a replay read cannot race another commit
   of the same command. `lockSemanticKey` does the same for a case-insensitive business-scoped name,

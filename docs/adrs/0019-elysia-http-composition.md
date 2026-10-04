@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-03
 - Owners: `@pisto/api`
-- Supersedes: [ADR 0003](0003-hono-bun-api.md)
+- Supersedes: ADR 0003 (retired from active documentation; available in Git history)
 
 ## Context
 
@@ -60,6 +60,11 @@ ordering and stream limits, run `bun run check`, dependency audit and the portab
 Recheck schema/error/lifecycle compatibility and advisories on upgrades, especially before Elysia 2.
 Measure removed repetition and total maintenance surface, including compatibility adapters;
 make no code-size or throughput claim without measurements.
+
+The completed migration removed 52 repeated per-handler actor calls. All TypeScript source in
+`apps/api/src` changed from 1,740 to 1,846 lines (+106) against the pre-migration revision:
+compatibility and explicit security policies offset route simplification. No total-size or throughput
+improvement is claimed. Completed checks are recorded in [release evidence](../release-evidence.md).
 
 ## Sources
 

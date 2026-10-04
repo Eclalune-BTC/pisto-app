@@ -5,14 +5,14 @@ source-owned React Native components, free Uniwind, Tailwind CSS 4, Better Auth,
 
 ## Styling and platform support
 
-This is not a direct installation of web shadcn/ui. `src/components/ui` owns the shared controls;
-`@rn-primitives/slot`, CVA and `cn` support composition and variants. React Native Reusables is a
-convention/reference, not a claim that its complete component registry is installed. NativeWind is
-not used. `src/global.css` owns tokens, and `metro.config.js` connects Tailwind to Uniwind.
+`src/components/ui` contains the shared controls installed from the React Native Reusables Uniwind
+registry and adapted for Pisto. The [design system](../../docs/design-system.md#installation-and-source-ownership)
+owns the installed families, source license and local adaptations; the entire registry is not installed.
+`src/global.css` owns neutral tokens, and `metro.config.js` connects Tailwind to Uniwind.
 
 Free Uniwind supports Expo Go; Tailwind 4 alone does not require a native build. A matching SDK,
 reachable API, authentication and device behavior still need verification. The full explanation,
-including the installed auth plugin's development origins and current Expo patch recommendations,
+including the installed auth plugin's development origins and Expo compatibility checks,
 is in [the frontend guide](../../docs/frontend-expo-ui.md#expo-go-versus-a-development-build).
 
 ## Setup

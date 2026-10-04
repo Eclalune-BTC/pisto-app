@@ -78,7 +78,7 @@ commands, queries, and failure behavior; applications compose those capabilities
   no generic plugin registry self-registers routes, tools, or permissions.
 - Structured screens remain fully usable when AI or voice is disabled. Assistant tools call the same
   authorized commands and queries.
-- Pisto keeps the ink/lime/cream palette. Screens use typography, spacing, alignment, dividers, and
+- Pisto uses the neutral RNR tokens in [the design system](../design-system.md). Screens use typography, spacing, alignment, dividers, and
   purposeful containment before cards. No glow, floating decorative cards, fake metrics, ornamental
   pills, or unowned buttons.
 - Shared React Native code owns semantics and responsive behavior. Platform adapters are allowed

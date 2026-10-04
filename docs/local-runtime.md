@@ -53,14 +53,17 @@ bun run db:check
 bun run auth:schema:check
 ```
 
-Run database checks only after verifying the local connection target. Local check/build/export
+Run integration tests only against a verified disposable local database; rollback and loopback guards
+do not establish isolation. Review the connection target before any database check. Local check/build/export
 success is not a hosted deployment, native binary, device test, or store release.
 
 `bun run smoke:local` exercises the real local sign-up/business/sale/replay/void/sign-out workflow.
 It creates explicitly named QA records, revokes its session, and retains its voided sale as evidence.
-Set `SMOKE_API_URL` and `SMOKE_WEB_ORIGIN` for nondefault local ports; see the exact current command
-in [local delivery evidence](release-evidence.md#validation). It refuses remote origins, redirects
-and configured HTTP proxies; it is not a hosted acceptance command.
+Use an API instance connected to a verified disposable local test database. Set `SMOKE_API_URL` to
+that instance and `SMOKE_WEB_ORIGIN` to its allowed browser origin for nondefault ports, then run
+`bun run smoke:local`. It refuses remote origins, redirects and configured HTTP proxies; those guards
+do not prove database isolation. Completed checks are recorded in
+[local delivery evidence](release-evidence.md#validation).
 
 `EXPO_PUBLIC_*` values become public bundle contents; never put credentials there. Changing the
 public API URL requires a new export. Keep `DATABASE_URL`, `BETTER_AUTH_SECRET`, private backups,
@@ -81,7 +84,7 @@ select a provider, authorize provisioning, or call for publishing the current br
 ### Routing and cookies
 
 A standard static server and reverse proxy can place the web files and API behind one HTTPS origin.
-Route `/v1`, `/v1/(.*)`, `/api/auth/(.*)`, `/health`, and `/ready` to the API before the SPA fallback.
+Route `/v1`, `/v1/(.*)`, `/api/auth`, `/api/auth/(.*)`, `/health`, and `/ready` to the API before the SPA fallback.
 The proxy must preserve original paths and query parameters; never inject routing-capture fields
 into strict application query schemas.
 

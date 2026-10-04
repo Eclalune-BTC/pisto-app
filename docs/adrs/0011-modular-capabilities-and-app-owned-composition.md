@@ -8,12 +8,12 @@
 
 ## Context
 
-Pisto is expected to expand from its approved sale/report slice into inventory, purchases, expenses,
-cash, customers, suppliers, team permissions, reports, and text/voice assistance. Adding each feature
+Pisto includes manual sales, inventory, expenses, cash, customers, receivables and operating reports.
+Purchases, suppliers, team management and text/voice assistance remain future work. Adding each feature
 as a route, card, button, or isolated service would produce a flat product, duplicate business rules,
 and make parallel delivery conflict-prone.
 
-The repository is currently a small monorepo with one universal Expo client, one Hono API, explicit
+The repository is currently a small monorepo with one universal Expo client, one Elysia API, explicit
 contract/auth/billing/database packages, and one PostgreSQL source of truth. There is no measured
 deployment, scale, reliability, or team-ownership reason to distribute product domains across
 microservices. There is also no stable set of third-party product modules that requires a runtime
@@ -74,15 +74,15 @@ pixel-identical shell.
 
 ## Validation
 
-- The first sale/report slice must demonstrate the capability contract across structured UI,
-  assistant proposal/confirmation, API contract, authorized domain command/query, persistence, and
-  audit without a generic plugin layer.
+- Manual capabilities demonstrate the contract across structured UI, API contracts, authorized
+  domain commands/queries, persistence and audit without a generic plugin layer. A future assistant
+  must reuse those boundaries and add explicit proposal/confirmation acceptance.
 - Responsive verification must confirm aligned destinations and product meaning on compact native,
   compact web, and wide web while allowing platform-specific chrome.
 - Descendant routes must preserve the selected parent destination, and web routes must expose correct
   links, one meaningful page heading, and named main/navigation landmarks as applicable.
-- An inventory slice must prove that a second capability composes through explicit commands/queries
-  and does not update sales-owned records or duplicate assistant logic.
+- Catalog and inventory continue to compose through explicit commands/queries without updating
+  sales-owned records. Future assistant tools must reuse those same owners.
 - Any proposed package, event bus, outbox, service, or new top-level destination must identify the
   concrete ownership, consumer, failure, scale, or discoverability pressure it solves.
 - Material changes receive independent architecture, authorization, failure-state, accessibility,

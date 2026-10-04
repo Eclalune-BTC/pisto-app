@@ -21,7 +21,7 @@ semantic document retrieval or variable-depth graph traversal.
 Use the accepted AI SDK 7 target family as a thin server-side model, structured-output, tool,
 approval, streaming and transcription boundary. Revalidate its APIs before implementation.
 Pin the exact patch and one initial provider adapter
-only after a compatibility spike proves the pinned versions on Bun/Hono/container and Expo web/iOS/
+only after a compatibility spike proves the pinned versions on Bun/Elysia/container and Expo web/iOS/
 Android. Keep stable task aliases in one validated server registry and keep provider credentials out of
 the Expo bundle.
 
@@ -68,7 +68,7 @@ The transcript is editable and follows the same confirmation path as typed text.
 
 ## Validation required before implementation promotion
 
-- exact-version Bun/Hono/container streaming and cancellation spike;
+- exact-version Bun/Elysia/container streaming and cancellation spike;
 - Expo web/iOS/Android stream and authentication spike;
 - provider capability, Spanish evaluation, latency, token, and cost comparison;
 - approval tamper/replay, authorization, idempotency, and transaction tests;
@@ -82,7 +82,7 @@ The transcript is editable and follows the same confirmation path as typed text.
 - [AI SDK provider management](https://ai-sdk.dev/docs/ai-sdk-core/provider-management)
 - [AI SDK tools and approvals](https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling)
 - [AI SDK Expo quickstart](https://ai-sdk.dev/docs/getting-started/expo)
-- [AI SDK Hono example](https://ai-sdk.dev/cookbook/api-servers/hono)
+- [Elysia AI SDK integration](https://elysiajs.com/integrations/ai-sdk)
 - [Expo SDK 57 fetch and streams](https://docs.expo.dev/versions/v57.0.0/sdk/expo/)
 - [PostgreSQL full-text search](https://www.postgresql.org/docs/18/textsearch.html)
 - [pgvector](https://github.com/pgvector/pgvector)

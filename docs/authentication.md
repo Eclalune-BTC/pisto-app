@@ -70,10 +70,11 @@ Server authorization and session expiry still apply.
 - Keep session lifetime and renewal explicit; revoke server sessions on security-sensitive account
   changes.
 - Better Auth rate-limit counters use the PostgreSQL-backed `rateLimit` model so protection is shared
-  across API instances. The implemented defaults are 100 requests per 60 seconds globally,
+  across API instances. The default is 100 requests per 60 seconds per resolved IP/path,
   3 per 10 seconds for email sign-in and sign-up, and 3 per 60 seconds for password-reset requests.
   Keep the limiter enabled and test sign-in, sign-up, reset, verification, and other abuse-prone
-  routes.
+  routes. Client-IP trust must satisfy [the security boundary](security.md#authentication-and-sessions)
+  before public traffic is accepted.
 - Avoid account enumeration: public messages should not reveal whether an email exists.
 
 ## Organization-backed business boundary
@@ -84,14 +85,14 @@ raw organization creation, deletion, invitations, member/role/team mutations, an
 active-organization selector is exposed. Invitations and role administration are not implemented.
 
 [ADR 0010](adrs/0010-organization-backed-business-tenancy.md) uses one organization identifier as
-Pisto's `businessId` to avoid a second membership system. Apply these rules before product records:
+Pisto's `businessId` to avoid a second membership system. Preserve these implemented boundaries:
 
 - restrict organization creation to the approved owner onboarding path and configured limits;
-- add the exact organization client plugin only with the truthful create/select UX;
+- keep the organization client aligned with the Pisto-owned create/select UX;
 - treat session `activeOrganizationId` as a selector and reload membership/action authorization on
   every protected request;
 - store currency, time zone, and financial state in typed Pisto domain tables, never auth metadata;
-- disable/intercept direct organization deletion before canonical business data exists; and
+- keep direct organization deletion blocked to preserve canonical business data; and
 - deny invitation/member flows until verified email delivery, acceptance, role permissions, rate
   limits, denial tests, and audit are approved and implemented.
 
@@ -126,8 +127,10 @@ bun run auth:schema:check
 bun run db:generate
 ```
 
-The first command writes reviewable generated output; the second compares that output with the
-repository schema. Run `db:generate` only for an intentional schema change, then review its SQL.
+The first command writes generated output for manual review. The second compares the installed
+Better Auth table/field definitions and required nullability with the Drizzle schema in process;
+it does not read that generated file or replace migration/index/type review. Run `db:generate` only
+for an intentional schema change, then review its SQL.
 
 PostgreSQL is the included cross-instance auth limiter. Redis is not required for this baseline; a
 secondary store is an optional future optimization for broader API limiting or cache workloads and

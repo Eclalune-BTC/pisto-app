@@ -16,8 +16,9 @@ and expense totals. It implements the frozen Expenses and cash contract in
 
 Currency is not a Pisto global and is not hardcoded to USD. The user selects the business operating
 currency and IANA time zone during business setup. `business_settings` remains authoritative for new
-records. Every account, expense, transfer, and movement snapshots the confirmed currency,
-minor-unit exponent, local date, local minute, time zone, and resolved instant.
+records. Accounts snapshot currency and minor-unit exponent. Expenses, transfers and movements also
+snapshot the confirmed local date, local minute, time zone and resolved occurrence instant; account
+creation/update timestamps are not occurrence snapshots.
 
 Financial commands carry the currency that the user reviewed. The server compares it with the fresh
 business setting and fails on a mismatch; it never converts or silently substitutes currency. The
@@ -141,8 +142,8 @@ The complete mounted surface is inventoried in [API and Elysia](../api-elysia.md
 
 ## Product surfaces and failure states
 
-The route-ready React Native features use shared web/native semantics and the existing ink/lime/cream
-tokens. Layout uses headings, spacing, dividers, and one owned primary action. It adds no glow,
+The mounted React Native features use shared web/native semantics and the neutral RNR tokens in
+[the design system](../design-system.md). Layout uses headings, spacing, dividers, and one owned primary action. It adds no glow,
 gradient, ornamental pill, fake metric, or feature-card directory.
 
 The screens model loading, successful empty, data, denied, unavailable, failed mutation, and
@@ -164,8 +165,7 @@ copy.
 
 ## Integration record
 
-Integration is complete. Every item the original checklist assigned to the integration owner is
-satisfied on the current branch:
+The current composition is:
 
 1. cash contracts are exported from `packages/contracts/src/index.ts`;
 2. the schema and repository are exported from `packages/db/src/index.ts`, and `cash_account`,
@@ -186,8 +186,8 @@ satisfied on the current branch:
 
 No temporary direct source imports remain; the API and UI consume the shared barrels.
 
-Responsive-web and physical-device evidence for these screens is not recorded here. Treat those as
-outstanding acceptance checks, not as completed gates.
+Bounded responsive-web checks are recorded in [browser evidence](../release-evidence.md#browser-evidence).
+Physical-device and complete accessibility acceptance remain pending.
 
 ## Evidence and non-goals
 

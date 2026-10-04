@@ -87,7 +87,7 @@ An additional real QueryClient regression first caches an authorized customer re
 refresh with 401/403, and verifies that the UI chooses denied despite retained cache data or a
 pending companion query. Separate network/502/503/504 cases retain the labelled stale result.
 
-Current local browser findings and the delayed real-request confirmation check are recorded in
+Bounded local browser findings and the lost-confirmation sale recovery check are recorded in
 [local delivery evidence](release-evidence.md#browser-evidence). New-sale review recovery is
 implemented under ADR 0018; other financial editors still need recovery beyond their mounted state.
 

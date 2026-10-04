@@ -191,7 +191,7 @@ Return to the documented desktop URLs when ending a temporary LAN session.
 The free Uniwind/Tailwind 4 stack is compatible with Expo Go. Expo Go must support the project's
 Expo SDK and included native-module versions; it is not a generic runtime for every Expo version.
 See [the full compatibility explanation](frontend-expo-ui.md#expo-go-versus-a-development-build)
-and the dated Expo patch recommendations before declaring a device accepted.
+and run the [dependency checks](frontend-expo-ui.md#dependency-checks) before declaring a device accepted.
 
 After the API is running and phone networking is configured, start Metro from `apps/app`:
 
@@ -217,7 +217,7 @@ The repository has an EAS development profile but has not installed `expo-dev-cl
 alone is not a built or installed app. The following is a one-time setup procedure, not work already
 executed by this documentation update.
 
-Resolve the coordinated Expo patch recommendations, review the manifest/lockfile changes, and set
+Resolve the current Expo compatibility findings, review any manifest/lockfile changes, and set
 up the platform toolchain first. In `apps/app`, with the pinned Bun on PATH:
 
 ```sh
@@ -253,7 +253,10 @@ separately in every native workflow.
 | `NODE_ENV` | Select development/test/production validation behavior |
 | `API_HOST`, `API_PORT` | Bind the Elysia service; defaults are `0.0.0.0:3001`; injected `PORT` wins |
 | `PORT` | Platform-injected listener port; overrides `API_PORT` when present |
-| `API_REQUEST_BODY_LIMIT_BYTES` | API request byte limit, 1,024 through 10,485,760 bytes; enforced in the listener and request policy |
+| `API_REQUEST_BODY_LIMIT_BYTES` | API request byte limit, 1,024 through 10,485,760 bytes; enforced by the request policy before parsing |
+| `PRODUCT_WRITES_ENABLED` | Set exactly `false` to pause business writes while preserving reads and authentication; defaults to `true` |
+| `PRODUCT_READ_LIMIT_PER_MINUTE` | Shared per-user business read budget; defaults to 300, range 1–10,000 |
+| `PRODUCT_WRITE_LIMIT_PER_MINUTE` | Shared per-user business write budget; defaults to 60, range 1–1,000 |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | Local Compose container only |
 | `DATABASE_URL` | PostgreSQL connection URL |
 | `DATABASE_MAX_CONNECTIONS` | Process pool size, 1 through 100 |
@@ -325,9 +328,8 @@ node ../../node_modules/expo/bin/cli install --check
 node ../../node_modules/expo/bin/cli export --platform all --output-dir ../../.cache/platform-export --max-workers 2
 ```
 
-On 2026-09-26, the online install check recommended ten newer patches. Do not hide that warning or
-mistake an all-platform export for a native build or Expo Go device test. The exact snapshot is in
-[the frontend guide](frontend-expo-ui.md#dependency-review-on-2026-09-26).
+Review current compatibility findings using [the frontend guide](frontend-expo-ui.md#dependency-checks).
+Do not hide warnings or mistake an all-platform export for a native build or Expo Go device test.
 
 If `doctor` reports that Docker is installed but the engine is unreachable, start Docker Desktop and
 run it again. The diagnostic does not start Docker for you.

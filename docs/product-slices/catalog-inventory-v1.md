@@ -134,8 +134,8 @@ distinct. A connection loss after a mutation becomes `uncertain`; the UI does no
 or claim failure/success. It directs the route controller to resolve the original operation by replay
 or refreshed canonical data. No fake products, balances, thresholds, or success states are rendered.
 
-The surfaces preserve Pisto's ink/lime/cream palette and use type, spacing, dividers, and direct row
-interaction. There are no decorative glows, gradients, floating cards, ornamental pills, fake
+The surfaces follow the neutral RNR tokens in [the design system](../design-system.md) and use type,
+spacing, dividers, and direct row interaction. There are no decorative glows, gradients, floating cards, ornamental pills, fake
 metrics, or unowned action buttons.
 
 ## Failure model
@@ -174,8 +174,8 @@ The current composition includes:
    exist; and
 5. the repository, migration, and PostgreSQL gates run in CI.
 
-Compact web, wide web, iOS, and Android verification for these screens is not recorded here. Treat
-it as an outstanding acceptance check, not a completed gate.
+Bounded compact/wide web checks are recorded in [browser evidence](../release-evidence.md#browser-evidence).
+They do not establish physical iOS/Android or complete accessibility acceptance; those gates remain pending.
 
 ## Non-goals
 

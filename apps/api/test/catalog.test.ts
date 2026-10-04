@@ -148,8 +148,8 @@ describe("catalog HTTP routes", () => {
   });
 
   // These pin the query-reading contract that predates the route consolidation.
-  // Hono's context.req.query() would keep the first duplicate and silently drop
-  // an empty-name parameter, flipping both of these results.
+  // Catalog queries keep the last duplicate and preserve an empty-name parameter
+  // for strict validation; the shared query policy must retain both behaviors.
   test("reads the last value of a duplicated query parameter", async () => {
     let received: unknown;
     const app = createApp(

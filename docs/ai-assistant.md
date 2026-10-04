@@ -126,9 +126,10 @@ role-management, or tool-discovery capabilities to the product model.
 
 ## Streaming and Expo compatibility gate
 
-AI SDK documents Hono streaming and an Expo client path, but the current Hono example uses the Node
-server adapter. That example does not establish compatibility with the current Elysia HTTP
-boundary. Before adopting the package:
+Elysia documents AI SDK integration through Web Standard response streams, and AI SDK documents an
+Expo client path. These references were reviewed for HTTP composition on 2026-10-03; current upstream
+examples can target newer APIs than the pinned Elysia 1.4.30 baseline. They do not establish Pisto
+compatibility or implemented assistant behavior. Before adopting the package:
 
 1. pin the exact AI SDK 7 and provider versions;
 2. run `streamText` through Pisto's Bun/Elysia server and container;
@@ -268,7 +269,7 @@ account setting.
 - [AI SDK transcription](https://ai-sdk.dev/docs/ai-sdk-core/transcription)
 - [AI SDK speech](https://ai-sdk.dev/docs/ai-sdk-core/speech)
 - [AI SDK ElevenLabs provider](https://ai-sdk.dev/providers/ai-sdk-providers/elevenlabs)
-- [AI SDK with Hono](https://ai-sdk.dev/cookbook/api-servers/hono)
+- [Elysia AI SDK integration](https://elysiajs.com/integrations/ai-sdk)
 - [Expo SDK 57 streaming fetch](https://docs.expo.dev/versions/v57.0.0/sdk/expo/)
 - [Expo Audio](https://docs.expo.dev/versions/v57.0.0/sdk/audio/)
 - [ElevenLabs single-use tokens](https://elevenlabs.io/docs/api-reference/tokens/create)

@@ -12,7 +12,7 @@ should update the affected guide and references. Accepted target architecture is
 | --- | --- | --- |
 | [0001](0001-bun-typescript-monorepo.md) | Accepted | Bun and TypeScript workspace with explicit package boundaries |
 | [0002](0002-expo-router-universal-client.md) | Accepted | Expo SDK 57 and Expo Router for Android, iOS, and web |
-| [0003](0003-hono-bun-api.md) | Superseded by 0019 | Original Hono API on Bun with transport-neutral contracts |
+| 0003 | Retired; replaced by [0019](0019-elysia-http-composition.md) | Original HTTP framework decision remains in Git history |
 | [0004](0004-postgresql-drizzle-migrations.md) | Accepted | PostgreSQL 18 and reviewed Drizzle migrations |
 | [0005](0005-better-auth.md) | Accepted; HTTP adapter updated by 0019 | Centralized Better Auth with API and Expo adapters |
 | [0006](0006-split-billing-channels.md) | Accepted | Polar web billing and RevenueCat/native store billing |

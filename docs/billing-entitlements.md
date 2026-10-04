@@ -162,9 +162,9 @@ an arbitrary provider product ID from the client.
 4. Browser navigates to Polar. Success return is UX only, not proof of payment.
 5. Polar sends a signed webhook. Server verifies the exact body and headers before trust.
 6. One transaction records the unique provider event and updates projections/entitlements.
-7. The current return screen refreshes `/v1/billing/entitlements` until authoritative access
-   changes. A client that also needs normalized Polar customer state may request
-   `/v1/billing/state`.
+7. The return screen checks `/v1/billing/entitlements` once on entry and offers an explicit refresh
+   action while access is not active; it does not poll automatically. A client that also needs
+   normalized Polar customer state may request `/v1/billing/state`.
 
 For an active organization scope, checkout may send that organization ID to Polar as
 `referenceId`, allowing the verified webhook projection to grant an organization entitlement. The

@@ -23,8 +23,8 @@ not establish the latest upstream releases or a passing current audit.
 
 The repository retains TypeScript 6.0.3 and the Expo-managed version family. Upstream versions and
 compatibility can change; run the upgrade audit when work is scoped rather than treating a historical
-registry snapshot as a current constraint. The dated Expo patch findings are in
-[the frontend guide](frontend-expo-ui.md#dependency-review-on-2026-09-26).
+registry snapshot as a current constraint. Follow the current compatibility workflow in
+[the frontend guide](frontend-expo-ui.md#dependency-checks).
 
 ## Dependency policy
 
@@ -71,9 +71,10 @@ Do not independently bump React Native/React outside the matrix Expo documents f
 - Read migration/release notes and keep `better-auth`, `@better-auth/expo`, and the `auth` CLI on
   the same synchronized version. The installed CLI package is `auth@1.7.1`; the lockfile exposes its
   `auth` and `better-auth` binaries.
-- Run `bun run auth:schema:generate` to produce reviewable CLI output, then
-  `bun run auth:schema:check` to compare it with the Drizzle-owned schema. Generate and review a
-  Drizzle migration for any intentional difference.
+- Run `bun run auth:schema:generate` for manual review of the CLI output. Separately,
+  `bun run auth:schema:check` compares installed Better Auth table/field definitions and required
+  nullability with the Drizzle schema; it does not read the generated file or replace type/index
+  review. Generate and review a Drizzle migration for any intentional schema difference.
 - Test existing sessions, new sign-in/sign-up, logout/revocation, native SecureStore, and origin/CSRF.
 - Preserve secret-rotation compatibility.
 
