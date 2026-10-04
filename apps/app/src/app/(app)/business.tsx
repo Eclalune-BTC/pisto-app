@@ -22,7 +22,6 @@ import { buildBusinessCommand } from "@/features/business/business-draft";
 import {
   BUSINESS_CURRENCIES,
   BUSINESS_TIME_ZONES,
-  isListedCurrency,
   isListedTimeZone,
   OTHER_OPTION,
 } from "@/features/business/business-options";

@@ -37,15 +37,8 @@ export const BUSINESS_TIME_ZONES = [
   "Europe/Madrid",
 ] as const;
 
-export type BusinessCurrency = (typeof BUSINESS_CURRENCIES)[number];
-export type BusinessTimeZone = (typeof BUSINESS_TIME_ZONES)[number];
-
 export const OTHER_OPTION = "other";
 
-export function isListedCurrency(value: string): value is BusinessCurrency {
-  return (BUSINESS_CURRENCIES as readonly string[]).includes(value);
-}
-
-export function isListedTimeZone(value: string): value is BusinessTimeZone {
+export function isListedTimeZone(value: string): value is (typeof BUSINESS_TIME_ZONES)[number] {
   return (BUSINESS_TIME_ZONES as readonly string[]).includes(value);
 }
