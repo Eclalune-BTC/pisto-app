@@ -6,9 +6,9 @@ import { useTranslation } from "react-i18next";
 import { FeatureBoundary } from "@/components/feature-boundary";
 import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { focusReturnTarget } from "@/lib/focus-return";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
-import { focusReturnTarget } from "../cash/focus-return";
 import {
   cashAccountQueryOptions,
   cashAccountsInfiniteOptions,

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { mutationPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "./api";
@@ -19,7 +20,6 @@ import {
 import { cashIssueMessages, cashMovementActionLabels } from "./copy";
 import { buildCashReversalCommand } from "./drafts";
 import { invalidateCashLedger } from "./invalidate";
-import { mutationPhase, withStableIdempotencyKey } from "./mutation-state";
 
 type CashMovementDetailProps = {
   /** Known when the movement is shown inside its own account. */

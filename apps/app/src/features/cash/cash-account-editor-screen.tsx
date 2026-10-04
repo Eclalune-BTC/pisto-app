@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
+import type { MutationPhase } from "@/lib/mutation-phase";
 import { CashOperationReview } from "./cash-operation-review";
 import { ChoiceList } from "./choice-list";
 import { cashAccountKindLabels } from "./copy";
@@ -26,7 +27,6 @@ import type { AccountDraftValues } from "./drafts";
 import { FormSection } from "./form-section";
 import { formatLocalOccurrence } from "./format";
 import { LocalDateTimeFields } from "./local-date-time-fields";
-import type { MutationPhase } from "./mutation-state";
 import { ChangedValue } from "./review-values";
 
 export type CashAccountEditorDraft = AccountDraftValues;

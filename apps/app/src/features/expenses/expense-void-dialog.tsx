@@ -5,17 +5,17 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field } from "@/components/ui/field";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { isLockedPhase, mutationPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "../cash/api";
-import { ConfirmCommandDialog } from "../cash/confirm-command-dialog";
 import { cashIssueMessages } from "../cash/copy";
 import { invalidateExpensesAndCash } from "../cash/invalidate";
 import { LocalDateTimeFields } from "../cash/local-date-time-fields";
-import { isLockedPhase, mutationPhase, withStableIdempotencyKey } from "../cash/mutation-state";
 import { buildVoidExpenseCommand, type VoidExpenseDraftValues } from "./drafts";
 import { expenseHref } from "./expense-history";
 
@@ -87,7 +87,8 @@ export function ExpenseVoidDialog({
   };
 
   return (
-    <ConfirmCommandDialog
+    <ConfirmDialog
+      uncertainDescription={t("cash.review.uncertainDescription")}
       confirmLabel={t("expenses.void.confirm")}
       description={t("expenses.void.description", {
         amount: formatMinorUnits(
@@ -130,6 +131,6 @@ export function ExpenseVoidDialog({
           timeError={errors.localTime}
         />
       </View>
-    </ConfirmCommandDialog>
+    </ConfirmDialog>
   );
 }

@@ -57,7 +57,7 @@ vi.mock("react-i18next", () => ({
 vi.mock("@/lib/notify", () => ({ notify: { success: fixture.notify } }));
 vi.mock("../cash/api", () => ({ cashApi: { expenses: {} } }));
 vi.mock("../cash/invalidate", () => ({ invalidateExpensesAndCash: fixture.invalidate }));
-vi.mock("../cash/confirm-command-dialog", () => ({ ConfirmCommandDialog: "confirm-dialog" }));
+vi.mock("@/components/ui/confirm-dialog", () => ({ ConfirmDialog: "confirm-dialog" }));
 
 import { Field } from "@/components/ui/field";
 import { elements } from "../../../test-support/element-tree";

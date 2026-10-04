@@ -1,6 +1,8 @@
-import { CircleAlert } from "lucide-react-native";
+import { CircleAlert, TriangleAlert } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { Alert, AlertDescription } from "./alert";
+import { useTranslation } from "react-i18next";
+import { useWindowDimensions } from "react-native";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -9,64 +11,98 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "./alert-dialog";
-import { Button } from "./button";
-import { Text } from "./text";
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { returnFocusOnClose } from "@/lib/focus-return";
+import { isLockedPhase, type MutationPhase } from "@/lib/mutation-phase";
+
+const DIALOG_WIDTH = 448;
 
 type ConfirmDialogProps = {
-  cancelLabel: string;
   children?: ReactNode;
   confirmLabel: string;
   description: string;
   destructive?: boolean;
-  /** Server or uncertain-outcome message; the dialog stays open so the same command can be retried. */
-  error?: string;
+  /**
+   * Access or freshness was lost while the dialog was open. It blocks a new decision only: the
+   * same command can always be sent again, because its key cannot apply it twice and the server
+   * authorizes it afresh, and a locked dialog without that action would trap the user.
+   */
+  disabled?: boolean;
+  /** Message of a definitive failure; the dialog stays open so the command can be corrected. */
+  errorMessage?: string;
+  onCancel: () => void;
+  /** Sends the command, or the same command again after an uncertain outcome. */
   onConfirm: () => void;
-  onOpenChange: (open: boolean) => void;
   open: boolean;
-  pending: boolean;
+  phase: MutationPhase;
+  /** The control that opened the dialog; focus returns to it when the dialog closes. */
+  returnFocus?: HTMLElement | null;
   title: string;
+  /** What the user should know when the outcome is unknown, phrased for this command. */
+  uncertainDescription: string;
 };
 
 /**
- * Explicit confirmation for a consequential command. It cannot be dismissed while the command is
- * pending, and confirming does not close it: the caller closes it after a definitive result.
+ * Confirms a consequential command in place. It stays locked while the command is pending and
+ * after an uncertain outcome: dismissing it then would discard the only key that can settle it.
  */
 export function ConfirmDialog({
-  cancelLabel,
   children,
   confirmLabel,
   description,
   destructive = false,
-  error,
+  disabled = false,
+  errorMessage,
+  onCancel,
   onConfirm,
-  onOpenChange,
   open,
-  pending,
+  phase,
+  returnFocus,
   title,
+  uncertainDescription,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
+  const { width } = useWindowDimensions();
+  const locked = isLockedPhase(phase);
   return (
-    <AlertDialog open={open} onOpenChange={(next) => (pending ? undefined : onOpenChange(next))}>
-      <AlertDialogContent>
+    <AlertDialog
+      onOpenChange={(next) => {
+        if (!next && !locked) onCancel();
+      }}
+      open={open}
+    >
+      {/* The shared content ignores its width classes on the web; size it like the shared Sheet. */}
+      <AlertDialogContent
+        onCloseAutoFocus={returnFocusOnClose(returnFocus)}
+        style={{ width: Math.min(DIALOG_WIDTH, width - 32) }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         {children}
-        {error ? (
+        {phase === "uncertain" ? (
+          <Alert icon={TriangleAlert} variant="warning">
+            <AlertTitle>{t("common.uncertainTitle")}</AlertTitle>
+            <AlertDescription>{uncertainDescription}</AlertDescription>
+          </Alert>
+        ) : phase === "failed" && errorMessage ? (
           <Alert icon={CircleAlert} variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{errorMessage}</AlertDescription>
           </Alert>
         ) : null}
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>
-            <Text>{cancelLabel}</Text>
+          <AlertDialogCancel className={locked ? "opacity-50" : undefined} disabled={locked}>
+            <Text>{t("common.cancel")}</Text>
           </AlertDialogCancel>
           <Button
-            label={confirmLabel}
-            loading={pending}
+            disabled={disabled && phase !== "uncertain"}
+            label={phase === "uncertain" ? t("common.retrySameConfirmation") : confirmLabel}
+            loading={phase === "pending"}
             onPress={onConfirm}
-            variant={destructive ? "destructive" : "default"}
+            variant={destructive && phase !== "uncertain" ? "destructive" : "default"}
           />
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import { formatLocalizedDateTime } from "@/i18n/format";
 import { ApiClientError } from "@/lib/api-error";
 import { formatMinorUnits } from "@/lib/money";
+import { isLockedPhase, mutationPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
 import {
   buildCashAccountCommand,
   buildCashAdjustmentCommand,
@@ -10,7 +11,6 @@ import {
   buildCashTransferCommand,
 } from "./drafts";
 import { formatLocalOccurrence } from "./format";
-import { isLockedPhase, mutationPhase, withStableIdempotencyKey } from "./mutation-state";
 
 const account = (overrides: Partial<CashAccount> = {}): CashAccount => ({
   allowNegativeBalance: false,

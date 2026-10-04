@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 
-import { focusReturnTarget, returnFocusOnClose } from "./focus-return";
+import { focusReturnTarget, returnFocusOnClose } from "@/lib/focus-return";
 
 class FakeElement {
   constructor(private readonly menuTriggerId: string | null = null) {}

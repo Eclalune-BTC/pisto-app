@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useWindowDimensions, View } from "react-native";
 import { DescriptionList } from "@/components/layout/description-list";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -15,10 +16,9 @@ import {
 } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
-import { ConfirmCommandDialog } from "./confirm-command-dialog";
-import { returnFocusOnClose } from "./focus-return";
+import { returnFocusOnClose } from "@/lib/focus-return";
+import { isLockedPhase, type MutationPhase } from "@/lib/mutation-phase";
 import { LocalDateTimeFields } from "./local-date-time-fields";
-import { isLockedPhase, type MutationPhase } from "./mutation-state";
 
 const DIALOG_WIDTH = 520;
 
@@ -155,7 +155,8 @@ export function CashReversalDialog({
   const { t } = useTranslation();
   const locked = isLockedPhase(phase);
   return (
-    <ConfirmCommandDialog
+    <ConfirmDialog
+      uncertainDescription={t("cash.review.uncertainDescription")}
       confirmLabel={t("cash.reversal.confirm")}
       description={t("cash.reversal.description", { amount })}
       destructive
@@ -187,6 +188,6 @@ export function CashReversalDialog({
           timeError={errors.localTime}
         />
       </View>
-    </ConfirmCommandDialog>
+    </ConfirmDialog>
   );
 }

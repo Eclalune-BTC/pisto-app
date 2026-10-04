@@ -6,7 +6,7 @@ import { type DescriptionItem, DescriptionList } from "@/components/layout/descr
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import type { MutationPhase } from "./mutation-state";
+import type { MutationPhase } from "@/lib/mutation-phase";
 
 type CashOperationReviewProps = {
   confirmLabel: string;

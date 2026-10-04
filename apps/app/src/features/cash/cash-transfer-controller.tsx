@@ -13,6 +13,7 @@ import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Page } from "@/components/page";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { isLockedPhase, mutationPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { queryHasStaleData } from "@/lib/query-state";
@@ -26,7 +27,6 @@ import {
 import { cashBoundaryCopy, cashIssueMessages } from "./copy";
 import { buildCashTransferCommand } from "./drafts";
 import { invalidateCashLedger } from "./invalidate";
-import { isLockedPhase, mutationPhase } from "./mutation-state";
 import {
   activeCashAccountsInfiniteOptions,
   cashAccountQueryOptions,

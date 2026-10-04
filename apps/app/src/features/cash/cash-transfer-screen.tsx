@@ -11,6 +11,7 @@ import { Field } from "@/components/ui/field";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
+import type { MutationPhase } from "@/lib/mutation-phase";
 import { AccountBalanceHint } from "./account-balance-hint";
 import { CashOperationReview } from "./cash-operation-review";
 import type { TransferDraftValues } from "./drafts";
@@ -19,7 +20,6 @@ import { FormSection } from "./form-section";
 import { formatLocalOccurrence } from "./format";
 import { type CursorPage, LoadMoreButton } from "./load-more-button";
 import { LocalDateTimeFields } from "./local-date-time-fields";
-import type { MutationPhase } from "./mutation-state";
 import { MutedValue } from "./review-values";
 
 export type CashTransferDraft = TransferDraftValues;

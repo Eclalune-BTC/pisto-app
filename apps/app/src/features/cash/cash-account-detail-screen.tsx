@@ -10,9 +10,10 @@ import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Text } from "@/components/ui/text";
+import type { MutationPhase } from "@/lib/mutation-phase";
 import { CashMovementList } from "./cash-movement-list";
-import { ConfirmCommandDialog } from "./confirm-command-dialog";
 import {
   cashAccountKindLabels,
   cashAccountStatusLabels,
@@ -21,7 +22,6 @@ import {
 } from "./copy";
 import { HeaderActions } from "./header-actions";
 import { type CursorPage, LoadMoreButton } from "./load-more-button";
-import type { MutationPhase } from "./mutation-state";
 
 export type CashArchiveState = {
   errorMessage?: string;
@@ -185,7 +185,8 @@ export function CashAccountDetailScreen({
         </FeatureBoundary>
       </Section>
 
-      <ConfirmCommandDialog
+      <ConfirmDialog
+        uncertainDescription={t("cash.review.uncertainDescription")}
         confirmLabel={t("cash.accountDetail.archive")}
         description={t("cash.archive.description", {
           balance: formatMoney(

@@ -17,16 +17,16 @@ vi.mock("@/components/ui/select-field", () => ({ SelectField: () => null }));
 import { DescriptionList } from "@/components/layout/description-list";
 import { AlertDialog, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field } from "@/components/ui/field";
 import { i18n } from "@/i18n/config";
+import type { MutationPhase } from "@/lib/mutation-phase";
 import { elements } from "../../../test-support/element-tree";
 import { CashAccountEditorScreen } from "./cash-account-editor-screen";
 import { CashAdjustmentScreen } from "./cash-adjustment-screen";
 import { CashMovementDialog, CashReversalDialog } from "./cash-movement-dialogs";
 import { CashTransferScreen } from "./cash-transfer-screen";
-import { ConfirmCommandDialog } from "./confirm-command-dialog";
 import { LocalDateTimeFields } from "./local-date-time-fields";
-import type { MutationPhase } from "./mutation-state";
 
 const t = i18n.t;
 const noop = () => undefined;
@@ -53,11 +53,8 @@ function textOf(node: unknown): string {
   return "";
 }
 
-function dialog(
-  phase: MutationPhase,
-  changes: Partial<ComponentProps<typeof ConfirmCommandDialog>> = {},
-) {
-  const props: ComponentProps<typeof ConfirmCommandDialog> = {
+function dialog(phase: MutationPhase, changes: Partial<ComponentProps<typeof ConfirmDialog>> = {}) {
+  const props: ComponentProps<typeof ConfirmDialog> = {
     confirmLabel: "Revertir ajuste",
     description: "Effect",
     destructive: true,
@@ -67,9 +64,10 @@ function dialog(
     open: true,
     phase,
     title: "Title",
+    uncertainDescription: t("cash.review.uncertainDescription"),
     ...changes,
   };
-  const { tree } = capture(ConfirmCommandDialog, props);
+  const { tree } = capture(ConfirmDialog, props);
   const [root] = elements<ComponentProps<typeof AlertDialog>>([tree], AlertDialog);
   const [cancel] = elements<ComponentProps<typeof AlertDialogCancel>>(tree, AlertDialogCancel);
   const [confirm] = elements<ComponentProps<typeof Button>>(tree, Button);
