@@ -64,7 +64,7 @@ const http = axios.create({
   validateStatus: () => true,
 });
 
-function pathWithQuery(path: `/${string}`, query: Record<string, unknown>): `/${string}` {
+export function pathWithQuery(path: `/${string}`, query: Record<string, unknown>): `/${string}` {
   const search = Object.entries(query)
     .filter(([, value]) => value !== undefined)
     .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
@@ -72,7 +72,7 @@ function pathWithQuery(path: `/${string}`, query: Record<string, unknown>): `/${
   return search ? `${path}?${search}` : path;
 }
 
-function parseRequestPayload<T>(schema: ZodType<T>, payload: unknown): T {
+export function parseRequestPayload<T>(schema: ZodType<T>, payload: unknown): T {
   const result = schema.safeParse(payload);
   if (!result.success) {
     throw new ApiClientError("The request payload is invalid.", 400, "VALIDATION_ERROR");
