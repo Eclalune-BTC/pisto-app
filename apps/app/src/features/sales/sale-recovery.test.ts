@@ -302,6 +302,16 @@ describe("new sale durable recovery screen", () => {
       expect(fixture.api.dismiss).not.toHaveBeenCalled();
     },
   );
+  test("starts at the business's current moment once and lets the person clear it", () => {
+    const fields = elements<ComponentProps<typeof SaleDraftFields>>(render(), SaleDraftFields)[0];
+    if (!fields) throw new Error("Missing draft");
+    expect(fields.props.values.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(fields.props.values.time).toMatch(/^\d{2}:\d{2}$/);
+    fields.props.onChange("date", "");
+    fields.props.onChange("time", "");
+    const cleared = elements<ComponentProps<typeof SaleDraftFields>>(render(), SaleDraftFields)[0];
+    expect(cleared?.props.values).toMatchObject({ date: "", time: "" });
+  });
   test("does not show a fresh form before recovery has a result", () => {
     fixture.recovery.data = undefined;
     fixture.recovery.isPending = true;

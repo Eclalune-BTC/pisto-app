@@ -23,7 +23,10 @@ type SaleOccurrence = {
 export function SaleStatusBadge({ status }: { status: Sale["status"] }) {
   const { t } = useTranslation();
   return (
-    <Badge variant={status === "voided" ? "secondary" : "outline"}>
+    <Badge
+      className={status === "voided" ? "bg-foreground/15" : undefined}
+      variant={status === "voided" ? "secondary" : "outline"}
+    >
       <Text>{status === "voided" ? t("sales.voided") : t("sales.posted")}</Text>
     </Badge>
   );

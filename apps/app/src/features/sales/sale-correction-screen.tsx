@@ -19,6 +19,7 @@ import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { api, isAmbiguousMutationError } from "@/lib/api-client";
+import { toDecimalString } from "@/lib/money";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
@@ -34,7 +35,7 @@ import {
   saleDraftErrors,
   validateSaleDraft,
 } from "./sale-draft";
-import { SaleDraftFields } from "./sale-draft-fields";
+import { firstInvalidField, type SaleDraftFieldRefs, SaleDraftFields } from "./sale-draft-fields";
 import { saleAmount, saleDescriptionItem, saleFactItems, saleMoment } from "./sale-facts";
 import { canCorrectSale, readState } from "./state";
 
@@ -64,10 +65,16 @@ export default function SaleCorrectionScreen() {
   const [draftErrors, setDraftErrors] = useState<SaleDraftErrors>({});
   const [review, setReview] = useState<CorrectionReview | null>(null);
   const mounted = useRef(true);
-  const confirmRef = useRef<View>(null);
+  const editRef = useRef<View>(null);
   const reasonRef = useRef<TextInput>(null);
-  // A step change replaces the content under the focused control, so focus follows the step.
-  const pendingFocus = useRef<"confirm" | "reason" | null>(null);
+  const fieldRefs: SaleDraftFieldRefs = {
+    amount: useRef<TextInput>(null),
+    time: useRef<TextInput>(null),
+    description: useRef<TextInput>(null),
+  };
+  // A step change or a rejected draft moves focus to where the person continues. A review
+  // focuses Editar, never the irreversible commit, so a repeated key press cannot correct.
+  const pendingFocus = useRef<"edit" | "reason" | keyof SaleDraftValues | null>(null);
 
   useEffect(() => {
     mounted.current = true;
@@ -76,9 +83,11 @@ export default function SaleCorrectionScreen() {
     };
   }, []);
   useEffect(() => {
-    if (pendingFocus.current === "confirm") confirmRef.current?.focus();
-    if (pendingFocus.current === "reason") reasonRef.current?.focus();
+    const target = pendingFocus.current;
     pendingFocus.current = null;
+    if (target === "edit") editRef.current?.focus();
+    else if (target === "reason") reasonRef.current?.focus();
+    else if (target && target !== "date") fieldRefs[target].current?.focus();
   });
 
   const saleHref = (id: string) =>
@@ -213,7 +222,10 @@ export default function SaleCorrectionScreen() {
         ? t("sales.correction.reasonValidation")
         : undefined;
     setReasonError(nextReasonError);
-    if (nextReasonError) return;
+    if (nextReasonError) {
+      pendingFocus.current = "reason";
+      return;
+    }
 
     if (mode === "void") {
       setReview({
@@ -223,14 +235,17 @@ export default function SaleCorrectionScreen() {
         saleId: sale.id,
       });
       correction.reset();
-      pendingFocus.current = "confirm";
+      pendingFocus.current = "edit";
       return;
     }
 
     // The server posts the replacement with the business's current currency and time zone.
     const validation = validateSaleDraft(draft, business.currencyMinorUnitDigits);
     setDraftErrors(saleDraftErrors(validation.issues, business.currencyMinorUnitDigits, t));
-    if (!validation.draft) return;
+    if (!validation.draft) {
+      pendingFocus.current = firstInvalidField(validation.issues) ?? null;
+      return;
+    }
     setReview({
       businessId: business.id,
       command: {
@@ -242,7 +257,22 @@ export default function SaleCorrectionScreen() {
       saleId: sale.id,
     });
     correction.reset();
-    pendingFocus.current = "confirm";
+    pendingFocus.current = "edit";
+  };
+  const chooseMode = (next: CorrectionMode) => {
+    setMode(next);
+    // Most replacements fix one value, so an untouched replacement starts from the original
+    // sale. Its amount is only reused when the business still records in the same currency.
+    if (next !== "replacement" || Object.values(draft).some(Boolean)) return;
+    const sameMoney =
+      sale.currency === business.currency &&
+      sale.currencyMinorUnitDigits === business.currencyMinorUnitDigits;
+    setDraft({
+      amount: sameMoney ? toDecimalString(sale.grossMinorUnits, sale.currencyMinorUnitDigits) : "",
+      date: sale.occurredLocalDate,
+      time: sale.occurredLocalTime,
+      description: sale.description ?? "",
+    });
   };
 
   const original = (
@@ -348,6 +378,7 @@ export default function SaleCorrectionScreen() {
                 correction.reset();
                 pendingFocus.current = "reason";
               }}
+              ref={editRef}
               variant="outline"
             />
           ) : null}
@@ -365,7 +396,6 @@ export default function SaleCorrectionScreen() {
               if (correction.isPending || correction.isSuccess) return;
               if (!isStale || ambiguousFailure) correction.mutate(review);
             }}
-            ref={confirmRef}
             variant={review.kind === "void" ? "destructive" : "default"}
           />
         </ActionBar>
@@ -383,7 +413,7 @@ export default function SaleCorrectionScreen() {
       {original}
       <Section title={t("sales.correction.details")}>
         <View className="gap-5">
-          <CorrectionModeField onChange={setMode} value={mode} />
+          <CorrectionModeField onChange={chooseMode} value={mode} />
           <Field
             error={reasonError}
             label={t("sales.correction.reason")}
@@ -404,6 +434,7 @@ export default function SaleCorrectionScreen() {
             currency={business.currency}
             currencyMinorUnitDigits={business.currencyMinorUnitDigits}
             errors={draftErrors}
+            fieldRefs={fieldRefs}
             onChange={(field, value) => setDraft((current) => ({ ...current, [field]: value }))}
             values={draft}
           />

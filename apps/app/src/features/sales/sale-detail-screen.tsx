@@ -77,6 +77,7 @@ function CorrectionNotice({ sale, t }: { sale: Sale; t: TFunction }) {
         ) : undefined
       }
       icon={Info}
+      role="note"
     >
       <AlertDescription>
         {correction.replacementSaleId === sale.id

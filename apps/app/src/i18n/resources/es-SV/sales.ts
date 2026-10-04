@@ -107,7 +107,8 @@ export const sales = {
     reasonPlaceholder: "Ej. Se registró dos veces",
     reasonValidation: "Escribe un motivo de 2 a 240 caracteres.",
     replacement: "Venta de reemplazo",
-    replacementHint: "La fecha y la hora pueden ser distintas de las de la venta original.",
+    replacementHint:
+      "Empieza con los datos de la venta original; cambia los que haya que corregir.",
     originalDescription: "Descripción original",
     newDescription: "Nueva descripción",
     review: "Revisar corrección",

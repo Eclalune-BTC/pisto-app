@@ -31,7 +31,7 @@ import {
   saleDraftErrors,
   validateSaleDraft,
 } from "./sale-draft";
-import { SaleDraftFields } from "./sale-draft-fields";
+import { firstInvalidField, type SaleDraftFieldRefs, SaleDraftFields } from "./sale-draft-fields";
 import { saleAmount, saleDescriptionItem, saleMoment } from "./sale-facts";
 import { readState } from "./state";
 
@@ -102,14 +102,25 @@ export function SaleReviewScreen({
   const reviewKey = saleQueryKeys.review(business.id);
   const recovery = useQuery(saleReviewQueryOptions(business.id));
   const review = recovery.data?.review;
-  const [draft, setDraft] = useState<SaleDraftValues>(emptySaleDraft);
+  // A new draft starts at the business's current local moment, once; clearing a field later
+  // must not refill it while the person is editing.
+  const freshDraft = (): SaleDraftValues => ({
+    ...emptySaleDraft,
+    ...currentLocalDateTime(business.timeZone),
+  });
+  const [draft, setDraft] = useState<SaleDraftValues>(freshDraft);
   const [errors, setErrors] = useState<SaleDraftErrors>({});
   const acting = useRef(false);
   const mounted = useRef(true);
-  const confirmRef = useRef<View>(null);
-  const amountRef = useRef<TextInput>(null);
-  // A step change replaces the content under the focused control, so focus follows the step.
-  const pendingFocus = useRef<"confirm" | "amount" | null>(null);
+  const editRef = useRef<View>(null);
+  const fieldRefs: SaleDraftFieldRefs = {
+    amount: useRef<TextInput>(null),
+    time: useRef<TextInput>(null),
+    description: useRef<TextInput>(null),
+  };
+  // A step change or a rejected draft moves focus to where the person continues; a prepared
+  // review focuses Editar rather than the commit, so a repeated key press cannot post the sale.
+  const pendingFocus = useRef<"edit" | keyof SaleDraftValues | null>(null);
 
   useEffect(() => {
     mounted.current = true;
@@ -118,15 +129,11 @@ export function SaleReviewScreen({
     };
   }, []);
   useEffect(() => {
-    if (pendingFocus.current === "confirm") confirmRef.current?.focus();
-    if (pendingFocus.current === "amount") amountRef.current?.focus();
+    const target = pendingFocus.current;
     pendingFocus.current = null;
+    if (target === "edit") editRef.current?.focus();
+    else if (target && target !== "date") fieldRefs[target].current?.focus();
   });
-  useEffect(() => {
-    if (!draft.date && !draft.time) {
-      setDraft((previous) => ({ ...previous, ...currentLocalDateTime(business.timeZone) }));
-    }
-  }, [business, draft.date, draft.time]);
 
   const refresh = () => client.invalidateQueries({ queryKey: reviewKey });
   const beforeAction = () => client.cancelQueries({ queryKey: reviewKey });
@@ -152,7 +159,7 @@ export function SaleReviewScreen({
       client.setQueryData(reviewKey, result);
       confirmation.reset();
       dismissal.reset();
-      pendingFocus.current = "confirm";
+      pendingFocus.current = "edit";
     },
     onError: refresh,
     onSettled: afterAction,
@@ -195,7 +202,7 @@ export function SaleReviewScreen({
               time: selected.command.occurredLocalTime,
               description: selected.command.description ?? "",
             }
-          : emptySaleDraft,
+          : freshDraft(),
       );
       setErrors({});
       preparation.reset();
@@ -247,8 +254,11 @@ export function SaleReviewScreen({
     const validation = validateSaleDraft(draft, business.currencyMinorUnitDigits);
     setErrors(saleDraftErrors(validation.issues, business.currencyMinorUnitDigits, t));
     const reviewedDraft = validation.draft;
-    if (reviewedDraft)
-      act(() => preparation.mutate({ idempotencyKey: Crypto.randomUUID(), ...reviewedDraft }));
+    if (!reviewedDraft) {
+      pendingFocus.current = firstInvalidField(validation.issues) ?? null;
+      return;
+    }
+    act(() => preparation.mutate({ idempotencyKey: Crypto.randomUUID(), ...reviewedDraft }));
   };
   const confirmationError = review?.saleId ? null : confirmation.error;
   const actionError = dismissal.error ?? confirmationError;
@@ -381,6 +391,7 @@ export function SaleReviewScreen({
                   label={t("sales.edit")}
                   loading={dismissing(true)}
                   onPress={() => act(() => dismissal.mutate({ review, edit: true }))}
+                  ref={editRef}
                   variant="outline"
                 />
                 <Button
@@ -394,7 +405,6 @@ export function SaleReviewScreen({
                   onPress={() => {
                     if (!settingsChanged) act(() => confirmation.mutate(review.id));
                   }}
-                  ref={confirmRef}
                 />
               </ActionBar>
             </>
@@ -403,10 +413,10 @@ export function SaleReviewScreen({
       ) : recovery.data && !contextChanged ? (
         <>
           <SaleDraftFields
-            amountRef={amountRef}
             currency={business.currency}
             currencyMinorUnitDigits={business.currencyMinorUnitDigits}
             errors={errors}
+            fieldRefs={fieldRefs}
             onChange={(field, value) => setDraft((previous) => ({ ...previous, [field]: value }))}
             values={draft}
           />

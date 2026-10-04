@@ -106,9 +106,11 @@ import { StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { elements } from "../../../test-support/element-tree";
+import { CorrectionModeField } from "./correction-mode-field";
 import { SalesRouteState } from "./route-state";
 import SaleCorrectionScreen from "./sale-correction-screen";
 import SaleDetailScreen from "./sale-detail-screen";
+import { SaleDraftFields } from "./sale-draft-fields";
 
 function query(data: unknown) {
   return {
@@ -419,6 +421,58 @@ describe("confirmed sale corrections", () => {
   test("names the sale in the breadcrumb once it has loaded", () => {
     render(SaleDetailScreen);
     expect(fixture.routeLabel).toHaveBeenCalledWith("/operate/sales/[saleId]", "$5.00");
+  });
+});
+
+describe("correction editor", () => {
+  function chooseMode(mode: "void" | "replacement") {
+    const field = elements<ComponentProps<typeof CorrectionModeField>>(
+      render(SaleCorrectionScreen),
+      CorrectionModeField,
+    )[0];
+    if (!field) throw new Error("Missing correction mode");
+    field.props.onChange(mode);
+  }
+  function draftFields() {
+    return elements<ComponentProps<typeof SaleDraftFields>>(
+      render(SaleCorrectionScreen),
+      SaleDraftFields,
+    )[0];
+  }
+
+  test("starts an untouched replacement from the original sale and keeps later edits", () => {
+    chooseMode("replacement");
+    expect(draftFields()?.props.values).toEqual({
+      amount: "5.00",
+      date: "2026-09-10",
+      time: "12:00",
+      description: "",
+    });
+    draftFields()?.props.onChange("amount", "4.50");
+    chooseMode("void");
+    chooseMode("replacement");
+    expect(draftFields()?.props.values.amount).toBe("4.50");
+  });
+
+  test("leaves the amount empty when the business now records another currency", () => {
+    const businesses = fixture.queries.businesses;
+    if (!businesses) throw new Error("Missing business fixture");
+    (businesses.data as { business: { currency: string } }).business.currency = "EUR";
+    chooseMode("replacement");
+    expect(draftFields()?.props.values).toMatchObject({ amount: "", date: "2026-09-10" });
+  });
+
+  test("puts focus on Editar, never on the irreversible confirmation", () => {
+    const reason = elements<ComponentProps<typeof Field>>(render(SaleCorrectionScreen), Field).find(
+      ({ props }) => props.label === "sales.correction.reason",
+    );
+    reason?.props.onChangeText?.("Wrong sale");
+    press(button(render(SaleCorrectionScreen), ({ label }) => label === "sales.correction.review"));
+    const tree = render(SaleCorrectionScreen);
+    expect(button(tree, ({ label }) => label === "sales.edit").ref).toBeDefined();
+    expect(
+      button(tree, ({ label }) => label === "sales.correction.confirmVoid").ref,
+    ).toBeUndefined();
   });
 });
 

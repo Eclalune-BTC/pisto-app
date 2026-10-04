@@ -54,7 +54,7 @@ export function SalesHistory({
     () => [
       {
         id: "date",
-        header: t("dataTable.columns.date"),
+        header: t("sales.fields.moment"),
         meta: { primary: true },
         cell: ({ row: { original } }) => (
           <Text className="min-w-32 text-[13px] tabular-nums" numberOfLines={1}>

@@ -1,27 +1,37 @@
-import type { Ref } from "react";
+import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { type TextInput, View } from "react-native";
 import { DateField } from "@/components/ui/date-field";
 import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
-import type { SaleDraftErrors, SaleDraftValues } from "./sale-draft";
+import type { SaleDraftErrors, SaleDraftIssues, SaleDraftValues } from "./sale-draft";
+
+/** Inputs that can take focus; the shared date field does not expose one. */
+export type SaleDraftFieldRefs = Record<
+  Exclude<keyof SaleDraftValues, "date">,
+  RefObject<TextInput | null>
+>;
+
+/** The first field a person has to fix, in the order the form shows them. */
+export function firstInvalidField(issues: SaleDraftIssues): keyof SaleDraftValues | undefined {
+  return (["amount", "date", "time", "description"] as const).find((field) => issues[field]);
+}
 
 type SaleDraftFieldsProps = {
-  /** Receives focus when the person returns from a review to edit the values. */
-  amountRef?: Ref<TextInput>;
   currency: string;
   currencyMinorUnitDigits: number;
   errors: SaleDraftErrors;
+  fieldRefs: SaleDraftFieldRefs;
   onChange: (field: keyof SaleDraftValues, value: string) => void;
   values: SaleDraftValues;
 };
 
 /** Total with its currency, the business-local moment, and an optional note. */
 export function SaleDraftFields({
-  amountRef,
   currency,
   currencyMinorUnitDigits,
   errors,
+  fieldRefs,
   onChange,
   values,
 }: SaleDraftFieldsProps) {
@@ -36,7 +46,7 @@ export function SaleDraftFields({
         label={t("sales.fields.total")}
         onChangeText={(value) => onChange("amount", value)}
         placeholder={(0).toFixed(currencyMinorUnitDigits)}
-        ref={amountRef}
+        ref={fieldRefs.amount}
         trailing={<Text className="font-ui text-sm text-muted-foreground">{currency}</Text>}
         value={values.amount}
       />
@@ -60,6 +70,7 @@ export function SaleDraftFields({
               maxLength={5}
               onChangeText={(value) => onChange("time", value)}
               placeholder={t("sales.fields.timePlaceholder")}
+              ref={fieldRefs.time}
               value={values.time}
             />
           </View>
@@ -74,6 +85,7 @@ export function SaleDraftFields({
         maxLength={240}
         onChangeText={(value) => onChange("description", value)}
         placeholder={t("sales.fields.descriptionPlaceholder")}
+        ref={fieldRefs.description}
         value={values.description}
       />
     </View>
