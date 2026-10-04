@@ -51,11 +51,7 @@ function TooltipContent({
                   "bg-primary z-50 rounded-md px-3 py-2 sm:py-1.5",
                   Platform.select({
                     web: cn(
-                      "animate-in fade-in-0 zoom-in-95 origin-(--radix-tooltip-content-transform-origin) w-fit text-balance",
-                      side === "bottom" && "slide-in-from-top-2",
-                      side === "left" && "slide-in-from-right-2",
-                      side === "right" && "slide-in-from-left-2",
-                      side === "top" && "slide-in-from-bottom-2",
+                      "pisto-enter-pop origin-(--radix-tooltip-content-transform-origin) w-fit text-balance",
                     ),
                   }),
                   className,

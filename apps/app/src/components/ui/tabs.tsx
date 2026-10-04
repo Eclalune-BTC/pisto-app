@@ -13,7 +13,7 @@ function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimi
   return (
     <TabsPrimitive.List
       className={cn(
-        "bg-muted flex min-h-11 flex-row flex-wrap items-center justify-center rounded-lg p-1",
+        "bg-muted border-border flex min-h-9 flex-row flex-wrap items-center justify-center rounded-md border p-0.5 native:min-h-11",
         Platform.select({ web: "inline-flex w-fit", native: "mr-auto" }),
         className,
       )}
@@ -27,18 +27,18 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
   return (
     <TextClassContext.Provider
       value={cn(
-        "text-foreground dark:text-muted-foreground text-sm font-ui",
-        value === props.value && "dark:text-foreground",
+        "text-muted-foreground text-[13px] font-ui native:text-sm",
+        value === props.value && "text-foreground",
       )}
     >
       <TabsPrimitive.Trigger
         className={cn(
-          "flex flex-row items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 shadow-none shadow-black/5",
+          "flex flex-row items-center justify-center gap-1.5 rounded-sm px-2.5 py-1 shadow-none",
           Platform.select({
-            web: "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring web:h-[calc(100%-1px)] inline-flex cursor-default whitespace-nowrap transition-[color,box-shadow] focus-visible:outline-1 focus-visible:ring-[3px] disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
+            web: "inline-flex cursor-default whitespace-nowrap transition-[color,background-color] disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
           }),
           props.disabled && "opacity-50",
-          props.value === value && "bg-background dark:border-foreground/10 dark:bg-input/30",
+          props.value === value && "bg-background shadow-sm shadow-black/5",
           className,
         )}
         {...props}
@@ -50,7 +50,7 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
 function TabsContent({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Content>) {
   return (
     <TabsPrimitive.Content
-      className={cn("min-w-0 rounded-xl", Platform.select({ web: "flex-1" }), className)}
+      className={cn("min-w-0", Platform.select({ web: "flex-1" }), className)}
       {...props}
     />
   );

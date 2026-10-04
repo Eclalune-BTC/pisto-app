@@ -1,16 +1,29 @@
 import { flexRender } from "@tanstack/react-table";
+import { Link, useRouter } from "expo-router";
+import type { MouseEvent } from "react";
 import { useState } from "react";
-import { View } from "react-native";
-
+import { useTranslation } from "react-i18next";
+import { useWindowDimensions, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import type { DataTableColumn } from "./data-table";
 import { DataTableRecords, type DataTableSurfaceProps } from "./data-table-records";
 
-export function DataTableSurface<T>(props: DataTableSurfaceProps<T>) {
-  const [width, setWidth] = useState(0);
+const TABLE_MIN_WIDTH = 640;
 
+function isInteractiveTarget(event: MouseEvent<HTMLTableRowElement>) {
+  return (event.target as HTMLElement).closest("a,button,input,select,textarea,[role=menuitem]");
+}
+
+export function DataTableSurface<T>(props: DataTableSurfaceProps<T>) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const window = useWindowDimensions();
+  // Seed from the window so a wide screen paints the table immediately; layout refines it.
+  const [width, setWidth] = useState(window.width);
+  const { getRowHref, rowActions } = props;
   return (
     <View className="min-w-0" onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
-      {width < 680 ? (
+      {width < TABLE_MIN_WIDTH ? (
         <DataTableRecords {...props} />
       ) : (
         <div className="pisto-data-table-container">
@@ -27,26 +40,49 @@ export function DataTableSurface<T>(props: DataTableSurfaceProps<T>) {
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
                 ))}
+                {rowActions ? (
+                  <th scope="col" style={{ width: 48 }}>
+                    <span className="sr-only">{t("dataTable.columns.actions")}</span>
+                  </th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
-              {props.rows.length === 0 ? (
-                <tr>
-                  <td colSpan={props.headers.length}>{props.empty}</td>
-                </tr>
-              ) : null}
-              {props.rows.map((row) => (
-                <tr key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      data-align={(cell.column.columnDef as DataTableColumn<T>).meta?.align}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {props.rows.map((row) => {
+                const href = getRowHref?.(row.original);
+                return (
+                  <tr
+                    data-href={href ? "" : undefined}
+                    key={row.id}
+                    onClick={
+                      href
+                        ? (event) => {
+                            if (!isInteractiveTarget(event)) router.push(href);
+                          }
+                        : undefined
+                    }
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const column = cell.column.columnDef as DataTableColumn<T>;
+                      const content = flexRender(column.cell, cell.getContext());
+                      return (
+                        <td key={cell.id} data-align={column.meta?.align}>
+                          {href && column.meta?.primary ? (
+                            <Link asChild href={href}>
+                              <Text className="font-ui text-[13px] text-foreground web:hover:underline web:underline-offset-4">
+                                {content}
+                              </Text>
+                            </Link>
+                          ) : (
+                            content
+                          )}
+                        </td>
+                      );
+                    })}
+                    {rowActions ? <td data-align="end">{rowActions(row.original)}</td> : null}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

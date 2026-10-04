@@ -10,26 +10,28 @@ import { cn } from "@/lib/cn";
 
 const buttonVariants = cva(
   cn(
-    "group max-w-full shrink-0 flex-row items-center justify-center gap-2 rounded-lg active:opacity-80",
+    "group max-w-full shrink-0 flex-row items-center justify-center gap-2 rounded-md active:opacity-80",
     Platform.select({
-      web: "transition-colors focus-visible:ring-ring/50 disabled:pointer-events-none",
+      web: "select-none transition-colors disabled:pointer-events-none",
     }),
   ),
   {
     variants: {
       variant: {
-        default: "bg-primary web:hover:bg-primary/90",
+        default: "bg-primary web:hover:bg-primary/85",
         destructive: "bg-destructive-action web:hover:bg-destructive-action/90",
-        outline: "border border-input bg-card active:bg-accent web:hover:bg-accent",
-        secondary: "bg-secondary active:bg-secondary/80 web:hover:bg-secondary/80",
+        outline: "border border-border bg-card active:bg-accent web:hover:bg-accent",
+        secondary: "bg-secondary active:bg-accent web:hover:bg-accent",
         ghost: "active:bg-accent web:hover:bg-accent",
-        link: "",
+        link: "px-0",
       },
+      // Pointer screens get compact controls; touch platforms keep 44 pt targets.
       size: {
-        default: "min-h-11 px-4 py-2",
-        sm: "min-h-11 gap-1.5 px-3 py-2",
-        lg: "min-h-12 px-6 py-3",
-        icon: "min-h-11 w-11 px-2 py-2",
+        default: cn("min-h-9 px-3 py-1.5", Platform.select({ native: "min-h-11 px-4 py-2" })),
+        sm: cn("min-h-8 gap-1.5 px-2.5 py-1", Platform.select({ native: "min-h-10 px-3 py-1.5" })),
+        lg: cn("min-h-10 px-4 py-2", Platform.select({ native: "min-h-12 px-5 py-2.5" })),
+        icon: cn("h-9 w-9", Platform.select({ native: "h-11 w-11" })),
+        "icon-sm": cn("h-8 w-8", Platform.select({ native: "h-10 w-10" })),
       },
     },
     defaultVariants: { variant: "default", size: "default" },
@@ -42,7 +44,7 @@ const buttonTextVariants = cva("font-ui font-normal shrink text-center text-sm",
       destructive: "text-destructive-action-foreground",
       outline: "text-foreground",
       secondary: "text-secondary-foreground",
-      ghost: "text-accent-foreground",
+      ghost: "text-foreground",
       link: "text-link underline web:underline-offset-4",
     },
   },

@@ -1,8 +1,8 @@
 import "@/global.css";
 
-import { IBMPlexSans_400Regular } from "@expo-google-fonts/ibm-plex-sans/400Regular";
-import { IBMPlexSans_500Medium } from "@expo-google-fonts/ibm-plex-sans/500Medium";
-import { IBMPlexSans_600SemiBold } from "@expo-google-fonts/ibm-plex-sans/600SemiBold";
+import { Inter_400Regular } from "@expo-google-fonts/inter/400Regular";
+import { Inter_500Medium } from "@expo-google-fonts/inter/500Medium";
+import { Inter_600SemiBold } from "@expo-google-fonts/inter/600SemiBold";
 import { PortalHost } from "@rn-primitives/portal";
 import { useFonts } from "expo-font";
 import { type ErrorBoundaryProps, Stack, ThemeProvider } from "expo-router";
@@ -15,6 +15,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useUniwind } from "uniwind";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
+import { Toaster } from "@/components/ui/toaster";
 import { i18n } from "@/i18n/config";
 import { useNavigationTheme } from "@/lib/navigation-theme";
 import { AppearanceProvider } from "@/providers/appearance-provider";
@@ -67,9 +68,9 @@ export default function RootLayout() {
   const { theme } = useUniwind();
   const navigationTheme = useNavigationTheme(theme === "dark");
   const [fontsLoaded, fontError] = useFonts({
-    PistoRegular: IBMPlexSans_400Regular,
-    PistoMedium: IBMPlexSans_500Medium,
-    PistoSemibold: IBMPlexSans_600SemiBold,
+    PistoRegular: Inter_400Regular,
+    PistoMedium: Inter_500Medium,
+    PistoSemibold: Inter_600SemiBold,
   });
 
   useEffect(() => {
@@ -94,6 +95,7 @@ export default function RootLayout() {
                   <Stack.Screen name="(app)" />
                 </Stack>
                 <PortalHost />
+                <Toaster />
               </QueryProvider>
             </AppearanceProvider>
           </I18nProvider>

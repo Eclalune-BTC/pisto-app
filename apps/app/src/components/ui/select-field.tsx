@@ -47,10 +47,10 @@ export function SelectField<T extends string>({
           aria-describedby={missingSelection ? `${id}-error` : undefined}
           aria-invalid={missingSelection}
           disabled={disabled}
-          className="min-h-12 w-full"
+          className="w-full"
           onLayout={(event) => setTriggerWidth(event.nativeEvent.layout.width)}
         >
-          <Text className="min-w-0 flex-1 text-base">
+          <Text className="min-w-0 flex-1 text-sm native:text-base">
             {selected
               ? selected.label
               : missingSelection
@@ -69,7 +69,7 @@ export function SelectField<T extends string>({
           >
             {options.map((option) => (
               <SelectItem
-                className="min-h-11"
+                className="min-h-8 native:min-h-11"
                 key={option.value}
                 value={option.value}
                 label={option.label}

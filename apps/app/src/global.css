@@ -5,93 +5,156 @@
   --font-sans: PistoRegular;
   --font-ui: PistoMedium;
   --font-heading: PistoSemibold;
-  --color-ink: #24362d;
-  --color-ink-muted: #59675e;
-  --color-canvas: #f6f7f2;
-  --color-surface: #ffffff;
-  --color-line: #dce2d8;
-  --color-accent-strong: #d6e5cd;
-  --color-positive: #166534;
-  --color-warning: #b86718;
-  --color-danger: #b94242;
-  --radius-card: 14px;
+  --radius-xs: 2px;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 6px;
+  --radius-card: 4px;
 }
 
 @layer theme {
   :root {
     @variant light {
-      --color-background: #f6f7f2;
-      --color-foreground: #24362d;
-      --color-muted-foreground: #59675e;
+      --color-background: #fafaf9;
+      --color-foreground: #1c1917;
       --color-card: #ffffff;
-      --color-card-foreground: #24362d;
+      --color-card-foreground: #1c1917;
       --color-popover: #ffffff;
-      --color-popover-foreground: #24362d;
-      --color-muted: #ecf0e8;
-      --color-border: #dce2d8;
-      --color-input: #839187;
-      --color-input-border: #839187;
-      --color-ring: #38704e;
-      --color-secondary: #e3ecd9;
-      --color-secondary-foreground: #2d4937;
-      --color-accent: #e7eee0;
-      --color-accent-foreground: #284b36;
-      --color-primary: #245c46;
-      --color-primary-foreground: #ffffff;
-      --color-link: #245c46;
-      --color-sidebar: #eaf0e3;
-      --color-sidebar-foreground: #324738;
-      --color-sidebar-accent: #d6e5cd;
-      --color-sidebar-accent-foreground: #204e39;
-      --color-sidebar-border: #d3decd;
-      --color-selection: #d6e5cd;
-      --color-destructive-action: #a63e38;
+      --color-popover-foreground: #1c1917;
+      --color-muted: #f4f3f1;
+      --color-muted-foreground: #68625d;
+      --color-border: #e7e5e2;
+      --color-input: #8c857f;
+      --color-ring: #57534e;
+      --color-primary: #1c1917;
+      --color-primary-foreground: #fafaf9;
+      --color-secondary: #f1efec;
+      --color-secondary-foreground: #1c1917;
+      --color-accent: #efedea;
+      --color-accent-foreground: #1c1917;
+      --color-link: #1c1917;
+      --color-selection: #e9e6e2;
+      --color-sidebar: #f5f4f2;
+      --color-sidebar-foreground: #3a3632;
+      --color-sidebar-accent: #e9e6e2;
+      --color-sidebar-accent-foreground: #1c1917;
+      --color-sidebar-border: #e4e1dd;
+      --color-destructive: #b42318;
+      --color-destructive-action: #b42318;
       --color-destructive-action-foreground: #ffffff;
-      --color-destructive: #b94242;
-      --color-destructive-surface: #fff4f4;
-      --color-warning-surface: #fff6e8;
-      --color-warning-foreground: #80501d;
-      --color-positive-surface: #edf7f1;
-      --color-positive-foreground: #196441;
+      --color-destructive-surface: #fef3f2;
+      --color-warning: #b54708;
+      --color-warning-foreground: #93370d;
+      --color-warning-surface: #fff7e6;
+      --color-positive: #1c1917;
+      --color-positive-foreground: #1c1917;
+      --color-positive-surface: #f1efec;
+      --color-chart-1: #44403c;
+      --color-chart-2: #bd8700;
+      --color-chart-3: #a93900;
+      --color-chart-4: #92008d;
+      --color-chart-5: #a885a4;
     }
   }
 
   :root {
     @variant dark {
-      --color-background: #161e19;
-      --color-foreground: #edf1e7;
-      --color-muted-foreground: #adb9ac;
-      --color-card: #1d2821;
-      --color-card-foreground: #edf1e7;
-      --color-popover: #243229;
-      --color-popover-foreground: #edf1e7;
-      --color-muted: #2a382e;
-      --color-border: #3b4c3f;
-      --color-input: #7a8f7e;
-      --color-input-border: #7a8f7e;
-      --color-ring: #a6c990;
-      --color-secondary: #304534;
-      --color-secondary-foreground: #e2edda;
-      --color-accent: #304534;
-      --color-accent-foreground: #e2edda;
-      --color-primary: #b6d5a0;
-      --color-primary-foreground: #203a29;
-      --color-link: #b6d5a0;
-      --color-sidebar: #1b2a20;
-      --color-sidebar-foreground: #d6e3ce;
-      --color-sidebar-accent: #334d38;
-      --color-sidebar-accent-foreground: #d7ecc8;
-      --color-sidebar-border: #334637;
-      --color-selection: #3e5942;
-      --color-destructive-action: #f0aba1;
-      --color-destructive-action-foreground: #431b16;
-      --color-destructive: #ffbaba;
-      --color-destructive-surface: #3b2323;
-      --color-warning-surface: #3a2a18;
-      --color-warning-foreground: #f6bb76;
-      --color-positive-surface: #183329;
-      --color-positive-foreground: #a1dfbb;
+      --color-background: #0f0e0d;
+      --color-foreground: #f5f5f4;
+      --color-card: #171615;
+      --color-card-foreground: #f5f5f4;
+      --color-popover: #1c1b19;
+      --color-popover-foreground: #f5f5f4;
+      --color-muted: #1f1e1c;
+      --color-muted-foreground: #a8a29e;
+      --color-border: #2b2927;
+      --color-input: #716a64;
+      --color-ring: #a8a29e;
+      --color-primary: #f5f5f4;
+      --color-primary-foreground: #1c1917;
+      --color-secondary: #242220;
+      --color-secondary-foreground: #f5f5f4;
+      --color-accent: #262422;
+      --color-accent-foreground: #f5f5f4;
+      --color-link: #f5f5f4;
+      --color-selection: #3a3632;
+      --color-sidebar: #131211;
+      --color-sidebar-foreground: #d6d3d1;
+      --color-sidebar-accent: #262422;
+      --color-sidebar-accent-foreground: #fafaf9;
+      --color-sidebar-border: #262422;
+      --color-destructive: #fda29b;
+      --color-destructive-action: #d92d20;
+      --color-destructive-action-foreground: #ffffff;
+      --color-destructive-surface: #2a1311;
+      --color-warning: #f79009;
+      --color-warning-foreground: #fec84b;
+      --color-warning-surface: #261a07;
+      --color-positive: #f5f5f4;
+      --color-positive-foreground: #f5f5f4;
+      --color-positive-surface: #242220;
+      --color-chart-1: #d6d3d1;
+      --color-chart-2: #ffb334;
+      --color-chart-3: #e8622c;
+      --color-chart-4: #e87ce0;
+      --color-chart-5: #8e7f8c;
     }
+  }
+}
+
+/* Web-only entrance motion; native overlays animate through Reanimated. */
+@keyframes pisto-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pisto-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px) scale(0.985);
+  }
+}
+
+@keyframes pisto-slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes pisto-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@utility pisto-enter-fade {
+  animation: pisto-fade-in 140ms ease-out;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@utility pisto-enter-pop {
+  animation: pisto-pop-in 140ms cubic-bezier(0.2, 0, 0, 1);
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@utility pisto-enter-left {
+  animation: pisto-slide-in-left 200ms cubic-bezier(0.2, 0, 0, 1);
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@utility pisto-enter-right {
+  animation: pisto-slide-in-right 200ms cubic-bezier(0.2, 0, 0, 1);
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
   }
 }
 
@@ -101,18 +164,11 @@
 
 *:focus-visible {
   outline: 2px solid var(--color-ring);
-  outline-offset: 3px;
-  box-shadow: 0 0 0 2px var(--color-background);
+  outline-offset: 2px;
 }
 
 [role="tabpanel"]:focus:not(:focus-visible) {
   outline-width: 0;
-  box-shadow: none;
-}
-
-[role="tabpanel"]:focus-visible {
-  border-radius: 12px;
-  outline-offset: 4px;
 }
 
 ::selection {
@@ -122,6 +178,9 @@
 
 html {
   accent-color: var(--color-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 html,
@@ -139,29 +198,47 @@ html.dark {
 
 .pisto-data-table-container {
   border: 1px solid var(--color-border);
-  border-radius: 14px;
+  border-radius: 4px;
   background: var(--color-card);
 }
 
 .pisto-data-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-family: PistoRegular, sans-serif;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 20px;
   color: var(--color-foreground);
 }
 
 .pisto-data-table th {
-  background: var(--color-card);
+  position: sticky;
+  top: 48px;
+  z-index: 1;
+  height: 36px;
+  padding: 0 12px;
+  background: var(--color-muted);
   color: var(--color-muted-foreground);
   font-family: PistoMedium, sans-serif;
+  font-size: 12px;
   font-weight: normal;
   text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-border);
 }
 
-.pisto-data-table th,
+.pisto-data-table th:first-child {
+  border-top-left-radius: 4px;
+}
+
+.pisto-data-table th:last-child {
+  border-top-right-radius: 4px;
+}
+
 .pisto-data-table td {
-  padding: 14px 18px;
+  height: 40px;
+  padding: 6px 12px;
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
   overflow-wrap: anywhere;
@@ -176,35 +253,49 @@ html.dark {
   border-bottom: 0;
 }
 
+.pisto-data-table tbody tr {
+  transition: background-color 80ms ease-out;
+}
+
 .pisto-data-table tbody tr:hover {
-  background: var(--color-muted);
+  background: color-mix(in srgb, var(--color-muted) 70%, transparent);
+}
+
+.pisto-data-table tbody tr[data-href] {
+  cursor: pointer;
 }
 
 .pisto-date-field {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   font-family: PistoRegular, sans-serif;
 }
 
 .pisto-date-field label {
   font-family: PistoMedium, sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-foreground);
 }
 
 .pisto-date-field input {
-  min-height: 48px;
+  height: 36px;
   min-width: 0;
   width: 100%;
-  border: 1px solid var(--color-input-border);
-  border-radius: 8px;
-  padding: 8px 12px;
+  border: 1px solid var(--color-input);
+  border-radius: 3px;
+  padding: 0 10px;
   background: var(--color-card);
   color: var(--color-foreground);
   font: inherit;
-  font-size: 16px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pisto-date-field input:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 1px;
 }
 
 .pisto-date-field input[aria-invalid="true"] {
@@ -213,5 +304,28 @@ html.dark {
 
 .pisto-date-field [role="alert"] {
   color: var(--color-destructive);
-  font-size: 14px;
+  font-size: 13px;
+}
+
+[data-sonner-toaster] {
+  --normal-bg: var(--color-popover);
+  --normal-border: var(--color-border);
+  --normal-text: var(--color-popover-foreground);
+  --border-radius: 4px;
+  font-family: PistoRegular, sans-serif;
+}
+
+[data-sonner-toast] [data-title] {
+  font-family: PistoMedium, sans-serif;
+  font-weight: normal;
+}
+
+[data-sonner-toast] [data-description] {
+  color: var(--color-muted-foreground);
+}
+
+[data-sonner-toast] [data-button] {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  border-radius: 3px;
 }

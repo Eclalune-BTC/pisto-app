@@ -1,5 +1,6 @@
 // React Native Reusables / Uniwind. MIT attribution: licenses/react-native-reusables.txt.
 
+import { cva, type VariantProps } from "class-variance-authority";
 import type { LucideIcon } from "lucide-react-native";
 import * as React from "react";
 import { View } from "react-native";
@@ -7,63 +8,83 @@ import { Icon } from "@/components/ui/icon";
 import { Text, TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 
+const alertVariants = cva("relative w-full flex-row gap-2.5 rounded-lg border px-3 py-2.5", {
+  variants: {
+    variant: {
+      default: "border-border bg-card",
+      positive: "border-border bg-positive-surface",
+      warning: "border-warning/30 bg-warning-surface",
+      destructive: "border-destructive/30 bg-destructive-surface",
+    },
+  },
+  defaultVariants: { variant: "default" },
+});
+
+const alertTextVariants = cva("text-sm", {
+  variants: {
+    variant: {
+      default: "text-foreground",
+      positive: "text-positive-foreground",
+      warning: "text-warning-foreground",
+      destructive: "text-destructive",
+    },
+  },
+  defaultVariants: { variant: "default" },
+});
+
+const alertIconVariants = cva("mt-0.5 size-4 shrink-0", {
+  variants: {
+    variant: {
+      default: "text-muted-foreground",
+      positive: "text-positive-foreground",
+      warning: "text-warning",
+      destructive: "text-destructive",
+    },
+  },
+  defaultVariants: { variant: "default" },
+});
+
+type AlertVariant = NonNullable<VariantProps<typeof alertVariants>["variant"]>;
+
+const AlertVariantContext = React.createContext<AlertVariant>("default");
+
 function Alert({
+  action,
   className,
-  variant,
+  variant = "default",
   children,
   icon,
-  iconClassName,
   ...props
 }: React.ComponentProps<typeof View> &
   React.RefAttributes<View> & {
+    action?: React.ReactNode;
     icon: LucideIcon;
-    variant?: "default" | "destructive";
-    iconClassName?: string;
+    variant?: AlertVariant;
   }) {
   return (
-    <TextClassContext.Provider
-      value={cn(
-        "text-sm text-foreground",
-        variant === "destructive" && "text-destructive",
-        className,
-      )}
-    >
-      <View
-        role="alert"
-        className={cn(
-          "bg-card border-border relative w-full rounded-lg border px-4 pb-2 pt-3.5",
-          className,
-        )}
-        {...props}
-      >
-        <View className="absolute left-3.5 top-3">
-          <Icon
-            as={icon}
-            className={cn("size-4", variant === "destructive" && "text-destructive", iconClassName)}
-          />
+    <AlertVariantContext.Provider value={variant}>
+      <TextClassContext.Provider value={alertTextVariants({ variant })}>
+        <View role="alert" className={cn(alertVariants({ variant }), className)} {...props}>
+          <Icon as={icon} className={alertIconVariants({ variant })} />
+          <View className="min-w-0 flex-1 gap-0.5">{children}</View>
+          {action ? <View className="shrink-0 self-center">{action}</View> : null}
         </View>
-        {children}
-      </View>
-    </TextClassContext.Provider>
+      </TextClassContext.Provider>
+    </AlertVariantContext.Provider>
   );
 }
 
 function AlertTitle({ className, ...props }: React.ComponentProps<typeof Text>) {
-  return (
-    <Text
-      className={cn("mb-1 ml-0.5 min-h-4 pl-6 font-ui leading-none tracking-tight", className)}
-      {...props}
-    />
-  );
+  return <Text className={cn("font-ui text-sm leading-5", className)} {...props} />;
 }
 
 function AlertDescription({ className, ...props }: React.ComponentProps<typeof Text>) {
-  const textClass = React.useContext(TextClassContext);
+  const variant = React.useContext(AlertVariantContext);
   return (
     <Text
       className={cn(
-        "text-muted-foreground ml-0.5 pb-1.5 pl-6 text-sm leading-relaxed",
-        textClass?.includes("text-destructive") && "text-destructive/90",
+        "text-sm leading-5",
+        variant === "default" ? "text-muted-foreground" : "opacity-90",
         className,
       )}
       {...props}

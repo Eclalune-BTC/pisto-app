@@ -52,9 +52,10 @@ function SelectTrigger({
     <SelectPrimitive.Trigger
       ref={ref}
       className={cn(
-        "border-input bg-card flex min-h-11 flex-row items-center justify-between gap-2 rounded-lg border px-3 py-2",
+        "border-input bg-card flex min-h-9 flex-row items-center justify-between gap-2 rounded-md border px-2.5 py-1.5",
         Platform.select({
-          web: "focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:hover:bg-input/50 w-fit whitespace-nowrap text-sm outline-none transition-[color,box-shadow] focus-visible:ring-[3px] disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:shrink-0",
+          web: "focus-visible:border-ring focus-visible:ring-ring/25 aria-invalid:border-destructive web:hover:bg-accent/40 w-fit whitespace-nowrap text-sm outline-none transition-[color,box-shadow] focus-visible:ring-2 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:shrink-0",
+          native: "min-h-11 px-3 py-2",
         }),
         props.disabled && "opacity-50",
         size === "sm" && "h-8 py-2 sm:py-1.5",
@@ -96,12 +97,10 @@ function SelectContent({
             <TextClassContext.Provider value="text-popover-foreground">
               <SelectPrimitive.Content
                 className={cn(
-                  "bg-popover border-border relative z-50 min-w-[8rem] rounded-md border shadow-md shadow-black/5",
+                  "bg-popover border-border relative z-50 min-w-[8rem] rounded-md border shadow-lg shadow-black/10 web:bg-popover/95 web:backdrop-blur-md",
                   Platform.select({
                     web: cn(
-                      "animate-in fade-in-0 zoom-in-95 origin-(--radix-select-content-transform-origin) max-h-52 overflow-y-auto overflow-x-hidden",
-                      props.side === "bottom" && "slide-in-from-top-2",
-                      props.side === "top" && "slide-in-from-bottom-2",
+                      "pisto-enter-pop origin-(--radix-select-content-transform-origin) max-h-52 overflow-y-auto overflow-x-hidden",
                     ),
                     native: "p-1",
                   }),

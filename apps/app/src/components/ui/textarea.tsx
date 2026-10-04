@@ -22,9 +22,10 @@ function Textarea({
       cursorColor={foreground}
       placeholderTextColor={muted}
       className={cn(
-        "font-sans text-foreground border-input flex min-h-24 w-full flex-row rounded-lg border bg-card px-3 py-2 text-base leading-6",
+        "font-sans text-foreground border-input flex min-h-20 w-full flex-row rounded-md border bg-card px-2.5 py-2 text-sm leading-5",
         Platform.select({
-          web: "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive field-sizing-content resize-y outline-none transition-[color,box-shadow] focus-visible:ring-[3px] disabled:cursor-not-allowed",
+          web: "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/25 aria-invalid:border-destructive field-sizing-content resize-y outline-none transition-[color,box-shadow] focus-visible:ring-2 disabled:cursor-not-allowed",
+          native: "min-h-24 px-3 text-base leading-6",
         }),
         props.editable === false && "opacity-50",
         className,

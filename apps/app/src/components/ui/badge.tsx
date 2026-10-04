@@ -8,47 +8,36 @@ import { cn } from "@/lib/cn";
 
 const badgeVariants = cva(
   cn(
-    "border-border group shrink-0 flex-row items-center justify-center gap-1 overflow-hidden rounded-full border px-2 py-0.5",
-    Platform.select({
-      web: "focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive w-fit whitespace-nowrap transition-[color,box-shadow] focus-visible:ring-[3px] [&>svg]:pointer-events-none [&>svg]:size-3",
-    }),
+    "group shrink-0 flex-row items-center justify-center gap-1 self-start overflow-hidden rounded-sm border px-1.5 py-0.5",
+    Platform.select({ web: "w-fit whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:size-3" }),
   ),
   {
     variants: {
       variant: {
-        default: cn(
-          "bg-primary border-transparent",
-          Platform.select({ web: "[a&]:hover:bg-primary/90" }),
-        ),
-        secondary: cn(
-          "bg-secondary border-transparent",
-          Platform.select({ web: "[a&]:hover:bg-secondary/90" }),
-        ),
-        destructive: cn(
-          "bg-destructive border-transparent",
-          Platform.select({ web: "[a&]:hover:bg-destructive/90" }),
-        ),
-        outline: Platform.select({ web: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground" }),
+        default: "border-transparent bg-primary",
+        secondary: "border-transparent bg-secondary",
+        outline: "border-border bg-transparent",
+        positive: "border-border bg-positive-surface",
+        warning: "border-warning/25 bg-warning-surface",
+        destructive: "border-destructive/25 bg-destructive-surface",
       },
     },
-    defaultVariants: {
-      variant: "default",
-    },
+    defaultVariants: { variant: "secondary" },
   },
 );
 
-const badgeTextVariants = cva("text-xs font-ui", {
+const badgeTextVariants = cva("font-ui text-xs leading-4", {
   variants: {
     variant: {
       default: "text-primary-foreground",
       secondary: "text-secondary-foreground",
-      destructive: "text-white",
       outline: "text-foreground",
+      positive: "text-positive-foreground",
+      warning: "text-warning-foreground",
+      destructive: "text-destructive",
     },
   },
-  defaultVariants: {
-    variant: "default",
-  },
+  defaultVariants: { variant: "secondary" },
 });
 
 type BadgeProps = React.ComponentProps<typeof View> &

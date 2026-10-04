@@ -35,7 +35,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@better-auth/expo": "1.7.1",
-        "@expo-google-fonts/ibm-plex-sans": "0.4.1",
+        "@expo-google-fonts/inter": "0.4.2",
         "@pisto/contracts": "workspace:*",
         "@radix-ui/react-accordion": "1.2.20",
         "@rn-primitives/accordion": "1.5.2",
@@ -89,6 +89,8 @@
         "react-native-svg": "15.15.4",
         "react-native-web": "~0.21.0",
         "react-native-worklets": "0.10.1",
+        "sonner": "2.0.8",
+        "sonner-native": "0.27.0",
         "tailwind-merge": "3.6.0",
         "tailwindcss": "4.3.3",
         "uniwind": "1.12.1",
@@ -448,7 +450,7 @@
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.25.12", "", { "os": "win32", "cpu": "x64" }, "sha512-alJC0uCZpTFrSL0CCDjcgleBXPnCrEAhTBILpeAp7M/OFgoqtAetfBzX0xM00MUsVVPpVjlPuMbREqnZCXaTnA=="],
 
-    "@expo-google-fonts/ibm-plex-sans": ["@expo-google-fonts/ibm-plex-sans@0.4.1", "", {}, "sha512-allsuhZbvKoKDTB/U8creFVYYzhI97Nw9MgyyNjFzqISNc/sURpA7ZY37Rr+IRI567OV9BWQ/ioUCjAQrVGRbw=="],
+    "@expo-google-fonts/inter": ["@expo-google-fonts/inter@0.4.2", "", {}, "sha512-syfiImMaDmq7cFi0of+waE2M4uSCyd16zgyWxdPOY7fN2VBmSLKEzkfbZgeOjJq61kSqPBNNtXjggiQiSD6gMQ=="],
 
     "@expo-google-fonts/material-symbols": ["@expo-google-fonts/material-symbols@0.4.44", "", {}, "sha512-36JP9Chcy/QEVZ9ZGY4i6zInlyFPbQjkIm6gRNuWWltScIj0WR8rddcD57EIjSC5YKCe2ZKLO6eO/N5r8Jit0A=="],
 
@@ -1705,6 +1707,10 @@
     "sisteransi": ["sisteransi@1.0.5", "", {}, "sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg=="],
 
     "slugify": ["slugify@1.6.9", "", {}, "sha512-vZ7rfeehZui7wQs438JXBckYLkIIdfHOXsaVEUMyS5fHo1483l1bMdo0EDSWYclY0yZKFOipDy4KHuKs6ssvdg=="],
+
+    "sonner": ["sonner@2.0.8", "", { "peerDependencies": { "@types/react": "^18.0.0 || ^19.0.0", "react": "^18.0.0 || ^19.0.0 || ^19.0.0-rc", "react-dom": "^18.0.0 || ^19.0.0 || ^19.0.0-rc" }, "optionalPeers": ["@types/react"] }, "sha512-UM/ByIoFra8yzV75n1o0Puu0bw5U/9UNnDacrJNspekBewIfsQ3D6ez1nvlWpt7aTsO6rujQtifBpycwIivqlg=="],
+
+    "sonner-native": ["sonner-native@0.27.0", "", { "peerDependencies": { "react": "*", "react-native": "*", "react-native-gesture-handler": ">=2.28.0", "react-native-reanimated": "^4.1.1", "react-native-safe-area-context": "^5.6.0", "react-native-screens": "^4.16.0", "react-native-svg": "^15.12.1", "react-native-worklets": ">=0.6.1" } }, "sha512-TKX4mXoMnwx3m51bSTqrbmiImIjs18g9L6t0sv4XemR+s6XsKf1+l3yn3C4/psOHj3E+sdc2Bh5P/7+AG/41eA=="],
 
     "source-map": ["source-map@0.5.7", "", {}, "sha512-LbrmJOMUSdEVxIKvdcJzQC+nQhe8FUZQTXQy6+I75skNgn3OoQ0DZA8YnFa7gp8tqtL3KPf1kmo0R5DoApeSGQ=="],
 

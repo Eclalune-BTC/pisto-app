@@ -1,4 +1,5 @@
 import { View } from "react-native";
+import { cn } from "@/lib/cn";
 import { Text } from "./text";
 import { ToggleGroup, ToggleGroupItem } from "./toggle-group";
 
@@ -12,6 +13,7 @@ type FilterBarProps<T extends string> = {
   value: T;
 };
 
+/** Segmented control for a required single choice; an empty selection is never emitted. */
 export function FilterBar<T extends string>({
   disabled = false,
   label,
@@ -21,15 +23,14 @@ export function FilterBar<T extends string>({
   value,
 }: FilterBarProps<T>) {
   return (
-    <View className="min-w-0 max-w-full gap-2">
-      {showLabel ? <Text className="font-ui text-sm">{label}</Text> : null}
+    <View className="min-w-0 max-w-full gap-1.5">
+      {showLabel ? <Text className="font-ui text-xs text-muted-foreground">{label}</Text> : null}
       <ToggleGroup
         type="single"
         value={value}
         disabled={disabled}
         accessibilityLabel={label}
-        variant="outline"
-        className="max-w-full flex-wrap gap-2 shadow-none"
+        className="max-w-full flex-wrap gap-0.5 self-start rounded-md border border-border bg-muted p-0.5"
         onValueChange={(next) => {
           if (next === "") return;
           const option = options.find((entry) => entry.value === next);
@@ -37,17 +38,32 @@ export function FilterBar<T extends string>({
           onChange(option.value);
         }}
       >
-        {options.map((option) => (
-          <ToggleGroupItem
-            key={option.value}
-            value={option.value}
-            disabled={disabled}
-            accessibilityLabel={`${label}: ${option.label}`}
-            className="h-auto min-h-11 max-w-full rounded-md border-l px-3 py-2 shadow-none sm:h-auto sm:px-3 sm:py-2 web:flex-none web:whitespace-normal"
-          >
-            <Text>{option.label}</Text>
-          </ToggleGroupItem>
-        ))}
+        {options.map((option) => {
+          const selected = option.value === value;
+          return (
+            <ToggleGroupItem
+              key={option.value}
+              value={option.value}
+              disabled={disabled}
+              accessibilityLabel={`${label}: ${option.label}`}
+              className={cn(
+                "h-auto min-h-7 max-w-full rounded-sm px-2.5 py-1 native:min-h-10 native:px-3 web:flex-none web:whitespace-nowrap",
+                selected
+                  ? "bg-background shadow-sm shadow-black/5"
+                  : "bg-transparent web:hover:bg-background/60",
+              )}
+            >
+              <Text
+                className={cn(
+                  "text-[13px] native:text-sm",
+                  selected ? "text-foreground" : "text-muted-foreground",
+                )}
+              >
+                {option.label}
+              </Text>
+            </ToggleGroupItem>
+          );
+        })}
       </ToggleGroup>
     </View>
   );
