@@ -23,11 +23,15 @@ export function createBillingRuntime(input: { config: BillingConfig; db: Databas
         ...(product.description ? { description: product.description } : {}),
       }))
     : [];
+  const checkoutSlugs = new Set(catalog.map((product) => product.slug));
 
   return {
-    config: input.config,
-    polar,
+    checkoutEnabled: input.config.polar.enabled,
+    revenueCatEnabled: input.config.revenueCat.enabled,
+    hasProduct: (slug: string) => checkoutSlugs.has(slug),
     catalog,
+    // Polar checkout, portal and signed webhooks are mounted as Better Auth endpoints.
+    authPlugin: polar.plugin,
     listEntitlements: (scope: Parameters<typeof listEntitlements>[1]) =>
       listEntitlements(input.db, scope),
     readCustomerState: (scope: Parameters<typeof readPolarCustomerState>[1]) =>

@@ -35,7 +35,7 @@ export function verifyRevenueCatSignature(input: {
   rawBody: string;
   signatureHeader: string;
   secret: string;
-  now?: Date;
+  now: Date;
   toleranceSeconds: number;
 }): boolean {
   const parts = Object.fromEntries(
@@ -50,7 +50,7 @@ export function verifyRevenueCatSignature(input: {
   const signature = parts.v1;
   if (!Number.isSafeInteger(timestamp) || !signature) return false;
 
-  const nowSeconds = Math.floor((input.now ?? new Date()).getTime() / 1_000);
+  const nowSeconds = Math.floor(input.now.getTime() / 1_000);
   if (Math.abs(nowSeconds - timestamp) > input.toleranceSeconds) return false;
 
   const expected = createHmac("sha256", input.secret)

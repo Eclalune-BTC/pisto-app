@@ -1,8 +1,13 @@
-import { billingWebhookEvent, type Database, entitlement, user } from "@pisto/db";
-import { inArray, lte, sql } from "drizzle-orm";
+import { type Database, entitlement, user } from "@pisto/db";
+import { inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import type { RevenueCatBillingConfig } from "./config.ts";
+import {
+  recordWebhookEvent,
+  upsertEntitlementGrant,
+  type WebhookProcessResult,
+} from "./projection.ts";
 import { constantTimeEqual, verifyRevenueCatSignature } from "./security.ts";
 
 const millisecondsSchema = z.number().int().min(0).max(8_640_000_000_000_000);
@@ -109,14 +114,16 @@ export function isRevenueCatEventProjectable(type: string): boolean {
 export function createRevenueCatWebhookProcessor(input: {
   db: Database;
   config: RevenueCatBillingConfig;
+  clock?: () => Date;
 }) {
+  const clock = input.clock ?? (() => new Date());
   return async (request: {
     authorization: string | null;
     signature: string | null;
     rawBody: string;
-    now?: Date;
-  }) => {
+  }): Promise<WebhookProcessResult> => {
     const config = input.config;
+    const receivedAt = clock();
     if (!config.enabled) {
       throw new RevenueCatWebhookError(
         503,
@@ -138,7 +145,7 @@ export function createRevenueCatWebhookProcessor(input: {
           rawBody: request.rawBody,
           signatureHeader: request.signature,
           secret: config.signingSecret,
-          now: request.now,
+          now: receivedAt,
           toleranceSeconds: config.signatureToleranceSeconds,
         }))
     ) {
@@ -169,7 +176,6 @@ export function createRevenueCatWebhookProcessor(input: {
     }
 
     const { event } = parsed.data;
-    const receivedAt = request.now ?? new Date();
     const sourceEventAt = new Date(event.event_timestamp_ms);
     const purchasedAt = dateFromMilliseconds(event.purchased_at_ms);
     const paidUntil = dateFromMilliseconds(event.expiration_at_ms);
@@ -188,18 +194,14 @@ export function createRevenueCatWebhookProcessor(input: {
     );
 
     return input.db.transaction(async (tx) => {
-      const inserted = await tx
-        .insert(billingWebhookEvent)
-        .values({
-          provider: "revenuecat",
-          eventKey: event.id,
-          eventType: event.type,
-          payload: parsed.data as unknown as Record<string, unknown>,
-          processedAt: receivedAt,
-        })
-        .onConflictDoNothing()
-        .returning({ id: billingWebhookEvent.id });
-      if (inserted.length === 0) return { duplicate: true, projected: false };
+      const firstDelivery = await recordWebhookEvent(tx, {
+        provider: "revenuecat",
+        eventKey: event.id,
+        eventType: event.type,
+        payload: parsed.data,
+        processedAt: receivedAt,
+      });
+      if (!firstDelivery) return { duplicate: true, projected: false };
 
       if (
         !isRevenueCatEventProjectable(event.type) ||
@@ -207,7 +209,7 @@ export function createRevenueCatWebhookProcessor(input: {
         // after BILLING_ISSUE. Only that event and EXPIRATION own billing access.
         (event.type === "CANCELLATION" && event.cancel_reason === "BILLING_ERROR") ||
         !isRevenueCatEnvironmentAllowed(event.environment, config.allowedEnvironment) ||
-        (event.entitlement_ids?.length ?? 0) === 0
+        !event.entitlement_ids?.length
       ) {
         return { duplicate: false, projected: false };
       }
@@ -233,7 +235,7 @@ export function createRevenueCatWebhookProcessor(input: {
         );
       }
 
-      const mappedEntitlements = (event.entitlement_ids ?? []).flatMap((providerKey) => {
+      const mappedEntitlements = event.entitlement_ids.flatMap((providerKey) => {
         const key = Object.hasOwn(config.entitlementMap, providerKey)
           ? config.entitlementMap[providerKey]
           : undefined;
@@ -262,16 +264,16 @@ export function createRevenueCatWebhookProcessor(input: {
         );
       }
       const status = revenueCatEventStatus(event.type, expiresAt, receivedAt);
+      const productId = event.product_id;
       for (const mapped of mappedEntitlements) {
-        await tx
-          .insert(entitlement)
-          .values({
+        await upsertEntitlementGrant(
+          tx,
+          {
             key: mapped.key,
-            userId,
-            organizationId: null,
+            subject: { userId, organizationId: null },
             source: "revenuecat",
             sourceId,
-            productId: event.product_id,
+            productId,
             status,
             sourceEventAt,
             validFrom: purchasedAt,
@@ -283,37 +285,19 @@ export function createRevenueCatWebhookProcessor(input: {
               store: event.store,
               receiptVerified: false,
             },
-          })
-          .onConflictDoUpdate({
-            target: [entitlement.source, entitlement.sourceId, entitlement.key],
-            set: {
-              userId,
-              organizationId: null,
-              productId: event.product_id,
-              status,
-              sourceEventAt,
-              // Apple can notify renewal before the next period begins. Extend
-              // a continuous existing grant without hiding its paid current day.
-              validFrom: sql`case
-                when ${entitlement.status} = 'active'
-                  and ${entitlement.userId} = excluded.user_id
-                  and ${entitlement.validUntil} >= excluded.valid_from
-                  and (${entitlement.validFrom} is null or ${entitlement.validFrom} <= excluded.valid_from)
-                then ${entitlement.validFrom}
-                else excluded.valid_from
-              end`,
-              validUntil: expiresAt,
-              metadata: {
-                providerEntitlementKey: mapped.providerKey,
-                eventType: event.type,
-                environment: event.environment,
-                store: event.store,
-                receiptVerified: false,
-              },
-              updatedAt: receivedAt,
-            },
-            setWhere: lte(entitlement.sourceEventAt, sourceEventAt),
-          });
+            updatedAt: receivedAt,
+          },
+          // Apple can notify renewal before the next period begins. Extend a
+          // continuous existing grant without hiding its paid current day.
+          sql`case
+            when ${entitlement.status} = 'active'
+              and ${entitlement.userId} = excluded.user_id
+              and ${entitlement.validUntil} >= excluded.valid_from
+              and (${entitlement.validFrom} is null or ${entitlement.validFrom} <= excluded.valid_from)
+            then ${entitlement.validFrom}
+            else excluded.valid_from
+          end`,
+        );
       }
       return { duplicate: false, projected: true };
     });

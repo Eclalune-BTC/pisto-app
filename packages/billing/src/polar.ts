@@ -2,7 +2,6 @@ import type { BillingScope } from "@pisto/contracts";
 import {
   billingCustomer,
   billingSubscription,
-  billingWebhookEvent,
   type Database,
   entitlement,
   organization,
@@ -16,6 +15,13 @@ import { and, eq, lte, ne } from "drizzle-orm";
 import { z } from "zod";
 
 import type { PolarBillingConfig } from "./config.ts";
+import {
+  type GrantSubject,
+  recordWebhookEvent,
+  toJsonRecord,
+  upsertEntitlementGrant,
+  type WebhookProcessResult,
+} from "./projection.ts";
 import { eventFingerprint } from "./security.ts";
 
 const providerDateSchema = z.union([z.date(), z.iso.datetime({ offset: true })]);
@@ -58,16 +64,11 @@ const subscriptionProjectionSchema = z
     "Subscription period is reversed",
   );
 
-export interface WebhookProcessResult {
-  duplicate: boolean;
-  projected: boolean;
-}
-
 export class BillingProviderError extends Error {
   override readonly name = "BillingProviderError";
 
-  constructor() {
-    super("The billing provider request failed");
+  constructor(options?: ErrorOptions) {
+    super("The billing provider request failed", options);
   }
 }
 
@@ -103,15 +104,9 @@ export async function readPolarCustomerState(
       return { result: subscriptionListSchema.parse(result) };
     }
     return customerStateSchema.parse(await getStateExternalCustomers(client)(scope.id));
-  } catch {
-    throw new BillingProviderError();
+  } catch (cause) {
+    throw new BillingProviderError({ cause });
   }
-}
-
-function jsonRecord(value: Record<string, unknown>): Record<string, unknown> {
-  return JSON.parse(
-    JSON.stringify(value, (_key, item) => (typeof item === "bigint" ? item.toString() : item)),
-  );
 }
 
 function polarEntitlementStatus(input: {
@@ -149,7 +144,9 @@ function polarEntitlementStatus(input: {
 export function createPolarWebhookProcessor(input: {
   db: Database;
   config: Extract<PolarBillingConfig, { enabled: true }>;
+  clock?: () => Date;
 }) {
+  const clock = input.clock ?? (() => new Date());
   const entitlementByProduct = new Map(
     input.config.products.map((product) => [product.productId, product.entitlementKey]),
   );
@@ -162,20 +159,17 @@ export function createPolarWebhookProcessor(input: {
       ? subscriptionProjectionSchema.parse(event.data)
       : null;
     const eventKey = eventFingerprint(payload);
-    const storedPayload = jsonRecord(event);
+    const now = clock();
 
     return input.db.transaction(async (tx) => {
-      const inserted = await tx
-        .insert(billingWebhookEvent)
-        .values({
-          provider: "polar",
-          eventKey,
-          eventType,
-          payload: storedPayload,
-        })
-        .onConflictDoNothing()
-        .returning({ id: billingWebhookEvent.id });
-      if (inserted.length === 0) return { duplicate: true, projected: false };
+      const firstDelivery = await recordWebhookEvent(tx, {
+        provider: "polar",
+        eventKey,
+        eventType,
+        payload: event,
+        processedAt: now,
+      });
+      if (!firstDelivery) return { duplicate: true, projected: false };
 
       if (!subscription) {
         return { duplicate: false, projected: false };
@@ -229,7 +223,7 @@ export function createPolarWebhookProcessor(input: {
             email: customer.email ?? null,
             metadata,
             syncedAt: eventAt,
-            updatedAt: new Date(),
+            updatedAt: now,
           },
           setWhere: lte(billingCustomer.syncedAt, eventAt),
         });
@@ -238,9 +232,9 @@ export function createPolarWebhookProcessor(input: {
         eventType,
         providerStatus,
         validUntil: periodEnd,
-        now: new Date(),
+        now,
       });
-      const raw = jsonRecord(data);
+      const raw = toJsonRecord(data);
       const applied = await tx
         .insert(billingSubscription)
         .values({
@@ -270,7 +264,7 @@ export function createPolarWebhookProcessor(input: {
             currentPeriodStart: periodStart,
             currentPeriodEnd: periodEnd,
             raw,
-            updatedAt: new Date(),
+            updatedAt: now,
           },
           setWhere: lte(billingSubscription.sourceEventAt, eventAt),
         })
@@ -281,8 +275,14 @@ export function createPolarWebhookProcessor(input: {
       if (applied.length === 0) return { duplicate: false, projected: false };
 
       const entitlementKey = entitlementByProduct.get(productId);
-      const subject = organizationId
-        ? { userId: null, organizationId }
+      // Polar disables an endpoint after consecutive failed deliveries, so an
+      // unlinked subject is recorded without a grant instead of rejected. An
+      // organization checkout whose organization is unknown never falls back to
+      // a personal grant for the purchaser.
+      const subject: GrantSubject | null = referenceId
+        ? organizationId
+          ? { userId: null, organizationId }
+          : null
         : userId
           ? { userId, organizationId: null }
           : null;
@@ -290,7 +290,7 @@ export function createPolarWebhookProcessor(input: {
       // Retire grants from its previous mapping before projecting the new key.
       await tx
         .update(entitlement)
-        .set({ status: "inactive", sourceEventAt: eventAt, updatedAt: new Date() })
+        .set({ status: "inactive", sourceEventAt: eventAt, updatedAt: now })
         .where(
           and(
             eq(entitlement.source, "polar"),
@@ -302,34 +302,19 @@ export function createPolarWebhookProcessor(input: {
         return { duplicate: false, projected: false };
       }
 
-      await tx
-        .insert(entitlement)
-        .values({
-          key: entitlementKey,
-          ...subject,
-          source: "polar",
-          sourceId: subscriptionId,
-          productId,
-          status,
-          sourceEventAt: eventAt,
-          validFrom: periodStart,
-          validUntil: periodEnd,
-          metadata: { eventType, providerStatus },
-        })
-        .onConflictDoUpdate({
-          target: [entitlement.source, entitlement.sourceId, entitlement.key],
-          set: {
-            ...subject,
-            productId,
-            status,
-            sourceEventAt: eventAt,
-            validFrom: periodStart,
-            validUntil: periodEnd,
-            metadata: { eventType, providerStatus },
-            updatedAt: new Date(),
-          },
-          setWhere: lte(entitlement.sourceEventAt, eventAt),
-        });
+      await upsertEntitlementGrant(tx, {
+        key: entitlementKey,
+        subject,
+        source: "polar",
+        sourceId: subscriptionId,
+        productId,
+        status,
+        sourceEventAt: eventAt,
+        validFrom: periodStart,
+        validUntil: periodEnd,
+        metadata: { eventType, providerStatus },
+        updatedAt: now,
+      });
       return { duplicate: false, projected: true };
     });
   };

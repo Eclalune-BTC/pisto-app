@@ -149,7 +149,9 @@ internal entitlement key
       `-- Google Play subscription/base plan ID
 ```
 
-Sandbox and production identifiers are never mixed. The browser receives only catalog slugs and
+Sandbox and production identifiers are never mixed. `POLAR_SERVER` has no default: when
+`BILLING_ENABLED=true`, startup fails unless it is exactly `sandbox` or `production`, because Polar
+access tokens are environment-specific and a guessed server only fails later at checkout. The browser receives only catalog slugs and
 display data; the API maps a slug through `POLAR_PRODUCTS_JSON`. Native offerings and localized price
 strings come from RevenueCat/store configuration. Never accept amount, currency, duration, price, or
 an arbitrary provider product ID from the client.
@@ -221,11 +223,20 @@ accepted based only on Expo Go or a web preview.
 - Validate webhook signatures with the official SDK and the unchanged dashboard `POLAR_WEBHOOK_SECRET`.
   SDK 1.0.2 supports both legacy whole-secret UTF-8 and Standard Webhooks base64-decoded keys.
 - Use the exact raw payload/headers expected by the verifier.
-- Deduplicate by `(provider, event key)` before changing state.
+- Deduplicate by `(provider, event key)` before changing state. Both providers share one receipt
+  and grant-upsert core (`packages/billing/src/projection.ts`); a grant is keyed by
+  `(source, sourceId, key)` and an update older than the stored `sourceEventAt` is ignored.
 - The projection consumes the SDK's API `2026-10` snake_case subscription shape. Required event time,
   identifiers, status, cancellation flag and current-period bounds are validated before persistence.
   Missing fields do not use receipt time, another timestamp, camelCase aliases or an empty object.
   Fingerprints retain the original event payload; optional customer linkage remains nullable.
+- An unlinked subject is recorded without a grant rather than rejected. Polar retries a failed
+  delivery up to 10 times and disables the endpoint after 10 consecutive non-2xx responses
+  ([delivery](https://polar.sh/docs/integrate/webhooks/delivery), checked 2026-10-04), so a
+  permanent identity miss must not block every later event. A customer without a known
+  `external_id` user projects no personal grant. A `metadata.referenceId` that names no organization
+  projects no grant at all; it never falls back to a personal grant for the purchaser. The next
+  subscription event carries complete state and re-projects once the subject exists.
 - Signature verification and event-type recognition do not validate required projection fields in
   this SDK. Keep the application schema. The adapter acknowledges signed unknown event types without
   calling the projector or recording a receipt; known malformed subscription payloads fail and can retry.
@@ -237,6 +248,10 @@ accepted based only on Expo Go or a web preview.
   `X-RevenueCat-Webhook-Signature` against the exact raw body and enforce the configured timestamp
   tolerance before parsing or trusting the event.
 - Use RevenueCat's unique event identity for deduplication.
+- A projectable event whose App User ID matches no Pisto user returns `409` before the receipt is
+  committed. RevenueCat treats any non-200 as failure and retries 5 times (5, 10, 20, 40 and 80
+  minutes) before stopping ([webhooks](https://www.revenuecat.com/docs/integrations/webhooks),
+  checked 2026-10-04), which covers a purchase that reaches the webhook before account linkage.
 - Projected grants require a real original/transaction ID, product, purchase time and an explicitly
   present expiration field. Missing or invalid dates never become lifetime access. Explicit null
   expiration remains supported for non-renewing purchases and their cancellation/refund events.

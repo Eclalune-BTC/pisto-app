@@ -11,7 +11,7 @@ import {
 } from "@pisto/db";
 import { eq } from "drizzle-orm";
 
-import { listEntitlements } from "../src/entitlements.ts";
+import { EntitlementIntegrityError, listEntitlements } from "../src/entitlements.ts";
 import { createPolarWebhookProcessor } from "../src/polar.ts";
 import { createRevenueCatWebhookProcessor } from "../src/revenuecat.ts";
 
@@ -136,10 +136,10 @@ describe("PostgreSQL entitlement resolution", () => {
       expect(organizationGrants.map((grant) => grant.key)).toEqual(["organization"]);
     }));
 
-  test("retains recognized independent grants and drops unrecognized provenance", () =>
+  test("retains recognized independent grants and rejects unrecognized provenance", () =>
     withFixture(async (db, userId) => {
       await db.insert(entitlement).values(
-        ["polar", "revenuecat", "manual", "stripe", "", "POLAR"].map((source) => ({
+        ["polar", "revenuecat", "manual"].map((source) => ({
           key: "pro",
           userId,
           source,
@@ -152,6 +152,19 @@ describe("PostgreSQL entitlement resolution", () => {
       const grants = await listEntitlements(db, { type: "user", id: userId }, now);
       expect(grants.map((grant) => grant.source).sort()).toEqual(["manual", "polar", "revenuecat"]);
       expect(grants.every((grant) => grant.key === "pro" && grant.status === "active")).toBe(true);
+
+      await db.insert(entitlement).values({
+        key: "pro",
+        userId,
+        source: "stripe",
+        sourceId: crypto.randomUUID(),
+        status: "active",
+        sourceEventAt: now,
+      });
+      const failure = await listEntitlements(db, { type: "user", id: userId }, now).catch(
+        (error: unknown) => error,
+      );
+      expect(failure).toBeInstanceOf(EntitlementIntegrityError);
     }));
 });
 
@@ -256,6 +269,25 @@ describe("Polar PostgreSQL webhook projection", () => {
       const grants = await db.select().from(entitlement).where(eq(entitlement.userId, userId));
       expect(grants[0]?.status).toBe("inactive");
     }));
+
+  test("records an unknown organization checkout without granting the purchaser personally", () =>
+    withFixture(async (db, userId) => {
+      const { project, event } = polarFixture(db, userId);
+      const payload = event("subscription.active", "2026-09-01T00:00:00Z");
+      const organizationPayload = {
+        ...payload,
+        data: { ...payload.data, metadata: { referenceId: `missing-${crypto.randomUUID()}` } },
+      };
+      expect(await project(organizationPayload)).toEqual({ duplicate: false, projected: false });
+      expect(
+        await db.select().from(entitlement).where(eq(entitlement.userId, userId)),
+      ).toHaveLength(0);
+      const [subscription] = await db
+        .select()
+        .from(billingSubscription)
+        .where(eq(billingSubscription.providerSubscriptionId, payload.data.id));
+      expect(subscription).toMatchObject({ userId, organizationId: null });
+    }));
 });
 
 describe("RevenueCat PostgreSQL webhook projection", () => {
@@ -264,6 +296,7 @@ describe("RevenueCat PostgreSQL webhook projection", () => {
       const send = (entitlementMap: Record<string, string>, providerKeys: string[]) =>
         createRevenueCatWebhookProcessor({
           db,
+          clock: () => new Date("2026-09-10T00:00:00Z"),
           config: {
             enabled: true,
             authorization: "test-authorization",
@@ -274,7 +307,6 @@ describe("RevenueCat PostgreSQL webhook projection", () => {
         })({
           authorization: "test-authorization",
           signature: null,
-          now: new Date("2026-09-10T00:00:00Z"),
           rawBody: JSON.stringify({
             api_version: "1.0",
             event: {
@@ -312,6 +344,7 @@ describe("RevenueCat PostgreSQL webhook projection", () => {
     withFixture(async (db, userId) => {
       const project = createRevenueCatWebhookProcessor({
         db,
+        clock: () => new Date("2026-09-10T00:00:00Z"),
         config: {
           enabled: true,
           authorization: "test-authorization",
@@ -336,7 +369,6 @@ describe("RevenueCat PostgreSQL webhook projection", () => {
         project({
           authorization: "test-authorization",
           signature: null,
-          now: new Date("2026-09-10T00:00:00Z"),
           rawBody: JSON.stringify({ api_version: "1.0", event: value }),
         });
       for (const change of [
@@ -366,6 +398,7 @@ describe("RevenueCat PostgreSQL webhook projection", () => {
     withFixture(async (db, userId) => {
       const project = createRevenueCatWebhookProcessor({
         db,
+        clock: () => new Date("2026-09-10T00:00:00Z"),
         config: {
           enabled: true,
           authorization: "test-authorization",
@@ -378,7 +411,6 @@ describe("RevenueCat PostgreSQL webhook projection", () => {
       await project({
         authorization: "test-authorization",
         signature: null,
-        now: new Date("2026-09-10T00:00:00Z"),
         rawBody: JSON.stringify({
           api_version: "1.0",
           event: {
@@ -407,6 +439,7 @@ describe("RevenueCat PostgreSQL webhook projection", () => {
     withFixture(async (db, userId) => {
       const project = createRevenueCatWebhookProcessor({
         db,
+        clock: () => now,
         config: {
           enabled: true,
           authorization: "test-webhook-authorization",
@@ -425,7 +458,6 @@ describe("RevenueCat PostgreSQL webhook projection", () => {
           project({
             authorization: "test-webhook-authorization",
             signature: null,
-            now,
             rawBody: JSON.stringify({
               api_version: "1.0",
               event: {
@@ -459,6 +491,7 @@ describe("RevenueCat PostgreSQL webhook projection", () => {
     withFixture(async (db, userId) => {
       const project = createRevenueCatWebhookProcessor({
         db,
+        clock: () => now,
         config: {
           enabled: true,
           authorization: "test-webhook-authorization",
@@ -473,7 +506,6 @@ describe("RevenueCat PostgreSQL webhook projection", () => {
         project({
           authorization: "test-webhook-authorization",
           signature: null,
-          now,
           rawBody: JSON.stringify({
             api_version: "1.0",
             event: {
@@ -508,6 +540,7 @@ describe("RevenueCat PostgreSQL webhook projection", () => {
     withFixture(async (db, userId) => {
       const project = createRevenueCatWebhookProcessor({
         db,
+        clock: () => now,
         config: {
           enabled: true,
           authorization: "test-webhook-authorization",
@@ -538,7 +571,6 @@ describe("RevenueCat PostgreSQL webhook projection", () => {
         project({
           authorization: "test-webhook-authorization",
           signature: null,
-          now,
           rawBody: JSON.stringify(payload),
         });
       const status = async () =>

@@ -34,7 +34,7 @@ export function createAuth(input: { config: AuthConfig; db: Database; billing: B
       organizationLimit: 1,
     }),
   ];
-  if (input.billing.polar.plugin) plugins.push(input.billing.polar.plugin);
+  if (input.billing.authPlugin) plugins.push(input.billing.authPlugin);
 
   return betterAuth({
     appName: "Pisto",

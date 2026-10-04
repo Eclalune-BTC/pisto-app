@@ -4,11 +4,17 @@ import { and, asc, eq, gt, isNull, lte, or } from "drizzle-orm";
 
 const allowedSources = new Set<EntitlementContract["source"]>(["polar", "revenuecat", "manual"]);
 
-// Unknown sources cannot inherit the reserved manual-override provenance.
-export function recognizedSource(value: string): EntitlementContract["source"] | null {
-  return allowedSources.has(value as EntitlementContract["source"])
-    ? (value as EntitlementContract["source"])
-    : null;
+export class EntitlementIntegrityError extends Error {
+  override readonly name = "EntitlementIntegrityError";
+}
+
+// Only projections in this package write grants. An unknown source is corrupt
+// data; it must never be dropped silently or relabeled as a manual override.
+export function recognizedSource(value: string): EntitlementContract["source"] {
+  if (!allowedSources.has(value as EntitlementContract["source"])) {
+    throw new EntitlementIntegrityError("Entitlement grant has an unrecognized source");
+  }
+  return value as EntitlementContract["source"];
 }
 
 export async function listEntitlements(
@@ -33,19 +39,13 @@ export async function listEntitlements(
     )
     .orderBy(asc(entitlement.key));
 
-  return rows.flatMap((row) => {
-    const source = recognizedSource(row.source);
-    if (!source) return [];
-    return [
-      {
-        key: row.key,
-        status: "active" as const,
-        source,
-        productId: row.productId,
-        validFrom: row.validFrom?.toISOString() ?? null,
-        validUntil: row.validUntil?.toISOString() ?? null,
-        metadata: row.metadata,
-      },
-    ];
-  });
+  return rows.map((row) => ({
+    key: row.key,
+    status: "active" as const,
+    source: recognizedSource(row.source),
+    productId: row.productId,
+    validFrom: row.validFrom?.toISOString() ?? null,
+    validUntil: row.validUntil?.toISOString() ?? null,
+    metadata: row.metadata,
+  }));
 }

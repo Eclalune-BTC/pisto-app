@@ -52,7 +52,8 @@ This does not bridge a gap between noncontiguous purchases.
 
 Customer-state reads use the scoped SDK boundary directly because the installed Better Auth Polar
 organization-list handler prints raw SDK failures outside its configured logger. SDK errors become
-the stable API `BILLING_UNAVAILABLE` response without retaining their private payload.
+the stable API `BILLING_UNAVAILABLE` response; the SDK error stays only on `cause` and is never
+serialized or logged.
 The client uses SDK 1.0.2 / adapter 2.0.1 and pins API `2026-10`. Provider payloads use snake_case;
 public envelopes and database column names are unchanged. Opaque customer state receives bounded
 structural validation; entitlement projections retain strict required-field validation. Signed unknown
