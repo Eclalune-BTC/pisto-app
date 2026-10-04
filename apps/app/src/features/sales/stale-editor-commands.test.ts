@@ -23,6 +23,11 @@ const fixture = vi.hoisted(() => ({
   navigate: vi.fn(),
   randomUUID: vi.fn(() => "11111111-1111-4111-8111-111111111111"),
   mutation: { isPending: false, error: null as unknown, mutate: vi.fn(), reset: vi.fn() },
+  mutationOptions: undefined as
+    | { onSuccess: (result: unknown, input: unknown) => Promise<void> }
+    | undefined,
+  notify: { success: vi.fn(), warning: vi.fn(), error: vi.fn() },
+  routeLabel: vi.fn(),
 }));
 vi.mock("react", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react")>()),
@@ -44,10 +49,14 @@ vi.mock("@tanstack/react-query", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-query")>()),
   useQuery: (options: { queryKey: readonly unknown[] }) =>
     fixture.queries[options.queryKey[0] === "businesses" ? "businesses" : "sale"],
-  useMutation: () => fixture.mutation,
+  useMutation: (options: typeof fixture.mutationOptions) => {
+    fixture.mutationOptions = options;
+    return fixture.mutation;
+  },
   useQueryClient: () => ({ invalidateQueries: async () => undefined }),
 }));
 vi.mock("expo-router", () => ({
+  Link: "link",
   Redirect: "redirect",
   useRouter: () => ({ replace: fixture.navigate, push: fixture.navigate }),
   useLocalSearchParams: () => ({ saleId: "sale" }),
@@ -72,8 +81,10 @@ vi.mock("@/lib/queries/businesses", () => ({
 vi.mock("@/lib/api-client", async () => ({
   ...(await import("@/lib/api-error")),
   apiRequest: vi.fn(),
-  api: { sales: { create: vi.fn(), void: vi.fn(), replace: vi.fn() } },
+  api: { sales: { void: vi.fn(), replace: vi.fn() } },
 }));
+vi.mock("@/lib/notify", () => ({ notify: fixture.notify }));
+vi.mock("@/components/shell/shell-context", () => ({ useRouteLabel: fixture.routeLabel }));
 
 import { StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
@@ -116,7 +127,7 @@ beforeEach(() => {
         timeZone: "UTC",
         currency: "USD",
         currencyMinorUnitDigits: 2,
-        access: { permissions: ["sales:create", "sales:correct"] },
+        access: { permissions: ["sales:read", "sales:create", "sales:correct"] },
       },
     }),
     sale: query({
@@ -131,6 +142,8 @@ beforeEach(() => {
         timeZone: "UTC",
         correction: null,
         description: null,
+        occurredAt: "2026-09-10T12:00:00.000Z",
+        createdAt: "2026-09-10T12:01:00.000Z",
       },
     }),
   };
@@ -174,6 +187,7 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       );
       reason?.props.onChangeText?.("Wrong sale");
       const reviewLabel = "sales.correction.review";
+      const confirmVoid = "sales.correction.confirmVoid";
       setFailure(dependency, failure);
       tree = render(component);
       expect(elements(tree, StaleNotice)).toHaveLength(1);
@@ -187,7 +201,7 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       expect(fixture.randomUUID).toHaveBeenCalledTimes(1);
       setFailure(dependency, failure);
       tree = render(component);
-      const confirmation = button(tree, ({ variant }) => variant === "default");
+      const confirmation = button(tree, ({ label }) => label === confirmVoid);
       expect(confirmation.disabled).toBe(true);
       press(confirmation);
       expect(fixture.mutation.mutate).not.toHaveBeenCalled();
@@ -222,14 +236,14 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       fixture.states.forEach((value, index) => {
         expect(value).toBe(beforeRefresh[index]);
       });
-      press(button(render(component), ({ variant }) => variant === "default"));
+      press(button(render(component), ({ label }) => label === confirmVoid));
       expect(fixture.mutation.mutate).toHaveBeenCalledTimes(1);
       const originalCommand = fixture.mutation.mutate.mock.calls[0]?.[0];
       expect(originalCommand.command.idempotencyKey).toBe("11111111-1111-4111-8111-111111111111");
       fixture.mutation.isPending = true;
       setFailure(dependency, failure);
       tree = render(component);
-      press(button(tree, ({ variant }) => variant === "default"));
+      press(button(tree, ({ label }) => label === confirmVoid));
       press(button(tree, ({ label }) => label === "sales.edit"));
       expect(fixture.mutation.mutate).toHaveBeenCalledTimes(1);
       fixture.mutation.isPending = false;
@@ -241,7 +255,7 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
           ({ props }) => props.label === "sales.edit",
         ),
       ).toBe(false);
-      const retry = button(tree, ({ variant }) => variant === "default");
+      const retry = button(tree, ({ label }) => label === "common.retrySameConfirmation");
       expect(retry.disabled).toBe(false);
       press(retry);
       expect(fixture.mutation.mutate).toHaveBeenCalledTimes(2);
@@ -273,4 +287,57 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       expect(fixture.navigate).toHaveBeenCalledWith("/operate/sales/new");
     },
   );
+});
+
+describe("confirmed sale corrections", () => {
+  const detail = (saleId: string) => ({ pathname: "/operate/sales/[saleId]", params: { saleId } });
+  const money = { currency: "USD", currencyMinorUnitDigits: 2 };
+  const key = "11111111-1111-4111-8111-111111111111";
+  function confirm(result: unknown, kind: "void" | "replacement") {
+    render(SaleCorrectionScreen);
+    const options = fixture.mutationOptions;
+    if (!options) throw new Error("Missing correction mutation");
+    return options.onSuccess(result, {
+      businessId: "business",
+      saleId: "sale",
+      kind,
+      command: { idempotencyKey: key, reason: "Wrong sale" },
+    });
+  }
+
+  test("announces a void and opens the corrected sale", async () => {
+    await confirm(
+      {
+        originalSale: { id: "sale", grossMinorUnits: "500", status: "voided", ...money },
+        replacementSale: null,
+      },
+      "void",
+    );
+    expect(fixture.notify.success).toHaveBeenCalledWith("sales.correction.voided", {
+      description: "$5.00",
+    });
+    expect(fixture.navigate).toHaveBeenCalledWith(detail("sale"));
+  });
+
+  test("announces a replacement with a link to the new sale", async () => {
+    await confirm(
+      {
+        originalSale: { id: "sale", grossMinorUnits: "500", status: "voided", ...money },
+        replacementSale: { id: "replacement", grossMinorUnits: "700", status: "posted", ...money },
+      },
+      "replacement",
+    );
+    const [title, options] = fixture.notify.success.mock.calls[0] ?? [];
+    expect(title).toBe("sales.correction.replaced");
+    expect(options.description).toBe("$7.00");
+    expect(options.action.label).toBe("sales.correction.viewReplacement");
+    expect(fixture.navigate).toHaveBeenCalledWith(detail("sale"));
+    options.action.onPress();
+    expect(fixture.navigate).toHaveBeenLastCalledWith(detail("replacement"));
+  });
+
+  test("names the sale in the breadcrumb once it has loaded", () => {
+    render(SaleDetailScreen);
+    expect(fixture.routeLabel).toHaveBeenCalledWith("/operate/sales/[saleId]", "$5.00");
+  });
 });

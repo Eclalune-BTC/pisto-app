@@ -1,24 +1,89 @@
+import type { Sale } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
-import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, CheckCircle2, Pencil, Plus } from "lucide-react-native";
+import { type Href, Link, Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import type { TFunction } from "i18next";
+import { Pencil, Plus } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
-import { DetailList } from "@/components/detail-list";
+import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
-import { OfflineState, StaleNotice } from "@/components/remote-state";
-import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
+import { StaleNotice } from "@/components/remote-state";
+import { useRouteLabel } from "@/components/shell/shell-context";
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import { Text } from "@/components/ui/text";
-import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { saleQueryOptions } from "@/features/sales/queries";
 import { requireSupportedLocale } from "@/i18n/locale";
-import { formatMinorUnits } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
+import { hasDeniedRead, queryHasStaleData, readFailureKind } from "@/lib/query-state";
+import { formatSaleInstant } from "./format";
+import { saleQueryOptions } from "./queries";
+import { SalesRouteState } from "./route-state";
+import { SaleStatusBadge, saleAmount, saleOccurrenceItems } from "./sale-facts";
+import { canCorrectSale, readState } from "./state";
 
-export default function SaleResultScreen() {
+function saleHref(saleId: string): Href {
+  return { pathname: "/operate/sales/[saleId]", params: { saleId } };
+}
+
+function RecordLink({ href, label }: { href: Href; label: string }) {
+  return (
+    <Link asChild href={href}>
+      <Text
+        accessibilityRole="link"
+        className="self-start font-ui text-sm leading-5 text-foreground underline web:underline-offset-4"
+      >
+        {label}
+      </Text>
+    </Link>
+  );
+}
+
+/** What corrected this sale and, when there is one, a link to the other side of the replacement. */
+function correctionItems(sale: Sale, locale: string, t: TFunction): DescriptionItem[] {
+  const correction = sale.correction;
+  if (!correction) return [];
+  const related =
+    correction.replacementSaleId && correction.replacementSaleId !== sale.id
+      ? {
+          label: t("sales.correction.replacement"),
+          value: (
+            <RecordLink
+              href={saleHref(correction.replacementSaleId)}
+              label={t("sales.correction.openReplacement")}
+            />
+          ),
+        }
+      : correction.originalSaleId !== sale.id
+        ? {
+            label: t("sales.correction.original"),
+            value: (
+              <RecordLink
+                href={saleHref(correction.originalSaleId)}
+                label={t("sales.correction.openOriginal")}
+              />
+            ),
+          }
+        : null;
+  return [
+    {
+      label: t("sales.correction.kind"),
+      value:
+        correction.kind === "replacement"
+          ? t("sales.correction.kindReplacement")
+          : t("sales.correction.kindVoid"),
+    },
+    { label: t("sales.correction.reason"), value: correction.reason },
+    {
+      label: t("sales.correction.correctedAt"),
+      numeric: true,
+      value: formatSaleInstant(correction.correctedAt, locale, sale.timeZone),
+    },
+    ...(related ? [related] : []),
+  ];
+}
+
+export default function SaleDetailScreen() {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const router = useRouter();
@@ -26,87 +91,121 @@ export default function SaleResultScreen() {
   const saleId = Array.isArray(params.saleId) ? params.saleId[0] : params.saleId;
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
-  const result = useQuery({
-    ...saleQueryOptions(business?.id, saleId),
-    enabled: Boolean(saleId && business),
-  });
+  const permissions = business?.access.permissions ?? [];
+  const canRead = permissions.includes("sales:read");
+  const result = useQuery(saleQueryOptions(canRead ? business?.id : undefined, saleId));
+  const sale = result.data?.sale;
+  useRouteLabel("/operate/sales/[saleId]", sale ? saleAmount(sale, locale) : undefined);
 
-  if (hasDeniedRead([businesses, result])) return <CapabilityRouteState kind="denied" />;
-
-  if (
-    (businesses.fetchStatus === "paused" && !businesses.data) ||
-    (result.fetchStatus === "paused" && !result.data)
-  ) {
-    return <OfflineState />;
-  }
-  if (businesses.data && !business) return <Redirect href="/business" />;
-
-  // A failed business read leaves the sale query disabled, so it stays pending forever.
-  if (businesses.isPending || (business !== undefined && result.isPending)) {
+  const access = readState([businesses]);
+  if (access === "denied" || hasDeniedRead([result]) || (business && !canRead)) {
     return (
-      <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <LoadingIndicator size="large" />
-        <Text className="text-sm text-muted-foreground">{t("sales.resultLoading")}</Text>
-      </View>
+      <SalesRouteState
+        description={t("sales.deniedDescription")}
+        kind="denied"
+        title={t("sales.deniedTitle")}
+        width="form"
+      />
+    );
+  }
+  if (access === "error") {
+    return (
+      <SalesRouteState
+        description={t("sales.unavailableDescription")}
+        kind="error"
+        onRetry={() => void businesses.refetch()}
+        title={t("sales.unavailableTitle")}
+        width="form"
+      />
+    );
+  }
+  if (access === "ready" && !business) return <Redirect href="/business" />;
+  const missing = access === "ready" && !saleId;
+  const read = access === "ready" ? readState([result]) : access;
+  if (missing || (read === "error" && readFailureKind(result.error) === "notFound")) {
+    return (
+      <SalesRouteState
+        action={
+          <Link asChild href="/operate/sales">
+            <Button accessibilityRole="link" size="sm" variant="outline">
+              <Text>{t("sales.goToSales")}</Text>
+            </Button>
+          </Link>
+        }
+        description={t("sales.detail.notFoundDescription")}
+        kind="notFound"
+        title={t("sales.detail.notFoundTitle")}
+        width="form"
+      />
+    );
+  }
+  if (read === "error") {
+    return (
+      <SalesRouteState
+        description={t("sales.detail.unavailableDescription")}
+        kind="error"
+        onRetry={() => void result.refetch()}
+        title={t("sales.detail.unavailableTitle")}
+        width="form"
+      />
+    );
+  }
+  if (read === "offline") return <SalesRouteState kind="offline" width="form" />;
+  if (!sale) {
+    return (
+      <SalesRouteState
+        kind="loading"
+        label={t("sales.detail.loading")}
+        variant="detail"
+        width="form"
+      />
     );
   }
 
-  if (!result.data) {
-    return (
-      <View className="flex-1 items-start justify-center gap-4 px-5 sm:px-8 lg:px-10">
-        <Text className="text-xl font-heading text-foreground">{t("sales.resultFailedTitle")}</Text>
-        <Text className="max-w-[460px] text-sm leading-5 text-muted-foreground">
-          {t("sales.resultFailedDescription")}
-        </Text>
-        <View className="gap-3 sm:flex-row">
-          <Button
-            label={t("common.retry")}
-            onPress={() => {
-              void businesses.refetch();
-              void result.refetch();
-            }}
-            variant="outline"
-          />
-          <Button label={t("sales.goToSales")} onPress={() => router.replace("/operate/sales")} />
-        </View>
-      </View>
-    );
-  }
-
-  const isStale = queryHasStaleData(businesses) || queryHasStaleData(result);
-  const { sale } = result.data;
-  const canCorrect = business?.access.permissions.includes("sales:correct") ?? false;
+  const stale = queryHasStaleData(businesses) || queryHasStaleData(result);
+  const canCorrect = permissions.includes("sales:correct") && canCorrectSale(sale);
+  const canCreate = permissions.includes("sales:create");
   return (
     <Page width="form">
-      <Button
-        className="self-start px-0"
-        onPress={() => router.replace("/operate/sales")}
-        size="sm"
-        variant="ghost"
-      >
-        <Icon as={ArrowLeft} className="text-muted-foreground" size={18} />
-        <ButtonText className="text-muted-foreground" variant="ghost">
-          {t("sales.back")}
-        </ButtonText>
-      </Button>
-
-      <View className="flex-row items-start gap-4">
-        <Icon as={CheckCircle2} className="text-positive-foreground" size={30} strokeWidth={2.4} />
-        <View className="min-w-0 flex-1">
-          <ScreenHeader
-            description={t("sales.resultDescription")}
-            eyebrow={t("sales.resultEyebrow")}
-            title={formatMinorUnits(
-              sale.grossMinorUnits,
-              sale.currency,
-              sale.currencyMinorUnitDigits,
-              locale,
-            )}
-          />
-        </View>
-      </View>
-
-      {isStale ? (
+      <PageHeader
+        actions={
+          canCorrect || canCreate ? (
+            <>
+              {canCorrect ? (
+                <Button
+                  disabled={stale}
+                  onPress={() => {
+                    if (!stale)
+                      router.push({
+                        pathname: "/operate/sales/correct/[saleId]",
+                        params: { saleId: sale.id },
+                      });
+                  }}
+                  variant="outline"
+                >
+                  <Icon as={Pencil} className="text-foreground" size={15} />
+                  <Text>{t("sales.correction.open")}</Text>
+                </Button>
+              ) : null}
+              {canCreate ? (
+                <Button
+                  disabled={stale}
+                  onPress={() => {
+                    if (!stale) router.push("/operate/sales/new");
+                  }}
+                  variant="default"
+                >
+                  <Icon as={Plus} className="text-primary-foreground" size={16} />
+                  <Text>{t("sales.register")}</Text>
+                </Button>
+              ) : null}
+            </>
+          ) : undefined
+        }
+        adornment={<SaleStatusBadge status={sale.status} />}
+        title={saleAmount(sale, locale)}
+      />
+      {stale ? (
         <StaleNotice
           loading={businesses.isFetching || result.isFetching}
           onRetry={() => {
@@ -115,78 +214,32 @@ export default function SaleResultScreen() {
           }}
         />
       ) : null}
-
-      <DetailList
+      <DescriptionList
         items={[
-          {
-            label: t("common.status"),
-            value: sale.status === "posted" ? t("sales.posted") : t("sales.voided"),
-          },
-          { label: t("common.localDate"), value: sale.occurredLocalDate },
-          { label: t("common.localTime"), value: sale.occurredLocalTime },
-          { label: t("common.timeZone"), value: sale.timeZone },
+          ...saleOccurrenceItems(sale, locale, t),
           { label: t("common.currency"), value: sale.currency },
+          { label: t("common.timeZone"), value: sale.timeZone },
           {
-            label: t("common.description"),
-            value: sale.description ?? t("common.noDescription"),
+            label: t("sales.fields.recordedAt"),
+            numeric: true,
+            value: formatSaleInstant(sale.createdAt, locale, sale.timeZone),
           },
-          { label: t("common.identifier"), value: sale.id },
-          ...(sale.correction
-            ? [
-                {
-                  label: t("sales.correction.action"),
-                  value:
-                    sale.correction.kind === "replacement"
-                      ? t("sales.correction.replaceAction")
-                      : t("sales.correction.voidAction"),
-                },
-                { label: t("sales.correction.reason"), value: sale.correction.reason },
-                ...(sale.correction.replacementSaleId
-                  ? [
-                      {
-                        label: t("sales.correction.replacementIdentifier"),
-                        value: sale.correction.replacementSaleId,
-                      },
-                    ]
-                  : []),
-              ]
-            : []),
         ]}
       />
-
-      <View className="gap-3 sm:flex-row">
-        {sale.status === "posted" && canCorrect ? (
-          <Button
-            disabled={isStale}
-            onPress={() =>
-              !isStale &&
-              router.push({
-                pathname: "/operate/sales/correct/[saleId]",
-                params: { saleId: sale.id },
-              })
-            }
-            variant="outline"
-          >
-            <Icon as={Pencil} className="text-primary" size={18} />
-            <ButtonText variant="outline">{t("sales.correction.open")}</ButtonText>
-          </Button>
-        ) : null}
-        <Button
-          disabled={isStale}
-          onPress={() => {
-            if (!isStale) router.replace("/operate/sales/new");
-          }}
-          variant="default"
+      {sale.correction ? (
+        <Section
+          description={
+            sale.correction.replacementSaleId === sale.id
+              ? t("sales.correction.replacementNote")
+              : sale.correction.kind === "replacement"
+                ? t("sales.correction.replacedNote")
+                : t("sales.correction.voidedNote")
+          }
+          title={t("sales.correction.details")}
         >
-          <Icon as={Plus} className="text-primary-foreground" size={18} />
-          <ButtonText variant="default">{t("sales.registerAnother")}</ButtonText>
-        </Button>
-        <Button
-          label={t("sales.viewSummary")}
-          onPress={() => router.replace("/operate/sales")}
-          variant="outline"
-        />
-      </View>
+          <DescriptionList items={correctionItems(sale, locale, t)} />
+        </Section>
+      ) : null}
     </Page>
   );
 }

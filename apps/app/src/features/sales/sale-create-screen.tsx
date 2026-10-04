@@ -2,54 +2,70 @@ import type { Business, SaleReview } from "@pisto/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
-import { AlertTriangle } from "lucide-react-native";
+import { CircleAlert, TriangleAlert } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
-import { DetailList } from "@/components/detail-list";
+import { DescriptionList } from "@/components/layout/description-list";
+import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
-import { OfflineState, StaleNotice } from "@/components/remote-state";
-import { ScreenHeader } from "@/components/screen-header";
+import { StaleNotice } from "@/components/remote-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import { Text } from "@/components/ui/text";
-import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { reportsQueryKeys } from "@/features/reports/queries";
-import { saleQueryKeys, saleReviewQueryOptions } from "@/features/sales/queries";
-import {
-  type SaleDraftIssues,
-  type SaleDraftValues,
-  validateSaleDraft,
-} from "@/features/sales/sale-draft";
-import { SaleDraftFields } from "@/features/sales/sale-draft-fields";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { api, isAmbiguousMutationError } from "@/lib/api-client";
-import { currentLocalDateTime, formatMinorUnits, toDecimalString } from "@/lib/money";
+import { currentLocalDateTime, toDecimalString } from "@/lib/money";
+import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
-
-const emptyDraft: SaleDraftValues = { amount: "", date: "", time: "", description: "" };
+import { ActionBar } from "./action-bar";
+import { invalidateSaleReads, saleQueryKeys, saleReviewQueryOptions } from "./queries";
+import { SalesRouteState } from "./route-state";
+import {
+  emptySaleDraft,
+  type SaleDraftErrors,
+  type SaleDraftValues,
+  saleDraftErrors,
+  validateSaleDraft,
+} from "./sale-draft";
+import { SaleDraftFields } from "./sale-draft-fields";
+import { saleAmount, saleFactItems } from "./sale-facts";
+import { readState } from "./state";
 
 export default function NewSaleScreen() {
+  const { t } = useTranslation();
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
-  if (hasDeniedRead([businesses])) return <CapabilityRouteState kind="denied" />;
-  if (businesses.fetchStatus === "paused" && !businesses.data) return <OfflineState />;
-  if (businesses.isPending) return <LoadingIndicator />;
-  if (businesses.isError && !businesses.data)
+  const read = readState([businesses]);
+  if (read === "denied" || (business && !business.access.permissions.includes("sales:create"))) {
     return (
-      <CapabilityRouteState
-        kind="error"
-        onRetry={() => {
-          void businesses.refetch();
-        }}
+      <SalesRouteState
+        description={t("sales.new.deniedDescription")}
+        kind="denied"
+        title={t("sales.new.deniedTitle")}
+        width="form"
       />
     );
+  }
+  if (read === "offline") return <SalesRouteState kind="offline" width="form" />;
+  if (read === "loading") {
+    return (
+      <SalesRouteState kind="loading" label={t("sales.loading")} variant="form" width="form" />
+    );
+  }
+  if (read === "error") {
+    return (
+      <SalesRouteState
+        description={t("sales.unavailableDescription")}
+        kind="error"
+        onRetry={() => void businesses.refetch()}
+        title={t("sales.unavailableTitle")}
+        width="form"
+      />
+    );
+  }
   if (!business) return <Redirect href="/business" />;
-  if (!business.access.permissions.includes("sales:create"))
-    return <CapabilityRouteState kind="denied" />;
   return (
     <SaleReviewScreen
       key={business.id}
@@ -61,6 +77,11 @@ export default function NewSaleScreen() {
   );
 }
 
+/**
+ * New-sale entry with server-owned review recovery (ADR 0018). Opening or reloading only reads;
+ * preparing stores a working review, and only the explicit confirmation posts the sale with the
+ * review's original idempotency key.
+ */
 export function SaleReviewScreen({
   business,
   businessStale,
@@ -79,8 +100,8 @@ export function SaleReviewScreen({
   const reviewKey = saleQueryKeys.review(business.id);
   const recovery = useQuery(saleReviewQueryOptions(business.id));
   const review = recovery.data?.review;
-  const [draft, setDraft] = useState<SaleDraftValues>(emptyDraft);
-  const [errors, setErrors] = useState<Partial<Record<keyof SaleDraftValues, string>>>({});
+  const [draft, setDraft] = useState<SaleDraftValues>(emptySaleDraft);
+  const [errors, setErrors] = useState<SaleDraftErrors>({});
   const acting = useRef(false);
   const mounted = useRef(true);
 
@@ -101,11 +122,13 @@ export function SaleReviewScreen({
   const afterAction = () => {
     acting.current = false;
   };
-  const openSale = (saleId: string) =>
-    router.replace({
-      pathname: "/operate/sales/[saleId]",
-      params: { saleId },
-    });
+  const saleHref = (saleId: string) =>
+    ({ pathname: "/operate/sales/[saleId]", params: { saleId } }) as const;
+  const openSale = (saleId: string) => router.replace(saleHref(saleId));
+  const recheck = () => {
+    onRefreshBusiness();
+    void recovery.refetch();
+  };
 
   const preparation = useMutation({
     mutationFn: api.sales.review.prepare,
@@ -122,10 +145,11 @@ export function SaleReviewScreen({
     mutationFn: api.sales.review.confirm,
     onMutate: beforeAction,
     onSuccess: async ({ sale }) => {
-      await Promise.all([
-        client.invalidateQueries({ queryKey: saleQueryKeys.all(business.id) }),
-        client.invalidateQueries({ queryKey: reportsQueryKeys.all(business.id) }),
-      ]);
+      await invalidateSaleReads(client, business.id);
+      notify.success(t("sales.new.created"), {
+        action: { label: t("sales.viewSale"), onPress: () => router.push(saleHref(sale.id)) },
+        description: saleAmount(sale, locale),
+      });
       if (mounted.current) openSale(sale.id);
     },
     onError: refresh,
@@ -138,7 +162,9 @@ export function SaleReviewScreen({
     onSuccess: async ({ saleId }, { review: selected, edit }) => {
       await refresh();
       if (!mounted.current) return;
+      // A confirmation won the race with this edit or discard: the sale exists and is shown.
       if (saleId && selected.saleId === null) {
+        notify.warning(t("sales.new.alreadySaved"));
         openSale(saleId);
         return;
       }
@@ -153,7 +179,7 @@ export function SaleReviewScreen({
               time: selected.command.occurredLocalTime,
               description: selected.command.description ?? "",
             }
-          : emptyDraft,
+          : emptySaleDraft,
       );
       setErrors({});
       preparation.reset();
@@ -163,8 +189,24 @@ export function SaleReviewScreen({
     onSettled: afterAction,
   });
 
-  if (hasDeniedRead([recovery])) return <CapabilityRouteState kind="denied" />;
-  if (recovery.fetchStatus === "paused" && !recovery.data) return <OfflineState />;
+  if (hasDeniedRead([recovery])) {
+    return (
+      <SalesRouteState
+        description={t("sales.new.deniedDescription")}
+        kind="denied"
+        title={t("sales.new.deniedTitle")}
+        width="form"
+      />
+    );
+  }
+  if (recovery.fetchStatus === "paused" && !recovery.data) {
+    return <SalesRouteState kind="offline" width="form" />;
+  }
+  if (recovery.isPending) {
+    return (
+      <SalesRouteState kind="loading" label={t("sales.new.loading")} variant="form" width="form" />
+    );
+  }
 
   const contextChanged = Boolean(review && review.businessId !== business.id);
   const stale = businessStale || queryHasStaleData(recovery);
@@ -186,214 +228,168 @@ export function SaleReviewScreen({
   const prepareReview = () => {
     if (blocked || acting.current || review) return;
     const validation = validateSaleDraft(draft, business.currencyMinorUnitDigits);
-    const messages: Record<NonNullable<SaleDraftIssues[keyof SaleDraftIssues]>, string> = {
-      "invalid-decimals": t("sales.validation.amountDecimals", {
-        count: business.currencyMinorUnitDigits,
-      }),
-      "invalid-integer": t("sales.validation.amountInteger"),
-      "non-positive": t("sales.validation.amountPositive"),
-      "too-large": t("sales.validation.amountTooLarge"),
-      "invalid-date": t("sales.validation.date"),
-      "invalid-time": t("sales.validation.time"),
-      "description-too-long": t("sales.validation.description"),
-    };
-    setErrors(
-      Object.fromEntries(
-        Object.entries(validation.issues).map(([field, issue]) => [field, messages[issue]]),
-      ),
-    );
+    setErrors(saleDraftErrors(validation.issues, business.currencyMinorUnitDigits, t));
     const reviewedDraft = validation.draft;
     if (reviewedDraft)
       act(() => preparation.mutate({ idempotencyKey: Crypto.randomUUID(), ...reviewedDraft }));
   };
   const actionError = dismissal.error ?? (review?.saleId ? null : confirmation.error);
+  const uncertain = isAmbiguousMutationError(actionError);
+  const confirmationUncertain = uncertain && actionError === confirmation.error;
+  const failure = actionError
+    ? uncertain
+      ? t("sales.recovery.uncertain")
+      : productErrorMessage(actionError, t("sales.recovery.actionFailed"), t, "sale")
+    : recovery.isError
+      ? t("sales.recovery.unavailable")
+      : preparation.isError && !review
+        ? t("sales.recovery.prepareFailed")
+        : null;
+  const header = review?.saleId
+    ? { title: t("sales.new.savedTitle"), description: t("sales.new.savedDescription") }
+    : review
+      ? { title: t("sales.new.reviewTitle"), description: t("sales.new.reviewDescription") }
+      : { title: t("sales.new.title"), description: t("sales.new.description") };
+  const dismissing = (edit: boolean) => dismissal.isPending && dismissal.variables?.edit === edit;
+
   return (
     <Page width="form">
-      <Button
-        label={t("sales.back")}
-        variant="ghost"
-        className="self-start"
-        disabled={pending}
-        onPress={() => {
-          if (!pending) router.replace("/operate/sales");
-        }}
-      />
-      <ScreenHeader
-        eyebrow={business.name}
-        title={
-          review?.saleId
-            ? t("sales.resultEyebrow")
-            : review
-              ? t("sales.reviewTitle")
-              : t("sales.newTitle")
-        }
-        description={
-          review?.saleId
-            ? t("sales.recovery.saved")
-            : review
-              ? t("sales.reviewDescription")
-              : t("sales.newDescription")
-        }
-      />
+      <PageHeader description={header.description} title={header.title} />
       {contextChanged ? (
-        <View className="gap-3">
-          <Alert icon={AlertTriangle} variant="default">
-            <AlertDescription>{t("sales.recovery.contextChanged")}</AlertDescription>
-          </Alert>
-          <Button
-            label={t("common.retry")}
-            variant="outline"
-            onPress={() => {
-              onRefreshBusiness();
-              void recovery.refetch();
-            }}
-          />
-        </View>
+        <Alert
+          action={
+            <Button label={t("common.retry")} onPress={recheck} size="sm" variant="outline" />
+          }
+          icon={TriangleAlert}
+          variant="warning"
+        >
+          <AlertDescription>{t("sales.recovery.contextChanged")}</AlertDescription>
+        </Alert>
       ) : null}
       {stale ? (
-        <StaleNotice
-          loading={businessFetching || recovery.isFetching}
-          onRetry={() => {
-            onRefreshBusiness();
-            void recovery.refetch();
-          }}
-        />
+        <StaleNotice loading={businessFetching || recovery.isFetching} onRetry={recheck} />
       ) : null}
-      {recovery.isPending ? <Text>{t("sales.recovery.loading")}</Text> : null}
-      {recovery.isError || (preparation.isError && !review) || actionError ? (
-        <View className="gap-3">
-          <Alert icon={AlertTriangle} variant="destructive">
-            <AlertDescription>
-              {actionError
-                ? isAmbiguousMutationError(actionError)
-                  ? t("common.uncertainTitle")
-                  : productErrorMessage(actionError, t("sales.recovery.actionFailed"), t, "sale")
-                : t(
-                    recovery.isError
-                      ? "sales.recovery.unavailable"
-                      : "sales.recovery.prepareFailed",
-                  )}
-            </AlertDescription>
-          </Alert>
-          <Button
-            label={t("sales.recovery.refresh")}
-            variant="outline"
-            loading={recovery.isFetching}
-            onPress={() => {
-              onRefreshBusiness();
-              void recovery.refetch();
-            }}
-          />
-        </View>
+      {failure ? (
+        <Alert
+          action={
+            <Button
+              label={t("sales.recovery.refresh")}
+              loading={recovery.isFetching}
+              onPress={recheck}
+              size="sm"
+              variant="outline"
+            />
+          }
+          icon={uncertain ? TriangleAlert : CircleAlert}
+          variant={uncertain ? "warning" : "destructive"}
+        >
+          <AlertDescription>{failure}</AlertDescription>
+        </Alert>
       ) : null}
       {review && !contextChanged ? (
-        <View className="gap-6">
-          <Alert icon={AlertTriangle} variant="default">
-            <AlertDescription>
-              {t(review.saleId ? "sales.recovery.saved" : "sales.recovery.retained")}
-            </AlertDescription>
-          </Alert>
-          <DetailList
+        <>
+          <DescriptionList
             items={[
-              {
-                label: t("sales.total"),
-                value: formatMinorUnits(
-                  review.command.grossMinorUnits,
-                  review.currency,
-                  review.currencyMinorUnitDigits,
-                  locale,
-                ),
-              },
-              { label: t("common.localDate"), value: review.command.occurredLocalDate },
-              { label: t("common.localTime"), value: review.command.occurredLocalTime },
-              { label: t("common.timeZone"), value: review.timeZone },
+              ...saleFactItems(
+                {
+                  ...review.command,
+                  currency: review.currency,
+                  currencyMinorUnitDigits: review.currencyMinorUnitDigits,
+                },
+                locale,
+                t,
+              ),
               { label: t("common.currency"), value: review.currency },
-              {
-                label: t("common.description"),
-                value: review.command.description ?? t("common.noDescription"),
-              },
+              { label: t("common.timeZone"), value: review.timeZone },
             ]}
           />
           {settingsChanged ? (
-            <Alert icon={AlertTriangle} variant="default">
+            <Alert icon={TriangleAlert} variant="warning">
               <AlertDescription>{t("sales.recovery.settingsChanged")}</AlertDescription>
             </Alert>
           ) : null}
           {review.saleId ? (
-            <View className="gap-3">
+            <ActionBar>
               <Button
-                label={t("sales.recovery.open")}
-                variant="default"
+                disabled={blocked}
+                label={t("sales.registerAnother")}
+                loading={dismissal.isPending}
+                onPress={() => act(() => dismissal.mutate({ review, edit: false }))}
+                variant="outline"
+              />
+              <Button
+                label={t("sales.viewSale")}
                 onPress={() => {
                   if (review.saleId) openSale(review.saleId);
                 }}
               />
-              <Button
-                label={t("sales.registerAnother")}
-                variant="outline"
-                disabled={blocked}
-                loading={dismissal.isPending}
-                onPress={() => act(() => dismissal.mutate({ review, edit: false }))}
-              />
-            </View>
+            </ActionBar>
           ) : (
-            <View className="gap-3">
-              <Button
-                label={t("sales.confirm")}
-                variant="default"
-                disabled={blocked || settingsChanged}
-                loading={confirmation.isPending}
-                onPress={() => {
-                  if (!settingsChanged) act(() => confirmation.mutate(review.id));
-                }}
-              />
-              <Button
-                label={t("sales.edit")}
-                variant="outline"
-                disabled={blocked}
-                loading={dismissal.isPending}
-                onPress={() => act(() => dismissal.mutate({ review, edit: true }))}
-              />
-              <Button
-                label={t("sales.recovery.discard")}
-                variant="ghost"
-                disabled={blocked}
-                onPress={() => act(() => dismissal.mutate({ review, edit: false }))}
-              />
-            </View>
+            <>
+              <Text className="text-[13px] leading-5 text-muted-foreground">
+                {t("sales.new.retained")}
+              </Text>
+              <ActionBar
+                leading={
+                  <Button
+                    disabled={blocked}
+                    label={t("sales.new.discard")}
+                    loading={dismissing(false)}
+                    onPress={() => act(() => dismissal.mutate({ review, edit: false }))}
+                    variant="ghost"
+                  />
+                }
+              >
+                <Button
+                  disabled={blocked}
+                  label={t("sales.edit")}
+                  loading={dismissing(true)}
+                  onPress={() => act(() => dismissal.mutate({ review, edit: true }))}
+                  variant="outline"
+                />
+                <Button
+                  disabled={blocked || settingsChanged}
+                  label={
+                    confirmationUncertain
+                      ? t("common.retrySameConfirmation")
+                      : t("sales.new.confirm")
+                  }
+                  loading={confirmation.isPending}
+                  onPress={() => {
+                    if (!settingsChanged) act(() => confirmation.mutate(review.id));
+                  }}
+                />
+              </ActionBar>
+            </>
           )}
-        </View>
+        </>
       ) : recovery.data && !contextChanged ? (
-        <View className="gap-6">
+        <>
           <SaleDraftFields
             currency={business.currency}
+            currencyMinorUnitDigits={business.currencyMinorUnitDigits}
             errors={errors}
-            values={draft}
-            labels={{
-              amount: t("sales.totalField"),
-              date: t("sales.date"),
-              datePlaceholder: t("sales.datePlaceholder"),
-              description: t("sales.descriptionOptional"),
-              descriptionPlaceholder: t("sales.descriptionPlaceholder"),
-              time: t("sales.time"),
-              timePlaceholder: t("sales.timePlaceholder"),
-            }}
             onChange={(field, value) => setDraft((previous) => ({ ...previous, [field]: value }))}
+            timeZone={business.timeZone}
+            values={draft}
           />
-          <Button
-            label={t("sales.review")}
-            variant="default"
-            disabled={blocked}
-            loading={preparation.isPending}
-            onPress={prepareReview}
-          />
-          <Text className="text-sm text-muted-foreground">
-            {t("sales.interpretation", {
-              currency: business.currency,
-              timeZone: business.timeZone,
-            })}
-          </Text>
-        </View>
+          <ActionBar>
+            <Button
+              disabled={pending}
+              label={t("common.cancel")}
+              onPress={() => {
+                if (!pending) router.replace("/operate/sales");
+              }}
+              variant="outline"
+            />
+            <Button
+              disabled={blocked}
+              label={t("sales.new.review")}
+              loading={preparation.isPending}
+              onPress={prepareReview}
+            />
+          </ActionBar>
+        </>
       ) : null}
     </Page>
   );

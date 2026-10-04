@@ -1,4 +1,4 @@
-import type { Customer, Receivable, ReceivablePayment, Sale } from "@pisto/contracts";
+import type { Customer, Receivable, ReceivablePayment } from "@pisto/contracts";
 import { type ComponentProps, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
@@ -15,8 +15,6 @@ vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" 
 
 import { ReceivableDetailScreen } from "@/features/receivables/receivable-detail-screen";
 import { ReceivablesScreen } from "@/features/receivables/receivables-screen";
-import { buildSalesHistoryCopy } from "@/features/sales/copy";
-import { SalesHistory } from "@/features/sales/sales-history";
 import { i18n } from "@/i18n/config";
 import { formatMinorUnits } from "@/lib/money";
 import { buildCustomersCopy } from "./copy";
@@ -50,42 +48,6 @@ const customerProps: ComponentProps<typeof CustomersScreen> = {
   searchQuery: "Long",
   status: "all",
   state: { kind: "ready", items: [customer], stale: true, nextCursor: "next", loadingMore: false },
-};
-const sale: Sale = {
-  id: "sale-a",
-  status: "posted",
-  entryMode: "total_only",
-  grossMinorUnits: "1250",
-  currency: "USD",
-  currencyMinorUnitDigits: 2,
-  occurredAt: timestamp,
-  occurredLocalDate: date,
-  occurredLocalTime: "12:00",
-  timeZone: "America/El_Salvador",
-  description: "Full sale description",
-  correction: null,
-  createdAt: timestamp,
-};
-const salesProps: ComponentProps<typeof SalesHistory> = {
-  copy: buildSalesHistoryCopy(i18n.t),
-  filter: "all",
-  formatDateTime: (value) => value,
-  formatMoney: money,
-  formatQueriedAt: (value) => value,
-  onCorrectSale: noop,
-  onFilterChange: noop,
-  onLoadMore: noop,
-  onOpenSale: noop,
-  onRetry: noop,
-  state: {
-    kind: "ready",
-    items: [sale],
-    canCorrect: true,
-    hasMore: true,
-    loadingMore: true,
-    stale: false,
-    queriedAt: timestamp,
-  },
 };
 const receivable: Receivable = {
   id: "charge-a",
@@ -173,52 +135,6 @@ describe("record table presentation", () => {
     expect(markup).not.toContain(customer.name);
     expect(markup).not.toContain('value="Long"');
     expect(markup).not.toContain(`aria-label="${copy.customers.list.filterLabel}`);
-  });
-
-  test("retains sale detail, exact amounts, correction and busy cursor names", () => {
-    const markup = renderToStaticMarkup(createElement(SalesHistory, salesProps));
-    expect(markup).toContain('aria-label="Ver Full sale description"');
-    expect(markup).toContain("$12.50");
-    expect(markup).toContain(salesProps.copy.correct);
-    expect(markup).toContain(salesProps.copy.loadingMore);
-    expect(markup).toContain('aria-busy="true"');
-  });
-
-  test("does not restore correction or pagination when unavailable in the supplied state", () => {
-    const markup = renderToStaticMarkup(
-      createElement(SalesHistory, {
-        ...salesProps,
-        state: {
-          kind: "ready",
-          items: [sale],
-          canCorrect: false,
-          hasMore: false,
-          loadingMore: false,
-          stale: true,
-          queriedAt: timestamp,
-        },
-      }),
-    );
-    expect(markup).toContain(salesProps.copy.stale);
-    expect(markup).not.toContain(`>${salesProps.copy.correct}<`);
-    expect(markup).not.toContain(`>${salesProps.copy.loadMore}<`);
-  });
-
-  test("hides sales filters on denial and distinguishes a failed read from empty history", () => {
-    const denied = renderToStaticMarkup(
-      createElement(SalesHistory, { ...salesProps, state: { kind: "denied" } }),
-    );
-    expect(denied).toContain(salesProps.copy.deniedTitle);
-    expect(denied).not.toContain(`aria-label="${salesProps.copy.filterLabel}`);
-    const failed = renderToStaticMarkup(
-      createElement(SalesHistory, {
-        ...salesProps,
-        state: { kind: "error", message: "Read failed" },
-      }),
-    );
-    expect(failed).toContain("Read failed");
-    expect(failed).toContain(`aria-label="${salesProps.copy.filterLabel}`);
-    expect(failed).not.toContain(salesProps.copy.emptyTitle);
   });
 
   test.each([false, true])(

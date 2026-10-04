@@ -1,64 +1,76 @@
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { DateField } from "@/components/ui/date-field";
 import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
-import type { SaleDraftValues } from "@/features/sales/sale-draft";
+import type { SaleDraftErrors, SaleDraftValues } from "./sale-draft";
 
-type Props = {
+type SaleDraftFieldsProps = {
   currency: string;
-  errors: Partial<Record<keyof SaleDraftValues, string>>;
-  labels: {
-    amount: string;
-    date: string;
-    datePlaceholder: string;
-    description: string;
-    descriptionPlaceholder: string;
-    time: string;
-    timePlaceholder: string;
-  };
+  currencyMinorUnitDigits: number;
+  errors: SaleDraftErrors;
   onChange: (field: keyof SaleDraftValues, value: string) => void;
+  timeZone: string;
   values: SaleDraftValues;
 };
 
-export function SaleDraftFields({ currency, errors, labels, onChange, values }: Props) {
+/** Total with its currency, the business-local moment, and an optional note. */
+export function SaleDraftFields({
+  currency,
+  currencyMinorUnitDigits,
+  errors,
+  onChange,
+  timeZone,
+  values,
+}: SaleDraftFieldsProps) {
+  const { t } = useTranslation();
   return (
-    <View className="gap-7">
+    <View className="gap-5">
       <Field
+        className="tabular-nums"
         error={errors.amount}
+        inputMode="decimal"
         keyboardType="decimal-pad"
-        label={labels.amount}
+        label={t("sales.fields.amount")}
         onChangeText={(value) => onChange("amount", value)}
-        placeholder="0.00"
-        trailing={<Text className="text-sm font-ui text-muted-foreground">{currency}</Text>}
+        placeholder={(0).toFixed(currencyMinorUnitDigits)}
+        trailing={<Text className="font-ui text-sm text-muted-foreground">{currency}</Text>}
         value={values.amount}
       />
-      <View className="gap-5 sm:flex-row">
-        <View className="flex-1">
-          <Field
-            error={errors.date}
-            keyboardType="numbers-and-punctuation"
-            label={labels.date}
-            onChangeText={(value) => onChange("date", value)}
-            placeholder={labels.datePlaceholder}
-            value={values.date}
-          />
+      <View className="gap-2">
+        <View className="flex-row flex-wrap gap-3">
+          <View className="min-w-0 grow basis-[180px]">
+            <DateField
+              error={errors.date}
+              label={t("sales.fields.date")}
+              onChange={(value) => onChange("date", value)}
+              value={values.date}
+            />
+          </View>
+          <View className="min-w-0 grow basis-[120px] sm:max-w-[160px]">
+            <Field
+              autoCorrect={false}
+              className="tabular-nums"
+              error={errors.time}
+              keyboardType="numbers-and-punctuation"
+              label={t("sales.fields.time")}
+              maxLength={5}
+              onChangeText={(value) => onChange("time", value)}
+              placeholder={t("sales.fields.timePlaceholder")}
+              value={values.time}
+            />
+          </View>
         </View>
-        <View className="flex-1">
-          <Field
-            error={errors.time}
-            keyboardType="numbers-and-punctuation"
-            label={labels.time}
-            onChangeText={(value) => onChange("time", value)}
-            placeholder={labels.timePlaceholder}
-            value={values.time}
-          />
-        </View>
+        <Text className="text-[13px] leading-5 text-muted-foreground">
+          {t("sales.fields.timeZoneHint", { timeZone })}
+        </Text>
       </View>
       <Field
         error={errors.description}
-        label={labels.description}
+        label={t("sales.fields.description")}
         maxLength={240}
         onChangeText={(value) => onChange("description", value)}
-        placeholder={labels.descriptionPlaceholder}
+        placeholder={t("sales.fields.descriptionPlaceholder")}
         value={values.description}
       />
     </View>

@@ -1,9 +1,15 @@
 import type { SaleStatusFilter } from "@pisto/contracts";
-import { infiniteQueryOptions, queryOptions, skipToken } from "@tanstack/react-query";
+import {
+  infiniteQueryOptions,
+  type QueryClient,
+  queryOptions,
+  skipToken,
+} from "@tanstack/react-query";
 
+import { reportsQueryKeys } from "@/features/reports/queries";
 import { api } from "@/lib/api-client";
 
-const pageSize = 25;
+export const SALES_PAGE_SIZE = 25;
 
 export const saleQueryKeys = {
   all: (businessId: string | undefined) => ["sales", businessId] as const,
@@ -24,7 +30,7 @@ export function salesInfiniteOptions(businessId: string | undefined, status: Sal
     initialPageParam: undefined as string | undefined,
     queryFn: businessId
       ? ({ pageParam, signal }) =>
-          api.sales.list({ cursor: pageParam, limit: pageSize, status }, signal)
+          api.sales.list({ cursor: pageParam, limit: SALES_PAGE_SIZE, status }, signal)
       : skipToken,
     queryKey: saleQueryKeys.list(businessId, status),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -52,4 +58,15 @@ export function previousMonthSummaryQueryOptions(businessId: string | undefined)
     queryFn: businessId ? ({ signal }) => api.sales.previousMonthSummary(signal) : skipToken,
     queryKey: saleQueryKeys.previousMonthSummary(businessId),
   });
+}
+
+/**
+ * A posted, voided or replaced sale changes every history page, the monthly summary and the
+ * operating report, not only the records it names.
+ */
+export function invalidateSaleReads(client: QueryClient, businessId: string) {
+  return Promise.all([
+    client.invalidateQueries({ queryKey: saleQueryKeys.all(businessId) }),
+    client.invalidateQueries({ queryKey: reportsQueryKeys.all(businessId) }),
+  ]);
 }

@@ -1,7 +1,15 @@
-import type { Sale } from "@pisto/contracts";
+import type { Sale, SaleList } from "@pisto/contracts";
+import type { InfiniteData } from "@tanstack/react-query";
 import { describe, expect, test } from "vitest";
+import { ApiClientError } from "@/lib/api-error";
 
-import { type SalesHistoryState, salesHistoryState } from "./state";
+import {
+  canCorrectSale,
+  parseSaleStatusFilter,
+  readState,
+  type SalesHistoryState,
+  salesHistoryState,
+} from "./state";
 
 const sale: Sale = {
   id: "5312a3e6-7c91-486a-9233-0cf4d9d3dcc7",
@@ -19,87 +27,153 @@ const sale: Sale = {
   createdAt: "2026-08-22T20:30:00.000Z",
 };
 
-const base = {
-  canCorrect: true,
-  hasMore: false,
-  items: [sale],
-  loadingMore: false,
-  queriedAt: "2026-08-22T20:30:05.000Z",
-  stale: false,
-};
+const queriedAt = "2026-08-22T20:30:05.000Z";
+
+function pages(...items: Sale[][]): InfiniteData<SaleList> {
+  return {
+    pageParams: items.map((_, index) => (index === 0 ? undefined : `cursor-${index}`)),
+    pages: items.map((page, index) => ({
+      items: page,
+      nextCursor: null,
+      queriedAt: index === 0 ? queriedAt : "2026-08-22T20:31:00.000Z",
+    })),
+  };
+}
+
+function query(overrides: Partial<Parameters<typeof salesHistoryState>[0]["query"]> = {}) {
+  return {
+    data: pages([sale]),
+    error: null,
+    fetchStatus: "idle" as const,
+    hasNextPage: false,
+    isError: false,
+    isFetchingNextPage: false,
+    ...overrides,
+  };
+}
+
+const base = { accessStale: false, canCorrect: true, canRead: true };
 
 describe("sale history state", () => {
   test("keeps a failed read distinct from a real empty history", () => {
     const failed = salesHistoryState({
       ...base,
-      items: [],
-      queriedAt: undefined,
-      remote: { kind: "error", message: "The history could not be read" },
+      query: query({ data: undefined, error: new ApiClientError("Down", 503), isError: true }),
     });
-    const empty = salesHistoryState({ ...base, items: [], remote: { kind: "ready" } });
+    const empty = salesHistoryState({ ...base, query: query({ data: pages([]) }) });
 
-    expect(failed).toEqual({ kind: "error", message: "The history could not be read" });
+    expect(failed).toEqual({ kind: "error" });
     expect("queriedAt" in failed).toBe(false);
-    expect(empty).toEqual({ kind: "empty", queriedAt: base.queriedAt, stale: false });
+    expect(empty).toEqual({ kind: "empty", queriedAt, stale: false });
   });
 
   test("never reports an unanswered page as ready", () => {
-    const unanswered = salesHistoryState({
-      ...base,
-      queriedAt: undefined,
-      remote: { kind: "ready" },
+    expect(salesHistoryState({ ...base, query: query({ data: undefined }) })).toEqual({
+      kind: "loading",
     });
-
-    expect(unanswered).toEqual({ kind: "loading" });
   });
 
-  test("passes a denied or offline read through without inventing rows", () => {
-    const denied = salesHistoryState({ ...base, remote: { kind: "denied" } });
-    const offline = salesHistoryState({
-      ...base,
-      remote: { kind: "offline", message: "No connection" },
-    });
+  test("tells a paused first read apart from loading", () => {
+    expect(
+      salesHistoryState({ ...base, query: query({ data: undefined, fetchStatus: "paused" }) }),
+    ).toEqual({ kind: "offline" });
+  });
 
+  test("lets an access rejection override cached rows", () => {
+    const denied = salesHistoryState({
+      ...base,
+      query: query({ error: new ApiClientError("Forbidden", 403), isError: true }),
+    });
     expect(denied).toEqual({ kind: "denied" });
-    expect(offline).toEqual({ kind: "offline", message: "No connection" });
+    expect(salesHistoryState({ ...base, canRead: false, query: query() })).toEqual({
+      kind: "denied",
+    });
   });
 
-  test("withdraws correction while the page is stale but still shows the history", () => {
-    const fresh = salesHistoryState({ ...base, remote: { kind: "ready" } }) as Extract<
+  test("withdraws correction while the page or the access is stale but still shows the history", () => {
+    const fresh = salesHistoryState({ ...base, query: query() }) as Extract<
       SalesHistoryState,
       { kind: "ready" }
     >;
-    const stale = salesHistoryState({
+    const staleRead = salesHistoryState({
       ...base,
-      remote: { kind: "ready" },
-      stale: true,
+      query: query({ error: new ApiClientError("Down", 503), isError: true }),
+    }) as Extract<SalesHistoryState, { kind: "ready" }>;
+    const staleAccess = salesHistoryState({
+      ...base,
+      accessStale: true,
+      query: query(),
     }) as Extract<SalesHistoryState, { kind: "ready" }>;
 
     expect(fresh.canCorrect).toBe(true);
-    expect(stale.canCorrect).toBe(false);
-    expect(stale.items).toEqual([sale]);
-    expect(stale.stale).toBe(true);
+    expect(staleRead).toMatchObject({ canCorrect: false, items: [sale], stale: true });
+    expect(staleAccess).toMatchObject({ canCorrect: false, items: [sale], stale: true });
   });
 
   test("never offers correction to an actor without the permission", () => {
-    const state = salesHistoryState({
-      ...base,
-      canCorrect: false,
-      remote: { kind: "ready" },
-    }) as Extract<SalesHistoryState, { kind: "ready" }>;
-
-    expect(state.canCorrect).toBe(false);
+    const state = salesHistoryState({ ...base, canCorrect: false, query: query() });
+    expect(state).toMatchObject({ kind: "ready", canCorrect: false });
   });
 
-  test("carries the paging affordance from the answered page", () => {
+  test("joins answered pages and claims the freshness of the oldest one", () => {
+    const second = { ...sale, id: "6312a3e6-7c91-486a-9233-0cf4d9d3dcc7" };
     const state = salesHistoryState({
       ...base,
+      query: query({ data: pages([sale], [second]), hasNextPage: true, isFetchingNextPage: true }),
+    });
+    expect(state).toEqual({
+      kind: "ready",
+      canCorrect: true,
       hasMore: true,
+      items: [sale, second],
       loadingMore: true,
-      remote: { kind: "ready" },
-    }) as Extract<SalesHistoryState, { kind: "ready" }>;
+      queriedAt,
+      stale: false,
+    });
+  });
+});
 
-    expect(state.hasMore).toBe(true);
-    expect(state.loadingMore).toBe(true);
+describe("route read state", () => {
+  const ready = { data: {}, error: null, fetchStatus: "idle" as const, isError: false };
+  test("ranks denial, failure, offline and loading before readiness", () => {
+    expect(readState([ready, { ...ready, error: new ApiClientError("No", 401) }])).toBe("denied");
+    expect(readState([ready, { ...ready, data: undefined, isError: true, error: {} }])).toBe(
+      "error",
+    );
+    expect(
+      readState([{ ...ready, data: undefined, isError: true, error: {}, fetchStatus: "paused" }]),
+    ).toBe("offline");
+    expect(readState([{ ...ready, data: undefined, fetchStatus: "paused" }])).toBe("offline");
+    expect(readState([ready, { ...ready, data: undefined }])).toBe("loading");
+    expect(readState([ready, { ...ready, isError: true, error: {} }])).toBe("ready");
+  });
+});
+
+describe("status filter from the URL", () => {
+  test.each([
+    [undefined, "all"],
+    ["posted", "posted"],
+    ["voided", "voided"],
+    [["voided", "posted"], "voided"],
+    ["deleted", "all"],
+    ["", "all"],
+  ] as const)("reads %j as %s", (value, expected) => {
+    expect(parseSaleStatusFilter(value as string | string[] | undefined)).toBe(expected);
+  });
+});
+
+describe("correction eligibility", () => {
+  test("allows only a posted sale without a correction", () => {
+    const correction = {
+      id: "7312a3e6-7c91-486a-9233-0cf4d9d3dcc7",
+      kind: "replacement" as const,
+      reason: "Wrong total",
+      originalSaleId: "8312a3e6-7c91-486a-9233-0cf4d9d3dcc7",
+      replacementSaleId: sale.id,
+      correctedAt: "2026-08-23T20:30:00.000Z",
+    };
+    expect(canCorrectSale(sale)).toBe(true);
+    expect(canCorrectSale({ ...sale, status: "voided" })).toBe(false);
+    expect(canCorrectSale({ ...sale, correction })).toBe(false);
   });
 });

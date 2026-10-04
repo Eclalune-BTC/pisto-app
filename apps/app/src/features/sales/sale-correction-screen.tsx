@@ -1,43 +1,49 @@
 import type { ReplaceSaleRequest, VoidSaleRequest } from "@pisto/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { AlertTriangle, ArrowLeft, Check } from "lucide-react-native";
+import { Link, Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { CircleAlert, TriangleAlert } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { DetailList } from "@/components/detail-list";
+import { DescriptionList } from "@/components/layout/description-list";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
-import { OfflineState, StaleNotice } from "@/components/remote-state";
-import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
+import { StaleNotice } from "@/components/remote-state";
+import { useRouteLabel } from "@/components/shell/shell-context";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import { Icon } from "@/components/ui/icon";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import { Text } from "@/components/ui/text";
-import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { reportsQueryKeys } from "@/features/reports/queries";
-import { saleQueryKeys, saleQueryOptions } from "@/features/sales/queries";
-import {
-  type SaleDraftIssues,
-  type SaleDraftValues,
-  validateSaleDraft,
-} from "@/features/sales/sale-draft";
-import { SaleDraftFields } from "@/features/sales/sale-draft-fields";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { api, isAmbiguousMutationError } from "@/lib/api-client";
-import { formatMinorUnits } from "@/lib/money";
+import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
+import { hasDeniedRead, queryHasStaleData, readFailureKind } from "@/lib/query-state";
+import { ActionBar } from "./action-bar";
+import { type CorrectionMode, CorrectionModeField } from "./correction-mode-field";
+import { invalidateSaleReads, saleQueryOptions } from "./queries";
+import { SalesRouteState } from "./route-state";
+import {
+  emptySaleDraft,
+  type SaleDraftErrors,
+  type SaleDraftValues,
+  saleDraftErrors,
+  validateSaleDraft,
+} from "./sale-draft";
+import { SaleDraftFields } from "./sale-draft-fields";
+import { saleAmount, saleFactItems } from "./sale-facts";
+import { canCorrectSale, readState } from "./state";
 
-type CorrectionMode = "void" | "replacement";
-type Review =
+/** A prepared correction: its key is minted once and reused by every retry of this review. */
+type CorrectionReview = { businessId: string; saleId: string } & (
   | { kind: "void"; command: VoidSaleRequest }
-  | { kind: "replacement"; command: ReplaceSaleRequest };
-type DraftErrors = Partial<Record<keyof SaleDraftValues, string>>;
+  | { kind: "replacement"; command: ReplaceSaleRequest }
+);
 
-export default function CorrectSaleScreen() {
+export default function SaleCorrectionScreen() {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const router = useRouter();
@@ -46,86 +52,134 @@ export default function CorrectSaleScreen() {
   const saleId = Array.isArray(params.saleId) ? params.saleId[0] : params.saleId;
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
-  const saleResult = useQuery({
-    ...saleQueryOptions(business?.id, saleId),
-    enabled: Boolean(saleId && business),
-  });
+  const canCorrect = business?.access.permissions.includes("sales:correct") ?? false;
+  const saleResult = useQuery(saleQueryOptions(canCorrect ? business?.id : undefined, saleId));
+  const sale = saleResult.data?.sale;
+  useRouteLabel("/operate/sales/[saleId]", sale ? saleAmount(sale, locale) : undefined);
   const [mode, setMode] = useState<CorrectionMode>("void");
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string>();
-  const [draft, setDraft] = useState<SaleDraftValues>({
-    amount: "",
-    date: "",
-    time: "",
-    description: "",
-  });
-  const [draftErrors, setDraftErrors] = useState<DraftErrors>({});
-  const [review, setReview] = useState<Review | null>(null);
+  const [draft, setDraft] = useState<SaleDraftValues>(emptySaleDraft);
+  const [draftErrors, setDraftErrors] = useState<SaleDraftErrors>({});
+  const [review, setReview] = useState<CorrectionReview | null>(null);
 
+  const saleHref = (id: string) =>
+    ({ pathname: "/operate/sales/[saleId]", params: { saleId: id } }) as const;
   const correction = useMutation({
-    mutationFn: (input: Review) =>
+    mutationFn: (input: CorrectionReview) =>
       input.kind === "void"
-        ? api.sales.void(saleId as string, input.command)
-        : api.sales.replace(saleId as string, input.command),
-    onSuccess: async () => {
-      // A correction changes the summary and every history page, not just the
-      // two records it names.
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: saleQueryKeys.all(business?.id),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: reportsQueryKeys.all(business?.id),
-        }),
-      ]);
-      router.replace({ pathname: "/operate/sales/[saleId]", params: { saleId: saleId as string } });
+        ? api.sales.void(input.saleId, input.command)
+        : api.sales.replace(input.saleId, input.command),
+    onSuccess: async (result, input) => {
+      await invalidateSaleReads(queryClient, input.businessId);
+      const replacement = result.replacementSale;
+      if (replacement) {
+        notify.success(t("sales.correction.replaced"), {
+          action: {
+            label: t("sales.correction.viewReplacement"),
+            onPress: () => router.push(saleHref(replacement.id)),
+          },
+          description: saleAmount(replacement, locale),
+        });
+      } else {
+        notify.success(t("sales.correction.voided"), {
+          description: saleAmount(result.originalSale, locale),
+        });
+      }
+      router.replace(saleHref(input.saleId));
     },
   });
 
-  if (hasDeniedRead([businesses, saleResult])) return <CapabilityRouteState kind="denied" />;
-
-  if (
-    (businesses.fetchStatus === "paused" && !businesses.data) ||
-    (saleResult.fetchStatus === "paused" && !saleResult.data)
-  ) {
-    return <OfflineState />;
-  }
-  // A failed business read leaves the sale query disabled, so it stays pending forever.
-  if (businesses.isPending || (business !== undefined && saleResult.isPending)) {
+  const access = readState([businesses]);
+  if (access === "denied" || hasDeniedRead([saleResult]) || (business && !canCorrect)) {
     return (
-      <View className="flex-1 items-start justify-center px-5 sm:px-8 lg:px-10">
-        <LoadingIndicator size="large" />
-      </View>
+      <SalesRouteState
+        description={t("sales.correction.deniedDescription")}
+        kind="denied"
+        title={t("sales.correction.deniedTitle")}
+        width="form"
+      />
     );
   }
-
-  const sale = saleResult.data?.sale;
-  const canCorrect = business?.access.permissions.includes("sales:correct") ?? false;
-  if (!sale || !business || !canCorrect || sale.status !== "posted" || sale.correction) {
+  if (access === "error") {
     return (
-      <Page width="form">
-        <ScreenHeader
-          description={t("sales.correction.unavailableDescription")}
-          eyebrow={t("sales.correction.eyebrow")}
-          title={t("sales.correction.unavailableTitle")}
-        />
-        <Button
-          label={t("sales.back")}
-          onPress={() =>
-            router.replace({
-              pathname: "/operate/sales/[saleId]",
-              params: { saleId: saleId as string },
-            })
-          }
-          variant="outline"
-        />
-      </Page>
+      <SalesRouteState
+        description={t("sales.unavailableDescription")}
+        kind="error"
+        onRetry={() => void businesses.refetch()}
+        title={t("sales.unavailableTitle")}
+        width="form"
+      />
+    );
+  }
+  if (access === "ready" && !business) return <Redirect href="/business" />;
+  const missing = access === "ready" && !saleId;
+  const read = access === "ready" ? readState([saleResult]) : access;
+  if (missing || (read === "error" && readFailureKind(saleResult.error) === "notFound")) {
+    return (
+      <SalesRouteState
+        action={
+          <Link asChild href="/operate/sales">
+            <Button accessibilityRole="link" size="sm" variant="outline">
+              <Text>{t("sales.goToSales")}</Text>
+            </Button>
+          </Link>
+        }
+        description={t("sales.detail.notFoundDescription")}
+        kind="notFound"
+        title={t("sales.detail.notFoundTitle")}
+        width="form"
+      />
+    );
+  }
+  if (read === "error") {
+    return (
+      <SalesRouteState
+        description={t("sales.detail.unavailableDescription")}
+        kind="error"
+        onRetry={() => void saleResult.refetch()}
+        title={t("sales.detail.unavailableTitle")}
+        width="form"
+      />
+    );
+  }
+  if (read === "offline") return <SalesRouteState kind="offline" width="form" />;
+  if (!sale || !business) {
+    return (
+      <SalesRouteState
+        kind="loading"
+        label={t("sales.detail.loading")}
+        variant="form"
+        width="form"
+      />
+    );
+  }
+  // After a confirmed correction the refreshed sale is no longer correctable; the screen keeps
+  // its review until the navigation to the result happens.
+  if (!canCorrectSale(sale) && !correction.isSuccess) {
+    return (
+      <SalesRouteState
+        action={
+          <Link asChild href={saleHref(sale.id)}>
+            <Button accessibilityRole="link" size="sm" variant="outline">
+              <Text>{t("sales.viewSale")}</Text>
+            </Button>
+          </Link>
+        }
+        description={t("sales.correction.unavailableDescription")}
+        kind="unavailable"
+        title={t("sales.correction.unavailableTitle")}
+        width="form"
+      />
     );
   }
 
   const isStale = queryHasStaleData(businesses) || queryHasStaleData(saleResult);
   const ambiguousFailure = isAmbiguousMutationError(correction.error);
-  const confirmationLocked = correction.isPending || ambiguousFailure;
+  const confirmationLocked = correction.isPending || ambiguousFailure || correction.isSuccess;
+  const leave = () => {
+    if (!confirmationLocked) router.replace(saleHref(sale.id));
+  };
 
   const prepareReview = () => {
     if (confirmationLocked || isStale) return;
@@ -139,189 +193,150 @@ export default function CorrectSaleScreen() {
 
     if (mode === "void") {
       setReview({
-        kind: "void",
+        businessId: business.id,
         command: { idempotencyKey: Crypto.randomUUID(), reason: trimmedReason },
+        kind: "void",
+        saleId: sale.id,
       });
       correction.reset();
       return;
     }
 
     const validation = validateSaleDraft(draft, sale.currencyMinorUnitDigits);
-    const messages: Record<NonNullable<SaleDraftIssues[keyof SaleDraftIssues]>, string> = {
-      "invalid-decimals": t("sales.validation.amountDecimals", {
-        count: sale.currencyMinorUnitDigits,
-      }),
-      "invalid-integer": t("sales.validation.amountInteger"),
-      "non-positive": t("sales.validation.amountPositive"),
-      "too-large": t("sales.validation.amountTooLarge"),
-      "invalid-date": t("sales.validation.date"),
-      "invalid-time": t("sales.validation.time"),
-      "description-too-long": t("sales.validation.description"),
-    };
-    setDraftErrors(
-      Object.fromEntries(
-        Object.entries(validation.issues).map(([field, issue]) => [field, messages[issue]]),
-      ) as DraftErrors,
-    );
+    setDraftErrors(saleDraftErrors(validation.issues, sale.currencyMinorUnitDigits, t));
     if (!validation.draft) return;
     setReview({
-      kind: "replacement",
+      businessId: business.id,
       command: {
         idempotencyKey: Crypto.randomUUID(),
         reason: trimmedReason,
         replacement: validation.draft,
       },
+      kind: "replacement",
+      saleId: sale.id,
     });
     correction.reset();
   };
 
-  const originalAmount = formatMinorUnits(
-    sale.grossMinorUnits,
-    sale.currency,
-    sale.currencyMinorUnitDigits,
-    locale,
+  const original = (
+    <Section title={t("sales.correction.original")}>
+      <DescriptionList items={saleFactItems(sale, locale, t)} />
+    </Section>
   );
+  const staleNotice = isStale ? (
+    <StaleNotice
+      loading={businesses.isFetching || saleResult.isFetching}
+      onRetry={() => {
+        void businesses.refetch();
+        void saleResult.refetch();
+      }}
+    />
+  ) : null;
+
+  if (review) {
+    return (
+      <Page width="form">
+        <PageHeader
+          description={t("sales.correction.reviewDescription")}
+          title={t("sales.correction.reviewTitle")}
+        />
+        {staleNotice}
+        {original}
+        <Section title={t("sales.correction.details")}>
+          <DescriptionList
+            items={[
+              {
+                label: t("sales.correction.kind"),
+                value:
+                  review.kind === "void"
+                    ? t("sales.correction.kindVoid")
+                    : t("sales.correction.kindReplacement"),
+              },
+              { label: t("sales.correction.reason"), value: review.command.reason },
+            ]}
+          />
+        </Section>
+        {review.kind === "replacement" ? (
+          <Section title={t("sales.correction.replacement")}>
+            <DescriptionList
+              items={saleFactItems(
+                {
+                  ...review.command.replacement,
+                  currency: sale.currency,
+                  currencyMinorUnitDigits: sale.currencyMinorUnitDigits,
+                },
+                locale,
+                t,
+              )}
+            />
+          </Section>
+        ) : null}
+        {correction.error ? (
+          <Alert
+            icon={ambiguousFailure ? TriangleAlert : CircleAlert}
+            variant={ambiguousFailure ? "warning" : "destructive"}
+          >
+            <AlertDescription>
+              {ambiguousFailure
+                ? t("sales.correction.uncertain")
+                : productErrorMessage(correction.error, t("sales.correction.failed"), t, "sale")}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        <ActionBar
+          leading={
+            <Button
+              disabled={confirmationLocked}
+              label={t("common.cancel")}
+              onPress={leave}
+              variant="ghost"
+            />
+          }
+        >
+          {!ambiguousFailure ? (
+            <Button
+              disabled={confirmationLocked}
+              label={t("sales.edit")}
+              onPress={() => {
+                if (confirmationLocked) return;
+                setReview(null);
+                correction.reset();
+              }}
+              variant="outline"
+            />
+          ) : null}
+          <Button
+            disabled={correction.isSuccess || (isStale && !ambiguousFailure)}
+            label={
+              ambiguousFailure
+                ? t("common.retrySameConfirmation")
+                : review.kind === "void"
+                  ? t("sales.correction.confirmVoid")
+                  : t("sales.correction.confirmReplace")
+            }
+            loading={correction.isPending}
+            onPress={() => {
+              if (correction.isPending || correction.isSuccess) return;
+              if (!isStale || ambiguousFailure) correction.mutate(review);
+            }}
+            variant={review.kind === "void" ? "destructive" : "default"}
+          />
+        </ActionBar>
+      </Page>
+    );
+  }
 
   return (
     <Page width="form">
-      <Button
-        className="self-start px-0"
-        disabled={confirmationLocked}
-        onPress={() =>
-          router.replace({ pathname: "/operate/sales/[saleId]", params: { saleId: sale.id } })
-        }
-        size="sm"
-        variant="ghost"
-      >
-        <Icon as={ArrowLeft} className="text-muted-foreground" size={18} />
-        <ButtonText className="text-muted-foreground" variant="ghost">
-          {t("sales.back")}
-        </ButtonText>
-      </Button>
-
-      <ScreenHeader
-        description={
-          review ? t("sales.correction.reviewDescription") : t("sales.correction.description")
-        }
-        eyebrow={t("sales.correction.eyebrow")}
-        title={review ? t("sales.correction.reviewTitle") : t("sales.correction.title")}
+      <PageHeader
+        description={t("sales.correction.description")}
+        title={t("sales.correction.title")}
       />
-
-      {isStale ? (
-        <StaleNotice
-          loading={businesses.isFetching || saleResult.isFetching}
-          onRetry={() => {
-            void businesses.refetch();
-            void saleResult.refetch();
-          }}
-        />
-      ) : null}
-
-      <View className="gap-3 border-y border-border py-5 ">
-        <Text className="text-xs font-heading uppercase tracking-[1.4px] text-muted-foreground">
-          {t("sales.correction.original")}
-        </Text>
-        <DetailList
-          items={[
-            { label: t("sales.total"), value: originalAmount },
-            { label: t("common.localDate"), value: sale.occurredLocalDate },
-            { label: t("common.localTime"), value: sale.occurredLocalTime },
-            {
-              label: t("common.description"),
-              value: sale.description ?? t("common.noDescription"),
-            },
-          ]}
-        />
-      </View>
-
-      {review ? (
-        <View className="gap-6">
-          <DetailList
-            items={[
-              {
-                label: t("sales.correction.action"),
-                value:
-                  review.kind === "void"
-                    ? t("sales.correction.voidAction")
-                    : t("sales.correction.replaceAction"),
-              },
-              { label: t("sales.correction.reason"), value: review.command.reason },
-              ...(review.kind === "replacement"
-                ? [
-                    {
-                      label: t("sales.correction.replacementTotal"),
-                      value: formatMinorUnits(
-                        review.command.replacement.grossMinorUnits,
-                        sale.currency,
-                        sale.currencyMinorUnitDigits,
-                        locale,
-                      ),
-                    },
-                    {
-                      label: t("common.localDate"),
-                      value: review.command.replacement.occurredLocalDate,
-                    },
-                    {
-                      label: t("common.localTime"),
-                      value: review.command.replacement.occurredLocalTime,
-                    },
-                  ]
-                : []),
-            ]}
-          />
-
-          {correction.error ? (
-            <View className="flex-row items-start gap-3 border-l-4 border-danger bg-destructive-surface p-4 ">
-              <Icon as={AlertTriangle} className="text-destructive" size={20} />
-              <Text accessibilityRole="alert" className="min-w-0 flex-1 text-sm text-destructive">
-                {ambiguousFailure
-                  ? t("sales.correction.uncertain")
-                  : productErrorMessage(correction.error, t("sales.correction.failed"), t, "sale")}
-              </Text>
-            </View>
-          ) : null}
-
-          <View className="gap-3 sm:flex-row">
-            <Button
-              disabled={isStale && !ambiguousFailure}
-              loading={correction.isPending}
-              onPress={() => {
-                if (!correction.isPending && (!isStale || ambiguousFailure))
-                  correction.mutate(review);
-              }}
-              variant="default"
-            >
-              <Icon as={Check} className="text-primary-foreground" size={18} strokeWidth={2.8} />
-              <ButtonText variant="default">{t("sales.correction.confirm")}</ButtonText>
-            </Button>
-            {!ambiguousFailure ? (
-              <Button
-                disabled={confirmationLocked}
-                label={t("sales.edit")}
-                onPress={() => {
-                  if (confirmationLocked) return;
-                  setReview(null);
-                  correction.reset();
-                }}
-                variant="outline"
-              />
-            ) : null}
-          </View>
-        </View>
-      ) : (
-        <View className="gap-7">
-          <View className="gap-3 sm:flex-row">
-            <Button
-              label={t("sales.correction.voidAction")}
-              onPress={() => setMode("void")}
-              variant={mode === "void" ? "default" : "outline"}
-            />
-            <Button
-              label={t("sales.correction.replaceAction")}
-              onPress={() => setMode("replacement")}
-              variant={mode === "replacement" ? "default" : "outline"}
-            />
-          </View>
+      {staleNotice}
+      {original}
+      <Section title={t("sales.correction.details")}>
+        <View className="gap-5">
+          <CorrectionModeField onChange={setMode} value={mode} />
           <Field
             error={reasonError}
             label={t("sales.correction.reason")}
@@ -330,37 +345,37 @@ export default function CorrectSaleScreen() {
             placeholder={t("sales.correction.reasonPlaceholder")}
             value={reason}
           />
-          {mode === "replacement" ? (
-            <View className="gap-3">
-              <Text className="text-sm leading-5 text-muted-foreground">
-                {t("sales.correction.replacementTimeNote")}
-              </Text>
-              <SaleDraftFields
-                currency={sale.currency}
-                errors={draftErrors}
-                labels={{
-                  amount: t("sales.correction.replacementTotal"),
-                  date: t("sales.date"),
-                  datePlaceholder: t("sales.datePlaceholder"),
-                  description: t("sales.descriptionOptional"),
-                  descriptionPlaceholder: t("sales.descriptionPlaceholder"),
-                  time: t("sales.time"),
-                  timePlaceholder: t("sales.timePlaceholder"),
-                }}
-                onChange={(field, value) => setDraft((current) => ({ ...current, [field]: value }))}
-                values={draft}
-              />
-            </View>
-          ) : null}
-          <Button
-            className="self-start"
-            disabled={isStale || confirmationLocked}
-            label={t("sales.correction.review")}
-            onPress={prepareReview}
-            variant="default"
-          />
         </View>
-      )}
+      </Section>
+      {mode === "replacement" ? (
+        <Section
+          description={t("sales.correction.replacementDescription")}
+          title={t("sales.correction.replacement")}
+        >
+          <SaleDraftFields
+            currency={sale.currency}
+            currencyMinorUnitDigits={sale.currencyMinorUnitDigits}
+            errors={draftErrors}
+            onChange={(field, value) => setDraft((current) => ({ ...current, [field]: value }))}
+            timeZone={business.timeZone}
+            values={draft}
+          />
+        </Section>
+      ) : null}
+      <ActionBar>
+        <Button
+          disabled={confirmationLocked}
+          label={t("common.cancel")}
+          onPress={leave}
+          variant="outline"
+        />
+        <Button
+          disabled={isStale || confirmationLocked}
+          label={t("sales.correction.review")}
+          onPress={prepareReview}
+          variant="default"
+        />
+      </ActionBar>
     </Page>
   );
 }

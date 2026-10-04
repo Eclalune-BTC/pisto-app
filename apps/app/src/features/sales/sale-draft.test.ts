@@ -1,6 +1,10 @@
+import type { TFunction } from "i18next";
 import { describe, expect, test } from "vitest";
 
-import { validateSaleDraft } from "./sale-draft";
+import { saleDraftErrors, validateSaleDraft } from "./sale-draft";
+
+const t = ((key: string, options?: { count?: number }) =>
+  options?.count === undefined ? key : `${key}:${options.count}`) as TFunction;
 
 describe("sale draft validation", () => {
   test("creates one canonical minor-unit draft", () => {
@@ -37,5 +41,36 @@ describe("sale draft validation", () => {
       date: "invalid-date",
       time: "invalid-time",
     });
+  });
+
+  test("tells a missing total apart from a malformed one", () => {
+    const blank = validateSaleDraft(
+      { amount: "  ", date: "2026-08-22", time: "14:30", description: "" },
+      2,
+    );
+    expect(blank).toEqual({ draft: null, issues: { amount: "missing-amount" } });
+    const zero = validateSaleDraft(
+      { amount: "0", date: "2026-08-22", time: "14:30", description: "" },
+      2,
+    );
+    expect(zero.issues).toEqual({ amount: "non-positive" });
+  });
+
+  test("names every reported field with its own message and nothing else", () => {
+    expect(
+      saleDraftErrors(
+        { amount: "invalid-decimals", time: "invalid-time", description: "description-too-long" },
+        2,
+        t,
+      ),
+    ).toEqual({
+      amount: "sales.validation.amountDecimals:2",
+      time: "sales.validation.time",
+      description: "sales.validation.description",
+    });
+    expect(saleDraftErrors({ amount: "missing-amount" }, 0, t)).toEqual({
+      amount: "sales.validation.amountRequired",
+    });
+    expect(saleDraftErrors({}, 2, t)).toEqual({});
   });
 });

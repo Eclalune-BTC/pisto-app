@@ -55,6 +55,8 @@ const fixture = vi.hoisted(() => ({
     refetch: vi.fn(),
   },
   navigate: vi.fn(),
+  push: vi.fn(),
+  notify: { success: vi.fn(), warning: vi.fn(), error: vi.fn() },
   key: vi.fn(() => "11111111-1111-4111-8111-111111111111"),
   api: { get: vi.fn(), prepare: vi.fn(), confirm: vi.fn(), dismiss: vi.fn() },
 }));
@@ -134,7 +136,7 @@ vi.mock("@tanstack/react-query", async (original) => ({
 }));
 vi.mock("expo-router", () => ({
   Redirect: "redirect",
-  useRouter: () => ({ replace: fixture.navigate }),
+  useRouter: () => ({ replace: fixture.navigate, push: fixture.push }),
 }));
 vi.mock("expo-crypto", () => ({ randomUUID: fixture.key }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
@@ -153,6 +155,7 @@ vi.mock("@/lib/queries/businesses", () => ({
   businessesQueryOptions: { queryKey: ["businesses"] },
   getActiveBusiness: (data: { business: unknown } | undefined) => data?.business,
 }));
+vi.mock("@/lib/notify", () => ({ notify: fixture.notify }));
 vi.mock("@/lib/api-client", async () => ({
   ...(await import("@/lib/api-error")),
   api: { sales: { review: fixture.api } },
@@ -239,7 +242,15 @@ beforeEach(() => {
   fixture.api.confirm.mockImplementation(async () => {
     if (!fixture.review) throw new Error("Missing server review");
     fixture.review = { ...fixture.review, saleId: "22222222-2222-4222-8222-222222222222" };
-    return { sale: { id: fixture.review.saleId }, replayed: false };
+    return {
+      sale: {
+        id: fixture.review.saleId,
+        grossMinorUnits: fixture.review.command.grossMinorUnits,
+        currency: fixture.review.currency,
+        currencyMinorUnitDigits: fixture.review.currencyMinorUnitDigits,
+      },
+      replayed: false,
+    };
   });
   fixture.api.dismiss.mockImplementation(async (_id, acknowledgedSaleId) => {
     const saleId = fixture.review?.saleId ?? null;
@@ -260,7 +271,7 @@ describe("new sale durable recovery screen", () => {
     fixture.hooks = [];
     fixture.mutations = [];
     render();
-    expect(button("sales.confirm").disabled).toBe(false);
+    expect(button("sales.new.confirm").disabled).toBe(false);
     expect(fixture.key).not.toHaveBeenCalled();
     expect(fixture.api.prepare).not.toHaveBeenCalled();
     expect(fixture.api.confirm).not.toHaveBeenCalled();
@@ -275,8 +286,8 @@ describe("new sale durable recovery screen", () => {
         fixture.recovery.error = new ApiClientError("Failed", 503);
       } else if (kind === "paused") fixture.recovery.fetchStatus = "paused";
       else fixture.recovery.isFetching = true;
-      expect(button("sales.confirm").disabled).toBe(true);
-      await press("sales.confirm");
+      expect(button("sales.new.confirm").disabled).toBe(true);
+      await press("sales.new.confirm");
       await press("sales.edit");
       expect(fixture.api.confirm).not.toHaveBeenCalled();
       expect(fixture.api.dismiss).not.toHaveBeenCalled();
@@ -291,10 +302,10 @@ describe("new sale durable recovery screen", () => {
   test("preserves the original ID on an explicit retry after a lost response and remount", async () => {
     restore(review());
     fixture.api.confirm.mockRejectedValueOnce(new ApiClientError("Lost response", 0));
-    await press("sales.confirm");
+    await press("sales.new.confirm");
     fixture.hooks = [];
     fixture.mutations = [];
-    await press("sales.confirm");
+    await press("sales.new.confirm");
     expect(fixture.api.confirm.mock.calls.map(([id]) => id)).toEqual([review().id, review().id]);
     expect(fixture.key).not.toHaveBeenCalled();
     expect(fixture.navigate).toHaveBeenCalledWith({
@@ -312,8 +323,8 @@ describe("new sale durable recovery screen", () => {
       fixture.review = { ...review(), command };
       throw new ApiClientError("Lost prepare", 0);
     });
-    await press("sales.review");
-    expect(button("sales.confirm").disabled).toBe(false);
+    await press("sales.new.review");
+    expect(button("sales.new.confirm").disabled).toBe(false);
     expect(fixture.api.prepare).toHaveBeenCalledTimes(1);
     expect(fixture.api.confirm).not.toHaveBeenCalled();
   });
@@ -321,7 +332,7 @@ describe("new sale durable recovery screen", () => {
     restore({ ...review(), saleId: "22222222-2222-4222-8222-222222222222" });
     expect(
       elements<ComponentProps<typeof Button>>(render(), Button).some(
-        ({ props }) => props.label === "sales.confirm",
+        ({ props }) => props.label === "sales.new.confirm",
       ),
     ).toBe(false);
     await press("sales.registerAnother");
@@ -338,6 +349,7 @@ describe("new sale durable recovery screen", () => {
     expect(fixture.api.dismiss).toHaveBeenCalledWith(review().id, null);
     expect(fixture.recovery.data?.review?.saleId).toBe(fixture.review.saleId);
     expect(fixture.navigate).toHaveBeenCalled();
+    expect(fixture.notify.warning).toHaveBeenCalledWith("sales.new.alreadySaved");
     expect(fixture.api.prepare).not.toHaveBeenCalled();
   });
   test("editing an unsubmitted review restores exact fields but needs a new explicit review", async () => {
@@ -356,26 +368,51 @@ describe("new sale durable recovery screen", () => {
   test("refuses to confirm a review with changed currency or time-zone meaning", async () => {
     restore(review());
     fixture.businesses.data.business.timeZone = "UTC";
-    expect(button("sales.confirm").disabled).toBe(true);
-    await press("sales.confirm");
+    expect(button("sales.new.confirm").disabled).toBe(true);
+    await press("sales.new.confirm");
     expect(fixture.api.confirm).not.toHaveBeenCalled();
   });
   test("does not display a review belonging to another active business", () => {
     restore({ ...review(), businessId: "other" });
     expect(
       elements<ComponentProps<typeof Button>>(render(), Button).some(
-        ({ props }) => props.label === "sales.confirm",
+        ({ props }) => props.label === "sales.new.confirm",
       ),
     ).toBe(false);
     expect(elements(render(), SaleDraftFields)).toHaveLength(0);
   });
   test("an immediate double tap starts only one confirmation", async () => {
     restore(review());
-    const action = button("sales.confirm");
+    const action = button("sales.new.confirm");
     const click = action.onPress as () => void;
     click();
     click();
     await Promise.all(fixture.tasks.splice(0));
     expect(fixture.api.confirm).toHaveBeenCalledTimes(1);
+  });
+  test("announces a confirmed sale with a link to it and opens the result", async () => {
+    restore(review());
+    await press("sales.new.confirm");
+    const saleId = "22222222-2222-4222-8222-222222222222";
+    const href = { pathname: "/operate/sales/[saleId]", params: { saleId } };
+    expect(fixture.notify.success).toHaveBeenCalledTimes(1);
+    const [title, options] = fixture.notify.success.mock.calls[0] ?? [];
+    expect(title).toBe("sales.new.created");
+    expect(options.description).toBe("$12.50");
+    expect(options.action.label).toBe("sales.viewSale");
+    expect(fixture.navigate).toHaveBeenCalledWith(href);
+    options.action.onPress();
+    expect(fixture.push).toHaveBeenCalledWith(href);
+  });
+  test("offers the same confirmation again after a lost response without a new key", async () => {
+    restore(review());
+    fixture.api.confirm.mockRejectedValueOnce(new ApiClientError("Lost response", 0));
+    await press("sales.new.confirm");
+    expect(fixture.notify.success).not.toHaveBeenCalled();
+    expect(button("common.retrySameConfirmation").disabled).toBe(false);
+    await press("common.retrySameConfirmation");
+    expect(fixture.api.confirm.mock.calls.map(([id]) => id)).toEqual([review().id, review().id]);
+    expect(fixture.key).not.toHaveBeenCalled();
+    expect(fixture.notify.success).toHaveBeenCalledTimes(1);
   });
 });

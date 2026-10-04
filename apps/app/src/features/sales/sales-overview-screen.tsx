@@ -1,182 +1,126 @@
-import { useQuery } from "@tanstack/react-query";
-import { Redirect, useRouter } from "expo-router";
-import { Plus, RefreshCw } from "lucide-react-native";
+import type { BusinessPermission, SaleStatusFilter } from "@pisto/contracts";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { Link, Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { Plus } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
-import { OfflineState, StaleNotice } from "@/components/remote-state";
-import { ScreenHeader } from "@/components/screen-header";
-import { Button, ButtonText } from "@/components/ui/button";
+import { StaleNotice } from "@/components/remote-state";
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import { Text } from "@/components/ui/text";
-import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { previousMonthSummaryQueryOptions } from "@/features/sales/queries";
-import { SalesHistoryController } from "@/features/sales/sales-history-controller";
-import { formatLocalizedDateTime, formatMonthYear } from "@/i18n/format";
-import { requireSupportedLocale } from "@/i18n/locale";
-import { formatMinorUnits } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { hasDeniedRead } from "@/lib/query-state";
+import { queryHasStaleData } from "@/lib/query-state";
+import { previousMonthSummaryQueryOptions, salesInfiniteOptions } from "./queries";
+import { SalesRouteState } from "./route-state";
+import { SalesHistory } from "./sales-history";
+import { SalesSummary } from "./sales-summary";
+import { parseSaleStatusFilter, readState, salesHistoryState } from "./state";
 
 export default function SalesOverviewScreen() {
-  const { i18n, t } = useTranslation();
-  const locale = requireSupportedLocale(i18n.resolvedLanguage);
+  const { t } = useTranslation();
   const router = useRouter();
+  // The filter lives in the URL so returning from a sale restores the same history.
+  const params = useLocalSearchParams<{ status?: string | string[] }>();
+  const filter = parseSaleStatusFilter(params.status);
   const businesses = useQuery(businessesQueryOptions);
-  const activeBusiness = getActiveBusiness(businesses.data);
-  const summary = useQuery({
-    ...previousMonthSummaryQueryOptions(activeBusiness?.id),
-    enabled: Boolean(activeBusiness),
+  const access = readState([businesses]);
+  const business = access === "denied" ? undefined : getActiveBusiness(businesses.data);
+  const can = (permission: BusinessPermission) =>
+    business?.access.permissions.includes(permission) ?? false;
+  const canSummarize = can("sales:summary:read");
+  const canRead = can("sales:read");
+  const summary = useQuery(
+    previousMonthSummaryQueryOptions(canSummarize ? business?.id : undefined),
+  );
+  const sales = useInfiniteQuery(salesInfiniteOptions(canRead ? business?.id : undefined, filter));
+
+  if (access === "denied" || (business && !canRead && !canSummarize)) {
+    return (
+      <SalesRouteState
+        description={t("sales.deniedDescription")}
+        kind="denied"
+        title={t("sales.deniedTitle")}
+        width="content"
+      />
+    );
+  }
+  if (access === "offline") return <SalesRouteState kind="offline" width="content" />;
+  if (access === "loading") {
+    return (
+      <SalesRouteState kind="loading" label={t("sales.loading")} variant="list" width="content" />
+    );
+  }
+  if (access === "error") {
+    return (
+      <SalesRouteState
+        description={t("sales.unavailableDescription")}
+        kind="error"
+        onRetry={() => void businesses.refetch()}
+        title={t("sales.unavailableTitle")}
+        width="content"
+      />
+    );
+  }
+  if (!business) return <Redirect href="/business" />;
+
+  const accessStale = queryHasStaleData(businesses);
+  const history = salesHistoryState({
+    accessStale,
+    canCorrect: can("sales:correct"),
+    canRead,
+    query: sales,
   });
-
-  if (hasDeniedRead([businesses, summary])) return <CapabilityRouteState kind="denied" />;
-
-  if (businesses.fetchStatus === "paused" && !businesses.data) return <OfflineState />;
-
-  if (businesses.isPending) {
-    return (
-      <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <LoadingIndicator size="large" />
-        <Text className="text-sm font-ui text-muted-foreground">{t("sales.loading")}</Text>
-      </View>
-    );
-  }
-
-  if (businesses.isError && !businesses.data) {
-    return (
-      <View className="flex-1 items-start justify-center gap-4 px-5 sm:px-8 lg:px-10">
-        <Text className="text-xl font-heading text-foreground">{t("sales.unavailableTitle")}</Text>
-        <Text className="max-w-[460px] text-sm leading-5 text-muted-foreground">
-          {t("sales.unavailableDescription")}
-        </Text>
-        <Button label={t("common.retry")} onPress={() => businesses.refetch()} variant="outline" />
-      </View>
-    );
-  }
-
-  if (!activeBusiness) return <Redirect href="/business" />;
+  const staleReads = [
+    ...(accessStale ? [businesses] : []),
+    ...(canSummarize && queryHasStaleData(summary) ? [summary] : []),
+    ...(canRead && queryHasStaleData(sales) ? [sales] : []),
+  ];
+  const changeFilter = (next: SaleStatusFilter) =>
+    router.setParams({ status: next === "all" ? undefined : next });
 
   return (
     <Page>
-      <ScreenHeader
-        action={
-          <Button onPress={() => router.push("/operate/sales/new")} variant="default">
-            <Icon as={Plus} className="text-primary-foreground" size={18} strokeWidth={2.6} />
-            <ButtonText variant="default">{t("sales.register")}</ButtonText>
-          </Button>
+      <PageHeader
+        actions={
+          can("sales:create") ? (
+            <Link asChild href="/operate/sales/new">
+              <Button accessibilityRole="link">
+                <Icon as={Plus} className="text-primary-foreground" size={16} />
+                <Text>{t("sales.register")}</Text>
+              </Button>
+            </Link>
+          ) : undefined
         }
-        description={t("sales.headerDescription", { business: activeBusiness.name })}
-        eyebrow={t("common.operate")}
+        description={t("sales.headerDescription", { business: business.name })}
         title={t("common.sales")}
       />
-
-      {businesses.isError && businesses.data ? <StaleNotice /> : null}
-
-      {summary.fetchStatus === "paused" && !summary.data ? (
-        <View className="min-h-56">
-          <OfflineState level={2} title={t("sales.staleTitle")} />
-        </View>
-      ) : summary.isPending ? (
-        <View className="min-h-56 items-start justify-center gap-3 border-y border-border">
-          <LoadingIndicator />
-          <Text className="text-sm text-muted-foreground">{t("sales.calculating")}</Text>
-        </View>
-      ) : summary.isError && !summary.data ? (
-        <View className="gap-4 border-l-4 border-danger bg-destructive-surface p-5 ">
-          <View className="gap-1">
-            <Text className="font-ui text-destructive ">{t("sales.noSummaryTitle")}</Text>
-            <Text className="text-sm leading-5 text-muted-foreground ">
-              {t("sales.noSummaryDescription")}
-            </Text>
-          </View>
-          <Button
-            accessibilityLabel={t("sales.recalculate")}
-            className="self-start px-0"
-            loading={summary.isFetching}
-            onPress={() => summary.refetch()}
-            size="sm"
-            variant="ghost"
-          >
-            <Icon as={RefreshCw} className="text-destructive" size={17} />
-            <Text className="font-ui text-destructive ">{t("common.retry")}</Text>
-          </Button>
-        </View>
-      ) : summary.data ? (
-        <View className="gap-6">
-          {summary.isError ? <StaleNotice /> : null}
-          <View className="rounded-card border border-border bg-card px-5 lg:flex-row lg:px-6">
-            <View className="gap-2 py-6 lg:w-[50%] lg:pr-8">
-              <Text className="text-sm font-ui capitalize text-primary">
-                {formatMonthYear(summary.data.summary.periodStartLocal, locale)}
-              </Text>
-              <Text
-                className="text-[36px] font-heading leading-[44px] tracking-[-1px] text-primary sm:text-[44px] sm:leading-[52px]"
-                style={{ fontVariant: ["tabular-nums"] }}
-              >
-                {formatMinorUnits(
-                  summary.data.summary.grossMinorUnits,
-                  summary.data.summary.currency,
-                  summary.data.summary.currencyMinorUnitDigits,
-                  locale,
-                )}
-              </Text>
-              <Text className="text-sm text-muted-foreground">{t("sales.grossRevenue")}</Text>
-            </View>
-
-            <View className="border-t border-border sm:flex-row lg:min-w-0 lg:flex-1 lg:border-l lg:border-t-0 lg:pl-10">
-              <View className="flex-1 gap-1 py-5 sm:border-r sm:border-border sm:pr-6 lg:py-7">
-                <Text className="text-sm font-ui text-muted-foreground">{t("sales.count")}</Text>
-                <Text className="text-2xl font-heading text-foreground">
-                  {summary.data.summary.saleCount}
-                </Text>
-              </View>
-              <View className="flex-1 gap-1 border-t border-border py-5 sm:border-t-0 sm:pl-6 lg:py-7 ">
-                <Text className="text-sm font-ui text-muted-foreground">{t("sales.average")}</Text>
-                <Text className="text-2xl font-heading text-foreground">
-                  {summary.data.summary.averageMinorUnits === null
-                    ? "—"
-                    : formatMinorUnits(
-                        summary.data.summary.averageMinorUnits,
-                        summary.data.summary.currency,
-                        summary.data.summary.currencyMinorUnitDigits,
-                        locale,
-                      )}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {summary.data.summary.saleCount === "0" ? (
-            <Text className="max-w-[620px] text-sm leading-5 text-muted-foreground">
-              {t("sales.empty")}
-            </Text>
-          ) : null}
-          <View className="gap-2 lg:flex-row lg:justify-between lg:gap-8">
-            <Text className="text-xs leading-5 text-muted-foreground ">
-              {t("sales.period", {
-                start: summary.data.summary.periodStartLocal,
-                end: summary.data.summary.periodEndLocalExclusive,
-                timeZone: summary.data.summary.timeZone,
-                currency: summary.data.summary.currency,
-              })}
-            </Text>
-            <Text className="text-xs leading-5 text-muted-foreground  lg:text-right">
-              {t("sales.calculatedAt", {
-                date: formatLocalizedDateTime(
-                  summary.data.summary.queriedAt,
-                  locale,
-                  summary.data.summary.timeZone,
-                ),
-              })}
-            </Text>
-          </View>
-        </View>
+      {staleReads.length ? (
+        <StaleNotice
+          loading={staleReads.some(({ isFetching }) => isFetching)}
+          onRetry={() => {
+            for (const read of staleReads) void read.refetch();
+          }}
+        />
       ) : null}
-
-      <SalesHistoryController
-        accessIsStale={businesses.isError && businesses.data !== undefined}
-        business={activeBusiness}
+      {canSummarize ? (
+        <SalesSummary
+          onRetry={() => void summary.refetch()}
+          read={readState([summary])}
+          summary={summary.data?.summary}
+        />
+      ) : null}
+      <SalesHistory
+        canCreate={can("sales:create")}
+        filter={filter}
+        onCorrect={(saleId) =>
+          router.push({ pathname: "/operate/sales/correct/[saleId]", params: { saleId } })
+        }
+        onFilterChange={changeFilter}
+        onLoadMore={() => void sales.fetchNextPage()}
+        onRetry={() => void sales.refetch()}
+        state={history}
+        timeZone={business.timeZone}
       />
     </Page>
   );
