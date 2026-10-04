@@ -11,6 +11,7 @@ import { Field } from "@/components/ui/field";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { AccountBalanceHint } from "../cash/account-balance-hint";
 import { CashOperationReview } from "../cash/cash-operation-review";
 import { FieldError } from "../cash/field-error";
 import { FormSection } from "../cash/form-section";
@@ -18,6 +19,7 @@ import { formatLocalOccurrence } from "../cash/format";
 import { type CursorPage, LoadMoreButton } from "../cash/load-more-button";
 import { LocalDateTimeFields } from "../cash/local-date-time-fields";
 import type { MutationPhase } from "../cash/mutation-state";
+import { MutedValue } from "../cash/review-values";
 import { expenseCategoryLabels, expenseCategoryOptions } from "./copy";
 import type { ExpenseDraftValues } from "./drafts";
 
@@ -93,7 +95,7 @@ export function ExpenseEditorScreen({
             { label: t("expenses.editor.description"), value: command.description },
             {
               label: t("expenses.editor.payee"),
-              value: command.payee ?? t("expenses.detail.noPayee"),
+              value: command.payee ?? <MutedValue>{t("expenses.detail.noPayee")}</MutedValue>,
             },
             {
               label: t("cash.fields.occurredAt"),
@@ -108,13 +110,15 @@ export function ExpenseEditorScreen({
           onConfirm={onConfirm}
           onEdit={onEdit}
           phase={phase}
+          title={t("expenses.editor.reviewTitle")}
         />
       </Page>
     );
   }
 
   const activeAccounts = accounts.filter(({ status }) => status === "active");
-  const currency = activeAccounts.find(({ id }) => id === draft.accountId)?.currency;
+  const paying = activeAccounts.find(({ id }) => id === draft.accountId);
+  const currency = paying?.currency;
   return (
     <Page width="form">
       <PageHeader
@@ -144,6 +148,7 @@ export function ExpenseEditorScreen({
                 options={activeAccounts.map(({ id, name }) => ({ label: name, value: id }))}
                 value={draft.accountId || null}
               />
+              <AccountBalanceHint account={paying} />
               <FieldError message={errors.accountId} />
               <LoadMoreButton
                 className="self-start"

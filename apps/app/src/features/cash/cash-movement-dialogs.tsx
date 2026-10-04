@@ -16,6 +16,7 @@ import {
 import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
 import { ConfirmCommandDialog } from "./confirm-command-dialog";
+import { returnFocusOnClose } from "./focus-return";
 import { LocalDateTimeFields } from "./local-date-time-fields";
 import { isLockedPhase, type MutationPhase } from "./mutation-state";
 
@@ -39,6 +40,10 @@ type CashMovementDialogProps = {
   /** Offered only for an adjustment that this manager may still reverse. */
   onReverse?: () => void;
   open: boolean;
+  /** When the movement was recorded; lists are ordered by it. */
+  recordedAt: string;
+  /** The row that opened the dialog; focus returns to it when the movement flow ends. */
+  returnFocus?: HTMLElement | null;
   /** The loaded history already contains a reversal of this movement. */
   reversed: boolean;
 };
@@ -52,6 +57,8 @@ export function CashMovementDialog({
   onClose,
   onReverse,
   open,
+  recordedAt,
+  returnFocus,
   reversed,
 }: CashMovementDialogProps) {
   const { t } = useTranslation();
@@ -69,7 +76,10 @@ export function CashMovementDialog({
       open={open}
     >
       {/* The shared content ignores its width classes on the web; size it like the shared Sheet. */}
-      <DialogContent style={{ width: Math.min(DIALOG_WIDTH, width - 32) }}>
+      <DialogContent
+        onCloseAutoFocus={returnFocusOnClose(returnFocus)}
+        style={{ width: Math.min(DIALOG_WIDTH, width - 32) }}
+      >
         <DialogHeader>
           <DialogTitle>{actionLabel}</DialogTitle>
           <DialogDescription>{occurredAt}</DialogDescription>
@@ -79,6 +89,7 @@ export function CashMovementDialog({
             { label: t("cash.movementDetail.amount"), numeric: true, value: amount },
             { label: t("cash.movementDetail.account"), value: account },
             { label: t("cash.movementDetail.reason"), value: movement.reason },
+            { label: t("cash.movementDetail.recordedAt"), numeric: true, value: recordedAt },
           ]}
         />
         {note ? <Text className="text-[13px] leading-5 text-muted-foreground">{note}</Text> : null}
@@ -124,6 +135,8 @@ type CashReversalDialogProps = {
   onDraftChange: (draft: CashReversalDraft) => void;
   open: boolean;
   phase: MutationPhase;
+  /** The row that opened the movement; focus returns to it when the reversal ends the flow. */
+  returnFocus?: HTMLElement | null;
 };
 
 export function CashReversalDialog({
@@ -137,6 +150,7 @@ export function CashReversalDialog({
   onDraftChange,
   open,
   phase,
+  returnFocus,
 }: CashReversalDialogProps) {
   const { t } = useTranslation();
   const locked = isLockedPhase(phase);
@@ -151,6 +165,7 @@ export function CashReversalDialog({
       onConfirm={onConfirm}
       open={open}
       phase={phase}
+      returnFocus={returnFocus}
       title={t("cash.reversal.title")}
     >
       <View className="gap-4">

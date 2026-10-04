@@ -8,6 +8,7 @@ import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
+import { focusReturnTarget } from "../cash/focus-return";
 import {
   cashAccountQueryOptions,
   cashAccountsInfiniteOptions,
@@ -49,7 +50,11 @@ export function ExpensesController() {
   const { filters, period } = parseExpenseSearch(params, defaultPeriod);
   const [draftPeriod, setDraftPeriod] = useState<ExpensePeriod>();
   const [periodError, setPeriodError] = useState<string>();
-  const [voiding, setVoiding] = useState<{ businessId: string; expense: Expense }>();
+  const [voiding, setVoiding] = useState<{
+    businessId: string;
+    expense: Expense;
+    returnFocus: HTMLElement | null;
+  }>();
   const expenses = useInfiniteQuery(
     expensesInfiniteOptions(businessId, expenseListFilters(filters)),
   );
@@ -107,7 +112,7 @@ export function ExpensesController() {
     flattenPages(accounts.data),
     filteredAccount.data?.account,
   );
-  const voidTarget = voiding?.businessId === business.id ? voiding.expense : undefined;
+  const voidTarget = voiding?.businessId === business.id ? voiding : undefined;
 
   return (
     <>
@@ -149,7 +154,9 @@ export function ExpensesController() {
         onFiltersChange={(next) => router.setParams(expenseFilterParams(next))}
         onPeriodChange={setDraftPeriod}
         onRetry={retry}
-        onVoidExpense={(expense) => setVoiding({ businessId: business.id, expense })}
+        onVoidExpense={(expense) =>
+          setVoiding({ businessId: business.id, expense, returnFocus: focusReturnTarget() })
+        }
         period={draftPeriod ?? period}
         periodError={periodError}
         summary={summary.data?.summary}
@@ -159,10 +166,11 @@ export function ExpensesController() {
         <ExpenseVoidDialog
           businessId={business.id}
           canConfirm={canManage}
-          expense={voidTarget}
-          key={voidTarget.id}
+          expense={voidTarget.expense}
+          key={voidTarget.expense.id}
           linkToRecord
           onClose={() => setVoiding(undefined)}
+          returnFocus={voidTarget.returnFocus}
           timeZone={business.timeZone}
         />
       ) : null}

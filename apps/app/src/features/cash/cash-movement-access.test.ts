@@ -14,11 +14,13 @@ vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 vi.mock("@/components/ui/select-field", () => ({ SelectField: () => null }));
 
+import { DescriptionList } from "@/components/layout/description-list";
 import { AlertDialog, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { i18n } from "@/i18n/config";
 import { elements } from "../../../test-support/element-tree";
+import { CashAccountEditorScreen } from "./cash-account-editor-screen";
 import { CashAdjustmentScreen } from "./cash-adjustment-screen";
 import { CashMovementDialog, CashReversalDialog } from "./cash-movement-dialogs";
 import { CashTransferScreen } from "./cash-transfer-screen";
@@ -150,6 +152,7 @@ describe("cash movement facts", () => {
       occurredAt: "10/9/26, 10:00 a. m.",
       onClose: noop,
       open: true,
+      recordedAt: "10/9/26, 10:05 a. m.",
       reversed: false,
       ...changes,
     }).tree;
@@ -166,6 +169,15 @@ describe("cash movement facts", () => {
     reversible[0]?.props.onPress?.({} as never);
     expect(onReverse).toHaveBeenCalledOnce();
     expect(labels(facts())).toEqual([]);
+  });
+
+  test("states when the movement was recorded, which orders the lists", () => {
+    const [list] = elements<ComponentProps<typeof DescriptionList>>(facts(), DescriptionList);
+    expect(list?.props.items).toContainEqual({
+      label: t("cash.movementDetail.recordedAt"),
+      numeric: true,
+      value: "10/9/26, 10:05 a. m.",
+    });
   });
 
   test("states an existing reversal and links a paid expense to its record", () => {
@@ -339,5 +351,29 @@ describe("cash reviews keep what was reviewed across list refetches", () => {
     const uncertain = review("uncertain");
     expect(uncertain).toContain(t("common.retrySameConfirmation"));
     expect(uncertain).not.toMatch(disabledButton(t("common.retrySameConfirmation")));
+  });
+
+  test("shows each changed account field next to the value it replaces", () => {
+    const markup = renderToStaticMarkup(
+      createElement(CashAccountEditorScreen, {
+        ...common,
+        account: { ...account, allowNegativeBalance: false, kind: "cash" },
+        command: { allowNegativeBalance: true, idempotencyKey: "update-key" },
+        currency: "USD",
+        draft: {} as never,
+        formatMoney: () => "USD 1.00",
+        phase: "idle",
+      }),
+    );
+    expect(markup).toContain(
+      t("cash.review.change", {
+        after: t("cash.accountDetail.negativeAllowed"),
+        before: t("cash.accountDetail.negativeProtected"),
+      }),
+    );
+    expect(markup).toContain(account.name);
+    expect(markup).not.toContain(
+      t("cash.review.change", { after: account.name, before: account.name }),
+    );
   });
 });

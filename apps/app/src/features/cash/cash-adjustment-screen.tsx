@@ -11,6 +11,7 @@ import { Field } from "@/components/ui/field";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { AccountBalanceHint } from "./account-balance-hint";
 import { CashOperationReview } from "./cash-operation-review";
 import { ChoiceList } from "./choice-list";
 import type { AdjustmentDraftValues } from "./drafts";
@@ -108,6 +109,7 @@ export function CashAdjustmentScreen({
           onConfirm={onConfirm}
           onEdit={onEdit}
           phase={phase}
+          title={t("cash.adjustment.reviewTitle")}
         />
       </Page>
     );
@@ -144,6 +146,7 @@ export function CashAdjustmentScreen({
                 options={activeAccounts.map(({ id, name }) => ({ label: name, value: id }))}
                 value={draft.accountId || null}
               />
+              <AccountBalanceHint account={selected} />
               <FieldError message={errors.accountId} />
               <LoadMoreButton
                 className="self-start"

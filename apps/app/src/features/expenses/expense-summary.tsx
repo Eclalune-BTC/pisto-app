@@ -2,6 +2,7 @@ import type { ExpensePeriodSummary } from "@pisto/contracts";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { Section } from "@/components/layout/section";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Heading } from "@/components/ui/heading";
@@ -23,13 +24,57 @@ function byAmount(categories: CategoryTotal[]): CategoryTotal[] {
   });
 }
 
+function useSummaryFormat(summary: ExpensePeriodSummary) {
+  const { i18n } = useTranslation();
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
+  const counts = useMemo(() => new Intl.NumberFormat(locale), [locale]);
+  return {
+    count: (value: string) => counts.format(Number(value)),
+    locale,
+    money: (minorUnits: string) =>
+      formatMinorUnits(minorUnits, summary.currency, summary.currencyMinorUnitDigits, locale),
+  };
+}
+
 /** Exact totals of posted expenses; they are never presented as profit or total cost. */
 export function ExpenseSummary({ summary }: { summary: ExpensePeriodSummary }) {
-  const { i18n, t } = useTranslation();
-  const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const money = (minorUnits: string) =>
-    formatMinorUnits(minorUnits, summary.currency, summary.currencyMinorUnitDigits, locale);
-  const counts = useMemo(() => new Intl.NumberFormat(locale), [locale]);
+  const { t } = useTranslation();
+  const format = useSummaryFormat(summary);
+  return (
+    <View className="min-w-0 gap-2">
+      <StatGroup>
+        <Stat
+          detail={t("expenses.summary.range", {
+            end: formatLocalDate(summary.periodEndLocalInclusive, format.locale),
+            start: formatLocalDate(summary.periodStartLocal, format.locale),
+          })}
+          label={t("expenses.summary.total")}
+          value={format.money(summary.totalMinorUnits)}
+        />
+        <Stat
+          detail={t("expenses.summary.countDetail")}
+          label={t("expenses.summary.expenseCount")}
+          value={format.count(summary.expenseCount)}
+        />
+      </StatGroup>
+      <Text className="text-xs leading-5 text-muted-foreground">
+        {t("expenses.summary.notProfit")}
+      </Text>
+    </View>
+  );
+}
+
+/** The period total by category, largest first. */
+export function ExpenseCategoryBreakdown({
+  level,
+  summary,
+}: {
+  /** A section of its own on phones, part of the period summary elsewhere. */
+  level: 2 | 3;
+  summary: ExpensePeriodSummary;
+}) {
+  const { t } = useTranslation();
+  const format = useSummaryFormat(summary);
   const columns = useMemo<DataTableColumn<CategoryTotal>[]>(() => {
     const labels = expenseCategoryLabels(t);
     return [
@@ -44,9 +89,10 @@ export function ExpenseSummary({ summary }: { summary: ExpensePeriodSummary }) {
       {
         id: "count",
         header: t("expenses.summary.expenseCount"),
+        // Not end-aligned: compact rows take the first end-aligned column as the row's figure.
         cell: ({ row: { original } }) => (
           <Text className="text-[13px] text-muted-foreground tabular-nums">
-            {counts.format(Number(original.expenseCount))}
+            {format.count(original.expenseCount)}
           </Text>
         ),
       },
@@ -56,55 +102,30 @@ export function ExpenseSummary({ summary }: { summary: ExpensePeriodSummary }) {
         meta: { align: "end" },
         cell: ({ row: { original } }) => (
           <Text className="font-ui text-[13px] tabular-nums">
-            {formatMinorUnits(
-              original.amountMinorUnits,
-              summary.currency,
-              summary.currencyMinorUnitDigits,
-              locale,
-            )}
+            {format.money(original.amountMinorUnits)}
           </Text>
         ),
       },
     ];
-  }, [counts, locale, summary.currency, summary.currencyMinorUnitDigits, t]);
-
+  }, [format, t]);
+  const content =
+    summary.categories.length > 0 ? (
+      <DataTable
+        caption={t("expenses.summary.byCategory")}
+        columns={columns}
+        data={byAmount(summary.categories)}
+        getRowId={(category) => category.category}
+      />
+    ) : (
+      <Text className="text-[13px] text-muted-foreground">{t("expenses.summary.noExpenses")}</Text>
+    );
+  if (level === 2) return <Section title={t("expenses.summary.byCategory")}>{content}</Section>;
   return (
-    <View className="min-w-0 gap-3">
-      <StatGroup>
-        <Stat
-          detail={t("expenses.summary.range", {
-            end: formatLocalDate(summary.periodEndLocalInclusive, locale),
-            start: formatLocalDate(summary.periodStartLocal, locale),
-          })}
-          label={t("expenses.summary.total")}
-          value={money(summary.totalMinorUnits)}
-        />
-        <Stat
-          detail={t("expenses.summary.countDetail")}
-          label={t("expenses.summary.expenseCount")}
-          value={counts.format(Number(summary.expenseCount))}
-        />
-      </StatGroup>
-      {summary.categories.length > 0 ? (
-        <View className="min-w-0 gap-2">
-          <Heading level={3} size="section">
-            {t("expenses.summary.byCategory")}
-          </Heading>
-          <DataTable
-            caption={t("expenses.summary.byCategory")}
-            columns={columns}
-            data={byAmount(summary.categories)}
-            getRowId={(category) => category.category}
-          />
-        </View>
-      ) : (
-        <Text className="text-[13px] text-muted-foreground">
-          {t("expenses.summary.noExpenses")}
-        </Text>
-      )}
-      <Text className="text-xs leading-5 text-muted-foreground">
-        {t("expenses.summary.notProfit")}
-      </Text>
+    <View className="min-w-0 gap-2">
+      <Heading level={3} size="section">
+        {t("expenses.summary.byCategory")}
+      </Heading>
+      {content}
     </View>
   );
 }

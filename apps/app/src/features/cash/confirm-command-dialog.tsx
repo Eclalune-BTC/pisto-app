@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { returnFocusOnClose } from "./focus-return";
 import { isLockedPhase, type MutationPhase } from "./mutation-state";
 
 const DIALOG_WIDTH = 448;
@@ -36,6 +37,8 @@ type ConfirmCommandDialogProps = {
   onConfirm: () => void;
   open: boolean;
   phase: MutationPhase;
+  /** The control that opened the dialog; focus returns to it when the dialog closes. */
+  returnFocus?: HTMLElement | null;
   title: string;
 };
 
@@ -54,6 +57,7 @@ export function ConfirmCommandDialog({
   onConfirm,
   open,
   phase,
+  returnFocus,
   title,
 }: ConfirmCommandDialogProps) {
   const { t } = useTranslation();
@@ -67,7 +71,10 @@ export function ConfirmCommandDialog({
       open={open}
     >
       {/* The shared content ignores its width classes on the web; size it like the shared Sheet. */}
-      <AlertDialogContent style={{ width: Math.min(DIALOG_WIDTH, width - 32) }}>
+      <AlertDialogContent
+        onCloseAutoFocus={returnFocusOnClose(returnFocus)}
+        style={{ width: Math.min(DIALOG_WIDTH, width - 32) }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>

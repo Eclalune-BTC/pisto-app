@@ -1,6 +1,6 @@
 import type { CashAccount, CashMovement } from "@pisto/contracts";
 import { Link } from "expo-router";
-import { Landmark, Plus } from "lucide-react-native";
+import { ArrowLeftRight, Landmark, Plus, Scale } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { FeatureBoundary, type FeatureRemoteState } from "@/components/feature-boundary";
@@ -11,12 +11,12 @@ import { StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
-import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { CashAccountList } from "./cash-account-list";
 import { CashAccountName } from "./cash-account-name";
 import { CashMovementList } from "./cash-movement-list";
 import { cashBoundaryCopy, cashMovementActionLabels } from "./copy";
+import { HeaderActions } from "./header-actions";
 import { type CursorPage, LoadMoreButton } from "./load-more-button";
 import type { CashAccountStatusFilter } from "./search-params";
 
@@ -66,24 +66,26 @@ export function CashScreen({
       <PageHeader
         actions={
           canManage ? (
-            <>
-              <Link asChild href="/operate/cash/adjustments/new">
-                <Button accessibilityRole="link" variant="outline">
-                  <Text>{t("cash.overview.adjust")}</Text>
-                </Button>
-              </Link>
-              <Link asChild href="/operate/cash/transfers/new">
-                <Button accessibilityRole="link" variant="outline">
-                  <Text>{t("cash.overview.transfer")}</Text>
-                </Button>
-              </Link>
-              <Link asChild href="/operate/cash/accounts/new">
-                <Button accessibilityRole="link">
-                  <Icon as={Plus} className="text-primary-foreground" size={16} />
-                  <Text>{t("cash.overview.newAccount")}</Text>
-                </Button>
-              </Link>
-            </>
+            <HeaderActions
+              menuLabel={t("cash.overview.moreActions")}
+              primary={{
+                href: "/operate/cash/accounts/new",
+                icon: Plus,
+                label: t("cash.overview.newAccount"),
+              }}
+              secondary={[
+                {
+                  href: "/operate/cash/adjustments/new",
+                  icon: Scale,
+                  label: t("cash.overview.adjust"),
+                },
+                {
+                  href: "/operate/cash/transfers/new",
+                  icon: ArrowLeftRight,
+                  label: t("cash.overview.transfer"),
+                },
+              ]}
+            />
           ) : undefined
         }
         description={t("cash.overview.description")}
@@ -165,6 +167,7 @@ export function CashScreen({
                 <CashAccountName
                   accountId={movement.accountId}
                   businessId={businessId}
+                  className="text-muted-foreground"
                   knownName={accountNames.get(movement.accountId)}
                 />
               )}

@@ -21,6 +21,7 @@ import { cashApi } from "./api";
 import { CashAccountDetailScreen } from "./cash-account-detail-screen";
 import { CashMovementDetail } from "./cash-movement-detail-controller";
 import { cashBoundaryCopy } from "./copy";
+import { focusReturnTarget } from "./focus-return";
 import { invalidateCashLedger } from "./invalidate";
 import { mutationPhase } from "./mutation-state";
 import { cashAccountQueryOptions, cashMovementsInfiniteOptions, flattenPages } from "./queries";
@@ -45,8 +46,11 @@ export function CashAccountDetailController() {
     accountId: string;
     businessId: string;
     movement: CashMovement;
+    returnFocus: HTMLElement | null;
   }>();
   const [archiving, setArchiving] = useState(false);
+  // Kept after the dialog closes: focus returns to the opener once the dialog has unmounted.
+  const [archiveOpener, setArchiveOpener] = useState<HTMLElement | null>(null);
   const archive = useMutation({
     mutationFn: (command: ArchiveCashAccountRequest) => {
       if (!accountId) throw new Error("Cash account identifier is missing");
@@ -118,7 +122,7 @@ export function CashAccountDetailController() {
   const archivePhase = mutationPhase(archive);
   const selected =
     selection?.businessId === business.id && selection.accountId === account.id
-      ? selection.movement
+      ? selection
       : undefined;
 
   return (
@@ -146,10 +150,12 @@ export function CashAccountDetailController() {
           },
           onOpen: () => {
             archive.reset();
+            setArchiveOpener(focusReturnTarget());
             setArchiving(true);
           },
           open: archiving,
           phase: archivePhase,
+          returnFocus: archiveOpener,
         }}
         canManage={canManage}
         formatMoney={(minorUnits, currency, fractionDigits) =>
@@ -176,7 +182,14 @@ export function CashAccountDetailController() {
         })}
         onOpenMovement={(movementId) => {
           const movement = movements.find(({ id }) => id === movementId);
-          if (movement) setSelection({ accountId: account.id, businessId: business.id, movement });
+          if (movement) {
+            setSelection({
+              accountId: account.id,
+              businessId: business.id,
+              movement,
+              returnFocus: focusReturnTarget(),
+            });
+          }
         }}
         onRetry={retry}
       />
@@ -185,10 +198,11 @@ export function CashAccountDetailController() {
           accountName={account.name}
           businessId={business.id}
           canManage={canManage}
-          key={selected.id}
-          movement={selected}
+          key={selected.movement.id}
+          movement={selected.movement}
           movements={movements}
           onClose={() => setSelection(undefined)}
+          returnFocus={selected.returnFocus}
           timeZone={business.timeZone}
         />
       ) : null}

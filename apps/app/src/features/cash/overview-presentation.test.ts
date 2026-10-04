@@ -3,7 +3,11 @@ import { type ComponentProps, createElement, type ReactElement, type ReactNode }
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 
-vi.mock("react-native", async () => vi.importActual("react-native-web"));
+const viewport = vi.hoisted(() => ({ width: 1280 }));
+vi.mock("react-native", async () => ({
+  ...(await vi.importActual<object>("react-native-web")),
+  useWindowDimensions: () => ({ fontScale: 1, height: 800, scale: 1, width: viewport.width }),
+}));
 vi.mock("uniwind", () => ({
   useUniwind: () => ({ theme: "light" }),
   useCSSVariable: (names: string | string[]) =>
@@ -327,6 +331,21 @@ describe("expenses overview", () => {
     expect(periodSummary).not.toContain(t("expenses.overview.statusFilter"));
   });
 
+  test("moves the category breakdown below the history on a phone", () => {
+    viewport.width = 390;
+    try {
+      const { markup, tree } = capture(ExpensesScreen, expenseProps());
+      const periodSummary = renderToStaticMarkup(section(tree, t("filters.periodSummary")));
+      expect(periodSummary).toContain("180,143,985,094,819.86");
+      expect(periodSummary).not.toContain(t("expenses.categories.utilities"));
+      expect(markup.indexOf(t("expenses.categories.utilities"))).toBeGreaterThan(
+        markup.indexOf(expense.description),
+      );
+    } finally {
+      viewport.width = 1280;
+    }
+  });
+
   test("changes only the period draft until the range is applied", () => {
     const props = expenseProps();
     const { tree } = capture(ExpensesScreen, props);
@@ -406,6 +425,7 @@ describe("expenses overview", () => {
         formatMoney,
         formatOccurredAt: props.formatOccurredAt,
         onVoidExpense,
+        showStatus: false,
       });
     const loaded = history(
       Array.from({ length: 51 }, (_, index) => ({
@@ -437,6 +457,30 @@ describe("expenses overview", () => {
     actions.props.actions[0]?.onPress();
     expect(props.onVoidExpense).toHaveBeenCalledWith(expense);
     expect(table.rowActions?.({ ...expense, status: "voided" })).toBeNull();
+  });
+
+  test("shows the status column only when the history mixes statuses", () => {
+    const props = expenseProps();
+    const headers = (showStatus: boolean) =>
+      (
+        capture(ExpenseHistory, {
+          accountNames: props.accountNames,
+          businessId: props.businessId,
+          empty: createElement("p", {}, "empty"),
+          expenses: [expense],
+          formatMoney,
+          formatOccurredAt: props.formatOccurredAt,
+          showStatus,
+        }).tree.props as { columns: { header: string }[] }
+      ).columns.map(({ header }) => header);
+    expect(headers(false)).not.toContain(t("dataTable.columns.status"));
+    expect(headers(true)).toContain(t("dataTable.columns.status"));
+    const shown = (status: "all" | "posted" | "voided") =>
+      elements<ComponentProps<typeof ExpenseHistory>>(
+        capture(ExpensesScreen, { ...props, filters: { ...props.filters, status } }).tree,
+        ExpenseHistory,
+      )[0]?.props.showStatus;
+    expect([shown("posted"), shown("voided"), shown("all")]).toEqual([false, false, true]);
   });
 
   test("renders an empty history only after a successful read", () => {

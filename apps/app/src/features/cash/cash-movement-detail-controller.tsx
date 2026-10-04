@@ -32,6 +32,8 @@ type CashMovementDetailProps = {
   /** Loaded history, used to tell whether this movement was already reversed. */
   movements: readonly CashMovement[];
   onClose: () => void;
+  /** The row that opened the movement; focus goes back to it when the flow ends. */
+  returnFocus?: HTMLElement | null;
   timeZone: string;
 };
 
@@ -46,6 +48,7 @@ export function CashMovementDetail({
   movement,
   movements,
   onClose,
+  returnFocus,
   timeZone,
 }: CashMovementDetailProps) {
   const queryClient = useQueryClient();
@@ -107,6 +110,9 @@ export function CashMovementDetail({
           canManage && isAdjustment(movement) && !reversed ? () => setStage("reverse") : undefined
         }
         open={stage === "detail"}
+        recordedAt={formatLocalizedDateTime(movement.createdAt, locale, movement.timeZone)}
+        // Only the dialog that ends the flow returns focus; a step change keeps it in the dialogs.
+        returnFocus={stage === "detail" ? returnFocus : null}
         reversed={reversed}
       />
       <CashReversalDialog
@@ -128,6 +134,7 @@ export function CashMovementDetail({
         onDraftChange={setDraft}
         open={stage === "reverse"}
         phase={phase}
+        returnFocus={stage === "reverse" ? returnFocus : null}
       />
     </>
   );

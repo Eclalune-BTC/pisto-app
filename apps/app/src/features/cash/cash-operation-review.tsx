@@ -1,6 +1,7 @@
 import { CircleAlert, TriangleAlert } from "lucide-react-native";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,8 @@ type CashOperationReviewProps = {
   onConfirm: () => void;
   onEdit: () => void;
   phase: MutationPhase;
+  /** Names the review region that receives focus. */
+  title: string;
 };
 
 /**
@@ -32,10 +35,22 @@ export function CashOperationReview({
   onConfirm,
   onEdit,
   phase,
+  title,
 }: CashOperationReviewProps) {
   const { t } = useTranslation();
+  const region = useRef<View>(null);
+  useEffect(() => {
+    // The button that opened the review is gone with the form; keyboard focus follows the step.
+    if (Platform.OS === "web") (region.current as unknown as HTMLElement | null)?.focus();
+  }, []);
   return (
-    <View className="gap-4">
+    <View
+      accessibilityLabel={title}
+      className="gap-4 web:outline-none"
+      ref={region}
+      role="region"
+      tabIndex={-1}
+    >
       <DescriptionList items={items} />
       <Text className="text-[13px] leading-5 text-muted-foreground">{effect}</Text>
       {phase === "uncertain" ? (

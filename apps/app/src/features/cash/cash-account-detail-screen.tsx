@@ -1,6 +1,5 @@
 import type { CashAccount, CashMovement } from "@pisto/contracts";
-import { Link } from "expo-router";
-import { Archive, Ellipsis } from "lucide-react-native";
+import { Archive, ArrowLeftRight, Pencil } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { FeatureBoundary, type FeatureRemoteState } from "@/components/feature-boundary";
@@ -11,14 +10,6 @@ import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { CashMovementList } from "./cash-movement-list";
 import { ConfirmCommandDialog } from "./confirm-command-dialog";
@@ -28,6 +19,7 @@ import {
   cashBoundaryCopy,
   cashMovementActionLabels,
 } from "./copy";
+import { HeaderActions } from "./header-actions";
 import { type CursorPage, LoadMoreButton } from "./load-more-button";
 import type { MutationPhase } from "./mutation-state";
 
@@ -38,6 +30,8 @@ export type CashArchiveState = {
   onOpen: () => void;
   open: boolean;
   phase: MutationPhase;
+  /** The control that opened the dialog; focus returns to it on close. */
+  returnFocus: HTMLElement | null;
 };
 
 type CashAccountDetailScreenProps = {
@@ -78,58 +72,42 @@ export function CashAccountDetailScreen({
       <PageHeader
         actions={
           canManage && active ? (
-            <>
-              <Link
-                asChild
-                href={{
-                  pathname: "/operate/cash/accounts/[accountId]/edit",
-                  params: { accountId: account.id },
-                }}
-              >
-                <Button accessibilityRole="link" variant="outline">
-                  <Text>{t("cash.accountDetail.edit")}</Text>
-                </Button>
-              </Link>
-              <Link
-                asChild
-                href={{
-                  pathname: "/operate/cash/transfers/new",
-                  params: { fromAccountId: account.id },
-                }}
-              >
-                <Button accessibilityRole="link" variant="outline">
-                  <Text>{t("cash.overview.transfer")}</Text>
-                </Button>
-              </Link>
-              <Link
-                asChild
-                href={{
+            <HeaderActions
+              menuLabel={t("cash.accountDetail.moreActions")}
+              overflow={[
+                {
+                  destructive: true,
+                  icon: Archive,
+                  label: t("cash.accountDetail.archive"),
+                  onPress: archive.onOpen,
+                },
+              ]}
+              primary={{
+                href: {
                   pathname: "/operate/cash/adjustments/new",
                   params: { accountId: account.id },
-                }}
-              >
-                <Button accessibilityRole="link">
-                  <Text>{t("cash.overview.adjust")}</Text>
-                </Button>
-              </Link>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    accessibilityLabel={t("cash.accountDetail.moreActions")}
-                    size="icon"
-                    variant="outline"
-                  >
-                    <Icon as={Ellipsis} className="text-foreground" size={16} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-44" sideOffset={4}>
-                  <DropdownMenuItem onPress={archive.onOpen} variant="destructive">
-                    <Icon as={Archive} className="text-destructive" size={15} />
-                    <Text>{t("cash.accountDetail.archive")}</Text>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
+                },
+                label: t("cash.overview.adjust"),
+              }}
+              secondary={[
+                {
+                  href: {
+                    pathname: "/operate/cash/accounts/[accountId]/edit",
+                    params: { accountId: account.id },
+                  },
+                  icon: Pencil,
+                  label: t("cash.accountDetail.edit"),
+                },
+                {
+                  href: {
+                    pathname: "/operate/cash/transfers/new",
+                    params: { fromAccountId: account.id },
+                  },
+                  icon: ArrowLeftRight,
+                  label: t("cash.overview.transfer"),
+                },
+              ]}
+            />
           ) : undefined
         }
         adornment={
@@ -153,19 +131,6 @@ export function CashAccountDetailScreen({
             account.currencyMinorUnitDigits,
           )}
         />
-        <Stat
-          detail={
-            account.allowNegativeBalance
-              ? t("cash.accountDetail.negativeAllowedDetail")
-              : t("cash.accountDetail.negativeProtectedDetail")
-          }
-          label={t("cash.accountDetail.negativePolicy")}
-          value={
-            account.allowNegativeBalance
-              ? t("cash.accountDetail.negativeAllowed")
-              : t("cash.accountDetail.negativeProtected")
-          }
-        />
       </StatGroup>
 
       <Section title={t("cash.accountDetail.detailsTitle")}>
@@ -173,6 +138,12 @@ export function CashAccountDetailScreen({
           items={[
             { label: t("cash.accountDetail.kind"), value: cashAccountKindLabels(t)[account.kind] },
             { label: t("cash.accountDetail.currency"), value: account.currency },
+            {
+              label: t("cash.accountDetail.negativePolicy"),
+              value: account.allowNegativeBalance
+                ? t("cash.accountDetail.negativeAllowed")
+                : t("cash.accountDetail.negativeProtected"),
+            },
             {
               label: t("cash.accountDetail.createdAt"),
               numeric: true,
@@ -187,7 +158,10 @@ export function CashAccountDetailScreen({
         />
       </Section>
 
-      <Section title={t("cash.accountDetail.movementsTitle")}>
+      <Section
+        description={t("cash.movements.order")}
+        title={t("cash.accountDetail.movementsTitle")}
+      >
         <FeatureBoundary
           copy={{
             ...cashBoundaryCopy(t),
@@ -213,7 +187,13 @@ export function CashAccountDetailScreen({
 
       <ConfirmCommandDialog
         confirmLabel={t("cash.accountDetail.archive")}
-        description={t("cash.archive.description")}
+        description={t("cash.archive.description", {
+          balance: formatMoney(
+            account.balanceMinorUnits,
+            account.currency,
+            account.currencyMinorUnitDigits,
+          ),
+        })}
         destructive
         disabled={!canManage}
         errorMessage={archive.errorMessage}
@@ -221,6 +201,7 @@ export function CashAccountDetailScreen({
         onConfirm={archive.onConfirm}
         open={archive.open}
         phase={archive.phase}
+        returnFocus={archive.returnFocus}
         title={t("cash.archive.title", { name: account.name })}
       />
     </Page>

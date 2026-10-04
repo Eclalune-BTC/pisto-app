@@ -2,7 +2,7 @@ import type { CashAccount, Expense, ExpensePeriodSummary } from "@pisto/contract
 import { Link } from "expo-router";
 import { Plus, ReceiptText } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 import { FeatureBoundary, type FeatureRemoteState } from "@/components/feature-boundary";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
@@ -18,7 +18,11 @@ import { type CursorPage, LoadMoreButton } from "../cash/load-more-button";
 import { expensesBoundaryCopy } from "./copy";
 import { ExpenseFilters } from "./expense-filters";
 import { ExpenseHistory } from "./expense-history";
-import { ExpenseSummary, ExpenseSummarySkeleton } from "./expense-summary";
+import {
+  ExpenseCategoryBreakdown,
+  ExpenseSummary,
+  ExpenseSummarySkeleton,
+} from "./expense-summary";
 import type { ExpenseHistoryFilters, ExpensePeriod } from "./search-params";
 
 type ExpensesScreenProps = {
@@ -73,6 +77,8 @@ export function ExpensesScreen({
 }: ExpensesScreenProps) {
   const { t } = useTranslation();
   const boundary = expensesBoundaryCopy(t);
+  // On a phone the breakdown would push the history a screen down, so it follows the history.
+  const breakdownAfterHistory = useWindowDimensions().width < 640;
   const register = (size?: "sm") => (
     <Link asChild href="/operate/expenses/new">
       <Button accessibilityRole="link" size={size}>
@@ -115,12 +121,19 @@ export function ExpensesScreen({
             onRetry={onRetry}
             state={summaryState}
           >
-            {summary ? <ExpenseSummary summary={summary} /> : null}
+            {summary ? (
+              <View className="min-w-0 gap-4">
+                <ExpenseSummary summary={summary} />
+                {breakdownAfterHistory ? null : (
+                  <ExpenseCategoryBreakdown level={3} summary={summary} />
+                )}
+              </View>
+            ) : null}
           </FeatureBoundary>
         )}
       </Section>
 
-      <Section title={t("filters.history")}>
+      <Section description={t("expenses.overview.historyOrder")} title={t("filters.history")}>
         <ExpenseFilters
           accounts={accounts}
           accountsPage={accountsPage}
@@ -149,11 +162,16 @@ export function ExpensesScreen({
               formatMoney={formatMoney}
               formatOccurredAt={formatOccurredAt}
               onVoidExpense={canManage ? onVoidExpense : undefined}
+              showStatus={filters.status === "all"}
             />
             <LoadMoreButton page={expensesPage} />
           </View>
         </FeatureBoundary>
       </Section>
+
+      {breakdownAfterHistory && summaryState.kind === "ready" && summary ? (
+        <ExpenseCategoryBreakdown level={2} summary={summary} />
+      ) : null}
     </Page>
   );
 }

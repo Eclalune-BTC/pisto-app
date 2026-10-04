@@ -14,6 +14,7 @@ import { requireSupportedLocale } from "@/i18n/locale";
 import { ApiClientError } from "@/lib/api-error";
 import { formatMinorUnits } from "@/lib/money";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
+import { focusReturnTarget } from "../cash/focus-return";
 import { cashAccountQueryOptions, expenseQueryOptions } from "../cash/queries";
 import { featureRemoteState, refetchEnabled } from "../cash/remote-state";
 import { firstParam, type RouteParam } from "../cash/search-params";
@@ -32,7 +33,7 @@ export function ExpenseDetailController() {
   const businessId = canRead ? business?.id : undefined;
   const expenseQuery = useQuery(expenseQueryOptions(businessId, expenseId));
   // The voided record is fixed when the dialog opens; a refetch cannot change what is confirmed.
-  const [voiding, setVoiding] = useState<Expense>();
+  const [voiding, setVoiding] = useState<{ expense: Expense; returnFocus: HTMLElement | null }>();
   const expense = expenseQuery.data?.expense;
   // The screen names the paying account from this same read; a rejection here is a denial too.
   const accountQuery = useQuery(cashAccountQueryOptions(businessId, expense?.accountId));
@@ -57,7 +58,7 @@ export function ExpenseDetailController() {
       });
   if (pageState.kind === "loading") {
     return (
-      <Page width="form">
+      <Page>
         <ContentSkeleton label={t("expenses.boundary.loading")} variant="detail" />
       </Page>
     );
@@ -71,7 +72,7 @@ export function ExpenseDetailController() {
   }
   if (notFound || !expense) {
     return (
-      <Page width="form">
+      <Page>
         <StatePanel
           description={t("expenses.detail.notFoundDescription")}
           icon={SearchX}
@@ -100,14 +101,15 @@ export function ExpenseDetailController() {
         }
         isStale={stale}
         onRetry={retry}
-        onVoid={() => setVoiding(expense)}
+        onVoid={() => setVoiding({ expense, returnFocus: focusReturnTarget() })}
       />
-      {voiding?.id === expense.id ? (
+      {voiding?.expense.id === expense.id ? (
         <ExpenseVoidDialog
           businessId={business.id}
           canConfirm={canVoid}
-          expense={voiding}
+          expense={voiding.expense}
           onClose={() => setVoiding(undefined)}
+          returnFocus={voiding.returnFocus}
           timeZone={business.timeZone}
         />
       ) : null}

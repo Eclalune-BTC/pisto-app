@@ -39,7 +39,8 @@ function AccountNameText({
         linked && "text-foreground underline underline-offset-4",
         className,
       )}
-      numberOfLines={1}
+      // Two lines, not one: a single unbreakable line would widen the tables that list it.
+      numberOfLines={2}
     >
       {name}
     </Text>

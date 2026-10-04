@@ -48,13 +48,13 @@ export function CashMovementList({
                     })
                   : undefined
               }
-              className="min-h-0 self-start px-0 py-0"
-              // Compact rows open from this cell alone; keep its touch target near 44 points.
+              className="min-h-0 w-full justify-start px-0 py-0"
+              // On native this cell is the row's only touch target; keep it near 44 points.
               hitSlop={12}
               onPress={() => onOpenMovement(original.id)}
               variant="link"
             >
-              <Text className="font-ui text-[13px] text-foreground no-underline web:hover:underline">
+              <Text className="font-ui text-left text-[13px] text-foreground no-underline web:hover:underline">
                 {actionLabels[original.action]}
               </Text>
             </Button>
@@ -77,7 +77,7 @@ export function CashMovementList({
               id: "date",
               header: t("dataTable.columns.date"),
               cell: ({ row: { original } }) => (
-                <Text className="text-[13px] text-muted-foreground tabular-nums">
+                <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
                   {formatOccurredAt(original)}
                 </Text>
               ),
@@ -87,9 +87,9 @@ export function CashMovementList({
       {
         id: "reason",
         header: t("cash.movements.reason"),
-        meta: { hideOnCompact: true },
+        // Rows of one type look alike; the reason tells them apart, on phones too.
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground" numberOfLines={1}>
+          <Text className="text-[13px] text-muted-foreground" numberOfLines={2}>
             {original.reason}
           </Text>
         ),

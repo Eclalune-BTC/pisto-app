@@ -30,7 +30,7 @@ export function CashAccountList({ accounts, empty, formatMoney }: CashAccountLis
         header: t("dataTable.columns.name"),
         meta: { primary: true },
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px]" numberOfLines={1}>
+          <Text className="text-[13px]" numberOfLines={2}>
             {original.name}
           </Text>
         ),

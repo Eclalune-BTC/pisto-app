@@ -11,6 +11,7 @@ import { Field } from "@/components/ui/field";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { AccountBalanceHint } from "./account-balance-hint";
 import { CashOperationReview } from "./cash-operation-review";
 import type { TransferDraftValues } from "./drafts";
 import { FieldError } from "./field-error";
@@ -19,6 +20,7 @@ import { formatLocalOccurrence } from "./format";
 import { type CursorPage, LoadMoreButton } from "./load-more-button";
 import { LocalDateTimeFields } from "./local-date-time-fields";
 import type { MutationPhase } from "./mutation-state";
+import { MutedValue } from "./review-values";
 
 export type CashTransferDraft = TransferDraftValues;
 
@@ -86,7 +88,10 @@ export function CashTransferScreen({
               numeric: true,
               value: formatMoney(command.amountMinorUnits, command.currency),
             },
-            { label: t("cash.transfer.note"), value: command.note ?? t("cash.transfer.noNote") },
+            {
+              label: t("cash.transfer.note"),
+              value: command.note ?? <MutedValue>{t("cash.transfer.noNote")}</MutedValue>,
+            },
             {
               label: t("cash.fields.occurredAt"),
               numeric: true,
@@ -100,6 +105,7 @@ export function CashTransferScreen({
           onConfirm={onConfirm}
           onEdit={onEdit}
           phase={phase}
+          title={t("cash.transfer.reviewTitle")}
         />
       </Page>
     );
@@ -107,7 +113,9 @@ export function CashTransferScreen({
 
   const activeAccounts = accounts.filter(({ status }) => status === "active");
   const options = activeAccounts.map(({ id, name }) => ({ label: name, value: id }));
-  const currency = activeAccounts.find(({ id }) => id === draft.fromAccountId)?.currency;
+  const fromAccount = activeAccounts.find(({ id }) => id === draft.fromAccountId);
+  const toAccount = activeAccounts.find(({ id }) => id === draft.toAccountId);
+  const currency = fromAccount?.currency;
   return (
     <Page width="form">
       <PageHeader description={t("cash.transfer.description")} title={t("cash.transfer.title")} />
@@ -134,6 +142,7 @@ export function CashTransferScreen({
                 options={options}
                 value={draft.fromAccountId || null}
               />
+              <AccountBalanceHint account={fromAccount} />
               <FieldError message={errors.fromAccountId} />
             </View>
             <View className="gap-2">
@@ -143,6 +152,7 @@ export function CashTransferScreen({
                 options={options}
                 value={draft.toAccountId || null}
               />
+              <AccountBalanceHint account={toAccount} />
               <FieldError message={errors.toAccountId} />
             </View>
             <LoadMoreButton

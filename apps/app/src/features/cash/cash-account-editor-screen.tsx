@@ -27,6 +27,7 @@ import { FormSection } from "./form-section";
 import { formatLocalOccurrence } from "./format";
 import { LocalDateTimeFields } from "./local-date-time-fields";
 import type { MutationPhase } from "./mutation-state";
+import { ChangedValue } from "./review-values";
 
 export type CashAccountEditorDraft = AccountDraftValues;
 
@@ -85,15 +86,26 @@ export function CashAccountEditorScreen({
     const createCommand = isCreateCommand(command) ? command : null;
     const original = createCommand ?? account;
     if (!original) throw new Error("A cash account update review requires its original account");
-    const allowNegative = command.allowNegativeBalance ?? original.allowNegativeBalance;
+    const policy = (allowed: boolean) =>
+      allowed ? t("cash.accountDetail.negativeAllowed") : t("cash.accountDetail.negativeProtected");
+    // An update shows each changed field next to the value it replaces.
+    const reviewed = (before: string, after: string) =>
+      before === after ? after : <ChangedValue after={after} before={before} />;
     const items: DescriptionItem[] = [
-      { label: t("cash.accountEditor.name"), value: command.name ?? original.name },
-      { label: t("cash.accountEditor.kind"), value: kinds[command.kind ?? original.kind] },
+      {
+        label: t("cash.accountEditor.name"),
+        value: reviewed(original.name, command.name ?? original.name),
+      },
+      {
+        label: t("cash.accountEditor.kind"),
+        value: reviewed(kinds[original.kind], kinds[command.kind ?? original.kind]),
+      },
       {
         label: t("cash.accountDetail.negativePolicy"),
-        value: allowNegative
-          ? t("cash.accountDetail.negativeAllowed")
-          : t("cash.accountDetail.negativeProtected"),
+        value: reviewed(
+          policy(original.allowNegativeBalance),
+          policy(command.allowNegativeBalance ?? original.allowNegativeBalance),
+        ),
       },
     ];
     if (createCommand) {
@@ -150,6 +162,11 @@ export function CashAccountEditorScreen({
           onConfirm={onConfirm}
           onEdit={onEdit}
           phase={phase}
+          title={
+            creating
+              ? t("cash.accountEditor.reviewCreateTitle")
+              : t("cash.accountEditor.reviewUpdateTitle")
+          }
         />
       </Page>
     );

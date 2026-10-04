@@ -20,6 +20,8 @@ type ExpenseHistoryProps = {
   formatOccurredAt: (expense: Expense) => string;
   /** Present only for a manager allowed to void; voided rows never offer it. */
   onVoidExpense?: (expense: Expense) => void;
+  /** A status filter of one value already states every row's status. */
+  showStatus: boolean;
 };
 
 export function expenseHref(expenseId: string): Href {
@@ -34,6 +36,7 @@ export function ExpenseHistory({
   formatMoney,
   formatOccurredAt,
   onVoidExpense,
+  showStatus,
 }: ExpenseHistoryProps) {
   const { t } = useTranslation();
   const columns = useMemo<DataTableColumn<Expense>[]>(() => {
@@ -45,7 +48,7 @@ export function ExpenseHistory({
         header: t("dataTable.columns.description"),
         meta: { primary: true },
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px]" numberOfLines={1}>
+          <Text className="text-[13px]" numberOfLines={2}>
             {original.description}
           </Text>
         ),
@@ -73,20 +76,24 @@ export function ExpenseHistory({
         id: "date",
         header: t("dataTable.columns.date"),
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground tabular-nums">
+          <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
             {formatOccurredAt(original)}
           </Text>
         ),
       },
-      {
-        id: "status",
-        header: t("dataTable.columns.status"),
-        cell: ({ row: { original } }) => (
-          <Badge variant={original.status === "voided" ? "outline" : "secondary"}>
-            <Text>{statuses[original.status]}</Text>
-          </Badge>
-        ),
-      },
+      ...(showStatus
+        ? [
+            {
+              id: "status",
+              header: t("dataTable.columns.status"),
+              cell: ({ row: { original } }) => (
+                <Badge variant={original.status === "voided" ? "outline" : "secondary"}>
+                  <Text>{statuses[original.status]}</Text>
+                </Badge>
+              ),
+            } satisfies DataTableColumn<Expense>,
+          ]
+        : []),
       {
         id: "amount",
         header: t("dataTable.columns.amount"),
@@ -108,7 +115,7 @@ export function ExpenseHistory({
         ),
       },
     ];
-  }, [accountNames, businessId, formatMoney, formatOccurredAt, t]);
+  }, [accountNames, businessId, formatMoney, formatOccurredAt, showStatus, t]);
   return (
     <DataTable
       caption={t("filters.history")}

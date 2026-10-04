@@ -69,6 +69,7 @@ const adjustment = {
   accountId: "account",
   action: "adjustment_out",
   amountMinorUnits: "500",
+  createdAt: "2026-09-10T16:05:00Z",
   currency: "USD",
   currencyMinorUnitDigits: 2,
   deltaMinorUnits: "-500",

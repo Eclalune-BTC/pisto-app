@@ -28,6 +28,8 @@ type ExpenseVoidDialogProps = {
   onClose: () => void;
   /** Offers a link to the record when voiding from somewhere other than its own page. */
   linkToRecord?: boolean;
+  /** The control that opened the dialog; focus returns to it on close. */
+  returnFocus?: HTMLElement | null;
   timeZone: string;
 };
 
@@ -38,6 +40,7 @@ export function ExpenseVoidDialog({
   expense,
   linkToRecord = false,
   onClose,
+  returnFocus,
   timeZone,
 }: ExpenseVoidDialogProps) {
   const queryClient = useQueryClient();
@@ -105,6 +108,7 @@ export function ExpenseVoidDialog({
       onConfirm={confirm}
       open
       phase={phase}
+      returnFocus={returnFocus}
       title={t("expenses.void.title", { description: expense.description })}
     >
       <View className="gap-4">

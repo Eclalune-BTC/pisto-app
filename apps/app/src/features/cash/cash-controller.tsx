@@ -11,6 +11,7 @@ import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
 import { CashMovementDetail } from "./cash-movement-detail-controller";
 import { CashScreen } from "./cash-screen";
 import { cashBoundaryCopy } from "./copy";
+import { focusReturnTarget } from "./focus-return";
 import { cashAccountsInfiniteOptions, cashMovementsInfiniteOptions, flattenPages } from "./queries";
 import { featureRemoteState, refetchEnabled } from "./remote-state";
 import { accountStatusParam, parseAccountStatus, type RouteParam } from "./search-params";
@@ -27,7 +28,11 @@ export function CashController() {
   const businessId = canRead ? business?.id : undefined;
   const accounts = useInfiniteQuery(cashAccountsInfiniteOptions(businessId, accountStatus));
   const movements = useInfiniteQuery(cashMovementsInfiniteOptions(businessId));
-  const [selection, setSelection] = useState<{ businessId: string; movement: CashMovement }>();
+  const [selection, setSelection] = useState<{
+    businessId: string;
+    movement: CashMovement;
+    returnFocus: HTMLElement | null;
+  }>();
 
   if (businesses.data && !business) return <Redirect href="/business" />;
 
@@ -63,7 +68,7 @@ export function CashController() {
   const accountItems = flattenPages(accounts.data);
   const movementItems = flattenPages(movements.data);
   const accountNames = new Map(accountItems.map(({ id, name }) => [id, name]));
-  const selected = selection?.businessId === business.id ? selection.movement : undefined;
+  const selected = selection?.businessId === business.id ? selection : undefined;
 
   return (
     <>
@@ -96,19 +101,22 @@ export function CashController() {
         onAccountStatusChange={(status) => router.setParams({ status: accountStatusParam(status) })}
         onOpenMovement={(movementId) => {
           const movement = movementItems.find(({ id }) => id === movementId);
-          if (movement) setSelection({ businessId: business.id, movement });
+          if (movement) {
+            setSelection({ businessId: business.id, movement, returnFocus: focusReturnTarget() });
+          }
         }}
         onRetry={retry}
       />
       {selected ? (
         <CashMovementDetail
-          accountName={accountNames.get(selected.accountId)}
+          accountName={accountNames.get(selected.movement.accountId)}
           businessId={business.id}
           canManage={canManage}
-          key={selected.id}
-          movement={selected}
+          key={selected.movement.id}
+          movement={selected.movement}
           movements={movementItems}
           onClose={() => setSelection(undefined)}
+          returnFocus={selected.returnFocus}
           timeZone={business.timeZone}
         />
       ) : null}
