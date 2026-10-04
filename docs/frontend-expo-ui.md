@@ -91,16 +91,16 @@ receivable or full-report permission, so the `/operate` hub does not list those 
 [ADR 0014](adrs/0014-static-current-operation-permissions.md) for the full matrix, including why
 `admin` and `member` have no reachable actor today.
 
-The generic planning dashboard has been removed; `/dashboard` is a five-line redirect kept only for
-old links. Compact product navigation exposes `Mi negocio` and `Cuenta`; `Mi negocio` opens the `/operate` hub and
-billing remains secondary account context. Reports is an Operate module at `/operate/reports`;
-Assistant has no destination. Do not infer
-future records, tabs, or workflows from the long-term capability map.
+`/dashboard` redirects to `/operate`, the business home: a month summary of exact report figures,
+a low-stock alert and recent sales, each gated by its read permission. Account and billing live in
+the user menu. Reports is an Operate module at `/operate/reports`; Assistant has no destination. Do
+not infer future records, tabs, or workflows from the long-term capability map.
 
 ## Responsive shell
 
-- Web uses a persistent sidebar when space permits and a compact header/navigation at narrow widths.
-- Native uses platform-appropriate bottom navigation for authenticated top-level surfaces.
+- From 1024 px on any platform the shell shows a persistent, collapsible sidebar; below that a top
+  bar opens the same navigation in a side sheet. The top bar carries the breadcrumb and, on compact
+  screens, the user menu.
 - Screens share tokens, typography, empty/loading/error states, and domain components.
 - Platform-specific behavior uses `.web.tsx`, `.ios.tsx`, or `.android.tsx` only when the interaction
   materially differs. Business rules do not fork by platform.
@@ -115,11 +115,10 @@ components for layout changes and narrow platform-resolved adapters for differen
 
 ## Product shell and feature composition
 
-Top-level destinations represent durable user jobs, not packages or database modules. Increment 1
-uses daily `Mi negocio` plus `Cuenta`, with billing in secondary account context. Assistant is not exposed
-until its structured proposal/query flow exists. Reports earns a permanent destination only after an
-approved brief proves multiple recurring report jobs and direct-entry value. Home remains absent
-until it has approved real orientation/attention content rather than invented dashboard filler.
+Top-level destinations represent durable user jobs, not packages or database modules. The sidebar
+lists `Inicio` and the permitted modules grouped by job; account, billing, appearance and sign-out
+live in the user menu. Assistant is not exposed until its structured proposal/query flow exists.
+`Inicio` shows only exact figures and records the user is permitted to read, never filler.
 
 - Keep only implemented durable compact destinations; wide web shows grouped direct module links without
   changing their meaning.
@@ -172,8 +171,8 @@ applicable.
 [The design system](design-system.md) owns current visual decisions, component responsibilities,
 brand assets and acceptance checks. It distinguishes standards from Pisto's local design choices.
 The owner requires React Native Reusables throughout the application and prohibits blue. The public
-page and operating screens share forest/sage semantic tokens and warm surfaces in both themes.
-The latest owner request supersedes the old monochrome treatment; aesthetic approval is separate from validation.
+page and operating screens share the graphite semantic tokens in both themes; there is no green brand
+colour. Aesthetic approval is separate from validation.
 
 ### Content and composition rules
 
@@ -186,7 +185,7 @@ the reusable read-state composition instead of making other features import it f
 
 ### Typography
 
-Use [the shared typography contract](design-system.md#palette-typography-and-layout). IBM Plex Sans
+Use [the shared typography contract](design-system.md#palette-typography-and-layout). Inter
 400/500/600 are loaded through Expo Font as PistoRegular/PistoMedium/PistoSemibold. Native text scaling
 stays enabled. The root keeps the native splash visible during font loading and shows a localized
 system-font error/retry if loading fails; it does not silently substitute the regular product font.
@@ -235,7 +234,7 @@ The page remains a single-page web export, not an SEO-oriented static/SSR market
 title and description are set through the installed Expo Router Head API at runtime. A separate public
 site or static rendering strategy requires its own routing and hosting decision.
 
-Source review on 2026-09-26: [IBM Plex](https://github.com/IBM/plex),
+Source review on 2026-10-04: [Inter](https://rsms.me/inter/),
 [Expo runtime fonts](https://docs.expo.dev/develop/user-interface/fonts/),
 [Uniwind classes and inheritance](https://docs.uniwind.dev/class-names),
 [WCAG reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html),
@@ -404,10 +403,10 @@ Use the documented [supported class names](https://docs.uniwind.dev/class-names)
 that every browser CSS feature or third-party DOM component works on native. Browser selectors such
 as `html`, `body` and `:focus-visible` in `global.css` do not establish native accessibility behavior.
 
-The app shell uses a web-only wide sidebar and a compact/native RNR Dialog menu with the same
-permission-filtered destinations, plus two primary bottom links composed from RNR Button and Expo
-Link. It is not a separate platform-native tab implementation. The menu closes on navigation and
-breakpoint changes. Hover-only appearance tooltips are web-only; a native theme change is a direct tap.
+The app shell uses a wide sidebar (any platform from 1024 px) and a compact side sheet built on the
+RNR Dialog primitives, both with the same permission-filtered destinations. It is not a
+platform-native tab implementation. The sheet closes on navigation and breakpoint changes. Collapsed
+sidebar tooltips are web-only.
 Billing is resolved through `.web.ts` and `.native.ts` adapters; authentication and lifecycle handling
 also contain explicit platform branches. Shared code preserves business meaning, not guaranteed
 pixel identity, keyboard behavior or screen-reader acceptance. Windows currently uses the web target;

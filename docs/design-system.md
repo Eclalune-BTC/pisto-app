@@ -2,235 +2,141 @@
 
 ## Owner requirements
 
-Use **React Native Reusables, Uniwind registry** as the shared component base. Blue is prohibited in
-application-owned UI: public pages, authenticated screens, links, focus, native navigation colors,
-icons and product captures. The prior cobalt proposal was rejected and is not a reference to restore.
-The owner's latest direction rejects the former monochrome treatment and asks for clearer navigation,
-color, typography and organization. The current implementation uses forest green and sage over warm
-surfaces, with a corresponding dark theme. This is a proposed visual direction, not recorded aesthetic approval.
+Pisto looks like a modern fintech operations product that a business owner can trust: clean, dense,
+calm and precise. The owner's direction (2026-10-04) replaces the earlier forest/sage proposal:
 
-This document distinguishes the owner's requirements from library contracts and local implementation
-choices. A component installation, passing test or screenshot does not establish aesthetic approval.
-Spacing, font and radius choices are product defaults, not universal accessibility rules.
+- No green brand colour and no blue anywhere in application-owned UI (blue is test-enforced:
+  hue 175–280° in `src/components/ui/no-blue.test.ts`). Colour expresses state and data, not decoration.
+- Nearly square geometry, compact density and little padding, while still composing the installed
+  React Native Reusables (RNR) components.
+- No gradients, glows, decorative shadows, eyebrow labels above titles, accent left-border lines,
+  ornamental dividers, oversized headings or marketing copy inside the product. Subtle translucent
+  surfaces ("glass") are allowed only for the top bar and overlays on the web.
+- Real navigation and feedback: breadcrumbs, a user menu, toasts, dialogs, tables and skeletons.
+
+The working method, the rubric used to judge a screen and the lessons learned live in the
+`pisto-ui` skill (`.claude/skills/pisto-ui/SKILL.md`); the `ui-critic` agent reviews rendered
+screens against it. A passing test suite or a screenshot is not owner aesthetic approval.
 
 ## Installation and source ownership
 
-`apps/app/components.json` configures project aliases, CSS and the neutral base color. RNR supplies
-source components, not a single runtime package. Source was installed from the official Uniwind
-registry at revision `385834c2196f8a303cbc9057d1ac768f3bde0a3b`, reviewed on 2026-09-27. The source
-license is retained in `apps/app/licenses/react-native-reusables.txt`.
-
-The CLI resolved the registry but stalled at dependency installation in this Windows workspace.
-Installation was completed using the documented manual-source path and exact dependency versions,
-not by calling the unfinished CLI run successful. Future additions can use:
+`apps/app/components.json` configures aliases, CSS and the neutral base colour. RNR supplies source
+components from the Uniwind registry (reviewed revision `385834c2196f8a303cbc9057d1ac768f3bde0a3b`);
+the MIT notice is kept in `apps/app/licenses/react-native-reusables.txt`. The CLI stalled on this
+Windows workspace, so sources were added through the documented manual path with exact
+`@rn-primitives/*` 1.5.x pins. Future additions can use:
 
 ```sh
 bunx @react-native-reusables/cli@0.7.1 add COMPONENT --cwd apps/app --styling-library uniwind
 ```
 
-Review changes before using `--overwrite`: installed source contains necessary domain/accessibility
-adaptations. Do not install the whole registry speculatively or regenerate the Expo application.
-
-Installed component families include Button, Text, Input, Label, Textarea, Card, Badge, Alert,
-Separator, Checkbox, RadioGroup, Switch, Dialog, Tooltip, Toggle/ToggleGroup, Select, Tabs and
-Accordion, with the upstream Icon and native-animation helpers. They live in `src/components/ui`.
-The primitives they require are explicit pinned dependencies. Expo, Uniwind and the existing
-Reanimated stack remain; no Nativewind migration or second theme system is introduced.
+Installed source is app-owned: review aliases, translations, density, focus and domain adaptations
+before overwriting it. The registry has no Sidebar, Sheet, Breadcrumb, Toast or DataTable entry;
+those are local compositions of the installed primitives (see below), not a second UI kit.
 
 ## Reuse boundaries
 
 | Job | Implementation |
 | --- | --- |
-| Actions and links | RNR `Button`/`Text`; Expo Router owns real destinations |
-| Text and headings | RNR `Text` and its text-style context; `Heading` supplies Pisto's existing heading roles/sizes |
-| Form fields | RNR `Input`, `Textarea`, `Label`; `Field` composes labels, errors and optional trailing controls |
-| Entity/category selection | RNR `Select`; `SelectField` validates a controlled value and owns field/error association |
-| Short status filters | RNR `ToggleGroup`; the required filter cannot become an empty selection |
-| Boolean/exclusive choices | RNR `Checkbox`, `Switch`, `RadioGroup` rather than hand-drawn checkmarks/circles |
-| Alternative informational views | RNR `Tabs` in the public product showcase; cash and expense sections stay visible together |
-| Cards, status and feedback | RNR `Card`, `Badge`, `Alert` and their Text/content components |
-| Desktop and compact navigation | Application route composition using RNR Button, Separator and Dialog |
-| Record comparison | Existing TanStack table adapter, semantic HTML on web and complete compact/native records |
-| Dates | Browser date input in the web adapter; shared field on native with existing domain validation |
-| Loading feedback | Shared `LoadingIndicator` composes the platform activity indicator with an explicit theme color; never inherit the browser's blue default |
+| App shell | `components/app-shell.tsx`: sidebar (business menu, grouped modules, user menu) on wide screens, navigation sheet on compact ones, translucent top bar with breadcrumbs |
+| Breadcrumbs | `lib/route-trail.ts` over the declared `features/operate/route-parents.ts`; record names through `useRouteLabel` |
+| Page structure | `Page`, `layout/page-header`, `layout/section`, `layout/stat-group`, `layout/description-list`, `layout/skeletons` |
+| Actions and links | RNR `Button` (`default`, `outline`, `secondary`, `ghost`, `destructive`, `link`; sizes `sm`, `default`, `lg`, `icon`, `icon-sm`); Expo Router `Link` owns destinations |
+| Records | `ui/data-table` (TanStack row model): semantic `<table>` on wide web, dense list rows elsewhere; rows open records through a real link; `ui/row-actions` for per-row menus |
+| Status and callouts | `ui/badge` and `ui/alert` variants `positive`, `warning`, `destructive` |
+| Confirmations | `ui/confirm-dialog` (RNR AlertDialog) for consequential commands; it stays open while pending |
+| Short tasks | `ui/dialog`, `ui/sheet` |
+| Menus | RNR `DropdownMenu`, `Avatar`, `Popover`, `Tooltip` |
+| Forms | `Field`, `SelectField`, `DateField`, RNR `Checkbox`, `Switch`, `RadioGroup` |
+| Filters | `ui/filter-bar` (segmented ToggleGroup), selects and search inputs in a toolbar row |
+| Toasts | `lib/notify.ts` over `sonner` (web) and `sonner-native` (native); only `success`, `warning` and `error` (Sonner's info styling is blue) |
+| Loading, empty, failed | `ContentSkeleton`, `EmptyState` (after a successful read only), `StatePanel`, `StaleNotice` |
 
-The reviewed RNR registry has **no Sidebar, Sheet or DataTable entry**. Do not claim those were
-downloaded from it. `Sidebar` composes the installed components and actual route model; the compact
-off-canvas surface uses Dialog's interaction/focus management. The table retains TanStack's row model
-because replacing business comparison with generic cards would remove functionality. These adapters
-represent real missing boundaries, not a parallel handmade UI kit.
-
-Use the source APIs rather than keeping aliases for old variants. Button variants are `default`,
-`outline`, `secondary`, `ghost`, `destructive` and `link`; sizes are `default`, `sm`, `lg`, `icon`.
-Its `label`, `loading`, role and disabled-state support preserve existing product contracts.
-Loading cannot enable an action or discard its accessible name. RNR's Text context supplies child
-colors; do not hardcode dark icons or white text inside a theme-dependent primary button.
-
-Cards and badges contain native-safe `Text`, never a string directly under a View. Alerts use
-`AlertDescription` and the actual message. No failed read becomes a success-looking empty card.
-
-### Padding belongs to the component slot
-
-RNR Card supplies the surface and vertical spacing, not horizontal padding for arbitrary children.
-Compose `CardHeader`, `CardContent` and `CardFooter`; do not put a bare form inside Card and assume
-that its fields will be inset. Authentication uses the default 24 px slot padding. Compact
-empty-state cards and mobile record cards share 16 px horizontal slots and no decorative
-shadow. Page still owns outer gutters; do not add a second page inset inside every panel.
-
-`FilterToolbar` is a flat, named control group, and `EmptyState` uses CardHeader/Description with
-an optional action footer. The default cursor-page empty state is shown once, not nested inside an
-empty table with another card border. Error/denied states retain their distinct copy and actions;
-they must not be converted to successful empty results.
-
-Short filter choices use the installed ToggleGroup, with 8 px separation, at least 44 px height,
-12 px side padding and intrinsic item width. Do not give every item the same shrinking flex width:
-long Spanish labels such as archived states must fit or wrap. Explicit responsive overrides must
-not reduce the padding again on desktop. These measurements are local defaults, not WCAG rules.
-
-Informational tabs separate controls and results by 16 px. A pointer-focused panel does not acquire a
-permanent-looking border. Keyboard focus remains visible with the semantic ring and rounded panel
-corners; do not globally remove outlines to make screenshots cleaner. Informational tabs still
-remain keyboard-focusable, and interactive tabs preserve their controls' tab order.
-
-The source boundary tests also reject new raw Pressable, Switch, TextInput and ActivityIndicator
-widgets in feature screens. Use the shared implementations and their RNR compositions. Ordinary
-View/ScrollView layout is not a competing component library; the root startup error's system text
-and the documented table/date/platform-loading adapters remain intentional exceptions.
+The source boundary tests reject raw `Pressable`, `TextInput`, `Switch` and `ActivityIndicator`
+in feature code; use the shared components. Cards and badges contain `Text`, never bare strings.
 
 ## Necessary upstream adaptations
 
-Aliases point at the application's existing modules. Static IBM Plex Sans 400/500/600 faces remain
-`font-sans`, `font-ui`, `font-heading`; no synthetic 800/900 weight or new decorative font is added.
-Input and text-area caret/selection colors use shared theme values. Fields grow instead of clipping
-large text. The startup error view keeps system text so recovery does not require the failed font.
-
-Dialog close labels are translated. Navigation can use DialogContent's explicit overlay class and
-omit its default close button when it supplies an equally accessible close action in its header.
-Do not hand-build a second focus trap or intercept Escape outside the primitive contract.
-
-The web Accordion adapter uses the existing Radix dependency directly: the installed RN Primitives
-web implementation emitted duplicate hidden/visible trigger IDs. Native keeps the RNR composition.
-This is a platform boundary with tests, not a silent error fallback. Product tab panels with only
-informational content are keyboard-focusable. Screenshots have explicit accessible descriptions.
-
-Uniwind's `withUniwind` is retained for the upstream Icon mapping. Do not apply it redundantly to
-all compound primitives: forwarding React Native style arrays into Radix DOM slots previously broke
-web rendering. Existing classes already flow through the native components where appropriate.
+- Button keeps `label`, `loading` and role support; loading never enables an action or drops its
+  accessible name. Pointer screens get compact sizes; native keeps 44 pt touch targets through the
+  `native:` variant.
+- Overlays use local `pisto-enter-*` keyframe utilities on the web (the registry's `animate-in`
+  classes need a plugin that is not installed) and honour reduced motion. Native overlays animate
+  through Reanimated.
+- Menus, selects and popovers are translucent with a backdrop blur on the web only; React Native has
+  no backdrop filter, so native uses the solid token surface by design.
+- The web Accordion uses Radix directly because the RN Primitives web build emitted duplicate IDs.
+- `withUniwind` is applied to the Icon mapping only.
 
 ## Palette, typography and layout
 
-`src/global.css` owns the RNR semantic palette. Use background/foreground, card, popover, muted,
-primary, secondary, accent, input, border, ring and sidebar tokens with their matching foregrounds.
-`input` means an input-border token in this registry, **not an input background**. The browser's
-focus and selection colors and Expo's navigation theme come from these same tokens; browser/framework
-defaults are not an exception to the no-blue requirement.
-
-Positive, warning and destructive tokens express actual state. Forest/sage primary and sidebar tokens
-express actions and navigation, independently of success. Source and asset checks guard against blue;
-review rendered focus, overlays, images and both themes as well.
-
-Use the installed component structure. Do not copy a card's borders/padding into every feature or
-add gradients, decorative shadows, floating statistics, fake dashboards, testimonials or unverified
-claims. The public page uses the same components/tokens as the application, not `brand-*` colors.
-
-`Page` owns workspace scrolling/gutters. Desktop navigation is separate from page content. Compact
-navigation exposes the same authorized modules in a menu and retains two primary destinations,
-Mi negocio and Cuenta. Wide navigation groups direct module links under daily work, products,
-customers/collections and analysis; it does not indent them under an additionally selected parent.
-Only one wide link is current. Billing has its own selected link; compact billing stays in Cuenta.
-The complete navigation, including identity/sign-out, can scroll on short screens. A module does not
-become a new permanent bottom tab. The hub is a responsive directory of authorized tasks, not invented metrics.
-
-Current local defaults:
+`src/global.css` owns the semantic palette ("Graphite": ink and warm neutrals). Use the tokens
+(`background`, `foreground`, `card`, `popover`, `muted`, `accent`, `primary`, `secondary`, `border`,
+`input`, `ring`, `sidebar-*`, `destructive*`, `warning*`, `positive*`, `chart-1…5`); never literal
+colours. `input` is the field outline (≥3:1 against every surface). Positive states use ink text
+with a check icon rather than a green fill; warning is amber, destructive is red. Chart colours
+avoid blue and green and are for marks, not text.
 
 | Role | Light | Dark |
 | --- | --- | --- |
-| Workspace background | `#F6F7F2` | `#161E19` |
-| Main text | `#24362D` | `#EDF1E7` |
-| Primary action | `#245C46` with white text | `#B6D5A0` with `#203A29` text |
-| Sidebar | `#EAF0E3` | `#1B2A20` |
-| Selected destination | `#D6E5CD` | `#334D38` |
+| Background | `#FAFAF9` | `#0F0E0D` |
+| Text | `#1C1917` | `#F5F5F4` |
+| Primary action | `#1C1917` with `#FAFAF9` text | `#F5F5F4` with `#1C1917` text |
+| Card | `#FFFFFF` | `#171615` |
+| Border | `#E7E5E2` | `#2B2927` |
 
-IBM Plex Sans remains the installed OFL family: 400 for body, 500 for controls and 600 for headings.
-Its language/currency coverage fits Spanish operating records; adding another family would add font
-loading and maintenance without solving a current gap. Page headings use 28/36 px on compact screens
-and 32/40 px on wide screens, section headings 18/24, body 14/20 or 16/24. Monetary summaries use
-tabular numerals. Page gutters are 20/32/40/48 px by breakpoint; controls use 8 px radii and surfaces 14 px.
-These are Pisto choices, not claims that a particular color or font guarantees trust.
+Inter (400 body, 500 controls, 600 headings) replaces IBM Plex Sans; amounts, quantities and date
+columns use tabular figures. Page titles are 20 px, section titles 14 px, body 14 px, tables 13 px.
+Radii are 2–4 px (`--radius-*` overrides in `global.css`); avatars are rounded squares. Page gutters
+are 16/24/32 px by breakpoint; controls are 32–36 px high on pointer screens and 44 pt on touch.
 
-Uniwind 1.12.1 is the existing styling engine's compatibility update for Tailwind 4.3.3 flattened
-interaction selectors and current Expo resolution fixes. `metro` and `metro-cache` are explicit
-0.84.5 development peers matching Expo 57's Metro. Uniwind's Graph patch and Expo must resolve the
-same physical Graph module. Do not fix an install mismatch by globally overriding unrelated Metro
-consumers. No new production UI library or wrapper is added. Replacing this engine would require
-revalidating every native class, theme and Metro integration; upgrading retains that established boundary.
-
-Each route has one meaningful H1. Regions and error states nested under it use lower heading levels.
-Preserve readable Spanish wrapping, native text scaling, visible keyboard focus and label/error
-relationships. Most actions target at least 44 px, fields 48 px; these are Pisto defaults rather
-than an assertion that WCAG requires those exact dimensions. Normal text targets 4.5:1 contrast;
-large-text and non-text requirements are evaluated separately.
+The shell's top bar overlays the content (`Page` reserves its height) so pages scroll beneath its
+translucent surface on the web. Each route has one H1 (`PageHeader`); regions use H2 (`Section`).
+The breadcrumb replaces back buttons and eyebrows; compact screens show the parent as a back link.
 
 ## Domain behavior that design must preserve
 
 Expense history filters affect history; its dates affect the independent period summary. Cash
 account filters do not filter movement history. Previous-month sales totals and current receivable
-positions must not masquerade as totals of a partially loaded table. Switching UI views cannot submit
-or cancel a financial operation.
+positions must not masquerade as totals of a partially loaded table. Switching UI views cannot
+submit or cancel a financial operation.
 
-The server owns permissions, money, ordering, filters and cursors. Retain exact formatters, stable
-record IDs, load-more states and all existing review/correction/payment paths. No client sorting or
-page-count display is invented over an incomplete cursor result. Empty state requires a successful
-read. Denial removes cached private data and unauthorized navigation. Preserve pending, stale,
-offline, error and uncertain-confirmation behavior.
+The server owns permissions, money, ordering, filters and cursors. Keep exact formatters, stable
+record IDs, load-more states and every review, correction and payment path. No client sorting or
+page counts over a cursor result. An empty state requires a successful read. Denial removes cached
+private data and unauthorized navigation. Pending, stale, offline, error and uncertain-confirmation
+states remain visible; an uncertain outcome is never reported as a success toast.
 
 ## Product assets and branding
 
-`assets/brand/mark.json` owns the monogram geometry; `brand:generate` renders icon/favicon/splash
-assets from it. The shared mark radius applies to the in-app mark, SVG and favicon. Native icons keep
-an opaque full-bleed background for platform masking. Splash backgrounds match the corresponding
-theme. Do not invent a new logo per screen. Assets must also honor the no-blue rule.
-
-Product screenshots are static captures of actual empty forms and report date controls. The current
-captures retain default dates/currency, crop out account and business identity, and show no customer
-records, balances or financial results. They are labeled as examples,
-not live controls. Re-capture both themes after component changes and check the complete cropped
-controls and alternate text. The enclosing root may restore a session, but the showcase does not
-request business data. Never insert fictional records into the user's database for a screenshot.
+`assets/brand/mark.json` owns the monogram geometry; `brand:generate` renders icon, favicon and
+splash assets. Assets follow the no-blue rule. The public page uses the same components and tokens
+as the application. Product captures show real empty forms only; never insert fictional records into
+the owner's database for a capture. Visual reviews use the disposable `pisto_ui_review` database.
 
 ## Validation and upgrade costs
 
-Run `bun run check`, the dependency audit and relevant platform exports. Browser checks cover
-320/390/768/1024/1440 px, both themes, long labels, populated/empty/error/denied states, keyboard tabs,
-selects, menu opening/closing and restored focus. Check that the menu exposes only permitted routes.
-Native exports are not installed-device tests or screen-reader acceptance.
+Run `bun run check`. Browser review covers 390/768/1280/1440 px, both themes, long Spanish labels,
+populated/empty/error/denied states, keyboard focus, menus, dialogs and the navigation sheet, then
+the `ui-critic` agent scores the screens. Native exports are not device or screen-reader acceptance.
 
-Vitest runs web composition with actual web primitives. Its Reanimated adapter intentionally skips
-animation timing; it cannot establish native behavior. Keep semantic assertions when updating old
-test trees for RNR's providers. Do not remove security or state tests to make a visual migration pass.
-
-Installed source is app-owned: upstream updates require reviewing aliases, translations, text
-containment, target sizing, focus and domain contracts. No extra advisory exception is justified by
-the design migration. Retain upstream MIT attribution and review dependency changes in the lockfile.
+Vitest renders web compositions; `apps/app/test-support` stubs Expo Router links, SVG drawing and
+Reanimated timing for node. Keep semantic assertions when updating tests for new markup.
 
 ## Primary sources
 
 - [RNR repository](https://github.com/founded-labs/react-native-reusables),
-  [manual installation](https://reactnativereusables.com/docs/installation/manual),
-  [CLI](https://reactnativereusables.com/docs/cli), and
-  [reviewed Uniwind source](https://github.com/founded-labs/react-native-reusables/tree/385834c2196f8a303cbc9057d1ac768f3bde0a3b/packages/registry/src/uniwind/components/ui).
-- [Uniwind](https://docs.uniwind.dev/), [React Native Text](https://reactnative.dev/docs/text),
+  [CLI](https://reactnativereusables.com/docs/cli),
+  [community resources](https://github.com/founded-labs/react-native-reusables/blob/main/COMMUNITY_RESOURCES.md).
+- [Uniwind](https://docs.uniwind.dev/), [Uniwind class compatibility](https://docs.uniwind.dev/class-names),
   [Expo platform modules](https://docs.expo.dev/router/advanced/platform-specific-modules/).
-- [IBM Plex typeface](https://www.ibm.com/design/language/typography/typeface/),
-  [Uniwind class compatibility](https://docs.uniwind.dev/class-names),
-  [Uniwind 1.12.1 release](https://github.com/uni-stack/uniwind/releases/tag/v1.12.1).
-- [Radix Dialog](https://www.radix-ui.com/primitives/docs/components/dialog),
-  [Radix Accordion](https://www.radix-ui.com/primitives/docs/components/accordion).
+- [Sonner](https://sonner.emilkowal.ski/), [Sonner Native](https://github.com/gunnartorfis/sonner-native).
+- [Inter](https://rsms.me/inter/), [shadcn theming](https://ui.shadcn.com/docs/theming),
+  [shadcn sidebar blocks](https://ui.shadcn.com/blocks/sidebar).
 - [W3C tables](https://www.w3.org/WAI/tutorials/tables/),
-  [tabs](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/),
   [contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html),
+  [target size](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html),
   [reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html).
 
-Typography, RNR ownership and Uniwind compatibility sources were reviewed on 2026-10-03.
-Recheck the corresponding source and installed code when a component, styling engine, Expo SDK or
-interaction contract changes. These sources establish contracts, not approval of a Pisto screenshot.
+Reviewed 2026-10-04. Recheck when a component, the styling engine, the Expo SDK or an interaction
+contract changes.
