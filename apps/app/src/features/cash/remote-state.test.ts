@@ -1,6 +1,6 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { queryHasStaleData } from "@/lib/query-state";
-import { featureRemoteState } from "./remote-state";
+import { featureRemoteState, refetchEnabled } from "./remote-state";
 
 const messages = { offlineMessage: "sin conexión", unavailableMessage: "no disponible" };
 
@@ -67,5 +67,15 @@ describe("stale data", () => {
     expect(queryHasStaleData(query({ data: {} }))).toBe(false);
     expect(queryHasStaleData(query({ fetchStatus: "paused" }))).toBe(false);
     expect(queryHasStaleData(query({ isError: true }))).toBe(false);
+  });
+});
+
+describe("retrying reads", () => {
+  test("refetches the running reads and leaves skipped ones alone", async () => {
+    const running = { isEnabled: true, refetch: vi.fn(async () => "fresh") };
+    const skipped = { isEnabled: false, refetch: vi.fn(async () => "never") };
+    await expect(refetchEnabled([running, skipped])).resolves.toEqual(["fresh"]);
+    expect(running.refetch).toHaveBeenCalledOnce();
+    expect(skipped.refetch).not.toHaveBeenCalled();
   });
 });

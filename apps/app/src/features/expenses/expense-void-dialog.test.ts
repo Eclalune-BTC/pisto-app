@@ -146,6 +146,20 @@ describe("expense void confirmation", () => {
     expect(fixture.mutation.mutate.mock.lastCall?.[0]).toMatchObject({ idempotencyKey: "key-3" });
   });
 
+  test("resends an uncertain void after access or freshness is lost", () => {
+    reason(render()).onChangeText("Registro duplicado");
+    (render().props.onConfirm as () => void)();
+    const sent = fixture.mutation.mutate.mock.lastCall?.[0];
+    Object.assign(fixture.mutation, {
+      error: new ApiClientError("lost", 0),
+      isError: true,
+      variables: sent,
+    });
+    (render({ canConfirm: false }).props.onConfirm as () => void)();
+    expect(fixture.mutation.mutate).toHaveBeenCalledTimes(2);
+    expect(fixture.mutation.mutate).toHaveBeenLastCalledWith(sent);
+  });
+
   test("announces the definitive result with a link to the record and closes", async () => {
     render({ linkToRecord: true });
     await fixture.mutationOptions?.onSuccess();

@@ -168,6 +168,25 @@ describe("cash movement reversal", () => {
     expect(edited.idempotencyKey).not.toBe(sent.idempotencyKey);
   });
 
+  test("resends an uncertain reversal after access or freshness is lost", () => {
+    let { reversal } = render();
+    (reversal.props.onDraftChange as (draft: unknown) => void)({
+      ...(reversal.props.draft as object),
+      reason: "Duplicado",
+    });
+    (render().reversal.props.onConfirm as () => void)();
+    const sent = fixture.mutation.mutate.mock.lastCall?.[0];
+    Object.assign(fixture.mutation, {
+      error: new ApiClientError("lost", 0),
+      isError: true,
+      variables: sent,
+    });
+    reversal = render({ canManage: false }).reversal;
+    (reversal.props.onConfirm as () => void)();
+    expect(fixture.mutation.mutate).toHaveBeenCalledTimes(2);
+    expect(fixture.mutation.mutate).toHaveBeenLastCalledWith(sent);
+  });
+
   test("does not send a command without access or with an invalid draft", () => {
     let { reversal } = render({ canManage: false });
     (reversal.props.onConfirm as () => void)();

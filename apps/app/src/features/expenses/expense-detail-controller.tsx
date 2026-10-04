@@ -14,8 +14,8 @@ import { requireSupportedLocale } from "@/i18n/locale";
 import { ApiClientError } from "@/lib/api-error";
 import { formatMinorUnits } from "@/lib/money";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
-import { expenseQueryOptions } from "../cash/queries";
-import { featureRemoteState } from "../cash/remote-state";
+import { cashAccountQueryOptions, expenseQueryOptions } from "../cash/queries";
+import { featureRemoteState, refetchEnabled } from "../cash/remote-state";
 import { firstParam, type RouteParam } from "../cash/search-params";
 import { useCashAccess } from "../cash/use-cash-access";
 import { expensesBoundaryCopy } from "./copy";
@@ -29,21 +29,24 @@ export function ExpenseDetailController() {
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const access = useCashAccess("expenses");
   const { business, businesses, canRead } = access;
-  const expenseQuery = useQuery(expenseQueryOptions(canRead ? business?.id : undefined, expenseId));
+  const businessId = canRead ? business?.id : undefined;
+  const expenseQuery = useQuery(expenseQueryOptions(businessId, expenseId));
   // The voided record is fixed when the dialog opens; a refetch cannot change what is confirmed.
   const [voiding, setVoiding] = useState<Expense>();
   const expense = expenseQuery.data?.expense;
+  // The screen names the paying account from this same read; a rejection here is a denial too.
+  const accountQuery = useQuery(cashAccountQueryOptions(businessId, expense?.accountId));
   useRouteLabel("/operate/expenses/[expenseId]", expense?.description);
 
   if (businesses.data && !business) return <Redirect href="/business" />;
 
-  const retry = () => void Promise.all([businesses.refetch(), expenseQuery.refetch()]);
+  const retry = () => void refetchEnabled([businesses, expenseQuery, accountQuery]);
   const notFound =
     !expenseId ||
     (expenseQuery.error instanceof ApiClientError &&
       expenseQuery.error.code === "NOT_FOUND" &&
       !expense);
-  const pageState = hasDeniedRead([expenseQuery])
+  const pageState = hasDeniedRead([expenseQuery, accountQuery])
     ? ({ kind: "denied" } as const)
     : featureRemoteState({
         businessPending: businesses.isPending,

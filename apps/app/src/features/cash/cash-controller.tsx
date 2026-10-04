@@ -12,7 +12,7 @@ import { CashMovementDetail } from "./cash-movement-detail-controller";
 import { CashScreen } from "./cash-screen";
 import { cashBoundaryCopy } from "./copy";
 import { cashAccountsInfiniteOptions, cashMovementsInfiniteOptions, flattenPages } from "./queries";
-import { featureRemoteState } from "./remote-state";
+import { featureRemoteState, refetchEnabled } from "./remote-state";
 import { accountStatusParam, parseAccountStatus, type RouteParam } from "./search-params";
 import { useCashAccess } from "./use-cash-access";
 
@@ -36,7 +36,7 @@ export function CashController() {
     unavailableMessage: t("cash.remote.unavailable"),
   };
   const retry = () => {
-    void Promise.all([businesses.refetch(), accounts.refetch(), movements.refetch()]);
+    void refetchEnabled([businesses, accounts, movements]);
   };
   // A rejected ledger read is authoritative even when the business list is still cached.
   const pageState = hasDeniedRead([accounts, movements])

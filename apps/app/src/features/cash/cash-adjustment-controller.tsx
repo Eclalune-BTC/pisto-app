@@ -33,7 +33,7 @@ import {
   cashAccountQueryOptions,
   flattenPages,
 } from "./queries";
-import { featureRemoteState } from "./remote-state";
+import { featureRemoteState, refetchEnabled } from "./remote-state";
 import { isRequestedAccountUnavailable, withRequestedAccount } from "./requested-account";
 import { firstParam, type RouteParam } from "./search-params";
 import { useCashAccess } from "./use-cash-access";
@@ -119,12 +119,7 @@ export function CashAdjustmentController() {
     state = { kind: "error", message: t("cash.remote.requestedAccountUnavailable") };
   }
   state = requireFeatureManageAccess(state, access.canManage);
-  const retry = () =>
-    void Promise.all([
-      businesses.refetch(),
-      accountsQuery.refetch(),
-      ...(requestedAccountId ? [requestedAccount.refetch()] : []),
-    ]);
+  const retry = () => void refetchEnabled([businesses, accountsQuery, requestedAccount]);
 
   if (state.kind === "loading") {
     return (
@@ -174,7 +169,9 @@ export function CashAdjustmentController() {
         }
       }}
       onConfirm={() => {
-        if (command && phase !== "pending" && canConfirm) mutation.mutate(command);
+        if (command && (phase === "uncertain" || (phase !== "pending" && canConfirm))) {
+          mutation.mutate(command);
+        }
       }}
       onDraftChange={(next) => {
         if (!command) setDraft(next);

@@ -29,7 +29,7 @@ type CashMovementDetailProps = {
   canManage: boolean;
   /** A snapshot: it stays on screen even if a refreshed page no longer contains the row. */
   movement: CashMovement;
-  /** Loaded history, used to tell whether this adjustment was already reversed. */
+  /** Loaded history, used to tell whether this movement was already reversed. */
   movements: readonly CashMovement[];
   onClose: () => void;
   timeZone: string;
@@ -74,11 +74,13 @@ export function CashMovementDetail({
     formatMinorUnits(minorUnits, movement.currency, movement.currencyMinorUnitDigits, locale);
 
   const confirm = () => {
-    if (!canManage || phase === "pending") return;
+    if (phase === "pending") return;
+    // Sending the same command again cannot apply it twice; only a new decision needs fresh access.
     if (phase === "uncertain") {
       if (reversal.variables) reversal.mutate(reversal.variables);
       return;
     }
+    if (!canManage) return;
     const result = buildCashReversalCommand({ draft, idempotencyKey: Crypto.randomUUID() });
     setErrors(cashIssueMessages(t, result.issues));
     if (result.command)

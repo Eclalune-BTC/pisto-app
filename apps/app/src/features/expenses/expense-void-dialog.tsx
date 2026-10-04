@@ -71,11 +71,13 @@ export function ExpenseVoidDialog({
   const locked = isLockedPhase(phase);
 
   const confirm = () => {
-    if (!canConfirm || phase === "pending") return;
+    if (phase === "pending") return;
+    // Sending the same command again cannot apply it twice; only a new decision needs fresh access.
     if (phase === "uncertain") {
       if (voiding.variables) voiding.mutate(voiding.variables);
       return;
     }
+    if (!canConfirm) return;
     const result = buildVoidExpenseCommand({ draft, idempotencyKey: Crypto.randomUUID() });
     setErrors(cashIssueMessages(t, result.issues));
     if (result.command) voiding.mutate(withStableIdempotencyKey(voiding.variables, result.command));

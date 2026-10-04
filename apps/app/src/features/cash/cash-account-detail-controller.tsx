@@ -24,7 +24,7 @@ import { cashBoundaryCopy } from "./copy";
 import { invalidateCashLedger } from "./invalidate";
 import { mutationPhase } from "./mutation-state";
 import { cashAccountQueryOptions, cashMovementsInfiniteOptions, flattenPages } from "./queries";
-import { featureRemoteState } from "./remote-state";
+import { featureRemoteState, refetchEnabled } from "./remote-state";
 import { firstParam, type RouteParam } from "./search-params";
 import { useCashAccess } from "./use-cash-access";
 
@@ -64,7 +64,7 @@ export function CashAccountDetailController() {
   if (businesses.data && !business) return <Redirect href="/business" />;
 
   const retry = () => {
-    void Promise.all([businesses.refetch(), accountQuery.refetch(), movementsQuery.refetch()]);
+    void refetchEnabled([businesses, accountQuery, movementsQuery]);
   };
   const notFound =
     !accountId ||
@@ -134,7 +134,13 @@ export function CashAccountDetailController() {
             archive.reset();
           },
           onConfirm: () => {
-            if (!canManage || archivePhase === "pending") return;
+            if (archivePhase === "pending") return;
+            // The same command may always be sent again; only a first attempt needs fresh access.
+            if (archivePhase === "uncertain" && archive.variables) {
+              archive.mutate(archive.variables);
+              return;
+            }
+            if (!canManage) return;
             // The command has no reviewable fields; every attempt in one dialog is the same command.
             archive.mutate(archive.variables ?? { idempotencyKey: Crypto.randomUUID() });
           },

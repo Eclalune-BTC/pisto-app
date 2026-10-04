@@ -49,7 +49,8 @@ export function CashMovementList({
                   : undefined
               }
               className="min-h-0 self-start px-0 py-0"
-              hitSlop={8}
+              // Compact rows open from this cell alone; keep its touch target near 44 points.
+              hitSlop={12}
               onPress={() => onOpenMovement(original.id)}
               variant="link"
             >

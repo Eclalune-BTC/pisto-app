@@ -17,8 +17,9 @@ type CategoryTotal = ExpensePeriodSummary["categories"][number];
 /** The breakdown is complete for the period, so ordering it by exact amount hides nothing. */
 function byAmount(categories: CategoryTotal[]): CategoryTotal[] {
   return [...categories].sort((a, b) => {
-    const difference = BigInt(b.amountMinorUnits) - BigInt(a.amountMinorUnits);
-    return difference > 0n ? 1 : difference < 0n ? -1 : 0;
+    const left = BigInt(a.amountMinorUnits);
+    const right = BigInt(b.amountMinorUnits);
+    return left === right ? 0 : left < right ? 1 : -1;
   });
 }
 
@@ -111,18 +112,16 @@ export function ExpenseSummary({ summary }: { summary: ExpensePeriodSummary }) {
 export function ExpenseSummarySkeleton() {
   const { t } = useTranslation();
   return (
-    <View
-      accessibilityLabel={t("expenses.summary.loading")}
-      aria-busy
-      className="flex-row flex-wrap gap-px overflow-hidden rounded-lg border border-border bg-border"
-    >
-      {[0, 1].map((index) => (
-        <View className="min-w-[150px] flex-1 basis-[180px] gap-2 bg-card px-4 py-3" key={index}>
-          <Skeleton className="h-3 w-24" />
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-3 w-28" />
-        </View>
-      ))}
+    <View accessibilityLabel={t("expenses.summary.loading")} aria-busy>
+      <StatGroup>
+        {[0, 1].map((index) => (
+          <View className="min-w-[150px] flex-1 basis-[180px] gap-2 bg-card px-4 py-3" key={index}>
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-3 w-28" />
+          </View>
+        ))}
+      </StatGroup>
     </View>
   );
 }

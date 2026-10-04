@@ -106,12 +106,17 @@ describe("confirmed money commands in a dialog", () => {
     expect(props.onCancel).toHaveBeenCalledOnce();
   });
 
-  test.each(["idle", "uncertain"] as const)(
-    "disables a %s confirmation when access or freshness is lost",
-    (phase) => {
-      expect(dialog(phase, { disabled: true }).confirm.props.disabled).toBe(true);
-    },
-  );
+  test("blocks a new confirmation when access or freshness is lost", () => {
+    expect(dialog("idle", { disabled: true }).confirm.props.disabled).toBe(true);
+  });
+
+  test("still resends an uncertain command after access or freshness is lost", () => {
+    // The dialog cannot be dismissed while uncertain, so a disabled retry would trap the user.
+    const { confirm, props } = dialog("uncertain", { disabled: true });
+    expect(confirm.props.disabled).toBe(false);
+    confirm.props.onPress?.({} as never);
+    expect(props.onConfirm).toHaveBeenCalledOnce();
+  });
 });
 
 const movement: CashMovement = {
@@ -300,35 +305,39 @@ describe("cash reviews keep what was reviewed across list refetches", () => {
     },
   );
 
-  test("disables an existing review once access or freshness is lost", () => {
-    const markup = renderToStaticMarkup(
-      createElement(CashAdjustmentScreen, {
-        ...common,
-        canConfirm: false,
-        command: {
-          accountId: account.id,
-          amountMinorUnits: "100",
-          currency: "USD",
-          direction: "in",
-          idempotencyKey: "original-key",
-          occurredLocalDate: "2026-09-10",
-          occurredLocalTime: "11:00",
-          reason: "Reason",
-        },
-        draft: {
-          accountId: account.id,
-          amount: "1",
-          direction: "in",
-          localDate: "2026-09-10",
-          localTime: "11:00",
-          reason: "Reason",
-        },
-        phase: "uncertain",
-        reviewAccount: account,
-      }),
-    );
-    expect(markup).toMatch(
-      new RegExp(`disabled=""[^>]*>[^<]*<div[^>]*>${t("common.retrySameConfirmation")}<`),
-    );
+  test("blocks a first confirmation, never the same-command retry, once access is lost", () => {
+    const disabledButton = (label: string) =>
+      new RegExp(`disabled=""[^>]*>[^<]*<div[^>]*>${label}<`);
+    const review = (phase: "idle" | "uncertain") =>
+      renderToStaticMarkup(
+        createElement(CashAdjustmentScreen, {
+          ...common,
+          canConfirm: false,
+          command: {
+            accountId: account.id,
+            amountMinorUnits: "100",
+            currency: "USD",
+            direction: "in",
+            idempotencyKey: "original-key",
+            occurredLocalDate: "2026-09-10",
+            occurredLocalTime: "11:00",
+            reason: "Reason",
+          },
+          draft: {
+            accountId: account.id,
+            amount: "1",
+            direction: "in",
+            localDate: "2026-09-10",
+            localTime: "11:00",
+            reason: "Reason",
+          },
+          phase,
+          reviewAccount: account,
+        }),
+      );
+    expect(review("idle")).toMatch(disabledButton(t("cash.adjustment.confirm")));
+    const uncertain = review("uncertain");
+    expect(uncertain).toContain(t("common.retrySameConfirmation"));
+    expect(uncertain).not.toMatch(disabledButton(t("common.retrySameConfirmation")));
   });
 });

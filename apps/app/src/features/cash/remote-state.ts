@@ -9,6 +9,16 @@ type RemoteQuery = {
   isPending: boolean;
 };
 
+/**
+ * Retries only the reads that are running: refetching a read skipped for missing context makes
+ * TanStack fail that read with a configuration error.
+ */
+export function refetchEnabled(
+  queries: readonly { isEnabled: boolean; refetch: () => Promise<unknown> }[],
+): Promise<unknown[]> {
+  return Promise.all(queries.filter((query) => query.isEnabled).map((query) => query.refetch()));
+}
+
 export function featureRemoteState(input: {
   businessPending: boolean;
   canRead: boolean;

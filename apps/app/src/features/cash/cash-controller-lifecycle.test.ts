@@ -383,6 +383,14 @@ describe("account detail", () => {
     (screen.props.archive as Archive).onConfirm();
     expect(fixture.mutation.mutate).toHaveBeenLastCalledWith(sent);
     expect(fixture.keys).toBe(1);
+
+    // The outage behind an uncertain result often leaves the reads stale as well.
+    fixture.queries.businesses = { ...fixture.queries.businesses, fetchStatus: "paused" };
+    screen = screenOf(render(CashAccountDetailController));
+    expect(screen.props.canManage).toBe(false);
+    (screen.props.archive as Archive).onConfirm();
+    expect(fixture.mutation.mutate).toHaveBeenCalledTimes(3);
+    expect(fixture.mutation.mutate).toHaveBeenLastCalledWith(sent);
   });
 });
 

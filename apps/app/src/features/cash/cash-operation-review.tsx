@@ -9,7 +9,7 @@ import type { MutationPhase } from "./mutation-state";
 
 type CashOperationReviewProps = {
   confirmLabel: string;
-  /** Access or freshness was lost after the review was prepared. */
+  /** Access or freshness was lost; it blocks the first confirmation, never the same-command retry. */
   disabled?: boolean;
   effect: string;
   errorMessage?: string;
@@ -51,11 +51,7 @@ export function CashOperationReview({
       ) : null}
       <View className="flex-row flex-wrap justify-end gap-2">
         {phase === "uncertain" ? (
-          <Button
-            disabled={disabled}
-            label={t("common.retrySameConfirmation")}
-            onPress={onConfirm}
-          />
+          <Button label={t("common.retrySameConfirmation")} onPress={onConfirm} />
         ) : (
           <>
             <Button

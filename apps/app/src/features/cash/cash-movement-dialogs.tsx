@@ -39,7 +39,7 @@ type CashMovementDialogProps = {
   /** Offered only for an adjustment that this manager may still reverse. */
   onReverse?: () => void;
   open: boolean;
-  /** The loaded history already contains this adjustment's reversal. */
+  /** The loaded history already contains a reversal of this movement. */
   reversed: boolean;
 };
 

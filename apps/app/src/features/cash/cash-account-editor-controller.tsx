@@ -28,7 +28,7 @@ import { buildCashAccountCommand } from "./drafts";
 import { invalidateCashLedger } from "./invalidate";
 import { isLockedPhase, mutationPhase } from "./mutation-state";
 import { cashAccountQueryOptions } from "./queries";
-import { featureRemoteState } from "./remote-state";
+import { featureRemoteState, refetchEnabled } from "./remote-state";
 import { useCashAccess } from "./use-cash-access";
 
 const emptyDraft: CashAccountEditorDraft = {
@@ -120,7 +120,7 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
   if (state.kind === "ready" && stale)
     state = { kind: "error", message: t("remote.staleMutation") };
   state = requireFeatureManageAccess(state, access.canManage);
-  const retry = () => void Promise.all([businesses.refetch(), accountQuery.refetch()]);
+  const retry = () => void refetchEnabled([businesses, accountQuery]);
 
   if (state.kind === "loading") {
     return (
@@ -173,7 +173,10 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
         router.replace(updating && accountId ? accountHref(accountId) : "/operate/cash")
       }
       onConfirm={() => {
-        if (command && phase !== "pending" && access.canManage && !stale) mutation.mutate(command);
+        const canConfirm = access.canManage && !stale;
+        if (command && (phase === "uncertain" || (phase !== "pending" && canConfirm))) {
+          mutation.mutate(command);
+        }
       }}
       onDraftChange={(next) => {
         if (!command) setDraft(next);

@@ -9,12 +9,14 @@ import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
 import {
+  cashAccountQueryOptions,
   cashAccountsInfiniteOptions,
   expenseSummaryQueryOptions,
   expensesInfiniteOptions,
   flattenPages,
 } from "../cash/queries";
-import { featureRemoteState } from "../cash/remote-state";
+import { featureRemoteState, refetchEnabled } from "../cash/remote-state";
+import { withRequestedAccount } from "../cash/requested-account";
 import { useCashAccess } from "../cash/use-cash-access";
 import { expensesBoundaryCopy } from "./copy";
 import { ExpenseVoidDialog } from "./expense-void-dialog";
@@ -30,7 +32,7 @@ import {
 } from "./search-params";
 
 /** The current business month up to today, in the business time zone. */
-export function currentMonthPeriod(timeZone: string): ExpensePeriod {
+function currentMonthPeriod(timeZone: string): ExpensePeriod {
   const today = currentLocalDateTime(timeZone).date;
   return { endLocalDate: today, startLocalDate: `${today.slice(0, 7)}-01` };
 }
@@ -52,6 +54,9 @@ export function ExpensesController() {
     expensesInfiniteOptions(businessId, expenseListFilters(filters)),
   );
   const accounts = useInfiniteQuery(cashAccountsInfiniteOptions(businessId, "all", 50));
+  // An account filter from the URL may name an account beyond the first page of choices.
+  const filteredAccountId = filters.accountId === "all" ? undefined : filters.accountId;
+  const filteredAccount = useQuery(cashAccountQueryOptions(businessId, filteredAccountId));
   const summary = useQuery(
     expenseSummaryQueryOptions(
       businessId,
@@ -67,14 +72,9 @@ export function ExpensesController() {
     unavailableMessage: t("expenses.remote.unavailable"),
   };
   const retry = () => {
-    void Promise.all([
-      businesses.refetch(),
-      expenses.refetch(),
-      accounts.refetch(),
-      summary.refetch(),
-    ]);
+    void refetchEnabled([businesses, expenses, accounts, summary, filteredAccount]);
   };
-  const pageState = hasDeniedRead([expenses, accounts, summary])
+  const pageState = hasDeniedRead([expenses, accounts, summary, filteredAccount])
     ? ({ kind: "denied" } as const)
     : featureRemoteState({
         ...messages,
@@ -103,7 +103,10 @@ export function ExpensesController() {
     queryHasStaleData(summary);
   const canManage =
     access.canManage && business.access.permissions.includes("cash:manage") && !stale;
-  const accountItems = flattenPages(accounts.data);
+  const accountItems = withRequestedAccount(
+    flattenPages(accounts.data),
+    filteredAccount.data?.account,
+  );
   const voidTarget = voiding?.businessId === business.id ? voiding.expense : undefined;
 
   return (

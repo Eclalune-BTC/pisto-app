@@ -23,7 +23,11 @@ type ConfirmCommandDialogProps = {
   confirmLabel: string;
   description: string;
   destructive?: boolean;
-  /** Access or freshness was lost while the dialog was open. */
+  /**
+   * Access or freshness was lost while the dialog was open. It blocks a new decision only: the
+   * same command can always be sent again, because its key cannot apply it twice and the server
+   * authorizes it afresh, and a locked dialog without that action would trap the user.
+   */
   disabled?: boolean;
   /** Message of a definitive failure; the dialog stays open so the command can be corrected. */
   errorMessage?: string;
@@ -84,7 +88,7 @@ export function ConfirmCommandDialog({
             <Text>{t("common.cancel")}</Text>
           </AlertDialogCancel>
           <Button
-            disabled={disabled}
+            disabled={disabled && phase !== "uncertain"}
             label={phase === "uncertain" ? t("common.retrySameConfirmation") : confirmLabel}
             loading={phase === "pending"}
             onPress={onConfirm}

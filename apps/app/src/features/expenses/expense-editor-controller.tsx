@@ -21,7 +21,7 @@ import { cashIssueMessages } from "../cash/copy";
 import { invalidateExpensesAndCash } from "../cash/invalidate";
 import { isLockedPhase, mutationPhase } from "../cash/mutation-state";
 import { activeCashAccountsInfiniteOptions, flattenPages } from "../cash/queries";
-import { featureRemoteState } from "../cash/remote-state";
+import { featureRemoteState, refetchEnabled } from "../cash/remote-state";
 import { useCashAccess } from "../cash/use-cash-access";
 import { expensesBoundaryCopy } from "./copy";
 import { buildExpenseCommand } from "./drafts";
@@ -100,7 +100,7 @@ export function ExpenseEditorController() {
   if (state.kind === "ready" && stale)
     state = { kind: "error", message: t("remote.staleMutation") };
   state = requireFeatureManageAccess(state, canManage);
-  const retry = () => void Promise.all([businesses.refetch(), accountsQuery.refetch()]);
+  const retry = () => void refetchEnabled([businesses, accountsQuery]);
 
   if (state.kind === "loading") {
     return (
@@ -148,7 +148,9 @@ export function ExpenseEditorController() {
         if (!locked) router.replace("/operate/expenses");
       }}
       onConfirm={() => {
-        if (command && phase !== "pending" && canConfirm) mutation.mutate(command);
+        if (command && (phase === "uncertain" || (phase !== "pending" && canConfirm))) {
+          mutation.mutate(command);
+        }
       }}
       onDraftChange={(next) => {
         if (!command) setDraft(next);

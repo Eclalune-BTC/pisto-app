@@ -52,7 +52,7 @@ vi.mock("react", async (importOriginal) => ({
 }));
 function queryName(queryKey: readonly unknown[]) {
   if (queryKey[0] === "businesses") return "businesses";
-  if (queryKey[0] === "cash") return "accounts";
+  if (queryKey[0] === "cash") return queryKey.includes("detail") ? "account" : "accounts";
   return queryKey[2] === "summary" ? "summary" : queryKey[2] === "list" ? "expenses" : "expense";
 }
 vi.mock("@tanstack/react-query", async (importOriginal) => ({
@@ -173,6 +173,7 @@ beforeEach(() => {
   });
   setPermissions(["expenses:read", "expenses:manage", "cash:read", "cash:manage"]);
   fixture.queries.accounts = query({ pages: [{ items: [account] }] });
+  fixture.queries.account = query({ account });
   fixture.queries.expenses = query({ pages: [{ items: [expense] }] });
   fixture.queries.summary = query({ summary: { categories: [] } });
   fixture.queries.expense = query({ expense });
@@ -210,6 +211,21 @@ describe("expenses overview", () => {
       "2026-08-01",
       "2026-08-31",
     ]);
+  });
+
+  test("offers an account filter from the route beyond the first page of choices", () => {
+    const distant = { ...account, id: "22222222-2222-4222-8222-222222222222", name: "Banco" };
+    fixture.params = { account: distant.id };
+    fixture.queries.account = query({ account: distant });
+    const [screen] = parts(render(ExpensesController));
+    expect(fixture.queryKeys).toContainEqual([
+      "cash",
+      "business",
+      "accounts",
+      "detail",
+      distant.id,
+    ]);
+    expect(screen.props.accounts).toEqual([distant, account]);
   });
 
   test("writes filter changes to the route without default values", () => {
@@ -326,6 +342,24 @@ describe("expense detail", () => {
     expect(dialog?.props.linkToRecord).toBeUndefined();
   });
 
+  test("voiding needs cash management on fresh data", () => {
+    setPermissions(["expenses:read", "expenses:manage", "cash:read"]);
+    expect(parts(render(ExpenseDetailController))[0].props.canVoid).toBe(false);
+    setPermissions(["expenses:read", "expenses:manage", "cash:read", "cash:manage"]);
+    fixture.queries.expense = query({ expense }, { fetchStatus: "paused" });
+    expect(parts(render(ExpenseDetailController))[0].props.canVoid).toBe(false);
+  });
+
+  test.each(["expense", "account"])("a rejected %s read replaces the page", (name) => {
+    fixture.queries[name] = query(undefined, {
+      error: new ApiClientError("Denied", 403, "FORBIDDEN"),
+      isError: true,
+    });
+    const element = render(ExpenseDetailController);
+    expect(element.type).toBe(FeatureBoundary);
+    expect(element.props.state).toEqual({ kind: "denied" });
+  });
+
   test("a missing expense is reported as not found, not as an outage", () => {
     fixture.queries.expense = query(undefined, {
       error: new ApiClientError("Missing", 404, "NOT_FOUND"),
@@ -360,6 +394,13 @@ describe("expense registration", () => {
       pathname: "/operate/expenses/[expenseId]",
       params: { expenseId: "expense-new" },
     });
+  });
+
+  test("registering needs expense and cash management", () => {
+    setPermissions(["expenses:read", "expenses:manage", "cash:read"]);
+    const element = render(ExpenseEditorController);
+    expect(element.type).toBe(FeatureBoundary);
+    expect(element.props.state).toEqual({ kind: "denied" });
   });
 
   test("cancelling returns to the expense list unless a confirmation is unresolved", () => {

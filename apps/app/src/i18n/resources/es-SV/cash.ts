@@ -35,7 +35,7 @@ export const cash = {
   review: {
     failedTitle: "No se completó la operación",
     uncertainDescription:
-      "La conexión se interrumpió antes de conocer el resultado. Reintenta la misma confirmación: Pisto conserva su clave para no registrarla dos veces.",
+      "No pudimos confirmar el resultado. Reintenta la misma confirmación: Pisto la reconoce y no la registra dos veces.",
   },
   fields: {
     account: "Cuenta",
@@ -115,7 +115,7 @@ export const cash = {
     amount: "Cambio en el saldo",
     account: "Cuenta",
     reason: "Motivo",
-    reversed: "Este ajuste ya fue revertido; no puede revertirse otra vez.",
+    reversed: "Ya fue revertido; la reversión se conserva en el historial.",
     reversalOf: "Este movimiento revierte uno anterior; ambos se conservan en el historial.",
     reverse: "Revertir ajuste",
     viewExpense: "Ver gasto",
@@ -158,7 +158,7 @@ export const cash = {
     updated: "Cambios guardados",
   },
   adjustment: {
-    title: "Ajustar saldo",
+    title: "Ajuste de saldo",
     description:
       "Corrige el saldo con un motivo verificable; los movimientos anteriores no cambian.",
     detailsSection: "Ajuste",
@@ -175,7 +175,7 @@ export const cash = {
     success: "Ajuste registrado",
   },
   transfer: {
-    title: "Transferir",
+    title: "Nueva transferencia",
     description:
       "Mueve dinero entre dos cuentas del negocio. La salida y la entrada se registran juntas.",
     accountsSection: "Cuentas",

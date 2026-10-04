@@ -32,7 +32,7 @@ import {
   cashAccountQueryOptions,
   flattenPages,
 } from "./queries";
-import { featureRemoteState } from "./remote-state";
+import { featureRemoteState, refetchEnabled } from "./remote-state";
 import { isRequestedAccountUnavailable, withRequestedAccount } from "./requested-account";
 import { firstParam, type RouteParam } from "./search-params";
 import { useCashAccess } from "./use-cash-access";
@@ -75,16 +75,14 @@ export function CashTransferController() {
     }));
   }, [business]);
 
-  // Preselect a different destination once choices exist; an explicit choice is never replaced.
+  // Fill only empty choices once accounts exist; a choice the user made is never swapped, and a
+  // same-account pair is reported by the review instead.
   const choiceIds = accounts.map(({ id }) => id).join(",");
   useEffect(() => {
-    if (command || !choiceIds) return;
+    if (command || !choiceIds || (draft.fromAccountId && draft.toAccountId)) return;
     const ids = choiceIds.split(",");
     const from = draft.fromAccountId || ids[0] || "";
-    const to =
-      ids.includes(draft.toAccountId) && draft.toAccountId !== from
-        ? draft.toAccountId
-        : (ids.find((id) => id !== from) ?? "");
+    const to = draft.toAccountId || (ids.find((id) => id !== from) ?? "");
     if (from !== draft.fromAccountId || to !== draft.toAccountId) {
       setDraft((value) => ({ ...value, fromAccountId: from, toAccountId: to }));
     }
@@ -125,12 +123,7 @@ export function CashTransferController() {
     state = { kind: "error", message: t("cash.remote.requestedAccountUnavailable") };
   }
   state = requireFeatureManageAccess(state, access.canManage);
-  const retry = () =>
-    void Promise.all([
-      businesses.refetch(),
-      accountsQuery.refetch(),
-      ...(requestedFromId ? [requestedAccount.refetch()] : []),
-    ]);
+  const retry = () => void refetchEnabled([businesses, accountsQuery, requestedAccount]);
 
   if (state.kind === "loading") {
     return (
@@ -176,7 +169,9 @@ export function CashTransferController() {
         }
       }}
       onConfirm={() => {
-        if (command && phase !== "pending" && canConfirm) mutation.mutate(command);
+        if (command && (phase === "uncertain" || (phase !== "pending" && canConfirm))) {
+          mutation.mutate(command);
+        }
       }}
       onDraftChange={(next) => {
         if (!command) setDraft(next);

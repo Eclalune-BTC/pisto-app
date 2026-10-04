@@ -62,7 +62,7 @@ export const expenses = {
     unavailable: "No pudimos calcular el resumen",
   },
   editor: {
-    title: "Registrar gasto",
+    title: "Nuevo gasto",
     pageDescription: "Registra un gasto que ya pagaste desde una cuenta del negocio.",
     reviewTitle: "Revisar gasto",
     reviewDescription: "Comprueba el monto, la cuenta y la fecha antes de afectar el saldo.",
