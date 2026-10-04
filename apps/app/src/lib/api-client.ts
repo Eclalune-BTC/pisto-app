@@ -35,6 +35,8 @@ import {
   saleCorrectionResponseSchema,
   saleListResponseSchema,
   saleResponseSchema,
+  saleReviewActionRequestSchema,
+  saleReviewDismissRequestSchema,
   saleReviewDismissResponseSchema,
   saleReviewPreparedResponseSchema,
   saleReviewResponseSchema,
@@ -190,26 +192,24 @@ export const api = {
       confirm: (reviewId: string) =>
         apiRequest<SaleResponse, SaleResponse["data"]>(
           `/v1/sales/review/${encodeURIComponent(reviewId)}/confirm`,
-          { authenticated: true, method: "POST", body: {} },
+          {
+            authenticated: true,
+            method: "POST",
+            body: parseRequestPayload(saleReviewActionRequestSchema, {}),
+          },
           saleResponseSchema,
         ),
       dismiss: (reviewId: string, acknowledgedSaleId: string | null) =>
         apiRequest<SaleReviewDismissResponse, SaleReviewDismissResponse["data"]>(
           `/v1/sales/review/${encodeURIComponent(reviewId)}/dismiss`,
-          { authenticated: true, method: "POST", body: { acknowledgedSaleId } },
+          {
+            authenticated: true,
+            method: "POST",
+            body: parseRequestPayload(saleReviewDismissRequestSchema, { acknowledgedSaleId }),
+          },
           saleReviewDismissResponseSchema,
         ),
     },
-    create: (command: CreateSaleRequest) =>
-      apiRequest<SaleResponse, SaleResponse["data"]>(
-        "/v1/sales",
-        {
-          authenticated: true,
-          body: parseRequestPayload(createSaleRequestSchema, command),
-          method: "POST",
-        },
-        saleResponseSchema,
-      ),
     get: (saleId: string, signal?: AbortSignal) =>
       apiRequest<SaleResponse, SaleResponse["data"]>(
         `/v1/sales/${encodeURIComponent(saleId)}`,
