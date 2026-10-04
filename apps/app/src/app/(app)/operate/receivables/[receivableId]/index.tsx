@@ -2,16 +2,16 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-account-source";
-import { formatBusinessLocalDate, uniqueValues } from "@/features/receivables/presentation";
+import { uniqueValues } from "@/features/receivables/presentation";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
 import { ReceivableDetailScreen } from "@/features/receivables/receivable-detail-screen";
 import type { ReceivableDetailLoadState } from "@/features/receivables/types";
+import { formatLocalDate } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import {
@@ -109,7 +109,7 @@ export default function ReceivableDetailRoute() {
         copy={copy.receivables.list}
         customerActive={customer.data?.customer.status === "active"}
         customerName={customer.data?.customer.name ?? copy.receivables.list.customerLoading}
-        formatDate={(date) => formatBusinessLocalDate(date, locale)}
+        formatDate={(date) => formatLocalDate(date, locale)}
         formatMoney={(minorUnits, currency, digits) =>
           formatMinorUnits(minorUnits, currency, digits, locale)
         }

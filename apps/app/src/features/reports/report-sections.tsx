@@ -10,8 +10,7 @@ import { View } from "react-native";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Heading } from "@/components/ui/heading";
 import { Text } from "@/components/ui/text";
-import { formatBusinessLocalDate } from "@/features/receivables/presentation";
-import { formatLocalizedDateTime } from "@/i18n/format";
+import { formatLocalDate, formatLocalizedDateTime } from "@/i18n/format";
 import { formatMinorUnits } from "@/lib/money";
 
 export type ReportSectionsCopy = {
@@ -117,7 +116,7 @@ function Metadata({ copy, locale, report }: SectionProps) {
   const items = [
     {
       label: copy.metadata.period,
-      value: `${formatBusinessLocalDate(report.period.startLocalDate, locale)} ${copy.metadata.through} ${formatBusinessLocalDate(report.period.endLocalDateInclusive, locale)}`,
+      value: `${formatLocalDate(report.period.startLocalDate, locale)} ${copy.metadata.through} ${formatLocalDate(report.period.endLocalDateInclusive, locale)}`,
     },
     { label: copy.metadata.timeZone, value: report.period.timeZone },
     { label: copy.metadata.currency, value: report.currency },
@@ -357,7 +356,7 @@ function PositionFacts({ copy, locale, report }: SectionProps) {
     <View className="gap-5">
       <SectionHeading
         description={copy.position.description(
-          formatBusinessLocalDate(report.positionAsOfLocalDate, locale),
+          formatLocalDate(report.positionAsOfLocalDate, locale),
         )}
         title={copy.position.title}
       />

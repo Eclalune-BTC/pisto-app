@@ -2,15 +2,14 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { CustomerDetailScreen } from "@/features/customers/customer-detail-screen";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import type { CustomerDetailLoadState } from "@/features/customers/types";
-import { formatBusinessLocalDate } from "@/features/receivables/presentation";
 import { receivablesQueryOptions } from "@/features/receivables/queries";
+import { formatLocalDate } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import {
@@ -79,7 +78,7 @@ export default function CustomerDetailRoute() {
       <CustomerDetailScreen
         canManage={access.canManage && !(state.kind === "ready" && state.stale)}
         copy={copy.customers.list}
-        formatDate={(date) => formatBusinessLocalDate(date, locale)}
+        formatDate={(date) => formatLocalDate(date, locale)}
         formatMoney={(minorUnits, currency, digits) =>
           formatMinorUnits(minorUnits, currency, digits, locale)
         }

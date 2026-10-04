@@ -1,150 +1,360 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link, Redirect } from "expo-router";
-import { ChevronRight, Plus } from "lucide-react-native";
+import type { BusinessPermission, OperatingReport, Sale } from "@pisto/contracts";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { type Href, Link, Redirect } from "expo-router";
+import { ArrowRight, Plus, ReceiptText, TriangleAlert } from "lucide-react-native";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
+import { ContentSkeleton } from "@/components/layout/skeletons";
+import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
-import { ScreenHeader } from "@/components/screen-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heading } from "@/components/ui/heading";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
-import { getVisibleOperateModules, OPERATE_GROUPS } from "@/features/operate/navigation";
-import { cn } from "@/lib/cn";
+import { currentBusinessMonthRange } from "@/features/reports/date-range";
+import { operatingReportQueryOptions } from "@/features/reports/queries";
+import { salesInfiniteOptions } from "@/features/sales/queries";
+import { formatLocalDate, formatLocalizedDateTime, formatMonthYear } from "@/i18n/format";
+import { requireSupportedLocale } from "@/i18n/locale";
+import { formatMinorUnits } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { hasDeniedRead } from "@/lib/query-state";
-import { operateModuleIcons } from "./module-icons";
+import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
+
+const RECENT_SALES = 6;
+
+function ReportStats({ locale, report }: { locale: string; report: OperatingReport }) {
+  const { t } = useTranslation();
+  const money = (minorUnits: string) =>
+    formatMinorUnits(minorUnits, report.currency, report.currencyMinorUnitDigits, locale);
+  const overdue = report.receivables.overdueMinorUnits !== "0";
+  return (
+    <StatGroup>
+      <Stat
+        detail={t("operate.home.saleCount", { count: Number(report.sales.saleCount) })}
+        label={t("operate.home.sales")}
+        value={money(report.sales.grossMinorUnits)}
+      />
+      <Stat
+        detail={t("operate.home.expenseCount", { count: Number(report.expenses.expenseCount) })}
+        label={t("operate.home.expenses")}
+        value={money(report.expenses.totalMinorUnits)}
+      />
+      <Stat
+        detail={t("operate.home.cashFlow", {
+          inflow: money(report.cash.inflowMinorUnits),
+          outflow: money(report.cash.outflowMinorUnits),
+        })}
+        label={t("operate.home.netCash")}
+        value={money(report.cash.netMovementMinorUnits)}
+      />
+      <Stat
+        detail={
+          overdue
+            ? t("operate.home.overdue", { amount: money(report.receivables.overdueMinorUnits) })
+            : t("operate.home.openReceivables", {
+                count: Number(report.receivables.openReceivableCount),
+              })
+        }
+        label={t("operate.home.receivables")}
+        tone={overdue ? "warning" : "default"}
+        value={money(report.receivables.outstandingMinorUnits)}
+      />
+    </StatGroup>
+  );
+}
 
 export default function OperateHomeScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const businesses = useQuery(businessesQueryOptions);
-  const activeBusiness = getActiveBusiness(businesses.data);
+  const denied = hasDeniedRead([businesses]);
+  const active = denied ? undefined : getActiveBusiness(businesses.data);
+  const can = (permission: BusinessPermission) =>
+    active?.access.permissions.includes(permission) ?? false;
+  const range = active ? currentBusinessMonthRange(active.timeZone) : undefined;
+  const report = useQuery(
+    operatingReportQueryOptions(can("reports:read") ? active?.id : undefined, {
+      startLocalDate: range?.startLocalDate ?? "",
+      endLocalDate: range?.endLocalDate ?? "",
+    }),
+  );
+  const sales = useInfiniteQuery(
+    salesInfiniteOptions(can("sales:read") ? active?.id : undefined, "all"),
+  );
 
-  if (hasDeniedRead([businesses])) return <CapabilityRouteState kind="denied" />;
+  const saleColumns = useMemo<DataTableColumn<Sale>[]>(
+    () => [
+      {
+        id: "description",
+        header: t("dataTable.columns.description"),
+        meta: { primary: true },
+        cell: ({ row: { original } }) => (
+          <Text className="text-[13px]" numberOfLines={1}>
+            {original.description ?? t("common.noDescription")}
+          </Text>
+        ),
+      },
+      {
+        id: "date",
+        header: t("dataTable.columns.date"),
+        cell: ({ row: { original } }) => (
+          <Text className="text-[13px] text-muted-foreground tabular-nums">
+            {formatLocalizedDateTime(original.occurredAt, locale, original.timeZone)}
+          </Text>
+        ),
+      },
+      {
+        id: "status",
+        header: t("dataTable.columns.status"),
+        cell: ({ row: { original } }) => (
+          <Badge variant={original.status === "voided" ? "outline" : "secondary"}>
+            <Text>{original.status === "voided" ? t("sales.voided") : t("sales.posted")}</Text>
+          </Badge>
+        ),
+      },
+      {
+        id: "amount",
+        header: t("dataTable.columns.amount"),
+        meta: { align: "end" },
+        cell: ({ row: { original } }) => (
+          <Text className="font-ui text-[13px] tabular-nums">
+            {formatMinorUnits(
+              original.grossMinorUnits,
+              original.currency,
+              original.currencyMinorUnitDigits,
+              locale,
+            )}
+          </Text>
+        ),
+      },
+    ],
+    [locale, t],
+  );
 
-  if (businesses.fetchStatus === "paused" && !businesses.data) return <OfflineState />;
-
+  if (denied) return <CapabilityRouteState kind="denied" />;
+  if (businesses.fetchStatus === "paused" && !businesses.data) {
+    return (
+      <Page>
+        <OfflineState />
+      </Page>
+    );
+  }
   if (businesses.isPending) {
     return (
-      <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <LoadingIndicator size="large" />
-        <Text className="text-sm text-muted-foreground">{t("operate.loading")}</Text>
-      </View>
+      <Page>
+        <ContentSkeleton label={t("operate.loading")} variant="detail" />
+      </Page>
     );
   }
-
   if (businesses.isError && !businesses.data) {
     return (
-      <View className="flex-1 items-start justify-center gap-4 px-5 sm:px-8 lg:px-10">
-        <View className="max-w-[460px] gap-2">
-          <Heading size="section">{t("operate.unavailableTitle")}</Heading>
-          <Text className="text-sm leading-5 text-muted-foreground">
-            {t("operate.unavailableDescription")}
-          </Text>
-        </View>
-        <Button label={t("common.retry")} onPress={() => businesses.refetch()} variant="outline" />
-      </View>
+      <Page>
+        <StatePanel
+          action={
+            <Button
+              label={t("common.retry")}
+              onPress={() => businesses.refetch()}
+              size="sm"
+              variant="outline"
+            />
+          }
+          description={t("operate.unavailableDescription")}
+          icon={TriangleAlert}
+          level={1}
+          title={t("operate.unavailableTitle")}
+          tone="destructive"
+        />
+      </Page>
     );
   }
+  if (!active || !range) return <Redirect href="/business" />;
 
-  if (!activeBusiness) return <Redirect href="/business" />;
-
-  const modules = getVisibleOperateModules(activeBusiness.access.permissions);
-  const canCreateSale = activeBusiness.access.permissions.includes("sales:create");
+  const operating = report.data?.report;
+  const recentSales = sales.data?.pages[0]?.items.slice(0, RECENT_SALES) ?? [];
+  const lowStock =
+    can("inventory:read") && operating ? Number(operating.inventory.lowStockProductCount) : 0;
+  const hasAnyRead = can("reports:read") || can("sales:read");
 
   return (
     <Page>
-      <ScreenHeader
-        action={
-          canCreateSale ? (
-            <Link href="/operate/sales/new" asChild>
-              <Button accessibilityRole="link" variant="default">
-                <Icon as={Plus} size={18} />
-                <Text>{t("sales.register")}</Text>
-              </Button>
-            </Link>
-          ) : undefined
+      <PageHeader
+        actions={
+          <>
+            {can("expenses:manage") ? (
+              <Link asChild href="/operate/expenses/new">
+                <Button accessibilityRole="link" variant="outline">
+                  <Text>{t("operate.home.newExpense")}</Text>
+                </Button>
+              </Link>
+            ) : null}
+            {can("sales:create") ? (
+              <Link asChild href="/operate/sales/new">
+                <Button accessibilityRole="link">
+                  <Icon as={Plus} className="text-primary-foreground" size={16} />
+                  <Text>{t("sales.register")}</Text>
+                </Button>
+              </Link>
+            ) : null}
+          </>
         }
-        description={t("operate.description")}
-        eyebrow={t("common.operate")}
-        title={activeBusiness.name}
+        description={t("operate.home.description", {
+          month: formatMonthYear(range.endLocalDate, locale),
+          currency: active.currency,
+        })}
+        title={t("operate.home.title")}
       />
 
-      {businesses.isError && businesses.data ? <StaleNotice /> : null}
+      {queryHasStaleData(businesses) ? <StaleNotice onRetry={() => businesses.refetch()} /> : null}
 
-      <View className="flex-row flex-wrap items-center gap-x-5 gap-y-2">
-        <View className="flex-row items-baseline gap-2">
-          <Text className="text-sm text-muted-foreground">{t("common.currency")}</Text>
-          <Text className="text-sm font-ui text-foreground">{activeBusiness.currency}</Text>
-        </View>
-        <View className="flex-row items-baseline gap-2">
-          <Text className="text-sm text-muted-foreground">{t("common.timeZone")}</Text>
-          <Text className="text-sm font-ui text-foreground">{activeBusiness.timeZone}</Text>
-        </View>
-      </View>
+      {!hasAnyRead ? (
+        <StatePanel
+          description={t("operate.noAccessDescription")}
+          icon={TriangleAlert}
+          level={2}
+          title={t("operate.noAccessTitle")}
+        />
+      ) : null}
 
-      {modules.length === 0 ? (
-        <View className="max-w-[560px] gap-2 border-l-4 border-warning bg-warning-surface p-5 ">
-          <Heading level={2} size="section">
-            {t("operate.noAccessTitle")}
-          </Heading>
-          <Text className="text-sm leading-5 text-muted-foreground ">
-            {t("operate.noAccessDescription")}
-          </Text>
+      {can("reports:read") ? (
+        <View className="gap-2">
+          {operating ? (
+            <ReportStats locale={locale} report={operating} />
+          ) : report.isError ? (
+            <StatePanel
+              action={
+                <Button
+                  label={t("common.retry")}
+                  onPress={() => report.refetch()}
+                  size="sm"
+                  variant="outline"
+                />
+              }
+              description={t("operate.home.reportUnavailable")}
+              icon={TriangleAlert}
+              level={2}
+              title={t("operate.home.reportUnavailableTitle")}
+            />
+          ) : (
+            <View className="flex-row flex-wrap gap-px overflow-hidden rounded-lg border border-border bg-border">
+              {[0, 1, 2, 3].map((index) => (
+                <View
+                  className="min-w-[150px] flex-1 basis-[180px] gap-2 bg-card px-4 py-3"
+                  key={index}
+                >
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-6 w-28" />
+                  <Skeleton className="h-3 w-24" />
+                </View>
+              ))}
+            </View>
+          )}
+          {operating ? (
+            <View className="flex-row flex-wrap items-center justify-between gap-2">
+              <Text className="text-xs text-muted-foreground">
+                {t("operate.home.period", {
+                  start: formatLocalDate(operating.period.startLocalDate, locale),
+                  end: formatLocalDate(operating.period.endLocalDateInclusive, locale),
+                  position: formatLocalDate(operating.positionAsOfLocalDate, locale),
+                })}
+              </Text>
+              <Link asChild href="/operate/reports">
+                <Button accessibilityRole="link" className="gap-1 px-1" size="sm" variant="ghost">
+                  <Text className="text-[13px]">{t("operate.home.fullReport")}</Text>
+                  <Icon as={ArrowRight} className="text-foreground" size={14} />
+                </Button>
+              </Link>
+            </View>
+          ) : null}
         </View>
-      ) : (
-        <View className="flex-row flex-wrap gap-5">
-          {OPERATE_GROUPS.map((group) => {
-            const groupModules = modules.filter((module) => module.group === group.id);
-            if (groupModules.length === 0) return null;
+      ) : null}
 
-            return (
-              <View
-                className="w-full min-w-0 gap-3 rounded-card border border-border bg-card p-5 md:w-[48%] md:grow"
-                key={group.id}
-              >
-                <Heading level={2} size="section">
-                  {t(group.labelKey)}
-                </Heading>
-                <View>
-                  {groupModules.map((module, index) => {
-                    return (
-                      <Link href={module.href} asChild key={module.id}>
-                        <Button
-                          accessibilityRole="link"
-                          variant="ghost"
-                          className={cn(
-                            "h-auto min-h-20 w-full flex-row items-center justify-start gap-3 rounded-lg px-2 py-4",
-                            index > 0 && "border-t border-border",
-                          )}
-                        >
-                          <Icon
-                            as={operateModuleIcons[module.id]}
-                            className="text-primary"
-                            size={21}
-                          />
-                          <View className="min-w-0 flex-1 gap-1">
-                            <Text className="text-left text-base font-ui text-foreground">
-                              {t(module.labelKey)}
-                            </Text>
-                            <Text className="text-left text-sm leading-5 text-muted-foreground">
-                              {t(module.descriptionKey)}
-                            </Text>
-                          </View>
-                          <Icon as={ChevronRight} className="text-muted-foreground" size={18} />
+      {lowStock > 0 ? (
+        <Alert
+          action={
+            <Link asChild href="/operate/inventory">
+              <Button accessibilityRole="link" size="sm" variant="outline">
+                <Text>{t("operate.home.viewInventory")}</Text>
+              </Button>
+            </Link>
+          }
+          icon={TriangleAlert}
+          variant="warning"
+        >
+          <AlertDescription>{t("operate.home.lowStock", { count: lowStock })}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {can("sales:read") ? (
+        <Section
+          actions={
+            recentSales.length ? (
+              <Link asChild href="/operate/sales">
+                <Button accessibilityRole="link" className="gap-1 px-1" size="sm" variant="ghost">
+                  <Text className="text-[13px]">{t("operate.home.allSales")}</Text>
+                  <Icon as={ArrowRight} className="text-foreground" size={14} />
+                </Button>
+              </Link>
+            ) : undefined
+          }
+          title={t("operate.home.recentSales")}
+        >
+          {sales.isPending ? (
+            <ContentSkeleton variant="section" />
+          ) : sales.isError && !sales.data ? (
+            <StatePanel
+              action={
+                <Button
+                  label={t("common.retry")}
+                  onPress={() => sales.refetch()}
+                  size="sm"
+                  variant="outline"
+                />
+              }
+              description={t("operate.home.salesUnavailable")}
+              icon={TriangleAlert}
+              level={3}
+              title={t("operate.home.salesUnavailableTitle")}
+            />
+          ) : (
+            <DataTable
+              caption={t("operate.home.recentSales")}
+              columns={saleColumns}
+              data={recentSales}
+              empty={
+                <EmptyState
+                  action={
+                    can("sales:create") ? (
+                      <Link asChild href="/operate/sales/new">
+                        <Button accessibilityRole="link" size="sm">
+                          <Text>{t("sales.register")}</Text>
                         </Button>
                       </Link>
-                    );
-                  })}
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
+                    ) : undefined
+                  }
+                  description={t("operate.home.noSalesDescription")}
+                  icon={ReceiptText}
+                  title={t("operate.home.noSalesTitle")}
+                />
+              }
+              getRowHref={(sale): Href => ({
+                pathname: "/operate/sales/[saleId]",
+                params: { saleId: sale.id },
+              })}
+              getRowId={(sale) => sale.id}
+            />
+          )}
+        </Section>
+      ) : null}
     </Page>
   );
 }

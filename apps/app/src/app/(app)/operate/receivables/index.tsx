@@ -6,13 +6,14 @@ import { capabilityBoundaryState, useCapabilityAccess } from "@/features/custome
 import { CapabilityBoundary } from "@/features/customers/capability-boundary";
 import { buildCustomersCopy } from "@/features/customers/copy";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
-import { formatBusinessLocalDate, uniqueValues } from "@/features/receivables/presentation";
+import { uniqueValues } from "@/features/receivables/presentation";
 import {
   receivablesQueryOptions,
   receivablesSummaryQueryOptions,
 } from "@/features/receivables/queries";
 import { ReceivablesScreen } from "@/features/receivables/receivables-screen";
 import type { ReceivablesLoadState } from "@/features/receivables/types";
+import { formatLocalDate } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 import {
@@ -106,7 +107,7 @@ export default function ReceivablesRoute() {
           );
         }}
         filter={filter}
-        formatDate={(date) => formatBusinessLocalDate(date, locale)}
+        formatDate={(date) => formatLocalDate(date, locale)}
         formatMoney={(minorUnits, currency, digits) =>
           formatMinorUnits(minorUnits, currency, digits, locale)
         }

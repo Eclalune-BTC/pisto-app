@@ -24,3 +24,11 @@ export function formatMonthYear(localDate: string, locale: string): string {
     timeZone: "UTC",
   }).format(new Date(`${date}T00:00:00.000Z`));
 }
+
+/** Formats a business-local calendar date without shifting it through the device time zone. */
+export function formatLocalDate(localDate: string, locale: string): string {
+  const date = calendarLocalDateSchema.parse(localDate);
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(
+    new Date(`${date}T00:00:00.000Z`),
+  );
+}

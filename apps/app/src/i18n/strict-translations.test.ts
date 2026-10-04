@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { createInstance } from "i18next";
 import { describe, expect, test, vi } from "vitest";
+import { formatLocalDate } from "@/i18n/format";
 
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 
-import { formatBusinessLocalDate } from "@/features/receivables/presentation";
 import { i18n } from "./config";
 import { formatMonthYear } from "./format";
 import { DEFAULT_LOCALE, requireSupportedLocale, resolveSupportedLocale } from "./locale";
@@ -81,7 +81,7 @@ describe("strict translation configuration", () => {
 
 describe("business calendar formatting", () => {
   test("preserves early years without Date.UTC century coercion", () => {
-    expect(formatBusinessLocalDate("0099-01-02", "en-US")).toBe("Jan 2, 99");
+    expect(formatLocalDate("0099-01-02", "en-US")).toBe("Jan 2, 99");
     expect(formatMonthYear("0099-01-02", "en-US")).toBe("January 99");
     expect(formatMonthYear("2026-01-01", "es-SV")).toBe("enero de 2026");
   });
@@ -89,7 +89,7 @@ describe("business calendar formatting", () => {
   test.each(["invalid", "0000-01-01", "2026-02-30", "2026-1-1", ""])(
     "rejects %s instead of displaying the raw input",
     (value) => {
-      expect(() => formatBusinessLocalDate(value, "es-SV")).toThrow();
+      expect(() => formatLocalDate(value, "es-SV")).toThrow();
       expect(() => formatMonthYear(value, "es-SV")).toThrow();
     },
   );
