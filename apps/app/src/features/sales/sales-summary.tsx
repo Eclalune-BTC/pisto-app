@@ -9,10 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
-import { formatMonthYear } from "@/i18n/format";
+import { formatLocalizedDateTime, formatMonthYear } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
-import { formatSaleCount, formatSaleInstant } from "./format";
+import { formatSaleCount } from "./format";
 import type { ReadState } from "./state";
 
 const STAT_COUNT = 3;
@@ -36,7 +36,7 @@ export function SalesSummary({ onRetry, read, summary }: SalesSummaryProps) {
     return (
       <Section
         description={t("sales.summary.description", {
-          date: formatSaleInstant(summary.queriedAt, locale, summary.timeZone),
+          date: formatLocalizedDateTime(summary.queriedAt, locale, summary.timeZone),
         })}
         title={t("sales.summary.title", {
           month: formatMonthYear(summary.periodStartLocal, locale),

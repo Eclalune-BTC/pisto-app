@@ -12,7 +12,6 @@ import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -24,8 +23,10 @@ import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { currentBusinessMonthRange } from "@/features/reports/date-range";
 import { operatingReportQueryOptions } from "@/features/reports/queries";
 import { salesInfiniteOptions } from "@/features/sales/queries";
+import { SaleStatusBadge, saleAmount } from "@/features/sales/sale-facts";
 import { formatLocalDate, formatLocalizedDateTime, formatMonthYear } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { cn } from "@/lib/cn";
 import { formatMinorUnits } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
@@ -116,24 +117,20 @@ export default function OperateHomeScreen() {
       {
         id: "status",
         header: t("dataTable.columns.status"),
-        cell: ({ row: { original } }) => (
-          <Badge variant={original.status === "voided" ? "outline" : "secondary"}>
-            <Text>{original.status === "voided" ? t("sales.voided") : t("sales.posted")}</Text>
-          </Badge>
-        ),
+        cell: ({ row: { original } }) => <SaleStatusBadge status={original.status} />,
       },
       {
         id: "amount",
         header: t("dataTable.columns.amount"),
         meta: { align: "end" },
         cell: ({ row: { original } }) => (
-          <Text className="font-ui text-[13px] tabular-nums">
-            {formatMinorUnits(
-              original.grossMinorUnits,
-              original.currency,
-              original.currencyMinorUnitDigits,
-              locale,
+          <Text
+            className={cn(
+              "font-ui text-[13px] tabular-nums",
+              original.status === "voided" && "text-muted-foreground line-through",
             )}
+          >
+            {saleAmount(original, locale)}
           </Text>
         ),
       },

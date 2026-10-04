@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
+import { formatLocalMoment } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { AccountBalanceHint } from "./account-balance-hint";
@@ -17,7 +18,6 @@ import { CashOperationReview } from "./cash-operation-review";
 import type { TransferDraftValues } from "./drafts";
 import { FieldError } from "./field-error";
 import { FormSection } from "./form-section";
-import { formatLocalOccurrence } from "./format";
 import { type CursorPage, LoadMoreButton } from "./load-more-button";
 import { LocalDateTimeFields } from "./local-date-time-fields";
 import { MutedValue } from "./review-values";
@@ -95,7 +95,7 @@ export function CashTransferScreen({
             {
               label: t("cash.fields.occurredAt"),
               numeric: true,
-              value: formatLocalOccurrence(
+              value: formatLocalMoment(
                 command.occurredLocalDate,
                 command.occurredLocalTime,
                 requireSupportedLocale(i18n.resolvedLanguage),

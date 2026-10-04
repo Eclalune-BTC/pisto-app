@@ -1,21 +1,16 @@
 import type { Receivable } from "@pisto/contracts";
 import { useTranslation } from "react-i18next";
 
-import { Badge, type BadgeProps } from "@/components/ui/badge";
-import { Text } from "@/components/ui/text";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 
-const stateVariants = {
-  open: "warning",
-  overdue: "destructive",
-  paid: "positive",
-  voided: "outline",
-} as const satisfies Record<Receivable["state"], NonNullable<BadgeProps["variant"]>>;
+const stateTones = {
+  open: "normal",
+  overdue: "attention",
+  paid: "settled",
+  voided: "exception",
+} as const satisfies Record<Receivable["state"], StatusTone>;
 
 export function ReceivableStateBadge({ state }: { state: Receivable["state"] }) {
   const { t } = useTranslation();
-  return (
-    <Badge variant={stateVariants[state]}>
-      <Text>{t(`receivables.states.${state}`)}</Text>
-    </Badge>
-  );
+  return <StatusBadge label={t(`receivables.states.${state}`)} tone={stateTones[state]} />;
 }

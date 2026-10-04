@@ -3,9 +3,9 @@ import type { Href } from "expo-router";
 import { Ban } from "lucide-react-native";
 import { type ReactElement, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge } from "@/components/ui/badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { RowActions } from "@/components/ui/row-actions";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
 import { CashAccountName } from "../cash/cash-account-name";
 import { expenseCategoryLabels, expenseStatusLabels } from "./copy";
@@ -87,9 +87,10 @@ export function ExpenseHistory({
               id: "status",
               header: t("dataTable.columns.status"),
               cell: ({ row: { original } }) => (
-                <Badge variant={original.status === "voided" ? "outline" : "secondary"}>
-                  <Text>{statuses[original.status]}</Text>
-                </Badge>
+                <StatusBadge
+                  label={statuses[original.status]}
+                  tone={original.status === "voided" ? "exception" : "normal"}
+                />
               ),
             } satisfies DataTableColumn<Expense>,
           ]

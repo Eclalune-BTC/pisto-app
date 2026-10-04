@@ -1,6 +1,6 @@
 import type { CashAccount } from "@pisto/contracts";
 import { describe, expect, test } from "vitest";
-import { formatLocalizedDateTime } from "@/i18n/format";
+import { formatLocalizedDateTime, formatLocalMoment } from "@/i18n/format";
 import { ApiClientError } from "@/lib/api-error";
 import { formatMinorUnits } from "@/lib/money";
 import { isLockedPhase, mutationPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
@@ -10,7 +10,6 @@ import {
   buildCashReversalCommand,
   buildCashTransferCommand,
 } from "./drafts";
-import { formatLocalOccurrence } from "./format";
 
 const account = (overrides: Partial<CashAccount> = {}): CashAccount => ({
   allowNegativeBalance: false,
@@ -28,10 +27,10 @@ const account = (overrides: Partial<CashAccount> = {}): CashAccount => ({
 
 describe("reviewed local occurrence", () => {
   test("keeps the typed minute whatever the device time zone", () => {
-    expect(formatLocalOccurrence("2026-09-10", "23:30", "es-SV")).toBe(
+    expect(formatLocalMoment("2026-09-10", "23:30", "es-SV")).toBe(
       formatLocalizedDateTime("2026-09-10T23:30:00.000Z", "es-SV", "UTC"),
     );
-    expect(() => formatLocalOccurrence("2026-02-30", "10:00", "es-SV")).toThrow();
+    expect(() => formatLocalMoment("2026-02-30", "10:00", "es-SV")).toThrow();
   });
 });
 

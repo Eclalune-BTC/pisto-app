@@ -15,7 +15,7 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "border-transparent bg-primary",
-        secondary: "border-transparent bg-secondary",
+        secondary: "border-transparent bg-foreground/20",
         outline: "border-border bg-transparent",
         positive: "border-border bg-positive-surface",
         warning: "border-warning/25 bg-warning-surface",
@@ -30,7 +30,7 @@ const badgeTextVariants = cva("font-ui text-xs leading-4", {
   variants: {
     variant: {
       default: "text-primary-foreground",
-      secondary: "text-secondary-foreground",
+      secondary: "text-foreground",
       outline: "text-foreground",
       positive: "text-positive-foreground",
       warning: "text-warning-foreground",

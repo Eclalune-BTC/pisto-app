@@ -2,7 +2,7 @@ import type { Customer } from "@pisto/contracts";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { formatLocalDate } from "@/i18n/format";
+import { formatLocalDate, formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { formatMinorUnits } from "@/lib/money";
 
@@ -20,11 +20,7 @@ export function useRecordFormat(): RecordFormat {
     () => ({
       date: (localDate: string) => formatLocalDate(localDate, locale),
       instant: (timestamp: string, timeZone: string) =>
-        new Intl.DateTimeFormat(locale, {
-          dateStyle: "medium",
-          timeStyle: "short",
-          timeZone,
-        }).format(new Date(timestamp)),
+        formatLocalizedDateTime(timestamp, locale, timeZone),
       locale,
       money: (minorUnits: string, currency: string, digits: number) =>
         formatMinorUnits(minorUnits, currency, digits, locale),

@@ -15,9 +15,9 @@ import { Icon } from "@/components/ui/icon";
 import { RowActions } from "@/components/ui/row-actions";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
+import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
-import { formatSaleInstant } from "./format";
 import { SaleStatusBadge, saleAmount } from "./sale-facts";
 import { canCorrectSale, type SalesHistoryState, saleStatusFilters } from "./state";
 
@@ -58,7 +58,7 @@ export function SalesHistory({
         meta: { primary: true },
         cell: ({ row: { original } }) => (
           <Text className="min-w-32 text-[13px] tabular-nums" numberOfLines={1}>
-            {formatSaleInstant(original.occurredAt, locale, original.timeZone)}
+            {formatLocalizedDateTime(original.occurredAt, locale, original.timeZone)}
           </Text>
         ),
       },
@@ -208,7 +208,7 @@ export function SalesHistory({
                             },
                           ]}
                           label={t("sales.list.rowActions", {
-                            date: formatSaleInstant(sale.occurredAt, locale, sale.timeZone),
+                            date: formatLocalizedDateTime(sale.occurredAt, locale, sale.timeZone),
                           })}
                         />
                       ) : (
@@ -222,7 +222,7 @@ export function SalesHistory({
           <View className="flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <Text className="text-xs leading-4 text-muted-foreground tabular-nums">
               {t("sales.list.queriedAt", {
-                date: formatSaleInstant(state.queriedAt, locale, timeZone),
+                date: formatLocalizedDateTime(state.queriedAt, locale, timeZone),
               })}
             </Text>
             {state.kind === "ready" && state.hasMore ? (

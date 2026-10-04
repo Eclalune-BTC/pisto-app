@@ -18,6 +18,7 @@ import { Field } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
+import { formatLocalMoment } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { CashOperationReview } from "./cash-operation-review";
@@ -25,7 +26,6 @@ import { ChoiceList } from "./choice-list";
 import { cashAccountKindLabels } from "./copy";
 import type { AccountDraftValues } from "./drafts";
 import { FormSection } from "./form-section";
-import { formatLocalOccurrence } from "./format";
 import { LocalDateTimeFields } from "./local-date-time-fields";
 import { ChangedValue } from "./review-values";
 
@@ -130,7 +130,7 @@ export function CashAccountEditorScreen({
           {
             label: t("cash.fields.occurredAt"),
             numeric: true,
-            value: formatLocalOccurrence(
+            value: formatLocalMoment(
               opening.occurredLocalDate,
               opening.occurredLocalTime,
               requireSupportedLocale(i18n.resolvedLanguage),

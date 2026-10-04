@@ -15,10 +15,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead, queryHasStaleData, readFailureKind } from "@/lib/query-state";
-import { formatSaleInstant } from "./format";
 import { saleQueryOptions } from "./queries";
 import { SalesRouteState } from "./route-state";
 import { SaleStatusBadge, saleAmount, saleOccurrenceItems } from "./sale-facts";
@@ -230,7 +230,7 @@ export default function SaleDetailScreen() {
           {
             label: t("sales.fields.recordedAt"),
             numeric: true,
-            value: formatSaleInstant(sale.createdAt, locale, sale.timeZone),
+            value: formatLocalizedDateTime(sale.createdAt, locale, sale.timeZone),
           },
           ...settingItems(sale, business, t),
         ]}
@@ -243,7 +243,7 @@ export default function SaleDetailScreen() {
               {
                 label: t("sales.correction.correctedAt"),
                 numeric: true,
-                value: formatSaleInstant(sale.correction.correctedAt, locale, sale.timeZone),
+                value: formatLocalizedDateTime(sale.correction.correctedAt, locale, sale.timeZone),
               },
             ]}
           />

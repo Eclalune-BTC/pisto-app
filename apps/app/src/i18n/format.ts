@@ -1,19 +1,38 @@
-import { calendarLocalDateSchema } from "@pisto/contracts";
+import { calendarLocalDateSchema, localTimeSchema } from "@pisto/contracts";
 
+// Forms take a 24-hour HH:MM time, so every displayed moment uses the same clock, and a spelled
+// month cannot be read in the wrong day/month order.
+const momentFormat = {
+  dateStyle: "medium",
+  timeStyle: "short",
+  hourCycle: "h23",
+} as const satisfies Intl.DateTimeFormatOptions;
+
+/** An exact instant, shown in the given time zone (the record's or the business's). */
 export function formatLocalizedDateTime(
   value: Date | string,
   locale: string,
   timeZone?: string,
 ): string {
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: "short",
-    timeStyle: "short",
-    timeZone,
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat(locale, { ...momentFormat, timeZone }).format(new Date(value));
 }
 
-export function formatLocalizedDate(value: Date | string, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { dateStyle: "short" }).format(new Date(value));
+export function formatLocalizedDate(
+  value: Date | string,
+  locale: string,
+  timeZone?: string,
+): string {
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone }).format(new Date(value));
+}
+
+/**
+ * A business-local wall-clock moment such as a reviewed draft. It is read as UTC on purpose: the
+ * values are already local, so no device or business offset may shift the minute that was typed.
+ */
+export function formatLocalMoment(localDate: string, localTime: string, locale: string): string {
+  const date = calendarLocalDateSchema.parse(localDate);
+  const time = localTimeSchema.parse(localTime);
+  return formatLocalizedDateTime(`${date}T${time}:00.000Z`, locale, "UTC");
 }
 
 export function formatMonthYear(localDate: string, locale: string): string {

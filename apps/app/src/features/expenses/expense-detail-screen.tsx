@@ -7,8 +7,7 @@ import { Section } from "@/components/layout/section";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
-import { Badge } from "@/components/ui/badge";
-import { Text } from "@/components/ui/text";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { CashAccountName } from "../cash/cash-account-name";
 import { HeaderActions } from "../cash/header-actions";
 import { MutedValue } from "../cash/review-values";
@@ -96,9 +95,10 @@ export function ExpenseDetailScreen({
           ) : undefined
         }
         adornment={
-          <Badge variant={voided ? "outline" : "secondary"}>
-            <Text>{expenseStatusLabels(t)[expense.status]}</Text>
-          </Badge>
+          <StatusBadge
+            label={expenseStatusLabels(t)[expense.status]}
+            tone={voided ? "exception" : "normal"}
+          />
         }
         description={voided ? t("expenses.detail.voidedDescription") : undefined}
         title={expense.description}

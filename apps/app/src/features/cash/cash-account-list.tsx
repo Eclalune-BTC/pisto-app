@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import { cashAccountKindLabels, cashAccountStatusLabels } from "./copy";
@@ -47,9 +48,10 @@ export function CashAccountList({ accounts, empty, formatMoney }: CashAccountLis
         header: t("dataTable.columns.status"),
         cell: ({ row: { original } }) => (
           <View className="flex-row flex-wrap gap-1">
-            <Badge variant={original.status === "active" ? "secondary" : "outline"}>
-              <Text>{statuses[original.status]}</Text>
-            </Badge>
+            <StatusBadge
+              label={statuses[original.status]}
+              tone={original.status === "active" ? "normal" : "exception"}
+            />
             {original.allowNegativeBalance ? (
               <Badge variant="outline">
                 <Text>{t("cash.negativeAllowed")}</Text>

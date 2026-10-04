@@ -10,13 +10,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
+import { formatLocalMoment } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { AccountBalanceHint } from "../cash/account-balance-hint";
 import { CashOperationReview } from "../cash/cash-operation-review";
 import { FieldError } from "../cash/field-error";
 import { FormSection } from "../cash/form-section";
-import { formatLocalOccurrence } from "../cash/format";
 import { type CursorPage, LoadMoreButton } from "../cash/load-more-button";
 import { LocalDateTimeFields } from "../cash/local-date-time-fields";
 import { MutedValue } from "../cash/review-values";
@@ -100,7 +100,7 @@ export function ExpenseEditorScreen({
             {
               label: t("cash.fields.occurredAt"),
               numeric: true,
-              value: formatLocalOccurrence(
+              value: formatLocalMoment(
                 command.occurredLocalDate,
                 command.occurredLocalTime,
                 requireSupportedLocale(i18n.resolvedLanguage),

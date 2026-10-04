@@ -2,10 +2,10 @@ import type { Sale } from "@pisto/contracts";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import type { DescriptionItem } from "@/components/layout/description-list";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
+import { formatLocalMoment } from "@/i18n/format";
 import { formatMinorUnits } from "@/lib/money";
-import { formatSaleMoment } from "./format";
 
 type SaleMoney = {
   currency: string;
@@ -19,17 +19,12 @@ type SaleOccurrence = {
   occurredLocalTime: string;
 };
 
-/** The exception, a voided sale, carries the stronger chip; posted is the quiet default. */
 export function SaleStatusBadge({ status }: { status: Sale["status"] }) {
   const { t } = useTranslation();
-  return (
-    <Badge
-      // Secondary alone sits too close to the row surface; this keeps 1.5:1 in both themes.
-      className={status === "voided" ? "bg-foreground/20" : undefined}
-      variant={status === "voided" ? "secondary" : "outline"}
-    >
-      <Text>{status === "voided" ? t("sales.voided") : t("sales.posted")}</Text>
-    </Badge>
+  return status === "voided" ? (
+    <StatusBadge label={t("sales.voided")} tone="exception" />
+  ) : (
+    <StatusBadge label={t("sales.posted")} tone="normal" />
   );
 }
 
@@ -43,7 +38,7 @@ export function saleAmount(sale: SaleMoney, locale: string): string {
 }
 
 export function saleMoment(sale: SaleOccurrence, locale: string): string {
-  return formatSaleMoment(sale.occurredLocalDate, sale.occurredLocalTime, locale);
+  return formatLocalMoment(sale.occurredLocalDate, sale.occurredLocalTime, locale);
 }
 
 /** A sale's optional note; an absent one is stated, never left as an empty value. */

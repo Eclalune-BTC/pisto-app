@@ -9,9 +9,8 @@ import { Section } from "@/components/layout/section";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
-import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Text } from "@/components/ui/text";
+import { StatusBadge } from "@/components/ui/status-badge";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { CashMovementList } from "./cash-movement-list";
 import {
@@ -111,9 +110,10 @@ export function CashAccountDetailScreen({
           ) : undefined
         }
         adornment={
-          <Badge variant={active ? "secondary" : "outline"}>
-            <Text>{cashAccountStatusLabels(t)[account.status]}</Text>
-          </Badge>
+          <StatusBadge
+            label={cashAccountStatusLabels(t)[account.status]}
+            tone={active ? "normal" : "exception"}
+          />
         }
         title={account.name}
       />
