@@ -43,7 +43,7 @@ function repository(overrides: Partial<CashRepository>): CashRepository {
 }
 
 describe("cash and expense API routes", () => {
-  test("retains the first duplicate filter and ignores an empty query name", async () => {
+  test("rejects a repeated contract key and ignores parameters outside the contract", async () => {
     let received: unknown;
     const routes = testRoutes({
       cash: repository({
@@ -53,11 +53,21 @@ describe("cash and expense API routes", () => {
         },
       }),
     });
-    const accepted = await routes.request("/cash/accounts?limit=5&limit=99&=ignored");
+    for (const search of ["limit=5&limit=99", "limit=5&limit=5"]) {
+      const rejected = await routes.request(`/cash/accounts?${search}`);
+      expect(rejected.status).toBe(400);
+      expect(await rejected.json()).toMatchObject({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Cash account list query is invalid",
+          details: { fieldErrors: { limit: ["Provide this query parameter only once"] } },
+        },
+      });
+    }
+    expect(received).toBeUndefined();
+    const accepted = await routes.request("/cash/accounts?limit=5&=ignored&businessId=other");
     expect(accepted.status).toBe(200);
-    expect(received).toMatchObject({ limit: 5 });
-    const rejected = await routes.request("/cash/accounts?limit=99&limit=5");
-    expect(rejected.status).toBe(400);
+    expect(received).toEqual({ limit: 5, status: "active" });
   });
   test("requires authentication before any cash read", async () => {
     const response = await testRoutes({

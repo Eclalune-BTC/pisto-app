@@ -13,7 +13,7 @@ const saleNotFound = "Sale was not found";
 
 import { commandResponse, contract } from "../http.ts";
 import type { ProductAccess } from "../middleware/product-access.ts";
-import { protectedRoutes } from "./protected.ts";
+import { protectedRoutes, queryContract } from "./protected.ts";
 
 export function productRoutes(input: { access: ProductAccess; product: ProductRepository }) {
   const routes = protectedRoutes(input.access);
@@ -38,8 +38,7 @@ export function productRoutes(input: { access: ProductAccess; product: ProductRe
       return { data: await input.product.listSales(actor, query) };
     },
     {
-      query: contract(saleListQuerySchema, "Sale list filters are invalid"),
-      queryPolicy: ["cursor", "limit", "status"],
+      ...queryContract(saleListQuerySchema, "Sale list filters are invalid"),
     },
   );
 

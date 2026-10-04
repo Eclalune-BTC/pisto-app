@@ -17,7 +17,7 @@ const paymentNotFound = "Receivable payment was not found";
 
 import { commandResponse, contract } from "../http.ts";
 import type { ProductAccess } from "../middleware/product-access.ts";
-import { protectedRoutes } from "./protected.ts";
+import { protectedRoutes, queryContract } from "./protected.ts";
 
 export function receivablesRoutes(input: {
   access: ProductAccess;
@@ -30,8 +30,7 @@ export function receivablesRoutes(input: {
       return { data: await input.receivables.listCustomers(actor, query) };
     },
     {
-      query: contract(listCustomersQuerySchema, "Customer list filters are invalid"),
-      queryPolicy: ["cursor", "limit", "query", "status"],
+      ...queryContract(listCustomersQuerySchema, "Customer list filters are invalid"),
     },
   );
 
@@ -93,8 +92,7 @@ export function receivablesRoutes(input: {
       return { data: await input.receivables.listReceivables(actor, query) };
     },
     {
-      query: contract(listReceivablesQuerySchema, "Receivable list filters are invalid"),
-      queryPolicy: ["cursor", "customerId", "limit", "state"],
+      ...queryContract(listReceivablesQuerySchema, "Receivable list filters are invalid"),
     },
   );
 

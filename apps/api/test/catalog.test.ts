@@ -147,10 +147,7 @@ describe("catalog HTTP routes", () => {
     expect(replay.status).toBe(200);
   });
 
-  // These pin the query-reading contract that predates the route consolidation.
-  // Catalog queries keep the last duplicate and preserve an empty-name parameter
-  // for strict validation; the shared query policy must retain both behaviors.
-  test("reads the last value of a duplicated query parameter", async () => {
+  test("rejects a duplicated query parameter instead of choosing one value", async () => {
     let received: unknown;
     const app = createApp(
       createRepository({
@@ -161,13 +158,12 @@ describe("catalog HTTP routes", () => {
       }),
     );
 
-    const rejected = await app.request("/v1/catalog/products?limit=5&limit=99");
-    expect(rejected.status).toBe(400);
+    for (const search of ["limit=5&limit=99", "limit=99&limit=5"]) {
+      const response = await app.request(`/v1/catalog/products?${search}`);
+      expect(response.status).toBe(400);
+      expect((await response.json()).error.code).toBe("VALIDATION_ERROR");
+    }
     expect(received).toBeUndefined();
-
-    const accepted = await app.request("/v1/catalog/products?limit=99&limit=5");
-    expect(accepted.status).toBe(200);
-    expect(received).toMatchObject({ limit: 5 });
   });
 
   test("keeps comma-separated and JSON-shaped searches as scalar strings", async () => {
@@ -189,22 +185,21 @@ describe("catalog HTTP routes", () => {
     }
   });
 
-  test("still rejects an empty-name query parameter against the strict contract", async () => {
-    let called = false;
+  test("reads only contract keys, ignoring empty-name and unrelated parameters", async () => {
+    let received: unknown;
     const app = createApp(
       createRepository({
-        listProducts: async () => {
-          called = true;
+        listProducts: async (_actor, query) => {
+          received = query;
           return { items: [], nextCursor: null };
         },
       }),
     );
 
-    const response = await app.request("/v1/catalog/products?=oops&limit=5");
+    const response = await app.request("/v1/catalog/products?=oops&limit=5&utm_source=x");
 
-    expect(response.status).toBe(400);
-    expect((await response.json()).error.code).toBe("VALIDATION_ERROR");
-    expect(called).toBe(false);
+    expect(response.status).toBe(200);
+    expect(received).toEqual({ limit: 5, status: "active" });
   });
 
   test("maps domain conflicts and invalid undisclosed identifiers", async () => {

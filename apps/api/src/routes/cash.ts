@@ -20,7 +20,7 @@ const expenseNotFound = "Expense was not found";
 
 import { commandResponse, contract } from "../http.ts";
 import type { ProductAccess } from "../middleware/product-access.ts";
-import { protectedRoutes } from "./protected.ts";
+import { protectedRoutes, queryContract } from "./protected.ts";
 
 export function cashRoutes(input: { access: ProductAccess; cash: CashRepository }) {
   const routes = protectedRoutes(input.access);
@@ -30,8 +30,7 @@ export function cashRoutes(input: { access: ProductAccess; cash: CashRepository 
       return { data: await input.cash.listAccounts(actor, query) };
     },
     {
-      query: contract(cashAccountListQuerySchema, "Cash account list query is invalid"),
-      queryPolicy: "first",
+      ...queryContract(cashAccountListQuerySchema, "Cash account list query is invalid"),
     },
   );
 
@@ -118,8 +117,7 @@ export function cashRoutes(input: { access: ProductAccess; cash: CashRepository 
       return { data: await input.cash.listMovements(actor, query) };
     },
     {
-      query: contract(cashMovementListQuerySchema, "Cash movement list query is invalid"),
-      queryPolicy: "first",
+      ...queryContract(cashMovementListQuerySchema, "Cash movement list query is invalid"),
     },
   );
 
@@ -130,8 +128,7 @@ export function cashRoutes(input: { access: ProductAccess; cash: CashRepository 
       return { data: { summary } };
     },
     {
-      query: contract(expensePeriodQuerySchema, "Expense period is invalid"),
-      queryPolicy: "first",
+      ...queryContract(expensePeriodQuerySchema, "Expense period is invalid"),
     },
   );
 
@@ -141,8 +138,7 @@ export function cashRoutes(input: { access: ProductAccess; cash: CashRepository 
       return { data: await input.cash.listExpenses(actor, query) };
     },
     {
-      query: contract(expenseListQuerySchema, "Expense list query is invalid"),
-      queryPolicy: "first",
+      ...queryContract(expenseListQuerySchema, "Expense list query is invalid"),
     },
   );
 

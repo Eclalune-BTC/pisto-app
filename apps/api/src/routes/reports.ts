@@ -1,9 +1,8 @@
 import { operatingReportQuerySchema } from "@pisto/contracts";
 import type { ReportsRepository } from "@pisto/db";
 
-import { contract } from "../http.ts";
 import type { ProductAccess } from "../middleware/product-access.ts";
-import { protectedRoutes } from "./protected.ts";
+import { protectedRoutes, queryContract } from "./protected.ts";
 
 export function reportsRoutes(input: { access: ProductAccess; reports: ReportsRepository }) {
   const routes = protectedRoutes(input.access);
@@ -14,8 +13,7 @@ export function reportsRoutes(input: { access: ProductAccess; reports: ReportsRe
       return { data: { report } };
     },
     {
-      query: contract(operatingReportQuerySchema, "Operating report range is invalid"),
-      queryPolicy: ["startLocalDate", "endLocalDate"],
+      ...queryContract(operatingReportQuerySchema, "Operating report range is invalid"),
     },
   );
   return routes;

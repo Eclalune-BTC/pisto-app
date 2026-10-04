@@ -1,26 +1,37 @@
 import { Elysia } from "elysia";
+import type { z } from "zod";
 import { ApiError } from "../errors.ts";
-import { requireRecordId } from "../http.ts";
+import { contract, requireRecordId } from "../http.ts";
 import type { ProductAccess } from "../middleware/product-access.ts";
 
-type QueryPolicy = "first" | "last" | readonly string[];
-
-function readQuery(request: Request, policy: QueryPolicy): Record<string, string> {
-  const search = new URL(request.url).searchParams;
-  if (typeof policy !== "string") {
-    return Object.fromEntries(
-      policy.flatMap((key) => {
-        const value = search.get(key);
-        return value === null ? [] : [[key, value]];
-      }),
-    );
-  }
-  if (policy === "last") return Object.fromEntries(search);
-  const entries = new Map<string, string>();
-  for (const [key, value] of search) {
-    if (key && !entries.has(key)) entries.set(key, value);
-  }
-  return Object.fromEntries(entries);
+/**
+ * Declares a list query from its Zod object contract. Only the contract's own keys are read, so
+ * unrelated parameters (tracking tags, a client-chosen tenant) are ignored. A repeated contract key
+ * is rejected: picking one occurrence would let a proxy and this API read different values.
+ * Values stay scalar strings; Elysia's default parser would coerce commas/JSON into arrays/objects.
+ */
+export function queryContract<Schema extends z.ZodObject>(schema: Schema, message: string) {
+  const keys = Object.keys(schema.shape);
+  return {
+    query: contract(schema, message),
+    transform(context: { request: Request; query: unknown }) {
+      const search = new URL(context.request.url).searchParams;
+      const query: Record<string, string> = {};
+      const duplicated: Record<string, string[]> = {};
+      for (const key of keys) {
+        const values = search.getAll(key);
+        if (values.length > 1) duplicated[key] = ["Provide this query parameter only once"];
+        if (values[0] !== undefined) query[key] = values[0];
+      }
+      if (Object.keys(duplicated).length > 0) {
+        throw new ApiError(400, "VALIDATION_ERROR", message, {
+          formErrors: [],
+          fieldErrors: duplicated,
+        });
+      }
+      context.query = query;
+    },
+  };
 }
 
 function validateRecordParams(params: Record<string, string>, fields: Record<string, string>) {
@@ -36,22 +47,18 @@ export function protectedRoutes(access: ProductAccess) {
       return { actor };
     })
     .macro({
-      queryPolicy: (policy: QueryPolicy) => ({
-        transform(context) {
-          // Standard Schema's default parser coerces commas/JSON into arrays or
-          // objects. Existing REST queries are scalar and have explicit duplicate rules.
-          context.query = readQuery(context.request, policy);
-        },
-      }),
+      // Malformed identifiers are hidden as 404 before a malformed command body is parsed.
       record: (fields: Record<string, string>) => ({
-        async parse({ params, request }) {
-          // Malformed identifiers have always been hidden as 404, even before
-          // parsing a malformed command body. GET/HEAD skip body parsing.
+        parse({ params, request }) {
           validateRecordParams(params, fields);
           return request.json();
         },
-        transform({ params }) {
-          validateRecordParams(params, fields);
+        transform({ params, request }) {
+          // Elysia runs parse hooks for every method except GET and HEAD, so only those
+          // requests still need the identifier check here.
+          if (request.method === "GET" || request.method === "HEAD") {
+            validateRecordParams(params, fields);
+          }
         },
       }),
     });

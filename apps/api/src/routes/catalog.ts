@@ -15,7 +15,7 @@ import {
 import type { CatalogRepository } from "@pisto/db";
 import { commandResponse, contract } from "../http.ts";
 import type { ProductAccess } from "../middleware/product-access.ts";
-import { protectedRoutes } from "./protected.ts";
+import { protectedRoutes, queryContract } from "./protected.ts";
 
 const categoryNotFound = "Category was not found";
 const productNotFound = "Product was not found";
@@ -27,7 +27,7 @@ export function catalogRoutes(input: { access: ProductAccess; catalog: CatalogRe
     async ({ actor, query }) => {
       return { data: await input.catalog.listCategories(actor, query) };
     },
-    { query: contract(categoryListQuerySchema, "Category query is invalid"), queryPolicy: "last" },
+    { ...queryContract(categoryListQuerySchema, "Category query is invalid") },
   );
   routes.post(
     "/catalog/categories",
@@ -64,7 +64,7 @@ export function catalogRoutes(input: { access: ProductAccess; catalog: CatalogRe
     async ({ actor, query }) => {
       return { data: await input.catalog.listProducts(actor, query) };
     },
-    { query: contract(productListQuerySchema, "Product query is invalid"), queryPolicy: "last" },
+    { ...queryContract(productListQuerySchema, "Product query is invalid") },
   );
   routes.post(
     "/catalog/products",
@@ -108,7 +108,7 @@ export function catalogRoutes(input: { access: ProductAccess; catalog: CatalogRe
     async ({ actor, query }) => {
       return { data: await input.catalog.listStock(actor, query) };
     },
-    { query: contract(stockListQuerySchema, "Stock query is invalid"), queryPolicy: "last" },
+    { ...queryContract(stockListQuerySchema, "Stock query is invalid") },
   );
   routes.get(
     "/inventory/products/:productId/movements",
@@ -117,8 +117,7 @@ export function catalogRoutes(input: { access: ProductAccess; catalog: CatalogRe
     },
     {
       record: { productId: productNotFound },
-      query: contract(inventoryMovementListQuerySchema, "Movement query is invalid"),
-      queryPolicy: "last",
+      ...queryContract(inventoryMovementListQuerySchema, "Movement query is invalid"),
     },
   );
   routes.post(
