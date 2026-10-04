@@ -8,7 +8,6 @@ export const welcome = {
   description:
     "Registra tus ventas y gastos, organiza el inventario y da seguimiento a lo que te deben. Todo desde el mismo lugar.",
   explore: "Ver funciones",
-  audience: "Gestión para pequeños negocios",
   availability: "Desde la web, en tu computadora o teléfono.",
   product: {
     title: "Una herramienta para cada parte de tu negocio.",

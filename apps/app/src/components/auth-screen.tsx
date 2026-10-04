@@ -1,15 +1,20 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useRouter } from "expo-router";
-import { AlertTriangle, Eye, EyeOff } from "lucide-react-native";
+import { Check, Eye, EyeOff, TriangleAlert } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppearanceControl } from "@/components/appearance-control";
 import { Brand } from "@/components/brand";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
@@ -17,6 +22,8 @@ import { Text } from "@/components/ui/text";
 import { authClient } from "@/lib/auth-client";
 
 type AuthMode = "sign-in" | "sign-up";
+
+const asideFacts = ["money", "stock", "relationships", "insight"] as const;
 
 type FormErrors = {
   email?: string;
@@ -27,6 +34,7 @@ type FormErrors = {
 export function AuthScreen({ mode }: { mode: AuthMode }) {
   const { t } = useTranslation();
   const isSignUp = mode === "sign-up";
+  const wide = useWindowDimensions().width >= 1024;
   const queryClient = useQueryClient();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -140,124 +148,147 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
     }
   };
 
+  const passwordToggle = (
+    <Button
+      accessibilityLabel={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
+      onPress={() => setShowPassword((value) => !value)}
+      size="icon-sm"
+      variant="ghost"
+    >
+      <Icon as={showPassword ? EyeOff : Eye} className="text-muted-foreground" size={16} />
+    </Button>
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom", "left", "right"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
       >
-        <ScrollView
-          contentContainerClassName="flex-grow"
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="min-w-0 flex-1 items-center justify-center px-5 py-10" role="main">
-            <View className="w-full max-w-[420px] gap-6">
-              <View className="flex-row flex-wrap items-center justify-between gap-3">
+        <View className="min-h-0 flex-1 flex-row">
+          <ScrollView
+            className="flex-1"
+            contentContainerClassName="flex-grow"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View className="min-w-0 flex-1 gap-6 px-5 py-5 sm:px-10">
+              <View className="flex-row items-center justify-between gap-3">
                 <Link href="/" replace asChild>
                   <Button
                     accessibilityLabel={t("auth.backToWelcome")}
-                    className="self-center px-0"
+                    className="px-0"
                     size="sm"
                     variant="ghost"
                   >
-                    <Brand />
+                    <Brand compact />
                   </Button>
                 </Link>
                 <AppearanceControl compact />
               </View>
 
-              <Card className="gap-6">
-                <CardHeader className="gap-2">
-                  <Heading>{isSignUp ? t("auth.signUpTitle") : t("auth.signInTitle")}</Heading>
-                  <CardDescription>
-                    {isSignUp ? t("auth.signUpDescription") : t("auth.signInDescription")}
-                  </CardDescription>
-                </CardHeader>
+              <View className="flex-1 items-center justify-center py-6" role="main">
+                <View className="w-full max-w-[360px] gap-6">
+                  <View className="gap-1.5">
+                    <Heading className="text-2xl leading-8">
+                      {isSignUp ? t("auth.signUpTitle") : t("auth.signInTitle")}
+                    </Heading>
+                    <Text className="text-sm leading-5 text-muted-foreground">
+                      {isSignUp ? t("auth.signUpDescription") : t("auth.signInDescription")}
+                    </Text>
+                  </View>
 
-                <CardContent className="gap-5">
-                  {isSignUp ? (
+                  <View className="gap-4">
+                    {isSignUp ? (
+                      <Field
+                        autoCapitalize="words"
+                        autoComplete="name"
+                        error={errors.name}
+                        label={t("auth.name")}
+                        onChangeText={setName}
+                        placeholder={t("auth.namePlaceholder")}
+                        returnKeyType="next"
+                        value={name}
+                      />
+                    ) : null}
                     <Field
-                      autoCapitalize="words"
-                      autoComplete="name"
-                      error={errors.name}
-                      label={t("auth.name")}
-                      onChangeText={setName}
-                      placeholder={t("auth.namePlaceholder")}
+                      autoCapitalize="none"
+                      autoComplete="email"
+                      error={errors.email}
+                      keyboardType="email-address"
+                      label={t("auth.email")}
+                      onChangeText={setEmail}
+                      placeholder={t("auth.emailPlaceholder")}
                       returnKeyType="next"
-                      value={name}
+                      value={email}
                     />
-                  ) : null}
-                  <Field
-                    autoCapitalize="none"
-                    autoComplete="email"
-                    error={errors.email}
-                    keyboardType="email-address"
-                    label={t("auth.email")}
-                    onChangeText={setEmail}
-                    placeholder={t("auth.emailPlaceholder")}
-                    returnKeyType="next"
-                    value={email}
-                  />
-                  <Field
-                    autoCapitalize="none"
-                    autoComplete={isSignUp ? "new-password" : "current-password"}
-                    error={errors.password}
-                    label={t("auth.password")}
-                    onChangeText={setPassword}
-                    onSubmitEditing={submit}
-                    placeholder={t("auth.passwordPlaceholder")}
-                    returnKeyType="done"
-                    secureTextEntry={!showPassword}
-                    trailing={
-                      <Button
-                        accessibilityLabel={
-                          showPassword ? t("auth.hidePassword") : t("auth.showPassword")
-                        }
-                        size="icon"
-                        variant="ghost"
-                        onPress={() => setShowPassword((value) => !value)}
-                      >
-                        {showPassword ? (
-                          <Icon as={EyeOff} className="text-muted-foreground" size={20} />
-                        ) : (
-                          <Icon as={Eye} className="text-muted-foreground" size={20} />
-                        )}
-                      </Button>
-                    }
-                    value={password}
-                  />
+                    <Field
+                      autoCapitalize="none"
+                      autoComplete={isSignUp ? "new-password" : "current-password"}
+                      description={isSignUp ? t("auth.passwordPlaceholder") : undefined}
+                      error={errors.password}
+                      label={t("auth.password")}
+                      onChangeText={setPassword}
+                      onSubmitEditing={submit}
+                      returnKeyType="done"
+                      secureTextEntry={!showPassword}
+                      trailing={passwordToggle}
+                      value={password}
+                    />
+                  </View>
 
                   {formError ? (
-                    <Alert icon={AlertTriangle} variant="destructive">
+                    <Alert icon={TriangleAlert} variant="destructive">
                       <AlertDescription>{formError}</AlertDescription>
                     </Alert>
                   ) : null}
 
                   <Button
+                    className="w-full"
                     label={isSignUp ? t("auth.createAccount") : t("auth.signIn")}
                     loading={submitting}
                     onPress={submit}
-                    variant="default"
+                    size="lg"
                   />
-                </CardContent>
 
-                <CardFooter className="flex-wrap gap-x-2 gap-y-1">
-                  <Text className="text-sm text-muted-foreground">
-                    {isSignUp ? t("auth.alreadyRegistered") : t("auth.newToPisto")}
-                  </Text>
-                  <Link href={isSignUp ? "/sign-in" : "/sign-up"} replace asChild>
-                    <Button className="px-0" size="sm" variant="ghost">
-                      <Text className="text-sm font-ui text-link underline">
+                  <View className="flex-row flex-wrap items-center justify-center gap-x-1.5">
+                    <Text className="text-sm text-muted-foreground">
+                      {isSignUp ? t("auth.alreadyRegistered") : t("auth.newToPisto")}
+                    </Text>
+                    <Link href={isSignUp ? "/sign-in" : "/sign-up"} replace asChild>
+                      <Text className="font-ui text-sm text-link underline web:underline-offset-4">
                         {isSignUp ? t("auth.signInLink") : t("auth.createAccountLink")}
                       </Text>
-                    </Button>
-                  </Link>
-                </CardFooter>
-              </Card>
+                    </Link>
+                  </View>
+                </View>
+              </View>
             </View>
-          </View>
-        </ScrollView>
+          </ScrollView>
+
+          {wide ? (
+            <View className="w-[44%] max-w-[640px] justify-center gap-8 border-l border-border bg-sidebar px-14 py-12">
+              <View className="gap-3">
+                <Text className="font-heading text-[32px] leading-10 tracking-[-0.6px]">
+                  {t("welcome.title")}
+                </Text>
+                <Text className="max-w-[440px] text-base leading-6 text-muted-foreground">
+                  {t("welcome.description")}
+                </Text>
+              </View>
+              <View className="gap-3">
+                {asideFacts.map((key) => (
+                  <View className="flex-row items-start gap-2.5" key={key}>
+                    <Icon as={Check} className="mt-0.5 text-foreground" size={16} />
+                    <Text className="flex-1 text-sm leading-5">
+                      {t(`welcome.product.${key}.title`)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

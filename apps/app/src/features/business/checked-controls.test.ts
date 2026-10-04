@@ -114,8 +114,11 @@ describe("checked controls rendered by React Native Web", () => {
     setup.mutation.isPending = true;
     const markup = renderToStaticMarkup(createElement(BusinessSetupScreen));
     const inputs = markup.match(/<input\b(?![^>]*\btype="checkbox")[^>]*>/g);
-    expect(inputs, markup).toHaveLength(3);
+    expect(inputs, markup).toHaveLength(1);
     for (const input of inputs ?? []) expect(input).toContain("readOnly");
+    const selects = markup.match(/<button\b[^>]*aria-label="(?:Moneda|Zona horaria):[^"]*"[^>]*>/g);
+    expect(selects, markup).toHaveLength(2);
+    for (const select of selects ?? []) expect(select).toContain('aria-disabled="true"');
     const checkbox = markup.match(/<[^>]+\bid="business-acknowledgment"[^>]*>/)?.[0];
     expect(checkbox).toContain('aria-disabled="true"');
     setup.buttons.find((button) => button.label === i18n.t("business.create"))?.onPress?.();

@@ -40,6 +40,7 @@ vi.mock("react-native", () => ({
   Platform: { OS: "web" },
   Pressable: "button",
   ScrollView: "div",
+  useWindowDimensions: () => ({ width: 1280, height: 800, scale: 1, fontScale: 1 }),
   Text: "span",
   View: "div",
 }));

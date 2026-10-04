@@ -5,6 +5,7 @@ import { type PropsWithChildren, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Brand } from "@/components/brand";
 import { BusinessMenu } from "@/components/shell/business-menu";
 import { NavUser } from "@/components/shell/nav-user";
 import { ShellProvider } from "@/components/shell/shell-context";
@@ -54,6 +55,28 @@ export function AppShell({ children, email, name }: AppShellProps) {
   useEffect(() => {
     setNavigationOpen(false);
   }, [pathname, wide]);
+
+  // Business selection and onboarding run before a business exists, so they get a focused frame.
+  if (pathname === "/business") {
+    return (
+      <ShellProvider>
+        <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
+          <View className="min-h-0 flex-1">
+            <View className="min-h-0 flex-1" role="main">
+              {children}
+            </View>
+            <View
+              className="absolute inset-x-0 top-0 z-20 h-12 flex-row items-center justify-between border-b border-border bg-background px-4 web:bg-background/85 web:backdrop-blur-md"
+              role="banner"
+            >
+              <Brand />
+              <NavUser email={email} name={name} variant="avatar" />
+            </View>
+          </View>
+        </SafeAreaView>
+      </ShellProvider>
+    );
+  }
 
   const closeNavigation = () => setNavigationOpen(false);
   const navigation = (

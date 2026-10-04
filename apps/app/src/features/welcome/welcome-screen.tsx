@@ -55,8 +55,11 @@ export default function WelcomeScreen() {
           <meta name="description" content={t("welcome.description")} />
         </Head>
       ) : null}
-      <View className="border-b border-border bg-background" role="banner">
-        <View className="mx-auto w-full max-w-[1200px] flex-row items-center justify-between gap-3 px-5 py-4 sm:px-8">
+      <View
+        className="z-10 border-b border-border bg-background web:bg-background/85 web:backdrop-blur-md"
+        role="banner"
+      >
+        <View className="mx-auto h-14 w-full max-w-[1200px] flex-row items-center justify-between gap-3 px-5 sm:px-8">
           <Brand />
           <View
             accessibilityLabel={t("welcome.navigation")}
@@ -98,18 +101,17 @@ export default function WelcomeScreen() {
       >
         <View role="main">
           <View className="bg-background">
-            <View className="mx-auto w-full max-w-[1200px] gap-8 px-5 pb-14 pt-12 sm:px-8 sm:py-20 lg:flex-row lg:items-end lg:gap-16">
+            <View className="mx-auto w-full max-w-[1200px] gap-8 px-5 pb-14 pt-14 sm:px-8 sm:pb-20 sm:pt-24 lg:flex-row lg:items-end lg:gap-16">
               <View className="min-w-0 gap-5 lg:flex-1">
-                <Text className="font-ui text-sm text-primary">{t("welcome.audience")}</Text>
-                <Heading className="max-w-[630px] font-heading text-[40px] leading-[48px] tracking-[-1px] text-foreground sm:text-[60px] sm:leading-[68px] lg:text-[68px] lg:leading-[76px]">
+                <Heading className="max-w-[640px] font-heading text-[38px] leading-[44px] tracking-[-1.2px] text-foreground sm:text-[52px] sm:leading-[58px]">
                   {t("welcome.title")}
                 </Heading>
               </View>
               <View className="min-w-0 gap-5 lg:w-[40%]">
-                <Text className="max-w-[650px] text-lg leading-8 text-muted-foreground">
+                <Text className="max-w-[560px] text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
                   {t("welcome.description")}
                 </Text>
-                <View className="flex-row flex-wrap gap-3 pt-2">
+                <View className="flex-row flex-wrap gap-2 pt-1">
                   <Link href="/sign-up" asChild>
                     <Button label={t("welcome.createAccount")} size="lg" variant="default" />
                   </Link>
@@ -121,7 +123,7 @@ export default function WelcomeScreen() {
                     variant="outline"
                   />
                 </View>
-                <Text className="max-w-[500px] text-sm leading-6 text-muted-foreground">
+                <Text className="max-w-[500px] text-[13px] leading-5 text-muted-foreground">
                   {t("welcome.availability")}
                 </Text>
               </View>
@@ -146,7 +148,7 @@ export default function WelcomeScreen() {
             </View>
           </View>
 
-          <View {...sectionProps("workflow")} className="border-y border-border bg-muted">
+          <View {...sectionProps("workflow")} className="border-y border-border bg-sidebar">
             <View className="mx-auto w-full max-w-[1200px] gap-10 px-5 py-14 sm:px-8 sm:py-20">
               <View className="gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-10">
                 <Heading className="max-w-[520px] text-foreground" level={2} size="marketing">
@@ -156,24 +158,22 @@ export default function WelcomeScreen() {
                   {t("welcome.workflow.description")}
                 </Text>
               </View>
-              <View className="gap-8 md:flex-row md:gap-10">
+              <View className="gap-px overflow-hidden rounded-lg border border-border bg-border md:flex-row">
                 {steps.map((step, index) => (
-                  <View key={step} className="min-w-0 gap-4 md:flex-1">
-                    <Text className="font-heading text-3xl text-foreground dark:text-foreground">
+                  <View key={step} className="min-w-0 gap-3 bg-card p-6 md:flex-1">
+                    <Text className="font-ui text-[13px] text-muted-foreground tabular-nums">
                       {String(index + 1).padStart(2, "0")}
                     </Text>
-                    <View className="gap-2 border-t border-border pt-5">
-                      <Heading
-                        className="font-heading text-xl text-foreground"
-                        level={3}
-                        size="section"
-                      >
-                        {t(`welcome.workflow.${step}.title`)}
-                      </Heading>
-                      <Text className="text-base leading-7 text-muted-foreground">
-                        {t(`welcome.workflow.${step}.description`)}
-                      </Text>
-                    </View>
+                    <Heading
+                      className="text-base leading-6 text-foreground"
+                      level={3}
+                      size="section"
+                    >
+                      {t(`welcome.workflow.${step}.title`)}
+                    </Heading>
+                    <Text className="text-sm leading-6 text-muted-foreground">
+                      {t(`welcome.workflow.${step}.description`)}
+                    </Text>
                   </View>
                 ))}
               </View>
@@ -210,7 +210,7 @@ export default function WelcomeScreen() {
           </View>
 
           <View className="bg-background px-5 pb-14 sm:px-8 sm:pb-20">
-            <View className="mx-auto w-full max-w-[1136px] gap-6 rounded-2xl bg-primary px-6 py-10 sm:flex-row sm:items-center sm:justify-between sm:gap-12 sm:p-12">
+            <View className="mx-auto w-full max-w-[1200px] gap-6 rounded-lg bg-primary px-6 py-10 sm:flex-row sm:items-center sm:justify-between sm:gap-12 sm:p-12">
               <View className="min-w-0 gap-3 sm:flex-1">
                 <Heading className="text-primary-foreground" level={2} size="marketing">
                   {t("welcome.closing.title")}

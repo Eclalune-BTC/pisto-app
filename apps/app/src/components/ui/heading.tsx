@@ -10,7 +10,8 @@ const headingVariants = cva("font-heading font-normal text-foreground", {
       section: "text-sm leading-5",
       welcome:
         "font-ui text-[36px] leading-[42px] tracking-[-0.5px] sm:text-[48px] sm:leading-[54px] lg:text-[56px] lg:leading-[62px]",
-      marketing: "font-ui text-[28px] leading-9 sm:text-[32px] sm:leading-10",
+      marketing:
+        "font-heading text-[26px] leading-8 tracking-[-0.6px] sm:text-[32px] sm:leading-10",
     },
   },
   defaultVariants: { size: "page" },
