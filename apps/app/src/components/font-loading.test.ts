@@ -11,9 +11,10 @@ const fixture = vi.hoisted(() => ({
 }));
 vi.mock("@/global.css", () => ({}));
 vi.mock("@rn-primitives/portal", () => ({ PortalHost: () => null }));
-vi.mock("@expo-google-fonts/ibm-plex-sans/400Regular", () => ({ IBMPlexSans_400Regular: 400 }));
-vi.mock("@expo-google-fonts/ibm-plex-sans/500Medium", () => ({ IBMPlexSans_500Medium: 500 }));
-vi.mock("@expo-google-fonts/ibm-plex-sans/600SemiBold", () => ({ IBMPlexSans_600SemiBold: 600 }));
+vi.mock("@/components/ui/toaster", () => ({ Toaster: () => null }));
+vi.mock("@expo-google-fonts/inter/400Regular", () => ({ Inter_400Regular: 400 }));
+vi.mock("@expo-google-fonts/inter/500Medium", () => ({ Inter_500Medium: 500 }));
+vi.mock("@expo-google-fonts/inter/600SemiBold", () => ({ Inter_600SemiBold: 600 }));
 vi.mock("expo-font", () => ({
   useFonts: (faces: unknown) => {
     fixture.load(faces);

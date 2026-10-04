@@ -20,16 +20,6 @@ vi.mock("uniwind", () => ({
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
-vi.mock("lucide-react-native", () => ({
-  AlertTriangle: () => null,
-  CreditCard: () => null,
-  Laptop: () => null,
-  LockKeyhole: () => null,
-  LogOut: () => null,
-  Moon: () => null,
-  ShieldCheck: () => null,
-  Sun: () => null,
-}));
 
 import SettingsScreen from "@/app/(app)/settings";
 import { i18n } from "@/i18n/config";

@@ -14,15 +14,6 @@ vi.mock("uniwind", () => ({
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
-vi.mock("lucide-react-native", () => ({
-  Check: () => null,
-  ChevronDown: () => null,
-  AlertTriangle: () => null,
-  FolderCog: () => null,
-  Info: () => null,
-  Plus: () => null,
-  Search: () => null,
-}));
 
 import { i18n } from "@/i18n/config";
 import { esSV } from "@/i18n/resources/es-SV";

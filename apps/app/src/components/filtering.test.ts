@@ -11,17 +11,6 @@ vi.mock("uniwind", () => ({
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
-vi.mock("lucide-react-native", () => ({
-  Check: () => null,
-  ChevronDown: () => null,
-  AlertTriangle: () => null,
-  CalendarDays: () => null,
-  ChevronRight: () => null,
-  FolderCog: () => null,
-  Info: () => null,
-  Plus: () => null,
-  Search: () => null,
-}));
 
 import { CatalogScreen } from "@/features/catalog/catalog-screen";
 import { buildCustomersCopy } from "@/features/customers/copy";

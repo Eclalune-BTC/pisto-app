@@ -44,7 +44,6 @@ vi.mock("react-native", () => ({
   View: "div",
 }));
 vi.mock("react-native-safe-area-context", () => ({ SafeAreaView: "div" }));
-vi.mock("lucide-react-native", () => ({ AlertTriangle: () => null, Eye: "span", EyeOff: "span" }));
 vi.mock("@/components/brand", () => ({ Brand: "span" }));
 vi.mock("@/components/appearance-control", () => ({ AppearanceControl: "div" }));
 vi.mock("@/components/ui/alert", () => ({ Alert: "div", AlertDescription: "span" }));

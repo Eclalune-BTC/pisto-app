@@ -7,7 +7,6 @@ vi.mock("uniwind", () => ({
   useCSSVariable: (names: string | string[]) =>
     Array.isArray(names) ? names.map(() => "#62626B") : "#62626B",
 }));
-vi.mock("lucide-react-native", () => ({ AlertTriangle: () => null, ChevronDown: () => null }));
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./accordion.web";
 import { Text } from "./text";

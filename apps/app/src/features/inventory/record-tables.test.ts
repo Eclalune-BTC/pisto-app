@@ -12,12 +12,6 @@ vi.mock("uniwind", () => ({
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
-vi.mock("lucide-react-native", () => ({
-  AlertTriangle: () => null,
-  ArrowLeft: () => null,
-  Search: () => null,
-  Info: () => null,
-}));
 
 import { buildCatalogCopy } from "@/features/catalog/copy";
 import { i18n } from "@/i18n/config";

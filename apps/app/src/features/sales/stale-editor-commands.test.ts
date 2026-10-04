@@ -1,10 +1,4 @@
-import {
-  Children,
-  type ComponentProps,
-  isValidElement,
-  type ReactElement,
-  type ReactNode,
-} from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ApiClientError } from "@/lib/api-error";
 
@@ -71,15 +65,6 @@ vi.mock("uniwind", () => ({
   useUniwind: () => ({ theme: "light" }),
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
-vi.mock("lucide-react-native", () => ({
-  AlertTriangle: () => null,
-  ArrowLeft: () => null,
-  Check: () => null,
-  WifiOff: () => null,
-  CheckCircle2: () => null,
-  Pencil: () => null,
-  Plus: () => null,
-}));
 vi.mock("@/lib/queries/businesses", () => ({
   businessesQueryOptions: { queryKey: ["businesses"] },
   getActiveBusiness: (data: { business: unknown } | undefined) => data?.business,
@@ -93,6 +78,7 @@ vi.mock("@/lib/api-client", async () => ({
 import { StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { elements } from "../../../test-support/element-tree";
 import SaleCorrectionScreen from "./sale-correction-screen";
 import SaleDetailScreen from "./sale-detail-screen";
 
@@ -114,15 +100,6 @@ function render<T>(component: () => T): T {
   fixture.effects = [];
   const result = component();
   for (const effect of fixture.effects) effect();
-  return result;
-}
-function elements<P>(node: ReactNode, type: unknown): ReactElement<P>[] {
-  const result: ReactElement<P>[] = [];
-  Children.forEach(node, (child) => {
-    if (!isValidElement<{ children?: ReactNode }>(child)) return;
-    if (child.type === type) result.push(child as ReactElement<P>);
-    result.push(...elements<P>(child.props.children, type));
-  });
   return result;
 }
 

@@ -4,7 +4,6 @@ import { describe, expect, test, vi } from "vitest";
 
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("@/components/ui/accordion", () => import("@/components/ui/accordion.web"));
-vi.mock("react-native-svg", () => ({ default: "svg", Path: "path", Rect: "rect" }));
 vi.mock("react-native-safe-area-context", async () => ({
   SafeAreaView: (
     await vi.importActual<{ View: typeof import("react-native").View }>("react-native-web")
@@ -30,13 +29,6 @@ vi.mock("@/providers/appearance-provider", () => ({
   useAppearance: () => ({ choice: "system", pending: false, issue: null, select: vi.fn() }),
 }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
-vi.mock("lucide-react-native", () => ({
-  AlertTriangle: () => null,
-  Laptop: () => null,
-  Moon: () => null,
-  Sun: () => null,
-  ChevronDown: () => null,
-}));
 
 import { OPERATE_GROUPS, OPERATE_MODULES } from "@/features/operate/navigation";
 import { i18n } from "@/i18n/config";

@@ -12,11 +12,6 @@ vi.mock("uniwind", () => ({
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
-vi.mock("lucide-react-native", () => ({
-  AlertTriangle: () => null,
-  ArrowLeft: () => null,
-  Search: () => null,
-}));
 
 import { ReceivableDetailScreen } from "@/features/receivables/receivable-detail-screen";
 import { ReceivablesScreen } from "@/features/receivables/receivables-screen";

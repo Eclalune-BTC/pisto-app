@@ -1,11 +1,5 @@
 import type { SaleReview } from "@pisto/contracts";
-import {
-  Children,
-  type ComponentProps,
-  isValidElement,
-  type ReactElement,
-  type ReactNode,
-} from "react";
+import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ApiClientError } from "@/lib/api-error";
 
@@ -155,7 +149,6 @@ vi.mock("uniwind", () => ({
   useUniwind: () => ({ theme: "light" }),
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
-vi.mock("lucide-react-native", () => ({ AlertTriangle: () => null, WifiOff: () => null }));
 vi.mock("@/lib/queries/businesses", () => ({
   businessesQueryOptions: { queryKey: ["businesses"] },
   getActiveBusiness: (data: { business: unknown } | undefined) => data?.business,
@@ -166,6 +159,7 @@ vi.mock("@/lib/api-client", async () => ({
 }));
 
 import { Button } from "@/components/ui/button";
+import { elements } from "../../../test-support/element-tree";
 import NewSaleScreen, { SaleReviewScreen } from "./sale-create-screen";
 import { SaleDraftFields } from "./sale-draft-fields";
 
@@ -200,15 +194,6 @@ function render() {
   });
   for (const effect of fixture.effects) effect();
   return tree;
-}
-function elements<P>(node: ReactNode, type: unknown): ReactElement<P>[] {
-  const found: ReactElement<P>[] = [];
-  Children.forEach(node, (child) => {
-    if (!isValidElement<{ children?: ReactNode }>(child)) return;
-    if (child.type === type) found.push(child as ReactElement<P>);
-    found.push(...elements<P>(child.props.children, type));
-  });
-  return found;
 }
 function button(label: string) {
   const found = elements<ComponentProps<typeof Button>>(render(), Button).find(

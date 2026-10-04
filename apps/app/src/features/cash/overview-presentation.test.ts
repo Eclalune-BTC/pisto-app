@@ -1,12 +1,5 @@
 import type { CashAccount, CashMovement, Expense, ExpensePeriodSummary } from "@pisto/contracts";
-import {
-  Children,
-  type ComponentProps,
-  createElement,
-  isValidElement,
-  type ReactElement,
-  type ReactNode,
-} from "react";
+import { type ComponentProps, createElement, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 
@@ -19,12 +12,6 @@ vi.mock("uniwind", () => ({
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
-vi.mock("lucide-react-native", () => ({
-  AlertTriangle: () => null,
-  Check: () => null,
-  ChevronDown: () => null,
-  WifiOff: () => null,
-}));
 
 import { View } from "react-native";
 import { Button } from "@/components/ui/button";
@@ -37,6 +24,7 @@ import { ExpenseFilters } from "@/features/expenses/expense-filters";
 import { ExpenseHistory } from "@/features/expenses/expense-history";
 import { ExpensesScreen } from "@/features/expenses/expenses-screen";
 import { i18n } from "@/i18n/config";
+import { elements } from "../../../test-support/element-tree";
 import { CashAccountList } from "./cash-account-list";
 import { CashMovementList } from "./cash-movement-list";
 import { CashScreen } from "./cash-screen";
@@ -181,15 +169,6 @@ function capture<P extends object>(Component: (props: P) => ReactElement, props:
   const markup = renderToStaticMarkup(createElement(Capture));
   if (!tree) throw new Error("The component did not render.");
   return { tree, markup };
-}
-function elements<P>(tree: ReactNode, type: unknown): ReactElement<P>[] {
-  const matches: ReactElement<P>[] = [];
-  Children.forEach(tree, (child) => {
-    if (!isValidElement<P & { children?: ReactNode }>(child)) return;
-    if (child.type === type) matches.push(child);
-    matches.push(...elements<P>(child.props.children, type));
-  });
-  return matches;
 }
 function section(tree: ReactNode, value: "accounts" | "movements" | "history" | "summary") {
   const labels = {

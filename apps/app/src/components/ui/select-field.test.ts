@@ -12,11 +12,6 @@ vi.mock("uniwind", () => ({
   useCSSVariable: (names: string | string[]) =>
     Array.isArray(names) ? names.map(() => "#62626B") : "#62626B",
 }));
-vi.mock("lucide-react-native", () => ({
-  AlertTriangle: () => null,
-  Check: () => null,
-  ChevronDown: () => null,
-}));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock("./select", () => ({
   Select: ({

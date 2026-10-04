@@ -18,6 +18,8 @@ export const ReduceMotion = { System: "system" };
 export const useDerivedValue = <T,>(factory: () => T) => ({ value: factory() });
 export const useAnimatedStyle = <T,>(factory: () => T) => factory();
 export const withTiming = <T,>(value: T) => value;
+export const withRepeat = <T,>(value: T) => value;
+export const useSharedValue = <T,>(value: T) => ({ value });
 export function LayoutAnimationConfig({ children }: PropsWithChildren) {
   return children;
 }

@@ -14,7 +14,6 @@ vi.mock("uniwind", () => ({
   withUniwind: (component: unknown) => component,
   useUniwind: () => ({ theme: "light" }),
 }));
-vi.mock("lucide-react-native", () => ({ Laptop: () => null, Moon: () => null, Sun: () => null }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock("@/providers/appearance-provider", () => ({
   useAppearance: () => ({ pending: false, issue: null, choice: "light", select: fixture.select }),

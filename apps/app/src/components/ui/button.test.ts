@@ -83,8 +83,8 @@ describe("shared button", () => {
     expect(markup).toContain('data-testid="password-toggle"');
     expect(markup).toContain('aria-disabled="true"');
     const element = Button(props).props.children;
-    expect(element.props.className).toContain("min-h-11");
-    expect(element.props.className).toContain("w-11");
+    expect(element.props.className).toContain("h-9");
+    expect(element.props.className).toContain("w-9");
     expect(element.props.className).toContain("rounded-none");
   });
 

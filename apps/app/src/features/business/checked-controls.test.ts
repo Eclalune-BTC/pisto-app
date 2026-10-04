@@ -27,13 +27,6 @@ vi.mock("uniwind", () => ({
 }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 vi.mock("expo-router", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
-vi.mock("lucide-react-native", () => ({
-  Building2: () => null,
-  Check: () => null,
-  CheckIcon: () => null,
-  Circle: () => null,
-  CircleIcon: () => null,
-}));
 vi.mock("@/components/ui/radio-group", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/components/ui/radio-group")>();
   return {
@@ -91,6 +84,7 @@ vi.mock("@/lib/auth-client", () => ({
 vi.mock("@/lib/queries/businesses", () => ({
   businessesQueryKey: ["businesses"],
   businessesQueryOptions: {},
+  selectActiveBusiness: vi.fn(),
 }));
 
 import BusinessSetupScreen from "@/app/(app)/business";
