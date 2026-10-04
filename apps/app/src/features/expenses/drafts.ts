@@ -6,7 +6,7 @@ import type {
 } from "@pisto/contracts";
 import { calendarLocalDateSchema, localTimeSchema } from "@pisto/contracts";
 import { parseAmountToMinorUnits } from "@/lib/money";
-import type { CashDraftIssue } from "../cash/drafts";
+import { amountIssue, type CashDraftIssue } from "../cash/drafts";
 
 export type ExpenseDraftValues = {
   accountId: string;
@@ -40,7 +40,7 @@ export function buildExpenseCommand(input: {
   const amount = account
     ? parseAmountToMinorUnits(input.draft.amount, account.currencyMinorUnitDigits)
     : null;
-  if (amount && "error" in amount) issues.amount = "invalid-amount";
+  if (amount && "error" in amount) issues.amount = amountIssue(input.draft.amount);
   const description = input.draft.description.trim();
   if (!description) issues.description = "required";
   else if (description.length > 240) issues.description = "too-long";

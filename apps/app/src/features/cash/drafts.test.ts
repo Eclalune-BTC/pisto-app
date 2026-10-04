@@ -105,6 +105,26 @@ describe("cash draft commands", () => {
     });
   });
 
+  test("reports a blank amount as missing and a malformed one as invalid", () => {
+    const draft = {
+      accountId: account().id,
+      direction: "in" as const,
+      localDate: "2026-08-22",
+      localTime: "10:15",
+      reason: "Conteo",
+    };
+    const issues = (amount: string) =>
+      buildCashAdjustmentCommand({
+        account: account(),
+        draft: { ...draft, amount },
+        idempotencyKey: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      }).issues.amount;
+    expect(issues("  ")).toBe("required");
+    expect(issues("1,500")).toBe("invalid-amount");
+    expect(issues("0")).toBe("invalid-amount");
+    expect(issues("3.25")).toBeUndefined();
+  });
+
   test("rejects a same-account transfer and builds a paired-account review", () => {
     const from = account();
     const to = account({

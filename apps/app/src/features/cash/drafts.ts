@@ -56,6 +56,11 @@ export type ReversalDraftValues = {
   localTime: string;
 };
 
+/** A blank amount is missing, not malformed. */
+export function amountIssue(text: string): CashDraftIssue {
+  return text.trim() ? "invalid-amount" : "required";
+}
+
 function validateText(
   value: string,
   maximum: number,
@@ -119,7 +124,7 @@ export function buildCashAccountCommand(input: {
       input.draft.openingLocalDate,
       input.draft.openingLocalTime,
     );
-    if ("error" in amount) issues.openingAmount = "invalid-amount";
+    if ("error" in amount) issues.openingAmount = amountIssue(input.draft.openingAmount);
     if (reason.issue) issues.openingReason = reason.issue;
     if (dateTimeIssues.localDate) issues.openingLocalDate = dateTimeIssues.localDate;
     if (dateTimeIssues.localTime) issues.openingLocalTime = dateTimeIssues.localTime;
@@ -162,7 +167,7 @@ export function buildCashAdjustmentCommand(input: {
     input.account?.status === "active"
       ? parseAmountToMinorUnits(input.draft.amount, input.account.currencyMinorUnitDigits)
       : null;
-  if (amount && "error" in amount) issues.amount = "invalid-amount";
+  if (amount && "error" in amount) issues.amount = amountIssue(input.draft.amount);
   const reason = validateText(input.draft.reason, 240, true);
   if (reason.issue) issues.reason = reason.issue;
   const dateTimeIssues = validateDateTime(input.draft.localDate, input.draft.localTime);
@@ -215,7 +220,7 @@ export function buildCashTransferCommand(input: {
   const amount = fromAccount
     ? parseAmountToMinorUnits(input.draft.amount, fromAccount.currencyMinorUnitDigits)
     : null;
-  if (amount && "error" in amount) issues.amount = "invalid-amount";
+  if (amount && "error" in amount) issues.amount = amountIssue(input.draft.amount);
   const note = validateText(input.draft.note, 240, false);
   if (note.issue) issues.note = note.issue;
   const dateTimeIssues = validateDateTime(input.draft.localDate, input.draft.localTime);
