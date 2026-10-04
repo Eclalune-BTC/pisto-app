@@ -94,22 +94,18 @@ describe("operating report route", () => {
     expect(await response.json()).toEqual({ data: { report } });
   });
 
-  test("ignores a client-supplied tenant instead of forwarding it", async () => {
-    let received: unknown;
-    const response = await createTestApp(async (actor, query) => {
-      received = { actor, query };
+  test("rejects a client-supplied tenant instead of ignoring it", async () => {
+    let called = false;
+    const response = await createTestApp(async () => {
+      called = true;
       return report;
     }).request(`/v1/reports/operating?${validRange}&businessId=untrusted`);
 
-    expect(response.status).toBe(200);
-    expect(received).toEqual({
-      actor: {
-        userId: "user_test",
-        sessionId: "session_test",
-        activeBusinessId: "business_test",
-      },
-      query: { startLocalDate: "2026-08-01", endLocalDate: "2026-08-22" },
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { code: "VALIDATION_ERROR", message: "Operating report range is invalid" },
     });
+    expect(called).toBe(false);
   });
 
   test.each([

@@ -141,6 +141,13 @@ function polarEntitlementStatus(input: {
   return "pending";
 }
 
+type PolarProjectionOutcome = WebhookProcessResult & {
+  unprojected?: {
+    subscriptionId: string;
+    reason: "unknown_organization" | "unknown_user" | "unmapped_product";
+  };
+};
+
 export function createPolarWebhookProcessor(input: {
   db: Database;
   config: Extract<PolarBillingConfig, { enabled: true }>;
@@ -161,7 +168,7 @@ export function createPolarWebhookProcessor(input: {
     const eventKey = eventFingerprint(payload);
     const now = clock();
 
-    return input.db.transaction(async (tx) => {
+    const outcome = await input.db.transaction(async (tx): Promise<PolarProjectionOutcome> => {
       const firstDelivery = await recordWebhookEvent(tx, {
         provider: "polar",
         eventKey,
@@ -299,7 +306,18 @@ export function createPolarWebhookProcessor(input: {
           ),
         );
       if (!entitlementKey || !subject) {
-        return { duplicate: false, projected: false };
+        return {
+          duplicate: false,
+          projected: false,
+          unprojected: {
+            subscriptionId,
+            reason: !subject
+              ? referenceId
+                ? "unknown_organization"
+                : "unknown_user"
+              : "unmapped_product",
+          },
+        };
       }
 
       await upsertEntitlementGrant(tx, {
@@ -317,6 +335,22 @@ export function createPolarWebhookProcessor(input: {
       });
       return { duplicate: false, projected: true };
     });
+    const { unprojected, ...result } = outcome;
+    // Polar is acknowledged so it keeps the endpoint enabled; this is the only operator signal
+    // that a paid subscription produced no grant. It carries provider identifiers only.
+    if (unprojected) {
+      console.warn(
+        JSON.stringify({
+          level: "warn",
+          message: "Polar subscription event acknowledged without an entitlement grant",
+          provider: "polar",
+          eventType,
+          subscriptionId: unprojected.subscriptionId,
+          reason: unprojected.reason,
+        }),
+      );
+    }
+    return result;
   };
 }
 

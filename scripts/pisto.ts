@@ -4,6 +4,12 @@ import { randomBytes } from "node:crypto";
 import { mkdir, open, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { parseEnv as parseDotenv } from "node:util";
+import { type Environment, readEnvironment } from "@pisto/config";
+
+import { ApiConfigurationError, parseApiConfig } from "../apps/api/src/config.ts";
+import { AuthConfigurationError, parseAuthConfig } from "../packages/auth/src/env.ts";
+import { BillingConfigurationError, parseBillingConfig } from "../packages/billing/src/config.ts";
+import { DatabaseConfigurationError, parseDatabaseConfig } from "../packages/db/src/env.ts";
 
 const PROJECT_ROOT = resolve(import.meta.dir, "..");
 const MINIMUM_BUN_VERSION = "1.4.0";
@@ -261,222 +267,98 @@ function configuredValue(values: Map<string, string>, key: string): string {
   return values.get(key)?.trim() ?? "";
 }
 
-type FeatureFlag = "enabled" | "disabled" | "invalid";
-
-function isConfigured(values: Map<string, string>, key: string): boolean {
-  return Object.hasOwn(process.env, key) || values.has(key);
+/** Process variables override file values so CI can inject secrets without writing them to disk. */
+export function mergedServerEnvironment(
+  file: Map<string, string>,
+  processEnv: Environment = process.env,
+): Environment {
+  return { ...Object.fromEntries(file), ...processEnv };
 }
 
-function parseFeatureFlag(value: string): FeatureFlag {
-  if (value === "true") return "enabled";
-  if (value === "false") return "disabled";
-  return "invalid";
-}
+const configurationErrors = [
+  ApiConfigurationError,
+  AuthConfigurationError,
+  BillingConfigurationError,
+  DatabaseConfigurationError,
+];
 
-function inspectOptionalInteger(
-  values: Map<string, string>,
+/** Runs `parse` and reports its configuration error message; any other error is a defect. */
+function parseConfiguration<T>(
   diagnostics: Diagnostic[],
-  key: string,
-  minimum: number,
-  maximum: number,
-): void {
-  const value = configuredValue(values, key);
-  if (!value) return;
-  const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) {
-    addDiagnostic(diagnostics, "FAIL", key, `Must be an integer from ${minimum} to ${maximum}.`);
-  }
-}
-
-function inspectBoolean(
-  values: Map<string, string>,
-  diagnostics: Diagnostic[],
-  key: string,
-): FeatureFlag {
-  if (!isConfigured(values, key)) return "disabled";
-  const result = parseFeatureFlag(configuredValue(values, key));
-  if (result === "invalid") {
-    addDiagnostic(diagnostics, "FAIL", key, "Must be exactly true or false.");
-  }
-  return result;
-}
-
-function jsonValue(value: string): unknown | undefined {
+  name: string,
+  parse: () => T,
+): T | undefined {
   try {
-    return JSON.parse(value);
-  } catch {
+    const parsed = parse();
+    addDiagnostic(diagnostics, "PASS", name, "The runtime parser accepts this configuration.");
+    return parsed;
+  } catch (error) {
+    if (!configurationErrors.some((ErrorClass) => error instanceof ErrorClass)) throw error;
+    addDiagnostic(diagnostics, "FAIL", name, (error as Error).message);
     return undefined;
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function validEntitlementKey(value: unknown): value is string {
-  return typeof value === "string" && /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(value);
-}
-
-function validPolarProducts(value: unknown): boolean {
-  if (!Array.isArray(value) || value.length === 0) return false;
-  const productIds = new Set<string>();
-  const slugs = new Set<string>();
-  const allowedKeys = new Set(["productId", "slug", "entitlementKey", "name", "description"]);
-
-  for (const product of value) {
-    if (!isRecord(product) || Object.keys(product).some((key) => !allowedKeys.has(key)))
-      return false;
-    const productId = product.productId;
-    const slug = product.slug;
-    const name = product.name;
-    const description = product.description;
-    if (
-      typeof productId !== "string" ||
-      !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(productId) ||
-      typeof slug !== "string" ||
-      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ||
-      !validEntitlementKey(product.entitlementKey) ||
-      (name !== undefined && (typeof name !== "string" || name.length < 1 || name.length > 120)) ||
-      (description !== undefined &&
-        (typeof description !== "string" || description.length < 1 || description.length > 500)) ||
-      productIds.has(productId) ||
-      slugs.has(slug)
-    ) {
-      return false;
-    }
-    productIds.add(productId);
-    slugs.add(slug);
+function inspectPlaceholders(
+  diagnostics: Diagnostic[],
+  name: string,
+  values: Record<string, string | undefined>,
+): void {
+  const placeholders = Object.entries(values)
+    .filter(([, value]) => value !== undefined && looksLikePlaceholder(value))
+    .map(([variable]) => variable);
+  if (placeholders.length > 0) {
+    addDiagnostic(
+      diagnostics,
+      "FAIL",
+      name,
+      `Replace placeholder values in: ${placeholders.join(", ")}.`,
+    );
   }
-  return true;
 }
 
-function validEntitlementMap(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    Object.keys(value).length > 0 &&
-    Object.entries(value).every(([providerKey, entitlementKey]) => {
-      return providerKey.length > 0 && validEntitlementKey(entitlementKey);
-    })
+/**
+ * Validates the server environment with the same parsers the API runs at startup, so the doctor
+ * cannot drift from what boots. Only parser messages are reported, never configured values.
+ */
+export function inspectServerConfiguration(env: Environment): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  parseConfiguration(diagnostics, "API configuration", () => parseApiConfig(env));
+  parseConfiguration(diagnostics, "Database configuration", () => parseDatabaseConfig(env));
+
+  const auth = parseConfiguration(diagnostics, "Auth configuration", () => parseAuthConfig(env));
+  if (auth) {
+    inspectPlaceholders(diagnostics, "Auth secrets", {
+      BETTER_AUTH_SECRET: auth.secret,
+      ...Object.fromEntries(
+        (auth.secrets ?? []).map(({ version, value }) => [
+          `BETTER_AUTH_SECRETS version ${version}`,
+          value,
+        ]),
+      ),
+    });
+  }
+
+  const billing = parseConfiguration(diagnostics, "Billing configuration", () =>
+    parseBillingConfig(env),
   );
+  if (billing?.polar.enabled) {
+    inspectPlaceholders(diagnostics, "Polar credentials", {
+      POLAR_ACCESS_TOKEN: billing.polar.accessToken,
+      POLAR_WEBHOOK_SECRET: billing.polar.webhookSecret,
+    });
+  }
+  if (billing?.revenueCat.enabled) {
+    inspectPlaceholders(diagnostics, "RevenueCat credentials", {
+      REVENUECAT_WEBHOOK_AUTHORIZATION: billing.revenueCat.authorization,
+      REVENUECAT_WEBHOOK_SIGNING_SECRET: billing.revenueCat.signingSecret,
+    });
+  }
+  return diagnostics;
 }
 
-function isValidUrl(value: string, protocols = ["http:", "https:"]): boolean {
-  try {
-    const url = new URL(value);
-    return protocols.includes(url.protocol) && Boolean(url.hostname);
-  } catch {
-    return false;
-  }
-}
-
-function isReservedProductionHostname(hostname: string): boolean {
-  const normalized = hostname
-    .toLowerCase()
-    .replace(/\.$/, "")
-    .replace(/^\[|\]$/g, "");
-  if (normalized === "localhost" || normalized === "::1" || normalized === "0.0.0.0") return true;
-  if (/^127(?:\.\d{1,3}){3}$/.test(normalized)) return true;
-  return [
-    "localhost",
-    "test",
-    "invalid",
-    "example",
-    "example.com",
-    "example.net",
-    "example.org",
-  ].some((suffix) => normalized === suffix || normalized.endsWith(`.${suffix}`));
-}
-
-function isValidConfiguredHttpUrl(value: string, production: boolean): boolean {
-  try {
-    const url = new URL(value);
-    return (
-      ["http:", "https:"].includes(url.protocol) &&
-      (!production || url.protocol === "https:") &&
-      !url.username &&
-      !url.password &&
-      (!production || !isReservedProductionHostname(url.hostname))
-    );
-  } catch {
-    return false;
-  }
-}
-
-function isExactHttpOrigin(value: string, requireHttps = false): boolean {
-  try {
-    const url = new URL(value);
-    return (
-      ["http:", "https:"].includes(url.protocol) &&
-      (!requireHttps || url.protocol === "https:") &&
-      url.origin === value
-    );
-  } catch {
-    return false;
-  }
-}
-
-function inspectOrigins(server: Map<string, string>, diagnostics: Diagnostic[]): void {
-  const production = configuredValue(server, "NODE_ENV") === "production";
-  const corsOrigins = configuredValue(server, "CORS_ORIGINS")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  if (
-    corsOrigins.some(
-      (origin) =>
-        !isExactHttpOrigin(origin, production) ||
-        (production && isReservedProductionHostname(new URL(origin).hostname)),
-    )
-  ) {
-    addDiagnostic(
-      diagnostics,
-      "FAIL",
-      "CORS_ORIGINS",
-      production
-        ? "Production entries must be comma-separated exact HTTPS origins."
-        : "Entries must be comma-separated exact HTTP(S) origins without paths.",
-    );
-  }
-
-  const expoScheme = configuredValue(server, "EXPO_SCHEME").toLowerCase();
-  const validScheme =
-    !expoScheme ||
-    (/^[a-z][a-z0-9+.-]*$/.test(expoScheme) &&
-      !["http", "https", "javascript", "data", "file", "blob"].includes(expoScheme));
-  if (!validScheme) {
-    addDiagnostic(
-      diagnostics,
-      "FAIL",
-      "EXPO_SCHEME",
-      "Must be a valid private application URL scheme.",
-    );
-  }
-
-  const trustedOrigins = configuredValue(server, "TRUSTED_ORIGINS")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  const invalidTrustedOrigin = trustedOrigins.some((origin) => {
-    if (/[*?]/.test(origin)) return true;
-    if (/^https?:\/\//i.test(origin)) {
-      return (
-        !isExactHttpOrigin(origin, production) ||
-        (production && isReservedProductionHostname(new URL(origin).hostname))
-      );
-    }
-    const scheme = origin.match(/^([a-z][a-z0-9+.-]*):\/\/(?:[a-z0-9._~-]+)?$/i)?.[1];
-    return !scheme || !expoScheme || scheme.toLowerCase() !== expoScheme;
-  });
-  if (invalidTrustedOrigin) {
-    addDiagnostic(
-      diagnostics,
-      "FAIL",
-      "TRUSTED_ORIGINS",
-      production
-        ? "Use exact HTTPS origins or the configured private app scheme; wildcards are invalid."
-        : "Use exact HTTP(S) origins or the configured private app scheme; wildcards are invalid.",
-    );
-  }
+class ClientConfigurationError extends Error {
+  override readonly name = "ClientConfigurationError";
 }
 
 async function inspectRepository(root: string, diagnostics: Diagnostic[]): Promise<void> {
@@ -633,144 +515,30 @@ async function inspectEnvironment(root: string, diagnostics: Diagnostic[]): Prom
     );
   }
 
-  const databaseUrl = configuredValue(server, "DATABASE_URL");
-  if (!databaseUrl) {
-    addDiagnostic(diagnostics, "WARN", "DATABASE_URL", "Not configured in the process or .env.");
-  } else if (!isValidUrl(databaseUrl, ["postgres:", "postgresql:"])) {
-    addDiagnostic(diagnostics, "FAIL", "DATABASE_URL", "Must be a valid PostgreSQL URL.");
-  } else {
-    addDiagnostic(diagnostics, "PASS", "DATABASE_URL", "A PostgreSQL URL is configured.");
-  }
-
-  inspectOptionalInteger(server, diagnostics, "PORT", 1, 65_535);
-  inspectOptionalInteger(server, diagnostics, "API_PORT", 1, 65_535);
-  inspectOptionalInteger(server, diagnostics, "API_REQUEST_BODY_LIMIT_BYTES", 1_024, 10_485_760);
-  inspectOptionalInteger(server, diagnostics, "DATABASE_MAX_CONNECTIONS", 1, 100);
-  inspectOptionalInteger(server, diagnostics, "DATABASE_CONNECT_TIMEOUT_SECONDS", 1, 60);
-  inspectOptionalInteger(server, diagnostics, "DATABASE_IDLE_TIMEOUT_SECONDS", 1, 600);
-  inspectOrigins(server, diagnostics);
-
-  const authSecret = configuredValue(server, "BETTER_AUTH_SECRET");
-  const versionedAuthSecrets = configuredValue(server, "BETTER_AUTH_SECRETS");
-  if (!authSecret && !versionedAuthSecrets) {
-    addDiagnostic(
-      diagnostics,
-      "WARN",
-      "BETTER_AUTH_SECRET",
-      "Not configured. Run `bun run setup` for a generated local secret.",
-    );
-  }
-
-  if (authSecret && (authSecret.length < 32 || looksLikePlaceholder(authSecret))) {
-    addDiagnostic(
-      diagnostics,
-      "FAIL",
-      "BETTER_AUTH_SECRET",
-      "Must contain at least 32 high-entropy characters and must not be a placeholder.",
-    );
-  } else if (authSecret) {
-    addDiagnostic(
-      diagnostics,
-      "PASS",
-      "BETTER_AUTH_SECRET",
-      "A non-placeholder secret of sufficient length is configured.",
-    );
-  }
-
-  if (versionedAuthSecrets) {
-    const parsedSecrets = versionedAuthSecrets.split(",").map((entry) => {
-      const separator = entry.indexOf(":");
-      const version = Number(entry.slice(0, separator).trim());
-      const value = separator >= 0 ? entry.slice(separator + 1).trim() : "";
-      return { value, version };
-    });
-    const versions = parsedSecrets.map((entry) => entry.version);
-    const valid =
-      parsedSecrets.length > 0 &&
-      parsedSecrets.every(
-        (entry) =>
-          Number.isSafeInteger(entry.version) &&
-          entry.version > 0 &&
-          entry.value.length >= 32 &&
-          !looksLikePlaceholder(entry.value),
-      ) &&
-      new Set(versions).size === versions.length;
-    addDiagnostic(
-      diagnostics,
-      valid ? "PASS" : "FAIL",
-      "BETTER_AUTH_SECRETS",
-      valid
-        ? "A valid versioned secret set is configured."
-        : "Use unique positive version:value entries whose values contain at least 32 characters.",
-    );
-  }
-
-  const databaseSsl = configuredValue(server, "DATABASE_SSL");
-  const allowedDatabaseSsl = ["disable", "prefer", "require", "verify-full"];
-  if (!databaseSsl) {
-    addDiagnostic(
-      diagnostics,
-      "WARN",
-      "DATABASE_SSL",
-      `Not configured; use one of ${allowedDatabaseSsl.join(", ")}.`,
-    );
-  } else if (!allowedDatabaseSsl.includes(databaseSsl)) {
-    addDiagnostic(
-      diagnostics,
-      "FAIL",
-      "DATABASE_SSL",
-      `Must be one of ${allowedDatabaseSsl.join(", ")}; boolean values are invalid.`,
-    );
-  } else {
-    addDiagnostic(diagnostics, "PASS", "DATABASE_SSL", `${databaseSsl} is valid.`);
-  }
-
-  const authUrl = configuredValue(server, "BETTER_AUTH_URL");
-  if (!authUrl) {
-    addDiagnostic(diagnostics, "WARN", "BETTER_AUTH_URL", "Not configured.");
-  } else if (
-    !isExactHttpOrigin(authUrl, configuredValue(server, "NODE_ENV") === "production") ||
-    (configuredValue(server, "NODE_ENV") === "production" &&
-      isReservedProductionHostname(new URL(authUrl).hostname))
-  ) {
-    addDiagnostic(
-      diagnostics,
-      "FAIL",
-      "BETTER_AUTH_URL",
-      configuredValue(server, "NODE_ENV") === "production"
-        ? "Must be an exact HTTPS origin with a non-reserved hostname in production."
-        : "Must be an exact HTTP(S) origin without a path or trailing slash.",
-    );
-  } else {
-    addDiagnostic(diagnostics, "PASS", "BETTER_AUTH_URL", "An exact HTTP(S) origin is configured.");
-  }
-
-  inspectBoolean(server, diagnostics, "AUTH_EMAIL_PASSWORD_ENABLED");
-  inspectBoolean(server, diagnostics, "AUTH_TRUSTED_PROXY_HEADERS");
+  diagnostics.push(...inspectServerConfiguration(mergedServerEnvironment(server)));
 
   const apiUrl = configuredValue(client, "EXPO_PUBLIC_API_URL");
   const productionApp = configuredValue(client, "APP_VARIANT") === "production";
   if (!apiUrl) {
     addDiagnostic(diagnostics, "WARN", "EXPO_PUBLIC_API_URL", "Not configured.");
-  } else if (
-    !isExactHttpOrigin(apiUrl, productionApp) ||
-    (productionApp && isReservedProductionHostname(new URL(apiUrl).hostname))
-  ) {
-    addDiagnostic(
-      diagnostics,
-      "FAIL",
-      "EXPO_PUBLIC_API_URL",
-      productionApp
-        ? "Production app builds require an exact non-local HTTPS API origin."
-        : "Must be an exact HTTP(S) origin without credentials, a path, query, or fragment.",
-    );
   } else {
-    addDiagnostic(
-      diagnostics,
-      "PASS",
-      "EXPO_PUBLIC_API_URL",
-      "An exact HTTP(S) origin is configured.",
+    // The shared origin check applies production rules when the app variant is production.
+    const appEnvironment = readEnvironment(
+      { NODE_ENV: productionApp ? "production" : "development" },
+      ClientConfigurationError,
     );
+    try {
+      appEnvironment.httpOrigin(apiUrl, "EXPO_PUBLIC_API_URL");
+      addDiagnostic(
+        diagnostics,
+        "PASS",
+        "EXPO_PUBLIC_API_URL",
+        "An exact HTTP(S) origin is configured.",
+      );
+    } catch (error) {
+      if (!(error instanceof ClientConfigurationError)) throw error;
+      addDiagnostic(diagnostics, "FAIL", "EXPO_PUBLIC_API_URL", error.message);
+    }
   }
 
   const clientScheme = configuredValue(client, "EXPO_PUBLIC_APP_SCHEME").toLowerCase();
@@ -858,100 +626,6 @@ async function inspectEnvironment(root: string, diagnostics: Diagnostic[]): Prom
     );
   } else {
     addDiagnostic(diagnostics, "PASS", "Client secrets", "No known server-only keys were found.");
-  }
-
-  const billingState = inspectBoolean(server, diagnostics, "BILLING_ENABLED");
-  if (billingState === "disabled") {
-    addDiagnostic(
-      diagnostics,
-      "PASS",
-      "Polar billing",
-      "Disabled locally; no Polar credentials are required.",
-    );
-  } else if (billingState === "enabled") {
-    const requiredPolar = [
-      "POLAR_ACCESS_TOKEN",
-      "POLAR_WEBHOOK_SECRET",
-      "POLAR_PRODUCTS_JSON",
-      "POLAR_SUCCESS_URL",
-      "POLAR_SERVER",
-    ];
-    const missingPolar = requiredPolar.filter((key) => !configuredValue(server, key));
-    if (missingPolar.length > 0) {
-      addDiagnostic(
-        diagnostics,
-        "FAIL",
-        "Polar billing",
-        `BILLING_ENABLED=true but these variables are missing: ${missingPolar.join(", ")}.`,
-      );
-    } else {
-      const products = jsonValue(configuredValue(server, "POLAR_PRODUCTS_JSON"));
-      const successUrl = configuredValue(server, "POLAR_SUCCESS_URL");
-      const returnUrl = configuredValue(server, "POLAR_RETURN_URL");
-      const polarServer = configuredValue(server, "POLAR_SERVER");
-      const polarTheme = configuredValue(server, "POLAR_THEME");
-      const production = configuredValue(server, "NODE_ENV") === "production";
-      const valid =
-        validPolarProducts(products) &&
-        isValidConfiguredHttpUrl(successUrl, production) &&
-        (!returnUrl || isValidConfiguredHttpUrl(returnUrl, production)) &&
-        ["sandbox", "production"].includes(polarServer) &&
-        (!polarTheme || ["light", "dark"].includes(polarTheme)) &&
-        !looksLikePlaceholder(configuredValue(server, "POLAR_ACCESS_TOKEN")) &&
-        !looksLikePlaceholder(configuredValue(server, "POLAR_WEBHOOK_SECRET"));
-      addDiagnostic(
-        diagnostics,
-        valid ? "PASS" : "FAIL",
-        "Polar billing",
-        valid
-          ? "Required server-side Polar variables are configured."
-          : "Check Polar credentials, product JSON, production HTTPS URLs, server, and theme values.",
-      );
-    }
-  }
-
-  const revenueCatState = inspectBoolean(server, diagnostics, "REVENUECAT_ENABLED");
-  if (revenueCatState === "disabled") {
-    addDiagnostic(
-      diagnostics,
-      "PASS",
-      "RevenueCat webhooks",
-      "Disabled locally; no RevenueCat webhook credentials are required.",
-    );
-  } else if (revenueCatState === "enabled") {
-    const requiredRevenueCat = [
-      "REVENUECAT_WEBHOOK_AUTHORIZATION",
-      "REVENUECAT_ENTITLEMENT_MAP_JSON",
-    ];
-    const missingRevenueCat = requiredRevenueCat.filter((key) => !configuredValue(server, key));
-    if (missingRevenueCat.length > 0) {
-      addDiagnostic(
-        diagnostics,
-        "FAIL",
-        "RevenueCat webhooks",
-        `REVENUECAT_ENABLED=true but these variables are missing: ${missingRevenueCat.join(", ")}.`,
-      );
-    } else {
-      const mapping = jsonValue(configuredValue(server, "REVENUECAT_ENTITLEMENT_MAP_JSON"));
-      const validMapping = validEntitlementMap(mapping);
-      const tolerance = configuredValue(server, "REVENUECAT_SIGNATURE_TOLERANCE_SECONDS") || "300";
-      const parsedTolerance = Number(tolerance);
-      const validTolerance =
-        Number.isSafeInteger(parsedTolerance) && parsedTolerance >= 30 && parsedTolerance <= 3_600;
-      const authorization = configuredValue(server, "REVENUECAT_WEBHOOK_AUTHORIZATION");
-      const signingSecret = configuredValue(server, "REVENUECAT_WEBHOOK_SIGNING_SECRET");
-      const validCredentials =
-        !looksLikePlaceholder(authorization) &&
-        (!signingSecret || !looksLikePlaceholder(signingSecret));
-      addDiagnostic(
-        diagnostics,
-        validMapping && validTolerance && validCredentials ? "PASS" : "FAIL",
-        "RevenueCat webhooks",
-        validMapping && validTolerance && validCredentials
-          ? "Required server-side RevenueCat variables are configured."
-          : "Check webhook credentials, entitlement map JSON, and signature tolerance (30 to 3600 seconds).",
-      );
-    }
   }
 }
 

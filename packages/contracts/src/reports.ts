@@ -25,26 +25,30 @@ export const operatingReportQuerySchema = z
     endLocalDate: calendarLocalDateSchema,
   })
   .strict()
-  .superRefine((value, context) => {
-    // Object refinements run only after both fields parsed as real calendar dates.
-    const start = localDateEpoch(value.startLocalDate);
-    const end = localDateEpoch(value.endLocalDate);
-    if (end < start) {
-      context.addIssue({
-        code: "custom",
-        message: "The report start date must not follow its end date",
-        path: ["endLocalDate"],
-      });
-      return;
-    }
-    if ((end - start) / millisecondsPerDay + 1 > maximumInclusiveDays) {
-      context.addIssue({
-        code: "custom",
-        message: `The report range cannot exceed ${maximumInclusiveDays} inclusive days`,
-        path: ["endLocalDate"],
-      });
-    }
-  });
+  // Calendar-date issues do not abort the object, so the `when` gate keeps an invalid date such as
+  // 2026-02-30 from rolling over in Date.parse and adding a spurious range issue.
+  .superRefine(
+    (value, context) => {
+      const start = localDateEpoch(value.startLocalDate);
+      const end = localDateEpoch(value.endLocalDate);
+      if (end < start) {
+        context.addIssue({
+          code: "custom",
+          message: "The report start date must not follow its end date",
+          path: ["endLocalDate"],
+        });
+        return;
+      }
+      if ((end - start) / millisecondsPerDay + 1 > maximumInclusiveDays) {
+        context.addIssue({
+          code: "custom",
+          message: `The report range cannot exceed ${maximumInclusiveDays} inclusive days`,
+          path: ["endLocalDate"],
+        });
+      }
+    },
+    { when: (payload) => payload.issues.length === 0 },
+  );
 
 const reportPeriodSchema = z
   .object({

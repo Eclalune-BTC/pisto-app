@@ -115,7 +115,11 @@ RevenueCat webhook), and `sessionPolicyPaths()` exempts exactly their mounted pa
 groups cannot silently skip the policy. Session-policy routes must be static paths; a parameterized
 one fails at startup because `onRequest` runs before routing. Session-policy groups use
 `sessionContext()`, a scoped `derive` that requires a session before contract validation and
-never charges the business budget.
+never charges the business budget. Elysia runs `parse` before `derive`, and `parse: "none"` also
+skips body validation, so the billing checkout and portal routes keep the already-buffered body as
+text in `parse` and decode it in a route `transform` after the session and billing-scope derives.
+An anonymous caller with malformed JSON therefore receives 401, an out-of-scope member 403, and only
+then does malformed JSON return 400 `BAD_REQUEST` and an invalid contract 400 `VALIDATION_ERROR`.
 
 `request-policy.ts` owns the response headers and byte limit; these are not framework defaults.
 Preflights bypass body and session gates. Better Auth and RevenueCat routes use `parse: "none"`:
@@ -197,12 +201,16 @@ messages are not copied into logs or responses.
 Routes declare `body` and `query` schemas through the Standard Schema `contract()` adapter. It keeps
 the existing Zod messages, flattened details and HTTP 400 responses instead of exposing Elysia's
 submitted-value diagnostics. `protectedRoutes()` supplies the request actor and the `record` macro.
-List queries use `queryContract(schema, message)`, which reads only the keys of the Zod object
-contract and ignores every other parameter, including a client-supplied tenant. A repeated contract
-key returns 400 `VALIDATION_ERROR` rather than choosing the first or last occurrence, because a proxy
+List queries use `queryContract(schema, message)`, which requires a strict Zod object contract at
+route declaration and passes every query parameter to it, so an unknown key such as a typo, a
+tracking tag or a client-supplied tenant returns 400 `VALIDATION_ERROR` instead of being dropped.
+`__proto__`, which Zod's strict check deliberately skips, is rejected explicitly. A repeated key
+returns 400 `VALIDATION_ERROR` rather than choosing the first or last occurrence, because a proxy
 and this API could otherwise act on different values. Values remain scalar strings.
 The `record` macro rejects malformed identifiers as 404 before parsing a command body (in `parse`)
-and on GET/HEAD (in `transform`, because Elysia does not run parse hooks for those methods).
+and on GET/HEAD (in `transform`, because Elysia does not run parse hooks for those methods). A
+`record` field that is not a route parameter is a programming error: `transform` throws and the
+request fails as 500 instead of looking like a missing record.
 Commands without record parameters explicitly select JSON parsing so absent bodies still produce
 BAD_REQUEST.
 

@@ -185,7 +185,7 @@ describe("catalog HTTP routes", () => {
     }
   });
 
-  test("reads only contract keys, ignoring empty-name and unrelated parameters", async () => {
+  test("rejects empty-name and unrelated query parameters", async () => {
     let received: unknown;
     const app = createApp(
       createRepository({
@@ -196,9 +196,13 @@ describe("catalog HTTP routes", () => {
       }),
     );
 
-    const response = await app.request("/v1/catalog/products?=oops&limit=5&utm_source=x");
-
-    expect(response.status).toBe(200);
+    for (const search of ["=oops&limit=5", "limit=5&utm_source=x"]) {
+      const response = await app.request(`/v1/catalog/products?${search}`);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({ error: { code: "VALIDATION_ERROR" } });
+    }
+    expect(received).toBeUndefined();
+    expect((await app.request("/v1/catalog/products?limit=5")).status).toBe(200);
     expect(received).toEqual({ limit: 5, status: "active" });
   });
 

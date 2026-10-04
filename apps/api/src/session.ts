@@ -39,7 +39,8 @@ export function toProductActor(authSession: AuthSession): ProductActor {
 
 /**
  * Session-only routes (account and billing) bypass the business request budget. `derive` runs
- * before schema validation, so an anonymous caller never learns which bodies would be accepted.
+ * before schema validation but after `parse`, so a route with a body must not parse it before this
+ * check (see `routes/billing.ts`); an anonymous caller then never learns which bodies are accepted.
  */
 export function sessionContext(auth: Auth) {
   return new Elysia().derive({ as: "scoped" }, async ({ request }) => ({

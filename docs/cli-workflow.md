@@ -71,21 +71,19 @@ Doctor is read-only. It checks:
 - static parsing of `compose.yaml` through `docker compose config --quiet`;
 - required workspace configuration and the PostgreSQL 18 image/volume target;
 - presence of local environment files;
-- PostgreSQL and HTTP URL syntax;
-- API/database numeric ranges, the exact `DATABASE_SSL` enum, and boolean switches that are exactly `true` or `false`;
-- Better Auth secret length, exact origins, production HTTPS, reserved/example hostnames, and obvious
-  placeholders without printing the value;
+- the merged server environment through the API's own startup parsers: `parseApiConfig`,
+  `parseDatabaseConfig`, `parseAuthConfig` and `parseBillingConfig`, so `NODE_ENV`, booleans,
+  integer ranges, origins, secrets and both billing integrations are judged exactly as at startup;
+- obvious placeholders in accepted Better Auth, Polar and RevenueCat secrets, without printing them;
 - known server-only keys accidentally placed in the Expo local environment;
-- Polar variables and basic JSON/URL configuration only when `BILLING_ENABLED` is enabled;
-- RevenueCat webhook variables and entitlement-map configuration only when `REVENUECAT_ENABLED` is
-  enabled;
 - app scheme/identifier syntax and, for `APP_VARIANT=production`, a non-local HTTPS API origin and
   non-example application identifiers.
 
-Doctor is not a substitute for the API's startup parsers. Its current independent validators do not
-check `NODE_ENV`, `PRODUCT_WRITES_ENABLED` or the product read/write budgets, and its Polar product-ID
-pattern is less strict than the runtime UUID schema. Consolidating those validators is pending CLI
-work; a passing doctor result alone does not prove that arbitrary configuration will boot.
+Each parser that rejects the configuration is one `FAIL` whose detail is the parser's message. The
+messages name variables and constraints and never echo a secret; a `POLAR_PRODUCTS_JSON` issue can
+name a duplicated public product ID or slug. A missing `.env` therefore fails
+the server parsers as well as warning about setup; the API would refuse to start the same way.
+Doctor does not connect to PostgreSQL, Better Auth or a billing provider.
 
 Statuses:
 

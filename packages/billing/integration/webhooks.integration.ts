@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import {
   billingSubscription,
   billingWebhookEvent,
@@ -205,6 +205,16 @@ function polarFixture(db: Database, userId: string) {
   return { project, event, subscriptionId, premiumId, basicId };
 }
 
+async function polarWarnings(run: () => Promise<void>): Promise<unknown[]> {
+  const warn = spyOn(console, "warn").mockImplementation(() => undefined);
+  try {
+    await run();
+    return warn.mock.calls.map(([line]) => JSON.parse(String(line)) as unknown);
+  } finally {
+    warn.mockRestore();
+  }
+}
+
 describe("Polar PostgreSQL webhook projection", () => {
   test("distinguishes scheduled cancellation from revoked provider state in every event", () =>
     withFixture(async (db, userId) => {
@@ -261,11 +271,23 @@ describe("Polar PostgreSQL webhook projection", () => {
 
   test("retires mapped access when a subscription switches to an unmapped product", () =>
     withFixture(async (db, userId) => {
-      const { project, event } = polarFixture(db, userId);
-      await project(event("subscription.active", "2026-09-01T00:00:00Z"));
-      expect(
-        await project(event("subscription.updated", "2026-09-02T00:00:00Z", crypto.randomUUID())),
-      ).toEqual({ duplicate: false, projected: false });
+      const { project, event, subscriptionId } = polarFixture(db, userId);
+      const warnings = await polarWarnings(async () => {
+        await project(event("subscription.active", "2026-09-01T00:00:00Z"));
+        expect(
+          await project(event("subscription.updated", "2026-09-02T00:00:00Z", crypto.randomUUID())),
+        ).toEqual({ duplicate: false, projected: false });
+      });
+      expect(warnings).toEqual([
+        {
+          level: "warn",
+          message: "Polar subscription event acknowledged without an entitlement grant",
+          provider: "polar",
+          eventType: "subscription.updated",
+          subscriptionId,
+          reason: "unmapped_product",
+        },
+      ]);
       const grants = await db.select().from(entitlement).where(eq(entitlement.userId, userId));
       expect(grants[0]?.status).toBe("inactive");
     }));
@@ -278,7 +300,16 @@ describe("Polar PostgreSQL webhook projection", () => {
         ...payload,
         data: { ...payload.data, metadata: { referenceId: `missing-${crypto.randomUUID()}` } },
       };
-      expect(await project(organizationPayload)).toEqual({ duplicate: false, projected: false });
+      const warnings = await polarWarnings(async () => {
+        expect(await project(organizationPayload)).toEqual({
+          duplicate: false,
+          projected: false,
+        });
+      });
+      expect(warnings).toMatchObject([
+        { reason: "unknown_organization", eventType: "subscription.active" },
+      ]);
+      expect(JSON.stringify(warnings)).not.toContain(userId);
       expect(
         await db.select().from(entitlement).where(eq(entitlement.userId, userId)),
       ).toHaveLength(0);
@@ -287,6 +318,26 @@ describe("Polar PostgreSQL webhook projection", () => {
         .from(billingSubscription)
         .where(eq(billingSubscription.providerSubscriptionId, payload.data.id));
       expect(subscription).toMatchObject({ userId, organizationId: null });
+    }));
+
+  test("records an unknown purchaser without a grant and reports it", () =>
+    withFixture(async (db, userId) => {
+      const { project, event, subscriptionId } = polarFixture(db, userId);
+      const payload = event("subscription.active", "2026-09-01T00:00:00Z");
+      const unknownPurchaser = {
+        ...payload,
+        data: {
+          ...payload.data,
+          customer: { ...payload.data.customer, external_id: `missing-${crypto.randomUUID()}` },
+        },
+      };
+      const warnings = await polarWarnings(async () => {
+        expect(await project(unknownPurchaser)).toEqual({ duplicate: false, projected: false });
+      });
+      expect(warnings).toMatchObject([{ reason: "unknown_user", subscriptionId }]);
+      expect(
+        await db.select().from(entitlement).where(eq(entitlement.userId, userId)),
+      ).toHaveLength(0);
     }));
 });
 

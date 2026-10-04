@@ -7,8 +7,10 @@ import {
   createFileExclusive,
   generateBetterAuthSecret,
   injectBetterAuthSecret,
+  inspectServerConfiguration,
   isVersionAtLeast,
   main,
+  mergedServerEnvironment,
   parseEnv,
   runInit,
 } from "./pisto";
@@ -169,5 +171,131 @@ describe("Pisto CLI", () => {
     expect(values.get("API_PORT")).toBe("3015");
     expect(values.get("LABEL")).toBe("a#b");
     expect(values.get("MULTILINE")).toBe("first\nsecond");
+  });
+});
+
+describe("doctor server configuration", () => {
+  const secret = "a".repeat(20) + "B".repeat(20);
+  const exampleEnvironment = async () =>
+    Object.fromEntries(
+      parseEnv(
+        injectBetterAuthSecret(
+          await readFile(join(import.meta.dir, "..", ".env.example"), "utf8"),
+          secret,
+        ),
+      ),
+    );
+  const polarEnvironment = {
+    BILLING_ENABLED: "true",
+    POLAR_ACCESS_TOKEN: "polar_oat_local_test_token",
+    POLAR_WEBHOOK_SECRET: "polar_whs_local_test_secret",
+    POLAR_SERVER: "sandbox",
+    POLAR_PRODUCTS_JSON: JSON.stringify([
+      { productId: "4a1c40a8-0b0f-4d47-a8a6-1f2c5e0d9b11", slug: "pro", entitlementKey: "pro" },
+    ]),
+  };
+  const failures = (env: Record<string, string | undefined>) =>
+    inspectServerConfiguration(env)
+      .filter((diagnostic) => diagnostic.level === "FAIL")
+      .map(({ name, detail }) => `${name}: ${detail}`);
+
+  test("accepts the documented example once its secret is generated", async () => {
+    const env = await exampleEnvironment();
+    expect(failures(env)).toEqual([]);
+    expect(failures({ ...env, ...polarEnvironment })).toEqual([]);
+  });
+
+  test.each([
+    "PRODUCT_WRITES_ENABLED",
+    "BILLING_ENABLED",
+    "REVENUECAT_ENABLED",
+    "AUTH_TRUSTED_PROXY_HEADERS",
+  ])("requires %s to be exactly true or false", async (variable) => {
+    const env = await exampleEnvironment();
+    for (const value of [" true", "TRUE", "1", ""]) {
+      expect(failures({ ...env, [variable]: value })).toContainEqual(
+        expect.stringContaining(`${variable} must be true or false`),
+      );
+    }
+  });
+
+  test("requires an explicit Polar server only while billing is enabled", async () => {
+    const env = { ...(await exampleEnvironment()), ...polarEnvironment };
+    for (const value of [undefined, "staging", " production "]) {
+      const failed = failures({ ...env, POLAR_SERVER: value });
+      expect(failed).toEqual(
+        value === " production "
+          ? []
+          : ["Billing configuration: POLAR_SERVER must be one of sandbox, production"],
+      );
+    }
+    expect(failures({ ...env, BILLING_ENABLED: "false", POLAR_SERVER: "staging" })).toEqual([]);
+  });
+
+  test.each([
+    ["API_PORT", "0x10", "API configuration: API_PORT must be an integer from 1 to 65535"],
+    ["API_PORT", "1e3", "API configuration: API_PORT must be an integer from 1 to 65535"],
+    [
+      "PRODUCT_READ_LIMIT_PER_MINUTE",
+      "0",
+      "API configuration: PRODUCT_READ_LIMIT_PER_MINUTE must be an integer from 1 to 10000",
+    ],
+    [
+      "PRODUCT_WRITE_LIMIT_PER_MINUTE",
+      "1001",
+      "API configuration: PRODUCT_WRITE_LIMIT_PER_MINUTE must be an integer from 1 to 1000",
+    ],
+    [
+      "DATABASE_MAX_CONNECTIONS",
+      "101",
+      "Database configuration: DATABASE_MAX_CONNECTIONS must be an integer from 1 to 100",
+    ],
+    ["NODE_ENV", "prod", "API configuration: NODE_ENV must be development, test, or production"],
+  ])("reports %s=%s through the runtime parser", async (variable, value, expected) => {
+    expect(failures({ ...(await exampleEnvironment()), [variable]: value })).toContainEqual(
+      expected,
+    );
+  });
+
+  test("reports RevenueCat environment and credential problems without values", async () => {
+    const env = {
+      ...(await exampleEnvironment()),
+      REVENUECAT_ENABLED: "true",
+      REVENUECAT_WEBHOOK_AUTHORIZATION: "Bearer change-me",
+      REVENUECAT_ENTITLEMENT_MAP_JSON: JSON.stringify({ pro: "pro" }),
+    };
+    expect(failures(env)).toEqual([
+      "RevenueCat credentials: Replace placeholder values in: REVENUECAT_WEBHOOK_AUTHORIZATION.",
+    ]);
+    expect(failures({ ...env, REVENUECAT_ALLOWED_ENVIRONMENT: "sandbox" })).toEqual([
+      "Billing configuration: REVENUECAT_ALLOWED_ENVIRONMENT must be one of PRODUCTION, SANDBOX",
+    ]);
+  });
+
+  test("never prints a rejected secret", async () => {
+    const shortSecret = "short-but-private-value";
+    const output = JSON.stringify(
+      inspectServerConfiguration({
+        ...(await exampleEnvironment()),
+        BETTER_AUTH_SECRET: shortSecret,
+        ...polarEnvironment,
+        POLAR_ACCESS_TOKEN: "<replace-me-private>",
+      }),
+    );
+    expect(output).toContain("BETTER_AUTH_SECRET must contain at least 32 characters");
+    expect(output).not.toContain(shortSecret);
+    expect(output).toContain("Replace placeholder values in: POLAR_ACCESS_TOKEN.");
+    expect(output).not.toContain("replace-me-private");
+  });
+
+  test("lets process variables override file values", () => {
+    const file = new Map([
+      ["API_PORT", "3001"],
+      ["BILLING_ENABLED", "false"],
+    ]);
+    expect(mergedServerEnvironment(file, { API_PORT: "4000" })).toEqual({
+      API_PORT: "4000",
+      BILLING_ENABLED: "false",
+    });
   });
 });

@@ -74,15 +74,31 @@ export async function callAuthEndpoint(input: {
   }
 }
 
-/** The portal accepts the documented empty JSON object and also an empty body. */
-async function parseOptionalJsonBody({ request }: { request: Request }): Promise<unknown> {
-  const rawBody = await request.text();
-  if (!rawBody.trim()) return {};
-  try {
-    return JSON.parse(rawBody) as unknown;
-  } catch {
-    throw new ApiError(400, "BAD_REQUEST", "Request body must be valid JSON");
-  }
+/**
+ * Elysia runs `parse` before `derive`, and `parse: "none"` also disables body validation. Session-only
+ * POSTs therefore keep the already-buffered body as text in `parse` and decode it in a route
+ * `transform`, which runs after the inherited session and scope derives and before validation. An
+ * anonymous or out-of-scope caller is rejected before its JSON is interpreted. `emptyBody` is the
+ * value an empty request body stands for; without it an empty body is invalid JSON.
+ */
+function jsonBodyAfterSession(emptyBody?: unknown) {
+  return {
+    parse: ({ request }: { request: Request }) => request.text(),
+    transform(context: { body: unknown }) {
+      if (typeof context.body !== "string") {
+        throw new Error("Billing route body was not captured as text");
+      }
+      if (emptyBody !== undefined && !context.body.trim()) {
+        context.body = emptyBody;
+        return;
+      }
+      try {
+        context.body = JSON.parse(context.body) as unknown;
+      } catch {
+        throw new ApiError(400, "BAD_REQUEST", "Request body must be valid JSON");
+      }
+    },
+  };
 }
 
 /** Billing and store webhooks own their session policy and bypass the business request budget. */
@@ -137,7 +153,8 @@ export function billingRoutes(input: {
         return parseProviderRedirect(payload);
       },
       {
-        parse: parseOptionalJsonBody,
+        // The portal accepts the documented empty JSON object and also an empty body.
+        ...jsonBodyAfterSession({}),
         body: contract(billingPortalRequestSchema, "Portal request is invalid"),
       },
     )
@@ -192,7 +209,7 @@ export function billingRoutes(input: {
         return parseProviderRedirect(payload);
       },
       {
-        parse: "json",
+        ...jsonBodyAfterSession(),
         body: contract(billingCheckoutRequestSchema, "Checkout request is invalid"),
       },
     );

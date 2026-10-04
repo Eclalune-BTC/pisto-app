@@ -237,6 +237,11 @@ accepted based only on Expo Go or a web preview.
   `external_id` user projects no personal grant. A `metadata.referenceId` that names no organization
   projects no grant at all; it never falls back to a personal grant for the purchaser. The next
   subscription event carries complete state and re-projects once the subject exists.
+  Because the acknowledgement hides the miss from Polar, each committed subscription event that
+  yields no grant emits one structured `warn` line after the transaction: event type, Polar
+  subscription ID and `reason` (`unknown_user`, `unknown_organization` or `unmapped_product`), with
+  no email, customer metadata or credential. A stale event that the newer stored state already
+  superseded is not reported.
 - Signature verification and event-type recognition do not validate required projection fields in
   this SDK. Keep the application schema. The adapter acknowledges signed unknown event types without
   calling the projector or recording a receipt; known malformed subscription payloads fail and can retry.

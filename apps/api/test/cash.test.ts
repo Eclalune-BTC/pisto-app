@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
 import type { CashRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
+import { z } from "zod";
 import { cashRoutes } from "../src/routes/cash.ts";
+import { protectedRoutes, queryContract } from "../src/routes/protected.ts";
 import { testAccess, testClient, testErrorBoundary } from "./http-client.ts";
 
 const accountId = "71402e0c-b17d-4d8c-83ae-8d163d10d51d";
@@ -43,7 +45,7 @@ function repository(overrides: Partial<CashRepository>): CashRepository {
 }
 
 describe("cash and expense API routes", () => {
-  test("rejects a repeated contract key and ignores parameters outside the contract", async () => {
+  test("rejects a repeated key and any parameter outside the contract", async () => {
     let received: unknown;
     const routes = testRoutes({
       cash: repository({
@@ -53,19 +55,27 @@ describe("cash and expense API routes", () => {
         },
       }),
     });
-    for (const search of ["limit=5&limit=99", "limit=5&limit=5"]) {
+    for (const search of ["limit=5&limit=99", "limit=5&limit=5", "businessId=a&businessId=b"]) {
       const rejected = await routes.request(`/cash/accounts?${search}`);
       expect(rejected.status).toBe(400);
+      const key = search.split("=", 1)[0] as string;
       expect(await rejected.json()).toMatchObject({
         error: {
           code: "VALIDATION_ERROR",
           message: "Cash account list query is invalid",
-          details: { fieldErrors: { limit: ["Provide this query parameter only once"] } },
+          details: { fieldErrors: { [key]: ["Provide this query parameter only once"] } },
         },
       });
     }
+    for (const search of ["limit=5&businessId=other", "limit=5&=x", "__proto__=x", "Limit=5"]) {
+      const rejected = await routes.request(`/cash/accounts?${search}`);
+      expect(rejected.status).toBe(400);
+      expect(await rejected.json()).toMatchObject({
+        error: { code: "VALIDATION_ERROR", message: "Cash account list query is invalid" },
+      });
+    }
     expect(received).toBeUndefined();
-    const accepted = await routes.request("/cash/accounts?limit=5&=ignored&businessId=other");
+    const accepted = await routes.request("/cash/accounts?limit=5");
     expect(accepted.status).toBe(200);
     expect(received).toEqual({ limit: 5, status: "active" });
   });
@@ -190,5 +200,42 @@ describe("cash and expense API routes", () => {
     expect(await summary.json()).toEqual({
       data: { summary: { periodStartLocal: "2026-08-01" } },
     });
+  });
+});
+
+describe("protected route declarations", () => {
+  test("refuses a query contract that would accept unknown keys", () => {
+    expect(() => queryContract(z.object({ limit: z.string() }), "Query is invalid")).toThrow(
+      "Query is invalid: the query contract must be a strict object",
+    );
+    expect(() =>
+      queryContract(z.object({ limit: z.string() }).strict(), "Query is invalid"),
+    ).not.toThrow();
+  });
+
+  test("fails a record field that is not a route parameter instead of hiding it as 404", async () => {
+    const auth = {
+      api: {
+        getSession: async () => ({
+          user: { id: "user_test" },
+          session: { id: "session_test", activeOrganizationId: "business_test" },
+        }),
+      },
+    } as unknown as Auth;
+    const app = testClient(
+      testErrorBoundary().use(
+        protectedRoutes(testAccess(auth))
+          .get("/things/:thingId", () => ({ data: null }), { record: { itemId: "Not found" } })
+          .post("/things/:thingId", () => ({ data: null }), { record: { itemId: "Not found" } }),
+      ),
+    );
+    const get = await app.request(`/v1/things/${accountId}`);
+    expect(get.status).toBe(500);
+    const post = await app.request(`/v1/things/${accountId}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    expect(post.status).toBe(500);
   });
 });

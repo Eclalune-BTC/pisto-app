@@ -21,6 +21,14 @@ describe("operating report contracts", () => {
     expect(operatingReportQuerySchema.safeParse(query).success).toBe(false);
   });
 
+  test("reports only the invalid date, not a range derived from it", () => {
+    const parsed = operatingReportQuerySchema.safeParse({
+      startLocalDate: "2026-02-30",
+      endLocalDate: "2026-01-01",
+    });
+    expect(parsed.error?.issues.map((issue) => issue.path)).toEqual([["startLocalDate"]]);
+  });
+
   test("keeps period flows separate from current positions", () => {
     const parsed = operatingReportResponseSchema.parse({
       data: {
