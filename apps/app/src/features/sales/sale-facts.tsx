@@ -24,7 +24,8 @@ export function SaleStatusBadge({ status }: { status: Sale["status"] }) {
   const { t } = useTranslation();
   return (
     <Badge
-      className={status === "voided" ? "bg-foreground/15" : undefined}
+      // Secondary alone sits too close to the row surface; this keeps 1.5:1 in both themes.
+      className={status === "voided" ? "bg-foreground/20" : undefined}
       variant={status === "voided" ? "secondary" : "outline"}
     >
       <Text>{status === "voided" ? t("sales.voided") : t("sales.posted")}</Text>

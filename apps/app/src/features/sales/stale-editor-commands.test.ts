@@ -462,6 +462,20 @@ describe("correction editor", () => {
     expect(draftFields()?.props.values).toMatchObject({ amount: "", date: "2026-09-10" });
   });
 
+  test("leaves the moment empty when the business now uses another time zone", () => {
+    const businesses = fixture.queries.businesses;
+    if (!businesses) throw new Error("Missing business fixture");
+    (businesses.data as { business: { timeZone: string } }).business.timeZone =
+      "America/El_Salvador";
+    chooseMode("replacement");
+    expect(draftFields()?.props.values).toEqual({
+      amount: "5.00",
+      date: "",
+      time: "",
+      description: "",
+    });
+  });
+
   test("puts focus on Editar, never on the irreversible confirmation", () => {
     const reason = elements<ComponentProps<typeof Field>>(render(SaleCorrectionScreen), Field).find(
       ({ props }) => props.label === "sales.correction.reason",

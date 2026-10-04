@@ -262,15 +262,17 @@ export default function SaleCorrectionScreen() {
   const chooseMode = (next: CorrectionMode) => {
     setMode(next);
     // Most replacements fix one value, so an untouched replacement starts from the original
-    // sale. Its amount is only reused when the business still records in the same currency.
+    // sale. The replacement is posted with the business's current currency and time zone, so
+    // the amount and the moment are only reused when those settings still match the sale.
     if (next !== "replacement" || Object.values(draft).some(Boolean)) return;
     const sameMoney =
       sale.currency === business.currency &&
       sale.currencyMinorUnitDigits === business.currencyMinorUnitDigits;
+    const sameZone = sale.timeZone === business.timeZone;
     setDraft({
       amount: sameMoney ? toDecimalString(sale.grossMinorUnits, sale.currencyMinorUnitDigits) : "",
-      date: sale.occurredLocalDate,
-      time: sale.occurredLocalTime,
+      date: sameZone ? sale.occurredLocalDate : "",
+      time: sameZone ? sale.occurredLocalTime : "",
       description: sale.description ?? "",
     });
   };
