@@ -1,18 +1,11 @@
-import { type ComponentProps, createElement } from "react";
+import { type ComponentProps, createElement, createRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const controls = vi.hoisted(() => ({
-  groups: [] as {
-    value: string | undefined;
-    disabled?: boolean;
-    onValueChange: (value: string) => void;
-  }[],
-  switches: [] as {
-    checked: boolean;
-    disabled?: boolean;
-    onCheckedChange: (value: boolean) => void;
-  }[],
+  groups: [] as { value: string | undefined; onValueChange: (value: string) => void }[],
+  filters: [] as { value: string; onChange: (value: string) => void }[],
+  switches: [] as { checked: boolean; onCheckedChange: (value: boolean) => void }[],
 }));
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("uniwind", () => ({
@@ -33,6 +26,16 @@ vi.mock("@/components/ui/radio-group", async (importOriginal) => {
     },
   };
 });
+vi.mock("@/components/ui/filter-bar", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/ui/filter-bar")>();
+  return {
+    ...actual,
+    FilterBar: (props: ComponentProps<typeof actual.FilterBar>) => {
+      controls.filters.push(props);
+      return createElement(actual.FilterBar, props);
+    },
+  };
+});
 vi.mock("@/components/ui/switch", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/components/ui/switch")>();
   return {
@@ -44,38 +47,29 @@ vi.mock("@/components/ui/switch", async (importOriginal) => {
   };
 });
 
-import { MovementEditor } from "@/features/inventory/movement-editor";
+import { MovementFormScreen } from "@/features/inventory/movement-form-screen";
 import { i18n } from "@/i18n/config";
-import { buildCatalogCopy } from "./copy";
-import { ProductEditor } from "./product-editor";
+import { ProductFormScreen } from "./product-form-screen";
 
-const copy = buildCatalogCopy(i18n.t);
 const noop = () => undefined;
 const common = {
   errors: {},
-  isStale: false,
   isRefreshing: false,
-  onRetryRead: noop,
-  mutationState: "idle" as const,
-  onBack: noop,
+  isStale: false,
+  onCancel: noop,
   onConfirm: noop,
   onEditReview: noop,
-  onResolveUncertain: noop,
+  onRetryRead: noop,
   onReview: noop,
+  phase: "idle" as const,
   reviewItems: null,
 };
-const product: ComponentProps<typeof ProductEditor> = {
+const product: ComponentProps<typeof ProductFormScreen> = {
   ...common,
-  copy: copy.productEditor,
   categories: [],
   categoriesError: false,
-  categoriesHasNextPage: false,
-  categoriesLoadingMore: false,
+  categoriesLoading: false,
   currency: "USD",
-  mode: "create",
-  onLoadMoreCategories: noop,
-  onRetryCategories: noop,
-  onDraftChange: noop,
   draft: {
     categoryId: null,
     lowStockThreshold: "",
@@ -86,13 +80,19 @@ const product: ComponentProps<typeof ProductEditor> = {
     tracked: false,
     unitKind: "kilogram",
   },
-};
-const movement: ComponentProps<typeof MovementEditor> = {
-  ...common,
-  copy: copy.movementEditor,
+  fieldRefs: {
+    lowStockThreshold: createRef(),
+    name: createRef(),
+    sellingPrice: createRef(),
+    sku: createRef(),
+  },
+  hasHistoryLock: false,
+  mode: "create",
   onDraftChange: noop,
-  productName: "Coffee",
-  quantityPrecision: 0,
+  onRetryCategories: noop,
+};
+const movement: ComponentProps<typeof MovementFormScreen> = {
+  ...common,
   draft: {
     action: "receive",
     occurredLocalDate: "2026-09-27",
@@ -100,10 +100,21 @@ const movement: ComponentProps<typeof MovementEditor> = {
     quantity: "3",
     reason: "Delivery",
   },
+  fieldRefs: {
+    occurredLocalDate: createRef(),
+    occurredLocalTime: createRef(),
+    quantity: createRef(),
+    reason: createRef(),
+  },
+  onDraftChange: noop,
+  onHand: "12 unidades",
+  productName: "Coffee",
+  quantityPrecision: 0,
 };
 
 beforeEach(() => {
   controls.groups.length = 0;
+  controls.filters.length = 0;
   controls.switches.length = 0;
 });
 
@@ -111,61 +122,58 @@ function radios(markup: string) {
   return markup.match(/<[^>]+\brole="radio"[^>]*>/g) ?? [];
 }
 
-describe("catalog and inventory RNR controls", () => {
+describe("catalog and inventory form controls", () => {
   test.each([0, 1, 2, 3] as const)(
-    "retains precision %s, including zero, and the selected unit",
+    "keeps precision %s, including zero, and the selected unit",
     (quantityPrecision) => {
       const onDraftChange = vi.fn();
       const markup = renderToStaticMarkup(
-        createElement(ProductEditor, {
+        createElement(ProductFormScreen, {
           ...product,
           onDraftChange,
           draft: { ...product.draft, quantityPrecision },
         }),
       );
-      expect(markup).toContain(copy.productEditor.unitLabels.kilogram);
+      expect(markup).toContain(i18n.t("catalog.unitLabels.kilogram"));
       expect(radios(markup)).toHaveLength(4);
       radios(markup).forEach((radio, index) => {
         expect(radio).toContain(`aria-checked="${index === quantityPrecision}"`);
       });
-      controls.groups[0]?.onValueChange("0");
+      const precision = controls.filters[0];
+      precision?.onChange("0");
       expect(onDraftChange).toHaveBeenCalledExactlyOnceWith({
         ...product.draft,
         quantityPrecision: 0,
       });
-      expect(() => controls.groups[0]?.onValueChange("")).toThrow("unavailable");
+      expect(() => precision?.onChange("4")).toThrow("unavailable");
       expect(onDraftChange).toHaveBeenCalledTimes(1);
     },
   );
 
-  test.each([false, true])(
-    "renders tracking checked=%s and submits the supplied boolean",
-    (tracked) => {
-      const onDraftChange = vi.fn();
-      const markup = renderToStaticMarkup(
-        createElement(ProductEditor, {
-          ...product,
-          onDraftChange,
-          draft: { ...product.draft, tracked },
-        }),
-      );
-      const toggle = markup.match(/<[^>]+\brole="switch"[^>]*>/)?.[0];
-      expect(toggle).toContain(`aria-checked="${tracked}"`);
-      expect(toggle).toContain(`aria-label="${copy.productEditor.tracked}"`);
-      controls.switches[0]?.onCheckedChange(!tracked);
-      expect(onDraftChange).toHaveBeenCalledExactlyOnceWith({
-        ...product.draft,
-        tracked: !tracked,
-      });
-    },
-  );
+  test.each([false, true])("renders tracking checked=%s and sends the opposite", (tracked) => {
+    const onDraftChange = vi.fn();
+    const markup = renderToStaticMarkup(
+      createElement(ProductFormScreen, {
+        ...product,
+        onDraftChange,
+        draft: { ...product.draft, tracked },
+      }),
+    );
+    const toggle = markup.match(/<[^>]+\brole="switch"[^>]*>/)?.[0];
+    expect(toggle).toContain(`aria-checked="${tracked}"`);
+    expect(toggle).toContain(`aria-label="${i18n.t("catalog.form.tracked")}"`);
+    controls.switches[0]?.onCheckedChange(!tracked);
+    expect(onDraftChange).toHaveBeenCalledExactlyOnceWith({ ...product.draft, tracked: !tracked });
+    // The minimum only exists for tracked stock.
+    expect(markup.includes(i18n.t("catalog.form.threshold"))).toBe(tracked);
+  });
 
   test.each(["receive", "adjust_in", "adjust_out"] as const)(
-    "retains inventory action %s and its full label",
+    "keeps inventory action %s with its full label",
     (action) => {
       const onDraftChange = vi.fn();
       const markup = renderToStaticMarkup(
-        createElement(MovementEditor, {
+        createElement(MovementFormScreen, {
           ...movement,
           onDraftChange,
           draft: { ...movement.draft, action },
@@ -174,50 +182,41 @@ describe("catalog and inventory RNR controls", () => {
       expect(radios(markup)).toHaveLength(3);
       const selected = radios(markup).filter((radio) => radio.includes('aria-checked="true"'));
       expect(selected).toHaveLength(1);
-      expect(selected[0]).toContain(`aria-label="${copy.movementEditor.actions[action]}"`);
+      expect(selected[0]).toContain(
+        `aria-label="${i18n.t(`inventory.movementActions.${action}`)}"`,
+      );
       controls.groups[0]?.onValueChange("adjust_out");
       expect(onDraftChange).toHaveBeenCalledExactlyOnceWith({
         ...movement.draft,
         action: "adjust_out",
       });
-      expect(() => controls.groups[0]?.onValueChange("")).toThrow("unavailable");
+      expect(() => controls.groups[0]?.onValueChange("reverse")).toThrow("unavailable");
       expect(onDraftChange).toHaveBeenCalledTimes(1);
     },
   );
 
-  test.each(["pending", "uncertain"] as const)(
-    "keeps controls disabled during %s",
-    (mutationState) => {
-      const onDraftChange = vi.fn();
-      const productMarkup = renderToStaticMarkup(
-        createElement(ProductEditor, { ...product, mutationState, onDraftChange }),
-      );
-      const movementMarkup = renderToStaticMarkup(
-        createElement(MovementEditor, { ...movement, mutationState, onDraftChange }),
-      );
-      const renderedRadios = [...radios(productMarkup), ...radios(movementMarkup)];
-      expect(renderedRadios).toHaveLength(7);
-      for (const radio of renderedRadios) {
-        expect(radio).toMatch(/(?:aria-disabled="true"|\sdisabled(?:="")?)/);
-      }
-      expect(controls.groups).toHaveLength(2);
-      for (const group of controls.groups) {
-        expect(group.disabled).toBe(true);
-        group.onValueChange("0");
-      }
-      expect(controls.switches[0]?.disabled).toBe(true);
-      controls.switches[0]?.onCheckedChange(true);
-      expect(onDraftChange).not.toHaveBeenCalled();
-    },
-  );
-
-  test("hides editable selectors while displaying a review", () => {
-    const reviewItems = [{ label: "Quantity", value: "3" }];
-    const markup = renderToStaticMarkup(
-      createElement(MovementEditor, { ...movement, reviewItems }),
+  test("states the decimals a quantity accepts", () => {
+    const whole = renderToStaticMarkup(createElement(MovementFormScreen, movement));
+    expect(whole).toContain(i18n.t("inventory.movementEditor.wholeNumbersHint"));
+    const decimals = renderToStaticMarkup(
+      createElement(MovementFormScreen, { ...movement, quantityPrecision: 2 }),
     );
-    expect(radios(markup)).toHaveLength(0);
-    expect(markup).toContain("Quantity");
+    expect(decimals).toContain("Este producto acepta hasta 2 decimales.");
+  });
+
+  test("replaces every editable control with the summary while reviewing", () => {
+    const reviewItems = [{ label: "Quantity", value: "+3 unidades" }];
+    const movementReview = renderToStaticMarkup(
+      createElement(MovementFormScreen, { ...movement, reviewItems }),
+    );
+    const productReview = renderToStaticMarkup(
+      createElement(ProductFormScreen, { ...product, reviewItems }),
+    );
+    expect(radios(movementReview)).toHaveLength(0);
+    expect(radios(productReview)).toHaveLength(0);
+    expect(movementReview).toContain("+3 unidades");
+    expect(productReview).not.toContain('role="switch"');
     expect(controls.groups).toHaveLength(0);
+    expect(controls.filters).toHaveLength(0);
   });
 });

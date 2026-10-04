@@ -1,8 +1,44 @@
-import type { CreateProductRequest, Product, UpdateProductRequest } from "@pisto/contracts";
+import type {
+  CreateProductRequest,
+  Product,
+  ProductUnitKind,
+  UpdateProductRequest,
+} from "@pisto/contracts";
 import { createProductRequestSchema, updateProductRequestSchema } from "@pisto/contracts";
-import { parseAmountToMinorUnits } from "@/lib/money";
-import { parseQuantityToMinorUnits } from "../inventory/quantity";
-import type { ProductDraftErrors, ProductDraftFields } from "./product-editor";
+import { parseAmountToMinorUnits, toDecimalString } from "@/lib/money";
+import { formatQuantityMinorUnits, parseQuantityToMinorUnits } from "../inventory/quantity";
+
+export type QuantityPrecision = 0 | 1 | 2 | 3;
+
+export const quantityPrecisions: readonly QuantityPrecision[] = [0, 1, 2, 3];
+
+export interface ProductDraftFields {
+  categoryId: string | null;
+  lowStockThreshold: string;
+  name: string;
+  quantityPrecision: QuantityPrecision;
+  sellingPrice: string;
+  sku: string;
+  tracked: boolean;
+  unitKind: ProductUnitKind;
+}
+
+export type ProductDraftField = "lowStockThreshold" | "name" | "sellingPrice" | "sku";
+
+export type ProductDraftErrors = Partial<Record<ProductDraftField | "form", string>>;
+
+export type ProductCommand = CreateProductRequest | UpdateProductRequest;
+
+export const emptyProductDraft: ProductDraftFields = {
+  categoryId: null,
+  lowStockThreshold: "",
+  name: "",
+  quantityPrecision: 0,
+  sellingPrice: "",
+  sku: "",
+  tracked: false,
+  unitKind: "unit",
+};
 
 export function buildProductCommand(input: {
   currencyMinorUnitDigits: number;
@@ -10,7 +46,7 @@ export function buildProductCommand(input: {
   idempotencyKey: string;
   mode: "create" | "edit";
   original?: Product;
-}): { errors: ProductDraftErrors } | { command: CreateProductRequest | UpdateProductRequest } {
+}): { errors: ProductDraftErrors } | { command: ProductCommand } {
   const errors: ProductDraftErrors = {};
   const name = input.draft.name.trim();
   const sku = input.draft.sku.trim();
@@ -22,11 +58,12 @@ export function buildProductCommand(input: {
       })
     : null;
   if (price && "error" in price) errors.sellingPrice = "invalid";
-  const threshold = input.draft.lowStockThreshold.trim()
-    ? parseQuantityToMinorUnits(input.draft.lowStockThreshold, input.draft.quantityPrecision, {
-        allowZero: true,
-      })
-    : null;
+  const threshold =
+    input.draft.tracked && input.draft.lowStockThreshold.trim()
+      ? parseQuantityToMinorUnits(input.draft.lowStockThreshold, input.draft.quantityPrecision, {
+          allowZero: true,
+        })
+      : null;
   if (threshold && "error" in threshold) errors.lowStockThreshold = threshold.error;
   if (Object.keys(errors).length > 0 || (price && "error" in price)) return { errors };
   const thresholdMinorUnits = threshold && "value" in threshold ? threshold.value : null;
@@ -81,26 +118,22 @@ function buildChangedProductFields(
   };
 }
 
-export function formatMinorUnitsForInput(value: string, fractionDigits: number): string {
-  if (fractionDigits === 0) return value;
-  const padded = value.padStart(fractionDigits + 1, "0");
-  return `${padded.slice(0, -fractionDigits)}.${padded.slice(-fractionDigits)}`;
-}
-
 export function productToDraft(product: Product): ProductDraftFields {
+  const precision = quantityPrecisions.find((value) => value === product.quantityPrecision);
+  if (precision === undefined) throw new Error("The product quantity precision is unsupported");
   return {
     categoryId: product.categoryId,
     lowStockThreshold:
       product.lowStockThresholdMinorUnits === null
         ? ""
-        : formatMinorUnitsForInput(product.lowStockThresholdMinorUnits, product.quantityPrecision),
+        : formatQuantityMinorUnits(product.lowStockThresholdMinorUnits, precision),
     name: product.name,
-    quantityPrecision: product.quantityPrecision as 0 | 1 | 2 | 3,
+    quantityPrecision: precision,
     sellingPrice:
       product.sellingPriceMinorUnits === null ||
       product.sellingPriceCurrencyMinorUnitDigits === null
         ? ""
-        : formatMinorUnitsForInput(
+        : toDecimalString(
             product.sellingPriceMinorUnits,
             product.sellingPriceCurrencyMinorUnitDigits,
           ),
@@ -109,3 +142,39 @@ export function productToDraft(product: Product): ProductDraftFields {
     unitKind: product.unitKind,
   };
 }
+
+/** The values a reviewed command leaves on the product: changed fields over the original. */
+export function resolvedProductFields(command: ProductCommand, original: Product | undefined) {
+  if (!original) {
+    const create = command as CreateProductRequest;
+    return {
+      categoryId: create.categoryId ?? null,
+      lowStockThresholdMinorUnits: create.lowStockThresholdMinorUnits ?? null,
+      name: create.name,
+      quantityPrecision: create.quantityPrecision,
+      sellingPriceMinorUnits: create.sellingPriceMinorUnits ?? null,
+      sku: create.sku ?? null,
+      tracked: create.tracked,
+      unitKind: create.unitKind,
+    };
+  }
+  const update = command as UpdateProductRequest;
+  return {
+    categoryId: update.categoryId === undefined ? original.categoryId : update.categoryId,
+    lowStockThresholdMinorUnits:
+      update.lowStockThresholdMinorUnits === undefined
+        ? original.lowStockThresholdMinorUnits
+        : update.lowStockThresholdMinorUnits,
+    name: update.name ?? original.name,
+    quantityPrecision: update.quantityPrecision ?? original.quantityPrecision,
+    sellingPriceMinorUnits:
+      update.sellingPriceMinorUnits === undefined
+        ? original.sellingPriceMinorUnits
+        : update.sellingPriceMinorUnits,
+    sku: update.sku === undefined ? original.sku : update.sku,
+    tracked: update.tracked ?? original.tracked,
+    unitKind: update.unitKind ?? original.unitKind,
+  };
+}
+
+export type ResolvedProductFields = ReturnType<typeof resolvedProductFields>;

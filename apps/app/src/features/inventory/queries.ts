@@ -1,64 +1,49 @@
-import type { InventoryMovementListResponse, StockListResponse } from "@pisto/contracts";
-import { skipToken, useInfiniteQuery } from "@tanstack/react-query";
-
-import { catalogInventoryQueryKeys } from "../catalog/query-keys";
+import { infiniteQueryOptions, skipToken } from "@tanstack/react-query";
+import {
+  CATALOG_PAGE_SIZE,
+  catalogInventoryQueryKeys,
+  previousPageOfBusiness,
+  type StockListFilters,
+} from "../catalog/queries";
 import { inventoryApi } from "./api";
 
-export function useStockQuery(input: {
-  businessId: string | undefined;
-  enabled: boolean;
-  limit?: number;
-  lowStockOnly: boolean;
-  search: string;
-}) {
-  const search = input.search.trim();
-  return useInfiniteQuery({
-    enabled: input.enabled,
-    getNextPageParam: (lastPage: StockListResponse["data"]) => lastPage.nextCursor,
-    initialPageParam: null as string | null,
-    queryFn:
-      input.businessId && input.enabled
-        ? ({ pageParam, signal }): Promise<StockListResponse["data"]> =>
-            inventoryApi.listStock(
-              {
-                ...(pageParam ? { cursor: pageParam } : {}),
-                ...(search ? { search } : {}),
-                limit: input.limit ?? 25,
-                lowStockOnly: input.lowStockOnly,
-              },
-              signal,
-            )
-        : skipToken,
-    queryKey: catalogInventoryQueryKeys.stock(input.businessId, {
-      lowStockOnly: input.lowStockOnly,
-      search,
-    }),
+export function stockInfiniteOptions(businessId: string | undefined, filters: StockListFilters) {
+  return infiniteQueryOptions({
+    initialPageParam: undefined as string | undefined,
+    queryFn: businessId
+      ? ({ pageParam, signal }) =>
+          inventoryApi.listStock(
+            {
+              cursor: pageParam,
+              limit: CATALOG_PAGE_SIZE,
+              lowStockOnly: filters.lowStockOnly,
+              search: filters.search || undefined,
+            },
+            signal,
+          )
+      : skipToken,
+    queryKey: catalogInventoryQueryKeys.stock(businessId, filters),
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    placeholderData: previousPageOfBusiness(businessId),
   });
 }
 
-export function useMovementsQuery(input: {
-  businessId: string | undefined;
-  enabled: boolean;
-  limit?: number;
-  productId: string | undefined;
-}) {
-  const { productId } = input;
-  return useInfiniteQuery({
-    enabled: input.enabled && Boolean(input.productId),
-    getNextPageParam: (lastPage: InventoryMovementListResponse["data"]) => lastPage.nextCursor,
-    initialPageParam: null as string | null,
+export function movementsInfiniteOptions(
+  businessId: string | undefined,
+  productId: string | undefined,
+) {
+  return infiniteQueryOptions({
+    initialPageParam: undefined as string | undefined,
     queryFn:
-      input.businessId && input.enabled && productId
-        ? ({ pageParam, signal }): Promise<InventoryMovementListResponse["data"]> =>
+      businessId && productId
+        ? ({ pageParam, signal }) =>
             inventoryApi.listMovements(
               productId,
-              {
-                ...(pageParam ? { cursor: pageParam } : {}),
-                limit: input.limit ?? 25,
-              },
+              { cursor: pageParam, limit: CATALOG_PAGE_SIZE },
               signal,
             )
         : skipToken,
-    queryKey: catalogInventoryQueryKeys.movements(input.businessId, input.productId),
+    queryKey: catalogInventoryQueryKeys.movements(businessId, productId),
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 }

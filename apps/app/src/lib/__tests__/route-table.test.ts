@@ -39,7 +39,6 @@ describe("route table", () => {
       "/operate/inventory",
       "/operate/inventory/[productId]",
       "/operate/inventory/[productId]/new",
-      "/operate/inventory/[productId]/reverse/[movementId]",
       "/operate/receivables",
       "/operate/receivables/[receivableId]",
       "/operate/receivables/[receivableId]/payment",

@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 
-import { MovementFormRoute } from "@/features/inventory/movement-form-route";
+import { MovementFormRoute } from "@/features/inventory/movement-form-controller";
 
 export default function NewInventoryMovementRoute() {
   const params = useLocalSearchParams<{ productId?: string | string[] }>();

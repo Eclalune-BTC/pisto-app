@@ -28,6 +28,7 @@ export function parseQuantityToMinorUnits(
   return { value: parsed.toString() };
 }
 
+/** The exact decimal text of a canonical minor quantity, as an input value or for Intl. */
 export function formatQuantityMinorUnits(value: string, precision: number): string {
   if (
     !/^(?:0|[1-9]\d*)$/.test(value) ||
@@ -40,4 +41,15 @@ export function formatQuantityMinorUnits(value: string, precision: number): stri
   if (precision === 0) return value;
   const padded = value.padStart(precision + 1, "0");
   return `${padded.slice(0, -precision)}.${padded.slice(-precision)}`;
+}
+
+/**
+ * A quantity grouped for the locale with exactly its product's decimals. Intl formats the decimal
+ * text, which keeps every digit; a number would round above 2^53.
+ */
+export function formatQuantity(minorUnits: string, precision: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: precision,
+    minimumFractionDigits: precision,
+  }).format(formatQuantityMinorUnits(minorUnits, precision) as Intl.StringNumericLiteral);
 }

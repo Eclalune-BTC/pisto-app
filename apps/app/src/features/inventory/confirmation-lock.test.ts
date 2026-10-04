@@ -17,51 +17,19 @@ vi.mock("uniwind", () => ({
     Array.isArray(names) ? names.map(() => "#71717A") : "#71717A",
   withUniwind: (component: unknown) => component,
 }));
-vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
-vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
+vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock("react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react")>()),
+  // The review is rendered as a plain function here; its focus effect needs no element.
+  useEffect: () => undefined,
+  useRef: (initial: unknown) => ({ current: initial }),
+}));
 
 import { Button } from "@/components/ui/button";
-import "@/i18n/config";
+import { ApiClientError } from "@/lib/api-error";
+import { mutationPhase } from "@/lib/mutation-phase";
+import { CommandReview } from "../catalog/command-review";
 import { buildMovementCommand } from "./movement-draft";
-import {
-  type InventoryMovementDraft,
-  MovementEditor,
-  type MovementEditorCopy,
-} from "./movement-editor";
-
-const copy: MovementEditorCopy = {
-  back: "Back",
-  title: "Movement",
-  description: "Record movement",
-  reviewTitle: "Review",
-  reviewDescription: "Review movement",
-  actions: { receive: "Receive", adjust_in: "Add", adjust_out: "Remove" },
-  actionLabel: "Action",
-  quantity: "Quantity",
-  quantityPlaceholder: "1",
-  reason: "Reason",
-  reasonPlaceholder: "Delivery",
-  date: "Date",
-  datePlaceholder: "YYYY-MM-DD",
-  time: "Time",
-  timePlaceholder: "HH:mm",
-  precisionHint: String,
-  review: "Review movement",
-  edit: "Edit",
-  confirm: "Confirm",
-  failedTitle: "Failed",
-  failedDescription: "Try again",
-  uncertainTitle: "Uncertain",
-  uncertainDescription: "The result could not be verified",
-  retrySameConfirmation: "Retry the same confirmation",
-};
-const draft: InventoryMovementDraft = {
-  action: "receive",
-  occurredLocalDate: "2026-09-10",
-  occurredLocalTime: "12:00",
-  quantity: "5",
-  reason: "Delivery",
-};
 
 function buttons(node: ReactNode): ReactElement<ComponentProps<typeof Button>>[] {
   const result: ReactElement<ComponentProps<typeof Button>>[] = [];
@@ -89,7 +57,13 @@ describe("reviewed inventory confirmation", () => {
     const unsubscribe = observer.subscribe(() => undefined);
     const reset = vi.spyOn(observer, "reset");
     const result = buildMovementCommand({
-      draft,
+      draft: {
+        action: "receive",
+        occurredLocalDate: "2026-09-10",
+        occurredLocalTime: "12:00",
+        quantity: "5",
+        reason: "Delivery",
+      },
       idempotencyKey: "10000000-0000-4000-8000-000000000001",
       quantityPrecision: 0,
     });
@@ -101,61 +75,48 @@ describe("reviewed inventory confirmation", () => {
       command = null;
       observer.reset();
     });
-    const prepareAnotherReview = vi.fn();
     const submit = () => {
       if (command) attempt = observer.mutate(command).catch(() => undefined);
     };
     const render = () => {
-      const mutation = observer.getCurrentResult();
-      return MovementEditor({
-        copy,
-        draft,
-        errors: {},
-        isStale: false,
-        isRefreshing: false,
-        onRetryRead: vi.fn(),
-        mutationState: mutation.isPending ? "pending" : mutation.isError ? "uncertain" : "idle",
-        onBack: discard,
+      return CommandReview({
+        confirmLabel: "Confirm",
+        failedTitle: "Failed",
+        items: [{ label: "Quantity", value: "+5 unidades" }],
         onConfirm: submit,
-        onDraftChange: vi.fn(),
-        onEditReview: discard,
-        onResolveUncertain: submit,
-        onReview: prepareAnotherReview,
-        productName: "Coffee",
-        quantityPrecision: 0,
-        reviewItems: command ? [{ label: "Quantity", value: "5" }] : null,
+        onEdit: discard,
+        phase: mutationPhase(observer.getCurrentResult()),
+        title: "Review",
+        uncertainDescription: "Retry the same confirmation",
       });
     };
 
-    const confirm = buttons(render()).find((button) => button.props.variant === "default");
+    const confirm = buttons(render()).find((button) => button.props.label === "Confirm");
     (confirm?.props.onPress as (() => void) | undefined)?.();
     await vi.waitFor(() => expect(requests).toHaveLength(1));
 
     const pending = render();
     const pendingButtons = buttons(pending);
-    expect(pendingButtons).toHaveLength(3);
+    expect(pendingButtons).toHaveLength(2);
     for (const button of pendingButtons) {
       expect(button.props.disabled || button.props.loading).toBe(true);
       expect(button.props.onPress).toBeUndefined();
     }
     const markup = renderToStaticMarkup(pending);
-    expect(markup.match(/aria-disabled="true"/g)).toHaveLength(3);
+    expect(markup.match(/aria-disabled="true"/g)).toHaveLength(2);
     expect(discard).not.toHaveBeenCalled();
     expect(reset).not.toHaveBeenCalled();
-    expect(prepareAnotherReview).not.toHaveBeenCalled();
     expect(observer.getCurrentResult().variables).toBe(originalCommand);
-    expect(command).toBe(originalCommand);
 
-    requests[0]?.reject(new Error("The response was lost after dispatch"));
+    // A lost response is not an answer from the server: the outcome is unknown.
+    requests[0]?.reject(new ApiClientError("The response was lost after dispatch", 0));
     await attempt;
-    const uncertainButtons = buttons(render());
-    expect(uncertainButtons.find((button) => button.props.label === copy.edit)).toBeUndefined();
-    expect(uncertainButtons[0]?.props.disabled).toBe(true);
-    expect(uncertainButtons[0]?.props.onPress).toBeUndefined();
-    const retry = uncertainButtons.find(
-      (button) => button.props.label === copy.retrySameConfirmation,
-    );
-    expect(retry).toBeDefined();
+    const uncertain = render();
+    const uncertainButtons = buttons(uncertain);
+    expect(uncertainButtons).toHaveLength(1);
+    expect(renderToStaticMarkup(uncertain)).toContain("Retry the same confirmation");
+    const retry = uncertainButtons[0];
+    expect(retry?.props.label).toBe("common.retrySameConfirmation");
     (retry?.props.onPress as (() => void) | undefined)?.();
     await vi.waitFor(() => expect(requests).toHaveLength(2));
     expect(requests[1]?.command).toBe(originalCommand);

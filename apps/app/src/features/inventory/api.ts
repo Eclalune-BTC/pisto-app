@@ -14,27 +14,18 @@ import {
   reverseInventoryMovementRequestSchema,
   stockListResponseSchema,
 } from "@pisto/contracts";
-import { apiRequest } from "@/lib/api-client";
-
-function queryString(query: Record<string, boolean | number | string | undefined>): string {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== "") params.set(key, String(value));
-  }
-  const encoded = params.toString();
-  return encoded ? `?${encoded}` : "";
-}
+import { apiRequest, parseRequestPayload, pathWithQuery } from "@/lib/api-client";
 
 export const inventoryApi = {
   listStock: (query: StockListQuery, signal?: AbortSignal) =>
     apiRequest<StockListResponse, StockListResponse["data"]>(
-      `/v1/inventory/stock${queryString(query)}`,
+      pathWithQuery("/v1/inventory/stock", query),
       { authenticated: true, signal },
       stockListResponseSchema,
     ),
   listMovements: (productId: string, query: InventoryMovementListQuery, signal?: AbortSignal) =>
     apiRequest<InventoryMovementListResponse, InventoryMovementListResponse["data"]>(
-      `/v1/inventory/products/${encodeURIComponent(productId)}/movements${queryString(query)}`,
+      pathWithQuery(`/v1/inventory/products/${encodeURIComponent(productId)}/movements`, query),
       { authenticated: true, signal },
       inventoryMovementListResponseSchema,
     ),
@@ -43,7 +34,7 @@ export const inventoryApi = {
       `/v1/inventory/products/${encodeURIComponent(productId)}/movements`,
       {
         authenticated: true,
-        body: recordInventoryMovementRequestSchema.parse(command),
+        body: parseRequestPayload(recordInventoryMovementRequestSchema, command),
         method: "POST",
       },
       inventoryMutationResponseSchema,
@@ -53,7 +44,7 @@ export const inventoryApi = {
       `/v1/inventory/movements/${encodeURIComponent(movementId)}/reverse`,
       {
         authenticated: true,
-        body: reverseInventoryMovementRequestSchema.parse(command),
+        body: parseRequestPayload(reverseInventoryMovementRequestSchema, command),
         method: "POST",
       },
       inventoryMutationResponseSchema,

@@ -1,14 +1,11 @@
-import { AlertTriangle, Info, WifiOff } from "lucide-react-native";
-import { useMemo } from "react";
+import { Ban, Lock, SearchX, TriangleAlert } from "lucide-react-native";
+import type { ComponentProps, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
-import { useCSSVariable } from "uniwind";
+import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Page } from "@/components/page";
+import { OfflineState } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
-import { Text } from "@/components/ui/text";
-
-import { catalogRemoteCopy } from "./copy";
+import { StatePanel } from "@/components/ui/state-panel";
 
 export type CapabilityRouteStateKind =
   | "denied"
@@ -18,84 +15,96 @@ export type CapabilityRouteStateKind =
   | "offline"
   | "unavailable";
 
-export function CapabilityRouteState({
-  back,
-  kind,
-  onRetry,
-}: {
-  back?: { label: string; onPress: () => void };
-  kind: CapabilityRouteStateKind;
-  onRetry?: () => void;
-}) {
-  const foregroundColor = useCSSVariable("--color-foreground") as string;
-  const mutedColor = useCSSVariable("--color-muted-foreground") as string;
-  const destructiveColor = useCSSVariable("--color-destructive") as string;
+type PageWidth = NonNullable<ComponentProps<typeof Page>["width"]>;
+
+type CapabilityRouteStateProps = {
+  /** The way forward from a state that ends the route, such as a link to its list. */
+  action?: ReactNode;
+  /** Replaces the generic description with one that names the record. */
+  description?: string;
+  /** What is loading, for assistive technology. */
+  label?: string;
+  /** Replaces the generic title with one that names the record. */
+  title?: string;
+  /** The shape the route takes once loaded, so the page does not jump. */
+  variant?: "detail" | "form" | "list";
+  width?: PageWidth;
+} & (
+  | { kind: "error"; onRetry: () => void }
+  | { kind: Exclude<CapabilityRouteStateKind, "error">; onRetry?: never }
+);
+
+/**
+ * A whole route that cannot show its records yet or at all. Its panel is the page's only heading,
+ * and it never keeps cached private records on screen.
+ */
+export function CapabilityRouteState(props: CapabilityRouteStateProps) {
   const { t } = useTranslation();
-  const copy = useMemo(() => catalogRemoteCopy(t), [t]);
-  if (kind === "loading") {
+  const { action, variant = "list", width = "content" } = props;
+  if (props.kind === "loading") {
     return (
-      <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <LoadingIndicator color={foregroundColor} size="large" />
-        <Text className="text-sm font-ui text-muted-foreground">{copy.loadingBusiness}</Text>
-      </View>
+      <Page width={width}>
+        <ContentSkeleton label={props.label ?? t("catalog.remote.loading")} variant={variant} />
+      </Page>
     );
   }
-
-  const title =
-    kind === "denied"
-      ? copy.deniedTitle
-      : kind === "notFound"
-        ? copy.notFoundTitle
-        : kind === "offline"
-          ? copy.offlineTitle
-          : kind === "unavailable"
-            ? copy.actionUnavailableTitle
-            : copy.unavailableTitle;
-  const description =
-    kind === "denied"
-      ? copy.deniedDescription
-      : kind === "notFound"
-        ? copy.notFoundDescription
-        : kind === "offline"
-          ? copy.offlineDescription
-          : kind === "unavailable"
-            ? copy.actionUnavailableDescription
-            : copy.unavailableDescription;
-  const Icon = kind === "offline" ? WifiOff : AlertTriangle;
-
+  if (props.kind === "offline") {
+    return (
+      <Page width={width}>
+        <OfflineState />
+      </Page>
+    );
+  }
+  if (props.kind === "error") {
+    return (
+      <Page width={width}>
+        <StatePanel
+          action={
+            <>
+              <Button
+                label={t("common.retry")}
+                onPress={props.onRetry}
+                size="sm"
+                variant="outline"
+              />
+              {action}
+            </>
+          }
+          description={props.description ?? t("catalog.remote.errorDescription")}
+          icon={TriangleAlert}
+          level={1}
+          title={props.title ?? t("catalog.remote.errorTitle")}
+          tone="destructive"
+        />
+      </Page>
+    );
+  }
+  const copy = {
+    denied: {
+      description: t("catalog.remote.deniedDescription"),
+      icon: Lock,
+      title: t("catalog.remote.deniedTitle"),
+    },
+    notFound: {
+      description: t("catalog.remote.notFoundDescription"),
+      icon: SearchX,
+      title: t("catalog.remote.notFoundTitle"),
+    },
+    unavailable: {
+      description: t("catalog.remote.unavailableDescription"),
+      icon: Ban,
+      title: t("catalog.remote.unavailableTitle"),
+    },
+  }[props.kind];
   return (
-    <Page width="reading">
-      <View className="min-h-64 items-start justify-center gap-4">
-        <Icon color={kind === "offline" ? mutedColor : destructiveColor} size={24} />
-        <View className="gap-2">
-          <Text accessibilityRole="header" className="text-2xl font-heading text-foreground">
-            {title}
-          </Text>
-          <Text className="max-w-[520px] text-sm leading-5 text-muted-foreground">
-            {description}
-          </Text>
-        </View>
-        <View className="gap-3 sm:flex-row">
-          {kind === "error" && onRetry ? (
-            <Button label={copy.retry} onPress={onRetry} variant="outline" />
-          ) : null}
-          {back ? <Button label={back.label} onPress={back.onPress} variant="outline" /> : null}
-        </View>
-      </View>
+    <Page width={width}>
+      <StatePanel
+        action={action}
+        description={props.description ?? copy.description}
+        icon={copy.icon}
+        level={1}
+        title={props.title ?? copy.title}
+      />
     </Page>
-  );
-}
-
-export function ReadOnlyNotice({ description }: { description: string }) {
-  const foregroundColor = useCSSVariable("--color-foreground") as string;
-  const { t } = useTranslation();
-  return (
-    <View className="flex-row items-start gap-3 border-l-4 border-positive bg-positive-surface p-4">
-      <Info color={foregroundColor} size={19} />
-      <View className="min-w-0 flex-1 gap-1">
-        <Text className="font-ui text-foreground">{t("catalog.remote.readOnlyTitle")}</Text>
-        <Text className="text-sm leading-5 text-muted-foreground">{description}</Text>
-      </View>
-    </View>
   );
 }

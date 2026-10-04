@@ -5,8 +5,27 @@ import {
   recordInventoryMovementRequestSchema,
 } from "@pisto/contracts";
 
-import type { InventoryMovementDraft, InventoryMovementErrors } from "./movement-editor";
 import { parseQuantityToMinorUnits } from "./quantity";
+
+export type InventoryDraftAction = RecordInventoryMovementRequest["action"];
+
+export const inventoryDraftActions: readonly InventoryDraftAction[] = [
+  "receive",
+  "adjust_in",
+  "adjust_out",
+];
+
+export interface InventoryMovementDraft {
+  action: InventoryDraftAction;
+  occurredLocalDate: string;
+  occurredLocalTime: string;
+  quantity: string;
+  reason: string;
+}
+
+export type InventoryMovementField = Exclude<keyof InventoryMovementDraft, "action">;
+
+export type InventoryMovementErrors = Partial<Record<InventoryMovementField, string>>;
 
 export function buildMovementCommand(input: {
   draft: InventoryMovementDraft;
@@ -35,4 +54,19 @@ export function buildMovementCommand(input: {
   });
   if (!parsed.success) return { errors: { reason: "invalid" } };
   return { command: parsed.data };
+}
+
+/** The signed change a reviewed movement makes, as exact minor-unit text. */
+export function movementDelta(command: RecordInventoryMovementRequest): string {
+  return command.action === "adjust_out"
+    ? `-${command.quantityMinorUnits}`
+    : command.quantityMinorUnits;
+}
+
+/**
+ * The balance the movement would leave, from the current server balance. It previews the review;
+ * the server computes the committed balance under its own lock.
+ */
+export function balanceAfter(onHandMinorUnits: string, command: RecordInventoryMovementRequest) {
+  return BigInt(onHandMinorUnits) + BigInt(movementDelta(command));
 }

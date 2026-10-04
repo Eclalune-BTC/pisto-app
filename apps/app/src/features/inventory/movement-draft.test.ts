@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { buildMovementCommand } from "./movement-draft";
+import { balanceAfter, buildMovementCommand, movementDelta } from "./movement-draft";
 
 describe("inventory movement draft", () => {
   test("builds an exact fixed-scale reviewed command", () => {
@@ -48,5 +48,23 @@ describe("inventory movement draft", () => {
         occurredLocalTime: "invalid",
       },
     });
+  });
+
+  test("signs the reviewed change and previews the balance without floating point", () => {
+    const command = {
+      idempotencyKey: "f9a44455-ec16-4a15-9368-8bc64b65b681",
+      action: "adjust_out" as const,
+      quantityMinorUnits: "9223372036854775807",
+      reason: "Damaged stock",
+      occurredLocalDate: "2026-08-22",
+      occurredLocalTime: "14:30",
+    };
+    expect(movementDelta(command)).toBe("-9223372036854775807");
+    expect(movementDelta({ ...command, action: "receive" })).toBe("9223372036854775807");
+    expect(balanceAfter("9223372036854775807", command)).toBe(0n);
+    expect(balanceAfter("1", { ...command, quantityMinorUnits: "2" })).toBe(-1n);
+    expect(balanceAfter("1", { ...command, action: "adjust_in", quantityMinorUnits: "2" })).toBe(
+      3n,
+    );
   });
 });

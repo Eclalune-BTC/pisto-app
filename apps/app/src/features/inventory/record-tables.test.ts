@@ -10,21 +10,18 @@ vi.mock("uniwind", () => ({
     Array.isArray(names) ? names.map(() => "#71717A") : "#71717A",
   withUniwind: (component: unknown) => component,
 }));
-vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 
-import { buildCatalogCopy } from "@/features/catalog/copy";
 import { i18n } from "@/i18n/config";
 import { InventoryScreen } from "./inventory-screen";
-import { MovementHistory } from "./movement-history";
+import { ProductStockScreen } from "./product-stock-screen";
 
 const noop = () => undefined;
 const timestamp = "2026-09-27T18:00:00.000Z";
-const copy = buildCatalogCopy(i18n.t);
 const product: Product = {
   id: "product-a",
   name: "Whole bean coffee with a long product name",
-  categoryId: null,
+  categoryId: "category-a",
   sku: "COFFEE-1",
   sellingPriceMinorUnits: "1250",
   sellingPriceCurrency: "USD",
@@ -61,95 +58,191 @@ const movement: InventoryMovement = {
   reversedByMovementId: null,
   createdAt: timestamp,
 };
-const props: ComponentProps<typeof MovementHistory> = {
+const props: ComponentProps<typeof ProductStockScreen> = {
   canManage: true,
-  copy: copy.movementHistory,
-  onAddMovement: noop,
-  onBack: noop,
-  onLoadMore: noop,
+  isStale: false,
+  movements: {
+    items: [movement],
+    page: { hasMore: true, loadingMore: false, onLoadMore: noop },
+    read: "ready",
+  },
   onRetry: noop,
+  onRetryMovements: noop,
   onReverse: noop,
   product,
+  refreshing: false,
   stock,
-  showReadOnlyNotice: false,
-  state: { status: "ready", items: [movement], hasNextPage: true, loadingMore: false },
 };
+const reverseLabel = i18n.t("inventory.history.rowActions", {
+  action: i18n.t("inventory.movementActions.adjust_out"),
+  date: "27 sept 2026, 12:00",
+});
+
+function renderStock(changes: Partial<ComponentProps<typeof ProductStockScreen>> = {}) {
+  return renderToStaticMarkup(createElement(ProductStockScreen, { ...props, ...changes }));
+}
 
 describe("inventory record tables", () => {
-  test("keeps signed quantities, complete occurrence, reason and real cursor controls", () => {
-    const markup = renderToStaticMarkup(createElement(MovementHistory, props));
-    expect(markup).toContain("−1.500");
+  test("keeps exact signed quantities, the business-local moment, the reason and the cursor", () => {
+    const markup = renderStock();
+    expect(markup).toContain("−1.500 kg");
     expect(markup).toContain(movement.reason);
-    expect(markup).toContain(movement.occurredLocalDate);
-    expect(markup).toContain(movement.occurredLocalTime);
-    expect(markup).toContain(movement.timeZone);
-    expect(markup).toContain(copy.movementHistory.loadMore);
-    expect(markup).toContain(copy.movementHistory.reverse);
+    expect(markup).toContain("27 sept 2026, 12:00");
+    expect(markup).toContain(i18n.t("inventory.movementActions.adjust_out"));
+    expect(markup).toContain(i18n.t("common.loadMore"));
+    expect(markup).toContain(`aria-label="${reverseLabel}"`);
+    expect(markup).toContain("2.500 kg");
+    expect(markup).toContain("3.000 kg");
+    expect(markup).toContain(i18n.t("catalog.list.lowStock"));
+    // No reference column while no row is linked to another.
+    expect(markup).not.toContain(i18n.t("dataTable.columns.reference"));
   });
 
   test.each(["read-only", "archived", "reversed", "reversal"] as const)(
-    "withdraws reversal for %s",
+    "withdraws reversal for a %s movement",
     (reason) => {
       const item: InventoryMovement = {
         ...movement,
         action: reason === "reversal" ? "reverse" : movement.action,
+        deltaMinorUnits: reason === "reversal" ? "1500" : movement.deltaMinorUnits,
         reversesMovementId: reason === "reversal" ? "original-movement" : null,
         reversedByMovementId: reason === "reversed" ? "reversal-movement" : null,
       };
-      const markup = renderToStaticMarkup(
-        createElement(MovementHistory, {
-          ...props,
-          canManage: reason !== "read-only",
-          product: { ...product, status: reason === "archived" ? "archived" : "active" },
-          state: { status: "ready", items: [item], hasNextPage: false, loadingMore: false },
-        }),
-      );
-      expect(markup).not.toContain(`>${copy.movementHistory.reverse}<`);
-      expect(markup).not.toContain(copy.movementHistory.loadMore);
-      if (reason === "reversal") expect(markup).toContain("original-movement");
-      if (reason === "reversed") expect(markup).toContain(copy.movementHistory.reversed);
+      const markup = renderStock({
+        canManage: reason !== "read-only",
+        movements: {
+          items: [item],
+          page: { hasMore: false, loadingMore: false, onLoadMore: noop },
+          read: "ready",
+        },
+        product: { ...product, status: reason === "archived" ? "archived" : "active" },
+      });
+      const rowMenu = i18n.t("inventory.history.rowActions", {
+        action: i18n.t(`inventory.movementActions.${item.action}`),
+        date: "27 sept 2026, 12:00",
+      });
+      expect(markup).not.toContain(`aria-label="${rowMenu}"`);
+      expect(markup).not.toContain(i18n.t("common.loadMore"));
+      expect(markup).not.toContain("original-movement");
+      expect(markup).not.toContain("reversal-movement");
+      if (reason === "reversal") {
+        expect(markup).toContain(i18n.t("inventory.history.reversesEarlier"));
+        expect(markup).toContain("+1.500 kg");
+      }
+      if (reason === "reversed") expect(markup).toContain(i18n.t("inventory.history.reversed"));
+      if (reason === "archived") {
+        expect(markup).not.toContain(i18n.t("inventory.product.recordMovement"));
+        expect(markup).toContain(i18n.t("inventory.product.archivedDescription"));
+      }
     },
   );
 
-  test("hides cached product identity, stock and action controls after denial", () => {
-    const markup = renderToStaticMarkup(
-      createElement(MovementHistory, { ...props, state: { status: "denied" } }),
+  test("names the movement a loaded reversal undoes instead of its identifier", () => {
+    const reversal: InventoryMovement = {
+      ...movement,
+      id: "movement-b",
+      action: "reverse",
+      deltaMinorUnits: "1500",
+      occurredLocalTime: "13:30",
+      reason: "Counted twice",
+      reversesMovementId: movement.id,
+    };
+    const markup = renderStock({
+      movements: {
+        items: [reversal, { ...movement, reversedByMovementId: reversal.id }],
+        page: { hasMore: false, loadingMore: false, onLoadMore: noop },
+        read: "ready",
+      },
+    });
+    expect(markup).toContain(i18n.t("dataTable.columns.reference"));
+    expect(markup).toContain(
+      i18n.t("inventory.history.reverses", {
+        action: i18n.t("inventory.movementActions.adjust_out"),
+        date: "27 sept 2026, 12:00",
+      }),
     );
-    expect(markup).toContain(copy.movementHistory.deniedTitle);
-    expect(markup).not.toContain(product.name);
-    expect(markup).not.toContain("2.500");
-    expect(markup).not.toContain(copy.movementHistory.addMovement);
+    expect(markup).toContain(i18n.t("inventory.history.reversed"));
+    expect(markup).not.toContain(movement.id);
   });
 
-  test("keeps exact stock, unit, threshold, SKU and read-only notice in the stock table", () => {
+  test("keeps the balance and states a failed history read without an empty table", () => {
+    const markup = renderStock({
+      movements: {
+        items: [],
+        page: { hasMore: false, loadingMore: false, onLoadMore: noop },
+        read: "error",
+      },
+    });
+    expect(markup).toContain(i18n.t("inventory.history.unavailableTitle"));
+    expect(markup).not.toContain(i18n.t("inventory.history.emptyTitle"));
+    expect(markup).toContain("2.500 kg");
+  });
+
+  test("keeps exact stock, unit, threshold, SKU and the stale notice in the stock table", () => {
     const markup = renderToStaticMarkup(
       createElement(InventoryScreen, {
-        copy: copy.inventory,
+        categories: { loading: false, names: new Map([["category-a", "Café en grano"]]) },
         lowStockOnly: true,
+        onClearFilters: noop,
         onLoadMore: noop,
         onLowStockOnlyChange: noop,
-        onOpenHistory: noop,
         onRetry: noop,
         onSearchChange: noop,
         search: "coffee",
-        showReadOnlyNotice: true,
         state: {
           status: "ready",
-          items: [{ product, stock }],
+          items: [
+            { product, stock },
+            {
+              product: { ...product, id: "product-b", lowStockThresholdMinorUnits: null },
+              stock: { ...stock, productId: "product-b", lowStockThresholdMinorUnits: null },
+            },
+          ],
           hasNextPage: true,
           loadingMore: false,
+          previous: false,
+          refreshing: false,
           stale: true,
         },
       }),
     );
     expect(markup).toContain(product.name);
-    expect(markup).toContain(product.sku);
-    expect(markup).toContain("2.500");
-    expect(markup).toContain("3.000");
-    expect(markup).toContain(copy.unitLabels.kilogram);
-    expect(markup).toContain(copy.inventory.lowStock);
-    expect(markup).toContain(copy.inventory.readOnlyDescription);
-    expect(markup).toContain(copy.inventory.stale);
-    expect(markup).toContain(copy.inventory.loadMore);
+    expect(markup).toContain("COFFEE-1");
+    expect(markup).toContain("Café en grano");
+    expect(markup).toContain("2.500 kg");
+    expect(markup).toContain("3.000 kg");
+    expect(markup).toContain(i18n.t("inventory.list.noThreshold"));
+    expect(markup).toContain(i18n.t("catalog.list.lowStock"));
+    expect(markup).toContain(i18n.t("remote.stale"));
+    expect(markup).toContain(i18n.t("common.loadMore"));
+    expect(markup).toContain(
+      `aria-label="${i18n.t("inventory.list.filterLabel")}: ${i18n.t("inventory.list.filters.low")}"`,
+    );
+  });
+
+  test("hides the category column for a role that cannot read the catalog", () => {
+    const markup = renderToStaticMarkup(
+      createElement(InventoryScreen, {
+        categories: null,
+        lowStockOnly: false,
+        onClearFilters: noop,
+        onLoadMore: noop,
+        onLowStockOnlyChange: noop,
+        onRetry: noop,
+        onSearchChange: noop,
+        search: "",
+        state: {
+          status: "ready",
+          items: [{ product, stock }],
+          hasNextPage: false,
+          loadingMore: false,
+          previous: false,
+          refreshing: false,
+          stale: false,
+        },
+      }),
+    );
+    expect(markup).not.toContain(i18n.t("dataTable.columns.category"));
+    expect(markup).not.toContain(i18n.t("catalog.list.categoryUnavailable"));
   });
 });

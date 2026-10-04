@@ -1,24 +1,28 @@
-import type { ProductUnitKind, StockListResponse } from "@pisto/contracts";
-import { AlertTriangle, Search } from "lucide-react-native";
-import { useMemo } from "react";
+import type { StockListResponse } from "@pisto/contracts";
+import { type Href, Link } from "expo-router";
+import { Boxes, Lock, TriangleAlert } from "lucide-react-native";
+import { type ReactElement, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { useCSSVariable } from "uniwind";
+import { PageHeader } from "@/components/layout/page-header";
+import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Page } from "@/components/page";
-import { ScreenHeader } from "@/components/screen-header";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Field } from "@/components/ui/field";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FilterToolbar } from "@/components/ui/filter-toolbar";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
-import { ReadOnlyNotice } from "../catalog/route-state";
-import { formatQuantityMinorUnits } from "./quantity";
+import { requireSupportedLocale } from "@/i18n/locale";
+import { cn } from "@/lib/cn";
+import { LoadMoreButton } from "../cash/load-more-button";
+import { CategoryName, MissingValue, StockValue } from "../catalog/catalog-cells";
+import { quantityText } from "../catalog/format";
+import { SearchBox } from "../catalog/search-box";
 
-type StockItem = StockListResponse["data"]["items"][number];
+export type StockItem = StockListResponse["data"]["items"][number];
 
 export type InventoryCollectionState =
   | { status: "loading" }
@@ -30,268 +34,224 @@ export type InventoryCollectionState =
       hasNextPage: boolean;
       items: StockItem[];
       loadingMore: boolean;
-      stale?: boolean;
+      /** Results of the previous search or filter, kept on screen while the new ones load. */
+      previous: boolean;
+      refreshing: boolean;
+      stale: boolean;
     };
 
-export interface InventoryScreenCopy {
-  title: string;
-  description: string;
-  eyebrow: string;
-  searchLabel: string;
-  searchPlaceholder: string;
-  showAll: string;
-  showLowStock: string;
-  loading: string;
-  offlineTitle: string;
-  offlineDescription: string;
-  deniedTitle: string;
-  deniedDescription: string;
-  errorTitle: string;
-  errorDescription: string;
-  retry: string;
-  stale: string;
-  emptyTitle: string;
-  emptyDescription: string;
-  lowStock: string;
-  threshold: string;
-  noThreshold: string;
-  onHand: string;
-  loadMore: string;
-  loadingMore: string;
-  readOnlyTitle: string;
-  readOnlyDescription: string;
-  unitLabels: Record<ProductUnitKind, string>;
-  openHistory: (name: string) => string;
-}
-
-interface InventoryScreenProps {
-  copy: InventoryScreenCopy;
+type InventoryScreenProps = {
+  /** Category names, when the role can read the catalog; null hides the column. */
+  categories: { loading: boolean; names: ReadonlyMap<string, string> } | null;
   lowStockOnly: boolean;
+  onClearFilters: () => void;
   onLoadMore: () => void;
-  onLowStockOnlyChange: (enabled: boolean) => void;
-  onOpenHistory: (productId: string) => void;
+  onLowStockOnlyChange: (lowStockOnly: boolean) => void;
   onRetry: () => void;
   onSearchChange: (value: string) => void;
   search: string;
-  showReadOnlyNotice: boolean;
   state: InventoryCollectionState;
-}
+};
 
-function InventoryFailure({
-  copy,
-  onRetry,
-  status,
-}: {
-  copy: InventoryScreenCopy;
-  onRetry: () => void;
-  status: "denied" | "error" | "loading" | "offline";
-}) {
-  if (status === "loading") {
-    return (
-      <View className="min-h-56 items-start justify-center gap-3 border-y border-border">
-        <LoadingIndicator />
-        <Text className="font-sans text-sm text-muted-foreground">{copy.loading}</Text>
-      </View>
-    );
-  }
-  const title =
-    status === "denied"
-      ? copy.deniedTitle
-      : status === "offline"
-        ? copy.offlineTitle
-        : copy.errorTitle;
-  const description =
-    status === "denied"
-      ? copy.deniedDescription
-      : status === "offline"
-        ? copy.offlineDescription
-        : copy.errorDescription;
-  return (
-    <Alert icon={AlertTriangle} variant="destructive">
-      <AlertTitle className="leading-6">{title}</AlertTitle>
-      <AlertDescription>{description}</AlertDescription>
-      {status === "error" ? (
-        <Button
-          className="mb-2 ml-6 mt-2 self-start"
-          label={copy.retry}
-          onPress={onRetry}
-          variant="outline"
-        />
-      ) : null}
-    </Alert>
-  );
+export function stockHref(productId: string): Href {
+  return { pathname: "/operate/inventory/[productId]", params: { productId } };
 }
 
 export function InventoryScreen({
-  copy,
+  categories,
   lowStockOnly,
+  onClearFilters,
   onLoadMore,
   onLowStockOnlyChange,
-  onOpenHistory,
   onRetry,
   onSearchChange,
   search,
-  showReadOnlyNotice,
   state,
 }: InventoryScreenProps) {
-  const mutedColor = useCSSVariable("--color-muted-foreground") as string;
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const columns = useMemo<DataTableColumn<StockItem>[]>(
     () => [
       {
-        id: "name",
-        header: t("dataTable.columns.name"),
+        id: "product",
+        header: t("inventory.list.product"),
         meta: { primary: true },
-        cell: ({
-          row: {
-            original: { product },
-          },
-        }) => (
-          <Button
-            accessibilityLabel={t("dataTable.openRecord", { name: product.name })}
-            accessibilityHint={copy.openHistory(product.name)}
-            className="justify-start px-0"
-            label={product.name}
-            onPress={() => onOpenHistory(product.id)}
-            size="sm"
-            variant="ghost"
-          />
+        cell: ({ row: { original } }) => (
+          <Text className="text-[13px]" numberOfLines={2}>
+            {original.product.name}
+          </Text>
         ),
       },
       {
         id: "sku",
         header: t("dataTable.columns.sku"),
-        cell: ({
-          row: {
-            original: { product },
-          },
-        }) => (
-          <Text className="font-sans text-sm text-muted-foreground">
-            {product.sku ?? t("catalog.list.noSku")}
-          </Text>
+        cell: ({ row: { original } }) =>
+          original.product.sku ? (
+            <Text className="text-[13px] text-muted-foreground" numberOfLines={1}>
+              {original.product.sku}
+            </Text>
+          ) : (
+            <MissingValue label={t("catalog.detail.noSku")} />
+          ),
+      },
+      ...(categories
+        ? [
+            {
+              id: "category",
+              header: t("dataTable.columns.category"),
+              cell: ({ row: { original } }) => (
+                <CategoryName
+                  categoryId={original.product.categoryId}
+                  loading={categories.loading}
+                  names={categories.names}
+                />
+              ),
+            } satisfies DataTableColumn<StockItem>,
+          ]
+        : []),
+      {
+        id: "onHand",
+        header: t("inventory.list.onHand"),
+        meta: { align: "end", figure: true, width: 240 },
+        cell: ({ row: { original } }) => (
+          <StockValue product={original.product} stock={original.stock} />
         ),
       },
       {
-        id: "stock",
-        header: t("dataTable.columns.stock"),
-        meta: { align: "end" },
-        cell: ({
-          row: {
-            original: { product, stock },
-          },
-        }) => (
-          <Text className="font-ui text-sm text-foreground">
-            {formatQuantityMinorUnits(stock.onHandMinorUnits, stock.quantityPrecision)}{" "}
-            {copy.unitLabels[product.unitKind]}
-          </Text>
-        ),
-      },
-      {
-        id: "minimum",
+        id: "threshold",
         header: t("dataTable.columns.minimum"),
-        meta: { align: "end" },
-        cell: ({
-          row: {
-            original: { stock },
-          },
-        }) => (
-          <Text className="font-sans text-sm text-muted-foreground">
-            {stock.lowStockThresholdMinorUnits === null
-              ? copy.noThreshold
-              : formatQuantityMinorUnits(
-                  stock.lowStockThresholdMinorUnits,
-                  stock.quantityPrecision,
-                )}
-          </Text>
-        ),
-      },
-      {
-        id: "status",
-        header: t("dataTable.columns.status"),
-        cell: ({
-          row: {
-            original: { stock },
-          },
-        }) => (
-          <Text
-            className={
-              stock.lowStock
-                ? "font-ui text-sm text-destructive"
-                : "font-sans text-sm text-muted-foreground"
-            }
-          >
-            {stock.lowStock ? copy.lowStock : copy.onHand}
-          </Text>
-        ),
+        meta: { align: "end", width: 140 },
+        cell: ({ row: { original } }) =>
+          original.stock.lowStockThresholdMinorUnits === null ? (
+            <MissingValue label={t("inventory.list.noThreshold")} />
+          ) : (
+            <Text className="text-[13px] text-muted-foreground tabular-nums">
+              {quantityText(t, locale, {
+                minorUnits: original.stock.lowStockThresholdMinorUnits,
+                precision: original.stock.quantityPrecision,
+                unitKind: original.product.unitKind,
+              })}
+            </Text>
+          ),
       },
     ],
-    [copy, onOpenHistory, t],
+    [categories, locale, t],
   );
+
   if (state.status === "denied") {
     return (
       <Page>
-        <InventoryFailure copy={copy} onRetry={onRetry} status="denied" />
+        <StatePanel
+          description={t("inventory.list.deniedDescription")}
+          icon={Lock}
+          level={1}
+          title={t("inventory.list.deniedTitle")}
+        />
       </Page>
     );
   }
-  return (
-    <Page contentContainerClassName="gap-8">
-      <ScreenHeader description={copy.description} eyebrow={copy.eyebrow} title={copy.title} />
 
-      {showReadOnlyNotice ? <ReadOnlyNotice description={copy.readOnlyDescription} /> : null}
-
-      <FilterToolbar label={copy.title}>
-        <View className="min-w-0 flex-1 lg:max-w-[620px]">
-          <Field
-            accessibilityLabel={copy.searchLabel}
-            label={copy.searchLabel}
-            onChangeText={onSearchChange}
-            placeholder={copy.searchPlaceholder}
-            trailing={<Search color={mutedColor} size={18} />}
-            value={search}
-          />
-        </View>
-        <FilterBar
-          label={copy.title}
-          onChange={(value) => onLowStockOnlyChange(value === "low-stock")}
-          options={[
-            { value: "all", label: copy.showAll },
-            { value: "low-stock", label: copy.showLowStock },
-          ]}
-          value={lowStockOnly ? "low-stock" : "all"}
+  let body: ReactElement;
+  if (state.status === "loading") {
+    body = <ContentSkeleton label={t("inventory.list.loading")} variant="section" />;
+  } else if (state.status === "offline") {
+    body = <OfflineState level={2} />;
+  } else if (state.status === "error") {
+    body = (
+      <StatePanel
+        action={<Button label={t("common.retry")} onPress={onRetry} size="sm" variant="outline" />}
+        description={t("inventory.list.unavailableDescription")}
+        icon={TriangleAlert}
+        level={2}
+        title={t("inventory.list.unavailableTitle")}
+        tone="destructive"
+      />
+    );
+  } else {
+    const clear = (
+      <Button label={t("filters.reset")} onPress={onClearFilters} size="sm" variant="outline" />
+    );
+    body = (
+      <View
+        aria-busy={state.previous}
+        className={cn("min-w-0 gap-3", state.previous && "opacity-60")}
+      >
+        <DataTable
+          caption={t("inventory.list.title")}
+          columns={columns}
+          data={state.items}
+          empty={
+            search.trim() ? (
+              <EmptyState
+                action={clear}
+                description={t("inventory.list.emptyFilteredDescription")}
+                icon={Boxes}
+                title={t("inventory.list.emptyFilteredTitle")}
+              />
+            ) : lowStockOnly ? (
+              <EmptyState
+                action={clear}
+                description={t("inventory.list.emptyLowDescription")}
+                icon={Boxes}
+                title={t("inventory.list.emptyLowTitle")}
+              />
+            ) : (
+              <EmptyState
+                action={
+                  categories ? (
+                    <Link asChild href="/operate/catalog">
+                      <Button accessibilityRole="link" size="sm" variant="outline">
+                        <Text>{t("inventory.list.goToCatalog")}</Text>
+                      </Button>
+                    </Link>
+                  ) : undefined
+                }
+                description={t("inventory.list.emptyDescription")}
+                icon={Boxes}
+                title={t("inventory.list.emptyTitle")}
+              />
+            )
+          }
+          getRowHref={({ product }) => stockHref(product.id)}
+          getRowId={({ product }) => product.id}
         />
-      </FilterToolbar>
+        {state.previous ? null : (
+          <LoadMoreButton
+            page={{ hasMore: state.hasNextPage, loadingMore: state.loadingMore, onLoadMore }}
+          />
+        )}
+      </View>
+    );
+  }
 
-      {state.status !== "ready" ? (
-        <InventoryFailure copy={copy} onRetry={onRetry} status={state.status} />
-      ) : (
-        <View>
-          {state.stale ? (
-            <View className="mb-5 border-l-4 border-warning bg-muted p-3">
-              <Text className="font-sans text-sm text-foreground">{copy.stale}</Text>
-            </View>
-          ) : null}
-          {state.items.length === 0 ? (
-            <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
-          ) : (
-            <DataTable
-              caption={copy.title}
-              columns={columns}
-              data={state.items}
-              getRowId={({ product }) => product.id}
+  return (
+    <Page>
+      <PageHeader description={t("inventory.list.description")} title={t("inventory.list.title")} />
+      {state.status === "ready" && state.stale ? (
+        <StaleNotice loading={state.refreshing} onRetry={onRetry} />
+      ) : null}
+      <View className="min-w-0 gap-3">
+        <FilterToolbar label={t("inventory.list.filtersLabel")}>
+          <View className="min-w-0 sm:w-72">
+            <SearchBox
+              label={t("inventory.list.searchLabel")}
+              onChange={onSearchChange}
+              placeholder={t("inventory.list.searchPlaceholder")}
+              value={search}
             />
-          )}
-          {state.hasNextPage ? (
-            <Button
-              className="mt-6 self-start"
-              label={state.loadingMore ? copy.loadingMore : copy.loadMore}
-              loading={state.loadingMore}
-              onPress={onLoadMore}
-              variant="outline"
-            />
-          ) : null}
-        </View>
-      )}
+          </View>
+          <FilterBar
+            label={t("inventory.list.filterLabel")}
+            onChange={(value) => onLowStockOnlyChange(value === "low")}
+            options={[
+              { label: t("inventory.list.filters.all"), value: "all" },
+              { label: t("inventory.list.filters.low"), value: "low" },
+            ]}
+            value={lowStockOnly ? "low" : "all"}
+          />
+        </FilterToolbar>
+        {body}
+      </View>
     </Page>
   );
 }

@@ -26,22 +26,13 @@ import {
   updateCategoryRequestSchema,
   updateProductRequestSchema,
 } from "@pisto/contracts";
-import { apiRequest } from "@/lib/api-client";
-
-function queryString(query: Record<string, boolean | number | string | undefined>): string {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== "") params.set(key, String(value));
-  }
-  const encoded = params.toString();
-  return encoded ? `?${encoded}` : "";
-}
+import { apiRequest, parseRequestPayload, pathWithQuery } from "@/lib/api-client";
 
 export const catalogApi = {
   categories: {
     list: (query: CategoryListQuery, signal?: AbortSignal) =>
       apiRequest<CategoryListResponse, CategoryListResponse["data"]>(
-        `/v1/catalog/categories${queryString(query)}`,
+        pathWithQuery("/v1/catalog/categories", query),
         { authenticated: true, signal },
         categoryListResponseSchema,
       ),
@@ -50,7 +41,7 @@ export const catalogApi = {
         "/v1/catalog/categories",
         {
           authenticated: true,
-          body: createCategoryRequestSchema.parse(command),
+          body: parseRequestPayload(createCategoryRequestSchema, command),
           method: "POST",
         },
         categoryMutationResponseSchema,
@@ -60,7 +51,7 @@ export const catalogApi = {
         `/v1/catalog/categories/${encodeURIComponent(categoryId)}`,
         {
           authenticated: true,
-          body: updateCategoryRequestSchema.parse(command),
+          body: parseRequestPayload(updateCategoryRequestSchema, command),
           method: "PATCH",
         },
         categoryMutationResponseSchema,
@@ -70,7 +61,7 @@ export const catalogApi = {
         `/v1/catalog/categories/${encodeURIComponent(categoryId)}/archive`,
         {
           authenticated: true,
-          body: archiveCategoryRequestSchema.parse(command),
+          body: parseRequestPayload(archiveCategoryRequestSchema, command),
           method: "POST",
         },
         categoryMutationResponseSchema,
@@ -79,7 +70,7 @@ export const catalogApi = {
   products: {
     list: (query: ProductListQuery, signal?: AbortSignal) =>
       apiRequest<ProductListResponse, ProductListResponse["data"]>(
-        `/v1/catalog/products${queryString(query)}`,
+        pathWithQuery("/v1/catalog/products", query),
         { authenticated: true, signal },
         productListResponseSchema,
       ),
@@ -94,7 +85,7 @@ export const catalogApi = {
         "/v1/catalog/products",
         {
           authenticated: true,
-          body: createProductRequestSchema.parse(command),
+          body: parseRequestPayload(createProductRequestSchema, command),
           method: "POST",
         },
         productMutationResponseSchema,
@@ -104,7 +95,7 @@ export const catalogApi = {
         `/v1/catalog/products/${encodeURIComponent(productId)}`,
         {
           authenticated: true,
-          body: updateProductRequestSchema.parse(command),
+          body: parseRequestPayload(updateProductRequestSchema, command),
           method: "PATCH",
         },
         productMutationResponseSchema,
@@ -114,7 +105,7 @@ export const catalogApi = {
         `/v1/catalog/products/${encodeURIComponent(productId)}/archive`,
         {
           authenticated: true,
-          body: archiveProductRequestSchema.parse(command),
+          body: parseRequestPayload(archiveProductRequestSchema, command),
           method: "POST",
         },
         productMutationResponseSchema,

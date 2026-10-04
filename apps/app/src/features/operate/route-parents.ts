@@ -28,7 +28,6 @@ export const OPERATE_ROUTE_PARENTS = {
   "/operate/inventory": "/operate",
   "/operate/inventory/[productId]": "/operate/inventory",
   "/operate/inventory/[productId]/new": "/operate/inventory/[productId]",
-  "/operate/inventory/[productId]/reverse/[movementId]": "/operate/inventory/[productId]",
   "/operate/receivables": "/operate",
   "/operate/receivables/[receivableId]": "/operate/receivables",
   "/operate/receivables/[receivableId]/payment": "/operate/receivables/[receivableId]",

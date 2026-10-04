@@ -35,7 +35,6 @@ export const shell = {
     "/operate/inventory": "Inventario",
     "/operate/inventory/[productId]": "Existencias",
     "/operate/inventory/[productId]/new": "Nuevo movimiento",
-    "/operate/inventory/[productId]/reverse/[movementId]": "Revertir movimiento",
     "/operate/customers": "Clientes",
     "/operate/customers/new": "Nuevo cliente",
     "/operate/customers/[customerId]": "Cliente",

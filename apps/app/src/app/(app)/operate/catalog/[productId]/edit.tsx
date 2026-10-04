@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 
-import { ProductFormRoute } from "@/features/catalog/product-form-route";
+import { ProductFormRoute } from "@/features/catalog/product-form-controller";
 
 export default function EditProductRoute() {
   const params = useLocalSearchParams<{ productId?: string | string[] }>();
