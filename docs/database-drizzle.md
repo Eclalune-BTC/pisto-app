@@ -123,9 +123,17 @@ the server's time-zone resolution or daylight-saving ambiguity checks.
 - A sale and its operation receipt commit in one short transaction after fresh `sales:create` access is loaded.
   Exact command/key replay returns the original record; changed input conflicts. Previous-month
   summaries derive half-open business-local bounds from one database timestamp.
-- Canonical sale lookup and previous-month summary queries compose an unexpired session and current
-  membership with the financial read, then enforce the required recognized-role permission. Sale
-  history holds shared authorization locks while reading its bounded page and correction links.
+- Every business read and command authorizes through `authorizeBusinessAction` inside its own
+  transaction: an unexpired session pointed at the business, then current membership and the named
+  permissions. An expired session is `UNAUTHORIZED`; a missing membership or permission is
+  `FORBIDDEN`; a record outside the active business is `NOT_FOUND`.
+- Authorization holds `FOR SHARE` on the session and membership rows until commit. A role or
+  active-business change is an `UPDATE` of a non-key column (`FOR NO KEY UPDATE`) and a removal is a
+  `DELETE` (`FOR UPDATE`); both conflict with `FOR SHARE`, so a revocation waits for in-flight work
+  and in-flight work waits for a pending revocation. `FOR KEY SHARE` would let a role downgrade
+  commit mid-command; exclusive modes would serialize every command of one member without protecting
+  another invariant. Read-only snapshot transactions authorize without row locks because PostgreSQL
+  rejects them there. Onboarding alone locks its session `FOR UPDATE`, because it rewrites that row.
 - Business discovery and onboarding also verify a live, unexpired session in the database; a cached
   auth response cannot authorize a new business or replay after session expiry.
 - Multi-query operating reports and customer/receivable details use a read-only repeatable-read
@@ -133,6 +141,14 @@ the server's time-zone resolution or daylight-saving ambiguity checks.
   within that snapshot.
 - Opaque timestamp cursors preserve PostgreSQL microseconds and encode UTC explicitly. Do not
   round a cursor through JavaScript `Date` milliseconds or rely on a connection's `TimeZone` setting.
+- `pagination.ts` owns every history cursor: a versioned base64url payload bound to a fingerprint of
+  the list kind and its filters, a `(created_at, id)` row-value keyset predicate that can seek the
+  tenant/creation indexes, and the `limit + 1` page split. A cursor replayed under other filters or
+  tampered with is `VALIDATION_ERROR`.
+- Repositories trust path identifiers the HTTP boundary already validated as UUIDs; a malformed
+  identifier reaching PostgreSQL fails loudly instead of being reported as a missing record.
+- Idempotency keys are normalized to lower case before the advisory lock and every receipt lookup,
+  so differently cased retries of one UUID serialize on the same lock.
 
 ## Shared operation-log primitive
 
@@ -158,10 +174,11 @@ tables, one per capability, because their foreign keys and action `CHECK` constr
   business/actor/idempotency key inside the transaction, so a replay read cannot race another commit
   of the same command. `lockSemanticKey` does the same for a case-insensitive business-scoped name,
   such as a cash-account name, category name, or product SKU.
-- **Replay.** `findOperationReplay` returns the stored result when the same actor already committed
+- **Replay.** `beginOperation` returns the stored result when the same actor already committed
   this exact command, and raises `IDEMPOTENCY_CONFLICT` when the key was reused for a different
-  action or payload. `parseReplaySnapshot` reads a stored snapshot back through its public contract
-  and fails loudly rather than replaying a corrupt one.
+  action or payload. The stored snapshot is read back through the contract the caller passes and
+  fails loudly rather than replaying a corrupt one. `saveOperation` writes the receipt identity plus
+  the capability's own links.
 - **Descriptor shape.** `OperationLog` reads the identity columns off the table itself instead of
   taking them as separate fields. A descriptor that named them separately could point `businessId` at
   another column of the same table: it would typecheck, generate a predicate that never matches, and
@@ -172,20 +189,29 @@ session and membership first, then takes the idempotency lock, then reads the re
 Internal modules import domain primitives from `product-core.ts`, keeping the composition of sales
 repositories out of their dependency path. Public package exports remain stable.
 
+Each capability lives in its own folder (`cash/`, `catalog/`, `receivables/`, `sales/`) with the
+same roles: `types.ts` for the repository interface, `mappers.ts` for record-to-contract mapping,
+`records.ts` for its operation-log descriptor, row locks and ledger reads, and `*-commands.ts` /
+`*queries.ts` factories that the top-level `cash.ts`, `catalog.ts`, `receivables.ts` and `sales.ts`
+compose. `businesses.ts` owns discovery and onboarding; `product.ts` composes businesses and sales.
+Shared primitives are `errors.ts`, `business-access.ts`, `local-time.ts`, `money.ts`,
+`pagination.ts`, `operation-log.ts` and `text-search.ts`. The package index exports only what other
+packages use.
+
 ### Why the two sales paths do not use `beginOperation`
 
-`postSale` in `packages/db/src/sales-posting.ts` and the correction commands in
-`packages/db/src/sales-correction.ts` deliberately do **not** call `beginOperation`. They use
-`authorizeBusinessAction` and `lockCommandKey` with the same global lock order as other commands:
-live session, membership, then command-key advisory lock. Sales retain `for update` authorization
-locks. The shared prologue preserves the caller's lock strength: catalog uses `update`, while cash
-and receivables use `share`. Taking the command key first in either
-sales path would reintroduce the cross-capability deadlock covered by the PostgreSQL regression suite.
+`packages/db/src/sales/posting.ts` and `packages/db/src/sales/corrections.ts` deliberately do
+**not** call `beginOperation`. They use `authorizeBusinessAction` and `lockCommandKey` with the same
+global lock order as other commands: live session, membership, then command-key advisory lock.
+Taking the command key first in either sales path would reintroduce the cross-capability deadlock
+covered by the PostgreSQL regression suite. Review preparation additionally serializes on a
+per-actor advisory lock before its one-open-review check, so a concurrent preparation sees the
+committed review as `CONFLICT` instead of failing on the unique index.
 
 The separate replay code remains necessary because sales share one `(business_id, actor_user_id,
 idempotency_key)` space across `sale_operation` and `sale_correction`. A key used to post a sale must
-conflict when reused for a correction, and the reverse. Each path therefore reads both tables.
-`findOperationReplay` is single-table by construction and cannot express that contract.
+conflict when reused for a correction, and the reverse. Each path therefore reads both tables;
+the single-table replay in `beginOperation` cannot express that contract.
 
 ### Shared request-budget storage
 
@@ -262,9 +288,10 @@ owns completed portability checks and their limits. Minimize stored provider
 payloads, restrict access, define retention, and avoid credentials or unnecessary personal data in
 JSON evidence.
 
-Cash commands use `FOR NO KEY UPDATE` for stable cash-account identities.
-It still serializes balance-changing commands, while remaining compatible with the foreign-key
-key-share locks acquired by receivable payments. Cursor validation rejects impossible calendar
+Every cash command, transfers included, locks accounts through one helper with
+`FOR NO KEY UPDATE` in identifier order. Account identity is immutable, so this serializes
+balance-changing commands while remaining compatible with the `FOR KEY SHARE` lock a receivable
+payment's foreign-key check takes on the account. Cursor validation rejects impossible calendar
 dates and times before database casts without reducing the six-digit timestamp precision. Sale
 detail reads the sale and its correction in one statement; posting replays include later correction
 evidence. `packages/db/integration/data-hardening.integration.ts` covers these regressions.
@@ -273,6 +300,8 @@ evidence. `packages/db/integration/data-hardening.integration.ts` covers these r
 
 - [PostgreSQL 18 documentation](https://www.postgresql.org/docs/18/)
 - [PostgreSQL row-level lock modes](https://www.postgresql.org/docs/18/explicit-locking.html#LOCKING-ROWS)
+- [PostgreSQL 9.3 release notes: foreign-key checks use `FOR KEY SHARE`](https://www.postgresql.org/docs/release/9.3.0/)
+- [Keyset pagination with row values](https://use-the-index-luke.com/sql/partial-results/fetch-next-page)
 - [PostgreSQL 18.6 release](https://www.postgresql.org/docs/release/18.6/)
 - [Official PostgreSQL container image](https://hub.docker.com/_/postgres)
 - [Drizzle PostgreSQL guide](https://orm.drizzle.team/docs/get-started-postgresql)

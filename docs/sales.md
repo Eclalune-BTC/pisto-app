@@ -55,8 +55,8 @@ cross-business links. Restrictive deletion and explicit correction preserve fina
 
 Transactions authorize the live session and membership before taking the command-key lock, then lock
 the affected records. Never restore the older key-before-authorization order. Posting is shared by
-`packages/db/src/sales-posting.ts`; review lifecycle is in `sale-reviews.ts`, correction in
-`sales-correction.ts`, and repository composition in `product.ts`.
+`packages/db/src/sales/posting.ts`; review lifecycle is in `sales/reviews.ts`, correction in
+`sales/corrections.ts`, reads in `sales/queries.ts`, and repository composition in `sales.ts`.
 
 Permissions come from [ADR 0014](adrs/0014-static-current-operation-permissions.md). Owner, admin and
 member policies permit normal sales operations; correction requires `sales:correct`, granted only to

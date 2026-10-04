@@ -112,7 +112,8 @@ permission list, transcript, or model response authorizes a command.
 
 Command transactions acquire locks in this order: session, business membership/settings, command
 key, then the resources the operation changes. All capabilities use the same authorization-before-key
-order. Sales keep separate replay composition because sale posting and sale correction share one
+order and hold session and membership rows `FOR SHARE`; [PostgreSQL and Drizzle](database-drizzle.md)
+records why that is the minimal mode. Sales keep separate replay composition because sale posting and sale correction share one
 key space across two receipt tables. Cash, catalog, and receivables each own their receipt table.
 An advisory lock alone is not authorization, and an idempotency key alone is not proof of matching
 input: the stored fingerprint and action must match.
