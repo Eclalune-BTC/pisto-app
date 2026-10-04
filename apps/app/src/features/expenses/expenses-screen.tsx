@@ -13,6 +13,7 @@ import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { FieldError } from "../cash/field-error";
 import { type CursorPage, LoadMoreButton } from "../cash/load-more-button";
 import { expensesBoundaryCopy } from "./copy";
 import { ExpenseFilters } from "./expense-filters";
@@ -91,18 +92,19 @@ export function ExpensesScreen({
       {isStale ? <StaleNotice onRetry={onRetry} /> : null}
 
       <Section description={t("expenses.summary.scope")} title={t("filters.periodSummary")}>
-        <View className="min-w-0 max-w-xl">
+        {/* A range error under one field would push the toolbar out of line; it spans both. */}
+        <View className="min-w-0 max-w-xl gap-2">
           <DateRangeFilter
             applyLabel={t("expenses.summary.apply")}
             endDate={period.endLocalDate}
             endLabel={t("expenses.summary.endDate")}
-            error={periodError}
             onApply={onApplyPeriod}
             onEndDateChange={(endLocalDate) => onPeriodChange({ ...period, endLocalDate })}
             onStartDateChange={(startLocalDate) => onPeriodChange({ ...period, startLocalDate })}
             startDate={period.startLocalDate}
             startLabel={t("expenses.summary.startDate")}
           />
+          <FieldError message={periodError} />
         </View>
         {summaryState.kind === "loading" ? (
           <ExpenseSummarySkeleton />

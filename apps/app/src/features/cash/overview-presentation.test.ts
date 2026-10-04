@@ -345,6 +345,19 @@ describe("expenses overview", () => {
     expect(props.onFiltersChange).not.toHaveBeenCalled();
   });
 
+  test("reports an invalid range once, below both dates", () => {
+    const props = { ...expenseProps(), periodError: t("expenses.remote.invalidPeriod") };
+    const { tree } = capture(ExpensesScreen, props);
+    const summarySection = section(tree, t("filters.periodSummary"));
+    const [dates] = elements<ComponentProps<typeof DateRangeFilter>>(
+      summarySection,
+      DateRangeFilter,
+    );
+    expect(dates?.props.error).toBeUndefined();
+    expect(dates?.props.endError).toBeUndefined();
+    expect(renderToStaticMarkup(summarySection)).toContain(t("expenses.remote.invalidPeriod"));
+  });
+
   test("filters the history with a status segment, two selects and a reset", () => {
     const props = expenseProps();
     const filters = { accountId: account.id, category: "rent" as const, status: "voided" as const };
