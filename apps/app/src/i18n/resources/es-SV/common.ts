@@ -5,7 +5,6 @@ export const common = {
   retrySameConfirmation: "Reintentar la misma confirmación",
   uncertainTitle: "No sabemos si llegó la confirmación",
   cancel: "Cancelar",
-  confirm: "Confirmar",
   edit: "Editar",
   editData: "Editar datos",
   yes: "Sí",

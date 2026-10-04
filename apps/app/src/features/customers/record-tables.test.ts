@@ -16,14 +16,11 @@ import { ReceivableDetailScreen } from "@/features/receivables/receivable-detail
 import { ReceivablesScreen } from "@/features/receivables/receivables-screen";
 import { i18n } from "@/i18n/config";
 import { formatLocalDate } from "@/i18n/format";
-import { formatMinorUnits } from "@/lib/money";
 import { CustomersScreen } from "./customers-screen";
 
 const noop = () => undefined;
 const date = "2026-09-27";
 const timestamp = `${date}T18:00:00.000Z`;
-const money = (value: string, currency: string, digits: number) =>
-  formatMinorUnits(value, currency, digits, "es-SV");
 const customer: Customer = {
   id: "customer-a",
   name: "Long customer name that must remain fully readable",
