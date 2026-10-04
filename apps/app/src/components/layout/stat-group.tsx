@@ -25,7 +25,7 @@ export function Stat({
   value: string;
 }) {
   return (
-    <View className="min-w-[150px] flex-1 basis-[180px] gap-1 bg-card px-4 py-3">
+    <View className="min-w-[140px] flex-1 basis-[140px] gap-1 bg-card px-4 py-3">
       <Text className="text-xs leading-4 text-muted-foreground">{label}</Text>
       <Text
         className={cn(

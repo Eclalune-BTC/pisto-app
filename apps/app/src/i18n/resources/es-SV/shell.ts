@@ -9,6 +9,7 @@ export const shell = {
   activeBusiness: "Negocio activo: {{name}}",
   switchBusiness: "Cambiar de negocio. Negocio activo: {{name}}",
   businesses: "Tus negocios",
+  businessStale: "sin actualizar",
   businessSwitchFailed: "No pudimos cambiar de negocio. El negocio activo no cambió.",
   signingOut: "Cerrando sesión…",
   routes: {

@@ -7,6 +7,7 @@ import { useWindowDimensions, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import type { DataTableColumn } from "./data-table";
 import { DataTableRecords, type DataTableSurfaceProps } from "./data-table-records";
+import { PressableSurface } from "./pressable-surface";
 
 const TABLE_MIN_WIDTH = 640;
 
@@ -20,7 +21,7 @@ export function DataTableSurface<T>(props: DataTableSurfaceProps<T>) {
   const window = useWindowDimensions();
   // Seed from the window so a wide screen paints the table immediately; layout refines it.
   const [width, setWidth] = useState(window.width);
-  const { getRowHref, rowActions } = props;
+  const { getRowHref, onRowPress, rowActions } = props;
   return (
     <View className="min-w-0" onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
       {width < TABLE_MIN_WIDTH ? (
@@ -36,6 +37,7 @@ export function DataTableSurface<T>(props: DataTableSurfaceProps<T>) {
                     key={header.id}
                     scope="col"
                     data-align={(header.column.columnDef as DataTableColumn<T>).meta?.align}
+                    style={{ width: (header.column.columnDef as DataTableColumn<T>).meta?.width }}
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
@@ -50,14 +52,19 @@ export function DataTableSurface<T>(props: DataTableSurfaceProps<T>) {
             <tbody>
               {props.rows.map((row) => {
                 const href = getRowHref?.(row.original);
+                const open = href
+                  ? () => router.push(href)
+                  : onRowPress
+                    ? () => onRowPress(row.original)
+                    : undefined;
                 return (
                   <tr
-                    data-href={href ? "" : undefined}
+                    data-href={open ? "" : undefined}
                     key={row.id}
                     onClick={
-                      href
+                      open
                         ? (event) => {
-                            if (!isInteractiveTarget(event)) router.push(href);
+                            if (!isInteractiveTarget(event)) open();
                           }
                         : undefined
                     }
@@ -73,6 +80,14 @@ export function DataTableSurface<T>(props: DataTableSurfaceProps<T>) {
                                 {content}
                               </Text>
                             </Link>
+                          ) : onRowPress && column.meta?.primary ? (
+                            <PressableSurface
+                              accessibilityRole="button"
+                              className="self-start rounded-sm web:hover:bg-transparent"
+                              onPress={() => onRowPress(row.original)}
+                            >
+                              {content}
+                            </PressableSurface>
                           ) : (
                             content
                           )}

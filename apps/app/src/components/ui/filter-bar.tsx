@@ -46,6 +46,7 @@ export function FilterBar<T extends string>({
               value={option.value}
               disabled={disabled}
               accessibilityLabel={`${label}: ${option.label}`}
+              role="radio"
               className={cn(
                 "h-auto min-h-7 max-w-full rounded-sm px-2.5 py-1 native:min-h-10 native:px-3 web:flex-none web:whitespace-nowrap",
                 selected

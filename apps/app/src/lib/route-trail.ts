@@ -55,6 +55,22 @@ function hrefFor(route: ShellRoute, params: Readonly<Record<string, unknown>>): 
   return complete ? href : null;
 }
 
+/** The search parameters that are not part of the route's own path, as a stable query string. */
+export function queryOutsideRoute(
+  route: ShellRoute,
+  params: Readonly<Record<string, unknown>>,
+): string {
+  const pathParameters = new Set([...route.matchAll(PARAMETER)].map(([, name]) => name));
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params).sort(([a], [b]) => a.localeCompare(b))) {
+    if (pathParameters.has(key)) continue;
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (typeof item === "string") search.append(key, item);
+    }
+  }
+  return search.toString();
+}
+
 /**
  * Builds the breadcrumb trail from the route the user is on up to its root, following the product's
  * declared parents. Parent links reuse the current route parameters; a parent whose parameter is not

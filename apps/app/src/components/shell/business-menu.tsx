@@ -90,12 +90,11 @@ export function BusinessMenu({ collapsed }: { collapsed: boolean }) {
         accessibilityLabel={t("shell.activeBusiness", { name: active.name })}
         className={cn("flex-row items-center gap-2.5 px-2 py-1.5", collapsed && "justify-center")}
       >
-        <BusinessIdentity collapsed={collapsed} currency={active.currency} name={active.name} />
-        {stale && !collapsed ? (
-          <Text accessibilityLiveRegion="polite" className="text-xs text-muted-foreground">
-            {t("remote.stale")}
-          </Text>
-        ) : null}
+        <BusinessIdentity
+          collapsed={collapsed}
+          currency={stale ? `${active.currency} · ${t("shell.businessStale")}` : active.currency}
+          name={active.name}
+        />
       </View>
     );
   }

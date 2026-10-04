@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { buildRouteTrail, routeFromSegments } from "@/lib/route-trail";
+import { buildRouteTrail, queryOutsideRoute, routeFromSegments } from "@/lib/route-trail";
 
 describe("route trail", () => {
   test("maps router segments to a known route pattern", () => {
@@ -61,5 +61,18 @@ describe("route trail", () => {
       { route: "/billing", href: "/billing" },
       { route: "/billing/success", href: null },
     ]);
+  });
+});
+
+describe("route query memory", () => {
+  test("keeps only the parameters that are not part of the route path", () => {
+    expect(
+      queryOutsideRoute("/operate/catalog/[productId]", {
+        productId: "product-1",
+        tab: "movements",
+        status: ["active", "archived"],
+      }),
+    ).toBe("status=active&status=archived&tab=movements");
+    expect(queryOutsideRoute("/operate/sales", {})).toBe("");
   });
 });

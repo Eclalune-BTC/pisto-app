@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { type Href, useGlobalSearchParams, useSegments } from "expo-router";
-import { Fragment } from "react";
+import { type Href, useGlobalSearchParams, usePathname, useSegments } from "expo-router";
+import { Fragment, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useShellRouteLabels } from "@/components/shell/shell-context";
+import { useShellRouteLabels, useShellVisits } from "@/components/shell/shell-context";
 import {
   Breadcrumb,
   BreadcrumbBack,
@@ -15,15 +15,28 @@ import {
 } from "@/components/ui/breadcrumb";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead } from "@/lib/query-state";
-import { buildRouteTrail, routeFromSegments, type ShellRoute } from "@/lib/route-trail";
+import {
+  buildRouteTrail,
+  queryOutsideRoute,
+  routeFromSegments,
+  type ShellRoute,
+} from "@/lib/route-trail";
 
 export function ShellBreadcrumbs({ compact }: { compact: boolean }) {
   const { t } = useTranslation();
   const segments = useSegments();
   const params = useGlobalSearchParams();
+  const pathname = usePathname();
   const recordLabels = useShellRouteLabels();
+  const { lastVisit, rememberVisit } = useShellVisits();
   const businesses = useQuery(businessesQueryOptions);
   const route = routeFromSegments(segments);
+  const query = route ? queryOutsideRoute(route, params) : "";
+
+  useEffect(() => {
+    if (route) rememberVisit(route, pathname, query);
+  }, [pathname, query, rememberVisit, route]);
+
   if (!route) return null;
 
   const businessName = hasDeniedRead([businesses])
@@ -32,7 +45,9 @@ export function ShellBreadcrumbs({ compact }: { compact: boolean }) {
   const label = (entry: ShellRoute) =>
     recordLabels[entry] ??
     (entry === "/operate" && businessName ? businessName : t(`shell.routes.${entry}`));
-  const trail = buildRouteTrail(route, params);
+  const trail = buildRouteTrail(route, params).map((entry) =>
+    entry.href ? { ...entry, href: lastVisit(entry.route, entry.href) ?? entry.href } : entry,
+  );
 
   if (compact) {
     const parent = trail.at(-2);

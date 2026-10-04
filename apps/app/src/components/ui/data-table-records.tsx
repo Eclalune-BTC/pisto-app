@@ -11,6 +11,7 @@ export type DataTableSurfaceProps<T> = {
   caption: string;
   getRowHref?: (record: T) => Href;
   headers: Header<T, unknown>[];
+  onRowPress?: (record: T) => void;
   rowActions?: (record: T) => ReactElement | null;
   rows: Row<T>[];
 };
@@ -23,6 +24,7 @@ function columnOf<T>(cell: { column: { columnDef: unknown } }) {
 export function DataTableRecords<T>({
   caption,
   getRowHref,
+  onRowPress,
   rowActions,
   rows,
 }: DataTableSurfaceProps<T>) {
@@ -35,9 +37,9 @@ export function DataTableRecords<T>({
       {rows.map((row, index) => {
         const cells = row.getVisibleCells();
         const primary = cells.find((cell) => columnOf<T>(cell).meta?.primary) ?? cells[0];
-        const figure = cells.find(
-          (cell) => cell !== primary && columnOf<T>(cell).meta?.align === "end",
-        );
+        const figure =
+          cells.find((cell) => cell !== primary && columnOf<T>(cell).meta?.figure) ??
+          cells.find((cell) => cell !== primary && columnOf<T>(cell).meta?.align === "end");
         const details = cells.filter(
           (cell) => cell !== primary && cell !== figure && !columnOf<T>(cell).meta?.hideOnCompact,
         );
@@ -88,11 +90,18 @@ export function DataTableRecords<T>({
                 <Link asChild href={href}>
                   <PressableSurface accessibilityRole="link">{content}</PressableSurface>
                 </Link>
+              ) : onRowPress ? (
+                <PressableSurface
+                  accessibilityRole="button"
+                  onPress={() => onRowPress(row.original)}
+                >
+                  {content}
+                </PressableSurface>
               ) : (
                 content
               )}
             </View>
-            {actions ? <View className="shrink-0 pr-1">{actions}</View> : null}
+            {rowActions ? <View className="w-9 shrink-0 items-center pr-1">{actions}</View> : null}
           </View>
         );
       })}

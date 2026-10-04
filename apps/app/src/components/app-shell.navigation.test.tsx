@@ -222,7 +222,7 @@ describe("application shell", () => {
     fixture.query.isError = true;
     const markup = renderShell();
     expect(markup).toContain("Authorized business");
-    expect(markup).toContain("remote.stale");
+    expect(markup).toContain("shell.businessStale");
     expect(navigationLinks(markup)).toEqual(allModuleLinks);
   });
 

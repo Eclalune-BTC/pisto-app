@@ -8,4 +8,5 @@ export const filters = {
   accounts: "Cuentas",
   movements: "Movimientos",
   dateFormat: "AAAA-MM-DD",
+  timeFormat: "HH:MM",
 } as const;

@@ -1,12 +1,15 @@
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, useWindowDimensions, View } from "react-native";
+import { cn } from "@/lib/cn";
 import { Label } from "./label";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "./select";
 import { Text } from "./text";
 
 export type SelectFieldProps<T extends string> = {
   disabled?: boolean;
+  /** Validation message owned by the field: outlines the trigger and is announced with it. */
+  error?: string;
   label: string;
   onChange: (value: T) => void;
   options: readonly { label: string; value: T }[];
@@ -16,6 +19,7 @@ export type SelectFieldProps<T extends string> = {
 
 export function SelectField<T extends string>({
   disabled,
+  error,
   label,
   onChange,
   options,
@@ -29,9 +33,17 @@ export function SelectField<T extends string>({
   const selected = options.find((option) => option.value === value);
   const missingSelection = value !== null && !selected;
   const primitiveValue = selected ?? { value: value ?? "", label: "" };
+  const message = missingSelection ? t("filters.selectionUnavailable") : error;
+  const shownValue = selected
+    ? selected.label
+    : missingSelection
+      ? t("filters.selectionUnavailable")
+      : (placeholder ?? t("filters.selectOption"));
   return (
-    <View className="min-w-0 gap-2">
-      <Label htmlFor={id}>{label}</Label>
+    <View className="min-w-0 gap-1.5">
+      <Label className="text-[13px]" htmlFor={id}>
+        {label}
+      </Label>
       <Select
         value={primitiveValue}
         onValueChange={(option) => {
@@ -43,19 +55,21 @@ export function SelectField<T extends string>({
       >
         <SelectTrigger
           nativeID={id}
-          accessibilityLabel={label}
-          aria-describedby={missingSelection ? `${id}-error` : undefined}
-          aria-invalid={missingSelection}
+          accessibilityLabel={`${label}: ${shownValue}`}
+          aria-describedby={message ? `${id}-error` : undefined}
+          aria-invalid={Boolean(message)}
           disabled={disabled}
-          className="w-full"
+          className={cn("w-full", message && "border-destructive")}
           onLayout={(event) => setTriggerWidth(event.nativeEvent.layout.width)}
         >
-          <Text className="min-w-0 flex-1 text-sm native:text-base">
-            {selected
-              ? selected.label
-              : missingSelection
-                ? t("filters.selectionUnavailable")
-                : (placeholder ?? t("filters.selectOption"))}
+          <Text
+            className={cn(
+              "min-w-0 flex-1 text-sm native:text-base",
+              !selected && "text-muted-foreground",
+            )}
+            numberOfLines={1}
+          >
+            {shownValue}
           </Text>
         </SelectTrigger>
         <SelectContent
@@ -78,13 +92,14 @@ export function SelectField<T extends string>({
           </ScrollView>
         </SelectContent>
       </Select>
-      {missingSelection ? (
+      {message ? (
         <Text
+          accessibilityLiveRegion="polite"
           accessibilityRole="alert"
           nativeID={`${id}-error`}
-          className="text-sm text-destructive"
+          className="text-[13px] leading-5 text-destructive"
         >
-          {t("filters.selectionUnavailable")}
+          {message}
         </Text>
       ) : null}
     </View>

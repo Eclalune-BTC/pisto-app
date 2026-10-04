@@ -197,6 +197,7 @@ html.dark {
 }
 
 .pisto-data-table-container {
+  overflow-x: auto;
   border: 1px solid var(--color-border);
   border-radius: 4px;
   background: var(--color-card);
@@ -213,9 +214,6 @@ html.dark {
 }
 
 .pisto-data-table th {
-  position: sticky;
-  top: 48px;
-  z-index: 1;
   height: 36px;
   padding: 0 12px;
   background: var(--color-muted);
@@ -247,6 +245,7 @@ html.dark {
 .pisto-data-table [data-align="end"] {
   text-align: right;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .pisto-data-table tbody tr:last-child td {
@@ -265,7 +264,7 @@ html.dark {
   cursor: pointer;
 }
 
-.pisto-date-field {
+.pisto-picker-field {
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -273,13 +272,14 @@ html.dark {
   font-family: PistoRegular, sans-serif;
 }
 
-.pisto-date-field label {
+.pisto-picker-field label {
   font-family: PistoMedium, sans-serif;
   font-size: 13px;
+  line-height: 1;
   color: var(--color-foreground);
 }
 
-.pisto-date-field input {
+.pisto-picker-field input {
   height: 36px;
   min-width: 0;
   width: 100%;
@@ -293,18 +293,25 @@ html.dark {
   font-variant-numeric: tabular-nums;
 }
 
-.pisto-date-field input:focus-visible {
+.pisto-picker-field input:focus-visible {
   outline: 2px solid var(--color-ring);
   outline-offset: 1px;
 }
 
-.pisto-date-field input[aria-invalid="true"] {
+.pisto-picker-field input[aria-invalid="true"] {
   border-color: var(--color-destructive);
 }
 
-.pisto-date-field [role="alert"] {
+.pisto-picker-field [role="alert"] {
   color: var(--color-destructive);
   font-size: 13px;
+  line-height: 20px;
+}
+
+.pisto-picker-field-description {
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
 }
 
 [data-sonner-toaster] {
