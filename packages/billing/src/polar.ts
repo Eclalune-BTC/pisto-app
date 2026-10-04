@@ -9,7 +9,9 @@ import {
   user,
 } from "@pisto/db";
 import { checkout, polar as polarPlugin, portal, webhooks } from "@polar-sh/better-auth";
-import { Polar } from "@polar-sh/sdk";
+import { createPolarCore, type PolarCore } from "@polar-sh/sdk/2026-10";
+import { getStateExternalCustomers } from "@polar-sh/sdk/2026-10/services/customers";
+import { listSubscriptions } from "@polar-sh/sdk/2026-10/services/subscriptions";
 import { and, eq, lte, ne } from "drizzle-orm";
 import { z } from "zod";
 
@@ -25,8 +27,8 @@ const polarEventSchema = z.looseObject({
 const subscriptionProjectionSchema = z
   .looseObject({
     id: z.string().min(1),
-    productId: z.string().min(1),
-    customerId: z.string().min(1),
+    product_id: z.string().min(1),
+    customer_id: z.string().min(1),
     status: z.enum([
       "incomplete",
       "incomplete_expired",
@@ -37,22 +39,22 @@ const subscriptionProjectionSchema = z
       "unpaid",
       "paused",
     ]),
-    currentPeriodStart: providerDateSchema,
-    currentPeriodEnd: providerDateSchema,
-    cancelAtPeriodEnd: z.boolean(),
+    current_period_start: providerDateSchema,
+    current_period_end: providerDateSchema,
+    cancel_at_period_end: z.boolean(),
     metadata: z.looseObject({ referenceId: z.string().min(1).optional() }),
     customer: z.looseObject({
       id: z.string().min(1),
-      externalId: z.string().min(1).nullish(),
+      external_id: z.string().min(1).nullish(),
       email: z.string().min(1).nullish(),
     }),
   })
   .refine(
-    (data) => data.customer.id === data.customerId,
+    (data) => data.customer.id === data.customer_id,
     "Subscription customer identifiers disagree",
   )
   .refine(
-    (data) => new Date(data.currentPeriodEnd) >= new Date(data.currentPeriodStart),
+    (data) => new Date(data.current_period_end) >= new Date(data.current_period_start),
     "Subscription period is reversed",
   );
 
@@ -69,17 +71,38 @@ export class BillingProviderError extends Error {
   }
 }
 
+// The SDK parses JSON without validating its shape. Required result collections
+// must exist even though the provider payload remains opaque to public clients.
+const providerRecordSchema = z.looseObject({ id: z.string().min(1) });
+const customerStateSchema = providerRecordSchema.extend({
+  active_subscriptions: z.array(providerRecordSchema),
+  granted_benefits: z.array(providerRecordSchema),
+  active_meters: z.array(providerRecordSchema),
+});
+const subscriptionListSchema = z.looseObject({
+  items: z.array(providerRecordSchema),
+  pagination: z.looseObject({
+    total_count: z.number().int().nonnegative(),
+    max_page: z.number().int().nonnegative(),
+  }),
+});
+
 export async function readPolarCustomerState(
-  client: Pick<Polar, "customers" | "subscriptions"> | null,
+  client: PolarCore | null,
   scope: BillingScope,
 ): Promise<unknown> {
   if (!client) throw new BillingProviderError();
   try {
     // The Better Auth organization-list endpoint prints raw SDK errors directly
     // to console.log. Own scope translation and safe failure at this boundary.
-    return scope.type === "organization"
-      ? await client.subscriptions.list({ active: true, metadata: { referenceId: scope.id } })
-      : await client.customers.getStateExternal({ externalId: scope.id });
+    if (scope.type === "organization") {
+      const result = await listSubscriptions(client)({
+        active: true,
+        metadata: { referenceId: scope.id },
+      });
+      return { result: subscriptionListSchema.parse(result) };
+    }
+    return customerStateSchema.parse(await getStateExternalCustomers(client)(scope.id));
   } catch {
     throw new BillingProviderError();
   }
@@ -160,14 +183,14 @@ export function createPolarWebhookProcessor(input: {
 
       const data = subscription;
       const subscriptionId = data.id;
-      const productId = data.productId;
+      const productId = data.product_id;
       const { customer, metadata } = data;
-      const providerCustomerId = data.customerId;
-      const externalUserId = customer.externalId;
+      const providerCustomerId = data.customer_id;
+      const externalUserId = customer.external_id;
       const referenceId = metadata.referenceId;
       const providerStatus = data.status;
-      const periodStart = new Date(data.currentPeriodStart);
-      const periodEnd = new Date(data.currentPeriodEnd);
+      const periodStart = new Date(data.current_period_start);
+      const periodEnd = new Date(data.current_period_end);
 
       let userId: string | null = null;
       if (externalUserId) {
@@ -229,7 +252,7 @@ export function createPolarWebhookProcessor(input: {
           productId,
           status: providerStatus,
           sourceEventAt: eventAt,
-          cancelAtPeriodEnd: data.cancelAtPeriodEnd,
+          cancelAtPeriodEnd: data.cancel_at_period_end,
           currentPeriodStart: periodStart,
           currentPeriodEnd: periodEnd,
           raw,
@@ -243,7 +266,7 @@ export function createPolarWebhookProcessor(input: {
             productId,
             status: providerStatus,
             sourceEventAt: eventAt,
-            cancelAtPeriodEnd: data.cancelAtPeriodEnd,
+            cancelAtPeriodEnd: data.cancel_at_period_end,
             currentPeriodStart: periodStart,
             currentPeriodEnd: periodEnd,
             raw,
@@ -317,11 +340,10 @@ export function createPolarIntegration(input: { config: PolarBillingConfig; db: 
     return { client: null, plugin: null, processWebhook: null };
   }
 
-  const client = new Polar({
+  const client = createPolarCore({
     accessToken: input.config.accessToken,
-    server: input.config.server,
-    timeoutMs: 10_000,
-    retryConfig: { strategy: "none" },
+    environment: input.config.server,
+    timeout: 10,
   });
   const processWebhook = createPolarWebhookProcessor({
     db: input.db,
@@ -329,8 +351,8 @@ export function createPolarIntegration(input: { config: PolarBillingConfig; db: 
   });
   const plugin = polarPlugin({
     client,
-    // The installed adapter's signup hooks match by unverified email and can
-    // reassign another customer's externalId. Checkout uses the immutable user ID.
+    // Checkout owns customer creation through the authenticated immutable ID.
+    // Account lifecycle hooks must not link an existing buyer by email.
     createCustomerOnSignUp: false,
     use: [
       checkout({

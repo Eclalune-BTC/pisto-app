@@ -17,7 +17,7 @@ not establish the latest upstream releases or a passing current audit.
 | PostgreSQL | 18; resolve the deployed image patch explicitly | Test migrations and backups before major upgrade |
 | Drizzle ORM / Kit | 0.45.2 / 0.31.10 | Review generated SQL and release notes |
 | Better Auth / Expo adapter / `auth` CLI | 1.7.1 / 1.7.1 / 1.7.1 | Keep the synchronized release train aligned; regenerate/review auth schema |
-| Polar Better Auth / SDK | 1.8.4 / 0.47.0 | Test checkout/webhook sandbox contracts |
+| Polar Better Auth / SDK | 2.0.1 / 1.0.2, API `2026-10` | Exact pins; adapter requires Node 24+; test checkout/webhook sandbox contracts |
 | RevenueCat React Native SDK | Not installed in baseline | Pin deliberately when native IAP integration begins |
 | TypeScript | 6.0.3 | Keep every workspace and Expo tooling compatible; no silent major jump |
 
@@ -90,14 +90,27 @@ Do not independently bump React Native/React outside the matrix Expo documents f
 
 ### Polar and RevenueCat
 
-Research on 2026-10-03 found that Polar archived the
-[previous SDK repository](https://github.com/polarsource/polar-js) on 2026-09-17. The current
-[Better Auth adapter guide](https://polar.sh/docs/integrate/sdk/adapters/better-auth) targets SDK 1.0.0,
-versioned `createPolarCore` imports and snake_case payloads. Pisto still pins adapter 1.8.4 / SDK
-0.47.0 with camelCase projection fixtures. This is a pending provider migration, not a compatible
-version bump. Before enabling billing, migrate the adapter and SDK together, preserve immutable
-customer identity, recheck timeout/retry options, replay signed lifecycle fixtures and complete
-checkout/portal/webhook sandbox acceptance. Recheck upstream releases when starting that migration.
+Research on 2026-10-03 selected maintained adapter 2.0.1 / SDK 1.0.2 from
+[Polar's monorepo](https://github.com/polarsource/polar). Published package metadata establishes the
+compatible pair, MIT licensing, Node 24+ adapter requirement and Better Auth 1.7/Zod 4 peers. Pisto's
+Node 24.19.0 and Bun 1.4.0 baseline runs the integration. The
+[adapter guide](https://polar.sh/docs/integrate/sdk/adapters/better-auth) can lag exact package versions;
+use the pinned source to verify API details. Recheck releases, advisories and signatures on upgrades.
+
+The migration replaces the archived SDK with versioned `createPolarCore` imports and specific service
+functions. This retains maintained authentication, HTTP and signature primitives without a new local
+client or cryptographic implementation. The SDK has no production dependencies; adapter-utils 1.0.1
+and checkout 0.4.2 are transitive adapter requirements. Standardwebhooks and its two crypto helpers
+left the lockfile; no new advisory exception was added. Exit cost remains inside `packages/billing`
+and the internal checkout argument in `apps/api`; public entitlements remain provider-neutral.
+
+Provider payloads and opaque customer state now use snake_case. Database fields stay camelCase, and
+organization checkout uses `reference_id` while provider metadata retains `referenceId`. The SDK
+verifies signatures but does not fully validate JSON models, so local required-result and projection
+schemas remain essential. Historical payload fingerprints are not rewritten; same-shape retries and
+subscription identity/timestamp UPSERTs still prevent duplicate grants and stale regressions. Billing
+remains disabled until real checkout/portal/webhook sandbox acceptance; local fixtures prove code paths,
+not a provider account or purchase. No generic compatibility mapper or old SDK is retained.
 
 - Recheck API/webhook schemas, signature/authentication instructions, event identities, retry rules,
   sandbox separation, and product mapping.

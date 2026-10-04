@@ -112,7 +112,10 @@ example domains.
 
 CORS controls response sharing, not whether a credentialed request executes. A browser `POST` with
 a present `Origin` must match the configured client allowlist, and every `/v1` POST requires
-`application/json` before route parsing. Native clients may omit `Origin` but still send JSON.
+the exact `application/json` media type before route parsing. Case and parameters such as
+`; charset=utf-8` are accepted; lookalikes such as `application/jsonp` return 415. Native clients may
+omit `Origin` but still send JSON. This follows [HTTP media types](https://www.rfc-editor.org/rfc/rfc9110.html#section-8.3.1),
+reviewed 2026-10-03; recheck on request-policy changes.
 
 ## Response contract
 
@@ -150,11 +153,16 @@ messages are not copied into logs or responses.
   `/api/auth/customer` paths. The authenticated `/v1` wrappers invoke the provider adapter
   internally only after catalog and active-scope checks. The signed `/api/auth/polar/webhooks`
   endpoint remains externally reachable.
-- Checkout can attach the active organization as Polar's `referenceId`. The portal remains scoped to
+- Checkout passes the authorized active organization as adapter input `reference_id`, which Polar
+  stores in `metadata.referenceId`. The portal remains scoped to
   the purchasing Polar customer; organization membership does not grant access to another member's
   customer portal. The portal POST accepts the documented empty JSON object.
 - Webhook handlers must receive the exact request body required by the provider verifier, verify
   before parsing/trusting, and deduplicate before applying state.
+- `customerState` is an opaque provider payload using Polar API `2026-10` snake_case fields. User
+  state is direct; organization state retains `{ result: { items, pagination } }` for the first page.
+  Required result collections are validated. Internal entitlement records remain the authorization
+  source; no application UI reads provider-owned state properties.
 
 ## Validation and errors
 

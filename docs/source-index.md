@@ -126,6 +126,7 @@ tests for lifecycle details. Response headers and bounded buffering are applicat
 | --- | --- | --- |
 | Polar is the browser checkout | [Polar Checkout Links](https://polar.sh/docs/features/checkout/links), [Checkout API](https://polar.sh/docs/features/checkout/session) | Web checkout design/change |
 | Polar webhook signature verification | [Polar endpoints](https://polar.sh/docs/integrate/webhooks/endpoints), [delivery/validation](https://polar.sh/docs/integrate/webhooks/delivery) | Webhook/SDK upgrade |
+| Polar API `2026-10`, SDK 1.0.2 / adapter 2.0.1, immutable checkout identity and native SDK timeout; reviewed 2026-10-03 | [SDK](https://polar.sh/docs/integrate/sdk/typescript), [adapter](https://polar.sh/docs/integrate/sdk/adapters/better-auth), [SDK package](https://registry.npmjs.org/@polar-sh/sdk/1.0.2), [adapter package](https://registry.npmjs.org/@polar-sh/better-auth/2.0.1) | SDK/adapter/API version, identity or retry-policy change |
 | RevenueCat wraps native StoreKit/Play Billing | [RevenueCat React Native](https://www.revenuecat.com/docs/getting-started/installation/reactnative), [Expo](https://www.revenuecat.com/docs/getting-started/installation/expo) | Native IAP integration/upgrade |
 | Stable non-guessable RevenueCat App User ID | [Identifying customers](https://www.revenuecat.com/docs/customers/identifying-customers) | Identity/restore policy change |
 | Native UX checks active entitlement | [CustomerInfo subscription status](https://www.revenuecat.com/docs/customers/customer-info) | Entitlement/SDK change |

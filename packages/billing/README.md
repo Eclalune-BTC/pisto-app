@@ -18,7 +18,7 @@ require reconciliation against RevenueCat's canonical customer state; this
 delta webhook seam deliberately does not claim complete lifecycle
 reconciliation.
 
-Organization checkout can attach Polar's `referenceId` so webhook projections
+Organization checkout passes adapter `reference_id`, stored as `metadata.referenceId`, so webhook projections
 grant the entitlement to that organization. The Better Auth customer portal is
 still scoped to the Polar customer who made the purchase. Other organization
 members are not given that purchaser's portal; organization-wide billing
@@ -36,7 +36,7 @@ unverified billing state.
 Polar auth lifecycle customer synchronization is disabled; checkout and portal bind the authenticated
 immutable user ID. Provider calls have a 10-second timeout and no automatic retries. See the
 [identity and failure contract](../../docs/billing-entitlements.md#web-purchase-flow) and the
-[pending SDK migration gate](../../docs/versioning-upgrades.md#polar-and-revenuecat) before enabling billing.
+[SDK upgrade and sandbox gate](../../docs/versioning-upgrades.md#polar-and-revenuecat) before enabling billing.
 
 Lifecycle projections compare timestamps through Drizzle's column-aware operators so Postgres.js
 receives encoded timestamp parameters. Polar's subscription row serializes changes across entitlement
@@ -53,6 +53,10 @@ This does not bridge a gap between noncontiguous purchases.
 Customer-state reads use the scoped SDK boundary directly because the installed Better Auth Polar
 organization-list handler prints raw SDK failures outside its configured logger. SDK errors become
 the stable API `BILLING_UNAVAILABLE` response without retaining their private payload.
+The client uses SDK 1.0.2 / adapter 2.0.1 and pins API `2026-10`. Provider payloads use snake_case;
+public envelopes and database column names are unchanged. Opaque customer state receives bounded
+structural validation; entitlement projections retain strict required-field validation. Signed unknown
+Polar event types are acknowledged by the adapter without a receipt or projection.
 
 Run the rollback-only PostgreSQL regression suite from the repository root with `DATABASE_URL`
 explicitly set to a verified disposable local test database. The localhost guard does not establish

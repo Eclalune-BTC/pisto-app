@@ -179,14 +179,14 @@ function polarFixture(db: Database, userId: string) {
     timestamp,
     data: {
       id: subscriptionId,
-      productId,
-      customerId,
+      product_id: productId,
+      customer_id: customerId,
       status: type === "subscription.revoked" ? "canceled" : "active",
-      cancelAtPeriodEnd: type === "subscription.canceled",
+      cancel_at_period_end: type === "subscription.canceled",
       metadata: {},
-      customer: { id: customerId, externalId: userId, email: `${userId}@example.test` },
-      currentPeriodStart: "2026-09-01T00:00:00Z",
-      currentPeriodEnd: "2099-10-01T00:00:00Z",
+      customer: { id: customerId, external_id: userId, email: `${userId}@example.test` },
+      current_period_start: "2026-09-01T00:00:00Z",
+      current_period_end: "2099-10-01T00:00:00Z",
     },
   });
   return { project, event, subscriptionId, premiumId, basicId };

@@ -57,11 +57,12 @@ export function requestPolicy(config: ApiConfig) {
         if (origin && !config.corsOrigins.includes(origin)) {
           throw new ApiError(403, "FORBIDDEN", "Request origin is not allowed");
         }
-        if (
-          !(context.request.headers.get("content-type")?.toLowerCase() ?? "").startsWith(
-            "application/json",
-          )
-        ) {
+        const mediaType = context.request.headers
+          .get("content-type")
+          ?.split(";", 1)[0]
+          ?.trim()
+          .toLowerCase();
+        if (mediaType !== "application/json") {
           throw new ApiError(415, "BAD_REQUEST", "A JSON request body is required");
         }
       }

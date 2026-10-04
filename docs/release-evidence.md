@@ -53,9 +53,29 @@ user ID and SDK requests abort after 10 seconds without automatic retries.
   60 database and 15 billing tests; the container and temporary database were removed afterward.
 - `doctor`, `db:check`, `auth:schema:check` and independent read-only review passed. The configured
   local API health/readiness and Expo HTML returned 200. No owner business records were written.
-- The dependency audit still reports the same five Expo/toolchain advisories; no exceptions were
-  added. The [replacement Polar SDK migration](versioning-upgrades.md#polar-and-revenuecat) and real
-  provider sandbox acceptance remain pending. No hosted deployment or new portable image is claimed.
+- The dependency audit still reported the same five Expo/toolchain advisories; no exceptions were
+  added. This cleanup did not produce a new portable image or hosted deployment.
+
+The subsequent Polar migration after `be53618` pins adapter 2.0.1 / SDK 1.0.2 and API `2026-10`.
+Elysia remains 1.4.30, with exact JSON media-type enforcement. On 2026-10-03:
+
+- `bun run check` passed with 773 tests, including 83 API and 36 billing tests, workspace types and
+  builds. Unchanged tasks reused validated Turbo cache entries. `doctor`, `db:check` and
+  `auth:schema:check` passed.
+- PostgreSQL 18 integration passed 60 database and 15 billing tests after all seven migrations on a
+  separate disposable database. Two Astra agents independently reviewed source, tests and dependencies;
+  documentation also received independent review. Their only finding was a corrected test-label issue.
+- Signed adapter fixtures covered both secret encodings, raw-body tampering, stale/future delivery
+  timestamps, malformed data and corrected retry, and non-projecting unknown events. Intercepted
+  outbound calls verified immutable identity, organization metadata, the real 10-second abort and no
+  retry on HTTP 429/500. These are local fixtures, not provider sandbox purchases.
+- The rebuilt portable image replayed bundled migrations and passed 18 real-HTTP/PostgreSQL
+  assertions, including a signed grant, exact replay, invalid signature, failed required data,
+  revocation and a late event that could not restore access. SIGTERM exited zero. Its local image ID
+  was `sha256:faa44e9b5d99d52180b6e04244726a8e51566cee73d5739d300a07002244ce4d`.
+- Task containers, their temporary database and network were removed. The owner's local API remained
+  healthy and billing disabled. The audit still reports five existing Expo/toolchain advisories;
+  real checkout/portal/purchase sandbox acceptance and hosted deployment remain unclaimed.
 
 GitHub CI separately validates source/tests, migrations/integrations, the configured advisory
 exceptions, schema contracts, credential-free infrastructure tests and the portable API image.

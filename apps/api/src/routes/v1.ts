@@ -150,7 +150,7 @@ export function v1Routes(input: {
         headers: context.request.headers,
         body: {
           slug: command.slug,
-          ...(scope.type === "organization" ? { referenceId: scope.id } : {}),
+          ...(scope.type === "organization" ? { reference_id: scope.id } : {}),
           redirect: false,
         },
       });

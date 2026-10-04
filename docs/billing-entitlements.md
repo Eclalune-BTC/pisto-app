@@ -164,29 +164,37 @@ an arbitrary provider product ID from the client.
 6. One transaction records the unique provider event and updates projections/entitlements.
 7. The return screen checks `/v1/billing/entitlements` once on entry and offers an explicit refresh
    action while access is not active; it does not poll automatically. A client that also needs
-   normalized Polar customer state may request `/v1/billing/state`.
+   scoped Polar customer state may request `/v1/billing/state`.
 
-Automatic customer synchronization on auth sign-up, update and deletion is disabled. The installed
-Polar adapter's sign-up hooks match by email and can replace another customer's `externalId` before
-email ownership is verified. Customer creation/reuse instead belongs to checkout's authenticated
-`externalCustomerId`; do not relink a pre-existing buyer by matching email. Before the first checkout
+Automatic customer synchronization on auth sign-up, update and deletion is disabled. Customer
+creation/reuse belongs to checkout's authenticated `external_customer_id`; do not relink a
+pre-existing buyer by matching an unverified email. Before the first checkout
 has established a customer, provider state/portal reads may return unavailable. Preserve that failure
 instead of inventing empty customer state. Existing purchaser IDs remain the portal identity.
 
-The existing Polar SDK enforces a 10-second request timeout with automatic retries disabled. A timeout
+The Polar core client pins API `2026-10` and sets `timeout: 10` in seconds. SDK 1.0.2 performs one
+outgoing request with no automatic retries. A timeout
 returns the existing opaque provider-unavailable error; it does not prove that an external checkout
-mutation was rolled back. These boundaries were checked against the installed adapter 1.8.4 and SDK
-0.47.0 on 2026-10-03, including their real hooks/endpoints with isolated SDK doubles. The official
-[adapter documentation](https://polar.sh/docs/integrate/sdk/adapters/better-auth) now targets the
-replacement SDK; its examples do not describe the installed adapter. Follow the pending migration
-gate in [Versioning and upgrades](versioning-upgrades.md#polar-and-revenuecat). Real sandbox purchase
+mutation was rolled back. These boundaries were checked against adapter 2.0.1 and SDK 1.0.2 on
+2026-10-03, including real hooks/endpoints with intercepted HTTP. Use the
+[adapter documentation](https://polar.sh/docs/integrate/sdk/adapters/better-auth), published package
+source and [upgrade contract](versioning-upgrades.md#polar-and-revenuecat). Real sandbox purchase
 acceptance remains required after any adapter/SDK or customer-identity change.
 
 For an active organization scope, checkout may send that organization ID to Polar as
-`referenceId`, allowing the verified webhook projection to grant an organization entitlement. The
+adapter input `reference_id`, stored in `metadata.referenceId`, allowing the verified webhook
+projection to grant an organization entitlement. The
 Polar customer portal is still purchaser/customer-scoped. Other organization members do not inherit
 the purchaser's portal access; an organization-wide billing-admin workflow would be a separate
 feature and authorization design. `POST /v1/billing/portal` accepts an empty body.
+
+The `customerState` field is an opaque provider result, now using API `2026-10` snake_case fields.
+No application UI inspects its internal properties. User state retains a direct object; organization
+state retains `{ result: { items, pagination } }` and fetches only the first page. Local validation
+requires the customer ID and subscription/benefit/meter collections, or list items and nonnegative
+pagination counts. It does not recreate the provider's complete model schema. Missing required results
+fail as unavailable; genuine empty collections and arbitrary metadata keys are preserved. Provider
+state never replaces PostgreSQL entitlement authorization.
 
 Share a persistent Polar Checkout Link or a newly created Checkout Session URL according to the
 chosen integration; never persist/reuse an expiring session URL as a permanent product link.
@@ -210,13 +218,17 @@ accepted based only on Expo Go or a web preview.
 
 ### Polar
 
-- Validate Standard Webhooks signatures with the official SDK and `POLAR_WEBHOOK_SECRET`.
+- Validate webhook signatures with the official SDK and the unchanged dashboard `POLAR_WEBHOOK_SECRET`.
+  SDK 1.0.2 supports both legacy whole-secret UTF-8 and Standard Webhooks base64-decoded keys.
 - Use the exact raw payload/headers expected by the verifier.
 - Deduplicate by `(provider, event key)` before changing state.
-- The projection consumes the installed SDK's camelCase subscription shape. Required event time,
+- The projection consumes the SDK's API `2026-10` snake_case subscription shape. Required event time,
   identifiers, status, cancellation flag and current-period bounds are validated before persistence.
-  Missing fields do not use receipt time, another timestamp, snake_case aliases or an empty object.
+  Missing fields do not use receipt time, another timestamp, camelCase aliases or an empty object.
   Fingerprints retain the original event payload; optional customer linkage remains nullable.
+- Signature verification and event-type recognition do not validate required projection fields in
+  this SDK. Keep the application schema. The adapter acknowledges signed unknown event types without
+  calling the projector or recording a receipt; known malformed subscription payloads fail and can retry.
 
 ### RevenueCat
 
@@ -235,15 +247,16 @@ accepted based only on Expo Go or a web preview.
 
 ### Both
 
-Payload requirements were checked against the installed Polar SDK 0.47.0 and RevenueCat's
-[event fields](https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields) on
-2026-09-26. Recheck on provider/SDK changes. Local fixtures do not establish provider-sandbox or
+Polar payloads were checked against SDK 1.0.2 and the [signature guide](https://polar.sh/docs/integrate/webhooks/delivery)
+on 2026-10-03. RevenueCat [event fields](https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields)
+were reviewed 2026-09-26. Recheck on provider/SDK changes. Local fixtures do not establish provider-sandbox or
 store acceptance, including temporary-grant payload compatibility.
 
 - Production and sandbox endpoints/configuration are separated.
 - Expect retries, duplicates, delays, and out-of-order events.
 - Compare provider effective time/version and do not let an older event regress a newer projection.
-- Return success only after durable receipt. Introduce a bounded background-work adapter only
+- Project supported events only after durable receipt. Signed unknown Polar event types follow the
+  explicit non-projecting acknowledgement above. Introduce a bounded background-work adapter only
   after a real asynchronous job and its idempotency, authorization and failure rules are approved.
 - Retain the minimum bounded payload evidence needed for support/audit and redact logs.
 - A future reconciliation job should compare active local grants with provider server state; no

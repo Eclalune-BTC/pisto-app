@@ -49,8 +49,9 @@ rate-policy upgrades; a key namespace alone does not isolate cleanup.
 Billing remains disabled. Its local boundary now binds Polar checkout/portal to the authenticated
 immutable user ID, disables email-based auth lifecycle synchronization, bounds SDK calls to 10 seconds
 without automatic retries, and projects only explicitly configured RevenueCat entitlement keys.
-The [Polar SDK migration](versioning-upgrades.md#polar-and-revenuecat) and provider sandbox acceptance
-remain release gates; local regression tests do not certify real purchases.
+The [Polar SDK migration](versioning-upgrades.md#polar-and-revenuecat) uses adapter 2.0.1 / SDK 1.0.2
+with API `2026-10` and snake_case provider payloads. Real provider sandbox acceptance remains a
+release gate; local regression tests do not certify purchases.
 
 Mark implementation as included only with its code, configuration, tests, and updated ownership
 record. Promotion to deployed or production-accepted additionally requires:

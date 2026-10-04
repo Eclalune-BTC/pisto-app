@@ -1,21 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 import { createPolarWebhookProcessor } from "../src/polar.ts";
-
-const payload = {
-  type: "subscription.active",
-  timestamp: new Date("2026-09-01T00:00:00Z"),
-  data: {
-    id: "subscription",
-    productId: "product",
-    customerId: "customer",
-    status: "active",
-    currentPeriodStart: new Date("2026-09-01T00:00:00Z"),
-    currentPeriodEnd: new Date("2026-10-01T00:00:00Z"),
-    cancelAtPeriodEnd: false,
-    metadata: {},
-    customer: { id: "customer", externalId: "user" },
-  },
-};
+import { polarTestPayload as payload } from "./polar-fixture.ts";
 
 describe("Polar projection input", () => {
   test("rejects invented event dates, absent identifiers and alternate field guesses before persistence", async () => {
@@ -44,14 +29,14 @@ describe("Polar projection input", () => {
     }
     for (const change of [
       { id: undefined },
-      { productId: undefined, product_id: "product" },
-      { customerId: undefined },
+      { product_id: undefined, productId: "product" },
+      { customer_id: undefined },
       { status: "unknown" },
       { metadata: null },
-      { cancelAtPeriodEnd: undefined },
-      { currentPeriodEnd: null, endsAt: payload.data.currentPeriodEnd },
-      { currentPeriodEnd: "2020-01-01T00:00:00Z" },
-      { currentPeriodStart: undefined },
+      { cancel_at_period_end: undefined },
+      { current_period_end: null, endsAt: payload.data.current_period_end },
+      { current_period_end: "2020-01-01T00:00:00Z" },
+      { current_period_start: undefined },
       { customer: { id: "different" } },
     ]) {
       await expect(process({ ...payload, data: { ...payload.data, ...change } })).rejects.toThrow();

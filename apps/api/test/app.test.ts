@@ -32,6 +32,7 @@ function testApp(
     authHandler?: Auth["handler"];
     processRevenueCatWebhook?: BillingRuntime["processRevenueCatWebhook"];
     requestBodyLimitBytes?: number;
+    db?: DatabaseHandle["db"];
   } = {},
 ) {
   const auth = {
@@ -80,7 +81,7 @@ function testApp(
   } as unknown as Auth;
   const billing = {
     config: {
-      polar: { enabled: options.polarEnabled ?? false },
+      polar: { enabled: options.polarEnabled ?? false, products: [{ slug: "pro" }] },
       revenueCat: { enabled: false },
     },
     catalog: [],
@@ -94,7 +95,7 @@ function testApp(
     polar: { client: null, plugin: null, processWebhook: null },
   } as unknown as BillingRuntime;
   const database = {
-    db: {},
+    db: options.db ?? {},
     client: {},
     ping: async () => undefined,
     close: async () => undefined,
@@ -430,6 +431,47 @@ describe("Pisto API", () => {
     });
   });
 
+  test("passes only the authorized organization using the migrated checkout field", async () => {
+    for (const membership of [true, false]) {
+      const forwarded: unknown[] = [];
+      const db = {
+        select: () => ({
+          from: () => ({
+            where: () => ({
+              limit: async () => (membership ? [{ id: "membership" }] : []),
+            }),
+          }),
+        }),
+      } as unknown as DatabaseHandle["db"];
+      const app = testApp({
+        authenticated: true,
+        polarEnabled: true,
+        activeBusinessId: "authorized-business",
+        db,
+        authHandler: async (request) => {
+          forwarded.push(await request.json());
+          return Response.json({ url: "https://checkout.example.test/session", redirect: false });
+        },
+      });
+      const response = await app.request("/v1/billing/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ slug: "pro" }),
+      });
+      expect(response.status).toBe(membership ? 200 : 403);
+      expect(forwarded).toEqual(
+        membership ? [{ slug: "pro", reference_id: "authorized-business", redirect: false }] : [],
+      );
+      const forged = await app.request("/v1/billing/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ slug: "pro", reference_id: "forged-business" }),
+      });
+      expect(forged.status).toBe(membership ? 400 : 403);
+      expect(forwarded).toHaveLength(membership ? 1 : 0);
+    }
+  });
+
   test("returns a stable unavailable error for billing-state provider failures", async () => {
     const response = await testApp({
       authenticated: true,
@@ -555,6 +597,50 @@ describe("Pisto API", () => {
 
     expect(plainText.status).toBe(415);
     expect(foreignOrigin.status).toBe(403);
+  });
+
+  test("accepts exact JSON media types with parameters and rejects lookalikes before commands", async () => {
+    let commands = 0;
+    const app = testApp({
+      authenticated: true,
+      product: {
+        createBusiness: async () => {
+          commands += 1;
+          return { replayed: false };
+        },
+      } as unknown as ProductRepository,
+    });
+    const body = JSON.stringify({
+      name: "Test Store",
+      currency: "USD",
+      timeZone: "America/El_Salvador",
+    });
+    for (const contentType of [
+      "application/jsonp",
+      "application/json-malformed",
+      "application/json, text/plain",
+    ]) {
+      const response = await app.request("/v1/businesses", {
+        method: "POST",
+        headers: { "content-type": contentType },
+        body,
+      });
+      expect(response.status).toBe(415);
+    }
+    expect(commands).toBe(0);
+    for (const contentType of [
+      "application/json",
+      "Application/JSON; charset=utf-8",
+      "application/json ; charset=UTF-8",
+    ]) {
+      const response = await app.request("/v1/businesses", {
+        method: "POST",
+        headers: { "content-type": contentType },
+        body,
+      });
+      expect(response.status).toBe(201);
+    }
+    expect(commands).toBe(3);
   });
 
   test("uses one explicit malformed-JSON failure contract across API routes", async () => {
