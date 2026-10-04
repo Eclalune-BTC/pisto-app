@@ -54,6 +54,7 @@ export const cash = {
   movements: {
     emptyTitle: "Sin movimientos",
     reason: "Motivo",
+    rowLabel: "{{action}}, {{date}}",
   },
   overview: {
     title: "Caja y cuentas",
@@ -115,7 +116,7 @@ export const cash = {
     account: "Cuenta",
     reason: "Motivo",
     reversed: "Este ajuste ya fue revertido; no puede revertirse otra vez.",
-    reversalOf: "Este movimiento revierte un ajuste anterior.",
+    reversalOf: "Este movimiento revierte uno anterior; ambos se conservan en el historial.",
     reverse: "Revertir ajuste",
     viewExpense: "Ver gasto",
   },

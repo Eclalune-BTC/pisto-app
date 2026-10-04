@@ -39,6 +39,15 @@ export function CashMovementList({
         cell: ({ row: { original } }) =>
           onOpenMovement ? (
             <Button
+              // Rows share type names, so the occurrence tells them apart for screen readers.
+              accessibilityLabel={
+                formatOccurredAt
+                  ? t("cash.movements.rowLabel", {
+                      action: actionLabels[original.action],
+                      date: formatOccurredAt(original),
+                    })
+                  : undefined
+              }
               className="min-h-0 self-start px-0 py-0"
               hitSlop={8}
               onPress={() => onOpenMovement(original.id)}

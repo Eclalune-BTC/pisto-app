@@ -28,7 +28,7 @@ export function ExpenseSummary({ summary }: { summary: ExpensePeriodSummary }) {
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const money = (minorUnits: string) =>
     formatMinorUnits(minorUnits, summary.currency, summary.currencyMinorUnitDigits, locale);
-  const count = (value: string) => new Intl.NumberFormat(locale).format(BigInt(value));
+  const counts = useMemo(() => new Intl.NumberFormat(locale), [locale]);
   const columns = useMemo<DataTableColumn<CategoryTotal>[]>(() => {
     const labels = expenseCategoryLabels(t);
     return [
@@ -45,7 +45,7 @@ export function ExpenseSummary({ summary }: { summary: ExpensePeriodSummary }) {
         header: t("expenses.summary.expenseCount"),
         cell: ({ row: { original } }) => (
           <Text className="text-[13px] text-muted-foreground tabular-nums">
-            {new Intl.NumberFormat(locale).format(BigInt(original.expenseCount))}
+            {counts.format(Number(original.expenseCount))}
           </Text>
         ),
       },
@@ -65,7 +65,7 @@ export function ExpenseSummary({ summary }: { summary: ExpensePeriodSummary }) {
         ),
       },
     ];
-  }, [locale, summary.currency, summary.currencyMinorUnitDigits, t]);
+  }, [counts, locale, summary.currency, summary.currencyMinorUnitDigits, t]);
 
   return (
     <View className="min-w-0 gap-3">
@@ -81,7 +81,7 @@ export function ExpenseSummary({ summary }: { summary: ExpensePeriodSummary }) {
         <Stat
           detail={t("expenses.summary.countDetail")}
           label={t("expenses.summary.expenseCount")}
-          value={count(summary.expenseCount)}
+          value={counts.format(Number(summary.expenseCount))}
         />
       </StatGroup>
       {summary.categories.length > 0 ? (

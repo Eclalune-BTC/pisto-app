@@ -258,7 +258,7 @@ export function CashAccountEditorScreen({
       </FormSection>
 
       {errors.form ? (
-        <Alert icon={CircleAlert} variant="destructive">
+        <Alert icon={CircleAlert}>
           <AlertDescription>{errors.form}</AlertDescription>
         </Alert>
       ) : null}
