@@ -4,7 +4,7 @@ import type {
   CustomerResponse,
   UpdateCustomerRequest,
 } from "@pisto/contracts";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import type { Href } from "expo-router";
 import type { TFunction } from "i18next";
@@ -21,7 +21,7 @@ import { notify } from "@/lib/notify";
 
 import { customersApi } from "./api";
 import { CommandReview } from "./command-review";
-import { commandInFlight, commandState, type EditorAvailability } from "./command-state";
+import { commandInFlight, type EditorAvailability } from "./command-state";
 import { CustomerForm, type CustomerFormErrors } from "./customer-form";
 import {
   buildCreateCustomerCommand,
@@ -32,6 +32,7 @@ import {
 } from "./draft";
 import { customerQueryKeys } from "./queries";
 import { ScreenState } from "./screen-state";
+import { useCommand } from "./use-command";
 import { useFirstInvalidFocus } from "./use-first-invalid-focus";
 
 type CustomerCommand = CreateCustomerRequest | UpdateCustomerRequest;
@@ -114,12 +115,14 @@ export function CustomerEditor({
     null,
   );
 
-  const mutation = useMutation({
+  const { reset, send, state } = useCommand({
+    conflictMessage: editing ? t("customers.editor.conflict") : undefined,
+    keyOf: (next: CustomerCommand) => next.idempotencyKey,
     mutationFn: (next: CustomerCommand): Promise<CustomerResponse["data"]> =>
       customer
         ? customersApi.update(customer.id, next as UpdateCustomerRequest)
         : customersApi.create(next as CreateCustomerRequest),
-    onSuccess: async ({ customer: confirmed }) => {
+    onConfirmed: async ({ customer: confirmed }) => {
       await queryClient.invalidateQueries({ queryKey: customerQueryKeys.all(businessId) });
       notify.success(editing ? t("customers.editor.updated") : t("customers.editor.created"), {
         description: confirmed.name,
@@ -127,7 +130,6 @@ export function CustomerEditor({
       onConfirmed(confirmed);
     },
   });
-  const state = commandState(t, mutation, editing ? t("customers.editor.conflict") : undefined);
   const stale = availability === "stale";
 
   const prepareReview = () => {
@@ -142,7 +144,7 @@ export function CustomerEditor({
       focusFirstInvalid();
       return;
     }
-    mutation.reset();
+    reset();
     setReview({ command: result.command as CustomerCommand, previous: customer });
   };
 
@@ -170,10 +172,10 @@ export function CustomerEditor({
               : t("customers.editor.reviewCreateDescription")
           }
           items={reviewItems(t, review.command, review.previous)}
-          onConfirm={() => mutation.mutate(review.command)}
+          onConfirm={() => send(review.command)}
           onEdit={() => {
             setReview(null);
-            mutation.reset();
+            reset();
           }}
           stale={stale}
           state={state}

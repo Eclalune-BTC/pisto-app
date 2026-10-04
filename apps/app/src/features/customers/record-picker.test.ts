@@ -24,6 +24,7 @@ const listCustomers = vi.hoisted(() => vi.fn());
 vi.mock("./api", () => ({ customersApi: { list: listCustomers } }));
 
 import { ScrollView } from "react-native";
+import { StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { PressableSurface } from "@/components/ui/pressable-surface";
 import { elements } from "../../../test-support/element-tree";
@@ -41,6 +42,7 @@ const choices: Choice[] = [
 function list(overrides: Partial<RecordPickerListProps<Choice>> = {}) {
   return RecordPickerList<Choice>({
     emptyText: "No customers",
+    freshChoiceOnly: true,
     getKey: (choice) => choice.id,
     hasNextPage: true,
     items: choices,
@@ -52,6 +54,7 @@ function list(overrides: Partial<RecordPickerListProps<Choice>> = {}) {
     onSelect: vi.fn(),
     renderItem: (choice) => ({ label: choice.name }),
     selectedKey: "b",
+    stale: false,
     status: "ready",
     ...overrides,
   });
@@ -72,8 +75,8 @@ describe("record picker list", () => {
 
     const options = elements<ComponentProps<typeof PressableSurface>>(tree, PressableSurface);
     expect(options.map((option) => option.props.accessibilityState)).toEqual([
-      { checked: false },
-      { checked: true },
+      { checked: false, disabled: false },
+      { checked: true, disabled: false },
     ]);
     options[0]?.props.onPress?.({} as never);
     expect(onSelect).toHaveBeenCalledWith(choices[0]);
@@ -98,6 +101,23 @@ describe("record picker list", () => {
     retry?.props.onPress?.({} as never);
     expect(onRetry).toHaveBeenCalledOnce();
     expect(renderToStaticMarkup(list({ items: [] }))).toContain("No customers");
+  });
+
+  test("offers no choice for a command from a list that could not be refreshed", () => {
+    const onRetry = vi.fn();
+    const stale = list({ onRetry, stale: true });
+    const [notice] = elements<NonNullable<ComponentProps<typeof StaleNotice>>>(stale, StaleNotice);
+    expect(notice?.props.onRetry).toBe(onRetry);
+    const options = elements<ComponentProps<typeof PressableSurface>>(stale, PressableSurface);
+    expect(options.every((option) => option.props.disabled === true)).toBe(true);
+    // A filter only narrows a read, so its cached choices stay selectable next to the notice.
+    const filter = list({ freshChoiceOnly: false, stale: true });
+    expect(elements(filter, StaleNotice)).toHaveLength(1);
+    expect(
+      elements<ComponentProps<typeof PressableSurface>>(filter, PressableSurface).some(
+        (option) => option.props.disabled,
+      ),
+    ).toBe(false);
   });
 });
 
@@ -131,6 +151,7 @@ describe("customer picker dialog", () => {
           { client },
           createElement(CustomerPickerDialog, {
             businessId: "business-a",
+            freshChoiceOnly: true,
             onOpenChange: vi.fn(),
             onSelect: vi.fn(),
             open: true,
@@ -146,7 +167,7 @@ describe("customer picker dialog", () => {
     };
 
     render();
-    expect(captured.picker).toMatchObject({ hasNextPage: true, status: "ready" });
+    expect(captured.picker).toMatchObject({ hasNextPage: true, stale: false, status: "ready" });
     expect(picker().items.map(({ name }) => name)).toEqual(["Ana"]);
     picker().onLoadMore();
     await vi.waitFor(() => expect(listCustomers).toHaveBeenCalledOnce());

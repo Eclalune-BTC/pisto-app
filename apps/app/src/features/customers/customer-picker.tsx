@@ -13,6 +13,8 @@ import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "./use-debounced-value";
 
 type CustomerPickerDialogProps = {
   businessId: string;
+  /** The choice becomes part of a command, so a list that could not be refreshed offers none. */
+  freshChoiceOnly: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (customer: Customer) => void;
   open: boolean;
@@ -25,6 +27,7 @@ type CustomerPickerDialogProps = {
 
 export function CustomerPickerDialog({
   businessId,
+  freshChoiceOnly,
   onOpenChange,
   onSelect,
   open,
@@ -41,6 +44,7 @@ export function CustomerPickerDialog({
     // Narrowing a search keeps the previous choices visible instead of flashing placeholders.
     placeholderData: keepPreviousData,
   });
+  const read = readState([customers]);
   const close = (next: boolean) => {
     if (!next) setSearch("");
     onOpenChange(next);
@@ -54,6 +58,7 @@ export function CustomerPickerDialog({
           : t("customers.picker.allDescription")
       }
       emptyText={query ? t("customers.picker.noMatches") : t("customers.picker.empty")}
+      freshChoiceOnly={freshChoiceOnly}
       getKey={(customer) => customer.id}
       hasNextPage={customers.hasNextPage}
       items={customers.data?.pages.flatMap((page) => page.items) ?? []}
@@ -83,7 +88,8 @@ export function CustomerPickerDialog({
         value: search,
       }}
       selectedKey={selectedId}
-      status={pickerStatus(readState([customers]))}
+      stale={read.kind === "ready" && read.stale}
+      status={pickerStatus(read)}
       title={t("customers.picker.title")}
     />
   );

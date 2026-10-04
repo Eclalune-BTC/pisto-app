@@ -33,9 +33,9 @@ export default function ReversePaymentRoute() {
   });
   useRouteLabel(
     "/operate/receivables/[receivableId]",
-    access.isDenied || hasDeniedRead([detail, account])
-      ? undefined
-      : detail.data?.receivable.description,
+    manageCapabilityBoundaryState(access) === "ready" && !hasDeniedRead([detail, account])
+      ? detail.data?.receivable.description
+      : undefined,
   );
 
   const accessState = manageCapabilityBoundaryState(access);

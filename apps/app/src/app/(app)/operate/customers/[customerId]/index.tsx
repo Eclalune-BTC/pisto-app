@@ -51,12 +51,12 @@ export default function CustomerDetailRoute() {
       notify.success(t("customers.archive.done"), { description: archived.name });
     },
   });
-  // A rejected read must not leave the record's name behind in the breadcrumb.
+  // A rejected read or a lost permission must not leave the record's name in the breadcrumb.
   useRouteLabel(
     "/operate/customers/[customerId]",
-    access.isDenied || hasDeniedRead([customer, receivables])
-      ? undefined
-      : customer.data?.customer.name,
+    capabilityBoundaryState(access) === "ready" && !hasDeniedRead([customer, receivables])
+      ? customer.data?.customer.name
+      : undefined,
   );
 
   const accessState = capabilityBoundaryState(access);

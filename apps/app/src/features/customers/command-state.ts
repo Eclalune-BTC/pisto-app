@@ -21,10 +21,26 @@ export type CommandAction = "confirm" | "none" | "retry" | "waiting";
  */
 export type EditorAvailability = "available" | "stale" | "unavailable";
 
+/**
+ * A rejection the server returns only after finding no receipt for the idempotency key in the same
+ * transaction, so the key was never committed. Session, permission, rate, pause and request-shape
+ * rejections happen before that lookup and prove nothing about an earlier attempt.
+ */
+export function provesNotCommitted(error: unknown): boolean {
+  return (
+    error instanceof ApiClientError && (error.code === "CONFLICT" || error.code === "NOT_FOUND")
+  );
+}
+
+/**
+ * @param unresolved an earlier attempt with the same idempotency key had an unknown outcome, so a
+ * failure that does not prove the key was never committed leaves the command uncertain.
+ */
 export function commandState(
   t: TFunction,
   mutation: { error: unknown; isPending: boolean; isSuccess: boolean },
   conflictMessage?: string,
+  unresolved = false,
 ): CommandState {
   if (mutation.isPending) return { phase: "pending" };
   if (mutation.isSuccess) return { phase: "confirmed" };
@@ -34,7 +50,12 @@ export function commandState(
     t("relationships.command.failedDescription"),
     t,
   );
-  if (isAmbiguousMutationError(mutation.error)) return { phase: "uncertain", message };
+  if (
+    isAmbiguousMutationError(mutation.error) ||
+    (unresolved && !provesNotCommitted(mutation.error))
+  ) {
+    return { phase: "uncertain", message };
+  }
   const conflict = mutation.error instanceof ApiClientError && mutation.error.code === "CONFLICT";
   return { phase: "failed", message: conflict && conflictMessage ? conflictMessage : message };
 }

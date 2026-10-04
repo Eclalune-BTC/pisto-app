@@ -2,6 +2,7 @@ import { Check, Lock, TriangleAlert, WifiOff } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { Platform, ScrollView, View } from "react-native";
 
+import { StaleNotice } from "@/components/remote-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,8 @@ export function pickerStatus(read: ReadState): PickerStatus {
 
 export type RecordPickerListProps<T> = {
   emptyText: string;
+  /** A choice becomes part of a command, so it can only be made from a fresh read. */
+  freshChoiceOnly: boolean;
   getKey: (item: T) => string;
   hasNextPage: boolean;
   items: readonly T[];
@@ -42,12 +45,15 @@ export type RecordPickerListProps<T> = {
   /** `tag` marks a choice that differs from the rest, such as an archived record. */
   renderItem: (item: T) => { detail?: string; label: string; tag?: string };
   selectedKey: string | null;
+  /** The choices are cached and could not be refreshed. */
+  stale: boolean;
   status: PickerStatus;
 };
 
 /** The choices of a picker: a single-choice list whose server cursor stays inside the list. */
 export function RecordPickerList<T>({
   emptyText,
+  freshChoiceOnly,
   getKey,
   hasNextPage,
   items,
@@ -59,6 +65,7 @@ export function RecordPickerList<T>({
   onSelect,
   renderItem,
   selectedKey,
+  stale,
   status,
 }: RecordPickerListProps<T>) {
   const { t } = useTranslation();
@@ -109,66 +116,74 @@ export function RecordPickerList<T>({
   if (items.length === 0) {
     return <Text className="py-6 text-center text-sm text-muted-foreground">{emptyText}</Text>;
   }
+  const blocked = stale && freshChoiceOnly;
   return (
-    <ScrollView
-      className="max-h-80 rounded-md border border-border"
-      keyboardShouldPersistTaps="handled"
-    >
-      <View accessibilityLabel={label} role="radiogroup">
-        {items.map((item, index) => {
-          const key = getKey(item);
-          const selected = key === selectedKey;
-          const content = renderItem(item);
-          return (
-            <PressableSurface
-              accessibilityLabel={
-                [content.label, content.tag, content.detail].filter(Boolean).join(", ") || undefined
-              }
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected }}
-              className={cn(
-                "min-h-11 flex-row items-center gap-3 px-3 py-2",
-                // The list clips an outside focus ring, so the ring is drawn inside the option.
-                Platform.select({ web: "focus-visible:bg-accent focus-visible:-outline-offset-2" }),
-                index > 0 && "border-t border-border",
-                selected && "bg-accent",
-              )}
-              key={key}
-              onPress={() => onSelect(item)}
-            >
-              <View className="min-w-0 flex-1">
-                <Text className="text-sm leading-5" numberOfLines={1}>
-                  {content.label}
-                </Text>
-                {content.detail ? (
-                  <Text className="text-xs leading-4 text-muted-foreground" numberOfLines={1}>
-                    {content.detail}
+    <>
+      {stale ? <StaleNotice onRetry={onRetry} /> : null}
+      <ScrollView
+        className="max-h-80 rounded-md border border-border"
+        keyboardShouldPersistTaps="handled"
+      >
+        <View accessibilityLabel={label} role="radiogroup">
+          {items.map((item, index) => {
+            const key = getKey(item);
+            const selected = key === selectedKey;
+            const content = renderItem(item);
+            return (
+              <PressableSurface
+                accessibilityLabel={
+                  [content.label, content.tag, content.detail].filter(Boolean).join(", ") ||
+                  undefined
+                }
+                accessibilityRole="radio"
+                accessibilityState={{ checked: selected, disabled: blocked }}
+                className={cn(
+                  "min-h-11 flex-row items-center gap-3 px-3 py-2",
+                  // The list clips an outside focus ring, so the ring is drawn inside the option.
+                  Platform.select({
+                    web: "focus-visible:bg-accent focus-visible:-outline-offset-2",
+                  }),
+                  index > 0 && "border-t border-border",
+                  selected && "bg-accent",
+                )}
+                disabled={blocked}
+                key={key}
+                onPress={() => onSelect(item)}
+              >
+                <View className="min-w-0 flex-1">
+                  <Text className="text-sm leading-5" numberOfLines={1}>
+                    {content.label}
                   </Text>
+                  {content.detail ? (
+                    <Text className="text-xs leading-4 text-muted-foreground" numberOfLines={1}>
+                      {content.detail}
+                    </Text>
+                  ) : null}
+                </View>
+                {content.tag ? (
+                  <Badge variant="outline">
+                    <Text>{content.tag}</Text>
+                  </Badge>
                 ) : null}
-              </View>
-              {content.tag ? (
-                <Badge variant="outline">
-                  <Text>{content.tag}</Text>
-                </Badge>
-              ) : null}
-              {selected ? <Icon as={Check} className="text-foreground" size={15} /> : null}
-            </PressableSurface>
-          );
-        })}
-      </View>
-      {hasNextPage ? (
-        <View className="border-t border-border p-1.5">
-          <Button
-            className="w-full"
-            label={loadMoreLabel}
-            loading={loadingMore}
-            onPress={onLoadMore}
-            size="sm"
-            variant="ghost"
-          />
+                {selected ? <Icon as={Check} className="text-foreground" size={15} /> : null}
+              </PressableSurface>
+            );
+          })}
         </View>
-      ) : null}
-    </ScrollView>
+        {hasNextPage ? (
+          <View className="border-t border-border p-1.5">
+            <Button
+              className="w-full"
+              label={loadMoreLabel}
+              loading={loadingMore}
+              onPress={onLoadMore}
+              size="sm"
+              variant="ghost"
+            />
+          </View>
+        ) : null}
+      </ScrollView>
+    </>
   );
 }
 

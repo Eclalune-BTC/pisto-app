@@ -20,7 +20,11 @@ import { Icon } from "@/components/ui/icon";
 import { RowActions } from "@/components/ui/row-actions";
 import { Text } from "@/components/ui/text";
 import { CellText } from "@/features/customers/cell-text";
-import { type FittedColumn, fitColumns } from "@/features/customers/fit-columns";
+import {
+  type FittedColumn,
+  fitColumns,
+  rendersCompactRecords,
+} from "@/features/customers/fit-columns";
 import { isPositiveAmount, type RecordFormat, useRecordFormat } from "@/features/customers/format";
 import { MoneyText } from "@/features/customers/money-text";
 import { type MenuTrigger, OverflowActionMenu } from "@/features/customers/overflow-action-menu";
@@ -314,6 +318,7 @@ export function ReceivableDetailScreen({
               columns={fitColumns(
                 paymentColumns(format, t),
                 width - (canManage ? ACTIONS_COLUMN_WIDTH : 0),
+                rendersCompactRecords(width),
               )}
               data={payments.map((payment) => ({
                 account: accountNameFor(payment.cashAccountId),

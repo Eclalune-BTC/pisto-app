@@ -133,6 +133,8 @@ export default function ReceivablesRoute() {
       />
       <CustomerPickerDialog
         businessId={access.business.id}
+        // Choosing a filter from cached names only narrows a read; it sends no command.
+        freshChoiceOnly={false}
         onOpenChange={setPickerOpen}
         onSelect={(customer) => setFilters({ ...filters, customerId: customer.id })}
         open={pickerOpen}

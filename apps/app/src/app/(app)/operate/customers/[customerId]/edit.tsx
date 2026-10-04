@@ -23,7 +23,9 @@ export default function EditCustomerRoute() {
   });
   useRouteLabel(
     "/operate/customers/[customerId]",
-    access.isDenied || hasDeniedRead([customer]) ? undefined : customer.data?.customer.name,
+    manageCapabilityBoundaryState(access) === "ready" && !hasDeniedRead([customer])
+      ? customer.data?.customer.name
+      : undefined,
   );
 
   const accessState = manageCapabilityBoundaryState(access);

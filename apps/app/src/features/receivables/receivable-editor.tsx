@@ -1,5 +1,5 @@
 import type { Business, Customer, PostReceivableRequest, Receivable } from "@pisto/contracts";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { type Href, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
@@ -11,11 +11,11 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { CommandReview } from "@/features/customers/command-review";
-import { commandState } from "@/features/customers/command-state";
 import { CustomerPickerDialog } from "@/features/customers/customer-picker";
 import { customerContact, useRecordFormat } from "@/features/customers/format";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { ScreenState } from "@/features/customers/screen-state";
+import { useCommand } from "@/features/customers/use-command";
 import { useFirstInvalidFocus } from "@/features/customers/use-first-invalid-focus";
 import { currentLocalDateTime } from "@/lib/money";
 import { notify } from "@/lib/notify";
@@ -99,9 +99,11 @@ export function ReceivableEditor({
           ? t("receivables.form.customerArchived")
           : undefined;
 
-  const mutation = useMutation({
+  const { reset, send, state } = useCommand({
+    conflictMessage: t("receivables.form.conflict"),
+    keyOf: ({ command }: ChargeReview) => command.idempotencyKey,
     mutationFn: ({ command }: ChargeReview) => receivablesApi.post(command),
-    onSuccess: async ({ receivable }, { customerName }) => {
+    onConfirmed: async ({ receivable }, { customerName }) => {
       await invalidateReceivableMutation(queryClient, {
         businessId: business.id,
         customerId: receivable.customerId,
@@ -110,7 +112,6 @@ export function ReceivableEditor({
       onConfirmed();
     },
   });
-  const state = commandState(t, mutation, t("receivables.form.conflict"));
 
   function announce(receivable: Receivable, customerName: string) {
     const href: Href = {
@@ -155,7 +156,7 @@ export function ReceivableEditor({
       focusFirstInvalid();
       return;
     }
-    mutation.reset();
+    reset();
     setReview({ command: result.command, customerName: customer.name });
   };
 
@@ -167,7 +168,14 @@ export function ReceivableEditor({
         description={t("receivables.form.pageDescription")}
         title={t("receivables.form.title")}
       />
-      {stale ? <StaleNotice onRetry={onRetryRead} /> : null}
+      {stale || (review && initialUnconfirmed) ? (
+        <StaleNotice
+          onRetry={() => {
+            onRetryRead();
+            void initial.refetch();
+          }}
+        />
+      ) : null}
       {review ? (
         <CommandReview
           confirmLabel={t("receivables.form.confirm")}
@@ -197,12 +205,12 @@ export function ReceivableEditor({
                 : t("receivables.list.noDueDate"),
             },
           ]}
-          onConfirm={() => mutation.mutate(review)}
+          onConfirm={() => send(review)}
           onEdit={() => {
             setReview(null);
-            mutation.reset();
+            reset();
           }}
-          stale={stale}
+          stale={stale || initialUnconfirmed}
           state={state}
           title={t("receivables.form.reviewTitle")}
         />
@@ -234,6 +242,7 @@ export function ReceivableEditor({
       )}
       <CustomerPickerDialog
         businessId={business.id}
+        freshChoiceOnly
         onOpenChange={setPickerOpen}
         onSelect={(selection) => {
           setPicked(selection);

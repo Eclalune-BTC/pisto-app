@@ -31,9 +31,9 @@ export default function ApplyPaymentRoute() {
   });
   useRouteLabel(
     "/operate/receivables/[receivableId]",
-    access.isDenied || hasDeniedRead([detail, customer])
-      ? undefined
-      : detail.data?.receivable.description,
+    manageCapabilityBoundaryState(access) === "ready" && !hasDeniedRead([detail, customer])
+      ? detail.data?.receivable.description
+      : undefined,
   );
 
   const accessState = manageCapabilityBoundaryState(access);

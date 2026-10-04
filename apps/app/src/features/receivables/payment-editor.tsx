@@ -1,5 +1,5 @@
 import type { ApplyReceivablePaymentRequest, Business, Receivable } from "@pisto/contracts";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import type { Href } from "expo-router";
 import type { TFunction } from "i18next";
@@ -11,13 +11,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { CommandReview } from "@/features/customers/command-review";
-import {
-  commandInFlight,
-  commandState,
-  type EditorAvailability,
-} from "@/features/customers/command-state";
+import { commandInFlight, type EditorAvailability } from "@/features/customers/command-state";
 import { useRecordFormat } from "@/features/customers/format";
 import { ScreenState } from "@/features/customers/screen-state";
+import { useCommand } from "@/features/customers/use-command";
 import { useFirstInvalidFocus } from "@/features/customers/use-first-invalid-focus";
 import { currentLocalDateTime, toDecimalString } from "@/lib/money";
 import { notify } from "@/lib/notify";
@@ -40,6 +37,9 @@ type PaymentEditorProps = {
   onRetryRead: () => void;
   receivable: Receivable;
 };
+
+/** The account name travels with the command so the confirmation names the account it used. */
+type PaymentVariables = { accountName: string; command: ApplyReceivablePaymentRequest };
 
 function issueMessage(t: TFunction, issue: ReceivableDraftIssue | undefined, digits: number) {
   if (!issue) return undefined;
@@ -75,14 +75,12 @@ export function PaymentEditor({
   const [command, setCommand] = useState<ApplyReceivablePaymentRequest | null>(null);
   const money = (minorUnits: string) =>
     format.money(minorUnits, receivable.currency, receivable.currencyMinorUnitDigits);
-  const mutation = useMutation({
-    mutationFn: ({
-      command: next,
-    }: {
-      accountName: string;
-      command: ApplyReceivablePaymentRequest;
-    }) => receivablesApi.applyPayment(receivable.id, next),
-    onSuccess: async ({ payment, receivable: confirmed }, { accountName }) => {
+  const { reset, send, state } = useCommand({
+    conflictMessage: t("receivables.payment.conflict"),
+    keyOf: (variables: PaymentVariables) => variables.command.idempotencyKey,
+    mutationFn: ({ command: next }: PaymentVariables) =>
+      receivablesApi.applyPayment(receivable.id, next),
+    onConfirmed: async ({ payment, receivable: confirmed }, { accountName }) => {
       await invalidateReceivableMutation(queryClient, {
         businessId: business.id,
         customerId: confirmed.customerId,
@@ -96,7 +94,6 @@ export function PaymentEditor({
       onConfirmed();
     },
   });
-  const state = commandState(t, mutation, t("receivables.payment.conflict"));
   const stale = availability === "stale";
 
   const prepareReview = () => {
@@ -120,7 +117,7 @@ export function PaymentEditor({
       focusFirstInvalid();
       return;
     }
-    mutation.reset();
+    reset();
     setCommand(result.command);
   };
 
@@ -161,10 +158,10 @@ export function PaymentEditor({
               ? [{ label: t("receivables.payment.referenceLabel"), value: command.reference }]
               : []),
           ]}
-          onConfirm={() => mutation.mutate({ accountName: account.name, command })}
+          onConfirm={() => send({ accountName: account.name, command })}
           onEdit={() => {
             setCommand(null);
-            mutation.reset();
+            reset();
           }}
           stale={stale}
           state={state}

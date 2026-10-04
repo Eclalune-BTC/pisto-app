@@ -17,7 +17,10 @@ type CashAccountPickerDialogProps = {
   selectedId: string | null;
 };
 
-/** Only an active account can receive a payment, so archived accounts are never offered. */
+/**
+ * Only an active account can receive a payment, so archived accounts are never offered, and the
+ * chosen account becomes part of the payment command, so it must come from a fresh read.
+ */
 export function CashAccountPickerDialog({
   businessId,
   onOpenChange,
@@ -31,10 +34,12 @@ export function CashAccountPickerDialog({
     ...cashAccountChoicesQueryOptions(businessId, "active"),
     enabled: open,
   });
+  const read = readState([accounts]);
   return (
     <RecordPicker
       description={t("receivables.accountPicker.description")}
       emptyText={t("receivables.accountPicker.empty")}
+      freshChoiceOnly
       getKey={(account) => account.id}
       hasNextPage={accounts.hasNextPage}
       items={accounts.data?.pages.flatMap((page) => page.items) ?? []}
@@ -52,7 +57,8 @@ export function CashAccountPickerDialog({
       renderItem={(account) => ({ label: account.name })}
       returnFocusRef={returnFocusRef}
       selectedKey={selectedId}
-      status={pickerStatus(readState([accounts]))}
+      stale={read.kind === "ready" && read.stale}
+      status={pickerStatus(read)}
       title={t("receivables.accountPicker.title")}
     />
   );

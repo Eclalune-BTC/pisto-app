@@ -69,12 +69,12 @@ export default function ReceivableDetailRoute() {
       notify.success(t("receivables.void.done"), { description: receivable.description });
     },
   });
-  // A rejected read must not leave the record's description behind in the breadcrumb.
+  // A rejected read or a lost permission must not leave the record's description in the breadcrumb.
   useRouteLabel(
     "/operate/receivables/[receivableId]",
-    access.isDenied || hasDeniedRead([detail, customer, ...accounts])
-      ? undefined
-      : detail.data?.receivable.description,
+    capabilityBoundaryState(access) === "ready" && !hasDeniedRead([detail, customer, ...accounts])
+      ? detail.data?.receivable.description
+      : undefined,
   );
 
   const accessState = capabilityBoundaryState(access);

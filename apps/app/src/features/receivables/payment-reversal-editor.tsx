@@ -3,7 +3,7 @@ import type {
   ReceivablePayment,
   ReverseReceivablePaymentRequest,
 } from "@pisto/contracts";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import type { Href } from "expo-router";
 import type { TFunction } from "i18next";
@@ -17,13 +17,10 @@ import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { CommandReview } from "@/features/customers/command-review";
-import {
-  commandInFlight,
-  commandState,
-  type EditorAvailability,
-} from "@/features/customers/command-state";
+import { commandInFlight, type EditorAvailability } from "@/features/customers/command-state";
 import { useRecordFormat } from "@/features/customers/format";
 import { ScreenState } from "@/features/customers/screen-state";
+import { useCommand } from "@/features/customers/use-command";
 import { useFirstInvalidFocus } from "@/features/customers/use-first-invalid-focus";
 import { currentLocalDateTime } from "@/lib/money";
 import { notify } from "@/lib/notify";
@@ -79,10 +76,12 @@ export function PaymentReversalEditor({
     payment.currency,
     payment.currencyMinorUnitDigits,
   );
-  const mutation = useMutation({
+  const { reset, send, state } = useCommand({
+    conflictMessage: t("receivables.reversal.conflict"),
+    keyOf: (next: ReverseReceivablePaymentRequest) => next.idempotencyKey,
     mutationFn: (next: ReverseReceivablePaymentRequest) =>
       receivablesApi.reversePayment(payment.id, next),
-    onSuccess: async ({ receivable }) => {
+    onConfirmed: async ({ receivable }) => {
       await invalidateReceivableMutation(queryClient, {
         businessId: business.id,
         customerId: receivable.customerId,
@@ -93,7 +92,6 @@ export function PaymentReversalEditor({
       onConfirmed();
     },
   });
-  const state = commandState(t, mutation, t("receivables.reversal.conflict"));
   const stale = availability === "stale";
 
   const prepareReview = () => {
@@ -108,7 +106,7 @@ export function PaymentReversalEditor({
       focusFirstInvalid();
       return;
     }
-    mutation.reset();
+    reset();
     setCommand(result.command);
   };
 
@@ -160,10 +158,10 @@ export function PaymentReversalEditor({
               ? [{ label: t("receivables.reversal.referenceLabel"), value: command.reference }]
               : []),
           ]}
-          onConfirm={() => mutation.mutate(command)}
+          onConfirm={() => send(command)}
           onEdit={() => {
             setCommand(null);
-            mutation.reset();
+            reset();
           }}
           stale={stale}
           state={state}

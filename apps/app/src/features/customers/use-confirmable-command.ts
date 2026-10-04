@@ -1,8 +1,7 @@
-import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 
-import { type CommandState, commandAfterClose, commandState, commandToSend } from "./command-state";
+import { type CommandState, commandAfterClose, commandToSend } from "./command-state";
+import { useCommand } from "./use-command";
 
 export type ConfirmableCommand<TCommand> = {
   /** The command last sent; it survives closing while its outcome is uncertain. */
@@ -19,7 +18,7 @@ export type ConfirmableCommand<TCommand> = {
  * A command confirmed inside a dialog. The dialog cannot close while the request is pending, and an
  * uncertain outcome keeps the exact command and idempotency key for the next confirmation.
  */
-export function useConfirmableCommand<TCommand, TResult>({
+export function useConfirmableCommand<TCommand extends { idempotencyKey: string }, TResult>({
   conflictMessage,
   mutationFn,
   onConfirmed,
@@ -28,19 +27,19 @@ export function useConfirmableCommand<TCommand, TResult>({
   mutationFn: (command: TCommand) => Promise<TResult>;
   onConfirmed: (result: TResult) => Promise<void>;
 }): ConfirmableCommand<TCommand> {
-  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [session, setSession] = useState(0);
   const [command, setCommand] = useState<TCommand | null>(null);
-  const mutation = useMutation({
+  const { reset, send, state } = useCommand({
+    conflictMessage,
+    keyOf: (next: TCommand) => next.idempotencyKey,
     mutationFn,
-    onSuccess: async (result) => {
+    onConfirmed: async (result: TResult) => {
       await onConfirmed(result);
       setOpen(false);
       setCommand(null);
     },
   });
-  const state = commandState(t, mutation, conflictMessage);
 
   return {
     command,
@@ -48,12 +47,12 @@ export function useConfirmableCommand<TCommand, TResult>({
       const next = commandToSend(command, state, build);
       if (next === null) return;
       setCommand(next);
-      mutation.mutate(next);
+      send(next);
     },
     onOpenChange: (next) => {
       if (next) {
         if (command === null) {
-          mutation.reset();
+          reset();
           setSession((current) => current + 1);
         }
         setOpen(true);
@@ -63,7 +62,7 @@ export function useConfirmableCommand<TCommand, TResult>({
       setOpen(false);
       const kept = commandAfterClose(command, state);
       setCommand(kept);
-      if (kept === null) mutation.reset();
+      if (kept === null) reset();
     },
     open,
     session,
