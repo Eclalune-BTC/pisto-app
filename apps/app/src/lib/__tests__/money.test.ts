@@ -36,16 +36,16 @@ describe("minor-unit decimal text", () => {
 });
 
 describe("money formatting", () => {
-  test("renders a negative amount with the locale's own sign placement", () => {
-    expect(formatMinorUnits("-5", "USD", 2, "en-US")).toBe("-$0.05");
-    expect(formatMinorUnits("-50", "USD", 2, "en-US")).toBe("-$0.50");
-    expect(formatMinorUnits("-99", "USD", 2, "en-US")).toBe("-$0.99");
-    expect(formatMinorUnits("-100", "USD", 2, "en-US")).toBe("-$1.00");
+  test("renders a negative amount with the locale's sign placement and a true minus sign", () => {
+    expect(formatMinorUnits("-5", "USD", 2, "en-US")).toBe("−$0.05");
+    expect(formatMinorUnits("-50", "USD", 2, "en-US")).toBe("−$0.50");
+    expect(formatMinorUnits("-99", "USD", 2, "en-US")).toBe("−$0.99");
+    expect(formatMinorUnits("-100", "USD", 2, "en-US")).toBe("−$1.00");
     // ICU separates the code with a non-breaking space, so assert the parts.
     const kwd = formatMinorUnits("-500", "KWD", 3, "en-US");
-    expect(kwd.startsWith("-KWD")).toBe(true);
+    expect(kwd.startsWith("−KWD")).toBe(true);
     expect(kwd.endsWith("0.500")).toBe(true);
-    expect(formatMinorUnits("-123456789", "USD", 2, "es-SV")).toBe("-$1,234,567.89");
+    expect(formatMinorUnits("-123456789", "USD", 2, "es-SV")).toBe("−$1,234,567.89");
   });
 
   test("renders positive amounts and honours the record's stored exponent", () => {
@@ -73,7 +73,7 @@ describe("money formatting", () => {
       "$92,233,720,368,547,758.07",
     );
     expect(formatMinorUnits("-9223372036854775807", "USD", 2, "en-US")).toBe(
-      "-$92,233,720,368,547,758.07",
+      "−$92,233,720,368,547,758.07",
     );
   });
 

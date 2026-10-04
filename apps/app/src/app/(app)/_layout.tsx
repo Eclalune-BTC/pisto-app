@@ -1,51 +1,43 @@
 import { Redirect, Slot } from "expo-router";
+import { ShieldAlert } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
 import { AppShell } from "@/components/app-shell";
+import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
-import { Text } from "@/components/ui/text";
+import { StatePanel } from "@/components/ui/state-panel";
 import { authClient } from "@/lib/auth-client";
 
 export default function AuthenticatedLayout() {
   const { t } = useTranslation();
   const { data: session, error, isPending, isRefetching, refetch } = authClient.useSession();
 
-  if (isPending) {
-    return (
-      <View className="flex-1 items-start justify-center gap-4 bg-background px-5 sm:px-8 lg:px-10 ">
-        <LoadingIndicator size="large" />
-        <Text className="text-sm font-ui text-muted-foreground">{t("session.restoring")}</Text>
-      </View>
-    );
-  }
+  if (!isPending && !error && !session) return <Redirect href="/sign-in" />;
 
-  if (error) {
-    return (
-      <View className="flex-1 items-start justify-center gap-4 bg-background px-5 sm:px-8 lg:px-10 ">
-        <View className="max-w-[420px] gap-2">
-          <Text className="text-xl font-ui text-foreground">{t("session.checkFailedTitle")}</Text>
-          <Text className="text-sm leading-5 text-muted-foreground">
-            {t("session.checkFailedDescription")}
-          </Text>
-        </View>
-        <Button
-          label={t("session.checkAgain")}
-          loading={isRefetching}
-          onPress={() => refetch()}
-          variant="outline"
-        />
-      </View>
-    );
-  }
-
-  if (!session) {
-    return <Redirect href="/sign-in" />;
-  }
-
+  // The navigator stays mounted while the session restores: unmounting it resets the router to
+  // the group's first route and the deep link bounces.
   return (
-    <AppShell key={session.user.id} email={session.user.email} name={session.user.name}>
-      <Slot />
+    <AppShell user={session ? { email: session.user.email, name: session.user.name } : null}>
+      {error ? (
+        <Page width="reading">
+          <StatePanel
+            action={
+              <Button
+                label={t("session.checkAgain")}
+                loading={isRefetching}
+                onPress={() => refetch()}
+                size="sm"
+                variant="outline"
+              />
+            }
+            description={t("session.checkFailedDescription")}
+            icon={ShieldAlert}
+            level={1}
+            title={t("session.checkFailedTitle")}
+          />
+        </Page>
+      ) : (
+        <Slot />
+      )}
     </AppShell>
   );
 }

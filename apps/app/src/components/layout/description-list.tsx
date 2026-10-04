@@ -18,12 +18,12 @@ export function DescriptionList({ items }: { items: readonly DescriptionItem[] }
       {items.map((item, index) => (
         <View
           className={cn(
-            "min-w-0 gap-0.5 px-4 py-2.5 sm:flex-row sm:items-center sm:gap-6",
+            "min-w-0 flex-row items-start gap-4 px-4 py-2.5 sm:items-center sm:gap-6",
             index > 0 && "border-t border-border",
           )}
           key={item.label}
         >
-          <Text className="text-[13px] leading-5 text-muted-foreground sm:w-48 sm:shrink-0">
+          <Text className="w-28 shrink-0 text-[13px] leading-5 text-muted-foreground sm:w-48">
             {item.label}
           </Text>
           <View className="min-w-0 flex-1">

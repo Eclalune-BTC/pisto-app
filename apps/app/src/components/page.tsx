@@ -27,7 +27,7 @@ export function Page({
   contentContainerStyle,
   keyboardDismissMode = "on-drag",
   keyboardShouldPersistTaps = "handled",
-  showsVerticalScrollIndicator = false,
+  showsVerticalScrollIndicator = Platform.OS === "web",
   width = "content",
   ...props
 }: PageProps) {

@@ -38,7 +38,7 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
             web: "inline-flex cursor-default whitespace-nowrap transition-[color,background-color] disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
           }),
           props.disabled && "opacity-50",
-          props.value === value && "bg-background shadow-sm shadow-black/5",
+          props.value === value && "bg-card shadow-sm shadow-black/5 dark:bg-foreground/15",
           className,
         )}
         {...props}

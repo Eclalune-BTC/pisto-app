@@ -10,6 +10,7 @@ import {
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import type { ShellUser } from "@/components/app-shell";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { parseAppearanceChoice } from "@/lib/appearance-preference";
@@ -39,13 +41,34 @@ const appearanceChoices = [
 
 type NavUserProps = {
   collapsed?: boolean;
-  email: string;
-  name: string;
+  /** Null while the session is restored; the trigger keeps its size as a placeholder. */
+  user: ShellUser | null;
   /** `sidebar` renders the full identity row; `avatar` is the compact top-bar trigger. */
   variant: "sidebar" | "avatar";
 };
 
-export function NavUser({ collapsed = false, email, name, variant }: NavUserProps) {
+export function NavUser({ collapsed = false, user, variant }: NavUserProps) {
+  if (!user) {
+    return (
+      <View aria-hidden className="h-11 flex-row items-center gap-2.5 px-2">
+        <Skeleton className="size-7" />
+        {variant === "sidebar" && !collapsed ? (
+          <View className="flex-1 gap-1.5">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-3 w-32" />
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+  return <NavUserMenu collapsed={collapsed} user={user} variant={variant} />;
+}
+
+function NavUserMenu({
+  collapsed = false,
+  user: { email, name },
+  variant,
+}: NavUserProps & { user: ShellUser }) {
   const { t } = useTranslation();
   const router = useRouter();
   const signOut = useSignOut();

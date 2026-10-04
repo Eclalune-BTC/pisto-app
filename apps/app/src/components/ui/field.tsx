@@ -29,9 +29,8 @@ export function Field({
   const id = useId();
   const inputId = nativeID ?? id;
   const InputComponent = multiline ? Textarea : Input;
-  const describedBy = [error ? `${id}-error` : null, description ? `${id}-description` : null]
-    .filter(Boolean)
-    .join(" ");
+  const hint = error ? undefined : description;
+  const describedBy = error ? `${id}-error` : hint ? `${id}-description` : undefined;
   return (
     <View className="min-w-0 gap-1.5">
       <Label className="text-[13px]" htmlFor={inputId}>
@@ -42,8 +41,8 @@ export function Field({
           {...props}
           nativeID={inputId}
           accessibilityLabel={accessibilityLabel ?? label}
-          accessibilityHint={error ?? description ?? accessibilityHint}
-          aria-describedby={describedBy || undefined}
+          accessibilityHint={error ?? hint ?? accessibilityHint}
+          aria-describedby={describedBy}
           aria-invalid={Boolean(error)}
           className={cn(error && "border-destructive", trailing && "pr-14", className)}
         />
@@ -61,9 +60,9 @@ export function Field({
           {error}
         </Text>
       ) : null}
-      {description ? (
+      {hint ? (
         <Text nativeID={`${id}-description`} className="text-xs leading-4 text-muted-foreground">
-          {description}
+          {hint}
         </Text>
       ) : null}
     </View>

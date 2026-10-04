@@ -18,6 +18,7 @@ import {
   SidebarGroup,
   SidebarHeader,
   SidebarLink,
+  SidebarSkeleton,
 } from "@/components/ui/sidebar";
 import { operateModuleIcons } from "@/features/operate/module-icons";
 import { getVisibleOperateModules, OPERATE_GROUPS } from "@/features/operate/navigation";
@@ -32,12 +33,14 @@ function matchesRoute(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
+export type ShellUser = { email: string; name: string };
+
 type AppShellProps = PropsWithChildren<{
-  email: string;
-  name: string;
+  /** Null while the session is being restored; the frame renders before it is known. */
+  user: ShellUser | null;
 }>;
 
-export function AppShell({ children, email, name }: AppShellProps) {
+export function AppShell({ children, user }: AppShellProps) {
   const { t } = useTranslation();
   const pathname = usePathname();
   const { width } = useWindowDimensions();
@@ -70,7 +73,7 @@ export function AppShell({ children, email, name }: AppShellProps) {
               role="banner"
             >
               <Brand />
-              <NavUser email={email} name={name} variant="avatar" />
+              <NavUser user={user} variant="avatar" />
             </View>
           </View>
         </SafeAreaView>
@@ -95,6 +98,7 @@ export function AppShell({ children, email, name }: AppShellProps) {
             onNavigate={closeNavigation}
           />
         </SidebarGroup>
+        {businesses.isPending ? <SidebarSkeleton collapsed={rail} /> : null}
         {OPERATE_GROUPS.map((group) => {
           const groupModules = modules.filter((module) => module.group === group.id);
           if (!groupModules.length) return null;
@@ -116,7 +120,7 @@ export function AppShell({ children, email, name }: AppShellProps) {
         })}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser collapsed={rail} email={email} name={name} variant="sidebar" />
+        <NavUser collapsed={rail} user={user} variant="sidebar" />
       </SidebarFooter>
     </Sidebar>
   );
@@ -136,8 +140,7 @@ export function AppShell({ children, email, name }: AppShellProps) {
             </View>
             <TopBar
               collapsed={collapsed}
-              email={email}
-              name={name}
+              user={user}
               onOpenNavigation={() => setNavigationOpen(true)}
               onToggleSidebar={() => setCollapsed((value) => !value)}
               wide={wide}

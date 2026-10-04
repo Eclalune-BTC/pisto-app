@@ -1,4 +1,4 @@
-import type { PropsWithChildren, ReactNode } from "react";
+import { Children, type PropsWithChildren, type ReactNode } from "react";
 import { View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
@@ -6,7 +6,12 @@ import { cn } from "@/lib/cn";
 /** A strip of exact figures that share one border, instead of floating KPI cards. */
 export function StatGroup({ children }: PropsWithChildren) {
   return (
-    <View className="flex-row flex-wrap gap-px overflow-hidden rounded-lg border border-border bg-border">
+    <View
+      className={cn(
+        "flex-row flex-wrap gap-px overflow-hidden rounded-lg border border-border bg-border",
+        Children.count(children) === 1 && "self-start",
+      )}
+    >
       {children}
     </View>
   );

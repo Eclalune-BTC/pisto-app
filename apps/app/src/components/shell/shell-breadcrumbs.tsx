@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { type Href, useGlobalSearchParams, usePathname, useSegments } from "expo-router";
 import { Fragment, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,8 +12,6 @@ import {
   BreadcrumbSeparator,
   BreadcrumbText,
 } from "@/components/ui/breadcrumb";
-import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { hasDeniedRead } from "@/lib/query-state";
 import {
   buildRouteTrail,
   queryOutsideRoute,
@@ -29,7 +26,6 @@ export function ShellBreadcrumbs({ compact }: { compact: boolean }) {
   const pathname = usePathname();
   const recordLabels = useShellRouteLabels();
   const { lastVisit, rememberVisit } = useShellVisits();
-  const businesses = useQuery(businessesQueryOptions);
   const route = routeFromSegments(segments);
   const query = route ? queryOutsideRoute(route, params) : "";
 
@@ -39,12 +35,7 @@ export function ShellBreadcrumbs({ compact }: { compact: boolean }) {
 
   if (!route) return null;
 
-  const businessName = hasDeniedRead([businesses])
-    ? undefined
-    : getActiveBusiness(businesses.data)?.name;
-  const label = (entry: ShellRoute) =>
-    recordLabels[entry] ??
-    (entry === "/operate" && businessName ? businessName : t(`shell.routes.${entry}`));
+  const label = (entry: ShellRoute) => recordLabels[entry] ?? t(`shell.routes.${entry}`);
   const trail = buildRouteTrail(route, params).map((entry) =>
     entry.href ? { ...entry, href: lastVisit(entry.route, entry.href) ?? entry.href } : entry,
   );

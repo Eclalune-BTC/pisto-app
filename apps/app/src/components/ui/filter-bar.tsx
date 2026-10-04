@@ -49,9 +49,10 @@ export function FilterBar<T extends string>({
               role="radio"
               className={cn(
                 "h-auto min-h-7 max-w-full rounded-sm px-2.5 py-1 native:min-h-10 native:px-3 web:flex-none web:whitespace-nowrap",
+                "border",
                 selected
-                  ? "bg-background shadow-sm shadow-black/5"
-                  : "bg-transparent web:hover:bg-background/60",
+                  ? "border-border bg-card shadow-sm shadow-black/5 dark:bg-foreground/15"
+                  : "border-transparent bg-transparent web:hover:bg-background/60",
               )}
             >
               <Text

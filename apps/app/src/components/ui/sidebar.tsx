@@ -1,9 +1,10 @@
 import { type Href, Link } from "expo-router";
 import type { LucideIcon } from "lucide-react-native";
-import type { PropsWithChildren, ReactNode } from "react";
+import type { PropsWithChildren } from "react";
 import { Platform, ScrollView, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/cn";
@@ -47,7 +48,7 @@ export function SidebarGroup({
   return (
     <View className="gap-0.5">
       {label && !collapsed ? (
-        <Text className="px-2 pb-1 font-ui text-xs text-sidebar-foreground/60">{label}</Text>
+        <Text className="px-2 pb-1 font-ui text-xs text-muted-foreground">{label}</Text>
       ) : null}
       {children}
     </View>
@@ -77,7 +78,7 @@ export function SidebarLink({
         accessibilityState={{ selected: active }}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "w-full justify-start gap-2.5 px-2",
+          "w-full justify-start gap-2.5 px-2 web:pointer-coarse:min-h-10",
           collapsed && "justify-center px-0",
           active
             ? "bg-sidebar-accent web:hover:bg-sidebar-accent"
@@ -112,7 +113,9 @@ export function SidebarLink({
   if (!collapsed || Platform.OS !== "web") return link;
   return (
     <Tooltip delayDuration={150}>
-      <TooltipTrigger asChild>{link}</TooltipTrigger>
+      <TooltipTrigger asChild>
+        <View>{link}</View>
+      </TooltipTrigger>
       <TooltipContent side="right">
         <Text>{label}</Text>
       </TooltipContent>
@@ -120,6 +123,16 @@ export function SidebarLink({
   );
 }
 
-export function SidebarSlot({ children }: { children: ReactNode }) {
-  return <View className="min-w-0">{children}</View>;
+/** Navigation rows reserved while permissions load, so the sidebar keeps its shape. */
+export function SidebarSkeleton({ collapsed }: { collapsed?: boolean }) {
+  return (
+    <View aria-hidden className="gap-1.5 px-2 pt-1">
+      {[0, 1, 2, 3, 4, 5].map((index) => (
+        <View className="h-8 flex-row items-center gap-2.5" key={index}>
+          <Skeleton className="size-4" />
+          {collapsed ? null : <Skeleton className="h-3 flex-1" />}
+        </View>
+      ))}
+    </View>
+  );
 }

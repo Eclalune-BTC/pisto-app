@@ -64,12 +64,15 @@ export function DataTableRecords<T>({
               ) : null}
             </View>
             {details.length ? (
-              <View className="min-w-0 flex-row flex-wrap gap-x-4 gap-y-1">
-                {details.map((cell) => (
+              <View className="min-w-0 flex-row flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                {details.map((cell, detailIndex) => (
                   <View className="min-w-0 max-w-full flex-row items-center gap-1.5" key={cell.id}>
-                    <Text className="text-xs text-muted-foreground">
-                      {columnOf<T>(cell).header}
-                    </Text>
+                    {detailIndex > 0 ? (
+                      <Text aria-hidden className="text-xs text-muted-foreground">
+                        ·
+                      </Text>
+                    ) : null}
+                    <Text className="sr-only">{columnOf<T>(cell).header}</Text>
                     <View className="min-w-0 shrink">
                       {flexRender(columnOf<T>(cell).cell, cell.getContext())}
                     </View>

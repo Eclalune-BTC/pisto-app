@@ -5,6 +5,10 @@ import { Text } from "react-native";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const fixture = vi.hoisted(() => ({
+  user: { email: "owner@example.test", name: "Owner Name" } as {
+    email: string;
+    name: string;
+  } | null,
   pathname: "/operate",
   segments: ["(app)", "operate"] as string[],
   width: 1440,
@@ -96,11 +100,7 @@ import { ApiClientError } from "@/lib/api-error";
 
 function renderShell() {
   return renderToStaticMarkup(
-    createElement(
-      AppShell,
-      { email: "owner@example.test", name: "Owner Name" },
-      createElement(Text, {}, "Route content"),
-    ),
+    createElement(AppShell, { user: fixture.user }, createElement(Text, {}, "Route content")),
   );
 }
 
@@ -124,6 +124,7 @@ function business(id: string, name: string, permissions: readonly string[]) {
 }
 
 beforeEach(() => {
+  fixture.user = { email: "owner@example.test", name: "Owner Name" };
   fixture.pathname = "/operate";
   fixture.segments = ["(app)", "operate"];
   fixture.width = 1440;
@@ -252,6 +253,22 @@ describe("application shell", () => {
     const markup = renderShell();
     expect(markup).toContain('aria-label="shell.breadcrumb"');
     expect(markup).toContain("shell.routes./operate/sales/correct/[saleId]");
+  });
+
+  test("keeps the frame and its navigation shape while the session and access restore", () => {
+    fixture.user = null;
+    fixture.query = {
+      data: undefined,
+      error: null,
+      isError: false,
+      isPending: true,
+      fetchStatus: "fetching",
+    };
+    const markup = renderShell();
+    expect(markup).toContain("Route content");
+    expect(markup).not.toContain("shell.userMenu");
+    expect(navigationLinks(markup)).toEqual(["/operate"]);
+    expect(markup.match(/aria-hidden="true"/g)?.length ?? 0).toBeGreaterThan(1);
   });
 
   test.each([390, 1440])("keeps busy and failed sign-out visible at width %s", (width) => {

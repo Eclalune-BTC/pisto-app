@@ -15,14 +15,13 @@ export function PickerField({
   value,
 }: PickerFieldProps & { type: "date" | "time" }) {
   const id = useId();
-  const describedBy = [error ? `${id}-error` : null, description ? `${id}-description` : null]
-    .filter(Boolean)
-    .join(" ");
+  const hint = error ? undefined : description;
+  const describedBy = error ? `${id}-error` : hint ? `${id}-description` : undefined;
   return (
     <div className="pisto-picker-field">
       <label htmlFor={id}>{label}</label>
       <input
-        aria-describedby={describedBy || undefined}
+        aria-describedby={describedBy}
         aria-invalid={Boolean(error)}
         disabled={disabled}
         id={id}
@@ -44,9 +43,9 @@ export function PickerField({
           {error}
         </span>
       ) : null}
-      {description ? (
+      {hint ? (
         <span className="pisto-picker-field-description" id={`${id}-description`}>
-          {description}
+          {hint}
         </span>
       ) : null}
     </div>

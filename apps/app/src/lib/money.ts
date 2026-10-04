@@ -84,7 +84,9 @@ export function formatMinorUnits(
     maximumFractionDigits: fractionDigits,
     // toDecimalString guarantees a canonical numeric literal; the DOM lib types
     // that overload as a template-literal type no plain string can satisfy.
-  }).format(decimal as Intl.StringNumericLiteral);
+  })
+    .format(decimal as Intl.StringNumericLiteral)
+    .replace("-", "\u2212");
 }
 
 export function currentLocalDateTime(timeZone: string): { date: string; time: string } {
