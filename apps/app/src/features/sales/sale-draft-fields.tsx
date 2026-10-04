@@ -1,26 +1,28 @@
+import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { type TextInput, View } from "react-native";
 import { DateField } from "@/components/ui/date-field";
 import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
 import type { SaleDraftErrors, SaleDraftValues } from "./sale-draft";
 
 type SaleDraftFieldsProps = {
+  /** Receives focus when the person returns from a review to edit the values. */
+  amountRef?: Ref<TextInput>;
   currency: string;
   currencyMinorUnitDigits: number;
   errors: SaleDraftErrors;
   onChange: (field: keyof SaleDraftValues, value: string) => void;
-  timeZone: string;
   values: SaleDraftValues;
 };
 
 /** Total with its currency, the business-local moment, and an optional note. */
 export function SaleDraftFields({
+  amountRef,
   currency,
   currencyMinorUnitDigits,
   errors,
   onChange,
-  timeZone,
   values,
 }: SaleDraftFieldsProps) {
   const { t } = useTranslation();
@@ -31,9 +33,10 @@ export function SaleDraftFields({
         error={errors.amount}
         inputMode="decimal"
         keyboardType="decimal-pad"
-        label={t("sales.fields.amount")}
+        label={t("sales.fields.total")}
         onChangeText={(value) => onChange("amount", value)}
         placeholder={(0).toFixed(currencyMinorUnitDigits)}
+        ref={amountRef}
         trailing={<Text className="font-ui text-sm text-muted-foreground">{currency}</Text>}
         value={values.amount}
       />
@@ -62,7 +65,7 @@ export function SaleDraftFields({
           </View>
         </View>
         <Text className="text-[13px] leading-5 text-muted-foreground">
-          {t("sales.fields.timeZoneHint", { timeZone })}
+          {t("sales.fields.timeHint")}
         </Text>
       </View>
       <Field

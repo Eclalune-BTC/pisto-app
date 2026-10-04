@@ -5,8 +5,10 @@ import { Redirect, useRouter } from "expo-router";
 import { CircleAlert, TriangleAlert } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TextInput, View } from "react-native";
 import { DescriptionList } from "@/components/layout/description-list";
 import { PageHeader } from "@/components/layout/page-header";
+import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -30,7 +32,7 @@ import {
   validateSaleDraft,
 } from "./sale-draft";
 import { SaleDraftFields } from "./sale-draft-fields";
-import { saleAmount, saleFactItems } from "./sale-facts";
+import { saleAmount, saleDescriptionItem, saleMoment } from "./sale-facts";
 import { readState } from "./state";
 
 export default function NewSaleScreen() {
@@ -104,6 +106,10 @@ export function SaleReviewScreen({
   const [errors, setErrors] = useState<SaleDraftErrors>({});
   const acting = useRef(false);
   const mounted = useRef(true);
+  const confirmRef = useRef<View>(null);
+  const amountRef = useRef<TextInput>(null);
+  // A step change replaces the content under the focused control, so focus follows the step.
+  const pendingFocus = useRef<"confirm" | "amount" | null>(null);
 
   useEffect(() => {
     mounted.current = true;
@@ -111,6 +117,11 @@ export function SaleReviewScreen({
       mounted.current = false;
     };
   }, []);
+  useEffect(() => {
+    if (pendingFocus.current === "confirm") confirmRef.current?.focus();
+    if (pendingFocus.current === "amount") amountRef.current?.focus();
+    pendingFocus.current = null;
+  });
   useEffect(() => {
     if (!draft.date && !draft.time) {
       setDraft((previous) => ({ ...previous, ...currentLocalDateTime(business.timeZone) }));
@@ -141,6 +152,7 @@ export function SaleReviewScreen({
       client.setQueryData(reviewKey, result);
       confirmation.reset();
       dismissal.reset();
+      pendingFocus.current = "confirm";
     },
     onError: refresh,
     onSettled: afterAction,
@@ -188,6 +200,7 @@ export function SaleReviewScreen({
       setErrors({});
       preparation.reset();
       confirmation.reset();
+      pendingFocus.current = "amount";
     },
     onError: refresh,
     onSettled: afterAction,
@@ -303,20 +316,30 @@ export function SaleReviewScreen({
       ) : null}
       {review && !contextChanged ? (
         <>
-          <DescriptionList
-            items={[
-              ...saleFactItems(
+          <StatGroup>
+            <Stat
+              detail={saleMoment(review.command, locale)}
+              label={t("sales.fields.total")}
+              value={saleAmount(
                 {
                   ...review.command,
                   currency: review.currency,
                   currencyMinorUnitDigits: review.currencyMinorUnitDigits,
                 },
                 locale,
-                t,
-              ),
+              )}
+            />
+          </StatGroup>
+          <DescriptionList
+            items={[
+              saleDescriptionItem(review.command.description, t),
               { label: t("sales.fields.business"), value: business.name },
-              { label: t("common.currency"), value: review.currency },
-              { label: t("common.timeZone"), value: review.timeZone },
+              ...(settingsChanged
+                ? [
+                    { label: t("common.currency"), value: review.currency },
+                    { label: t("common.timeZone"), value: review.timeZone },
+                  ]
+                : []),
             ]}
           />
           {settingsChanged ? (
@@ -345,17 +368,14 @@ export function SaleReviewScreen({
               <Text className="text-[13px] leading-5 text-muted-foreground">
                 {t("sales.new.retained")}
               </Text>
-              <ActionBar
-                leading={
-                  <Button
-                    disabled={blocked}
-                    label={t("sales.new.discard")}
-                    loading={dismissing(false)}
-                    onPress={() => act(() => dismissal.mutate({ review, edit: false }))}
-                    variant="ghost"
-                  />
-                }
-              >
+              <ActionBar>
+                <Button
+                  disabled={blocked}
+                  label={t("sales.new.discard")}
+                  loading={dismissing(false)}
+                  onPress={() => act(() => dismissal.mutate({ review, edit: false }))}
+                  variant="outline"
+                />
                 <Button
                   disabled={blocked}
                   label={t("sales.edit")}
@@ -374,6 +394,7 @@ export function SaleReviewScreen({
                   onPress={() => {
                     if (!settingsChanged) act(() => confirmation.mutate(review.id));
                   }}
+                  ref={confirmRef}
                 />
               </ActionBar>
             </>
@@ -382,11 +403,11 @@ export function SaleReviewScreen({
       ) : recovery.data && !contextChanged ? (
         <>
           <SaleDraftFields
+            amountRef={amountRef}
             currency={business.currency}
             currencyMinorUnitDigits={business.currencyMinorUnitDigits}
             errors={errors}
             onChange={(field, value) => setDraft((previous) => ({ ...previous, [field]: value }))}
-            timeZone={business.timeZone}
             values={draft}
           />
           <ActionBar>

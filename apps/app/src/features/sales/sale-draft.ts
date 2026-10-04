@@ -13,7 +13,9 @@ export type SaleDraftValues = {
 export type SaleDraftIssue =
   | AmountParseError
   | "missing-amount"
+  | "missing-date"
   | "invalid-date"
+  | "missing-time"
   | "invalid-time"
   | "description-too-long";
 
@@ -32,8 +34,12 @@ export function validateSaleDraft(
   const issues: SaleDraftIssues = {};
   const money = parseAmountToMinorUnits(values.amount, currencyMinorUnitDigits);
   if ("error" in money) issues.amount = values.amount.trim() ? money.error : "missing-amount";
-  if (!calendarLocalDateSchema.safeParse(values.date).success) issues.date = "invalid-date";
-  if (!localTimeSchema.safeParse(values.time).success) issues.time = "invalid-time";
+  if (!calendarLocalDateSchema.safeParse(values.date).success) {
+    issues.date = values.date.trim() ? "invalid-date" : "missing-date";
+  }
+  if (!localTimeSchema.safeParse(values.time).success) {
+    issues.time = values.time.trim() ? "invalid-time" : "missing-time";
+  }
 
   const description = values.description.trim();
   if (description.length > 240) issues.description = "description-too-long";
@@ -61,7 +67,9 @@ export function saleDraftErrors(
     "invalid-integer": t("sales.validation.amountInteger"),
     "non-positive": t("sales.validation.amountPositive"),
     "too-large": t("sales.validation.amountTooLarge"),
+    "missing-date": t("sales.validation.dateRequired"),
     "invalid-date": t("sales.validation.date"),
+    "missing-time": t("sales.validation.timeRequired"),
     "invalid-time": t("sales.validation.time"),
     "description-too-long": t("sales.validation.description"),
   };

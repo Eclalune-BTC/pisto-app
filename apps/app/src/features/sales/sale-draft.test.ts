@@ -56,6 +56,16 @@ describe("sale draft validation", () => {
     expect(zero.issues).toEqual({ amount: "non-positive" });
   });
 
+  test("tells a missing date or time apart from a malformed one", () => {
+    expect(
+      validateSaleDraft({ amount: "1", date: "", time: " ", description: "" }, 2).issues,
+    ).toEqual({ date: "missing-date", time: "missing-time" });
+    expect(saleDraftErrors({ date: "missing-date", time: "missing-time" }, 2, t)).toEqual({
+      date: "sales.validation.dateRequired",
+      time: "sales.validation.timeRequired",
+    });
+  });
+
   test("names every reported field with its own message and nothing else", () => {
     expect(
       saleDraftErrors(

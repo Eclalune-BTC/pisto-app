@@ -1,8 +1,9 @@
-import type { Sale } from "@pisto/contracts";
+import type { Business, Sale } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
-import { type Href, Link, Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { type Href, Link, Redirect, useLocalSearchParams } from "expo-router";
 import type { TFunction } from "i18next";
-import { Pencil, Plus } from "lucide-react-native";
+import { Info, type LucideIcon, Pencil, Plus } from "lucide-react-native";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
 import { PageHeader } from "@/components/layout/page-header";
@@ -10,6 +11,7 @@ import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
@@ -26,67 +28,82 @@ function saleHref(saleId: string): Href {
   return { pathname: "/operate/sales/[saleId]", params: { saleId } };
 }
 
-function RecordLink({ href, label }: { href: Href; label: string }) {
-  return (
-    <Link asChild href={href}>
-      <Text
-        accessibilityRole="link"
-        className="self-start font-ui text-sm leading-5 text-foreground underline web:underline-offset-4"
-      >
-        {label}
-      </Text>
+/**
+ * A header command: a real link while the page is current, a disabled button while it is stale,
+ * because a financial command must not start from figures that could not be refreshed.
+ */
+function headerCommand(command: { href: Href; icon: LucideIcon; label: string; stale: boolean }) {
+  const content: ReactNode = (
+    <>
+      <Icon as={command.icon} size={15} />
+      <Text>{command.label}</Text>
+    </>
+  );
+  return command.stale ? (
+    <Button disabled key={command.label} variant="outline">
+      {content}
+    </Button>
+  ) : (
+    <Link asChild href={command.href} key={command.label}>
+      <Button accessibilityRole="link" variant="outline">
+        {content}
+      </Button>
     </Link>
   );
 }
 
-/** What corrected this sale and, when there is one, a link to the other side of the replacement. */
-function correctionItems(sale: Sale, locale: string, t: TFunction): DescriptionItem[] {
+/** What happened to a corrected sale and, when there is one, the way to the other side. */
+function CorrectionNotice({ sale, t }: { sale: Sale; t: TFunction }) {
   const correction = sale.correction;
-  if (!correction) return [];
+  if (!correction) return null;
   const related =
-    correction.replacementSaleId && correction.replacementSaleId !== sale.id
-      ? {
-          label: t("sales.correction.replacement"),
-          value: (
-            <RecordLink
-              href={saleHref(correction.replacementSaleId)}
-              label={t("sales.correction.openReplacement")}
-            />
-          ),
-        }
-      : correction.originalSaleId !== sale.id
+    correction.replacementSaleId === sale.id
+      ? { href: saleHref(correction.originalSaleId), label: t("sales.correction.viewOriginal") }
+      : correction.replacementSaleId
         ? {
-            label: t("sales.correction.original"),
-            value: (
-              <RecordLink
-                href={saleHref(correction.originalSaleId)}
-                label={t("sales.correction.openOriginal")}
-              />
-            ),
+            href: saleHref(correction.replacementSaleId),
+            label: t("sales.correction.viewReplacement"),
           }
         : null;
+  return (
+    <Alert
+      action={
+        related ? (
+          <Link asChild href={related.href}>
+            <Button accessibilityRole="link" size="sm" variant="outline">
+              <Text>{related.label}</Text>
+            </Button>
+          </Link>
+        ) : undefined
+      }
+      icon={Info}
+    >
+      <AlertDescription>
+        {correction.replacementSaleId === sale.id
+          ? t("sales.correction.replacementNote")
+          : correction.kind === "replacement"
+            ? t("sales.correction.replacedNote")
+            : t("sales.correction.voidedNote")}
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+/** Currency and time zone are only worth a row when the sale was recorded under other settings. */
+function settingItems(sale: Sale, business: Business, t: TFunction): DescriptionItem[] {
   return [
-    {
-      label: t("sales.correction.kind"),
-      value:
-        correction.kind === "replacement"
-          ? t("sales.correction.kindReplacement")
-          : t("sales.correction.kindVoid"),
-    },
-    { label: t("sales.correction.reason"), value: correction.reason },
-    {
-      label: t("sales.correction.correctedAt"),
-      numeric: true,
-      value: formatSaleInstant(correction.correctedAt, locale, sale.timeZone),
-    },
-    ...(related ? [related] : []),
+    ...(sale.currency === business.currency
+      ? []
+      : [{ label: t("common.currency"), value: sale.currency }]),
+    ...(sale.timeZone === business.timeZone
+      ? []
+      : [{ label: t("common.timeZone"), value: sale.timeZone }]),
   ];
 }
 
 export default function SaleDetailScreen() {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const router = useRouter();
   const params = useLocalSearchParams<{ saleId?: string | string[] }>();
   const saleId = Array.isArray(params.saleId) ? params.saleId[0] : params.saleId;
   const businesses = useQuery(businessesQueryOptions);
@@ -151,12 +168,12 @@ export default function SaleDetailScreen() {
     );
   }
   if (read === "offline") return <SalesRouteState kind="offline" width="form" />;
-  if (!sale) {
+  if (!sale || !business) {
     return (
       <SalesRouteState
         kind="loading"
         label={t("sales.detail.loading")}
-        variant="detail"
+        variant="record"
         width="form"
       />
     );
@@ -171,34 +188,25 @@ export default function SaleDetailScreen() {
         actions={
           canCorrect || canCreate ? (
             <>
-              {canCorrect ? (
-                <Button
-                  disabled={stale}
-                  onPress={() => {
-                    if (!stale)
-                      router.push({
-                        pathname: "/operate/sales/correct/[saleId]",
-                        params: { saleId: sale.id },
-                      });
-                  }}
-                  variant="outline"
-                >
-                  <Icon as={Pencil} className="text-foreground" size={15} />
-                  <Text>{t("sales.correction.open")}</Text>
-                </Button>
-              ) : null}
-              {canCreate ? (
-                <Button
-                  disabled={stale}
-                  onPress={() => {
-                    if (!stale) router.push("/operate/sales/new");
-                  }}
-                  variant="default"
-                >
-                  <Icon as={Plus} className="text-primary-foreground" size={16} />
-                  <Text>{t("sales.register")}</Text>
-                </Button>
-              ) : null}
+              {canCorrect
+                ? headerCommand({
+                    href: {
+                      pathname: "/operate/sales/correct/[saleId]",
+                      params: { saleId: sale.id },
+                    },
+                    icon: Pencil,
+                    label: t("sales.correction.open"),
+                    stale,
+                  })
+                : null}
+              {canCreate
+                ? headerCommand({
+                    href: "/operate/sales/new",
+                    icon: Plus,
+                    label: t("sales.register"),
+                    stale,
+                  })
+                : null}
             </>
           ) : undefined
         }
@@ -214,30 +222,30 @@ export default function SaleDetailScreen() {
           }}
         />
       ) : null}
+      <CorrectionNotice sale={sale} t={t} />
       <DescriptionList
         items={[
           ...saleOccurrenceItems(sale, locale, t),
-          { label: t("common.currency"), value: sale.currency },
-          { label: t("common.timeZone"), value: sale.timeZone },
           {
             label: t("sales.fields.recordedAt"),
             numeric: true,
             value: formatSaleInstant(sale.createdAt, locale, sale.timeZone),
           },
+          ...settingItems(sale, business, t),
         ]}
       />
       {sale.correction ? (
-        <Section
-          description={
-            sale.correction.replacementSaleId === sale.id
-              ? t("sales.correction.replacementNote")
-              : sale.correction.kind === "replacement"
-                ? t("sales.correction.replacedNote")
-                : t("sales.correction.voidedNote")
-          }
-          title={t("sales.correction.details")}
-        >
-          <DescriptionList items={correctionItems(sale, locale, t)} />
+        <Section title={t("sales.correction.details")}>
+          <DescriptionList
+            items={[
+              { label: t("sales.correction.reason"), value: sale.correction.reason },
+              {
+                label: t("sales.correction.correctedAt"),
+                numeric: true,
+                value: formatSaleInstant(sale.correction.correctedAt, locale, sale.timeZone),
+              },
+            ]}
+          />
         </Section>
       ) : null}
     </Page>

@@ -301,8 +301,14 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       expect(fixture.queries.sale?.refetch).toHaveBeenCalledTimes(1);
       expect(fixture.navigate).not.toHaveBeenCalled();
       recover(dependency);
-      press(button(render(SaleDetailScreen), ({ variant }) => variant === "default"));
-      expect(fixture.navigate).toHaveBeenCalledWith("/operate/sales/new");
+      const fresh = render(SaleDetailScreen);
+      expect(
+        elements<ComponentProps<typeof Button>>(fresh, Button).some(({ props }) => props.disabled),
+      ).toBe(false);
+      expect(elements<{ href: unknown }>(fresh, "link").map(({ props }) => props.href)).toEqual([
+        { pathname: "/operate/sales/correct/[saleId]", params: { saleId: "sale" } },
+        "/operate/sales/new",
+      ]);
     },
   );
 });
@@ -459,7 +465,7 @@ describe("sale detail states", () => {
         correctedAt: "2026-09-10T12:05:00.000Z",
       },
     };
-    const actions = elements<ComponentProps<typeof Button>>(render(SaleDetailScreen), Button);
-    expect(actions.map(({ props }) => props.variant)).toEqual(["default"]);
+    const links = elements<{ href: unknown }>(render(SaleDetailScreen), "link");
+    expect(links.map(({ props }) => props.href)).toEqual(["/operate/sales/new"]);
   });
 });

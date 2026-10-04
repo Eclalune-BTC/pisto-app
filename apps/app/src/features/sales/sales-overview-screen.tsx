@@ -90,14 +90,20 @@ export default function SalesOverviewScreen() {
     <Page>
       <PageHeader
         actions={
-          can("sales:create") ? (
+          !can("sales:create") ? undefined : accessStale ? (
+            // Access that could not be refreshed cannot start a financial command.
+            <Button disabled>
+              <Icon as={Plus} size={16} />
+              <Text>{t("sales.register")}</Text>
+            </Button>
+          ) : (
             <Link asChild href="/operate/sales/new">
               <Button accessibilityRole="link">
-                <Icon as={Plus} className="text-primary-foreground" size={16} />
+                <Icon as={Plus} size={16} />
                 <Text>{t("sales.register")}</Text>
               </Button>
             </Link>
-          ) : undefined
+          )
         }
         description={t("sales.headerDescription", { business: business.name })}
         title={t("common.sales")}
@@ -118,7 +124,8 @@ export default function SalesOverviewScreen() {
         />
       ) : null}
       <SalesHistory
-        canCreate={can("sales:create")}
+        canCorrect={can("sales:correct")}
+        canCreate={can("sales:create") && !accessStale}
         filter={filter}
         onCorrect={(saleId) =>
           router.push({ pathname: "/operate/sales/correct/[saleId]", params: { saleId } })

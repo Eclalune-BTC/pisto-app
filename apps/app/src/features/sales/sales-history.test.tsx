@@ -46,6 +46,7 @@ const voided: Sale = {
   },
 };
 const props: ComponentProps<typeof SalesHistory> = {
+  canCorrect: true,
   canCreate: true,
   filter: "all",
   onCorrect: () => undefined,

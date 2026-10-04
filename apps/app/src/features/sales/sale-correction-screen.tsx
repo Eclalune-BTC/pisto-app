@@ -5,10 +5,11 @@ import { Link, Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { CircleAlert, TriangleAlert } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { type TextInput, View } from "react-native";
 import { DescriptionList } from "@/components/layout/description-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
+import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
@@ -34,7 +35,7 @@ import {
   validateSaleDraft,
 } from "./sale-draft";
 import { SaleDraftFields } from "./sale-draft-fields";
-import { saleAmount, saleFactItems } from "./sale-facts";
+import { saleAmount, saleDescriptionItem, saleFactItems, saleMoment } from "./sale-facts";
 import { canCorrectSale, readState } from "./state";
 
 /** A prepared correction: its key is minted once and reused by every retry of this review. */
@@ -63,6 +64,10 @@ export default function SaleCorrectionScreen() {
   const [draftErrors, setDraftErrors] = useState<SaleDraftErrors>({});
   const [review, setReview] = useState<CorrectionReview | null>(null);
   const mounted = useRef(true);
+  const confirmRef = useRef<View>(null);
+  const reasonRef = useRef<TextInput>(null);
+  // A step change replaces the content under the focused control, so focus follows the step.
+  const pendingFocus = useRef<"confirm" | "reason" | null>(null);
 
   useEffect(() => {
     mounted.current = true;
@@ -70,6 +75,11 @@ export default function SaleCorrectionScreen() {
       mounted.current = false;
     };
   }, []);
+  useEffect(() => {
+    if (pendingFocus.current === "confirm") confirmRef.current?.focus();
+    if (pendingFocus.current === "reason") reasonRef.current?.focus();
+    pendingFocus.current = null;
+  });
 
   const saleHref = (id: string) =>
     ({ pathname: "/operate/sales/[saleId]", params: { saleId: id } }) as const;
@@ -213,6 +223,7 @@ export default function SaleCorrectionScreen() {
         saleId: sale.id,
       });
       correction.reset();
+      pendingFocus.current = "confirm";
       return;
     }
 
@@ -231,6 +242,7 @@ export default function SaleCorrectionScreen() {
       saleId: sale.id,
     });
     correction.reset();
+    pendingFocus.current = "confirm";
   };
 
   const original = (
@@ -256,36 +268,57 @@ export default function SaleCorrectionScreen() {
           title={t("sales.correction.reviewTitle")}
         />
         {staleNotice}
-        {original}
-        <Section title={t("sales.correction.details")}>
-          <DescriptionList
-            items={[
-              {
-                label: t("sales.correction.kind"),
-                value:
-                  review.kind === "void"
-                    ? t("sales.correction.kindVoid")
-                    : t("sales.correction.kindReplacement"),
-              },
-              { label: t("sales.correction.reason"), value: review.command.reason },
-            ]}
+        <StatGroup>
+          <Stat
+            detail={saleMoment(sale, locale)}
+            label={
+              review.kind === "void"
+                ? t("sales.correction.voidTarget")
+                : t("sales.correction.original")
+            }
+            value={saleAmount(sale, locale)}
           />
-        </Section>
-        {review.kind === "replacement" ? (
-          <Section title={t("sales.correction.replacement")}>
-            <DescriptionList
-              items={saleFactItems(
+          {review.kind === "replacement" ? (
+            <Stat
+              detail={saleMoment(review.command.replacement, locale)}
+              label={t("sales.correction.replacement")}
+              value={saleAmount(
                 {
                   ...review.command.replacement,
                   currency: business.currency,
                   currencyMinorUnitDigits: business.currencyMinorUnitDigits,
                 },
                 locale,
-                t,
               )}
             />
-          </Section>
-        ) : null}
+          ) : null}
+        </StatGroup>
+        <DescriptionList
+          items={[
+            {
+              label: t("sales.correction.kind"),
+              value:
+                review.kind === "void"
+                  ? t("sales.correction.kindVoid")
+                  : t("sales.correction.kindReplacement"),
+            },
+            { label: t("sales.correction.reason"), value: review.command.reason },
+            ...(review.kind === "replacement"
+              ? [
+                  saleDescriptionItem(
+                    sale.description,
+                    t,
+                    t("sales.correction.originalDescription"),
+                  ),
+                  saleDescriptionItem(
+                    review.command.replacement.description,
+                    t,
+                    t("sales.correction.newDescription"),
+                  ),
+                ]
+              : [saleDescriptionItem(sale.description, t)]),
+          ]}
+        />
         {correction.error ? (
           <Alert
             icon={ambiguousFailure ? TriangleAlert : CircleAlert}
@@ -298,16 +331,13 @@ export default function SaleCorrectionScreen() {
             </AlertDescription>
           </Alert>
         ) : null}
-        <ActionBar
-          leading={
-            <Button
-              disabled={confirmationLocked}
-              label={t("common.cancel")}
-              onPress={leave}
-              variant="ghost"
-            />
-          }
-        >
+        <ActionBar>
+          <Button
+            disabled={confirmationLocked}
+            label={t("common.cancel")}
+            onPress={leave}
+            variant="outline"
+          />
           {!ambiguousFailure ? (
             <Button
               disabled={confirmationLocked}
@@ -316,6 +346,7 @@ export default function SaleCorrectionScreen() {
                 if (confirmationLocked) return;
                 setReview(null);
                 correction.reset();
+                pendingFocus.current = "reason";
               }}
               variant="outline"
             />
@@ -334,6 +365,7 @@ export default function SaleCorrectionScreen() {
               if (correction.isPending || correction.isSuccess) return;
               if (!isStale || ambiguousFailure) correction.mutate(review);
             }}
+            ref={confirmRef}
             variant={review.kind === "void" ? "destructive" : "default"}
           />
         </ActionBar>
@@ -358,13 +390,14 @@ export default function SaleCorrectionScreen() {
             maxLength={240}
             onChangeText={setReason}
             placeholder={t("sales.correction.reasonPlaceholder")}
+            ref={reasonRef}
             value={reason}
           />
         </View>
       </Section>
       {mode === "replacement" ? (
         <Section
-          description={t("sales.correction.replacementDescription")}
+          description={t("sales.correction.replacementHint")}
           title={t("sales.correction.replacement")}
         >
           <SaleDraftFields
@@ -372,7 +405,6 @@ export default function SaleCorrectionScreen() {
             currencyMinorUnitDigits={business.currencyMinorUnitDigits}
             errors={draftErrors}
             onChange={(field, value) => setDraft((current) => ({ ...current, [field]: value }))}
-            timeZone={business.timeZone}
             values={draft}
           />
         </Section>

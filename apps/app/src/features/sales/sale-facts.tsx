@@ -19,10 +19,11 @@ type SaleOccurrence = {
   occurredLocalTime: string;
 };
 
+/** The exception, a voided sale, carries the stronger chip; posted is the quiet default. */
 export function SaleStatusBadge({ status }: { status: Sale["status"] }) {
   const { t } = useTranslation();
   return (
-    <Badge variant={status === "voided" ? "outline" : "secondary"}>
+    <Badge variant={status === "voided" ? "secondary" : "outline"}>
       <Text>{status === "voided" ? t("sales.voided") : t("sales.posted")}</Text>
     </Badge>
   );
@@ -37,6 +38,26 @@ export function saleAmount(sale: SaleMoney, locale: string): string {
   );
 }
 
+export function saleMoment(sale: SaleOccurrence, locale: string): string {
+  return formatSaleMoment(sale.occurredLocalDate, sale.occurredLocalTime, locale);
+}
+
+/** A sale's optional note; an absent one is stated, never left as an empty value. */
+export function saleDescriptionItem(
+  description: string | null | undefined,
+  t: TFunction,
+  label: string = t("common.description"),
+): DescriptionItem {
+  return {
+    label,
+    value: description ? (
+      description
+    ) : (
+      <Text className="text-sm leading-5 text-muted-foreground">{t("common.noDescription")}</Text>
+    ),
+  };
+}
+
 /** When the sale happened, in its business-local wall-clock time, and its optional note. */
 export function saleOccurrenceItems(
   sale: SaleOccurrence,
@@ -44,19 +65,8 @@ export function saleOccurrenceItems(
   t: TFunction,
 ): DescriptionItem[] {
   return [
-    {
-      label: t("sales.fields.moment"),
-      numeric: true,
-      value: formatSaleMoment(sale.occurredLocalDate, sale.occurredLocalTime, locale),
-    },
-    {
-      label: t("common.description"),
-      value: sale.description ? (
-        sale.description
-      ) : (
-        <Text className="text-sm leading-5 text-muted-foreground">{t("common.noDescription")}</Text>
-      ),
-    },
+    { label: t("sales.fields.moment"), numeric: true, value: saleMoment(sale, locale) },
+    saleDescriptionItem(sale.description, t),
   ];
 }
 

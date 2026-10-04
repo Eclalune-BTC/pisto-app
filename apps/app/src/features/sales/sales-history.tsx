@@ -15,14 +15,16 @@ import { Icon } from "@/components/ui/icon";
 import { RowActions } from "@/components/ui/row-actions";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
-import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
+import { formatSaleInstant } from "./format";
 import { SaleStatusBadge, saleAmount } from "./sale-facts";
 import { canCorrectSale, type SalesHistoryState, saleStatusFilters } from "./state";
 
 type SalesHistoryProps = {
   canCreate: boolean;
+  /** The role may correct sales; the column stays even while the page cannot offer it. */
+  canCorrect: boolean;
   filter: SaleStatusFilter;
   onCorrect: (saleId: string) => void;
   onFilterChange: (filter: SaleStatusFilter) => void;
@@ -36,6 +38,7 @@ type SalesHistoryProps = {
 /** The server-ordered, cursor-paged sale history with its status filter. */
 export function SalesHistory({
   canCreate,
+  canCorrect,
   filter,
   onCorrect,
   onFilterChange,
@@ -46,43 +49,60 @@ export function SalesHistory({
 }: SalesHistoryProps) {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
+  // Minimum widths keep the figures in place when a filter or a refresh changes the rows.
   const columns = useMemo<DataTableColumn<Sale>[]>(
     () => [
       {
-        id: "description",
-        header: t("dataTable.columns.description"),
+        id: "date",
+        header: t("dataTable.columns.date"),
         meta: { primary: true },
-        // A two-line clamp lets a long note wrap; a single-line clamp would force the table
-        // wider than its container on tablets.
         cell: ({ row: { original } }) => (
-          <Text
-            className={cn("text-[13px]", !original.description && "text-muted-foreground")}
-            numberOfLines={2}
-          >
-            {original.description ?? t("common.noDescription")}
+          <Text className="min-w-32 text-[13px] tabular-nums" numberOfLines={1}>
+            {formatSaleInstant(original.occurredAt, locale, original.timeZone)}
           </Text>
         ),
       },
       {
-        id: "date",
-        header: t("dataTable.columns.date"),
-        cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
-            {formatLocalizedDateTime(original.occurredAt, locale, original.timeZone)}
-          </Text>
-        ),
+        id: "description",
+        header: t("dataTable.columns.description"),
+        // A two-line clamp lets a long note wrap; a single-line clamp would force the table
+        // wider than its container on tablets.
+        cell: ({ row: { original } }) =>
+          original.description ? (
+            <Text className="text-[13px]" numberOfLines={2}>
+              {original.description}
+            </Text>
+          ) : (
+            <Text className="text-[13px]">
+              <Text aria-hidden className="text-[13px] text-muted-foreground">
+                —
+              </Text>
+              <Text className="sr-only">{t("common.noDescription")}</Text>
+            </Text>
+          ),
       },
       {
         id: "status",
         header: t("dataTable.columns.status"),
-        cell: ({ row: { original } }) => <SaleStatusBadge status={original.status} />,
+        cell: ({ row: { original } }) => (
+          <View className="min-w-24 items-start">
+            <SaleStatusBadge status={original.status} />
+          </View>
+        ),
       },
       {
         id: "amount",
-        header: t("dataTable.columns.amount"),
+        header: t("sales.fields.total"),
         meta: { align: "end" },
         cell: ({ row: { original } }) => (
-          <Text className="font-ui text-[13px] tabular-nums">{saleAmount(original, locale)}</Text>
+          <Text
+            className={cn(
+              "min-w-24 text-right font-ui text-[13px] tabular-nums",
+              original.status === "voided" && "text-muted-foreground line-through",
+            )}
+          >
+            {saleAmount(original, locale)}
+          </Text>
         ),
       },
     ],
@@ -93,11 +113,10 @@ export function SalesHistory({
     posted: t("sales.list.statusPosted"),
     voided: t("sales.list.statusVoided"),
   };
-  const correctable =
-    state.kind === "ready" && state.canCorrect && state.items.some(canCorrectSale);
+  const offerCorrection = state.kind === "ready" && state.canCorrect;
 
   return (
-    <Section title={t("sales.list.title")}>
+    <Section description={t("sales.list.sortNote")} title={t("sales.list.title")}>
       {state.kind !== "denied" ? (
         <FilterBar
           label={t("common.status")}
@@ -136,8 +155,8 @@ export function SalesHistory({
                 action={
                   canCreate ? (
                     <Link asChild href="/operate/sales/new">
-                      <Button accessibilityRole="link" size="sm">
-                        <Icon as={Plus} className="text-primary-foreground" size={16} />
+                      <Button accessibilityRole="link" size="sm" variant="outline">
+                        <Icon as={Plus} size={16} />
                         <Text>{t("sales.register")}</Text>
                       </Button>
                     </Link>
@@ -177,9 +196,9 @@ export function SalesHistory({
               })}
               getRowId={(sale) => sale.id}
               rowActions={
-                correctable
+                canCorrect
                   ? (sale) =>
-                      canCorrectSale(sale) ? (
+                      offerCorrection && canCorrectSale(sale) ? (
                         <RowActions
                           actions={[
                             {
@@ -189,12 +208,11 @@ export function SalesHistory({
                             },
                           ]}
                           label={t("sales.list.rowActions", {
-                            date: formatLocalizedDateTime(sale.occurredAt, locale, sale.timeZone),
+                            date: formatSaleInstant(sale.occurredAt, locale, sale.timeZone),
                           })}
                         />
                       ) : (
-                        // Compact rows only reserve the menu's width when a row renders one, so
-                        // an empty slot keeps every amount on the same right edge.
+                        // Rows without a menu keep its width, so every amount shares one edge.
                         <View aria-hidden className="size-8 native:size-10" />
                       )
                   : undefined
@@ -204,7 +222,7 @@ export function SalesHistory({
           <View className="flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <Text className="text-xs leading-4 text-muted-foreground tabular-nums">
               {t("sales.list.queriedAt", {
-                date: formatLocalizedDateTime(state.queriedAt, locale, timeZone),
+                date: formatSaleInstant(state.queriedAt, locale, timeZone),
               })}
             </Text>
             {state.kind === "ready" && state.hasMore ? (
