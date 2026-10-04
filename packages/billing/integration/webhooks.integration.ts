@@ -11,7 +11,7 @@ import {
 } from "@pisto/db";
 import { eq } from "drizzle-orm";
 
-import { EntitlementIntegrityError, listEntitlements } from "../src/entitlements.ts";
+import { listEntitlements } from "../src/entitlements.ts";
 import { createPolarWebhookProcessor } from "../src/polar.ts";
 import { createRevenueCatWebhookProcessor } from "../src/revenuecat.ts";
 
@@ -153,18 +153,19 @@ describe("PostgreSQL entitlement resolution", () => {
       expect(grants.map((grant) => grant.source).sort()).toEqual(["manual", "polar", "revenuecat"]);
       expect(grants.every((grant) => grant.key === "pro" && grant.status === "active")).toBe(true);
 
-      await db.insert(entitlement).values({
-        key: "pro",
-        userId,
-        source: "stripe",
-        sourceId: crypto.randomUUID(),
-        status: "active",
-        sourceEventAt: now,
-      });
-      const failure = await listEntitlements(db, { type: "user", id: userId }, now).catch(
-        (error: unknown) => error,
-      );
-      expect(failure).toBeInstanceOf(EntitlementIntegrityError);
+      await expect(
+        db
+          .insert(entitlement)
+          .values({
+            key: "pro",
+            userId,
+            source: "stripe",
+            sourceId: crypto.randomUUID(),
+            status: "active",
+            sourceEventAt: now,
+          })
+          .execute(),
+      ).rejects.toMatchObject({ cause: { constraint_name: "entitlement_source_check" } });
     }));
 });
 

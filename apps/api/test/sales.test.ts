@@ -70,31 +70,34 @@ describe("sales list route", () => {
     expect(called).toBe(false);
   });
 
-  test("never lets a client choose the tenant it reads", async () => {
-    let received: unknown;
+  test("rejects a client-chosen tenant instead of reading it", async () => {
+    let called = false;
     const response = await createTestApp({
-      listSales: async (actor, query) => {
-        received = { actor, query };
+      listSales: async () => {
+        called = true;
         return { ...emptyPage };
       },
     }).request("/v1/sales?businessId=another-business");
 
-    expect(response.status).toBe(200);
-    expect(received).toEqual({
-      actor: { userId: "user_test", sessionId: "session_test", activeBusinessId: "business_test" },
-      query: { limit: 25, status: "all" },
-    });
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.code).toBe("VALIDATION_ERROR");
+    expect(called).toBe(false);
   });
 
-  test("forwards only the named filters so an unrelated parameter is not a failure", async () => {
+  test("rejects an unknown filter and forwards only contract filters", async () => {
     let received: unknown;
-    const response = await createTestApp({
+    const app = createTestApp({
       listSales: async (_actor, query) => {
         received = query;
         return { ...emptyPage };
       },
-    }).request("/v1/sales?status=voided&limit=10&cursor=eyJ2IjoxfQ&utm_source=x");
+    });
 
+    const unknown = await app.request("/v1/sales?status=voided&utm_source=x");
+    expect(unknown.status).toBe(400);
+    expect(received).toBeUndefined();
+
+    const response = await app.request("/v1/sales?status=voided&limit=10&cursor=eyJ2IjoxfQ");
     expect(response.status).toBe(200);
     expect(received).toEqual({ cursor: "eyJ2IjoxfQ", limit: 10, status: "voided" });
   });

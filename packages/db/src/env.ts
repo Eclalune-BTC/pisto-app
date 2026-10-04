@@ -1,3 +1,5 @@
+import { readEnvironment } from "@pisto/config";
+
 import type { DatabaseConfig } from "./client.ts";
 
 export class DatabaseConfigurationError extends Error {
@@ -10,23 +12,8 @@ const poolDefaults = {
   idleTimeoutSeconds: 20,
 } as const;
 
-function parseInteger(
-  value: string | undefined,
-  fallback: number,
-  variable: string,
-  range: { min: number; max: number },
-): number {
-  if (!value?.trim()) return fallback;
-  const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed < range.min || parsed > range.max) {
-    throw new DatabaseConfigurationError(
-      `${variable} must be an integer from ${range.min} to ${range.max}`,
-    );
-  }
-  return parsed;
-}
-
 export function parseDatabaseConfig(env: Record<string, string | undefined>): DatabaseConfig {
+  const read = readEnvironment(env, DatabaseConfigurationError);
   const url = env.DATABASE_URL?.trim();
   if (!url) throw new DatabaseConfigurationError("DATABASE_URL is required");
   let parsedUrl: URL;
@@ -51,25 +38,18 @@ export function parseDatabaseConfig(env: Record<string, string | undefined>): Da
 
   return {
     url,
-    maxConnections: parseInteger(
-      env.DATABASE_MAX_CONNECTIONS,
-      poolDefaults.maxConnections,
-      "DATABASE_MAX_CONNECTIONS",
-      {
-        min: 1,
-        max: 100,
-      },
-    ),
-    connectTimeoutSeconds: parseInteger(
-      env.DATABASE_CONNECT_TIMEOUT_SECONDS,
-      poolDefaults.connectTimeoutSeconds,
+    maxConnections: read.integer("DATABASE_MAX_CONNECTIONS", poolDefaults.maxConnections, {
+      min: 1,
+      max: 100,
+    }),
+    connectTimeoutSeconds: read.integer(
       "DATABASE_CONNECT_TIMEOUT_SECONDS",
+      poolDefaults.connectTimeoutSeconds,
       { min: 1, max: 60 },
     ),
-    idleTimeoutSeconds: parseInteger(
-      env.DATABASE_IDLE_TIMEOUT_SECONDS,
-      poolDefaults.idleTimeoutSeconds,
+    idleTimeoutSeconds: read.integer(
       "DATABASE_IDLE_TIMEOUT_SECONDS",
+      poolDefaults.idleTimeoutSeconds,
       { min: 1, max: 600 },
     ),
     ...(sslValue ? { ssl: sslValue as (typeof allowedSslModes)[number] } : {}),
