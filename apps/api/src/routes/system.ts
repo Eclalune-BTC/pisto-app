@@ -31,8 +31,16 @@ export function systemRoutes(input: { database: DatabaseHandle; billing: Billing
     let database: "ok" | "error" = "ok";
     try {
       await withTimeout(input.database.ping(), 2_000);
-    } catch {
+    } catch (error) {
       database = "error";
+      // Driver messages can carry connection details, so only the failure type is logged.
+      console.warn(
+        JSON.stringify({
+          level: "warn",
+          message: "Readiness database check failed",
+          errorType: error instanceof Error ? error.name : typeof error,
+        }),
+      );
     }
     const response = {
       status: database === "ok" ? ("ready" as const) : ("not_ready" as const),

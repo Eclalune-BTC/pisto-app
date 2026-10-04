@@ -20,23 +20,20 @@ export function createRuntime(env: Record<string, string | undefined>) {
   const billingConfig = parseBillingConfig(env);
   const database = createDatabase(parseDatabaseConfig(env));
   const billing = createBillingRuntime({ config: billingConfig, db: database.db });
-  const cash = createCashRepository(database.db);
-  const catalog = createCatalogRepository(database.db);
-  const product = createProductRepository(database.db);
-  const receivables = createReceivablesRepository(database.db);
-  const reports = createReportsRepository(database.db);
   const auth = createAuth({ config: authConfig, db: database.db, billing });
   const app = createApp({
     config,
-    authConfig,
+    authBaseUrl: authConfig.baseUrl,
     auth,
     billing,
-    cash,
-    catalog,
     database,
-    product,
-    receivables,
-    reports,
+    repositories: {
+      cash: createCashRepository(database.db),
+      catalog: createCatalogRepository(database.db),
+      product: createProductRepository(database.db),
+      receivables: createReceivablesRepository(database.db),
+      reports: createReportsRepository(database.db),
+    },
     consumeProductRequest: createProductRateLimiter(database.db, {
       readLimit: config.productReadLimit,
       writeLimit: config.productWriteLimit,

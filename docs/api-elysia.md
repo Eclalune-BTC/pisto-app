@@ -92,18 +92,40 @@ The implemented order is:
 
 1. request ID generation or validation;
 2. exact credentialed CORS and application-owned security headers;
-3. bounded body buffering plus JSON and exact-Origin checks for unsafe `/v1` methods;
-4. raw Better Auth dispatch or the appropriate session policy;
-5. one business actor resolution and PostgreSQL request budget before parsing domain commands;
-6. identifier, JSON and shared Zod contract validation;
-7. handler and repository authorization/domain call;
-8. centralized error normalization and response security headers;
-9. structured completion logging using route patterns, including routed OPTIONS preflights.
+3. header-only request policy: declared `Content-Length` above the limit, plus JSON media type and
+   exact-Origin checks for unsafe `/v1` methods;
+4. for business routes, one session read, actor resolution, write pause and PostgreSQL request budget;
+5. bounded body buffering for methods other than GET, HEAD and OPTIONS;
+6. raw Better Auth dispatch or route parsing; session-only routes resolve their session here;
+7. identifier, JSON and shared Zod contract validation;
+8. handler and repository authorization/domain call;
+9. centralized error normalization and response security headers;
+10. structured completion logging using route patterns, including routed OPTIONS preflights.
+
+Elysia's `onRequest` is always global and is the only hook that runs before body parsing
+([lifecycle](https://elysiajs.com/essential/life-cycle), checked against the installed 1.4.30
+`compose`, 2026-10-04). Business authentication, budget charging and body bounding therefore stay
+in global `onRequest` hooks, and steps 3 to 5 run in registration order so an anonymous,
+foreign-origin or rate-limited command is rejected before its body is read.
+
+Which `/v1` paths are business routes is not a hand-written list. `app.ts` mounts two session-policy
+groups, `routes/v1.ts` (version marker and `/v1/me`) and `routes/billing.ts` (billing and the
+RevenueCat webhook), and `sessionPolicyPaths()` exempts exactly their mounted paths. Every other
+`/v1/*` path, including an unknown one, is authenticated and charged, so a route added outside those
+groups cannot silently skip the policy. Session-policy routes must be static paths; a parameterized
+one fails at startup because `onRequest` runs before routing. Session-policy groups use
+`sessionContext()`, a scoped `derive` that requires a session before contract validation and
+never charges the business budget.
 
 `request-policy.ts` owns the response headers and byte limit; these are not framework defaults.
 Preflights bypass body and session gates. Better Auth and RevenueCat routes use `parse: "none"`:
 the bounded request buffer preserves payload bytes without automatic JSON parsing, including
 whitespace used by signature verifiers. This is bounded buffering, not unbuffered upload streaming.
+
+Bun's `maxRequestBodySize` is left at its default. Bun enforces it for both declared and chunked
+bodies (observed on Bun 1.3.14, 2026-10-04; recheck on Bun upgrades), but rejects with an empty `413` and `Connection: close` before the fetch handler runs, so a
+limit equal to `API_REQUEST_BODY_LIMIT_BYTES` would drop the request ID, security headers and JSON
+error envelope. The application limit is the enforced contract.
 
 Elysia CORS must run before affected routes. When credentials are allowed, never use `*`; use the
 exact configured origin and keep it synchronized with Better Auth `trustedOrigins`. In production,
@@ -156,7 +178,13 @@ messages are not copied into logs or responses.
 - Checkout passes the authorized active organization as adapter input `reference_id`, which Polar
   stores in `metadata.referenceId`. The portal remains scoped to
   the purchasing Polar customer; organization membership does not grant access to another member's
-  customer portal. The portal POST accepts the documented empty JSON object.
+  customer portal. The portal POST accepts the documented empty JSON object or an empty body.
+- Billing routes check the session first, then the active-scope membership where they need it,
+  then the request contract, then whether Polar is enabled.
+- `/v1/billing/checkout` and `/v1/billing/portal` call Polar through `auth.handler`, not
+  `auth.api.checkout`/`auth.api.portal`: the endpoints exist at runtime, but `Auth` erases plugin
+  endpoint types and only the handler path runs Better Auth's origin check, rate limiter and the
+  error-privacy plugin.
 - Webhook handlers must receive the exact request body required by the provider verifier, verify
   before parsing/trusting, and deduplicate before applying state.
 - `customerState` is an opaque provider payload using Polar API `2026-10` snake_case fields. User
@@ -168,11 +196,15 @@ messages are not copied into logs or responses.
 
 Routes declare `body` and `query` schemas through the Standard Schema `contract()` adapter. It keeps
 the existing Zod messages, flattened details and HTTP 400 responses instead of exposing Elysia's
-submitted-value diagnostics. `protectedRoutes()` supplies the request actor and compatibility macros:
-catalog/inventory queries keep the last duplicate value, cash/expenses keep the first, and selected
-sales/customer/receivable/report filters ignore unrelated keys. Values remain scalar strings.
-The `record` macro rejects malformed identifiers as 404 before parsing a command body. Commands
-without record parameters explicitly select JSON parsing so absent bodies still produce BAD_REQUEST.
+submitted-value diagnostics. `protectedRoutes()` supplies the request actor and the `record` macro.
+List queries use `queryContract(schema, message)`, which reads only the keys of the Zod object
+contract and ignores every other parameter, including a client-supplied tenant. A repeated contract
+key returns 400 `VALIDATION_ERROR` rather than choosing the first or last occurrence, because a proxy
+and this API could otherwise act on different values. Values remain scalar strings.
+The `record` macro rejects malformed identifiers as 404 before parsing a command body (in `parse`)
+and on GET/HEAD (in `transform`, because Elysia does not run parse hooks for those methods).
+Commands without record parameters explicitly select JSON parsing so absent bodies still produce
+BAD_REQUEST.
 
 The pinned baseline is Elysia 1.4.30 with `@elysiajs/cors@1.4.2`; current upstream pages can show
 Elysia 2 beta APIs such as `@elysia/cors`. Use [ADR 0019](adrs/0019-elysia-http-composition.md),
@@ -207,3 +239,4 @@ not hold request/user state.
 - [RFC 9111 `no-store`](https://www.rfc-editor.org/rfc/rfc9111.html#name-no-store)
 - [Elysia validation](https://elysiajs.com/essential/validation)
 - [Better Auth Elysia integration](https://elysiajs.com/integrations/better-auth)
+- [Elysia lifecycle](https://elysiajs.com/essential/life-cycle)

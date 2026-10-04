@@ -9,6 +9,7 @@ import type {
 } from "@pisto/db";
 import { type DatabaseHandle, ProductError, type ProductRepository } from "@pisto/db";
 import { createApp } from "../src/app.ts";
+import { sessionPolicyPaths } from "../src/middleware/product-access.ts";
 import { testClient } from "./http-client.ts";
 
 function unavailableRepository<T extends object>(name: string, onCall?: () => void): T {
@@ -33,6 +34,8 @@ function testApp(
     processRevenueCatWebhook?: BillingRuntime["processRevenueCatWebhook"];
     requestBodyLimitBytes?: number;
     db?: DatabaseHandle["db"];
+    onConsume?: () => void;
+    ping?: DatabaseHandle["ping"];
   } = {},
 ) {
   const auth = {
@@ -97,7 +100,7 @@ function testApp(
   const database = {
     db: options.db ?? {},
     client: {},
-    ping: async () => undefined,
+    ping: options.ping ?? (async () => undefined),
     close: async () => undefined,
   } as unknown as DatabaseHandle;
   const product =
@@ -151,25 +154,30 @@ function testApp(
         productReadLimit: 300,
         productWriteLimit: 60,
       },
-      authConfig: { baseUrl: "https://api.example.test" },
+      authBaseUrl: "https://api.example.test",
       auth,
-      consumeProductRequest: async () => ({ allowed: true, retryAfterSeconds: 60 }),
+      consumeProductRequest: async () => {
+        options.onConsume?.();
+        return { allowed: true, retryAfterSeconds: 60 };
+      },
       billing,
-      cash: unavailableRepository<CashRepository>("Cash repository", options.onRepositoryCall),
-      catalog: unavailableRepository<CatalogRepository>(
-        "Catalog repository",
-        options.onRepositoryCall,
-      ),
       database,
-      product,
-      receivables: unavailableRepository<ReceivablesRepository>(
-        "Receivables repository",
-        options.onRepositoryCall,
-      ),
-      reports: unavailableRepository<ReportsRepository>(
-        "Reports repository",
-        options.onRepositoryCall,
-      ),
+      repositories: {
+        cash: unavailableRepository<CashRepository>("Cash repository", options.onRepositoryCall),
+        catalog: unavailableRepository<CatalogRepository>(
+          "Catalog repository",
+          options.onRepositoryCall,
+        ),
+        product,
+        receivables: unavailableRepository<ReceivablesRepository>(
+          "Receivables repository",
+          options.onRepositoryCall,
+        ),
+        reports: unavailableRepository<ReportsRepository>(
+          "Reports repository",
+          options.onRepositoryCall,
+        ),
+      },
     }),
   );
 }
@@ -221,6 +229,16 @@ describe("HTTP framework compatibility", () => {
       },
     });
     expect(JSON.stringify(payload)).not.toContain("private-invalid-value");
+  });
+
+  test("hides malformed identifiers on reads without reaching a repository", async () => {
+    let repositoryCalls = 0;
+    const app = testApp({ authenticated: true, onRepositoryCall: () => repositoryCalls++ });
+    for (const method of ["GET", "HEAD"]) {
+      const response = await app.request("/v1/sales/not-a-uuid", { method });
+      expect(response.status).toBe(404);
+    }
+    expect(repositoryCalls).toBe(0);
   });
 
   test("bounds streams without Content-Length and retains security headers on errors", async () => {
@@ -469,6 +487,27 @@ describe("Pisto API", () => {
       });
       expect(forged.status).toBe(membership ? 400 : 403);
       expect(forwarded).toHaveLength(membership ? 1 : 0);
+    }
+  });
+
+  test("checks the session, then the contract, then the billing switch", async () => {
+    const post = (app: ReturnType<typeof testApp>, path: string, body: string) =>
+      app.request(path, { method: "POST", headers: { "content-type": "application/json" }, body });
+    const valid = JSON.stringify({ slug: "pro" });
+    expect(
+      (await post(testApp({ polarEnabled: true }), "/v1/billing/checkout", valid)).status,
+    ).toBe(401);
+    expect((await post(testApp(), "/v1/billing/portal", "{}")).status).toBe(401);
+    const disabled = testApp({ authenticated: true });
+    const invalid = await post(disabled, "/v1/billing/checkout", JSON.stringify({ slug: 1 }));
+    expect(invalid.status).toBe(400);
+    for (const [path, body] of [
+      ["/v1/billing/checkout", valid],
+      ["/v1/billing/portal", "{}"],
+    ] as const) {
+      const response = await post(disabled, path, body);
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({ error: { code: "BILLING_DISABLED" } });
     }
   });
 
@@ -937,5 +976,114 @@ describe("Pisto API", () => {
     });
     expect(preflight.status).toBe(204);
     expect(preflight.headers.get("access-control-allow-methods")).toContain("PATCH");
+  });
+});
+
+describe("route policy scoping", () => {
+  const streamedBody = (size: number, onRead: () => void) =>
+    new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          onRead();
+          controller.enqueue(new Uint8Array(size));
+          controller.close();
+        },
+      },
+      { highWaterMark: 0 },
+    );
+
+  test("charges the request budget only for business routes, failing closed for unknown paths", async () => {
+    let consumed = 0;
+    const app = testApp({ authenticated: true, onConsume: () => consumed++ });
+    for (const path of [
+      "/v1",
+      "/v1/",
+      "/v1/me",
+      "/v1/billing/catalog",
+      "/v1/billing/entitlements",
+      "/v1/billing/state",
+    ]) {
+      expect({ path, status: (await app.request(path)).status }).toEqual({ path, status: 200 });
+    }
+    expect(consumed).toBe(0);
+
+    expect((await app.request("/v1/businesses")).status).toBe(200);
+    expect(consumed).toBe(1);
+    expect((await app.request("/v1/future-capability")).status).toBe(404);
+    expect(consumed).toBe(2);
+    expect((await testApp().request("/v1/future-capability")).status).toBe(401);
+    expect((await testApp().request("/v1/billing/unknown")).status).toBe(401);
+  });
+
+  test("rejects an anonymous business command before reading its body", async () => {
+    let reads = 0;
+    const response = await testApp({ requestBodyLimitBytes: 8 }).request("/v1/sales", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: streamedBody(64, () => reads++),
+    });
+    expect(response.status).toBe(401);
+    expect(reads).toBe(0);
+
+    const authenticated = await testApp({ authenticated: true, requestBodyLimitBytes: 8 }).request(
+      "/v1/sales",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: streamedBody(64, () => reads++),
+      },
+    );
+    expect(authenticated.status).toBe(413);
+    expect(await authenticated.json()).toMatchObject({ error: { code: "BAD_REQUEST" } });
+    expect(reads).toBe(1);
+  });
+
+  test("rejects a declared oversized body before reading the session", async () => {
+    let sessions = 0;
+    const response = await testApp({
+      authenticated: true,
+      requestBodyLimitBytes: 8,
+      onSessionRead: () => sessions++,
+    }).request("/v1/sales", {
+      method: "POST",
+      headers: { "content-type": "application/json", "content-length": "9" },
+      body: "{}",
+    });
+    expect(response.status).toBe(413);
+    expect(sessions).toBe(0);
+  });
+
+  test("only exempts literal session-policy paths", () => {
+    expect(() => sessionPolicyPaths({ routes: [{ path: "/v1/billing/:id" }] })).toThrow(
+      "static path",
+    );
+    expect([...sessionPolicyPaths({ routes: [{ path: "/v1/me" }] })]).toEqual(["/v1/me"]);
+  });
+
+  test("accepts an empty customer portal body", async () => {
+    const response = await testApp({ authenticated: true, polarEnabled: true }).request(
+      "/v1/billing/portal",
+      { method: "POST", headers: { "content-type": "application/json" }, body: "" },
+    );
+    expect(response.status).toBe(200);
+  });
+
+  test("logs the readiness failure type without the driver message", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const response = await testApp({
+        ping: async () => {
+          throw new TypeError("postgres://user:secret@db/private");
+        },
+      }).request("/ready");
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({ checks: { database: "error" } });
+      const logs = warn.mock.calls.map(([value]) => JSON.parse(String(value)));
+      expect(logs).toEqual([
+        { level: "warn", message: "Readiness database check failed", errorType: "TypeError" },
+      ]);
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

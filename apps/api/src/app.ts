@@ -14,29 +14,50 @@ import { Elysia } from "elysia";
 
 import type { ApiConfig } from "./config.ts";
 import { ApiError, normalizeError } from "./errors.ts";
-import { productAccess } from "./middleware/product-access.ts";
+import { productAccess, sessionPolicyPaths } from "./middleware/product-access.ts";
 import { requestContext } from "./middleware/request-context.ts";
-import { requestPolicy } from "./middleware/request-policy.ts";
+import { requestBodyLimit, requestPolicy } from "./middleware/request-policy.ts";
+import { billingRoutes } from "./routes/billing.ts";
+import { cashRoutes } from "./routes/cash.ts";
+import { catalogRoutes } from "./routes/catalog.ts";
+import { productRoutes } from "./routes/product.ts";
+import { receivablesRoutes } from "./routes/receivables.ts";
+import { reportsRoutes } from "./routes/reports.ts";
 import { systemRoutes } from "./routes/system.ts";
 import { v1Routes } from "./routes/v1.ts";
 
-export function createApp(input: {
-  config: ApiConfig;
-  authConfig: { baseUrl: string };
-  auth: Auth;
-  billing: BillingRuntime;
+export interface ProductRepositories {
   cash: CashRepository;
   catalog: CatalogRepository;
-  database: DatabaseHandle;
   product: ProductRepository;
   receivables: ReceivablesRepository;
   reports: ReportsRepository;
+}
+
+export function createApp(input: {
+  config: ApiConfig;
+  authBaseUrl: string;
+  auth: Auth;
+  billing: BillingRuntime;
+  database: DatabaseHandle;
+  repositories: ProductRepositories;
   consumeProductRequest: ConsumeProductRequest;
 }) {
+  // Routes under /v1 that own their session policy. Every other /v1 path is a business route.
+  const sessionPolicyGroups = [
+    v1Routes({ auth: input.auth }),
+    billingRoutes({
+      auth: input.auth,
+      authBaseUrl: input.authBaseUrl,
+      billing: input.billing,
+      db: input.database.db,
+    }),
+  ];
   const access = productAccess({
     auth: input.auth,
     writesEnabled: input.config.productWritesEnabled,
     consume: input.consumeProductRequest,
+    sessionPolicyPaths: sessionPolicyPaths(...sessionPolicyGroups),
   });
   const app = new Elysia({ strictPath: true })
     .use(requestContext())
@@ -58,6 +79,7 @@ export function createApp(input: {
     )
     .use(requestPolicy(input.config))
     .use(access)
+    .use(requestBodyLimit(input.config.requestBodyLimitBytes))
     .onError(({ error, set, requestId, request }) => {
       const { apiError, unexpected } = normalizeError(error);
       if (unexpected)
@@ -115,19 +137,12 @@ export function createApp(input: {
     app.route(method, "/api/auth/*", authHandler, { parse: "none" });
   }
   app.use(systemRoutes({ database: input.database, billing: input.billing }));
-  app.use(
-    v1Routes({
-      auth: input.auth,
-      authBaseUrl: input.authConfig.baseUrl,
-      access,
-      billing: input.billing,
-      cash: input.cash,
-      catalog: input.catalog,
-      db: input.database.db,
-      product: input.product,
-      receivables: input.receivables,
-      reports: input.reports,
-    }),
-  );
-  return app;
+  for (const group of sessionPolicyGroups) app.use(group);
+  const { cash, catalog, product, receivables, reports } = input.repositories;
+  return app
+    .use(productRoutes({ access, product }))
+    .use(catalogRoutes({ access, catalog }))
+    .use(cashRoutes({ access, cash }))
+    .use(receivablesRoutes({ access, receivables }))
+    .use(reportsRoutes({ access, reports }));
 }

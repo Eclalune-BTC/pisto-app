@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { callAuthEndpoint } from "../src/http.ts";
+import { callAuthEndpoint } from "../src/routes/billing.ts";
 
 describe("billing HTTP response boundary", () => {
   const invoke = (status: number, body: string) =>

@@ -34,6 +34,7 @@ function createTestApp(
       auth,
       writesEnabled: options.writesEnabled ?? true,
       consume: options.consume ?? (async () => ({ allowed: true, retryAfterSeconds: 60 })),
+      sessionPolicyPaths: new Set(["/v1/webhooks/revenuecat"]),
     }),
   );
   app.all("/*", () => ({ reached: true }), { parse: "none" });

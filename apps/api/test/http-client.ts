@@ -24,6 +24,7 @@ export function testAccess(auth: Auth) {
     auth,
     writesEnabled: true,
     consume: async () => ({ allowed: true, retryAfterSeconds: 60 }),
+    sessionPolicyPaths: new Set(),
   });
 }
 

@@ -17,42 +17,25 @@ const secureHeaders = {
   "x-xss-protection": "0",
 };
 const unsafeMethods = new Set(["POST", "PATCH", "PUT", "DELETE"]);
+// Elysia never parses a GET or HEAD body, so those requests are not buffered.
+const bodylessMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 
-async function boundedRequest(request: Request, limit: number): Promise<Request> {
-  const tooLarge = () =>
-    new ApiError(413, "BAD_REQUEST", "Request body exceeds the configured limit");
-  if (Number(request.headers.get("content-length")) > limit) throw tooLarge();
-  if (!request.body) return request;
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > limit) {
-        void reader.cancel().catch(() => undefined);
-        throw tooLarge();
-      }
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  return new Request(request, { body: Buffer.concat(chunks, size) });
-}
+const tooLarge = () =>
+  new ApiError(413, "BAD_REQUEST", "Request body exceeds the configured limit");
 
+/** Header-only checks that are cheap enough to run before authentication. */
 export function requestPolicy(config: ApiConfig) {
   return new Elysia({ name: "pisto.request-policy" })
-    .onRequest(async (context) => {
+    .onRequest((context) => {
       Object.assign(context.set.headers, secureHeaders);
       const path = new URL(context.request.url).pathname;
-      const productPath = path === "/v1" || path.startsWith("/v1/");
-      if (productPath) context.set.headers["Cache-Control"] = "no-store";
+      const versionedPath = path === "/v1" || path.startsWith("/v1/");
+      if (versionedPath) context.set.headers["Cache-Control"] = "no-store";
       if (context.request.method === "OPTIONS") return;
-      context.request = await boundedRequest(context.request, config.requestBodyLimitBytes);
-      if (productPath && unsafeMethods.has(context.request.method)) {
+      if (Number(context.request.headers.get("content-length")) > config.requestBodyLimitBytes) {
+        throw tooLarge();
+      }
+      if (versionedPath && unsafeMethods.has(context.request.method)) {
         const origin = context.request.headers.get("origin");
         if (origin && !config.corsOrigins.includes(origin)) {
           throw new ApiError(403, "FORBIDDEN", "Request origin is not allowed");
@@ -74,6 +57,37 @@ export function requestPolicy(config: ApiConfig) {
       for (const [name, value] of Object.entries(secureHeaders)) secured.headers.set(name, value);
       secured.headers.delete("x-powered-by");
       return secured;
+    })
+    .as("global");
+}
+
+/**
+ * Buffers a request body up to the limit, covering streams without a Content-Length. Register it
+ * after `productAccess` so an anonymous or rate-limited business request is rejected unread.
+ */
+export function requestBodyLimit(limit: number) {
+  return new Elysia({ name: "pisto.request-body-limit" })
+    .onRequest(async (context) => {
+      const { request } = context;
+      if (bodylessMethods.has(request.method) || !request.body) return;
+      const reader = request.body.getReader();
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          size += value.byteLength;
+          if (size > limit) {
+            void reader.cancel().catch(() => undefined);
+            throw tooLarge();
+          }
+          chunks.push(value);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+      context.request = new Request(request, { body: Buffer.concat(chunks, size) });
     })
     .as("global");
 }
