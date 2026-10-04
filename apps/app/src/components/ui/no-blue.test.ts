@@ -36,10 +36,10 @@ describe("owner's no-blue requirement", () => {
     }
     expect(violations).toEqual([]);
   });
-  test("uses an explicit neutral navigation theme instead of the blue platform defaults", () => {
+  test("uses the shared semantic navigation theme instead of blue platform defaults", () => {
     const layout = readFileSync(new URL("../../app/_layout.tsx", import.meta.url), "utf8");
-    expect(layout).toContain("navigationTheme.dark");
-    expect(layout).toContain("navigationTheme.light");
+    expect(layout).toContain('useNavigationTheme(theme === "dark")');
+    expect(layout).toContain("<ThemeProvider value={navigationTheme}>");
     expect(layout).not.toContain("? DarkTheme : DefaultTheme");
   });
 });

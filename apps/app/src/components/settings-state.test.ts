@@ -13,7 +13,8 @@ vi.mock("@/hooks/use-sign-out", () => ({
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("uniwind", () => ({
   withUniwind: (component: unknown) => component,
-  useCSSVariable: () => "#525252",
+  useCSSVariable: (names: string | string[]) =>
+    Array.isArray(names) ? names.map(() => "#525252") : "#525252",
   Uniwind: { setTheme: vi.fn() },
   useUniwind: () => ({ theme: "light", hasAdaptiveThemes: false }),
 }));

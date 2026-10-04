@@ -94,7 +94,7 @@ export default function CorrectSaleScreen() {
   if (businesses.isPending || (business !== undefined && saleResult.isPending)) {
     return (
       <View className="flex-1 items-start justify-center px-5 sm:px-8 lg:px-10">
-        <LoadingIndicator color="#237A55" size="large" />
+        <LoadingIndicator size="large" />
       </View>
     );
   }
@@ -193,7 +193,7 @@ export default function CorrectSaleScreen() {
         size="sm"
         variant="ghost"
       >
-        <ArrowLeft color="#617168" size={18} />
+        <Icon as={ArrowLeft} className="text-muted-foreground" size={18} />
         <ButtonText className="text-muted-foreground" variant="ghost">
           {t("sales.back")}
         </ButtonText>
@@ -272,7 +272,7 @@ export default function CorrectSaleScreen() {
 
           {correction.error ? (
             <View className="flex-row items-start gap-3 border-l-4 border-danger bg-destructive-surface p-4 ">
-              <AlertTriangle color="#B94242" size={20} />
+              <Icon as={AlertTriangle} className="text-destructive" size={20} />
               <Text accessibilityRole="alert" className="min-w-0 flex-1 text-sm text-destructive">
                 {ambiguousFailure
                   ? t("sales.correction.uncertain")

@@ -4,13 +4,13 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Platform, Pressable } from "react-native";
-import { useUniwind } from "uniwind";
+import { useCSSVariable } from "uniwind";
 import { Text, TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 
 const buttonVariants = cva(
   cn(
-    "group max-w-full shrink-0 flex-row items-center justify-center gap-2 rounded-md active:opacity-80",
+    "group max-w-full shrink-0 flex-row items-center justify-center gap-2 rounded-lg active:opacity-80",
     Platform.select({
       web: "transition-colors focus-visible:ring-ring/50 disabled:pointer-events-none",
     }),
@@ -19,8 +19,8 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary web:hover:bg-primary/90",
-        destructive: "bg-danger web:hover:bg-danger/90",
-        outline: "border border-input bg-background active:bg-accent web:hover:bg-accent",
+        destructive: "bg-destructive-action web:hover:bg-destructive-action/90",
+        outline: "border border-input bg-card active:bg-accent web:hover:bg-accent",
         secondary: "bg-secondary active:bg-secondary/80 web:hover:bg-secondary/80",
         ghost: "active:bg-accent web:hover:bg-accent",
         link: "",
@@ -39,7 +39,7 @@ const buttonTextVariants = cva("font-ui font-normal shrink text-center text-sm",
   variants: {
     variant: {
       default: "text-primary-foreground",
-      destructive: "text-white",
+      destructive: "text-destructive-action-foreground",
       outline: "text-foreground",
       secondary: "text-secondary-foreground",
       ghost: "text-accent-foreground",
@@ -72,18 +72,18 @@ function Button({
   ...props
 }: ButtonProps) {
   const { t } = useTranslation();
-  const { theme } = useUniwind();
+  const [primaryForeground, foreground, destructiveForeground] = useCSSVariable([
+    "--color-primary-foreground",
+    "--color-foreground",
+    "--color-destructive-action-foreground",
+  ]) as [string, string, string];
   const Component = asChild ? Slot : Pressable;
   const spinnerColor =
     variant === "destructive"
-      ? "#FFFFFF"
+      ? destructiveForeground
       : variant === "default"
-        ? theme === "dark"
-          ? "#171717"
-          : "#FFFFFF"
-        : theme === "dark"
-          ? "#FAFAFA"
-          : "#171717";
+        ? primaryForeground
+        : foreground;
   return (
     <TextClassContext.Provider value={buttonTextVariants({ variant })}>
       <Component

@@ -47,7 +47,8 @@ can drift.
 | VoiceOver/TalkBack semantics | [React Native accessibility](https://reactnative.dev/docs/accessibility) | Component system/release |
 | Build and submit store binaries | [EAS Build](https://docs.expo.dev/build/introduction/), [distribution](https://docs.expo.dev/distribution/introduction/) | Mobile release workflow |
 | Incremental SDK upgrades | [Expo upgrade walkthrough](https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/) | Expo upgrade |
-| Tailwind 4 through Uniwind's Metro integration; verified 2026-09-10 | [Uniwind quickstart](https://docs.uniwind.dev/quickstart), [source discovery](https://docs.uniwind.dev/monorepos) | Styling upgrade or styled code moved outside `src` |
+| Tailwind 4.3.3 interaction selectors with Uniwind 1.12.1; shared Expo/Uniwind Metro 0.84.5 Graph identity; reviewed 2026-10-03 | [Uniwind quickstart](https://docs.uniwind.dev/quickstart), [class compatibility](https://docs.uniwind.dev/class-names), [1.12.1 release](https://github.com/uni-stack/uniwind/releases/tag/v1.12.1), [source discovery](https://docs.uniwind.dev/monorepos) | Styling/Expo upgrade or styled code moved outside `src` |
+| RNR remains the source component library; IBM Plex Sans supports Spanish/currency typography; forest/sage is Pisto's design choice, reviewed 2026-10-03 | [RNR](https://reactnativereusables.com/), [IBM Plex](https://www.ibm.com/design/language/typography/typeface/), [text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html) | Component, font or palette change |
 | TanStack Query owns server state with native focus/network integration; verified 2026-09-10 | [TanStack Query React Native](https://tanstack.com/query/latest/docs/framework/react/react-native), [query cancellation](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation) | Query/Expo upgrade or cache ownership change |
 
 ## Web export and hosting

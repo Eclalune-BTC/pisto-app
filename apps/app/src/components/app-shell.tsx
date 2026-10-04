@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { type Href, Link, usePathname } from "expo-router";
-import { CreditCard, LogOut, Menu, ReceiptText, UserRound, X } from "lucide-react-native";
+import { CreditCard, LayoutGrid, LogOut, Menu, UserRound, X } from "lucide-react-native";
 import { type ComponentType, type PropsWithChildren, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, useWindowDimensions, View } from "react-native";
@@ -18,10 +18,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Icon } from "@/components/ui/icon";
 import { Separator } from "@/components/ui/separator";
 import { Sidebar, SidebarLink } from "@/components/ui/sidebar";
 import { Text } from "@/components/ui/text";
-import { getVisibleOperateModules } from "@/features/operate/navigation";
+import { operateModuleIcons } from "@/features/operate/module-icons";
+import { getVisibleOperateModules, OPERATE_GROUPS } from "@/features/operate/navigation";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { cn } from "@/lib/cn";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
@@ -37,7 +39,7 @@ type NavItem = {
 const navItems: readonly NavItem[] = [
   {
     href: "/operate",
-    icon: ReceiptText,
+    icon: LayoutGrid,
     labelKey: "common.operate",
     matchPrefixes: ["/operate"],
   },
@@ -88,10 +90,13 @@ export function AppShell({ children, email, name }: AppShellProps) {
     <Sidebar
       label={t("shell.primaryNavigation")}
       header={
-        <View className="gap-3">
+        <View className="gap-5">
           {isDesktop ? <Brand /> : null}
           {activeBusiness ? (
-            <Text className="font-ui text-sm text-foreground">{activeBusiness.name}</Text>
+            <View className="gap-1 border-l-2 border-primary/40 pl-3">
+              <Text className="text-xs text-muted-foreground">{t("shell.businessContext")}</Text>
+              <Text className="font-ui text-sm text-sidebar-foreground">{activeBusiness.name}</Text>
+            </View>
           ) : null}
           {activeBusiness && queryHasStaleData(businesses) ? (
             <Text accessibilityLiveRegion="polite" className="text-xs text-muted-foreground">
@@ -102,15 +107,16 @@ export function AppShell({ children, email, name }: AppShellProps) {
       }
       footer={
         <View className="gap-3">
-          <View className="flex-row items-center justify-between gap-3">
-            <Text className="shrink text-sm text-muted-foreground">{t("settings.appearance")}</Text>
+          <View className="flex-row items-center gap-2">
+            <View className="min-w-0 flex-1 gap-1">
+              <Text className="font-ui text-sm text-foreground" numberOfLines={1}>
+                {name || t("common.pistoAccount")}
+              </Text>
+              <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+                {email}
+              </Text>
+            </View>
             <AppearanceControl compact />
-          </View>
-          <View className="gap-1">
-            <Text className="font-ui text-sm text-foreground">
-              {name || t("common.pistoAccount")}
-            </Text>
-            <Text className="text-xs text-muted-foreground">{email}</Text>
           </View>
           <Button
             accessibilityLabel={t("common.signOut")}
@@ -119,7 +125,7 @@ export function AppShell({ children, email, name }: AppShellProps) {
             onPress={signOutAction.signOut}
             variant="ghost"
           >
-            <LogOut color={mutedForeground} size={18} />
+            <Icon as={LogOut} className="text-muted-foreground" size={18} />
             <ButtonText className="shrink text-sm" variant="ghost">
               {signOutAction.isPending ? t("shell.signingOut") : t("common.signOut")}
             </ButtonText>
@@ -132,49 +138,64 @@ export function AppShell({ children, email, name }: AppShellProps) {
         </View>
       }
     >
-      {navItems.map((item) => {
-        const active = isNavigationItemActive(pathname, item);
-        const Icon = item.icon;
+      <SidebarLink
+        active={pathname === "/operate"}
+        current={pathname === "/operate"}
+        href="/operate"
+        icon={<Icon as={LayoutGrid} className="text-sidebar-foreground" size={19} />}
+        label={t("common.operate")}
+        onNavigate={closeNavigation}
+      />
+      {OPERATE_GROUPS.map((group) => {
+        const modules = operateModules.filter((module) => module.group === group.id);
+        if (!modules.length) return null;
         return (
-          <View className="gap-1" key={item.labelKey}>
-            {item.href === "/settings" ? <Separator className="mb-3" /> : null}
-            <SidebarLink
-              active={active}
-              current={pathname === item.href}
-              href={item.href}
-              icon={<Icon color={active ? foreground : mutedForeground} size={20} />}
-              label={t(item.labelKey)}
-              onNavigate={closeNavigation}
-            />
-            {item.href === "/operate" ? (
-              operateModules.map((module) => {
-                const moduleActive = matchesRoute(pathname, String(module.href));
-                return (
-                  <SidebarLink
-                    active={moduleActive}
-                    current={moduleActive}
-                    href={module.href}
-                    key={module.id}
-                    label={t(module.labelKey)}
-                    nested
-                    onNavigate={closeNavigation}
-                  />
-                );
-              })
-            ) : (
-              <SidebarLink
-                active={matchesRoute(pathname, "/billing")}
-                current={matchesRoute(pathname, "/billing")}
-                href="/billing"
-                icon={<CreditCard color={mutedForeground} size={18} />}
-                label={t("settings.billing")}
-                nested
-                onNavigate={closeNavigation}
-              />
-            )}
+          <View className="gap-1" key={group.id}>
+            <Text className="px-3 pb-1 font-ui text-xs text-muted-foreground">
+              {t(group.labelKey)}
+            </Text>
+            {modules.map((module) => {
+              const active = matchesRoute(pathname, String(module.href));
+              return (
+                <SidebarLink
+                  active={active}
+                  current={active}
+                  href={module.href}
+                  key={module.id}
+                  icon={
+                    <Icon
+                      as={operateModuleIcons[module.id]}
+                      className="text-sidebar-foreground"
+                      size={19}
+                    />
+                  }
+                  label={t(module.labelKey)}
+                  onNavigate={closeNavigation}
+                />
+              );
+            })}
           </View>
         );
       })}
+      <View className="gap-1">
+        <Separator className="mb-3 bg-sidebar-border" />
+        <SidebarLink
+          active={pathname === "/settings"}
+          current={pathname === "/settings"}
+          href="/settings"
+          icon={<Icon as={UserRound} className="text-sidebar-foreground" size={19} />}
+          label={t("common.account")}
+          onNavigate={closeNavigation}
+        />
+        <SidebarLink
+          active={matchesRoute(pathname, "/billing")}
+          current={matchesRoute(pathname, "/billing")}
+          href="/billing"
+          icon={<Icon as={CreditCard} className="text-sidebar-foreground" size={19} />}
+          label={t("settings.billing")}
+          onNavigate={closeNavigation}
+        />
+      </View>
     </Sidebar>
   );
 
@@ -182,12 +203,14 @@ export function AppShell({ children, email, name }: AppShellProps) {
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
       <View className="min-h-0 flex-1 flex-row">
         {isDesktop ? (
-          <View className="w-64 shrink-0 border-r border-border bg-sidebar">{navigation}</View>
+          <View className="w-64 shrink-0 border-r border-sidebar-border bg-sidebar">
+            {navigation}
+          </View>
         ) : null}
         <View className="min-w-0 flex-1">
           {!isDesktop ? (
             <View
-              className="min-h-16 flex-row items-center justify-between gap-2 border-b border-border bg-background px-3 py-2"
+              className="min-h-16 flex-row items-center justify-between gap-2 border-b border-border bg-card px-3 py-2"
               role="banner"
             >
               <Dialog open={navigationOpen} onOpenChange={setNavigationOpen}>
@@ -261,8 +284,8 @@ export function AppShell({ children, email, name }: AppShellProps) {
                       accessibilityState={{ selected: active }}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "h-auto min-h-14 flex-1 flex-col gap-1 rounded-none border-t-2 px-2 py-2",
-                        active ? "border-foreground" : "border-transparent",
+                        "h-auto min-h-14 flex-1 flex-col gap-1 rounded-lg px-2 py-2",
+                        active && "bg-accent",
                       )}
                       variant="ghost"
                     >

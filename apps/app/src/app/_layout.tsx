@@ -16,7 +16,7 @@ import { useUniwind } from "uniwind";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { i18n } from "@/i18n/config";
-import { navigationTheme } from "@/lib/navigation-theme";
+import { useNavigationTheme } from "@/lib/navigation-theme";
 import { AppearanceProvider } from "@/providers/appearance-provider";
 import { I18nProvider } from "@/providers/i18n-provider";
 import { QueryProvider } from "@/providers/query-provider";
@@ -65,6 +65,7 @@ export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
 
 export default function RootLayout() {
   const { theme } = useUniwind();
+  const navigationTheme = useNavigationTheme(theme === "dark");
   const [fontsLoaded, fontError] = useFonts({
     PistoRegular: IBMPlexSans_400Regular,
     PistoMedium: IBMPlexSans_500Medium,
@@ -79,7 +80,7 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <ThemeProvider value={theme === "dark" ? navigationTheme.dark : navigationTheme.light}>
+    <ThemeProvider value={navigationTheme}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <I18nProvider>

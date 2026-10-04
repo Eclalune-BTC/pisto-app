@@ -33,7 +33,7 @@ export function CapabilityBoundary({ children, onRetry, state }: CapabilityBound
   if (state === "loading") {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <LoadingIndicator color="#237A55" size="large" />
+        <LoadingIndicator size="large" />
         <Text className="text-sm font-ui text-muted-foreground">{copy.common.loading}</Text>
       </View>
     );

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { api } from "@/lib/api-client";
 import { deriveBillingAccessState } from "@/lib/billing/billing-access";
@@ -50,13 +51,17 @@ export default function BillingSuccessScreen() {
 
   const StateIcon =
     accessState === "active" ? CheckCircle2 : accessState === "error" ? AlertCircle : Clock3;
-  const iconColor =
-    accessState === "active" ? "#237A55" : accessState === "error" ? "#B94242" : "#B86718";
+  const iconClass =
+    accessState === "active"
+      ? "text-positive-foreground"
+      : accessState === "error"
+        ? "text-destructive"
+        : "text-warning-foreground";
 
   return (
     <Page contentContainerClassName="gap-7" width="reading">
       <View className="flex-row items-start gap-4">
-        <StateIcon color={iconColor} size={32} strokeWidth={2.4} />
+        <Icon as={StateIcon} className={iconClass} size={32} strokeWidth={2.4} />
         <View className="min-w-0 flex-1 gap-2">
           <Text className="text-xs font-ui uppercase tracking-[1.6px] text-positive-foreground ">
             {t("billing.returnEyebrow")}

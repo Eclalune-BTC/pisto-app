@@ -34,6 +34,10 @@ describe("semantic normal-text color pairs", () => {
         ["warning-foreground", "warning-surface"],
         ["destructive", "destructive-surface"],
         ["primary-foreground", "primary"],
+        ["destructive-action-foreground", "destructive-action"],
+        ["secondary-foreground", "secondary"],
+        ["accent-foreground", "accent"],
+        ["muted-foreground", "background"],
         ["sidebar-foreground", "sidebar"],
         ["sidebar-accent-foreground", "sidebar-accent"],
         ["popover-foreground", "popover"],
@@ -45,6 +49,15 @@ describe("semantic normal-text color pairs", () => {
           contrast(front, back),
           `${theme}: ${foreground}/${background}`,
         ).toBeGreaterThanOrEqual(4.5);
+      }
+      for (const surface of ["background", "card", "popover"]) {
+        const input = tokens.input;
+        const ring = tokens.ring;
+        const background = tokens[surface];
+        if (!input || !ring || !background)
+          throw new Error(`Missing control tokens for ${surface}.`);
+        expect(contrast(input, background), `${theme}: input/${surface}`).toBeGreaterThanOrEqual(3);
+        expect(contrast(ring, background), `${theme}: ring/${surface}`).toBeGreaterThanOrEqual(3);
       }
     });
   }

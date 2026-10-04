@@ -13,7 +13,8 @@ import { describe, expect, test, vi } from "vitest";
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("uniwind", () => ({
   useUniwind: () => ({ theme: "light" }),
-  useCSSVariable: () => "#18181b",
+  useCSSVariable: (names: string | string[]) =>
+    Array.isArray(names) ? names.map(() => "#18181b") : "#18181b",
   withUniwind: (component: unknown) => component,
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
@@ -25,12 +26,12 @@ vi.mock("lucide-react-native", () => ({
   WifiOff: () => null,
 }));
 
+import { View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FilterToolbar } from "@/components/ui/filter-toolbar";
 import { SelectField } from "@/components/ui/select-field";
-import { WorkspaceTabs } from "@/components/ui/workspace-tabs";
 import { buildExpensesCopy } from "@/features/expenses/copy";
 import { ExpenseFilters } from "@/features/expenses/expense-filters";
 import { ExpenseHistory } from "@/features/expenses/expense-history";
@@ -170,7 +171,7 @@ function cashProps(): ComponentProps<typeof CashScreen> {
 }
 
 // Capture the feature's composition while rendering the real shared controls. This lets
-// us inspect inactive content and call supplied callbacks without replacing the tab library.
+// us inspect named sections and call supplied callbacks without replacing their controls.
 function capture<P extends object>(Component: (props: P) => ReactElement, props: P) {
   let tree: ReactElement | undefined;
   function Capture() {
@@ -190,31 +191,32 @@ function elements<P>(tree: ReactNode, type: unknown): ReactElement<P>[] {
   });
   return matches;
 }
-function tabs(tree: ReactNode) {
-  const [element] = elements<ComponentProps<typeof WorkspaceTabs> & { children?: ReactNode }>(
-    tree,
-    WorkspaceTabs,
+function section(tree: ReactNode, value: "accounts" | "movements" | "history" | "summary") {
+  const labels = {
+    accounts: cashCopy.overview("Private business").accountsTitle,
+    movements: cashCopy.overview("Private business").movementsTitle,
+    history: expenseCopy.overview("Private business").historyTitle,
+    summary: i18n.t("filters.periodSummary"),
+  };
+  const match = elements<ComponentProps<typeof View>>(tree, View).find(
+    (element) =>
+      element.props.role === "region" && element.props.accessibilityLabel === labels[value],
   );
-  if (!element) throw new Error("Workspace tabs are missing.");
-  return element.props;
-}
-function panel(tree: ReactNode, value: string) {
-  const item = tabs(tree).items.find((candidate) => candidate.value === value);
-  if (!item) throw new Error(`Missing panel: ${value}`);
-  return item.content;
+  if (!match) throw new Error(`Missing section: ${value}`);
+  return match;
 }
 
 describe("expense and cash overview presentation", () => {
-  test("defaults to history and keeps the summary's dates and exact totals in its own panel", () => {
+  test("shows history and period totals together with clearly separated controls", () => {
     const props = expenseProps();
     const { tree, markup } = capture(ExpensesScreen, props);
-    expect(tabs(tree).value).toBe("history");
+    expect(markup).not.toContain('role="tablist"');
     expect(markup).toContain(expense.description);
     expect(markup).toContain(expense.occurredLocalDate);
     expect(markup).toContain("USD 9007199254740993 (2)");
-    expect(markup).not.toContain(props.copy.applyPeriod);
-    expect(markup).not.toContain("18014398509481986");
-    const summaryMarkup = renderToStaticMarkup(panel(tree, "summary"));
+    expect(markup).toContain(props.copy.applyPeriod);
+    expect(markup).toContain("18014398509481986");
+    const summaryMarkup = renderToStaticMarkup(section(tree, "summary"));
     expect(summaryMarkup).toContain(props.copy.applyPeriod);
     expect(summaryMarkup).toContain("USD 18014398509481986 (2)");
     expect(summaryMarkup).toContain(props.copy.categories.utilities);
@@ -234,7 +236,7 @@ describe("expense and cash overview presentation", () => {
       expect(markup).toContain(props.copy.accountFilter);
       expect(markup).not.toContain(props.copy.emptyTitle);
       expect(markup).not.toContain(expense.description);
-      const summaryMarkup = renderToStaticMarkup(panel(tree, "summary"));
+      const summaryMarkup = renderToStaticMarkup(section(tree, "summary"));
       expect(summaryMarkup).toContain('value="2026-09-01"');
       expect(summaryMarkup).toContain(props.copy.applyPeriod);
       expect(summaryMarkup).not.toContain("18014398509481986");
@@ -243,13 +245,13 @@ describe("expense and cash overview presentation", () => {
       const renderedCash = capture(CashScreen, cash);
       expect(renderedCash.markup).toContain(cash.copy.accountFilter);
       expect(renderedCash.markup).not.toContain(account.name);
-      expect(renderToStaticMarkup(panel(renderedCash.tree, "movements"))).not.toContain(
+      expect(renderToStaticMarkup(section(renderedCash.tree, "movements"))).not.toContain(
         cash.copy.noMovements,
       );
     },
   );
 
-  test("hides cached records, option names, business descriptions, and tabs on denial", () => {
+  test("hides cached records, option names, business descriptions, and sections on denial", () => {
     const expenses = expenseProps();
     expenses.state = { ...expenses.state, kind: "denied" };
     const cash = cashProps();
@@ -270,7 +272,7 @@ describe("expense and cash overview presentation", () => {
     const props = expenseProps();
     const { tree } = capture(ExpensesScreen, props);
     const [dates] = elements<ComponentProps<typeof DateRangeFilter>>(
-      panel(tree, "summary"),
+      section(tree, "summary"),
       DateRangeFilter,
     );
     expect(dates).toBeDefined();
@@ -283,11 +285,11 @@ describe("expense and cash overview presentation", () => {
     expect(props.onApplyPeriod).toHaveBeenCalledOnce();
     expect(props.onFiltersChange).not.toHaveBeenCalled();
     const [filters] = elements<ComponentProps<typeof ExpenseFilters>>(
-      panel(tree, "history"),
+      section(tree, "history"),
       ExpenseFilters,
     );
     expect(filters?.props.onLoadMoreAccounts).toBe(props.onLoadMoreAccounts);
-    const loadMore = elements<ComponentProps<typeof Button>>(panel(tree, "history"), Button);
+    const loadMore = elements<ComponentProps<typeof Button>>(section(tree, "history"), Button);
     expect(loadMore.some((button) => button.props.onPress === props.onLoadMoreExpenses)).toBe(true);
   });
 
@@ -322,28 +324,29 @@ describe("expense and cash overview presentation", () => {
     expect(props.onPeriodChange).not.toHaveBeenCalled();
   });
 
-  test("cash filters only the accounts panel and retains movement access and pagination", () => {
+  test("cash filters only the accounts section and retains movement access and pagination", () => {
     const props = cashProps();
     const { tree, markup } = capture(CashScreen, props);
-    expect(tabs(tree).value).toBe("accounts");
+    expect(markup).not.toContain('role="tablist"');
+    expect(markup).toContain(movement.occurredLocalTime);
     expect(markup).toContain(account.name);
     expect(markup).toContain(props.copy.negativeAllowed);
-    const movements = renderToStaticMarkup(panel(tree, "movements"));
+    const movements = renderToStaticMarkup(section(tree, "movements"));
     expect(movements).toContain("USD -9007199254740993 (2)");
     expect(movements).toContain(movement.occurredLocalTime);
     expect(movements).not.toContain(props.copy.accountFilter);
     const [accounts] = elements<ComponentProps<typeof CashAccountList>>(
-      panel(tree, "accounts"),
+      section(tree, "accounts"),
       CashAccountList,
     );
     expect(accounts?.props.onOpenAccount).toBe(props.onOpenAccount);
     expect(
-      elements<ComponentProps<typeof Button>>(panel(tree, "accounts"), Button).some(
+      elements<ComponentProps<typeof Button>>(section(tree, "accounts"), Button).some(
         (button) => button.props.onPress === props.onLoadMoreAccounts,
       ),
     ).toBe(true);
     expect(
-      elements<ComponentProps<typeof Button>>(panel(tree, "movements"), Button).some(
+      elements<ComponentProps<typeof Button>>(section(tree, "movements"), Button).some(
         (button) => button.props.onPress === props.onLoadMoreMovements,
       ),
     ).toBe(true);
@@ -360,11 +363,11 @@ describe("expense and cash overview presentation", () => {
     cash.state.movements = [];
     const { tree, markup } = capture(CashScreen, cash);
     expect(markup).toContain(cash.copy.emptyTitle);
-    expect(renderToStaticMarkup(panel(tree, "movements"))).toContain(cash.copy.noMovements);
+    expect(renderToStaticMarkup(section(tree, "movements"))).toContain(cash.copy.noMovements);
   });
 
   test.each(["uncertain", "failed"] as const)(
-    "keeps %s mutation notices outside the tabs with their existing callbacks",
+    "keeps %s mutation notices above both sections with their existing callbacks",
     (confirmation) => {
       const props = expenseProps();
       if (props.state.kind !== "ready") throw new Error("Expected ready fixture");
@@ -381,7 +384,7 @@ describe("expense and cash overview presentation", () => {
           confirmation === "uncertain" ? copy.uncertainTitle : copy.mutationFailedTitle,
         );
         expect(elements(tree, Button).length).toBeGreaterThan(0);
-        expect(tabs(tree)).toBeDefined();
+        expect(markup).toContain('role="region"');
       }
       if (confirmation === "uncertain") {
         expect(capture(ExpensesScreen, props).markup).not.toContain(props.copy.registerExpense);

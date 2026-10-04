@@ -20,7 +20,7 @@ function Input({
       cursorColor={foreground}
       placeholderTextColor={muted}
       className={cn(
-        "font-sans border-input bg-background text-foreground flex min-h-12 w-full min-w-0 flex-row items-center rounded-md border px-3 py-2 text-base leading-6",
+        "font-sans border-input bg-card text-foreground flex min-h-12 w-full min-w-0 flex-row items-center rounded-lg border px-3 py-2 text-base leading-6",
         props.editable === false &&
           cn(
             "opacity-50",

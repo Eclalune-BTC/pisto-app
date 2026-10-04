@@ -1,5 +1,11 @@
 import type { CashAccount, TransferCashRequest } from "@pisto/contracts";
 import { View } from "react-native";
+import {
+  FeatureBoundary,
+  type FeatureBoundaryCopy,
+  type FeatureRemoteState,
+  requireFeatureManageAccess,
+} from "@/components/feature-boundary";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
@@ -7,12 +13,6 @@ import { Field } from "@/components/ui/field";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
 import { CashOperationReview, type CashOperationReviewCopy } from "./cash-operation-review";
-import {
-  FeatureBoundary,
-  type FeatureBoundaryCopy,
-  type FeatureRemoteState,
-  requireFeatureManageAccess,
-} from "./feature-boundary";
 import type { CashConfirmationState } from "./state";
 
 export type CashTransferDraft = {

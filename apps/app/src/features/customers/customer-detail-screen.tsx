@@ -7,6 +7,7 @@ import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { Icon } from "@/components/ui/icon";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import { Text } from "@/components/ui/text";
 
@@ -126,7 +127,7 @@ export function CustomerDetailScreen({
         size="sm"
         variant="ghost"
       >
-        <ArrowLeft color="#71717A" size={18} />
+        <Icon as={ArrowLeft} className="text-muted-foreground" size={18} />
         <Text className="font-ui text-foreground">{copy.back}</Text>
       </Button>
       <ScreenHeader
@@ -135,11 +136,11 @@ export function CustomerDetailScreen({
             <View className="flex-row flex-wrap gap-2">
               <Button label={copy.newReceivable} onPress={onCreateReceivable} variant="default" />
               <Button onPress={onEdit} variant="outline">
-                <Pencil color="#14241D" size={17} />
+                <Icon as={Pencil} size={17} />
                 <ButtonText variant="outline">{copy.update}</ButtonText>
               </Button>
               <Button onPress={onArchive} variant="ghost">
-                <Archive color="#B94242" size={17} />
+                <Icon as={Archive} className="text-destructive" size={17} />
                 <ButtonText className="text-destructive" variant="ghost">
                   {copy.archive}
                 </ButtonText>

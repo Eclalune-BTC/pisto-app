@@ -45,7 +45,7 @@ export default function SaleResultScreen() {
   if (businesses.isPending || (business !== undefined && result.isPending)) {
     return (
       <View className="flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10">
-        <LoadingIndicator color="#237A55" size="large" />
+        <LoadingIndicator size="large" />
         <Text className="text-sm text-muted-foreground">{t("sales.resultLoading")}</Text>
       </View>
     );
@@ -84,14 +84,14 @@ export default function SaleResultScreen() {
         size="sm"
         variant="ghost"
       >
-        <ArrowLeft color="#617168" size={18} />
+        <Icon as={ArrowLeft} className="text-muted-foreground" size={18} />
         <ButtonText className="text-muted-foreground" variant="ghost">
           {t("sales.back")}
         </ButtonText>
       </Button>
 
       <View className="flex-row items-start gap-4">
-        <CheckCircle2 color="#237A55" size={30} strokeWidth={2.4} />
+        <Icon as={CheckCircle2} className="text-positive-foreground" size={30} strokeWidth={2.4} />
         <View className="min-w-0 flex-1">
           <ScreenHeader
             description={t("sales.resultDescription")}
@@ -167,7 +167,7 @@ export default function SaleResultScreen() {
             }
             variant="outline"
           >
-            <Pencil color="#237A55" size={18} />
+            <Icon as={Pencil} className="text-primary" size={18} />
             <ButtonText variant="outline">{t("sales.correction.open")}</ButtonText>
           </Button>
         ) : null}

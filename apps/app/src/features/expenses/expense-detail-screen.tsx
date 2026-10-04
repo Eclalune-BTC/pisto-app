@@ -1,6 +1,11 @@
 import type { Expense, ExpenseCategory, VoidExpenseRequest } from "@pisto/contracts";
 import { View } from "react-native";
 import { DetailList } from "@/components/detail-list";
+import {
+  FeatureBoundary,
+  type FeatureBoundaryCopy,
+  type FeatureRemoteState,
+} from "@/components/feature-boundary";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
@@ -8,11 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
 import { CashOperationReview, type CashOperationReviewCopy } from "../cash/cash-operation-review";
-import {
-  FeatureBoundary,
-  type FeatureBoundaryCopy,
-  type FeatureRemoteState,
-} from "../cash/feature-boundary";
 import { cashOperationPresentation } from "../cash/operation-state";
 import type { CashConfirmationState } from "../cash/state";
 

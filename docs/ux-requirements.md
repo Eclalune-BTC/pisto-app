@@ -26,7 +26,7 @@ Existing financial review, idempotency, permission, and correction rules remain 
 | `/operate/customers` | Stable text search, active/archived/all filter, paginated contacts | Create/edit/archive and customer receivable history |
 | `/operate/receivables` | Current balances and all/open/overdue/paid/voided filter | Charge, payment, payment reversal, reviewed void |
 | `/operate/reports` | Inclusive local date range; exact period flows and current positions | Change/apply a period or retry the read |
-| `/settings`, `/billing`, `/billing/success` | Account and configured billing state | Account remains the active primary destination |
+| `/settings`, `/billing`, `/billing/success` | Account and configured billing state | Compact Account remains active; wide navigation selects the actual Account or Billing link |
 
 The expense date range updates its summary; its history filters retain their existing independent
 scope. Reports distinguish period flows from present-day inventory and receivable positions. No
@@ -43,7 +43,7 @@ Context / page title                                    | Search / period / filt
 Search / period / filters                               | [Load more / retry when applicable]
 Result state / records
 [Load more / retry]
-Operate             Account
+Mi negocio          Cuenta
 ```
 
 Control groups wrap at intermediate widths. Wide navigation scrolls independently on short screens.
@@ -61,7 +61,7 @@ Result refresh does not replace the page header or its query controls.
 | A confirmation is pending | Keep the action name visible and accessible, show progress, and prevent repeated activation |
 | A confirmation has an unknown outcome | New-sale reviews recover their server-owned state before proceeding; other editors retain the exact command while mounted. Never turn an uncertain response into a new financial operation |
 | A business read refreshes | Preserve an expense period chosen for the same business; initialize it again only when the business/time-zone context changes |
-| A user opens billing | Keep Account active in both compact and wide navigation |
+| A user opens billing | Keep Cuenta active in compact navigation; select only Plan y facturacion in wide navigation |
 | Space or text size changes | Wrap page heading actions and control text; keep controls reachable without horizontal page overflow |
 
 `FilterBar` owns the repeated small single-selection filter interaction. It composes the shared

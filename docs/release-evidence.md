@@ -77,12 +77,48 @@ Elysia remains 1.4.30, with exact JSON media-type enforcement. On 2026-10-03:
   healthy and billing disabled. The audit still reports five existing Expo/toolchain advisories;
   real checkout/portal/purchase sandbox acceptance and hosted deployment remain unclaimed.
 
+The 2026-10-03 frontend redesign after `5e639a8` keeps Expo/RNR and IBM Plex Sans, introduces shared
+forest/sage themes, groups direct navigation links, exposes cash/expense sections together, and
+removes the unused workspace-tab wrapper. Shared read-state composition and sales overview now live
+at their owning component/feature boundaries. No financial API, schema, permission or query contract changed.
+
+- `bun run check` passed: 773 tests including 474 frontend tests, types, documentation and web export.
+  Unchanged workspace tasks reused validated Turbo entries. The dependency audit still reports the
+  five existing Expo/toolchain advisories; no advisory exception was added.
+- Uniwind 1.12.1 and Expo resolve Metro 0.84.5 to the same physical Graph module. Frozen installation
+  succeeded after removing two obsolete, untracked nested Metro copies. Manifests and lockfile own the
+  exact compatible development peers.
+- Two independent Astra reviewers inspected the complete change and ran focused tests. Control-border
+  contrast, short-height sidebar scrolling, native splash colors, shared mark radius and stale version
+  documentation were corrected. Native bundle generation does not establish installed-device behavior.
+- The final Android and iOS Hermes exports passed with the refreshed product captures (8.6 MB and
+  8.4 MB respectively). Export logs contained the CLI's NO_COLOR/FORCE_COLOR warning, with no unsupported
+  style warning. Temporary exports were removed after validation; the local development app remains available.
+
 GitHub CI separately validates source/tests, migrations/integrations, the configured advisory
 exceptions, schema contracts, credential-free infrastructure tests and the portable API image.
 Inspect the run for the actual commit before asserting its result; old green runs do not validate
 new code. The image checks include probes, unauthenticated denial, bundled migrations and shutdown.
 
 ## Browser evidence
+
+The 2026-10-03 redesign was inspected in Chrome against the configured local app, without creating
+business records. Checks sampled 320/390/768/1024/1440 CSS-pixel widths, light/dark themes, the task hub,
+sales, cash, expenses, catalog, inventory, customers, receivables, reports and account navigation.
+Actual successful empty reads stayed distinct from loading and form-validation errors. Unit tests
+separately cover populated, stale, denied, offline and failed-query compositions; those mocks are not
+claimed as browser fault-injection evidence.
+
+- The 768x320 navigation menu could scroll to account/sign-out controls with keyboard focus. Escape
+  dismissed the menu and restored its trigger; an open appearance tooltip consumes the first Escape.
+- Expense category selection opened and restored focus on Escape. Public feature tabs changed with
+  arrow keys, and the hero action moved focus to the product section. Compact filters wrapped long
+  Spanish labels; intermediate catalog widths drove a final control-layout adjustment.
+- Sales, customer and product forms were inspected without submitting data; an empty sale amount
+  produced its real validation message. Public captures were refreshed in both themes from empty
+  forms/report date controls, with account/business identity and financial results excluded.
+- The public page was inspected at 1440 and 390 pixels. These checks establish bounded rendered
+  behavior, not owner aesthetic approval, complete accessibility conformance or physical-device QA.
 
 The 2026-09-27 RNR browser checks used isolated responses and wrote no records to the configured
 database. They establish bounded behavior for that revision:

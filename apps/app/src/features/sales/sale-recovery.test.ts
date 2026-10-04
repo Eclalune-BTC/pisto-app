@@ -150,7 +150,8 @@ vi.mock("react-i18next", () => ({
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("uniwind", () => ({
   withUniwind: (component: unknown) => component,
-  useCSSVariable: () => "#525252",
+  useCSSVariable: (names: string | string[]) =>
+    Array.isArray(names) ? names.map(() => "#525252") : "#525252",
   useUniwind: () => ({ theme: "light" }),
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));

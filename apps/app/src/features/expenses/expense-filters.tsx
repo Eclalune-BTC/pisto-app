@@ -69,7 +69,7 @@ export function ExpenseFilters({
       }
       resetLabel={t("filters.reset")}
     >
-      <View className="min-w-0 gap-2 sm:flex-1">
+      <View className="min-w-0 gap-2 sm:min-w-72 sm:flex-1">
         <FilterBar
           showLabel
           label={copy.statusFilter}

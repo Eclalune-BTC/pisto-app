@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
 import { useUniwind } from "uniwind";
 import { Button, ButtonText } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/cn";
@@ -20,7 +21,6 @@ export function AppearanceControl({ compact = false }: { compact?: boolean }) {
   const appearance = useAppearance();
   const nextTheme = theme === "dark" ? "light" : "dark";
   const ThemeIcon = theme === "dark" ? Sun : Moon;
-  const iconColor = theme === "dark" ? "#FAFAFA" : "#171717";
   const switchControl = (
     <Button
       accessibilityLabel={t(`appearance.switchTo.${nextTheme}`)}
@@ -29,7 +29,7 @@ export function AppearanceControl({ compact = false }: { compact?: boolean }) {
       size="icon"
       variant="ghost"
     >
-      <ThemeIcon color={iconColor} size={19} strokeWidth={1.75} />
+      <Icon as={ThemeIcon} size={19} strokeWidth={1.75} />
     </Button>
   );
 
@@ -48,7 +48,7 @@ export function AppearanceControl({ compact = false }: { compact?: boolean }) {
         )
       ) : (
         <View accessibilityLabel={t("settings.appearance")} className="flex-row flex-wrap gap-1">
-          {choices.map(({ value, icon: Icon }) => (
+          {choices.map(({ value, icon: ChoiceIcon }) => (
             <Button
               accessibilityLabel={t(`settings.themes.${value}`)}
               accessibilityRole={Platform.OS === "web" ? "button" : "togglebutton"}
@@ -63,7 +63,7 @@ export function AppearanceControl({ compact = false }: { compact?: boolean }) {
               size="sm"
               variant="ghost"
             >
-              <Icon color={iconColor} size={16} />
+              <Icon as={ChoiceIcon} size={16} />
               <ButtonText variant="ghost">{t(`settings.themes.${value}`)}</ButtonText>
             </Button>
           ))}

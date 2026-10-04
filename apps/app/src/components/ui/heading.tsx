@@ -6,7 +6,7 @@ import { Text } from "./text";
 const headingVariants = cva("font-heading font-normal text-foreground", {
   variants: {
     size: {
-      page: "text-[26px] leading-8 sm:text-[30px] sm:leading-9",
+      page: "text-[28px] leading-9 tracking-[-0.5px] sm:text-[32px] sm:leading-10",
       section: "text-lg leading-6",
       welcome:
         "font-ui text-[36px] leading-[42px] tracking-[-0.5px] sm:text-[48px] sm:leading-[54px] lg:text-[56px] lg:leading-[62px]",

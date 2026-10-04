@@ -12,7 +12,8 @@ vi.mock("react-native", async () => ({
 }));
 vi.mock("uniwind", () => ({
   withUniwind: (component: unknown) => component,
-  useCSSVariable: () => "#62626B",
+  useCSSVariable: (names: string | string[]) =>
+    Array.isArray(names) ? names.map(() => "#62626B") : "#62626B",
 }));
 vi.mock("@/components/ui/select-field", () => ({ SelectField: () => null }));
 vi.mock("@/components/page", () => ({

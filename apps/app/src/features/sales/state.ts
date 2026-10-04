@@ -1,6 +1,6 @@
 import type { Sale, SaleStatusFilter } from "@pisto/contracts";
 
-import type { FeatureRemoteState } from "../cash/feature-boundary";
+import type { FeatureRemoteState } from "@/components/feature-boundary";
 
 export const saleStatusFilters: readonly SaleStatusFilter[] = ["all", "posted", "voided"];
 

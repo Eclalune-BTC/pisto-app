@@ -1,28 +1,18 @@
 import { DarkTheme, DefaultTheme } from "expo-router";
+import { useCSSVariable } from "uniwind";
 
-export const navigationTheme = {
-  light: {
-    ...DefaultTheme,
-    colors: {
-      ...DefaultTheme.colors,
-      primary: "#171717",
-      background: "#FFFFFF",
-      card: "#FAFAFA",
-      text: "#171717",
-      border: "#E5E5E5",
-      notification: "#B94242",
-    },
-  },
-  dark: {
-    ...DarkTheme,
-    colors: {
-      ...DarkTheme.colors,
-      primary: "#FAFAFA",
-      background: "#0A0A0A",
-      card: "#171717",
-      text: "#FAFAFA",
-      border: "#404040",
-      notification: "#FFBABA",
-    },
-  },
-};
+export function useNavigationTheme(isDark: boolean) {
+  const [primary, background, card, text, border, notification] = useCSSVariable([
+    "--color-primary",
+    "--color-background",
+    "--color-card",
+    "--color-foreground",
+    "--color-border",
+    "--color-destructive",
+  ]) as [string, string, string, string, string, string];
+
+  return {
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: { primary, background, card, text, border, notification },
+  };
+}

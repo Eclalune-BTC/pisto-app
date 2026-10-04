@@ -1,8 +1,8 @@
 import type { CashAccount, ExpenseCategory } from "@pisto/contracts";
 import { AlertTriangle } from "lucide-react-native";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { FeatureBoundary } from "@/components/feature-boundary";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
@@ -10,9 +10,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Heading } from "@/components/ui/heading";
 import { Text } from "@/components/ui/text";
-import { WorkspaceTabs } from "@/components/ui/workspace-tabs";
-import { FeatureBoundary } from "../cash/feature-boundary";
 import {
   ExpenseFilters,
   type ExpenseFiltersCopy,
@@ -107,7 +106,6 @@ export function ExpensesScreen({
 }: ExpensesScreenProps) {
   const presentation = expensesScreenPresentation(state);
   const { t } = useTranslation();
-  const [view, setView] = useState<"history" | "summary">("history");
   return (
     <Page contentContainerClassName="gap-6">
       <ScreenHeader
@@ -151,103 +149,94 @@ export function ExpensesScreen({
           {null}
         </FeatureBoundary>
       ) : (
-        <WorkspaceTabs
-          label={t("filters.views")}
-          onChange={setView}
-          value={view}
-          items={[
-            {
-              value: "history",
-              label: t("filters.history"),
-              content: (
-                <>
-                  <ExpenseFilters
-                    accounts={accounts}
-                    categoryOptions={categoryOptions}
-                    copy={copy}
-                    filters={filters}
-                    hasMoreAccounts={hasMoreAccounts}
-                    isLoadingMoreAccounts={isLoadingMoreAccounts}
-                    onFiltersChange={onFiltersChange}
-                    onLoadMoreAccounts={onLoadMoreAccounts}
-                  />
-                  <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
-                    {state.kind === "ready" ? (
-                      <View className="min-w-0 gap-4">
-                        {state.expenses.length === 0 ? (
-                          <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
-                        ) : (
-                          <ExpenseHistory
-                            canManage={state.canManage}
-                            categoryLabels={copy.categories}
-                            expenses={state.expenses}
-                            formatMoney={formatMoney}
-                            onOpenExpense={onOpenExpense}
-                            onVoidExpense={onVoidExpense}
-                            postedLabel={copy.posted}
-                            voidActionLabel={copy.voidAction}
-                            voidedLabel={copy.voided}
-                          />
-                        )}
-                        {hasMoreExpenses ? (
-                          <Button
-                            className="self-start"
-                            label={isLoadingMoreExpenses ? copy.loadingMore : copy.loadMore}
-                            loading={isLoadingMoreExpenses}
-                            onPress={onLoadMoreExpenses}
-                            variant="outline"
-                          />
-                        ) : null}
-                      </View>
-                    ) : null}
-                  </FeatureBoundary>
-                </>
-              ),
-            },
-            {
-              value: "summary",
-              label: t("filters.periodSummary"),
-              content: (
-                <>
-                  <View className="min-w-0 gap-3">
-                    <DateRangeFilter
-                      applyLabel={copy.applyPeriod}
-                      endDate={period.endLocalDate}
-                      endLabel={copy.endDate}
-                      error={periodError}
-                      onApply={onApplyPeriod}
-                      onEndDateChange={(endLocalDate) =>
-                        onPeriodChange({ ...period, endLocalDate })
-                      }
-                      onStartDateChange={(startLocalDate) =>
-                        onPeriodChange({ ...period, startLocalDate })
-                      }
-                      startDate={period.startLocalDate}
-                      startLabel={copy.startDate}
+        <View className="gap-10">
+          <View accessibilityLabel={copy.historyTitle} role="region" className="min-w-0 gap-4">
+            <Heading level={2} size="section">
+              {copy.historyTitle}
+            </Heading>
+            <ExpenseFilters
+              accounts={accounts}
+              categoryOptions={categoryOptions}
+              copy={copy}
+              filters={filters}
+              hasMoreAccounts={hasMoreAccounts}
+              isLoadingMoreAccounts={isLoadingMoreAccounts}
+              onFiltersChange={onFiltersChange}
+              onLoadMoreAccounts={onLoadMoreAccounts}
+            />
+            <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
+              {state.kind === "ready" ? (
+                <View className="min-w-0 gap-4">
+                  {state.expenses.length === 0 ? (
+                    <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
+                  ) : (
+                    <ExpenseHistory
+                      canManage={state.canManage}
+                      categoryLabels={copy.categories}
+                      expenses={state.expenses}
+                      formatMoney={formatMoney}
+                      onOpenExpense={onOpenExpense}
+                      onVoidExpense={onVoidExpense}
+                      postedLabel={copy.posted}
+                      voidActionLabel={copy.voidAction}
+                      voidedLabel={copy.voided}
                     />
-                    <Text className="font-sans text-sm leading-6 text-muted-foreground">
-                      {copy.periodScope}
-                    </Text>
-                  </View>
-                  <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
-                    {state.kind === "ready" ? (
-                      <ExpenseSummary
-                        categoryBreakdownLabel={copy.categoryBreakdown}
-                        categoryLabels={copy.categories}
-                        expensesNotProfit={copy.expensesNotProfit}
-                        formatMoney={formatMoney}
-                        periodTotalLabel={copy.periodTotal}
-                        recordedExpensesLabel={copy.recordedExpenses}
-                        noCategoryData={copy.noCategoryData}
-                        summary={state.summary}
-                      />
-                    ) : null}
-                  </FeatureBoundary>
-                </>
-              ),
-            },
-          ]}
-        />
+                  )}
+                  {hasMoreExpenses ? (
+                    <Button
+                      className="self-start"
+                      label={isLoadingMoreExpenses ? copy.loadingMore : copy.loadMore}
+                      loading={isLoadingMoreExpenses}
+                      onPress={onLoadMoreExpenses}
+                      variant="outline"
+                    />
+                  ) : null}
+                </View>
+              ) : null}
+            </FeatureBoundary>
+          </View>
+          <View
+            accessibilityLabel={t("filters.periodSummary")}
+            role="region"
+            className="min-w-0 gap-4"
+          >
+            <Heading level={2} size="section">
+              {t("filters.periodSummary")}
+            </Heading>
+            <View className="min-w-0 gap-3">
+              <DateRangeFilter
+                applyLabel={copy.applyPeriod}
+                endDate={period.endLocalDate}
+                endLabel={copy.endDate}
+                error={periodError}
+                onApply={onApplyPeriod}
+                onEndDateChange={(endLocalDate) => onPeriodChange({ ...period, endLocalDate })}
+                onStartDateChange={(startLocalDate) =>
+                  onPeriodChange({ ...period, startLocalDate })
+                }
+                startDate={period.startLocalDate}
+                startLabel={copy.startDate}
+              />
+              <Text className="font-sans text-sm leading-6 text-muted-foreground">
+                {copy.periodScope}
+              </Text>
+            </View>
+            <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
+              {state.kind === "ready" ? (
+                <ExpenseSummary
+                  categoryBreakdownLabel={copy.categoryBreakdown}
+                  categoryLabels={copy.categories}
+                  expensesNotProfit={copy.expensesNotProfit}
+                  formatMoney={formatMoney}
+                  periodTotalLabel={copy.periodTotal}
+                  recordedExpensesLabel={copy.recordedExpenses}
+                  noCategoryData={copy.noCategoryData}
+                  summary={state.summary}
+                />
+              ) : null}
+            </FeatureBoundary>
+          </View>
+        </View>
       )}
     </Page>
   );

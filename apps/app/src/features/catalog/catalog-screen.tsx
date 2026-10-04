@@ -262,32 +262,29 @@ export function CatalogScreen({
       ) : null}
 
       <FilterToolbar label={t("catalog.list.statusLabel")}>
-        <View className="min-w-0 flex-1 gap-4 lg:flex-row lg:items-end">
-          <View className="min-w-0 flex-1">
-            <Field
-              accessibilityLabel={t("catalog.list.searchLabel")}
-              label={t("catalog.list.searchLabel")}
-              onChangeText={onSearchChange}
-              placeholder={t("catalog.list.searchPlaceholder")}
-              trailing={<Search color={mutedColor} size={18} />}
-              value={search}
-            />
-          </View>
-          <View className="lg:max-w-[48%]">
-            <FilterBar
-              showLabel
-              label={t("catalog.list.statusLabel")}
-              onChange={onStatusChange}
-              options={(["active", "archived", "all"] as const).map((value) => ({
-                label: t(`catalog.list.statuses.${value}`),
-                value,
-              }))}
-              value={status}
-            />
-          </View>
+        <View className="min-w-0 sm:min-w-56 sm:flex-1">
+          <Field
+            accessibilityLabel={t("catalog.list.searchLabel")}
+            label={t("catalog.list.searchLabel")}
+            onChangeText={onSearchChange}
+            placeholder={t("catalog.list.searchPlaceholder")}
+            trailing={<Search color={mutedColor} size={18} />}
+            value={search}
+          />
         </View>
-
-        <View className="min-w-0 sm:w-64 gap-2">
+        <View className="min-w-0 sm:min-w-72 sm:flex-1">
+          <FilterBar
+            showLabel
+            label={t("catalog.list.statusLabel")}
+            onChange={onStatusChange}
+            options={(["active", "archived", "all"] as const).map((value) => ({
+              label: t(`catalog.list.statuses.${value}`),
+              value,
+            }))}
+            value={status}
+          />
+        </View>
+        <View className="min-w-0 sm:min-w-56 sm:flex-1 gap-2">
           <SelectField
             label={t("catalog.categories.title")}
             onChange={(value) => onCategoryChange(value === "all" ? null : value)}

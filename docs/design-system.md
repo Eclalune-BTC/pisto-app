@@ -5,7 +5,9 @@
 Use **React Native Reusables, Uniwind registry** as the shared component base. Blue is prohibited in
 application-owned UI: public pages, authenticated screens, links, focus, native navigation colors,
 icons and product captures. The prior cobalt proposal was rejected and is not a reference to restore.
-Do not replace it with another invented marketing palette. Both themes use the same neutral tokens.
+The owner's latest direction rejects the former monochrome treatment and asks for clearer navigation,
+color, typography and organization. The current implementation uses forest green and sage over warm
+surfaces, with a corresponding dark theme. This is a proposed visual direction, not recorded aesthetic approval.
 
 This document distinguishes the owner's requirements from library contracts and local implementation
 choices. A component installation, passing test or screenshot does not establish aesthetic approval.
@@ -45,7 +47,7 @@ Reanimated stack remain; no Nativewind migration or second theme system is intro
 | Entity/category selection | RNR `Select`; `SelectField` validates a controlled value and owns field/error association |
 | Short status filters | RNR `ToggleGroup`; the required filter cannot become an empty selection |
 | Boolean/exclusive choices | RNR `Checkbox`, `Switch`, `RadioGroup` rather than hand-drawn checkmarks/circles |
-| Related workspace views | RNR `Tabs`; `WorkspaceTabs` keeps typed existing view IDs |
+| Alternative informational views | RNR `Tabs` in the public product showcase; cash and expense sections stay visible together |
 | Cards, status and feedback | RNR `Card`, `Badge`, `Alert` and their Text/content components |
 | Desktop and compact navigation | Application route composition using RNR Button, Separator and Dialog |
 | Record comparison | Existing TanStack table adapter, semantic HTML on web and complete compact/native records |
@@ -71,11 +73,11 @@ Cards and badges contain native-safe `Text`, never a string directly under a Vie
 
 RNR Card supplies the surface and vertical spacing, not horizontal padding for arbitrary children.
 Compose `CardHeader`, `CardContent` and `CardFooter`; do not put a bare form inside Card and assume
-that its fields will be inset. Authentication uses the default 24 px slot padding. Compact filter
-toolbars, empty-state cards and mobile record cards share 16 px horizontal slots and no decorative
+that its fields will be inset. Authentication uses the default 24 px slot padding. Compact
+empty-state cards and mobile record cards share 16 px horizontal slots and no decorative
 shadow. Page still owns outer gutters; do not add a second page inset inside every panel.
 
-`FilterToolbar` is a Card/CardContent composition, and `EmptyState` uses CardHeader/Description with
+`FilterToolbar` is a flat, named control group, and `EmptyState` uses CardHeader/Description with
 an optional action footer. The default cursor-page empty state is shown once, not nested inside an
 empty table with another card border. Error/denied states retain their distinct copy and actions;
 they must not be converted to successful empty results.
@@ -85,8 +87,8 @@ Short filter choices use the installed ToggleGroup, with 8 px separation, at lea
 long Spanish labels such as archived states must fit or wrap. Explicit responsive overrides must
 not reduce the padding again on desktop. These measurements are local defaults, not WCAG rules.
 
-Workspace tabs separate controls and results by 16 px. A pointer-focused panel does not acquire a
-permanent-looking border. Keyboard focus remains visible with the neutral ring and rounded panel
+Informational tabs separate controls and results by 16 px. A pointer-focused panel does not acquire a
+permanent-looking border. Keyboard focus remains visible with the semantic ring and rounded panel
 corners; do not globally remove outlines to make screenshots cleaner. Informational tabs still
 remain keyboard-focusable, and interactive tabs preserve their controls' tab order.
 
@@ -99,7 +101,7 @@ and the documented table/date/platform-loading adapters remain intentional excep
 
 Aliases point at the application's existing modules. Static IBM Plex Sans 400/500/600 faces remain
 `font-sans`, `font-ui`, `font-heading`; no synthetic 800/900 weight or new decorative font is added.
-Input and text-area caret/selection colors use neutral theme values. Fields grow instead of clipping
+Input and text-area caret/selection colors use shared theme values. Fields grow instead of clipping
 large text. The startup error view keeps system text so recovery does not require the failed font.
 
 Dialog close labels are translated. Navigation can use DialogContent's explicit overlay class and
@@ -120,11 +122,11 @@ web rendering. Existing classes already flow through the native components where
 `src/global.css` owns the RNR semantic palette. Use background/foreground, card, popover, muted,
 primary, secondary, accent, input, border, ring and sidebar tokens with their matching foregrounds.
 `input` means an input-border token in this registry, **not an input background**. The browser's
-focus and selection colors and Expo's navigation theme are explicitly neutral; browser/framework
+focus and selection colors and Expo's navigation theme come from these same tokens; browser/framework
 defaults are not an exception to the no-blue requirement.
 
-Positive, warning and destructive colors express actual state. They are not decoration, navigation
-selection or an excuse for screen-specific palettes. Source and asset checks guard against blue;
+Positive, warning and destructive tokens express actual state. Forest/sage primary and sidebar tokens
+express actions and navigation, independently of success. Source and asset checks guard against blue;
 review rendered focus, overlays, images and both themes as well.
 
 Use the installed component structure. Do not copy a card's borders/padding into every feature or
@@ -133,7 +135,35 @@ claims. The public page uses the same components/tokens as the application, not 
 
 `Page` owns workspace scrolling/gutters. Desktop navigation is separate from page content. Compact
 navigation exposes the same authorized modules in a menu and retains two primary destinations,
-Operate and Account. A module does not become a new permanent bottom tab.
+Mi negocio and Cuenta. Wide navigation groups direct module links under daily work, products,
+customers/collections and analysis; it does not indent them under an additionally selected parent.
+Only one wide link is current. Billing has its own selected link; compact billing stays in Cuenta.
+The complete navigation, including identity/sign-out, can scroll on short screens. A module does not
+become a new permanent bottom tab. The hub is a responsive directory of authorized tasks, not invented metrics.
+
+Current local defaults:
+
+| Role | Light | Dark |
+| --- | --- | --- |
+| Workspace background | `#F6F7F2` | `#161E19` |
+| Main text | `#24362D` | `#EDF1E7` |
+| Primary action | `#245C46` with white text | `#B6D5A0` with `#203A29` text |
+| Sidebar | `#EAF0E3` | `#1B2A20` |
+| Selected destination | `#D6E5CD` | `#334D38` |
+
+IBM Plex Sans remains the installed OFL family: 400 for body, 500 for controls and 600 for headings.
+Its language/currency coverage fits Spanish operating records; adding another family would add font
+loading and maintenance without solving a current gap. Page headings use 28/36 px on compact screens
+and 32/40 px on wide screens, section headings 18/24, body 14/20 or 16/24. Monetary summaries use
+tabular numerals. Page gutters are 20/32/40/48 px by breakpoint; controls use 8 px radii and surfaces 14 px.
+These are Pisto choices, not claims that a particular color or font guarantees trust.
+
+Uniwind 1.12.1 is the existing styling engine's compatibility update for Tailwind 4.3.3 flattened
+interaction selectors and current Expo resolution fixes. `metro` and `metro-cache` are explicit
+0.84.5 development peers matching Expo 57's Metro. Uniwind's Graph patch and Expo must resolve the
+same physical Graph module. Do not fix an install mismatch by globally overriding unrelated Metro
+consumers. No new production UI library or wrapper is added. Replacing this engine would require
+revalidating every native class, theme and Metro integration; upgrading retains that established boundary.
 
 Each route has one meaningful H1. Regions and error states nested under it use lower heading levels.
 Preserve readable Spanish wrapping, native text scaling, visible keyboard focus and label/error
@@ -157,10 +187,13 @@ offline, error and uncertain-confirmation behavior.
 ## Product assets and branding
 
 `assets/brand/mark.json` owns the monogram geometry; `brand:generate` renders icon/favicon/splash
-assets from it. Do not invent a new logo per screen. Assets must also honor the no-blue rule.
+assets from it. The shared mark radius applies to the in-app mark, SVG and favicon. Native icons keep
+an opaque full-bleed background for platform masking. Splash backgrounds match the corresponding
+theme. Do not invent a new logo per screen. Assets must also honor the no-blue rule.
 
-Product screenshots are static captures of actual UI with isolated example configuration and empty
-forms. They show no customer records, balances or financial results. They are labeled as examples,
+Product screenshots are static captures of actual empty forms and report date controls. The current
+captures retain default dates/currency, crop out account and business identity, and show no customer
+records, balances or financial results. They are labeled as examples,
 not live controls. Re-capture both themes after component changes and check the complete cropped
 controls and alternate text. The enclosing root may restore a session, but the showcase does not
 request business data. Never insert fictional records into the user's database for a screenshot.
@@ -188,6 +221,9 @@ the design migration. Retain upstream MIT attribution and review dependency chan
   [reviewed Uniwind source](https://github.com/founded-labs/react-native-reusables/tree/385834c2196f8a303cbc9057d1ac768f3bde0a3b/packages/registry/src/uniwind/components/ui).
 - [Uniwind](https://docs.uniwind.dev/), [React Native Text](https://reactnative.dev/docs/text),
   [Expo platform modules](https://docs.expo.dev/router/advanced/platform-specific-modules/).
+- [IBM Plex typeface](https://www.ibm.com/design/language/typography/typeface/),
+  [Uniwind class compatibility](https://docs.uniwind.dev/class-names),
+  [Uniwind 1.12.1 release](https://github.com/uni-stack/uniwind/releases/tag/v1.12.1).
 - [Radix Dialog](https://www.radix-ui.com/primitives/docs/components/dialog),
   [Radix Accordion](https://www.radix-ui.com/primitives/docs/components/accordion).
 - [W3C tables](https://www.w3.org/WAI/tutorials/tables/),
@@ -195,5 +231,6 @@ the design migration. Retain upstream MIT attribution and review dependency chan
   [contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html),
   [reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html).
 
+Typography, RNR ownership and Uniwind compatibility sources were reviewed on 2026-10-03.
 Recheck the corresponding source and installed code when a component, styling engine, Expo SDK or
 interaction contract changes. These sources establish contracts, not approval of a Pisto screenshot.

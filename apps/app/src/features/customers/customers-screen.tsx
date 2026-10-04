@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FilterToolbar } from "@/components/ui/filter-toolbar";
+import { Icon } from "@/components/ui/icon";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import { Text } from "@/components/ui/text";
 
@@ -138,7 +139,7 @@ export function CustomersScreen({
               label={copy.searchLabel}
               onChangeText={onSearchChange}
               placeholder={copy.searchPlaceholder}
-              trailing={<Search color="#617168" size={18} />}
+              trailing={<Icon as={Search} className="text-muted-foreground" size={18} />}
               value={searchQuery}
             />
           </View>

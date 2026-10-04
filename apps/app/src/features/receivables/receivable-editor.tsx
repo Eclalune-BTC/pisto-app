@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, ButtonText } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { buildCustomersCopy, type CustomersReceivablesCopy } from "@/features/customers/copy";
 import { CustomerPicker } from "@/features/customers/customer-picker";
@@ -186,7 +187,7 @@ export function ReceivableEditor({
         onPress={confirmationLocked ? undefined : onBack}
         variant="ghost"
       >
-        <ArrowLeft color="#237A55" size={18} />
+        <Icon as={ArrowLeft} className="text-primary" size={18} />
         <ButtonText variant="ghost">{copy.common.back}</ButtonText>
       </Button>
       <ScreenHeader

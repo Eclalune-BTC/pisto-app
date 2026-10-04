@@ -207,7 +207,7 @@ export function ProductEditor({
           </View>
         </View>
       ) : (
-        <View className="gap-7 border-y border-border py-7 ">
+        <View className="gap-6">
           {errors.form ? (
             <View className="border-l-4 border-warning bg-warning-surface p-3">
               <Text accessibilityRole="alert" className="text-sm text-foreground">
@@ -223,84 +223,95 @@ export function ProductEditor({
             placeholder={copy.namePlaceholder}
             value={draft.name}
           />
-          <Field
-            autoCapitalize="characters"
-            error={errors.sku}
-            label={copy.sku}
-            maxLength={64}
-            onChangeText={(sku) => onDraftChange({ ...draft, sku })}
-            placeholder={copy.skuPlaceholder}
-            value={draft.sku}
-          />
-          <Field
-            error={errors.sellingPrice}
-            keyboardType="decimal-pad"
-            label={copy.price}
-            onChangeText={(sellingPrice) => onDraftChange({ ...draft, sellingPrice })}
-            placeholder={copy.pricePlaceholder}
-            trailing={<Text className="font-ui text-muted-foreground">{currency}</Text>}
-            value={draft.sellingPrice}
-          />
-
-          <View className="gap-2">
-            <SelectField
-              label={copy.category}
-              onChange={(value) =>
-                onDraftChange({ ...draft, categoryId: value === "none" ? null : value })
-              }
-              options={[
-                { value: "none", label: copy.noCategory },
-                ...categories
-                  .filter(
-                    (category) => category.status === "active" || category.id === draft.categoryId,
-                  )
-                  .map((category) => ({
-                    value: category.id,
-                    label:
-                      category.status === "archived"
-                        ? `${category.name} · ${copy.archivedCategory}`
-                        : category.name,
-                  })),
-              ]}
-              value={draft.categoryId ?? "none"}
-            />
-            {categoriesHasNextPage ? (
-              <Button
-                className="self-start"
-                label={copy.loadMoreCategories}
-                loading={categoriesLoadingMore}
-                onPress={onLoadMoreCategories}
-                size="sm"
-                variant="ghost"
+          <View className="gap-5 sm:flex-row">
+            <View className="min-w-0 sm:flex-1">
+              <Field
+                autoCapitalize="characters"
+                error={errors.sku}
+                label={copy.sku}
+                maxLength={64}
+                onChangeText={(sku) => onDraftChange({ ...draft, sku })}
+                placeholder={copy.skuPlaceholder}
+                value={draft.sku}
               />
-            ) : null}
-            {categoriesError ? (
-              <View className="gap-2 border-l-4 border-warning bg-warning-surface p-3 sm:flex-row sm:items-center sm:justify-between">
-                <Text accessibilityRole="alert" className="text-sm text-foreground">
-                  {copy.categoriesUnavailable}
-                </Text>
-                <Button
-                  label={copy.retryCategories}
-                  onPress={onRetryCategories}
-                  size="sm"
-                  variant="outline"
-                />
-              </View>
-            ) : null}
+            </View>
+            <View className="min-w-0 sm:flex-1">
+              <Field
+                error={errors.sellingPrice}
+                keyboardType="decimal-pad"
+                label={copy.price}
+                onChangeText={(sellingPrice) => onDraftChange({ ...draft, sellingPrice })}
+                placeholder={copy.pricePlaceholder}
+                trailing={<Text className="font-ui text-muted-foreground">{currency}</Text>}
+                value={draft.sellingPrice}
+              />
+            </View>
           </View>
 
-          <SelectField
-            disabled={controlsDisabled}
-            label={copy.unit}
-            onChange={(value) => {
-              if (controlsDisabled) return;
-              const unitKind = unitKinds.find((kind) => kind === value);
-              if (!unitKind) throw new Error("The selected product unit is unavailable.");
-              onDraftChange({ ...draft, unitKind });
-            }}
-            options={unitKinds.map((value) => ({ value, label: copy.unitLabels[value] }))}
-            value={draft.unitKind}
-          />
+          <View className="gap-5 sm:flex-row">
+            <View className="min-w-0 gap-2 sm:flex-1">
+              <SelectField
+                label={copy.category}
+                onChange={(value) =>
+                  onDraftChange({ ...draft, categoryId: value === "none" ? null : value })
+                }
+                options={[
+                  { value: "none", label: copy.noCategory },
+                  ...categories
+                    .filter(
+                      (category) =>
+                        category.status === "active" || category.id === draft.categoryId,
+                    )
+                    .map((category) => ({
+                      value: category.id,
+                      label:
+                        category.status === "archived"
+                          ? `${category.name} · ${copy.archivedCategory}`
+                          : category.name,
+                    })),
+                ]}
+                value={draft.categoryId ?? "none"}
+              />
+              {categoriesHasNextPage ? (
+                <Button
+                  className="self-start"
+                  label={copy.loadMoreCategories}
+                  loading={categoriesLoadingMore}
+                  onPress={onLoadMoreCategories}
+                  size="sm"
+                  variant="ghost"
+                />
+              ) : null}
+              {categoriesError ? (
+                <View className="gap-2 border-l-4 border-warning bg-warning-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <Text accessibilityRole="alert" className="text-sm text-foreground">
+                    {copy.categoriesUnavailable}
+                  </Text>
+                  <Button
+                    label={copy.retryCategories}
+                    onPress={onRetryCategories}
+                    size="sm"
+                    variant="outline"
+                  />
+                </View>
+              ) : null}
+            </View>
+
+            <View className="min-w-0 sm:flex-1">
+              <SelectField
+                disabled={controlsDisabled}
+                label={copy.unit}
+                onChange={(value) => {
+                  if (controlsDisabled) return;
+                  const unitKind = unitKinds.find((kind) => kind === value);
+                  if (!unitKind) throw new Error("The selected product unit is unavailable.");
+                  onDraftChange({ ...draft, unitKind });
+                }}
+                options={unitKinds.map((value) => ({ value, label: copy.unitLabels[value] }))}
+                value={draft.unitKind}
+              />
+            </View>
+          </View>
 
           <View className="gap-2">
             <Text className="text-sm font-ui text-foreground">{copy.precision}</Text>

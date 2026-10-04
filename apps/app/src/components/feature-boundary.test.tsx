@@ -5,12 +5,13 @@ import { describe, expect, test, vi } from "vitest";
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("uniwind", () => ({
   withUniwind: (component: unknown) => component,
-  useCSSVariable: () => "#18181B",
+  useCSSVariable: (names: string | string[]) =>
+    Array.isArray(names) ? names.map(() => "#18181B") : "#18181B",
 }));
 vi.mock("@/components/page", () => ({ Page: ({ children }: { children: ReactNode }) => children }));
 vi.mock("@/components/ui/button", () => ({ Button: () => null }));
 
-import { FeatureBoundary, type FeatureRemoteState } from "./feature-boundary";
+import { FeatureBoundary, type FeatureRemoteState } from "@/components/feature-boundary";
 
 const copy = {
   loading: "Loading",

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
-import { useCSSVariable } from "uniwind";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
@@ -45,7 +44,6 @@ export function FeatureBoundary({
   inline = false,
 }: FeatureBoundaryProps) {
   const Container = inline ? View : Page;
-  const foreground = useCSSVariable("--color-foreground") as string;
   if (state.kind === "loading") {
     return (
       <View
@@ -55,7 +53,7 @@ export function FeatureBoundary({
             : "flex-1 items-start justify-center gap-3 px-5 sm:px-8 lg:px-10"
         }
       >
-        <LoadingIndicator color={foreground} size="large" />
+        <LoadingIndicator size="large" />
         <Text className="text-sm font-ui text-muted-foreground">{copy.loading}</Text>
       </View>
     );

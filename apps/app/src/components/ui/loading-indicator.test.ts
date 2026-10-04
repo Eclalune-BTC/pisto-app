@@ -1,7 +1,10 @@
 import { describe, expect, test, vi } from "vitest";
 
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
-vi.mock("uniwind", () => ({ useCSSVariable: () => "#171717" }));
+vi.mock("uniwind", () => ({
+  useCSSVariable: (names: string | string[]) =>
+    Array.isArray(names) ? names.map(() => "#171717") : "#171717",
+}));
 
 import { LoadingIndicator } from "./loading-indicator";
 

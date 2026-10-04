@@ -14,7 +14,7 @@ export default function AuthenticatedLayout() {
   if (isPending) {
     return (
       <View className="flex-1 items-start justify-center gap-4 bg-background px-5 sm:px-8 lg:px-10 ">
-        <LoadingIndicator color="#237A55" size="large" />
+        <LoadingIndicator size="large" />
         <Text className="text-sm font-ui text-muted-foreground">{t("session.restoring")}</Text>
       </View>
     );

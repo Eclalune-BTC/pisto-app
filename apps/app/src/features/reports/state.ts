@@ -1,6 +1,6 @@
 import type { OperatingReport } from "@pisto/contracts";
+import type { FeatureRemoteState } from "@/components/feature-boundary";
 import { queryHasStaleData } from "@/lib/query-state";
-import type { FeatureRemoteState } from "../cash/feature-boundary";
 import { featureRemoteState } from "../cash/remote-state";
 
 export type ReportsScreenState =

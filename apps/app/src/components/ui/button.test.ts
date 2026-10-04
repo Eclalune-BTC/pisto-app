@@ -7,7 +7,21 @@ const appearance = vi.hoisted(() => ({ theme: "light" }));
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("uniwind", () => ({
   withUniwind: (component: unknown) => component,
-  useCSSVariable: () => "#525252",
+  useCSSVariable: (names: string[]) => {
+    const colors: Record<string, string> =
+      appearance.theme === "dark"
+        ? {
+            "--color-primary-foreground": "#203a29",
+            "--color-destructive-action-foreground": "#431b16",
+            "--color-foreground": "#edf1e7",
+          }
+        : {
+            "--color-primary-foreground": "#ffffff",
+            "--color-destructive-action-foreground": "#ffffff",
+            "--color-foreground": "#24362d",
+          };
+    return names.map((name) => colors[name]);
+  },
   useUniwind: () => appearance,
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
@@ -23,10 +37,10 @@ beforeEach(() => {
 
 describe("shared button", () => {
   test.each([
-    ["light", "destructive", "#FFFFFF"],
-    ["dark", "destructive", "#FFFFFF"],
-    ["dark", "default", "#171717"],
-    ["light", "default", "#FFFFFF"],
+    ["light", "destructive", "#ffffff"],
+    ["dark", "destructive", "#431b16"],
+    ["dark", "default", "#203a29"],
+    ["light", "default", "#ffffff"],
   ] as const)("preserves loading contrast for %s %s controls", (theme, variant, color) => {
     appearance.theme = theme;
     const rendered = Button({ loading: true, variant, label: "Guardar" });

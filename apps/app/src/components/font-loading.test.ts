@@ -30,7 +30,8 @@ vi.mock("react", async (importOriginal) => ({
 }));
 vi.mock("uniwind", () => ({
   withUniwind: (component: unknown) => component,
-  useCSSVariable: () => "#525252",
+  useCSSVariable: (names: string | string[]) =>
+    Array.isArray(names) ? names.map(() => "#525252") : "#525252",
   useUniwind: () => ({ theme: "light" }),
 }));
 vi.mock("expo-router", () => ({

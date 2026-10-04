@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Heading } from "@/components/ui/heading";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { authClient } from "@/lib/auth-client";
 
@@ -218,9 +219,9 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                         onPress={() => setShowPassword((value) => !value)}
                       >
                         {showPassword ? (
-                          <EyeOff color="#6C7B73" size={20} />
+                          <Icon as={EyeOff} className="text-muted-foreground" size={20} />
                         ) : (
-                          <Eye color="#6C7B73" size={20} />
+                          <Icon as={Eye} className="text-muted-foreground" size={20} />
                         )}
                       </Button>
                     }

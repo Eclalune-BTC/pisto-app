@@ -196,7 +196,7 @@ the exact effect and use the approved confirmation policy.
 
 Use type, spacing, alignment, dividers, and state before adding containers. Cards, pills, icon tiles,
 shadows, and illustrations remain justified only by grouping, interaction, hierarchy, feedback,
-state, or established brand character. Follow the shared neutral tokens and React Native Reusables
+state, or established brand character. Follow the shared semantic tokens and React Native Reusables
 contract in [the design system](design-system.md); do not restore a retired palette.
 
 ## Shared web and native contract

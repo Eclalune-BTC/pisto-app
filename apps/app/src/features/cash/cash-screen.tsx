@@ -1,8 +1,8 @@
 import type { CashAccountStatus, CashMovementAction } from "@pisto/contracts";
 import { AlertTriangle } from "lucide-react-native";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { FeatureBoundary } from "@/components/feature-boundary";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
@@ -11,10 +11,9 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FilterToolbar } from "@/components/ui/filter-toolbar";
-import { WorkspaceTabs } from "@/components/ui/workspace-tabs";
+import { Heading } from "@/components/ui/heading";
 import { CashAccountList } from "./cash-account-list";
 import { CashMovementList } from "./cash-movement-list";
-import { FeatureBoundary } from "./feature-boundary";
 import { type CashScreenState, cashScreenPresentation } from "./state";
 
 export type { CashConfirmationState, CashScreenState } from "./state";
@@ -88,7 +87,6 @@ export function CashScreen({
 }: CashScreenProps) {
   const presentation = cashScreenPresentation(state);
   const { t } = useTranslation();
-  const [view, setView] = useState<"accounts" | "movements">("accounts");
   return (
     <Page contentContainerClassName="gap-6">
       <ScreenHeader
@@ -132,94 +130,85 @@ export function CashScreen({
           {null}
         </FeatureBoundary>
       ) : (
-        <WorkspaceTabs
-          label={t("filters.views")}
-          value={view}
-          onChange={setView}
-          items={[
-            {
-              value: "accounts",
-              label: t("filters.accounts"),
-              content: (
-                <>
-                  <FilterToolbar
-                    label={copy.accountFilter}
-                    onReset={
-                      accountStatus !== "active" ? () => onAccountStatusChange("active") : undefined
-                    }
-                    resetLabel={t("filters.reset")}
-                  >
-                    <FilterBar
-                      showLabel
-                      label={copy.accountFilter}
-                      onChange={onAccountStatusChange}
-                      options={[
-                        { label: copy.activeAccounts, value: "active" },
-                        { label: copy.archivedAccounts, value: "archived" },
-                        { label: copy.allAccounts, value: "all" },
-                      ]}
-                      value={accountStatus}
+        <View className="gap-10">
+          <View accessibilityLabel={copy.accountsTitle} role="region" className="min-w-0 gap-4">
+            <Heading level={2} size="section">
+              {copy.accountsTitle}
+            </Heading>
+            <FilterToolbar
+              label={copy.accountFilter}
+              onReset={
+                accountStatus !== "active" ? () => onAccountStatusChange("active") : undefined
+              }
+              resetLabel={t("filters.reset")}
+            >
+              <FilterBar
+                showLabel
+                label={copy.accountFilter}
+                onChange={onAccountStatusChange}
+                options={[
+                  { label: copy.activeAccounts, value: "active" },
+                  { label: copy.archivedAccounts, value: "archived" },
+                  { label: copy.allAccounts, value: "all" },
+                ]}
+                value={accountStatus}
+              />
+            </FilterToolbar>
+            <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
+              {state.kind === "ready" ? (
+                <View className="min-w-0 gap-4">
+                  {state.accounts.length === 0 ? (
+                    <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
+                  ) : (
+                    <CashAccountList
+                      accounts={state.accounts}
+                      activeLabel={copy.active}
+                      archivedLabel={copy.archived}
+                      formatMoney={formatMoney}
+                      negativeAllowedLabel={copy.negativeAllowed}
+                      onOpenAccount={onOpenAccount}
                     />
-                  </FilterToolbar>
-                  <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
-                    {state.kind === "ready" ? (
-                      <View className="min-w-0 gap-4">
-                        {state.accounts.length === 0 ? (
-                          <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
-                        ) : (
-                          <CashAccountList
-                            accounts={state.accounts}
-                            activeLabel={copy.active}
-                            archivedLabel={copy.archived}
-                            formatMoney={formatMoney}
-                            negativeAllowedLabel={copy.negativeAllowed}
-                            onOpenAccount={onOpenAccount}
-                          />
-                        )}
-                        {hasMoreAccounts ? (
-                          <Button
-                            className="self-start"
-                            label={isLoadingMoreAccounts ? copy.loadingMore : copy.loadMore}
-                            loading={isLoadingMoreAccounts}
-                            onPress={onLoadMoreAccounts}
-                            variant="outline"
-                          />
-                        ) : null}
-                      </View>
-                    ) : null}
-                  </FeatureBoundary>
-                </>
-              ),
-            },
-            {
-              value: "movements",
-              label: t("filters.movements"),
-              content: (
-                <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
-                  {state.kind === "ready" ? (
-                    <View className="min-w-0 gap-4">
-                      <CashMovementList
-                        actionLabels={copy.movementActions}
-                        formatMoney={formatMoney}
-                        movements={state.movements}
-                        noMovements={copy.noMovements}
-                      />
-                      {hasMoreMovements ? (
-                        <Button
-                          className="self-start"
-                          label={isLoadingMoreMovements ? copy.loadingMore : copy.loadMore}
-                          loading={isLoadingMoreMovements}
-                          onPress={onLoadMoreMovements}
-                          variant="outline"
-                        />
-                      ) : null}
-                    </View>
+                  )}
+                  {hasMoreAccounts ? (
+                    <Button
+                      className="self-start"
+                      label={isLoadingMoreAccounts ? copy.loadingMore : copy.loadMore}
+                      loading={isLoadingMoreAccounts}
+                      onPress={onLoadMoreAccounts}
+                      variant="outline"
+                    />
                   ) : null}
-                </FeatureBoundary>
-              ),
-            },
-          ]}
-        />
+                </View>
+              ) : null}
+            </FeatureBoundary>
+          </View>
+          <View accessibilityLabel={copy.movementsTitle} role="region" className="min-w-0 gap-4">
+            <Heading level={2} size="section">
+              {copy.movementsTitle}
+            </Heading>
+            <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
+              {state.kind === "ready" ? (
+                <View className="min-w-0 gap-4">
+                  <CashMovementList
+                    actionLabels={copy.movementActions}
+                    formatMoney={formatMoney}
+                    movements={state.movements}
+                    noMovements={copy.noMovements}
+                  />
+                  {hasMoreMovements ? (
+                    <Button
+                      className="self-start"
+                      label={isLoadingMoreMovements ? copy.loadingMore : copy.loadMore}
+                      loading={isLoadingMoreMovements}
+                      onPress={onLoadMoreMovements}
+                      variant="outline"
+                    />
+                  ) : null}
+                </View>
+              ) : null}
+            </FeatureBoundary>
+          </View>
+        </View>
       )}
     </Page>
   );

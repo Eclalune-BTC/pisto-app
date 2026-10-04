@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react-native";
 import { View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 
 import type { ReceivableFormCopy } from "./types";
@@ -50,7 +51,7 @@ export function ReceivableForm({
           <Text className="min-w-0 flex-1 text-base text-foreground">
             {selectedCustomerName ?? copy.chooseCustomer}
           </Text>
-          <ChevronRight color="#617168" size={18} />
+          <Icon as={ChevronRight} className="text-muted-foreground" size={18} />
         </Button>
         {errors.customer ? (
           <Text accessibilityRole="alert" className="text-xs text-destructive">

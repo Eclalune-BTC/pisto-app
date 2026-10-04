@@ -4,7 +4,8 @@ import { describe, expect, test, vi } from "vitest";
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("uniwind", () => ({
   withUniwind: (component: unknown) => component,
-  useCSSVariable: () => "#62626B",
+  useCSSVariable: (names: string | string[]) =>
+    Array.isArray(names) ? names.map(() => "#62626B") : "#62626B",
 }));
 vi.mock("lucide-react-native", () => ({ AlertTriangle: () => null, ChevronDown: () => null }));
 

@@ -98,35 +98,37 @@ export default function WelcomeScreen() {
       >
         <View role="main">
           <View className="bg-background">
-            <View className="mx-auto w-full max-w-[1200px] items-center gap-6 px-5 pb-14 pt-12 sm:px-8 sm:pb-16 sm:pt-20 lg:pt-24">
-              <Text className="font-ui text-center text-sm text-muted-foreground">
-                {t("welcome.audience")}
-              </Text>
-              <Heading className="max-w-[900px] text-center font-heading text-[40px] leading-[48px] tracking-[-0.5px] text-foreground sm:text-[60px] sm:leading-[68px] lg:text-[72px] lg:leading-[80px]">
-                {t("welcome.title")}
-              </Heading>
-              <Text className="max-w-[650px] text-center text-lg leading-8 text-muted-foreground">
-                {t("welcome.description")}
-              </Text>
-              <View className="flex-row flex-wrap justify-center gap-3 pt-2">
-                <Link href="/sign-up" asChild>
-                  <Button label={t("welcome.createAccount")} size="lg" variant="default" />
-                </Link>
-                <Button
-                  label={t("welcome.explore")}
-                  disabled={offsets.product === undefined}
-                  onPress={() => openSection("product")}
-                  size="lg"
-                  variant="outline"
-                />
+            <View className="mx-auto w-full max-w-[1200px] gap-8 px-5 pb-14 pt-12 sm:px-8 sm:py-20 lg:flex-row lg:items-end lg:gap-16">
+              <View className="min-w-0 gap-5 lg:flex-1">
+                <Text className="font-ui text-sm text-primary">{t("welcome.audience")}</Text>
+                <Heading className="max-w-[630px] font-heading text-[40px] leading-[48px] tracking-[-1px] text-foreground sm:text-[60px] sm:leading-[68px] lg:text-[68px] lg:leading-[76px]">
+                  {t("welcome.title")}
+                </Heading>
               </View>
-              <Text className="max-w-[500px] text-center text-sm leading-6 text-muted-foreground">
-                {t("welcome.availability")}
-              </Text>
+              <View className="min-w-0 gap-5 lg:w-[40%]">
+                <Text className="max-w-[650px] text-lg leading-8 text-muted-foreground">
+                  {t("welcome.description")}
+                </Text>
+                <View className="flex-row flex-wrap gap-3 pt-2">
+                  <Link href="/sign-up" asChild>
+                    <Button label={t("welcome.createAccount")} size="lg" variant="default" />
+                  </Link>
+                  <Button
+                    label={t("welcome.explore")}
+                    disabled={offsets.product === undefined}
+                    onPress={() => openSection("product")}
+                    size="lg"
+                    variant="outline"
+                  />
+                </View>
+                <Text className="max-w-[500px] text-sm leading-6 text-muted-foreground">
+                  {t("welcome.availability")}
+                </Text>
+              </View>
             </View>
           </View>
 
-          <View {...sectionProps("product")} className="bg-background">
+          <View {...sectionProps("product")} className="border-t border-border bg-background">
             <View className="mx-auto w-full max-w-[1200px] gap-8 px-5 py-14 sm:px-8 sm:py-20">
               <View className="items-center gap-3">
                 <Heading
@@ -208,12 +210,12 @@ export default function WelcomeScreen() {
           </View>
 
           <View className="bg-background px-5 pb-14 sm:px-8 sm:pb-20">
-            <View className="mx-auto w-full max-w-[1136px] gap-6 rounded-2xl bg-foreground px-6 py-10 sm:flex-row sm:items-center sm:justify-between sm:gap-12 sm:p-12">
+            <View className="mx-auto w-full max-w-[1136px] gap-6 rounded-2xl bg-primary px-6 py-10 sm:flex-row sm:items-center sm:justify-between sm:gap-12 sm:p-12">
               <View className="min-w-0 gap-3 sm:flex-1">
-                <Heading className="text-background" level={2} size="marketing">
+                <Heading className="text-primary-foreground" level={2} size="marketing">
                   {t("welcome.closing.title")}
                 </Heading>
-                <Text className="max-w-[540px] text-base leading-7 text-background">
+                <Text className="max-w-[540px] text-base leading-7 text-primary-foreground">
                   {t("welcome.closing.description")}
                 </Text>
               </View>

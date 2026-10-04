@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
@@ -58,7 +59,7 @@ export function CustomerPicker({
         label={copy.customers.list.searchLabel}
         onChangeText={onSearchChange}
         placeholder={copy.customers.list.searchPlaceholder}
-        trailing={<Search color="#617168" size={18} />}
+        trailing={<Icon as={Search} className="text-muted-foreground" size={18} />}
         value={search}
       />
       {isLoading ? (

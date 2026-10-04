@@ -1,6 +1,5 @@
+import type { FeatureRemoteState } from "@/components/feature-boundary";
 import { hasDeniedRead } from "@/lib/query-state";
-
-import type { FeatureRemoteState } from "./feature-boundary";
 
 type RemoteQuery = {
   data: unknown;

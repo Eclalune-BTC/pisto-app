@@ -1,7 +1,7 @@
+import { FeatureBoundary, type FeatureBoundaryCopy } from "@/components/feature-boundary";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
-import { FeatureBoundary, type FeatureBoundaryCopy } from "@/features/cash/feature-boundary";
 import type { ReportRangeIssue } from "./date-range";
 import { type ReportRangeCopy, ReportRangeSelector } from "./range-selector";
 import { ReportSections, type ReportSectionsCopy } from "./report-sections";

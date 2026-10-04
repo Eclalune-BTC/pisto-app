@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { formatLocalizedDate } from "@/i18n/format";
@@ -101,7 +102,7 @@ export default function SettingsScreen() {
         <View className="min-w-0 flex-1 gap-8">
           <View className="gap-6 border-y border-border py-6 ">
             <View className="flex-row items-start gap-3">
-              <ShieldCheck color="#237A55" size={23} />
+              <Icon as={ShieldCheck} className="text-positive-foreground" size={23} />
               <View className="min-w-0 flex-1 gap-1">
                 <Heading level={2} size="section">
                   {t("settings.security")}
@@ -113,7 +114,7 @@ export default function SettingsScreen() {
             </View>
             <View className="gap-3 border-t border-border pt-5  sm:flex-row sm:items-center">
               <View className="flex-row items-center gap-3 sm:min-w-0 sm:flex-1">
-                <LockKeyhole color="#617168" size={20} />
+                <Icon as={LockKeyhole} className="text-muted-foreground" size={20} />
                 <View className="min-w-0 flex-1">
                   <Text className="font-ui text-foreground">{t("settings.currentSession")}</Text>
                   <Text className="text-sm text-muted-foreground">
@@ -157,7 +158,7 @@ export default function SettingsScreen() {
 
             <View className="gap-4 border-t border-border pt-5  sm:flex-row sm:items-start">
               <View className="flex-row items-start gap-3 sm:min-w-0 sm:flex-1">
-                <CreditCard color="#617168" size={20} />
+                <Icon as={CreditCard} className="text-muted-foreground" size={20} />
                 <View className="min-w-0 flex-1 gap-1">
                   <Text className="font-ui text-foreground">{t("settings.billing")}</Text>
                   <Text className="text-sm leading-5 text-muted-foreground">
@@ -193,7 +194,7 @@ export default function SettingsScreen() {
               onPress={signOutAction.signOut}
               variant="destructive"
             >
-              <LogOut color="#FFFFFF" size={17} />
+              <Icon as={LogOut} size={17} />
               <ButtonText variant="destructive">{t("common.signOut")}</ButtonText>
             </Button>
           </View>

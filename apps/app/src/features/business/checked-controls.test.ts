@@ -21,7 +21,8 @@ const setup = vi.hoisted(() => ({
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("uniwind", () => ({
   useUniwind: () => ({ theme: "light" }),
-  useCSSVariable: () => "#71717A",
+  useCSSVariable: (names: string | string[]) =>
+    Array.isArray(names) ? names.map(() => "#71717A") : "#71717A",
   withUniwind: (component: unknown) => component,
 }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));

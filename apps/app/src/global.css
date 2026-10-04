@@ -5,46 +5,48 @@
   --font-sans: PistoRegular;
   --font-ui: PistoMedium;
   --font-heading: PistoSemibold;
-  --color-ink: #171717;
-  --color-ink-muted: #525252;
-  --color-canvas: #fafafa;
+  --color-ink: #24362d;
+  --color-ink-muted: #59675e;
+  --color-canvas: #f6f7f2;
   --color-surface: #ffffff;
-  --color-line: #e5e5e5;
-  --color-accent-strong: #d4d4d4;
+  --color-line: #dce2d8;
+  --color-accent-strong: #d6e5cd;
   --color-positive: #166534;
   --color-warning: #b86718;
   --color-danger: #b94242;
-  --radius-card: 16px;
+  --radius-card: 14px;
 }
 
 @layer theme {
   :root {
     @variant light {
-      --color-background: #ffffff;
-      --color-foreground: #171717;
-      --color-muted-foreground: #525252;
+      --color-background: #f6f7f2;
+      --color-foreground: #24362d;
+      --color-muted-foreground: #59675e;
       --color-card: #ffffff;
-      --color-card-foreground: #171717;
+      --color-card-foreground: #24362d;
       --color-popover: #ffffff;
-      --color-popover-foreground: #171717;
-      --color-muted: #f5f5f5;
-      --color-border: #e5e5e5;
-      --color-input: #a3a3a3;
-      --color-input-border: #a3a3a3;
-      --color-ring: #525252;
-      --color-secondary: #f5f5f5;
-      --color-secondary-foreground: #171717;
-      --color-accent: #f5f5f5;
-      --color-accent-foreground: #171717;
-      --color-primary: #171717;
+      --color-popover-foreground: #24362d;
+      --color-muted: #ecf0e8;
+      --color-border: #dce2d8;
+      --color-input: #839187;
+      --color-input-border: #839187;
+      --color-ring: #38704e;
+      --color-secondary: #e3ecd9;
+      --color-secondary-foreground: #2d4937;
+      --color-accent: #e7eee0;
+      --color-accent-foreground: #284b36;
+      --color-primary: #245c46;
       --color-primary-foreground: #ffffff;
-      --color-link: #171717;
-      --color-sidebar: #fafafa;
-      --color-sidebar-foreground: #171717;
-      --color-sidebar-accent: #e5e5e5;
-      --color-sidebar-accent-foreground: #171717;
-      --color-sidebar-border: #e5e5e5;
-      --color-selection: #d4d4d4;
+      --color-link: #245c46;
+      --color-sidebar: #eaf0e3;
+      --color-sidebar-foreground: #324738;
+      --color-sidebar-accent: #d6e5cd;
+      --color-sidebar-accent-foreground: #204e39;
+      --color-sidebar-border: #d3decd;
+      --color-selection: #d6e5cd;
+      --color-destructive-action: #a63e38;
+      --color-destructive-action-foreground: #ffffff;
       --color-destructive: #b94242;
       --color-destructive-surface: #fff4f4;
       --color-warning-surface: #fff6e8;
@@ -56,31 +58,33 @@
 
   :root {
     @variant dark {
-      --color-background: #0a0a0a;
-      --color-foreground: #fafafa;
-      --color-muted-foreground: #a3a3a3;
-      --color-card: #171717;
-      --color-card-foreground: #fafafa;
-      --color-popover: #171717;
-      --color-popover-foreground: #fafafa;
-      --color-muted: #262626;
-      --color-border: #404040;
-      --color-input: #737373;
-      --color-input-border: #737373;
-      --color-ring: #a3a3a3;
-      --color-secondary: #262626;
-      --color-secondary-foreground: #fafafa;
-      --color-accent: #262626;
-      --color-accent-foreground: #fafafa;
-      --color-primary: #fafafa;
-      --color-primary-foreground: #171717;
-      --color-link: #fafafa;
-      --color-sidebar: #171717;
-      --color-sidebar-foreground: #fafafa;
-      --color-sidebar-accent: #262626;
-      --color-sidebar-accent-foreground: #fafafa;
-      --color-sidebar-border: #404040;
-      --color-selection: #404040;
+      --color-background: #161e19;
+      --color-foreground: #edf1e7;
+      --color-muted-foreground: #adb9ac;
+      --color-card: #1d2821;
+      --color-card-foreground: #edf1e7;
+      --color-popover: #243229;
+      --color-popover-foreground: #edf1e7;
+      --color-muted: #2a382e;
+      --color-border: #3b4c3f;
+      --color-input: #7a8f7e;
+      --color-input-border: #7a8f7e;
+      --color-ring: #a6c990;
+      --color-secondary: #304534;
+      --color-secondary-foreground: #e2edda;
+      --color-accent: #304534;
+      --color-accent-foreground: #e2edda;
+      --color-primary: #b6d5a0;
+      --color-primary-foreground: #203a29;
+      --color-link: #b6d5a0;
+      --color-sidebar: #1b2a20;
+      --color-sidebar-foreground: #d6e3ce;
+      --color-sidebar-accent: #334d38;
+      --color-sidebar-accent-foreground: #d7ecc8;
+      --color-sidebar-border: #334637;
+      --color-selection: #3e5942;
+      --color-destructive-action: #f0aba1;
+      --color-destructive-action-foreground: #431b16;
       --color-destructive: #ffbaba;
       --color-destructive-surface: #3b2323;
       --color-warning-surface: #3a2a18;
@@ -102,7 +106,7 @@
 }
 
 [role="tabpanel"]:focus:not(:focus-visible) {
-  outline: none;
+  outline-width: 0;
   box-shadow: none;
 }
 
@@ -135,7 +139,7 @@ html.dark {
 
 .pisto-data-table-container {
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 14px;
   background: var(--color-card);
 }
 
@@ -148,7 +152,7 @@ html.dark {
 }
 
 .pisto-data-table th {
-  background: var(--color-muted);
+  background: var(--color-card);
   color: var(--color-muted-foreground);
   font-family: PistoMedium, sans-serif;
   font-weight: normal;
@@ -157,7 +161,7 @@ html.dark {
 
 .pisto-data-table th,
 .pisto-data-table td {
-  padding: 12px 16px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
   overflow-wrap: anywhere;
@@ -197,7 +201,7 @@ html.dark {
   border: 1px solid var(--color-input-border);
   border-radius: 8px;
   padding: 8px 12px;
-  background: var(--color-background);
+  background: var(--color-card);
   color: var(--color-foreground);
   font: inherit;
   font-size: 16px;

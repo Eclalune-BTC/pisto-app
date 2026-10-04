@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { FeatureRemoteState } from "@/components/feature-boundary";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { productErrorMessage } from "@/lib/product-errors";
@@ -14,7 +15,6 @@ import {
 } from "./cash-movement-detail-screen";
 import { buildCashCopy, cashIssueMessage } from "./copy";
 import { buildCashReversalCommand } from "./drafts";
-import type { FeatureRemoteState } from "./feature-boundary";
 import { invalidateCashLedger } from "./invalidate";
 import { cashConfirmationState } from "./mutation-state";
 

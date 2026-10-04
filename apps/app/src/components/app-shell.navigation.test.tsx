@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { Text } from "react-native";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const fixture = vi.hoisted(() => ({
@@ -56,6 +57,14 @@ vi.mock("@/lib/api-client", () => ({ api: { businesses: { list: vi.fn() } } }));
 vi.mock("lucide-react-native", () => ({
   AlertTriangle: () => null,
   CreditCard: () => null,
+  LayoutGrid: () => null,
+  Boxes: () => null,
+  ChartColumn: () => null,
+  CircleDollarSign: () => null,
+  ContactRound: () => null,
+  HandCoins: () => null,
+  PackageSearch: () => null,
+  WalletCards: () => null,
   LogOut: () => null,
   Menu: () => null,
   ReceiptText: () => null,
@@ -90,7 +99,11 @@ import { ApiClientError } from "@/lib/api-error";
 
 function renderShell() {
   return renderToStaticMarkup(
-    createElement(AppShell, { email: "owner@example.test", name: "Owner" }, "Route content"),
+    createElement(
+      AppShell,
+      { email: "owner@example.test", name: "Owner" },
+      createElement(Text, {}, "Route content"),
+    ),
   );
 }
 
@@ -284,5 +297,6 @@ describe("shell navigation", () => {
     button.props.onPress?.({} as never);
     expect(onNavigate).toHaveBeenCalledOnce();
     expect(button.props.accessibilityRole).toBe("link");
+    expect(button.props.accessibilityState?.selected).toBe(true);
   });
 });

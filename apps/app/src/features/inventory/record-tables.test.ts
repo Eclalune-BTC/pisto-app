@@ -6,7 +6,8 @@ import { describe, expect, test, vi } from "vitest";
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("uniwind", () => ({
   useUniwind: () => ({ theme: "light" }),
-  useCSSVariable: () => "#71717A",
+  useCSSVariable: (names: string | string[]) =>
+    Array.isArray(names) ? names.map(() => "#71717A") : "#71717A",
   withUniwind: (component: unknown) => component,
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));

@@ -92,7 +92,7 @@ receivable or full-report permission, so the `/operate` hub does not list those 
 `admin` and `member` have no reachable actor today.
 
 The generic planning dashboard has been removed; `/dashboard` is a five-line redirect kept only for
-old links. Product navigation exposes `Operar` and `Cuenta`; `Operar` opens the `/operate` hub and
+old links. Compact product navigation exposes `Mi negocio` and `Cuenta`; `Mi negocio` opens the `/operate` hub and
 billing remains secondary account context. Reports is an Operate module at `/operate/reports`;
 Assistant has no destination. Do not infer
 future records, tabs, or workflows from the long-term capability map.
@@ -116,12 +116,12 @@ components for layout changes and narrow platform-resolved adapters for differen
 ## Product shell and feature composition
 
 Top-level destinations represent durable user jobs, not packages or database modules. Increment 1
-uses daily `Operar` plus `Cuenta`, with billing in secondary account context. Assistant is not exposed
+uses daily `Mi negocio` plus `Cuenta`, with billing in secondary account context. Assistant is not exposed
 until its structured proposal/query flow exists. Reports earns a permanent destination only after an
 approved brief proves multiple recurring report jobs and direct-entry value. Home remains absent
 until it has approved real orientation/attention content rather than invented dashboard filler.
 
-- Keep only implemented durable compact destinations; wide web may reveal nested links without
+- Keep only implemented durable compact destinations; wide web shows grouped direct module links without
   changing their meaning.
 - Keep one typed destination model and let platform shells render it. Active state must match nested
   routes intentionally (for example, a billing return route remains inside Billing) rather than
@@ -172,14 +172,17 @@ applicable.
 [The design system](design-system.md) owns current visual decisions, component responsibilities,
 brand assets and acceptance checks. It distinguishes standards from Pisto's local design choices.
 The owner requires React Native Reusables throughout the application and prohibits blue. The public
-page and operating screens share neutral semantic tokens; no earlier palette or assistant proposal
-is an approved alternative.
+page and operating screens share forest/sage semantic tokens and warm surfaces in both themes.
+The latest owner request supersedes the old monochrome treatment; aesthetic approval is separate from validation.
 
 ### Content and composition rules
 
 Follow [screen composition](design-system.md#domain-behavior-that-design-must-preserve). Expenses separates history filters
-from its independent period summary; Cash separates accounts from movements. A view switch is local
-presentation, not a new destination or a change to query/financial semantics.
+from its independent period summary; Cash separates accounts from movements. Both sections remain
+visible with named headings, rather than requiring nested workspace tabs. These are presentation
+changes, not new destinations or changes to query/financial semantics. `features/sales` owns the sales
+overview and its router file only exports that screen; the shared `components/feature-boundary` owns
+the reusable read-state composition instead of making other features import it from Cash.
 
 ### Typography
 
@@ -193,7 +196,7 @@ native retry uses the Router boundary. Keep the existing font recovery tests whe
 ### Palette
 
 [Semantic tokens](design-system.md#palette-typography-and-layout) are defined in global.css. The sidebar
-now follows the active theme. Neutral selection is not a positive financial state. Primary-action
+follows the active theme. Navigation selection is not a positive financial state. Primary-action
 labels use ButtonText or the label prop, not fixed white text that disappears in dark mode.
 
 ### Spacing and responsive rules
@@ -213,7 +216,7 @@ The public `/` route composes `features/welcome/welcome-screen.tsx` inside the s
 It is not a second marketing deployment or an authenticated workspace. Its four tabbed product areas
 reuse the public module names from the Operate destination model; no account, permission or business
 data is read by the page. All public copy, document metadata and accessibility labels come from the
-typed `es-SV` catalog. Local static captures illustrate the real forms with example configuration,
+typed `es-SV` catalog. Local static captures illustrate real empty forms and report date controls,
 not financial results. Their provenance and layout rules live in the design-system guide. The tabs
 and FAQ use adapted React Native Reusables Uniwind source with RN Primitives interactions.
 The FAQ states the current sales/cash/stock separation, accounting limits and unimplemented AI/voice
@@ -368,7 +371,7 @@ recorded in [the design system](design-system.md#installation-and-source-ownersh
 | --- | --- | --- |
 | Shared controls | RNR Button, Text, Input, Card, Alert, selection and overlay components; domain-specific compositions | `apps/app/src/components/ui` |
 | Interaction primitives | Explicit RN Primitives dependencies, plus the Radix web Accordion adapter | App manifest and the design-system guide |
-| Styling | Tailwind CSS 4.3.3 and the free, JavaScript-based Uniwind 1.11.0 | App manifest, lockfile and Metro config |
+| Styling | Tailwind CSS 4.3.3 and the free, JavaScript-based Uniwind 1.12.1 | App manifest, lockfile and Metro config |
 | Variants and class merging | CVA, `clsx`, `tailwind-merge` and the local `cn` function | `components/ui/button.tsx`, `lib/cn.ts` |
 | Icons | `lucide-react-native` backed by `react-native-svg` | App manifest and component imports |
 | Platform rendering | React Native 0.86.3 on Android/iOS; React Native Web on browsers | Expo SDK 57 and installed dependencies |
@@ -412,7 +415,7 @@ there is no React Native Windows desktop app in this repository.
 
 ## Styling and server-state ownership
 
-Tailwind CSS 4.3.3 is integrated through Uniwind 1.11.0. `metro.config.js` wraps Expo's Metro
+Tailwind CSS 4.3.3 is integrated through Uniwind 1.12.1. `metro.config.js` wraps Expo's Metro
 configuration with `withUniwindConfig`; `src/global.css` imports Tailwind and Uniwind and owns the
 theme tokens. All styled application code lives under `src`, within that CSS entry's scan scope.
 Keep `src/uniwind-types.d.ts` for typechecking before Metro generates its ignored `.expo` output.

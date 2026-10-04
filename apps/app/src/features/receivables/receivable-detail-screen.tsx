@@ -7,6 +7,7 @@ import { Page } from "@/components/page";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { Icon } from "@/components/ui/icon";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import { Text } from "@/components/ui/text";
 
@@ -170,7 +171,7 @@ export function ReceivableDetailScreen({
         size="sm"
         variant="ghost"
       >
-        <ArrowLeft color="#71717A" size={18} />
+        <Icon as={ArrowLeft} className="text-muted-foreground" size={18} />
         <Text className="font-ui text-foreground">{copy.back}</Text>
       </Button>
       <ScreenHeader

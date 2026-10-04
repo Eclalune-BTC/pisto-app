@@ -5,8 +5,8 @@ import sharp from "sharp";
 const brandRoot = new URL("../assets/brand/", import.meta.url);
 const mark = JSON.parse(await readFile(new URL("mark.json", brandRoot), "utf8"));
 
-function svg(foreground, background, scale = 1) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="${mark.viewBox}"><title>Pisto</title>${background ? `<rect width="64" height="64" fill="${background}"/>` : ""}<g transform="translate(32 32) scale(${scale}) translate(-32 -32)"><path d="${mark.path}" fill="${foreground}" fill-rule="evenodd"/></g></svg>`;
+function svg(foreground, background, scale = 1, radius = 0) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="${mark.viewBox}"><title>Pisto</title>${background ? `<rect width="64" height="64" rx="${radius}" fill="${background}"/>` : ""}<g transform="translate(32 32) scale(${scale}) translate(-32 -32)"><path d="${mark.path}" fill="${foreground}" fill-rule="evenodd"/></g></svg>`;
 }
 
 const outputs = [
@@ -15,14 +15,24 @@ const outputs = [
   { name: "monochrome.png", size: 1024, foreground: "#FFFFFF", scale: 0.8 },
   { name: "splash-icon.png", size: 512, foreground: mark.ink },
   { name: "splash-icon-dark.png", size: 512, foreground: mark.paper },
-  { name: "favicon.png", size: 64, foreground: mark.paper, background: mark.ink },
+  {
+    name: "favicon.png",
+    size: 64,
+    foreground: mark.paper,
+    background: mark.ink,
+    radius: mark.radius,
+  },
 ];
 
 for (const output of outputs) {
-  const image = sharp(Buffer.from(svg(output.foreground, output.background, output.scale)), {
-    density: 1152,
-  }).resize(output.size, output.size);
-  if (output.background) image.flatten({ background: output.background }).removeAlpha();
+  const image = sharp(
+    Buffer.from(svg(output.foreground, output.background, output.scale, output.radius)),
+    {
+      density: 1152,
+    },
+  ).resize(output.size, output.size);
+  if (output.background && !output.radius)
+    image.flatten({ background: output.background }).removeAlpha();
   await image.png().toFile(fileURLToPath(new URL(output.name, brandRoot)));
 }
 
@@ -32,5 +42,5 @@ await writeFile(
     .png()
     .toBuffer(),
 );
-await writeFile(new URL("mark.svg", brandRoot), `${svg(mark.paper, mark.ink)}\n`);
+await writeFile(new URL("mark.svg", brandRoot), `${svg(mark.paper, mark.ink, 1, mark.radius)}\n`);
 console.log("Generated Pisto brand assets from assets/brand/mark.json.");

@@ -50,6 +50,7 @@ vi.mock("@/components/appearance-control", () => ({ AppearanceControl: "div" }))
 vi.mock("@/components/ui/alert", () => ({ Alert: "div", AlertDescription: "span" }));
 vi.mock("@/components/ui/text", () => ({ Text: "span" }));
 vi.mock("@/components/ui/button", () => ({ Button: "button" }));
+vi.mock("@/components/ui/icon", () => ({ Icon: "span" }));
 vi.mock("@/components/ui/card", () => ({
   Card: "div",
   CardContent: "div",

@@ -23,7 +23,8 @@ vi.mock("expo-router/head", () => ({
 vi.mock("uniwind", () => ({
   withUniwind: (component: unknown) => component,
   useUniwind: () => ({ theme: "light" }),
-  useCSSVariable: () => "#566781",
+  useCSSVariable: (names: string | string[]) =>
+    Array.isArray(names) ? names.map(() => "#566781") : "#566781",
 }));
 vi.mock("@/providers/appearance-provider", () => ({
   useAppearance: () => ({ choice: "system", pending: false, issue: null, select: vi.fn() }),

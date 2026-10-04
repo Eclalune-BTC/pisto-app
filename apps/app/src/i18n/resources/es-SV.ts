@@ -29,7 +29,6 @@ export const esSV = {
     reset: "Limpiar filtros",
     history: "Historial",
     periodSummary: "Resumen del período",
-    views: "Vistas",
     selectOption: "Selecciona una opción",
     selectionUnavailable:
       "La opción seleccionada no está disponible. Actualiza la lista o elige otra.",
@@ -52,7 +51,7 @@ export const esSV = {
     loadMore: "Cargar más",
     loadingMore: "Cargando más…",
     sales: "Ventas",
-    operate: "Operar",
+    operate: "Mi negocio",
     account: "Cuenta",
     signOut: "Cerrar sesión",
     pistoAccount: "Cuenta de Pisto",
@@ -84,14 +83,14 @@ export const esSV = {
       description:
         "Explora cómo se llevan las operaciones, los productos, los clientes y los reportes en Pisto.",
       navigation: "Explorar funciones de Pisto",
-      captureNote: "Interfaz de Pisto · configuración de ejemplo.",
+      captureNote: "Interfaz de Pisto · formularios y controles de ejemplo.",
       money: {
         tab: "Dinero",
         title: "Cada movimiento, en su lugar.",
         description:
           "Registra lo que vendes y lo que pagas. Vuelve al historial cuando necesites revisar una operación.",
         imageAlt:
-          "Formulario de Pisto para registrar un gasto, con una cuenta de ejemplo y el monto y la descripción sin completar.",
+          "Formulario de Pisto para registrar una venta, con el monto y la descripción sin completar.",
       },
       stock: {
         tab: "Productos",
@@ -221,6 +220,7 @@ export const esSV = {
       "Pisto no pudo confirmar el cierre de sesión. Revisa tu conexión e inténtalo de nuevo.",
   },
   shell: {
+    businessContext: "Espacio de trabajo",
     openNavigation: "Abrir navegación",
     closeNavigation: "Cerrar navegación",
     navigationDescription: "Accede a las áreas disponibles de tu negocio.",
@@ -274,10 +274,10 @@ export const esSV = {
     noAccessDescription:
       "Tu membresía no incluye permisos de lectura para estas operaciones. Pídele acceso a una persona administradora del negocio.",
     groups: {
-      money: "Dinero",
-      stock: "Productos y existencias",
+      money: "Día a día",
+      stock: "Productos",
       relationships: "Clientes y cobros",
-      insight: "Información del negocio",
+      insight: "Análisis",
     },
     modules: {
       sales: {
@@ -573,8 +573,8 @@ export const esSV = {
         "La confirmación registrará una salida y una entrada vinculadas en una sola operación.",
     },
     overview: {
-      eyebrow: "Operar",
-      title: "Efectivo",
+      eyebrow: "Mi negocio",
+      title: "Caja y cuentas",
       description:
         "Saldos derivados de los movimientos registrados en {{business}}. No representan una conciliación bancaria.",
       accountsTitle: "Cuentas",
@@ -755,7 +755,7 @@ export const esSV = {
       create: "La confirmación registrará el gasto y la salida de efectivo en una sola operación.",
     },
     overview: {
-      eyebrow: "Operar",
+      eyebrow: "Mi negocio",
       title: "Gastos",
       description: "Consulta y registra los gastos pagados de {{business}}.",
       accountFilter: "Cuenta",
@@ -871,7 +871,7 @@ export const esSV = {
         "Puedes consultar existencias e historial, pero tu rol no permite registrar ni revertir movimientos.",
     },
     list: {
-      eyebrow: "Operar",
+      eyebrow: "Mi negocio",
       title: "Catálogo",
       description: "Busca productos, revisa sus precios y abre el registro que necesitas operar.",
       createProduct: "Nuevo producto",
@@ -1049,7 +1049,7 @@ export const esSV = {
       reverse: "Reversión",
     },
     list: {
-      eyebrow: "Operar",
+      eyebrow: "Mi negocio",
       title: "Inventario",
       description:
         "Consulta la existencia derivada de movimientos y atiende productos bajo su umbral.",
@@ -1423,7 +1423,7 @@ export const esSV = {
   },
   reports: {
     overview: {
-      eyebrow: "Operar",
+      eyebrow: "Mi negocio",
       title: "Reportes",
       description:
         "Consulta ventas, gastos y movimientos de efectivo de un período junto con las posiciones operativas actuales.",

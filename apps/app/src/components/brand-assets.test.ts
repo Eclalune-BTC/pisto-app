@@ -14,9 +14,10 @@ describe("shared brand asset contract", () => {
     const svg = await readFile(asset("mark.svg"), "utf8");
     expect(svg).toContain(mark.path);
     expect(svg).toContain(mark.ink);
+    expect(svg).toContain(`rx="${mark.radius}"`);
     expect(svg).not.toContain("<text");
     const favicon = await sharp(asset("favicon.png")).metadata();
-    expect([favicon.width, favicon.height, favicon.hasAlpha]).toEqual([64, 64, false]);
+    expect([favicon.width, favicon.height, favicon.hasAlpha]).toEqual([64, 64, true]);
   });
 
   test("keeps the app icon opaque and the monochrome counter transparent", async () => {

@@ -7,6 +7,11 @@ import type {
 } from "@pisto/contracts";
 import { View } from "react-native";
 import { DetailList } from "@/components/detail-list";
+import {
+  FeatureBoundary,
+  type FeatureBoundaryCopy,
+  type FeatureRemoteState,
+} from "@/components/feature-boundary";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { ScreenHeader } from "@/components/screen-header";
@@ -14,11 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { CashMovementList } from "./cash-movement-list";
 import { CashOperationReview, type CashOperationReviewCopy } from "./cash-operation-review";
-import {
-  FeatureBoundary,
-  type FeatureBoundaryCopy,
-  type FeatureRemoteState,
-} from "./feature-boundary";
 import { cashOperationPresentation } from "./operation-state";
 import type { CashConfirmationState } from "./state";
 
