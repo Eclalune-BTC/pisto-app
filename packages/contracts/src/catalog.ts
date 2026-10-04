@@ -3,13 +3,14 @@ import { z } from "zod";
 import {
   aggregateIntegerSchema,
   boundedListLimitSchema,
+  calendarLocalDateSchema,
   currencyCodeSchema,
   currencyMinorUnitDigitsSchema,
-  localDateSchema,
   localTimeSchema,
   minorUnitsSchema,
   opaqueCursorSchema,
   positiveMinorUnitsSchema,
+  shortRequestTextSchema,
   signedMinorUnitsSchema,
   timestampSchema,
   timeZoneSchema,
@@ -25,17 +26,9 @@ export const productUnitKindSchema = z.enum([
   "milliliter",
   "meter",
 ]);
-export const quantityPrecisionSchema = z.number().int().min(0).max(3);
+const quantityPrecisionSchema = z.number().int().min(0).max(3);
 
-export const quantityMinorUnitsSchema = minorUnitsSchema;
-export const positiveQuantityMinorUnitsSchema = positiveMinorUnitsSchema;
-export const signedQuantityMinorUnitsSchema = signedMinorUnitsSchema;
-export const aggregateQuantityMinorUnitsSchema = aggregateIntegerSchema;
-
-export const catalogCursorSchema = opaqueCursorSchema;
-export const catalogListLimitSchema = boundedListLimitSchema;
-
-export const categorySchema = z.object({
+const categorySchema = z.object({
   id: uuidSchema,
   name: z.string().trim().min(1).max(80),
   status: catalogRecordStatusSchema,
@@ -45,8 +38,8 @@ export const categorySchema = z.object({
 
 export const categoryListQuerySchema = z
   .object({
-    cursor: catalogCursorSchema.optional(),
-    limit: catalogListLimitSchema,
+    cursor: opaqueCursorSchema.optional(),
+    limit: boundedListLimitSchema,
     search: z.string().trim().min(1).max(120).optional(),
     status: z.enum(["active", "archived", "all"]).default("active"),
   })
@@ -77,7 +70,7 @@ export const categoryMutationResponseSchema = z.object({
 export const categoryListResponseSchema = z.object({
   data: z.object({
     items: z.array(categorySchema),
-    nextCursor: catalogCursorSchema.nullable(),
+    nextCursor: opaqueCursorSchema.nullable(),
   }),
 });
 
@@ -87,13 +80,13 @@ export const productSchema = z
     categoryId: uuidSchema.nullable(),
     name: z.string().trim().min(1).max(120),
     sku: z.string().trim().min(1).max(64).nullable(),
-    sellingPriceMinorUnits: quantityMinorUnitsSchema.nullable(),
+    sellingPriceMinorUnits: minorUnitsSchema.nullable(),
     sellingPriceCurrency: currencyCodeSchema.nullable(),
     sellingPriceCurrencyMinorUnitDigits: currencyMinorUnitDigitsSchema.nullable(),
     unitKind: productUnitKindSchema,
     quantityPrecision: quantityPrecisionSchema,
     tracked: z.boolean(),
-    lowStockThresholdMinorUnits: quantityMinorUnitsSchema.nullable(),
+    lowStockThresholdMinorUnits: minorUnitsSchema.nullable(),
     status: catalogRecordStatusSchema,
     createdAt: timestampSchema,
     updatedAt: timestampSchema,
@@ -124,10 +117,10 @@ export const productSchema = z
 
 const productWriteFields = {
   categoryId: uuidSchema.nullable().optional(),
-  lowStockThresholdMinorUnits: quantityMinorUnitsSchema.nullable().optional(),
+  lowStockThresholdMinorUnits: minorUnitsSchema.nullable().optional(),
   name: z.string().trim().min(1).max(120),
   quantityPrecision: quantityPrecisionSchema,
-  sellingPriceMinorUnits: quantityMinorUnitsSchema.nullable().optional(),
+  sellingPriceMinorUnits: minorUnitsSchema.nullable().optional(),
   sku: z.string().trim().min(1).max(64).nullable().optional(),
   tracked: z.boolean(),
   unitKind: productUnitKindSchema,
@@ -181,22 +174,22 @@ export const archiveProductRequestSchema = archiveCategoryRequestSchema;
 export const productListQuerySchema = z
   .object({
     categoryId: uuidSchema.optional(),
-    cursor: catalogCursorSchema.optional(),
-    limit: catalogListLimitSchema,
+    cursor: opaqueCursorSchema.optional(),
+    limit: boundedListLimitSchema,
     search: z.string().trim().min(1).max(120).optional(),
     status: z.enum(["active", "archived", "all"]).default("active"),
   })
   .strict();
 
-export const productStockSchema = z.object({
+const productStockSchema = z.object({
   productId: uuidSchema,
   quantityPrecision: quantityPrecisionSchema,
-  onHandMinorUnits: aggregateQuantityMinorUnitsSchema,
-  lowStockThresholdMinorUnits: quantityMinorUnitsSchema.nullable(),
+  onHandMinorUnits: aggregateIntegerSchema,
+  lowStockThresholdMinorUnits: minorUnitsSchema.nullable(),
   lowStock: z.boolean(),
 });
 
-export const productDetailSchema = z.object({
+const productDetailSchema = z.object({
   product: productSchema,
   stock: productStockSchema.nullable(),
 });
@@ -212,35 +205,30 @@ export const productDetailResponseSchema = z.object({
   data: productDetailSchema,
 });
 
-export const productListItemSchema = productDetailSchema;
+const productListItemSchema = productDetailSchema;
 
 export const productListResponseSchema = z.object({
   data: z.object({
     items: z.array(productListItemSchema),
-    nextCursor: catalogCursorSchema.nullable(),
+    nextCursor: opaqueCursorSchema.nullable(),
   }),
 });
 
-export const inventoryMovementActionSchema = z.enum([
-  "receive",
-  "adjust_in",
-  "adjust_out",
-  "reverse",
-]);
+const inventoryMovementActionSchema = z.enum(["receive", "adjust_in", "adjust_out", "reverse"]);
 
 export const inventoryMovementSchema = z.object({
   id: uuidSchema,
   productId: uuidSchema,
   action: inventoryMovementActionSchema,
-  quantityMinorUnits: positiveQuantityMinorUnitsSchema,
-  deltaMinorUnits: signedQuantityMinorUnitsSchema.refine(
+  quantityMinorUnits: positiveMinorUnitsSchema,
+  deltaMinorUnits: signedMinorUnitsSchema.refine(
     (value) => value !== "0",
     "Movement delta cannot be zero",
   ),
   quantityPrecision: quantityPrecisionSchema,
-  reason: z.string().trim().min(1).max(240),
+  reason: shortRequestTextSchema,
   occurredAt: timestampSchema,
-  occurredLocalDate: localDateSchema,
+  occurredLocalDate: calendarLocalDateSchema,
   occurredLocalTime: localTimeSchema,
   timeZone: timeZoneSchema,
   createdByUserId: z.string().min(1),
@@ -253,9 +241,9 @@ export const recordInventoryMovementRequestSchema = z
   .object({
     idempotencyKey: uuidSchema,
     action: z.enum(["receive", "adjust_in", "adjust_out"]),
-    quantityMinorUnits: positiveQuantityMinorUnitsSchema,
-    reason: z.string().trim().min(1).max(240),
-    occurredLocalDate: localDateSchema,
+    quantityMinorUnits: positiveMinorUnitsSchema,
+    reason: shortRequestTextSchema,
+    occurredLocalDate: calendarLocalDateSchema,
     occurredLocalTime: localTimeSchema,
   })
   .strict();
@@ -263,23 +251,23 @@ export const recordInventoryMovementRequestSchema = z
 export const reverseInventoryMovementRequestSchema = z
   .object({
     idempotencyKey: uuidSchema,
-    reason: z.string().trim().min(1).max(240),
-    occurredLocalDate: localDateSchema,
+    reason: shortRequestTextSchema,
+    occurredLocalDate: calendarLocalDateSchema,
     occurredLocalTime: localTimeSchema,
   })
   .strict();
 
 export const inventoryMovementListQuerySchema = z
   .object({
-    cursor: catalogCursorSchema.optional(),
-    limit: catalogListLimitSchema,
+    cursor: opaqueCursorSchema.optional(),
+    limit: boundedListLimitSchema,
   })
   .strict();
 
 export const stockListQuerySchema = z
   .object({
-    cursor: catalogCursorSchema.optional(),
-    limit: catalogListLimitSchema,
+    cursor: opaqueCursorSchema.optional(),
+    limit: boundedListLimitSchema,
     lowStockOnly: z
       .union([z.boolean(), z.enum(["true", "false"]).transform((value) => value === "true")])
       .default(false),
@@ -298,11 +286,11 @@ export const inventoryMutationResponseSchema = z.object({
 export const inventoryMovementListResponseSchema = z.object({
   data: z.object({
     items: z.array(inventoryMovementSchema),
-    nextCursor: catalogCursorSchema.nullable(),
+    nextCursor: opaqueCursorSchema.nullable(),
   }),
 });
 
-export const stockListItemSchema = z.object({
+const stockListItemSchema = z.object({
   product: productSchema,
   stock: productStockSchema,
 });
@@ -310,11 +298,10 @@ export const stockListItemSchema = z.object({
 export const stockListResponseSchema = z.object({
   data: z.object({
     items: z.array(stockListItemSchema),
-    nextCursor: catalogCursorSchema.nullable(),
+    nextCursor: opaqueCursorSchema.nullable(),
   }),
 });
 
-export type CatalogRecordStatus = z.infer<typeof catalogRecordStatusSchema>;
 export type ProductUnitKind = z.infer<typeof productUnitKindSchema>;
 export type Category = z.infer<typeof categorySchema>;
 export type CategoryListQuery = z.infer<typeof categoryListQuerySchema>;

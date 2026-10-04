@@ -37,13 +37,19 @@ export const signedMinorUnitsSchema = z
 export const currencyCodeSchema = z.string().regex(/^[A-Z]{3}$/);
 export const currencyMinorUnitDigitsSchema = z.number().int().min(0).max(4);
 export const timeZoneSchema = z.string().trim().min(1).max(64);
-export const localDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 export const localTimeSchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
 export const timestampSchema = z.string().datetime({ offset: true });
 export const uuidSchema = z.string().uuid();
-export const opaqueCursorSchema = z.string().min(1).max(512);
+/** Server-issued base64url page cursor; clients pass it back unchanged. */
+export const opaqueCursorSchema = z
+  .string()
+  .min(1)
+  .max(512)
+  .regex(/^[A-Za-z0-9_-]+$/);
 export const boundedListLimitSchema = z.coerce.number().int().min(1).max(50).default(25);
 
 export const calendarLocalDateSchema = z.iso
   .date({ error: "Must be a real calendar date" })
   .refine((value) => !value.startsWith("0000"), "Year zero is not supported");
+
+export const shortRequestTextSchema = z.string().trim().min(1).max(240);

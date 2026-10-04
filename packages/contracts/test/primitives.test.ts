@@ -3,11 +3,9 @@ import { describe, expect, test } from "bun:test";
 import {
   boundedListLimitSchema,
   calendarLocalDateSchema,
-  localDateSchema,
+  createSaleRequestSchema,
   minorUnitsSchema,
   opaqueCursorSchema,
-  pageCursorSchema,
-  pageLimitSchema,
   positiveMinorUnitsSchema,
   timestampSchema,
   uuidSchema,
@@ -48,12 +46,6 @@ describe("calendar-valid local dates", () => {
       expect(calendarLocalDateSchema.safeParse(value).success).toBe(false);
     },
   );
-
-  test("leaves the format-only local date primitive unchanged", () => {
-    expect(localDateSchema.safeParse("2026-02-30").success).toBe(true);
-    expect(localDateSchema.safeParse("2025-02-29").success).toBe(true);
-    expect(localDateSchema.safeParse("2026-1-1").success).toBe(false);
-  });
 });
 
 describe("shared primitive behaviour", () => {
@@ -85,23 +77,29 @@ describe("shared primitive behaviour", () => {
     expect(boundedListLimitSchema.safeParse(1.5).success).toBe(false);
   });
 
-  test("opaque cursor keeps its length bounds", () => {
+  test("opaque cursor accepts only bounded base64url text", () => {
     expect(opaqueCursorSchema.safeParse("").success).toBe(false);
     expect(opaqueCursorSchema.safeParse("a".repeat(512)).success).toBe(true);
     expect(opaqueCursorSchema.safeParse("a".repeat(513)).success).toBe(false);
+    expect(opaqueCursorSchema.safeParse("eyJpZCI6MX0_-").success).toBe(true);
+    for (const value of ["eyJpZCI6MX0=", "a+b", "a/b", "a b"]) {
+      expect(opaqueCursorSchema.safeParse(value).success).toBe(false);
+    }
   });
 });
 
-describe("receivables paging aliases keep their published behaviour", () => {
-  test("cursor bounds are unchanged", () => {
-    expect(pageCursorSchema.safeParse("").success).toBe(false);
-    expect(pageCursorSchema.safeParse("a".repeat(512)).success).toBe(true);
-    expect(pageCursorSchema.safeParse("a".repeat(513)).success).toBe(false);
-  });
-
-  test("limit coercion and default are unchanged", () => {
-    expect(pageLimitSchema.parse(undefined)).toBe(25);
-    expect(pageLimitSchema.parse("50")).toBe(50);
-    expect(pageLimitSchema.safeParse(51).success).toBe(false);
+describe("request contracts require real calendar dates", () => {
+  test("rejects an impossible sale date that the format alone would accept", () => {
+    const sale = {
+      idempotencyKey: "85d434e5-a7fd-49b7-9f12-38aa80a920ae",
+      grossMinorUnits: "100",
+      occurredLocalTime: "09:15",
+    };
+    expect(
+      createSaleRequestSchema.safeParse({ ...sale, occurredLocalDate: "2026-02-28" }).success,
+    ).toBe(true);
+    expect(
+      createSaleRequestSchema.safeParse({ ...sale, occurredLocalDate: "2026-02-30" }).success,
+    ).toBe(false);
   });
 });

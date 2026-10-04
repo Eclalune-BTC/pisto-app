@@ -6,11 +6,10 @@ import {
   createCashAccountRequestSchema,
   expensePeriodQuerySchema,
   postExpenseRequestSchema,
-  signedCashAggregateMinorUnitsSchema,
-  signedCashMinorUnitsSchema,
   transferCashRequestSchema,
   updateCashAccountRequestSchema,
 } from "../src/cash.ts";
+import { signedAggregateIntegerSchema, signedMinorUnitsSchema } from "../src/primitives.ts";
 
 const idempotencyKey = "85d434e5-a7fd-49b7-9f12-38aa80a920ae";
 const accountId = "71402e0c-b17d-4d8c-83ae-8d163d10d51d";
@@ -75,13 +74,11 @@ describe("cash and expense contracts", () => {
   });
 
   test("keeps exact signed values canonical", () => {
-    expect(signedCashMinorUnitsSchema.safeParse("-9223372036854775807").success).toBe(true);
-    expect(signedCashMinorUnitsSchema.safeParse("-0").success).toBe(false);
-    expect(signedCashMinorUnitsSchema.safeParse("01").success).toBe(false);
-    expect(signedCashMinorUnitsSchema.safeParse("9223372036854775808").success).toBe(false);
-    expect(signedCashAggregateMinorUnitsSchema.safeParse("-18446744073709551614").success).toBe(
-      true,
-    );
+    expect(signedMinorUnitsSchema.safeParse("-9223372036854775807").success).toBe(true);
+    expect(signedMinorUnitsSchema.safeParse("-0").success).toBe(false);
+    expect(signedMinorUnitsSchema.safeParse("01").success).toBe(false);
+    expect(signedMinorUnitsSchema.safeParse("9223372036854775808").success).toBe(false);
+    expect(signedAggregateIntegerSchema.safeParse("-18446744073709551614").success).toBe(true);
   });
 
   test("rejects a same-account transfer before the repository", () => {

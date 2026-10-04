@@ -6,7 +6,6 @@ import {
   calendarLocalDateSchema,
   currencyCodeSchema,
   currencyMinorUnitDigitsSchema,
-  localDateSchema,
   signedAggregateIntegerSchema,
   timestampSchema,
   timeZoneSchema,
@@ -16,35 +15,20 @@ import {
 const millisecondsPerDay = 86_400_000;
 export const maximumInclusiveDays = 366;
 
-function localDateEpoch(value: string): number | null {
-  if (!calendarLocalDateSchema.safeParse(value).success) return null;
+function localDateEpoch(value: string): number {
   return Date.parse(`${value}T00:00:00.000Z`);
 }
 
 export const operatingReportQuerySchema = z
   .object({
-    startLocalDate: localDateSchema,
-    endLocalDate: localDateSchema,
+    startLocalDate: calendarLocalDateSchema,
+    endLocalDate: calendarLocalDateSchema,
   })
   .strict()
   .superRefine((value, context) => {
+    // Object refinements run only after both fields parsed as real calendar dates.
     const start = localDateEpoch(value.startLocalDate);
     const end = localDateEpoch(value.endLocalDate);
-    if (start === null) {
-      context.addIssue({
-        code: "custom",
-        message: "The report start date is not a real calendar date",
-        path: ["startLocalDate"],
-      });
-    }
-    if (end === null) {
-      context.addIssue({
-        code: "custom",
-        message: "The report end date is not a real calendar date",
-        path: ["endLocalDate"],
-      });
-    }
-    if (start === null || end === null) return;
     if (end < start) {
       context.addIssue({
         code: "custom",
@@ -62,17 +46,17 @@ export const operatingReportQuerySchema = z
     }
   });
 
-export const reportPeriodSchema = z
+const reportPeriodSchema = z
   .object({
-    startLocalDate: localDateSchema,
-    endLocalDateInclusive: localDateSchema,
+    startLocalDate: calendarLocalDateSchema,
+    endLocalDateInclusive: calendarLocalDateSchema,
     startUtc: timestampSchema,
     endUtcExclusive: timestampSchema,
     timeZone: timeZoneSchema,
   })
   .strict();
 
-export const reportSalesFactsSchema = z
+const reportSalesFactsSchema = z
   .object({
     grossMinorUnits: aggregateIntegerSchema,
     saleCount: aggregateIntegerSchema,
@@ -87,7 +71,7 @@ export const reportExpenseCategoryFactsSchema = z
   })
   .strict();
 
-export const reportExpenseFactsSchema = z
+const reportExpenseFactsSchema = z
   .object({
     totalMinorUnits: aggregateIntegerSchema,
     expenseCount: aggregateIntegerSchema,
@@ -107,7 +91,7 @@ export const reportCashAccountFactsSchema = z
   })
   .strict();
 
-export const reportCashFactsSchema = z
+const reportCashFactsSchema = z
   .object({
     inflowMinorUnits: aggregateIntegerSchema,
     outflowMinorUnits: aggregateIntegerSchema,
@@ -116,14 +100,14 @@ export const reportCashFactsSchema = z
   })
   .strict();
 
-export const reportInventoryFactsSchema = z
+const reportInventoryFactsSchema = z
   .object({
     trackedProductCount: aggregateIntegerSchema,
     lowStockProductCount: aggregateIntegerSchema,
   })
   .strict();
 
-export const reportReceivableFactsSchema = z
+const reportReceivableFactsSchema = z
   .object({
     outstandingMinorUnits: aggregateIntegerSchema,
     overdueMinorUnits: aggregateIntegerSchema,
@@ -135,7 +119,7 @@ export const reportReceivableFactsSchema = z
 export const operatingReportSchema = z
   .object({
     period: reportPeriodSchema,
-    positionAsOfLocalDate: localDateSchema,
+    positionAsOfLocalDate: calendarLocalDateSchema,
     currency: currencyCodeSchema,
     currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
     sales: reportSalesFactsSchema,
@@ -152,13 +136,5 @@ export const operatingReportResponseSchema = z
   .strict();
 
 export type OperatingReportQuery = z.infer<typeof operatingReportQuerySchema>;
-export type ReportPeriod = z.infer<typeof reportPeriodSchema>;
-export type ReportSalesFacts = z.infer<typeof reportSalesFactsSchema>;
-export type ReportExpenseCategoryFacts = z.infer<typeof reportExpenseCategoryFactsSchema>;
-export type ReportExpenseFacts = z.infer<typeof reportExpenseFactsSchema>;
-export type ReportCashAccountFacts = z.infer<typeof reportCashAccountFactsSchema>;
-export type ReportCashFacts = z.infer<typeof reportCashFactsSchema>;
-export type ReportInventoryFacts = z.infer<typeof reportInventoryFactsSchema>;
-export type ReportReceivableFacts = z.infer<typeof reportReceivableFactsSchema>;
 export type OperatingReport = z.infer<typeof operatingReportSchema>;
 export type OperatingReportResponse = z.infer<typeof operatingReportResponseSchema>;

@@ -3,13 +3,14 @@ import { z } from "zod";
 import {
   aggregateIntegerSchema,
   boundedListLimitSchema,
+  calendarLocalDateSchema,
   currencyCodeSchema,
   currencyMinorUnitDigitsSchema,
-  localDateSchema,
   localTimeSchema,
   minorUnitsSchema,
   opaqueCursorSchema,
   positiveMinorUnitsSchema,
+  shortRequestTextSchema,
   timestampSchema,
   timeZoneSchema,
   uuidSchema,
@@ -21,11 +22,9 @@ export * from "./primitives";
 export * from "./receivables";
 export * from "./reports";
 
-export const apiVersion = "v1" as const;
+const requestIdSchema = z.string().min(1).max(128);
 
-export const requestIdSchema = z.string().min(1).max(128);
-
-export const apiErrorCodeSchema = z.enum([
+const apiErrorCodeSchema = z.enum([
   "BAD_REQUEST",
   "UNAUTHORIZED",
   "FORBIDDEN",
@@ -67,14 +66,7 @@ export const readinessResponseSchema = z.object({
   }),
 });
 
-export const apiRootResponseSchema = z.object({
-  data: z.object({
-    version: z.literal(apiVersion),
-    service: z.literal("pisto-api"),
-  }),
-});
-
-export const userSchema = z.object({
+const userSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
   email: z.string().email(),
@@ -82,7 +74,7 @@ export const userSchema = z.object({
   image: z.string().url().nullable(),
 });
 
-export const sessionSummarySchema = z.object({
+const sessionSummarySchema = z.object({
   id: z.string().min(1),
   expiresAt: timestampSchema,
   activeOrganizationId: z.string().min(1).nullable(),
@@ -95,10 +87,12 @@ export const meResponseSchema = z.object({
   }),
 });
 
-export const billingStatusSchema = z.enum(["disabled", "enabled"]);
+const billingStatusSchema = z.enum(["disabled", "enabled"]);
 
-export const billingCatalogProductSchema = z.object({
-  slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+export const billingProductSlugSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+
+const billingCatalogProductSchema = z.object({
+  slug: billingProductSlugSchema,
   name: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
 });
@@ -111,12 +105,12 @@ export const billingCatalogResponseSchema = z.object({
   }),
 });
 
-export const billingScopeSchema = z.object({
+const billingScopeSchema = z.object({
   type: z.enum(["user", "organization"]),
   id: z.string().min(1),
 });
 
-export const entitlementSchema = z.object({
+const entitlementSchema = z.object({
   key: z.string().min(1),
   status: z.enum(["active", "inactive", "pending", "revoked", "expired", "unknown"]),
   source: z.enum(["polar", "revenuecat", "manual"]),
@@ -145,7 +139,7 @@ export const billingStateResponseSchema = z.object({
 
 export const billingCheckoutRequestSchema = z
   .object({
-    slug: billingCatalogProductSchema.shape.slug,
+    slug: billingProductSlugSchema,
   })
   .strict();
 
@@ -158,9 +152,9 @@ export const billingRedirectResponseSchema = z.object({
   }),
 });
 
-export const businessRoleSchema = z.enum(["owner", "admin", "member"]);
+const businessRoleSchema = z.enum(["owner", "admin", "member"]);
 
-export const businessPermissionSchema = z.enum([
+const businessPermissionSchema = z.enum([
   "business:configure",
   "business:read",
   "sales:create",
@@ -224,7 +218,9 @@ export const saleStatusSchema = z.enum(["posted", "voided"]);
 
 export const saleCorrectionKindSchema = z.enum(["void", "replacement"]);
 
-export const saleCorrectionSchema = z.object({
+const saleCorrectionReasonSchema = z.string().trim().min(2).max(240);
+
+const saleCorrectionSchema = z.object({
   id: uuidSchema,
   kind: saleCorrectionKindSchema,
   reason: z.string().min(2).max(240),
@@ -233,7 +229,7 @@ export const saleCorrectionSchema = z.object({
   correctedAt: timestampSchema,
 });
 
-export const saleSchema = z.object({
+const saleSchema = z.object({
   id: uuidSchema,
   status: saleStatusSchema,
   entryMode: z.literal("total_only"),
@@ -241,7 +237,7 @@ export const saleSchema = z.object({
   currency: currencyCodeSchema,
   currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
   occurredAt: timestampSchema,
-  occurredLocalDate: localDateSchema,
+  occurredLocalDate: calendarLocalDateSchema,
   occurredLocalTime: localTimeSchema,
   timeZone: timeZoneSchema,
   description: z.string().min(1).max(240).nullable(),
@@ -253,9 +249,9 @@ export const createSaleRequestSchema = z
   .object({
     idempotencyKey: uuidSchema,
     grossMinorUnits: positiveMinorUnitsSchema,
-    occurredLocalDate: localDateSchema,
+    occurredLocalDate: calendarLocalDateSchema,
     occurredLocalTime: localTimeSchema,
-    description: z.string().trim().min(1).max(240).optional(),
+    description: shortRequestTextSchema.optional(),
   })
   .strict();
 
@@ -305,7 +301,7 @@ export const saleReviewDismissResponseSchema = z
 export const voidSaleRequestSchema = z
   .object({
     idempotencyKey: uuidSchema,
-    reason: z.string().trim().min(2).max(240),
+    reason: saleCorrectionReasonSchema,
   })
   .strict();
 
@@ -314,7 +310,7 @@ const replacementSaleDraftSchema = createSaleRequestSchema.omit({ idempotencyKey
 export const replaceSaleRequestSchema = z
   .object({
     idempotencyKey: uuidSchema,
-    reason: z.string().trim().min(2).max(240),
+    reason: saleCorrectionReasonSchema,
     replacement: replacementSaleDraftSchema,
   })
   .strict();
@@ -328,13 +324,11 @@ export const saleCorrectionResponseSchema = z.object({
   }),
 });
 
-export const saleCursorSchema = opaqueCursorSchema.regex(/^[A-Za-z0-9_-]+$/);
-
 export const saleStatusFilterSchema = z.enum(["posted", "voided", "all"]);
 
 export const saleListQuerySchema = z
   .object({
-    cursor: saleCursorSchema.optional(),
+    cursor: opaqueCursorSchema.optional(),
     limit: boundedListLimitSchema,
     status: saleStatusFilterSchema.default("all"),
   })
@@ -343,7 +337,7 @@ export const saleListQuerySchema = z
 export const saleListSchema = z
   .object({
     items: z.array(saleSchema),
-    nextCursor: saleCursorSchema.nullable(),
+    nextCursor: opaqueCursorSchema.nullable(),
     queriedAt: timestampSchema,
   })
   .strict();
@@ -351,8 +345,8 @@ export const saleListSchema = z
 export const saleListResponseSchema = z.object({ data: saleListSchema }).strict();
 
 export const previousMonthSummarySchema = z.object({
-  periodStartLocal: localDateSchema,
-  periodEndLocalExclusive: localDateSchema,
+  periodStartLocal: calendarLocalDateSchema,
+  periodEndLocalExclusive: calendarLocalDateSchema,
   periodStartUtc: timestampSchema,
   periodEndUtcExclusive: timestampSchema,
   timeZone: timeZoneSchema,
@@ -371,7 +365,6 @@ export const previousMonthSummaryResponseSchema = z.object({
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 export type ApiErrorEnvelope = z.infer<typeof apiErrorEnvelopeSchema>;
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
-export type ReadinessResponse = z.infer<typeof readinessResponseSchema>;
 export type MeResponse = z.infer<typeof meResponseSchema>;
 export type BillingCatalogProduct = z.infer<typeof billingCatalogProductSchema>;
 export type BillingCatalogResponse = z.infer<typeof billingCatalogResponseSchema>;
@@ -394,7 +387,6 @@ export type SaleResponse = z.infer<typeof saleResponseSchema>;
 export type SaleReview = z.infer<typeof saleReviewSchema>;
 export type SaleReviewResponse = z.infer<typeof saleReviewResponseSchema>;
 export type SaleReviewDismissResponse = z.infer<typeof saleReviewDismissResponseSchema>;
-export type SaleCorrectionKind = z.infer<typeof saleCorrectionKindSchema>;
 export type SaleCorrection = z.infer<typeof saleCorrectionSchema>;
 export type VoidSaleRequest = z.infer<typeof voidSaleRequestSchema>;
 export type ReplaceSaleRequest = z.infer<typeof replaceSaleRequestSchema>;
