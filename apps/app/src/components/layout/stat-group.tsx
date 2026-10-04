@@ -1,0 +1,47 @@
+import type { PropsWithChildren, ReactNode } from "react";
+import { View } from "react-native";
+import { Text } from "@/components/ui/text";
+import { cn } from "@/lib/cn";
+
+/** A strip of exact figures that share one border, instead of floating KPI cards. */
+export function StatGroup({ children }: PropsWithChildren) {
+  return (
+    <View className="flex-row flex-wrap gap-px overflow-hidden rounded-lg border border-border bg-border">
+      {children}
+    </View>
+  );
+}
+
+export function Stat({
+  detail,
+  label,
+  tone = "default",
+  value,
+}: {
+  /** Context such as the period or what the figure excludes; never an invented trend. */
+  detail?: ReactNode;
+  label: string;
+  tone?: "default" | "destructive" | "warning";
+  value: string;
+}) {
+  return (
+    <View className="min-w-[150px] flex-1 basis-[180px] gap-1 bg-card px-4 py-3">
+      <Text className="text-xs leading-4 text-muted-foreground">{label}</Text>
+      <Text
+        className={cn(
+          "font-heading text-xl leading-7 tracking-[-0.3px] tabular-nums",
+          tone === "destructive" && "text-destructive",
+          tone === "warning" && "text-warning-foreground",
+        )}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
+      {typeof detail === "string" ? (
+        <Text className="text-xs leading-4 text-muted-foreground">{detail}</Text>
+      ) : (
+        detail
+      )}
+    </View>
+  );
+}

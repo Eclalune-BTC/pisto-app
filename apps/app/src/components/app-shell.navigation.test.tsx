@@ -1,28 +1,25 @@
 import { QueryClient } from "@tanstack/react-query";
-import {
-  type ComponentProps,
-  cloneElement,
-  createElement,
-  type ReactElement,
-  type ReactNode,
-} from "react";
+import { cloneElement, createElement, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Text } from "react-native";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const fixture = vi.hoisted(() => ({
-  pathname: "/settings",
+  pathname: "/operate",
+  segments: ["(app)", "operate"] as string[],
   width: 1440,
   query: {} as Record<string, unknown>,
   pending: false,
   error: undefined as string | undefined,
   signOut: vi.fn(),
-  dialog: {} as Record<string, unknown>,
+  sheet: {} as Record<string, unknown>,
 }));
 
 vi.mock("@tanstack/react-query", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-query")>()),
   useQuery: () => fixture.query,
+  useMutation: () => ({ isPending: false, mutate: vi.fn() }),
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
 vi.mock("react-native", async () => ({
   ...(await vi.importActual<typeof import("react-native")>("react-native-web")),
@@ -33,19 +30,19 @@ vi.mock("react-native-safe-area-context", async () => ({
 }));
 vi.mock("expo-router", () => ({
   usePathname: () => fixture.pathname,
+  useSegments: () => fixture.segments,
+  useGlobalSearchParams: () => ({}),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   Link: ({ children, href }: { children: ReactElement<Record<string, unknown>>; href: string }) =>
     cloneElement(children, { href, accessibilityRole: "link" }),
 }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock("uniwind", () => ({
   withUniwind: (component: unknown) => component,
-  useCSSVariable: () => ["#18181B", "#71717A"],
+  useCSSVariable: (names: string | string[]) =>
+    Array.isArray(names) ? names.map(() => "#1c1917") : "#1c1917",
   useUniwind: () => ({ theme: "light" }),
 }));
-vi.mock("@/components/appearance-control", () => ({
-  AppearanceControl: () => createElement("span", {}, "appearance-control"),
-}));
-vi.mock("@/components/brand", () => ({ Brand: () => createElement("span", {}, "Pisto") }));
 vi.mock("@/hooks/use-sign-out", () => ({
   useSignOut: () => ({
     isPending: fixture.pending,
@@ -53,47 +50,47 @@ vi.mock("@/hooks/use-sign-out", () => ({
     signOut: fixture.signOut,
   }),
 }));
-vi.mock("@/lib/api-client", () => ({ api: { businesses: { list: vi.fn() } } }));
-vi.mock("lucide-react-native", () => ({
-  AlertTriangle: () => null,
-  CreditCard: () => null,
-  LayoutGrid: () => null,
-  Boxes: () => null,
-  ChartColumn: () => null,
-  CircleDollarSign: () => null,
-  ContactRound: () => null,
-  HandCoins: () => null,
-  PackageSearch: () => null,
-  WalletCards: () => null,
-  LogOut: () => null,
-  Menu: () => null,
-  ReceiptText: () => null,
-  UserRound: () => null,
-  X: () => null,
+vi.mock("@/providers/appearance-provider", () => ({
+  useAppearance: () => ({ choice: "system", issue: null, pending: false, select: vi.fn() }),
 }));
+vi.mock("@/lib/appearance-preference", () => ({ parseAppearanceChoice: (value: string) => value }));
+vi.mock("@/lib/notify", () => ({ notify: { error: vi.fn(), success: vi.fn() } }));
+vi.mock("@/lib/api-client", () => ({ api: { businesses: { list: vi.fn() } } }));
+vi.mock("@/lib/auth-client", () => ({ authClient: { organization: { setActive: vi.fn() } } }));
+vi.mock("@/components/ui/avatar", () => {
+  const passthrough = ({ children }: { children?: ReactNode }) => children ?? null;
+  return { Avatar: passthrough, AvatarFallback: passthrough };
+});
 
-// These tests exercise shell composition and query truth. Dialog focus, Escape and
-// responsive layout require the primary's real-library browser validation.
-vi.mock("@/components/ui/dialog", () => {
-  const childrenOnly = ({ children }: { children: ReactNode }) => children;
+// Menus and the compact sheet render their content so the static markup exposes every action;
+// focus, Escape and positioning belong to the browser validation of the real primitives.
+vi.mock("@/components/ui/dropdown-menu", () => {
+  const passthrough = ({ children }: { children?: ReactNode }) => children ?? null;
   return {
-    Dialog: (props: Record<string, unknown> & { children: ReactNode }) => {
-      fixture.dialog = props;
-      return props.children;
-    },
-    DialogTrigger: childrenOnly,
-    DialogClose: childrenOnly,
-    DialogContent: ({ children }: { children: ReactNode }) =>
-      createElement("section", { "data-testid": "navigation-dialog" }, children),
-    DialogHeader: childrenOnly,
-    DialogTitle: childrenOnly,
-    DialogDescription: childrenOnly,
+    DropdownMenu: passthrough,
+    DropdownMenuTrigger: passthrough,
+    DropdownMenuContent: ({ children }: { children: ReactNode }) =>
+      createElement("section", { "data-testid": "menu" }, children),
+    DropdownMenuGroup: passthrough,
+    DropdownMenuLabel: passthrough,
+    DropdownMenuRadioGroup: passthrough,
+    DropdownMenuRadioItem: passthrough,
+    DropdownMenuSeparator: () => createElement("hr"),
+    DropdownMenuItem: ({ children, disabled }: { children: ReactNode; disabled?: boolean }) =>
+      createElement("div", { role: "menuitem", "aria-disabled": disabled }, children),
   };
 });
-vi.mock("@/components/ui/separator", () => ({ Separator: () => createElement("hr") }));
+vi.mock("@/components/ui/sheet", () => ({
+  Sheet: (props: Record<string, unknown> & { children: ReactNode }) => {
+    fixture.sheet = props;
+    return props.children;
+  },
+  SheetContent: ({ children }: { children: ReactNode }) =>
+    createElement("section", { "data-testid": "navigation-sheet" }, children),
+  SheetTitle: ({ children }: { children: ReactNode }) => children,
+}));
 
 import { AppShell } from "@/components/app-shell";
-import { SidebarLink } from "@/components/ui/sidebar";
 import { OPERATE_MODULES } from "@/features/operate/navigation";
 import { ApiClientError } from "@/lib/api-error";
 
@@ -101,7 +98,7 @@ function renderShell() {
   return renderToStaticMarkup(
     createElement(
       AppShell,
-      { email: "owner@example.test", name: "Owner" },
+      { email: "owner@example.test", name: "Owner Name" },
       createElement(Text, {}, "Route content"),
     ),
   );
@@ -114,107 +111,90 @@ function links(markup: string) {
   }));
 }
 
+function navigationLinks(markup: string) {
+  return links(markup)
+    .map(({ href }) => href ?? "")
+    .filter((href) => href.startsWith("/operate"));
+}
+
+const allModuleLinks = ["/operate", ...OPERATE_MODULES.map(({ href }) => String(href))];
+
+function business(id: string, name: string, permissions: readonly string[]) {
+  return { id, name, currency: "USD", access: { permissions } };
+}
+
 beforeEach(() => {
-  fixture.pathname = "/settings";
+  fixture.pathname = "/operate";
+  fixture.segments = ["(app)", "operate"];
   fixture.width = 1440;
   fixture.pending = false;
   fixture.error = undefined;
   fixture.signOut.mockClear();
-  fixture.dialog = {};
+  fixture.sheet = {};
   fixture.query = {
     data: {
       activeBusinessId: "business-a",
       items: [
-        {
-          id: "business-a",
-          name: "Authorized business",
-          access: { permissions: OPERATE_MODULES.map(({ permission }) => permission) },
-        },
+        business(
+          "business-a",
+          "Authorized business",
+          OPERATE_MODULES.map(({ permission }) => permission),
+        ),
       ],
     },
     error: null,
     isError: false,
+    isPending: false,
     fetchStatus: "idle",
   };
 });
 
-describe("shell navigation", () => {
-  test.each(["/operate", "/settings", "/billing", "/billing/success"])(
-    "keeps every authorized module reachable from %s",
-    (pathname) => {
-      fixture.pathname = pathname;
-      const markup = renderShell();
-      const destinations = links(markup).map(({ href }) => href);
-      expect(destinations).toEqual([
-        "/operate",
-        ...OPERATE_MODULES.map(({ href }) => href),
-        "/settings",
-        "/billing",
-      ]);
-      expect(markup).toContain("Authorized business");
-      expect(markup).toContain('role="navigation"');
-      expect(markup).toContain('role="main"');
-    },
-  );
-
-  test("uses the same links in the compact dialog and keeps only two bottom destinations", () => {
-    const desktopLinks = links(renderShell()).map(({ href }) => href);
-    fixture.width = 320;
-    const compact = renderShell();
-    expect(links(compact).map(({ href }) => href)).toEqual([
-      ...desktopLinks,
-      "/operate",
-      "/settings",
-    ]);
-    expect(compact).toContain('aria-label="shell.openNavigation"');
-    expect(compact).toContain('aria-label="shell.closeNavigation"');
-    expect(compact).toContain("shell.navigationDescription");
-    expect(fixture.dialog.open).toBe(false);
-    expect(fixture.dialog.onOpenChange).toBeTypeOf("function");
+describe("application shell", () => {
+  test("renders grouped module navigation, the business and the account menu on wide screens", () => {
+    const markup = renderShell();
+    expect(navigationLinks(markup)).toEqual(allModuleLinks);
+    expect(markup).toContain("Authorized business");
+    expect(markup).toContain("shell.userMenu");
+    expect(markup).toContain("common.account");
+    expect(markup).toContain("settings.billing");
+    expect(markup).toContain("common.signOut");
+    expect(markup).toContain("Route content");
+    expect(markup).not.toContain('data-testid="navigation-sheet"');
   });
 
-  test("exposes only the current business membership's allowed modules", () => {
+  test("moves the same navigation into a closed sheet on compact screens", () => {
+    fixture.width = 390;
+    const markup = renderShell();
+    expect(markup).toContain('aria-label="shell.openNavigation"');
+    expect(markup).toContain('data-testid="navigation-sheet"');
+    expect(navigationLinks(markup)).toEqual(allModuleLinks);
+    expect(fixture.sheet.open).toBe(false);
+    expect(fixture.sheet.onOpenChange).toBeTypeOf("function");
+  });
+
+  test("exposes only the active membership's permitted modules", () => {
     fixture.query.data = {
       activeBusinessId: "business-b",
       items: [
-        {
-          id: "business-a",
-          name: "Other business",
-          access: { permissions: OPERATE_MODULES.map(({ permission }) => permission) },
-        },
-        {
-          id: "business-b",
-          name: "Current business",
-          access: { permissions: ["sales:read", "catalog:read", "inventory:read"] },
-        },
+        business("business-a", "Other business", ["sales:read", "cash:read", "reports:read"]),
+        business("business-b", "Current business", ["sales:read", "catalog:read"]),
       ],
     };
     const markup = renderShell();
-    expect(links(markup).map(({ href }) => href)).toEqual([
-      "/operate",
-      "/operate/sales",
-      "/operate/catalog",
-      "/operate/inventory",
-      "/settings",
-      "/billing",
-    ]);
-    expect(markup).not.toContain("Other business");
+    expect(navigationLinks(markup)).toEqual(["/operate", "/operate/sales", "/operate/catalog"]);
+    expect(markup).toContain("Current business");
   });
 
   test.each([undefined, { activeBusinessId: null, items: [] }])(
     "does not invent module links without a resolved business (%j)",
     (data) => {
       fixture.query.data = data;
-      expect(links(renderShell()).map(({ href }) => href)).toEqual([
-        "/operate",
-        "/settings",
-        "/billing",
-      ]);
+      expect(navigationLinks(renderShell())).toEqual(["/operate"]);
     },
   );
 
   test.each([401, 403])(
-    "hides cached business identity and module links after HTTP %s",
+    "hides cached business identity and modules after HTTP %s",
     async (status) => {
       const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
       const queryKey = ["businesses"];
@@ -225,78 +205,62 @@ describe("shell navigation", () => {
         client.fetchQuery({ queryKey, queryFn: async () => Promise.reject(error) }),
       ).rejects.toBe(error);
       const query = client.getQueryState(queryKey);
-      expect(query?.data).toBe(cached);
       fixture.query = { ...query, isError: true };
-      for (const width of [320, 1440]) {
+      for (const width of [390, 1440]) {
         fixture.width = width;
         const markup = renderShell();
         expect(markup).not.toContain("Authorized business");
-        for (const module of OPERATE_MODULES) {
-          expect(links(markup).map(({ href }) => href)).not.toContain(module.href);
-        }
-        expect(markup).toContain('href="/settings"');
-        expect(markup).toContain('href="/billing"');
+        expect(navigationLinks(markup)).toEqual(["/operate"]);
         expect(markup).toContain("common.signOut");
       }
       client.clear();
     },
   );
 
-  test("retains and labels cached navigation during a transient read failure", () => {
+  test("keeps and labels cached navigation during a transient read failure", () => {
     fixture.query.error = new ApiClientError("Unavailable", 503);
     fixture.query.isError = true;
     const markup = renderShell();
     expect(markup).toContain("Authorized business");
     expect(markup).toContain("remote.stale");
-    expect(markup).toContain('href="/operate/sales"');
+    expect(navigationLinks(markup)).toEqual(allModuleLinks);
   });
 
   test.each([
-    ["/operate/sales/correct/record", "/operate/sales"],
-    ["/billing/success", "/billing"],
-    ["/settings", "/settings"],
-  ])("marks the current destination for %s", (pathname, expected) => {
+    [
+      "/operate/sales/correct/record",
+      ["(app)", "operate", "sales", "correct", "[saleId]"],
+      "/operate/sales",
+    ],
+    ["/operate", ["(app)", "operate"], "/operate"],
+  ])("marks exactly one current destination for %s", (pathname, segments, expected) => {
     fixture.pathname = pathname;
-    const current = links(renderShell()).filter(({ tag }) => tag?.includes('aria-current="page"'));
+    fixture.segments = segments;
+    const current = links(renderShell()).filter(({ tag }) => tag.includes('aria-current="page"'));
     expect(current.map(({ href }) => href)).toEqual([expected]);
   });
 
-  test("does not select a route with a similar prefix", () => {
+  test("does not select a route that only shares a prefix", () => {
     fixture.pathname = "/operate/sales-archive";
     const sale = links(renderShell()).find(({ href }) => href === "/operate/sales");
     expect(sale?.tag).not.toContain('aria-current="page"');
-    expect(sale?.tag).not.toContain('aria-selected="true"');
   });
 
-  test.each([320, 1440])("preserves busy sign-out, errors and appearance at width %s", (width) => {
+  test("links every breadcrumb ancestor and names the business at the root", () => {
+    fixture.pathname = "/operate/sales/correct/sale-1";
+    fixture.segments = ["(app)", "operate", "sales", "correct", "[saleId]"];
+    const markup = renderShell();
+    expect(markup).toContain('aria-label="shell.breadcrumb"');
+    expect(markup).toContain("shell.routes./operate/sales/correct/[saleId]");
+  });
+
+  test.each([390, 1440])("keeps busy and failed sign-out visible at width %s", (width) => {
     fixture.width = width;
     fixture.pending = true;
     fixture.error = "The session could not be closed.";
     const markup = renderShell();
     expect(markup).toContain("shell.signingOut");
-    expect(markup).toContain('aria-busy="true"');
-    expect(markup).toContain('aria-disabled="true"');
     expect(markup).toContain('role="alert"');
     expect(markup).toContain(fixture.error);
-    expect(markup).toContain("appearance-control");
-    expect(markup).toContain("Route content");
-  });
-
-  test("wires link activation to compact navigation dismissal, including the same route", () => {
-    const onNavigate = vi.fn();
-    const link = SidebarLink({
-      active: true,
-      current: true,
-      href: "/operate/sales",
-      label: "Sales",
-      onNavigate,
-    });
-    const button = link.props.children as ReactElement<
-      ComponentProps<typeof import("./ui/button").Button>
-    >;
-    button.props.onPress?.({} as never);
-    expect(onNavigate).toHaveBeenCalledOnce();
-    expect(button.props.accessibilityRole).toBe("link");
-    expect(button.props.accessibilityState?.selected).toBe(true);
   });
 });

@@ -26,5 +26,6 @@ export const common = {
   identifier: "Identificador",
   status: "Estado",
   loading: "cargando",
+  loadingContent: "Cargando contenido…",
   thisBusiness: "este negocio",
 } as const;

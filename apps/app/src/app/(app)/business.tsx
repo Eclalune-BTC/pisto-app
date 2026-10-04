@@ -16,18 +16,16 @@ import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import { Text } from "@/components/ui/text";
 import { buildBusinessCommand } from "@/features/business/business-draft";
 import { api, isAmbiguousMutationError } from "@/lib/api-client";
-import { authClient } from "@/lib/auth-client";
 import { productErrorMessage } from "@/lib/product-errors";
-import { businessesQueryKey, businessesQueryOptions } from "@/lib/queries/businesses";
+import {
+  businessesQueryKey,
+  businessesQueryOptions,
+  selectActiveBusiness,
+} from "@/lib/queries/businesses";
 
 const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 type BusinessErrors = Partial<Record<"name" | "currency" | "timeZone", string>>;
-
-async function selectActiveBusiness(organizationId: string) {
-  const result = await authClient.organization.setActive({ organizationId });
-  if (result.error) throw new Error("The active business could not be selected.");
-}
 
 export default function BusinessSetupScreen() {
   const foregroundColor = useCSSVariable("--color-foreground") as string;

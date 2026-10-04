@@ -40,7 +40,7 @@ export const OPERATE_ROUTE_PARENTS = {
   "/operate/reports": "/operate",
   "/operate/sales": "/operate",
   "/operate/sales/[saleId]": "/operate/sales",
-  "/operate/sales/correct/[saleId]": "/operate/sales",
+  "/operate/sales/correct/[saleId]": "/operate/sales/[saleId]",
   "/operate/sales/new": "/operate/sales",
 } as const satisfies Readonly<Record<string, string>>;
 
