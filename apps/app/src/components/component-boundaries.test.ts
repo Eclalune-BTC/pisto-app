@@ -97,6 +97,18 @@ describe("shared component boundaries", () => {
     expect(violations).toEqual([]);
   });
 
+  test("calls hooks as statements, never inside object or array literals", () => {
+    // The React Compiler memoizes literals, so a hook inside one is skipped on later renders and
+    // React aborts with a changed hook order; node tests do not run the compiler.
+    const violations = Object.entries(sources).flatMap(([path, source]) =>
+      source
+        .split("\n")
+        .filter((line) => /^\s+[\w"]+:\s*use[A-Z]\w*\s*[<(]/.test(line))
+        .map((line) => `${path}: ${line.trim()}`),
+    );
+    expect(violations).toEqual([]);
+  });
+
   test("does not replace missing query identity with a fictitious record", () => {
     const violations = Object.entries(sources)
       .filter(([, source]) =>

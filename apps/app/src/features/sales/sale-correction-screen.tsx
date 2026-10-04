@@ -67,10 +67,13 @@ export default function SaleCorrectionScreen() {
   const mounted = useRef(true);
   const editRef = useRef<View>(null);
   const reasonRef = useRef<TextInput>(null);
+  const amountRef = useRef<TextInput>(null);
+  const timeRef = useRef<TextInput>(null);
+  const descriptionRef = useRef<TextInput>(null);
   const fieldRefs: SaleDraftFieldRefs = {
-    amount: useRef<TextInput>(null),
-    time: useRef<TextInput>(null),
-    description: useRef<TextInput>(null),
+    amount: amountRef,
+    time: timeRef,
+    description: descriptionRef,
   };
   // A step change or a rejected draft moves focus to where the person continues. A review
   // focuses Editar, never the irreversible commit, so a repeated key press cannot correct.

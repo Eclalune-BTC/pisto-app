@@ -113,10 +113,13 @@ export function SaleReviewScreen({
   const acting = useRef(false);
   const mounted = useRef(true);
   const editRef = useRef<View>(null);
+  const amountRef = useRef<TextInput>(null);
+  const timeRef = useRef<TextInput>(null);
+  const descriptionRef = useRef<TextInput>(null);
   const fieldRefs: SaleDraftFieldRefs = {
-    amount: useRef<TextInput>(null),
-    time: useRef<TextInput>(null),
-    description: useRef<TextInput>(null),
+    amount: amountRef,
+    time: timeRef,
+    description: descriptionRef,
   };
   // A step change or a rejected draft moves focus to where the person continues; a prepared
   // review focuses Editar rather than the commit, so a repeated key press cannot post the sale.
