@@ -12,13 +12,15 @@ import {
   type AuthorizedBusinessContext,
   authorizeBusinessAction,
   type DatabaseTransaction,
+  type ProductActor,
 } from "./business-access.ts";
 import type { Database } from "./client.ts";
-import { type ProductActor, ProductError } from "./product-core.ts";
+import { ProductError } from "./errors.ts";
+import { paymentTotals } from "./receivables/records.ts";
 import { cashMovement, expense } from "./schema/cash.ts";
 import { cashAccount } from "./schema/cash-account.ts";
 import { catalogProduct, inventoryMovement } from "./schema/catalog.ts";
-import { receivable, receivablePayment } from "./schema/receivables.ts";
+import { receivable } from "./schema/receivables.ts";
 import { sale } from "./schema/sales.ts";
 
 export const REPORT_TRANSACTION_CONFIG = {
@@ -226,17 +228,8 @@ export function createReportsRepository(db: Database): ReportsRepository {
           overdue_receivable_count: string;
         };
         const [receivableRow] = await transaction.execute<ReceivableRow>(sql`
-          with payment_totals as (
-            select
-              ${receivablePayment.receivableId} as receivable_id,
-              sum(case
-                when ${receivablePayment.kind} = 'payment' then ${receivablePayment.amountMinorUnits}
-                else -${receivablePayment.amountMinorUnits}
-              end) as paid
-            from ${receivablePayment}
-            where ${receivablePayment.businessId} = ${access.businessId}
-            group by ${receivablePayment.receivableId}
-          ), balances as (
+          with payment_totals as (${paymentTotals(access.businessId)}),
+          balances as (
             select
               (${receivable.originalMinorUnits} - coalesce(payment_totals.paid, 0::numeric)) as outstanding,
               ${receivable.dueDate} is not null

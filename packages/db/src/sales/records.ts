@@ -3,13 +3,16 @@ import type {
   ReplaceSaleRequest,
   Sale,
   SaleCorrection,
+  SaleReview,
   VoidSaleRequest,
 } from "@pisto/contracts";
-import { saleCorrectionKindSchema, saleStatusSchema } from "@pisto/contracts";
+import { saleCorrectionKindSchema, saleReviewSchema, saleStatusSchema } from "@pisto/contracts";
+import { and, eq } from "drizzle-orm";
 
-import { fingerprintValue, maximumMinorUnits } from "./operation-log.ts";
-import { ProductError } from "./product-core.ts";
-import type { sale, saleCorrection } from "./schema/sales.ts";
+import type { DatabaseTransaction } from "../business-access.ts";
+import { ProductError } from "../errors.ts";
+import { fingerprintValue, type OperationCommandIdentity } from "../operation-log.ts";
+import type { sale, saleCorrection, saleOperation, saleReview } from "../schema/sales.ts";
 
 export type SaleRecord = typeof sale.$inferSelect;
 export type SaleCorrectionRecord = typeof saleCorrection.$inferSelect;
@@ -17,17 +20,8 @@ export type SaleCorrectionInput =
   | { kind: "void"; command: VoidSaleRequest }
   | { kind: "replacement"; command: ReplaceSaleRequest };
 
-export function parseSaleMinorUnits(value: string): bigint {
-  if (!/^[1-9]\d{0,18}$/.test(value)) {
-    throw new ProductError("VALIDATION_ERROR", "Sale total must be a positive integer");
-  }
-  const parsed = BigInt(value);
-  if (parsed > maximumMinorUnits) {
-    throw new ProductError("VALIDATION_ERROR", "Sale total is too large");
-  }
-  return parsed;
-}
-
+// Both sale fingerprints keep their original canonical shapes; changing either would
+// invalidate every stored sale receipt.
 export function saleFingerprint(command: CreateSaleRequest): Promise<string> {
   return fingerprintValue({
     version: 1,
@@ -47,6 +41,30 @@ export function correctionFingerprint(saleId: string, input: SaleCorrectionInput
     reason: input.command.reason,
     replacement: input.kind === "replacement" ? input.command.replacement : null,
   });
+}
+
+/**
+ * Sale posting and correction share one `(business, actor, key)` space across two
+ * receipt tables, so each path must refuse a key the other already committed.
+ */
+export async function requireKeyUnusedBy(
+  tx: DatabaseTransaction,
+  table: typeof saleOperation | typeof saleCorrection,
+  key: Pick<OperationCommandIdentity, "actorUserId" | "businessId" | "idempotencyKey">,
+  message: string,
+): Promise<void> {
+  const [used] = await tx
+    .select({ id: table.id })
+    .from(table)
+    .where(
+      and(
+        eq(table.businessId, key.businessId),
+        eq(table.actorUserId, key.actorUserId),
+        eq(table.idempotencyKey, key.idempotencyKey),
+      ),
+    )
+    .limit(1);
+  if (used) throw new ProductError("IDEMPOTENCY_CONFLICT", message);
 }
 
 export function toCorrection(record: SaleCorrectionRecord): SaleCorrection {
@@ -77,4 +95,17 @@ export function toSale(record: SaleRecord, correction: SaleCorrection | null = n
     correction,
     createdAt: record.createdAt.toISOString(),
   };
+}
+
+export function toSaleReview(record: typeof saleReview.$inferSelect): SaleReview {
+  return saleReviewSchema.parse({
+    id: record.id,
+    businessId: record.businessId,
+    command: record.command,
+    currency: record.currency,
+    currencyMinorUnitDigits: record.currencyMinorUnitDigits,
+    timeZone: record.timeZone,
+    createdAt: record.createdAt.toISOString(),
+    saleId: record.saleId,
+  });
 }

@@ -3,13 +3,17 @@ import { and, desc, eq, sql } from "drizzle-orm";
 
 import { authorizeBusinessAction } from "../business-access.ts";
 import type { Database } from "../client.ts";
-import { fingerprintValue } from "../operation-log.ts";
-import { exactCursorTimestamp } from "../pagination.ts";
-import { ProductError } from "../product-core.ts";
+import { parseInput } from "../errors.ts";
+import {
+  decodeCursor,
+  exactCursorTimestamp,
+  keysetBefore,
+  listFilterFingerprint,
+  pageRows,
+} from "../pagination.ts";
 import { receivable, receivablePayment } from "../schema/receivables.ts";
-import { authorize, currentReceivable, loadReceivable } from "./access.ts";
-import { decodeCursor, encodeCursor, uuidPattern, validate } from "./codec.ts";
 import { toPayment, toReceivable } from "./mappers.ts";
+import { businessLocalDate, currentReceivable, loadReceivable, paymentTotals } from "./records.ts";
 import type { ReceivablesRepository } from "./types.ts";
 
 type ReceivableQueries = Pick<
@@ -19,7 +23,7 @@ type ReceivableQueries = Pick<
 
 type ListRow = {
   created_at: Date | string;
-  created_at_exact: string;
+  createdAtExact: string;
   created_by_user_id: string;
   currency: string;
   currency_minor_unit_digits: number;
@@ -41,44 +45,29 @@ type ListRow = {
 export function createReceivableQueries(db: Database): ReceivableQueries {
   return {
     async listReceivables(actor, rawQuery) {
-      const query = validate(
+      const query = parseInput(
         listReceivablesQuerySchema,
         rawQuery,
         "Receivable list filters are invalid",
       );
-      const filterFingerprint = await fingerprintValue({
+      const filterFingerprint = await listFilterFingerprint("receivables", {
         customerId: query.customerId ?? null,
-        kind: "receivables",
         state: query.state,
-        version: 1,
       });
-      const cursor = query.cursor ? decodeCursor(query.cursor, filterFingerprint) : null;
+      const cursor = decodeCursor(query.cursor, filterFingerprint);
       return db.transaction(async (tx) => {
-        const access = await authorize(tx, actor, "receivables:read");
-        const customerFilter = query.customerId
-          ? sql`and ${receivable.customerId} = ${query.customerId}`
-          : sql``;
-        // Compared as `timestamptz` rather than through a JavaScript Date, which truncates
-        // PostgreSQL's microseconds and would drop rows sharing the boundary millisecond.
-        const cursorFilter = cursor
-          ? sql`and (
-              ${receivable.createdAt} < ${cursor.createdAt}::timestamptz
-              or (${receivable.createdAt} = ${cursor.createdAt}::timestamptz and ${receivable.id} < ${cursor.id})
-            )`
-          : sql``;
-        const stateFilter = query.state === "all" ? sql`` : sql`where state = ${query.state}`;
+        const access = await authorizeBusinessAction(tx, actor, ["receivables:read"]);
+        const localDate = businessLocalDate(access.timeZone);
+        const scope = and(
+          eq(receivable.businessId, access.businessId),
+          query.customerId ? eq(receivable.customerId, query.customerId) : undefined,
+          keysetBefore(receivable, cursor),
+        );
+        // The state is derived from payments and the business-local date, so the
+        // filter applies after derivation rather than to a stored column.
         const rows = await tx.execute<ListRow>(sql`
-          with payment_totals as (
-            select
-              ${receivablePayment.receivableId} as receivable_id,
-              coalesce(sum(case
-                when ${receivablePayment.kind} = 'payment' then ${receivablePayment.amountMinorUnits}
-                else -${receivablePayment.amountMinorUnits}
-              end), 0::numeric) as paid
-            from ${receivablePayment}
-            where ${receivablePayment.businessId} = ${access.businessId}
-            group by ${receivablePayment.receivableId}
-          ), derived as (
+          with payment_totals as (${paymentTotals(access.businessId)}),
+          derived as (
             select
               ${receivable.id} as id,
               ${receivable.customerId} as customer_id,
@@ -95,97 +84,61 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
               ${receivable.voidedAt} as voided_at,
               ${receivable.voidReason} as void_reason,
               ${receivable.createdAt} as created_at,
-              ${exactCursorTimestamp(receivable.createdAt)} as created_at_exact,
+              ${exactCursorTimestamp(receivable.createdAt)} as "createdAtExact",
               ${receivable.updatedAt} as updated_at,
-              to_char(transaction_timestamp() at time zone ${access.timeZone}, 'YYYY-MM-DD') as local_date,
+              ${localDate} as local_date,
               case
                 when ${receivable.status} = 'voided' then 'voided'
                 when ${receivable.originalMinorUnits} - coalesce(payment_totals.paid, 0::numeric) = 0 then 'paid'
-                when ${receivable.dueDate} is not null
-                  and ${receivable.dueDate} < to_char(transaction_timestamp() at time zone ${access.timeZone}, 'YYYY-MM-DD')
+                when ${receivable.dueDate} is not null and ${receivable.dueDate} < ${localDate}
                   then 'overdue'
                 else 'open'
               end as state
             from ${receivable}
             left join payment_totals on payment_totals.receivable_id = ${receivable.id}
-            where ${receivable.businessId} = ${access.businessId}
-              ${customerFilter}
-              ${cursorFilter}
+            where ${scope}
           )
-          select
-            id,
-            customer_id,
-            status,
-            original_minor_units,
-            paid_minor_units,
-            currency,
-            currency_minor_unit_digits,
-            description,
-            posted_date,
-            due_date,
-            created_by_user_id,
-            voided_by_user_id,
-            voided_at,
-            void_reason,
-            created_at,
-            created_at_exact,
-            updated_at,
-            local_date
-          from derived
-          ${stateFilter}
+          select * from derived
+          ${query.state === "all" ? sql`` : sql`where state = ${query.state}`}
           order by created_at desc, id desc
           limit ${query.limit + 1}
         `);
-        const hasMore = rows.length > query.limit;
-        const page = rows.slice(0, query.limit);
-        const items = page.map((row) =>
-          toReceivable(
-            {
-              id: row.id,
-              businessId: access.businessId,
-              customerId: row.customer_id,
-              status: row.status,
-              originalMinorUnits: BigInt(row.original_minor_units),
-              currency: row.currency,
-              currencyMinorUnitDigits: row.currency_minor_unit_digits,
-              description: row.description,
-              postedDate: row.posted_date,
-              dueDate: row.due_date,
-              createdByUserId: row.created_by_user_id,
-              voidedByUserId: row.voided_by_user_id,
-              voidedAt: row.voided_at ? new Date(row.voided_at) : null,
-              voidReason: row.void_reason,
-              createdAt: new Date(row.created_at),
-              updatedAt: new Date(row.updated_at),
-            },
-            BigInt(row.paid_minor_units),
-            row.local_date,
-          ),
-        );
-        const last = page.at(-1);
+        const page = pageRows(rows, query.limit, filterFingerprint);
         return {
-          items,
-          nextCursor:
-            hasMore && last
-              ? encodeCursor({
-                  createdAt: last.created_at_exact,
-                  filterFingerprint,
-                  id: last.id,
-                  version: 1,
-                })
-              : null,
+          items: page.rows.map((row) =>
+            toReceivable(
+              {
+                id: row.id,
+                businessId: access.businessId,
+                customerId: row.customer_id,
+                status: row.status,
+                originalMinorUnits: BigInt(row.original_minor_units),
+                currency: row.currency,
+                currencyMinorUnitDigits: row.currency_minor_unit_digits,
+                description: row.description,
+                postedDate: row.posted_date,
+                dueDate: row.due_date,
+                createdByUserId: row.created_by_user_id,
+                voidedByUserId: row.voided_by_user_id,
+                voidedAt: row.voided_at ? new Date(row.voided_at) : null,
+                voidReason: row.void_reason,
+                createdAt: new Date(row.created_at),
+                updatedAt: new Date(row.updated_at),
+              },
+              BigInt(row.paid_minor_units),
+              row.local_date,
+            ),
+          ),
+          nextCursor: page.nextCursor,
         };
       });
     },
 
     async getReceivable(actor, receivableId) {
-      if (!uuidPattern.test(receivableId)) {
-        throw new ProductError("NOT_FOUND", "Receivable was not found");
-      }
       return db.transaction(
         async (tx) => {
           const access = await authorizeBusinessAction(tx, actor, ["receivables:read"], "none");
-          const record = await loadReceivable(tx, access, receivableId);
+          const record = await loadReceivable(tx, access, receivableId, false);
           const paymentRecords = await tx
             .select()
             .from(receivablePayment)
@@ -207,55 +160,33 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
 
     async getSummary(actor) {
       return db.transaction(async (tx) => {
-        const access = await authorize(tx, actor, "receivables:read");
+        const access = await authorizeBusinessAction(tx, actor, ["receivables:read"]);
         type SummaryRow = {
           business_local_date: string;
           open_count: string;
           outstanding: string;
           overdue: string;
           overdue_count: string;
-          queried_at: Date | string;
         };
+        const localDate = businessLocalDate(access.timeZone);
         const [row] = await tx.execute<SummaryRow>(sql`
-          with payment_totals as (
-            select
-              ${receivablePayment.receivableId} as receivable_id,
-              coalesce(sum(case
-                when ${receivablePayment.kind} = 'payment' then ${receivablePayment.amountMinorUnits}
-                else -${receivablePayment.amountMinorUnits}
-              end), 0::numeric) as paid
-            from ${receivablePayment}
-            where ${receivablePayment.businessId} = ${access.businessId}
-            group by ${receivablePayment.receivableId}
-          ), clock as (
-            select
-              transaction_timestamp() as queried_at,
-              to_char(transaction_timestamp() at time zone ${access.timeZone}, 'YYYY-MM-DD') as local_date
-          ), balances as (
+          with payment_totals as (${paymentTotals(access.businessId)}),
+          balances as (
             select
               (${receivable.originalMinorUnits} - coalesce(payment_totals.paid, 0::numeric)) as outstanding,
-              ${receivable.dueDate} < clock.local_date as overdue
+              ${receivable.dueDate} < ${localDate} as overdue
             from ${receivable}
             left join payment_totals on payment_totals.receivable_id = ${receivable.id}
-            cross join clock
             where ${receivable.businessId} = ${access.businessId}
               and ${receivable.status} = 'posted'
-          ), totals as (
-            select
-              coalesce(sum(outstanding), 0::numeric)::text as outstanding,
-              coalesce(sum(case when overdue and outstanding > 0 then outstanding else 0 end), 0::numeric)::text as overdue,
-              count(*) filter (where outstanding > 0)::text as open_count,
-              count(*) filter (where overdue and outstanding > 0)::text as overdue_count
-            from balances
           )
           select
-            totals.outstanding,
-            totals.overdue,
-            totals.open_count,
-            totals.overdue_count,
-            clock.local_date as business_local_date,
-            clock.queried_at as queried_at
-          from totals, clock
+            coalesce(sum(outstanding), 0::numeric)::text as outstanding,
+            coalesce(sum(case when overdue and outstanding > 0 then outstanding else 0 end), 0::numeric)::text as overdue,
+            count(*) filter (where outstanding > 0)::text as open_count,
+            count(*) filter (where overdue and outstanding > 0)::text as overdue_count,
+            ${localDate} as business_local_date
+          from balances
         `);
         if (!row) throw new Error("Receivables summary query returned no row");
         return {
@@ -267,7 +198,7 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
           overdueReceivableCount: row.overdue_count,
           businessLocalDate: row.business_local_date,
           timeZone: access.timeZone,
-          queriedAt: new Date(row.queried_at).toISOString(),
+          queriedAt: access.queriedAt.toISOString(),
         };
       });
     },

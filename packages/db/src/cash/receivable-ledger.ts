@@ -1,10 +1,10 @@
 import { and, eq } from "drizzle-orm";
 
-import type { AuthorizedBusinessContext } from "../business-access.ts";
-import { ProductError } from "../product-core.ts";
+import type { AuthorizedBusinessContext, DatabaseTransaction } from "../business-access.ts";
+import { ProductError } from "../errors.ts";
 import { cashMovement } from "../schema/cash.ts";
-import { getAccountBalance, lockAccount, requireSufficientBalance } from "./access.ts";
-import type { CashMovementRecord, CashTransaction } from "./types.ts";
+import { getAccountBalance, lockAccount, requireSufficientBalance } from "./records.ts";
+import type { CashMovementRecord } from "./types.ts";
 
 interface ReceivableCashMovementInput {
   access: AuthorizedBusinessContext;
@@ -35,7 +35,7 @@ function requireMatchingMoneySnapshot(
 }
 
 export async function appendReceivablePaymentCashMovement(
-  tx: CashTransaction,
+  tx: DatabaseTransaction,
   input: ReceivableCashMovementInput,
 ): Promise<CashMovementRecord> {
   requireMatchingMoneySnapshot(input.access, input);
@@ -71,7 +71,7 @@ export async function appendReceivablePaymentCashMovement(
 }
 
 export async function reverseReceivablePaymentCashMovement(
-  tx: CashTransaction,
+  tx: DatabaseTransaction,
   input: {
     access: AuthorizedBusinessContext;
     actorUserId: string;

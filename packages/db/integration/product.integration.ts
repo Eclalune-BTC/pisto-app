@@ -637,11 +637,12 @@ describe("product repository on PostgreSQL 18", () => {
       .update(session)
       .set({ expiresAt: new Date(Date.now() - 1_000) })
       .where(eq(session.id, sessionIds[0] as string));
+    // An expired session is unauthenticated for every read, like the other repositories.
     await expect(repository.getSale(activeActor, first.sale.id)).rejects.toMatchObject({
-      code: "NOT_FOUND",
+      code: "UNAUTHORIZED",
     });
     await expect(repository.getPreviousMonthSummary(activeActor)).rejects.toMatchObject({
-      code: "FORBIDDEN",
+      code: "UNAUTHORIZED",
     });
   });
 });

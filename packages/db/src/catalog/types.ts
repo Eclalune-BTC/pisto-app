@@ -18,16 +18,12 @@ import type {
   UpdateProductRequest,
 } from "@pisto/contracts";
 
-import type { Database } from "../client.ts";
-import type { ProductActor } from "../product-core.ts";
+import type { ProductActor } from "../business-access.ts";
 import type { catalogCategory, catalogProduct, inventoryMovement } from "../schema/catalog.ts";
 
-export type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
-export type DatabaseExecutor = Database | DatabaseTransaction;
 export type CategoryRecord = typeof catalogCategory.$inferSelect;
 export type ProductRecord = typeof catalogProduct.$inferSelect;
 export type MovementRecord = typeof inventoryMovement.$inferSelect;
-export type CursorKind = "category" | "product" | "movement" | "stock";
 export type OperationAction =
   | "category.created"
   | "category.updated"
@@ -39,13 +35,6 @@ export type OperationAction =
   | "inventory.adjust_in"
   | "inventory.adjust_out"
   | "inventory.reverse";
-
-export interface AuthorizedBusiness {
-  businessId: string;
-  currency: string;
-  currencyMinorUnitDigits: number;
-  timeZone: string;
-}
 
 export interface Page<T> {
   items: T[];

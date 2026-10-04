@@ -14,7 +14,7 @@ import {
   session,
   user,
 } from "../src/index.ts";
-import { postSale } from "../src/sales-posting.ts";
+import { postSale } from "../src/sales/posting.ts";
 
 const database = createDatabase({ ...parseDatabaseConfig(process.env), maxConnections: 6 });
 const repository = createProductRepository(database.db);
@@ -36,6 +36,55 @@ const command = () => ({
 function ownerBusinessId(): string {
   if (!owner.activeBusinessId) throw new Error("Missing synthetic business");
   return owner.activeBusinessId;
+}
+/** A database whose transactions pause once their `selectNumber`-th SELECT returns. */
+function pauseAfterSelect(selectNumber: number, onPause: () => void, resume: Promise<void>) {
+  let seen = 0;
+  function wrap<T extends object>(builder: T): T {
+    return new Proxy(builder, {
+      get(target, property) {
+        const value = Reflect.get(target, property);
+        if (property === "then") {
+          return (resolve: (rows: unknown) => unknown, reject: (error: unknown) => unknown) =>
+            Promise.resolve(target)
+              .then(async (rows) => {
+                seen += 1;
+                if (seen === selectNumber) {
+                  onPause();
+                  await resume;
+                }
+                return rows;
+              })
+              .then(resolve, reject);
+        }
+        if (typeof value !== "function") return value;
+        return (...args: unknown[]) => {
+          const result = value.apply(target, args);
+          return result && typeof result === "object" ? wrap(result) : result;
+        };
+      },
+    });
+  }
+  return new Proxy(database.db, {
+    get(target, property) {
+      if (property !== "transaction") return Reflect.get(target, property);
+      return (callback: Parameters<typeof target.transaction>[0]) =>
+        target.transaction((tx) =>
+          callback(
+            new Proxy(tx, {
+              get(transaction, name) {
+                const value = Reflect.get(transaction, name);
+                if (name === "select") {
+                  return (...args: Parameters<typeof transaction.select>) =>
+                    wrap(transaction.select(...args));
+                }
+                return typeof value === "function" ? value.bind(transaction) : value;
+              },
+            }),
+          ),
+        );
+    },
+  });
 }
 const ownSales = () =>
   database.db.select().from(sale).where(eq(sale.businessId, ownerBusinessId()));
@@ -125,6 +174,29 @@ describe("server-owned sale review recovery", () => {
     await expect(repository.prepareSaleReview(owner, command())).rejects.toMatchObject({
       code: "CONFLICT",
     });
+  });
+  test("a second preparation waits for the first open review instead of hitting the index", async () => {
+    const open = await repository.getSaleReview(owner);
+    if (open) await repository.dismissSaleReview(owner, open.id, open.saleId);
+    const paused = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    // Pause the first preparation right after its open-review check returns.
+    const first = createProductRepository(pauseAfterSelect(4, paused.resolve, release.promise));
+    const firstResult = first.prepareSaleReview(owner, command()).then(
+      (review) => ({ review }),
+      (error: unknown) => ({ error }),
+    );
+    await paused.promise;
+    const secondResult = repository.prepareSaleReview(owner, command()).then(
+      (review) => ({ review }),
+      (error: unknown) => ({ error }),
+    );
+    await Bun.sleep(200);
+    release.resolve();
+    const [winner, loser] = await Promise.all([firstResult, secondResult]);
+    expect(winner).toHaveProperty("review");
+    expect(loser).toMatchObject({ error: { code: "CONFLICT" } });
+    if ("review" in winner) await repository.dismissSaleReview(owner, winner.review.id, null);
   });
   test("double confirmation commits exactly once and the lost result remains recoverable", async () => {
     const before = (await ownSales()).length;

@@ -4,7 +4,7 @@ import { z } from "zod";
 import {
   fingerprintCommand,
   fingerprintValue,
-  maximumMinorUnits,
+  normalizeIdempotencyKey,
   parseReplaySnapshot,
   sha256Hex,
 } from "../src/operation-log.ts";
@@ -55,7 +55,9 @@ describe("shared operation log primitives", () => {
     expect(() => parseReplaySnapshot(schema, null, "boom")).toThrow("boom");
   });
 
-  test("pins the shared int64 ceiling", () => {
-    expect(maximumMinorUnits).toBe(9_223_372_036_854_775_807n);
+  test("locks one spelling of a UUID idempotency key", () => {
+    expect(normalizeIdempotencyKey("71402E0C-B17D-4D8C-83AE-8D163D10D51D")).toBe(
+      "71402e0c-b17d-4d8c-83ae-8d163d10d51d",
+    );
   });
 });

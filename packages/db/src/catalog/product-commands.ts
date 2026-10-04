@@ -6,29 +6,75 @@ import {
 } from "@pisto/contracts";
 import { and, eq, ne, sql } from "drizzle-orm";
 
+import type { DatabaseTransaction } from "../business-access.ts";
 import type { Database } from "../client.ts";
-import { lockSemanticKey } from "../operation-log.ts";
-import { ProductError } from "../product-core.ts";
-import { catalogProduct, inventoryMovement } from "../schema/catalog.ts";
+import { ProductError, parseInput } from "../errors.ts";
+import { parseMinorUnits } from "../money.ts";
 import {
-  fingerprint,
-  normalizeSku,
-  parseMutationReplay,
-  parseQuantity,
-  toProduct,
-} from "./codec.ts";
-import { beginCatalogOperation, requireActiveCategory, saveOperation } from "./operations.ts";
+  beginOperation,
+  fingerprintCommand,
+  lockSemanticKey,
+  saveOperation,
+} from "../operation-log.ts";
+import { catalogProduct, inventoryMovement } from "../schema/catalog.ts";
+import { toProduct } from "./mappers.ts";
+import { catalogOperationLog, requireActiveCategory } from "./records.ts";
 import type { ProductCommands } from "./types.ts";
+
+const productSnapshotSchema = productMutationResponseSchema.shape.data.omit({ replayed: true });
+
+function normalizeSku(value: string | null | undefined): string | null {
+  const normalized = value?.trim() ?? "";
+  return normalized.length > 0 ? normalized : null;
+}
+
+function parseOptionalAmount(value: string | null, label: string): bigint | null {
+  return value === null ? null : parseMinorUnits(value, label, { allowZero: true });
+}
+
+async function requireUniqueSku(
+  tx: DatabaseTransaction,
+  businessId: string,
+  sku: string,
+  exceptId?: string,
+): Promise<void> {
+  await lockSemanticKey(tx, "product-sku", businessId, sku);
+  const [duplicate] = await tx
+    .select({ id: catalogProduct.id })
+    .from(catalogProduct)
+    .where(
+      and(
+        eq(catalogProduct.businessId, businessId),
+        exceptId === undefined ? undefined : ne(catalogProduct.id, exceptId),
+        sql`lower(${catalogProduct.sku}) = lower(${sku})`,
+      ),
+    )
+    .limit(1);
+  if (duplicate) throw new ProductError("CONFLICT", "A product with that SKU already exists");
+}
+
+async function lockExistingProduct(tx: DatabaseTransaction, businessId: string, id: string) {
+  const [existing] = await tx
+    .select()
+    .from(catalogProduct)
+    .where(and(eq(catalogProduct.businessId, businessId), eq(catalogProduct.id, id)))
+    .limit(1)
+    .for("update");
+  if (!existing) throw new ProductError("NOT_FOUND", "Product was not found");
+  return existing;
+}
 
 export function createProductCommands(db: Database): ProductCommands {
   return {
-    async createProduct(actor, inputCommand) {
-      const parsed = createProductRequestSchema.safeParse(inputCommand);
-      if (!parsed.success) throw new ProductError("VALIDATION_ERROR", "Product command is invalid");
-      const command = parsed.data;
+    async createProduct(actor, rawCommand) {
+      const command = parseInput(
+        createProductRequestSchema,
+        rawCommand,
+        "Product command is invalid",
+      );
       const normalizedSku = normalizeSku(command.sku);
-      const action = "product.created" as const;
-      const commandFingerprint = await fingerprint(action, {
+      const action = "product.created";
+      const commandFingerprint = await fingerprintCommand(action, {
         categoryId: command.categoryId ?? null,
         lowStockThresholdMinorUnits: command.lowStockThresholdMinorUnits ?? null,
         name: command.name,
@@ -38,43 +84,30 @@ export function createProductCommands(db: Database): ProductCommands {
         tracked: command.tracked,
         unitKind: command.unitKind,
       });
-      return db.transaction(async (transaction) => {
-        const { access, identity, replay } = await beginCatalogOperation(
-          transaction,
+      return db.transaction(async (tx) => {
+        const { access, identity, replay } = await beginOperation(tx, {
+          action,
           actor,
-          "catalog:manage",
-          { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
-        );
-        if (replay) {
-          return parseMutationReplay(productMutationResponseSchema.shape.data, replay.result);
-        }
+          commandFingerprint,
+          idempotencyKey: command.idempotencyKey,
+          log: catalogOperationLog,
+          permissions: ["catalog:manage"],
+          snapshot: productSnapshotSchema,
+        });
+        if (replay) return { ...replay, replayed: true };
         if (command.categoryId) {
-          await requireActiveCategory(transaction, access.businessId, command.categoryId);
+          await requireActiveCategory(tx, access.businessId, command.categoryId);
         }
-        if (normalizedSku) {
-          await lockSemanticKey(transaction, "product-sku", access.businessId, normalizedSku);
-          const [duplicate] = await transaction
-            .select({ id: catalogProduct.id })
-            .from(catalogProduct)
-            .where(
-              and(
-                eq(catalogProduct.businessId, access.businessId),
-                sql`lower(${catalogProduct.sku}) = lower(${normalizedSku})`,
-              ),
-            )
-            .limit(1);
-          if (duplicate)
-            throw new ProductError("CONFLICT", "A product with that SKU already exists");
-        }
-        const sellingPrice =
-          command.sellingPriceMinorUnits == null
-            ? null
-            : parseQuantity(command.sellingPriceMinorUnits, "Selling price", true);
-        const lowStockThreshold =
-          command.lowStockThresholdMinorUnits == null
-            ? null
-            : parseQuantity(command.lowStockThresholdMinorUnits, "Low-stock threshold", true);
-        const [created] = await transaction
+        if (normalizedSku) await requireUniqueSku(tx, access.businessId, normalizedSku);
+        const sellingPrice = parseOptionalAmount(
+          command.sellingPriceMinorUnits ?? null,
+          "Selling price",
+        );
+        const lowStockThreshold = parseOptionalAmount(
+          command.lowStockThresholdMinorUnits ?? null,
+          "Low-stock threshold",
+        );
+        const [created] = await tx
           .insert(catalogProduct)
           .values({
             businessId: access.businessId,
@@ -93,7 +126,7 @@ export function createProductCommands(db: Database): ProductCommands {
           .returning();
         if (!created) throw new Error("Product insert returned no record");
         const product = toProduct(created);
-        await saveOperation(transaction, identity, {
+        await saveOperation(tx, catalogOperationLog, identity, {
           productId: product.id,
           resultSnapshot: { product },
         });
@@ -101,13 +134,15 @@ export function createProductCommands(db: Database): ProductCommands {
       });
     },
 
-    async updateProduct(actor, productId, inputCommand) {
-      const parsed = updateProductRequestSchema.safeParse(inputCommand);
-      if (!parsed.success) throw new ProductError("VALIDATION_ERROR", "Product command is invalid");
-      const command = parsed.data;
+    async updateProduct(actor, productId, rawCommand) {
+      const command = parseInput(
+        updateProductRequestSchema,
+        rawCommand,
+        "Product command is invalid",
+      );
       const normalizedSku = command.sku === undefined ? undefined : normalizeSku(command.sku);
-      const action = "product.updated" as const;
-      const commandFingerprint = await fingerprint(action, {
+      const action = "product.updated";
+      const commandFingerprint = await fingerprintCommand(action, {
         productId,
         categoryId: command.categoryId,
         lowStockThresholdMinorUnits: command.lowStockThresholdMinorUnits,
@@ -118,47 +153,25 @@ export function createProductCommands(db: Database): ProductCommands {
         tracked: command.tracked,
         unitKind: command.unitKind,
       });
-      return db.transaction(async (transaction) => {
-        const { access, identity, replay } = await beginCatalogOperation(
-          transaction,
+      return db.transaction(async (tx) => {
+        const { access, identity, replay } = await beginOperation(tx, {
+          action,
           actor,
-          "catalog:manage",
-          { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
-        );
-        if (replay) {
-          return parseMutationReplay(productMutationResponseSchema.shape.data, replay.result);
-        }
-        const [existing] = await transaction
-          .select()
-          .from(catalogProduct)
-          .where(
-            and(eq(catalogProduct.businessId, access.businessId), eq(catalogProduct.id, productId)),
-          )
-          .limit(1)
-          .for("update");
-        if (!existing) throw new ProductError("NOT_FOUND", "Product was not found");
+          commandFingerprint,
+          idempotencyKey: command.idempotencyKey,
+          log: catalogOperationLog,
+          permissions: ["catalog:manage"],
+          snapshot: productSnapshotSchema,
+        });
+        if (replay) return { ...replay, replayed: true };
+        const existing = await lockExistingProduct(tx, access.businessId, productId);
         if (existing.status === "archived") {
           throw new ProductError("CONFLICT", "An archived product cannot be updated");
         }
         if (command.categoryId) {
-          await requireActiveCategory(transaction, access.businessId, command.categoryId);
+          await requireActiveCategory(tx, access.businessId, command.categoryId);
         }
-        if (normalizedSku) {
-          await lockSemanticKey(transaction, "product-sku", access.businessId, normalizedSku);
-          const [duplicate] = await transaction
-            .select({ id: catalogProduct.id })
-            .from(catalogProduct)
-            .where(
-              and(
-                eq(catalogProduct.businessId, access.businessId),
-                ne(catalogProduct.id, productId),
-                sql`lower(${catalogProduct.sku}) = lower(${normalizedSku})`,
-              ),
-            )
-            .limit(1);
-          if (duplicate)
-            throw new ProductError("CONFLICT", "A product with that SKU already exists");
-        }
+        if (normalizedSku) await requireUniqueSku(tx, access.businessId, normalizedSku, productId);
         const precisionChanges =
           command.quantityPrecision !== undefined &&
           command.quantityPrecision !== existing.quantityPrecision;
@@ -166,7 +179,7 @@ export function createProductCommands(db: Database): ProductCommands {
         const unitChanges =
           command.unitKind !== undefined && command.unitKind !== existing.unitKind;
         if (precisionChanges || disablesTracking || unitChanges) {
-          const [movement] = await transaction
+          const [movement] = await tx
             .select({ id: inventoryMovement.id })
             .from(inventoryMovement)
             .where(
@@ -190,17 +203,13 @@ export function createProductCommands(db: Database): ProductCommands {
         const sellingPrice =
           command.sellingPriceMinorUnits === undefined
             ? undefined
-            : command.sellingPriceMinorUnits === null
-              ? null
-              : parseQuantity(command.sellingPriceMinorUnits, "Selling price", true);
+            : parseOptionalAmount(command.sellingPriceMinorUnits, "Selling price");
         const lowStockThreshold =
           command.lowStockThresholdMinorUnits === undefined
             ? undefined
-            : command.lowStockThresholdMinorUnits === null
-              ? null
-              : parseQuantity(command.lowStockThresholdMinorUnits, "Low-stock threshold", true);
+            : parseOptionalAmount(command.lowStockThresholdMinorUnits, "Low-stock threshold");
         const nextTracked = command.tracked ?? existing.tracked;
-        const [updated] = await transaction
+        const [updated] = await tx
           .update(catalogProduct)
           .set({
             ...(command.categoryId !== undefined ? { categoryId: command.categoryId } : {}),
@@ -224,7 +233,7 @@ export function createProductCommands(db: Database): ProductCommands {
               : command.tracked === false
                 ? { lowStockThresholdMinorUnits: null }
                 : {}),
-            updatedAt: new Date(),
+            updatedAt: access.queriedAt,
           })
           .where(
             and(eq(catalogProduct.businessId, access.businessId), eq(catalogProduct.id, productId)),
@@ -232,7 +241,7 @@ export function createProductCommands(db: Database): ProductCommands {
           .returning();
         if (!updated) throw new Error("Product update returned no record");
         const product = toProduct(updated);
-        await saveOperation(transaction, identity, {
+        await saveOperation(tx, catalogOperationLog, identity, {
           productId,
           resultSnapshot: { product },
         });
@@ -240,44 +249,39 @@ export function createProductCommands(db: Database): ProductCommands {
       });
     },
 
-    async archiveProduct(actor, productId, inputCommand) {
-      const parsed = archiveProductRequestSchema.safeParse(inputCommand);
-      if (!parsed.success) throw new ProductError("VALIDATION_ERROR", "Product command is invalid");
-      const command = parsed.data;
-      const action = "product.archived" as const;
-      const commandFingerprint = await fingerprint(action, { productId });
-      return db.transaction(async (transaction) => {
-        const { access, identity, replay } = await beginCatalogOperation(
-          transaction,
+    async archiveProduct(actor, productId, rawCommand) {
+      const command = parseInput(
+        archiveProductRequestSchema,
+        rawCommand,
+        "Product command is invalid",
+      );
+      const action = "product.archived";
+      const commandFingerprint = await fingerprintCommand(action, { productId });
+      return db.transaction(async (tx) => {
+        const { access, identity, replay } = await beginOperation(tx, {
+          action,
           actor,
-          "catalog:manage",
-          { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
-        );
-        if (replay) {
-          return parseMutationReplay(productMutationResponseSchema.shape.data, replay.result);
-        }
-        const [existing] = await transaction
-          .select()
-          .from(catalogProduct)
-          .where(
-            and(eq(catalogProduct.businessId, access.businessId), eq(catalogProduct.id, productId)),
-          )
-          .limit(1)
-          .for("update");
-        if (!existing) throw new ProductError("NOT_FOUND", "Product was not found");
+          commandFingerprint,
+          idempotencyKey: command.idempotencyKey,
+          log: catalogOperationLog,
+          permissions: ["catalog:manage"],
+          snapshot: productSnapshotSchema,
+        });
+        if (replay) return { ...replay, replayed: true };
+        const existing = await lockExistingProduct(tx, access.businessId, productId);
         if (existing.status === "archived") {
           throw new ProductError("CONFLICT", "The product is already archived");
         }
-        const [updated] = await transaction
+        const [updated] = await tx
           .update(catalogProduct)
-          .set({ status: "archived", updatedAt: new Date() })
+          .set({ status: "archived", updatedAt: access.queriedAt })
           .where(
             and(eq(catalogProduct.businessId, access.businessId), eq(catalogProduct.id, productId)),
           )
           .returning();
         if (!updated) throw new Error("Product archive returned no record");
         const product = toProduct(updated);
-        await saveOperation(transaction, identity, {
+        await saveOperation(tx, catalogOperationLog, identity, {
           productId,
           resultSnapshot: { product },
         });

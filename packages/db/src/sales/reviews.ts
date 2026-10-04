@@ -1,39 +1,49 @@
-import {
-  type CreateSaleRequest,
-  createSaleRequestSchema,
-  type SaleReview,
-  saleReviewSchema,
-} from "@pisto/contracts";
+import { createSaleRequestSchema } from "@pisto/contracts";
 import { and, eq, isNull } from "drizzle-orm";
 
-import { authorizeBusinessAction } from "./business-access.ts";
-import type { Database } from "./client.ts";
-import { lockCommandKey } from "./operation-log.ts";
-import { type ProductActor, ProductError, resolveLocalDateTime } from "./product-core.ts";
-import { postSale } from "./sales-posting.ts";
-import { saleFingerprint } from "./sales-records.ts";
-import { saleCorrection, saleOperation, saleReview } from "./schema/sales.ts";
+import {
+  authorizeBusinessAction,
+  type DatabaseTransaction,
+  type ProductActor,
+} from "../business-access.ts";
+import type { Database } from "../client.ts";
+import { ProductError, parseInput } from "../errors.ts";
+import { resolveLocalDateTime } from "../local-time.ts";
+import { lockCommandKey, lockSemanticKey, normalizeIdempotencyKey } from "../operation-log.ts";
+import { saleCorrection, saleOperation, saleReview } from "../schema/sales.ts";
+import { postAuthorizedSale } from "./posting.ts";
+import { requireKeyUnusedBy, saleFingerprint, toSaleReview } from "./records.ts";
+import type { SalesRepository } from "./types.ts";
+
+type ReviewCommands = Pick<
+  SalesRepository,
+  "confirmSaleReview" | "dismissSaleReview" | "getSaleReview" | "prepareSaleReview"
+>;
 
 function reviewOwner(actor: ProductActor, businessId: string) {
   return and(eq(saleReview.businessId, businessId), eq(saleReview.actorUserId, actor.userId));
 }
 
-export function toSaleReview(record: typeof saleReview.$inferSelect): SaleReview {
-  return saleReviewSchema.parse({
-    id: record.id,
-    businessId: record.businessId,
-    command: record.command,
-    currency: record.currency,
-    currencyMinorUnitDigits: record.currencyMinorUnitDigits,
-    timeZone: record.timeZone,
-    createdAt: record.createdAt.toISOString(),
-    saleId: record.saleId,
+async function lockOwnReview(tx: DatabaseTransaction, actor: ProductActor, rawReviewId: string) {
+  const access = await authorizeBusinessAction(tx, actor, ["sales:create"]);
+  const reviewId = normalizeIdempotencyKey(rawReviewId);
+  await lockCommandKey(tx, {
+    businessId: access.businessId,
+    actorUserId: actor.userId,
+    idempotencyKey: reviewId,
   });
+  const [record] = await tx
+    .select()
+    .from(saleReview)
+    .where(and(reviewOwner(actor, access.businessId), eq(saleReview.id, reviewId)))
+    .for("update")
+    .limit(1);
+  return { access, record };
 }
 
-export function createSaleReviewRepository(db: Database) {
+export function createReviewCommands(db: Database): ReviewCommands {
   return {
-    getSaleReview(actor: ProductActor): Promise<SaleReview | null> {
+    getSaleReview(actor) {
       return db.transaction(async (tx) => {
         const access = await authorizeBusinessAction(tx, actor, ["sales:create"]);
         const [record] = await tx
@@ -45,21 +55,20 @@ export function createSaleReviewRepository(db: Database) {
       });
     },
 
-    async prepareSaleReview(
-      actor: ProductActor,
-      rawCommand: CreateSaleRequest,
-    ): Promise<SaleReview> {
-      const parsed = createSaleRequestSchema.safeParse(rawCommand);
-      if (!parsed.success) throw new ProductError("VALIDATION_ERROR", "The sale review is invalid");
-      const command = { ...parsed.data, idempotencyKey: parsed.data.idempotencyKey.toLowerCase() };
+    async prepareSaleReview(actor, rawCommand) {
+      const parsed = parseInput(createSaleRequestSchema, rawCommand, "The sale review is invalid");
+      // The stored review id must equal the command key, and PostgreSQL stores a UUID
+      // in lower case, so the snapshot keeps the normalized spelling.
+      const command = { ...parsed, idempotencyKey: normalizeIdempotencyKey(parsed.idempotencyKey) };
       const fingerprint = await saleFingerprint(command);
       return db.transaction(async (tx) => {
-        const access = await authorizeBusinessAction(tx, actor, ["sales:create"], "update");
-        await lockCommandKey(tx, {
+        const access = await authorizeBusinessAction(tx, actor, ["sales:create"]);
+        const key = {
           businessId: access.businessId,
           actorUserId: actor.userId,
           idempotencyKey: command.idempotencyKey,
-        });
+        };
+        await lockCommandKey(tx, key);
         const [existing] = await tx
           .select()
           .from(saleReview)
@@ -83,6 +92,9 @@ export function createSaleReviewRepository(db: Database) {
           }
           return review;
         }
+        // One open review per actor: serialize preparations with different keys so the
+        // check below sees a concurrent commit instead of failing on the unique index.
+        await lockSemanticKey(tx, "sale-review-open", access.businessId, actor.userId);
         const [open] = await tx
           .select({ id: saleReview.id })
           .from(saleReview)
@@ -90,22 +102,7 @@ export function createSaleReviewRepository(db: Database) {
           .limit(1);
         if (open) throw new ProductError("CONFLICT", "Resolve the existing sale review first");
         for (const table of [saleOperation, saleCorrection]) {
-          const [used] = await tx
-            .select({ id: table.id })
-            .from(table)
-            .where(
-              and(
-                eq(table.businessId, access.businessId),
-                eq(table.actorUserId, actor.userId),
-                eq(table.idempotencyKey, command.idempotencyKey),
-              ),
-            )
-            .limit(1);
-          if (used)
-            throw new ProductError(
-              "IDEMPOTENCY_CONFLICT",
-              "That confirmation key was already used",
-            );
+          await requireKeyUnusedBy(tx, table, key, "That confirmation key was already used");
         }
         resolveLocalDateTime({
           date: command.occurredLocalDate,
@@ -129,44 +126,19 @@ export function createSaleReviewRepository(db: Database) {
       });
     },
 
-    confirmSaleReview(actor: ProductActor, reviewId: string) {
+    confirmSaleReview(actor, reviewId) {
       return db.transaction(async (tx) => {
-        const access = await authorizeBusinessAction(tx, actor, ["sales:create"], "update");
-        await lockCommandKey(tx, {
-          businessId: access.businessId,
-          actorUserId: actor.userId,
-          idempotencyKey: reviewId,
-        });
-        const [record] = await tx
-          .select()
-          .from(saleReview)
-          .where(and(reviewOwner(actor, access.businessId), eq(saleReview.id, reviewId)))
-          .for("update")
-          .limit(1);
-        if (!record || record.closedAt)
+        const { access, record } = await lockOwnReview(tx, actor, reviewId);
+        if (!record || record.closedAt) {
           throw new ProductError("NOT_FOUND", "Sale review was not found");
-        return postSale(tx, actor, toSaleReview(record).command);
+        }
+        return postAuthorizedSale(tx, access, actor, toSaleReview(record).command);
       });
     },
 
-    dismissSaleReview(
-      actor: ProductActor,
-      reviewId: string,
-      acknowledgedSaleId: string | null,
-    ): Promise<{ saleId: string | null }> {
+    dismissSaleReview(actor, reviewId, acknowledgedSaleId) {
       return db.transaction(async (tx) => {
-        const access = await authorizeBusinessAction(tx, actor, ["sales:create"], "update");
-        await lockCommandKey(tx, {
-          businessId: access.businessId,
-          actorUserId: actor.userId,
-          idempotencyKey: reviewId,
-        });
-        const [record] = await tx
-          .select()
-          .from(saleReview)
-          .where(and(reviewOwner(actor, access.businessId), eq(saleReview.id, reviewId)))
-          .for("update")
-          .limit(1);
+        const { access, record } = await lockOwnReview(tx, actor, reviewId);
         if (!record) throw new ProductError("NOT_FOUND", "Sale review was not found");
         if (record.saleId && record.saleId !== acknowledgedSaleId) return { saleId: record.saleId };
         if (acknowledgedSaleId && record.saleId !== acknowledgedSaleId) {

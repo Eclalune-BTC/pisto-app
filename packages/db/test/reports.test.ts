@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Database } from "../src/client.ts";
-import { ProductError } from "../src/product-core.ts";
+import { ProductError } from "../src/errors.ts";
 import { createReportsRepository, REPORT_TRANSACTION_CONFIG } from "../src/reports.ts";
 
 const actor = {

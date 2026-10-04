@@ -113,9 +113,11 @@ afterAll(async () => {
 });
 
 /** Delay one real SQL boundary while another connection commits; no query is mocked. */
-function beforeFirstExecute(
+/** Runs `hook` around the first raw statement of each transaction opened through `db`. */
+function aroundFirstExecute(
   db: Database,
-  before: (tx: DatabaseTransaction) => Promise<void>,
+  placement: "before" | "after",
+  hook: (tx: DatabaseTransaction) => Promise<void>,
 ): Database {
   return new Proxy(db, {
     get(target, property) {
@@ -131,11 +133,12 @@ function beforeFirstExecute(
               get(transaction, name) {
                 if (name === "execute")
                   return async (query: Parameters<DatabaseTransaction["execute"]>[0]) => {
-                    if (!intercepted) {
-                      intercepted = true;
-                      await before(tx);
-                    }
-                    return transaction.execute(query);
+                    const first = !intercepted;
+                    intercepted = true;
+                    if (first && placement === "before") await hook(tx);
+                    const result = await transaction.execute(query);
+                    if (first && placement === "after") await hook(tx);
+                    return result;
                   };
                 const value = Reflect.get(transaction, name);
                 return typeof value === "function" ? value.bind(transaction) : value;
@@ -212,9 +215,12 @@ function synchronizePaymentInserts(db: Database): Database {
   });
 }
 
-/** Commit a correction after the first actual SELECT, before its result reaches the caller. */
-function afterFirstSelect(db: Database, after: () => Promise<void>): Database {
-  let intercepted = false;
+/**
+ * Commit a correction once the `selectNumber`-th SELECT returns, before its rows reach
+ * the caller. Counts selects issued directly and inside transactions.
+ */
+function afterSelect(db: Database, selectNumber: number, after: () => Promise<void>): Database {
+  let seen = 0;
   function wrap<T extends object>(builder: T): T {
     return new Proxy(builder, {
       get(target, property) {
@@ -223,10 +229,8 @@ function afterFirstSelect(db: Database, after: () => Promise<void>): Database {
           return (resolve: (rows: unknown) => unknown, reject: (error: unknown) => unknown) =>
             Promise.resolve(target)
               .then(async (rows) => {
-                if (!intercepted) {
-                  intercepted = true;
-                  await after();
-                }
+                seen += 1;
+                if (seen === selectNumber) await after();
                 return rows;
               })
               .then(resolve, reject);
@@ -239,12 +243,24 @@ function afterFirstSelect(db: Database, after: () => Promise<void>): Database {
       },
     });
   }
-  return new Proxy(db, {
-    get(target, property) {
-      if (property !== "select") return Reflect.get(target, property);
-      return (...args: Parameters<Database["select"]>) => wrap(target.select(...args));
-    },
-  });
+  function withSelects<T extends Database | DatabaseTransaction>(executor: T): T {
+    return new Proxy(executor, {
+      get(target, property) {
+        if (property === "select") {
+          return (...args: Parameters<Database["select"]>) => wrap(target.select(...args));
+        }
+        if (property === "transaction") {
+          return (
+            callback: (tx: DatabaseTransaction) => Promise<unknown>,
+            config?: Parameters<Database["transaction"]>[1],
+          ) => target.transaction((tx) => callback(withSelects(tx)), config);
+        }
+        const value = Reflect.get(target, property);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+  }
+  return withSelects(db);
 }
 
 describe("data integrity regressions on PostgreSQL", () => {
@@ -318,7 +334,8 @@ describe("data integrity regressions on PostgreSQL", () => {
     };
     const created = await product.createSale(actor, command);
     const reading = createProductRepository(
-      afterFirstSelect(database.db, async () => {
+      // Session and membership authorization are the first two reads.
+      afterSelect(database.db, 3, async () => {
         await product.voidSale(actor, created.sale.id, {
           idempotencyKey: key(),
           reason: "Concurrent correction",
@@ -382,8 +399,10 @@ describe("data integrity regressions on PostgreSQL", () => {
   test("serializes sales and cash sharing a command key without reversing lock order", async () => {
     const authorized = Promise.withResolvers<number>();
     const releaseCash = Promise.withResolvers<void>();
+    // Authorization takes only shared row locks, so the sale passes it and must then
+    // wait on the command key the paused cash transaction already holds.
     const delayedCash = createCashRepository(
-      beforeFirstExecute(database.db, async (tx) => {
+      aroundFirstExecute(database.db, "after", async (tx) => {
         const [row] = await tx.execute<{ pid: number }>(sql`select pg_backend_pid() as pid`);
         if (!row) throw new Error("Missing backend identifier");
         authorized.resolve(row.pid);
@@ -579,7 +598,7 @@ describe("data integrity regressions on PostgreSQL", () => {
       name: "Before concurrent update",
     });
     const snapshotRepository = createReceivablesRepository(
-      beforeFirstExecute(database.db, async () => {
+      aroundFirstExecute(database.db, "before", async () => {
         await receivables.updateCustomer(actor, contact.id, {
           idempotencyKey: key(),
           name: "After concurrent update",

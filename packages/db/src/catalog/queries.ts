@@ -4,42 +4,63 @@ import {
   productListQuerySchema,
   stockListQuerySchema,
 } from "@pisto/contracts";
-import { and, desc, eq, getTableColumns, getTableName, or, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
+import { authorizeBusinessAction } from "../business-access.ts";
 import type { Database } from "../client.ts";
-import { exactCursorTimestamp } from "../pagination.ts";
-import { likePattern, ProductError } from "../product-core.ts";
+import { ProductError, parseInput } from "../errors.ts";
+import {
+  decodeCursor,
+  exactCursorTimestamp,
+  keysetBefore,
+  listFilterFingerprint,
+  pageRows,
+} from "../pagination.ts";
 import { catalogCategory, catalogProduct, inventoryMovement } from "../schema/catalog.ts";
+import { correlatedSubquery } from "../subquery.ts";
+import { containsText } from "../text-search.ts";
+import { stockFor, toCategory, toMovement, toProduct, trackedStockFor } from "./mappers.ts";
+import { onHandQuantity } from "./records.ts";
+import type { CatalogQueries } from "./types.ts";
+
+const reversal = alias(inventoryMovement, "reversal");
 
 /**
- * A column reference inside a select projection renders without its table, so a
- * correlated subquery binds it to its own table and silently matches nothing.
+ * The reversal of the `inventory_movement` row in the enclosing query, if any. An
+ * alias renders as its bare name inside raw SQL, so the FROM names the table too.
  */
-const productTable = sql.identifier(getTableName(catalogProduct));
-const movementTable = sql.identifier(getTableName(inventoryMovement));
+function reversedByMovementId() {
+  return correlatedSubquery<string | null>(sql`(
+    select ${reversal.id}::text
+    from ${inventoryMovement} ${reversal}
+    where ${reversal.businessId} = ${inventoryMovement.businessId}
+      and ${reversal.productId} = ${inventoryMovement.productId}
+      and ${reversal.reversesMovementId} = ${inventoryMovement.id}
+    limit 1
+  )`);
+}
 
-import { authorizeCatalogAction } from "./access.ts";
-import {
-  cursorCondition,
-  decodeCursor,
-  pageRows,
-  stockFor,
-  toCategory,
-  toMovement,
-  toProduct,
-} from "./codec.ts";
-import type { CatalogQueries } from "./types.ts";
+function productRow() {
+  return {
+    ...getTableColumns(catalogProduct),
+    createdAtExact: exactCursorTimestamp(catalogProduct.createdAt),
+    onHandMinorUnits: sql<string>`${onHandQuantity()}::text`,
+  };
+}
 
 export function createCatalogQueries(db: Database): CatalogQueries {
   return {
-    async listCategories(actor, inputQuery) {
-      const parsed = categoryListQuerySchema.safeParse(inputQuery);
-      if (!parsed.success) throw new ProductError("VALIDATION_ERROR", "Category query is invalid");
-      const query = parsed.data;
-      const cursor = decodeCursor(query.cursor, "category");
-      return db.transaction(async (transaction) => {
-        const access = await authorizeCatalogAction(transaction, actor, "catalog:read", "share");
-        const rows = await transaction
+    async listCategories(actor, rawQuery) {
+      const query = parseInput(categoryListQuerySchema, rawQuery, "Category query is invalid");
+      const filterFingerprint = await listFilterFingerprint("categories", {
+        search: query.search ?? null,
+        status: query.status,
+      });
+      const cursor = decodeCursor(query.cursor, filterFingerprint);
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["catalog:read"]);
+        const rows = await tx
           .select({
             ...getTableColumns(catalogCategory),
             createdAtExact: exactCursorTimestamp(catalogCategory.createdAt),
@@ -49,37 +70,29 @@ export function createCatalogQueries(db: Database): CatalogQueries {
             and(
               eq(catalogCategory.businessId, access.businessId),
               query.status === "all" ? undefined : eq(catalogCategory.status, query.status),
-              query.search
-                ? sql`${catalogCategory.name} ilike ${likePattern(query.search)} escape '\\'`
-                : undefined,
-              cursorCondition(catalogCategory, cursor),
+              query.search ? containsText([catalogCategory.name], query.search) : undefined,
+              keysetBefore(catalogCategory, cursor),
             ),
           )
           .orderBy(desc(catalogCategory.createdAt), desc(catalogCategory.id))
           .limit(query.limit + 1);
-        const page = pageRows(rows, query.limit, "category");
+        const page = pageRows(rows, query.limit, filterFingerprint);
         return { items: page.rows.map(toCategory), nextCursor: page.nextCursor };
       });
     },
 
-    async listProducts(actor, inputQuery) {
-      const parsed = productListQuerySchema.safeParse(inputQuery);
-      if (!parsed.success) throw new ProductError("VALIDATION_ERROR", "Product query is invalid");
-      const query = parsed.data;
-      const cursor = decodeCursor(query.cursor, "product");
-      return db.transaction(async (transaction) => {
-        const access = await authorizeCatalogAction(transaction, actor, "catalog:read", "share");
-        const rows = await transaction
-          .select({
-            createdAtExact: exactCursorTimestamp(catalogProduct.createdAt),
-            balance: sql<string>`coalesce((
-              select sum(m.delta_minor_units)
-              from inventory_movement m
-              where m.business_id = ${productTable}.business_id
-                and m.product_id = ${productTable}.id
-            ), 0)::text`,
-            record: catalogProduct,
-          })
+    async listProducts(actor, rawQuery) {
+      const query = parseInput(productListQuerySchema, rawQuery, "Product query is invalid");
+      const filterFingerprint = await listFilterFingerprint("products", {
+        categoryId: query.categoryId ?? null,
+        search: query.search ?? null,
+        status: query.status,
+      });
+      const cursor = decodeCursor(query.cursor, filterFingerprint);
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["catalog:read"]);
+        const rows = await tx
+          .select(productRow())
           .from(catalogProduct)
           .where(
             and(
@@ -87,29 +100,18 @@ export function createCatalogQueries(db: Database): CatalogQueries {
               query.status === "all" ? undefined : eq(catalogProduct.status, query.status),
               query.categoryId ? eq(catalogProduct.categoryId, query.categoryId) : undefined,
               query.search
-                ? or(
-                    sql`${catalogProduct.name} ilike ${likePattern(query.search)} escape '\\'`,
-                    sql`${catalogProduct.sku} ilike ${likePattern(query.search)} escape '\\'`,
-                  )
+                ? containsText([catalogProduct.name, catalogProduct.sku], query.search)
                 : undefined,
-              cursorCondition(catalogProduct, cursor),
+              keysetBefore(catalogProduct, cursor),
             ),
           )
           .orderBy(desc(catalogProduct.createdAt), desc(catalogProduct.id))
           .limit(query.limit + 1);
-        const page = pageRows(
-          rows.map(({ balance, record, createdAtExact }) => ({
-            ...record,
-            balance,
-            createdAtExact,
-          })),
-          query.limit,
-          "product",
-        );
+        const page = pageRows(rows, query.limit, filterFingerprint);
         return {
           items: page.rows.map((record) => ({
             product: toProduct(record),
-            stock: stockFor(record, record.balance),
+            stock: stockFor(record, record.onHandMinorUnits),
           })),
           nextCursor: page.nextCursor,
         };
@@ -117,56 +119,31 @@ export function createCatalogQueries(db: Database): CatalogQueries {
     },
 
     async getProduct(actor, productId) {
-      return db.transaction(async (transaction) => {
-        const access = await authorizeCatalogAction(transaction, actor, "catalog:read", "share");
-        const [row] = await transaction
-          .select({
-            balance: sql<string>`coalesce((
-              select sum(m.delta_minor_units)
-              from inventory_movement m
-              where m.business_id = ${productTable}.business_id
-                and m.product_id = ${productTable}.id
-            ), 0)::text`,
-            record: catalogProduct,
-          })
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["catalog:read"]);
+        const [record] = await tx
+          .select(productRow())
           .from(catalogProduct)
           .where(
             and(eq(catalogProduct.businessId, access.businessId), eq(catalogProduct.id, productId)),
           )
           .limit(1);
-        if (!row) throw new ProductError("NOT_FOUND", "Product was not found");
-        return { product: toProduct(row.record), stock: stockFor(row.record, row.balance) };
+        if (!record) throw new ProductError("NOT_FOUND", "Product was not found");
+        return { product: toProduct(record), stock: stockFor(record, record.onHandMinorUnits) };
       });
     },
 
-    async listStock(actor, inputQuery) {
-      const parsed = stockListQuerySchema.safeParse(inputQuery);
-      if (!parsed.success) throw new ProductError("VALIDATION_ERROR", "Stock query is invalid");
-      const query = parsed.data;
-      const cursor = decodeCursor(query.cursor, "stock");
-      return db.transaction(async (transaction) => {
-        const access = await authorizeCatalogAction(transaction, actor, "inventory:read", "share");
-        const balanceExpression = sql<string>`coalesce((
-          select sum(m.delta_minor_units)
-          from inventory_movement m
-          where m.business_id = ${productTable}.business_id
-            and m.product_id = ${productTable}.id
-        ), 0)::text`;
-        const lowStockCondition = sql`(
-          ${catalogProduct.lowStockThresholdMinorUnits} is not null
-          and coalesce((
-            select sum(m.delta_minor_units)
-            from inventory_movement m
-            where m.business_id = ${productTable}.business_id
-              and m.product_id = ${productTable}.id
-          ), 0) <= ${catalogProduct.lowStockThresholdMinorUnits}
-        )`;
-        const rows = await transaction
-          .select({
-            balance: balanceExpression,
-            record: catalogProduct,
-            createdAtExact: exactCursorTimestamp(catalogProduct.createdAt),
-          })
+    async listStock(actor, rawQuery) {
+      const query = parseInput(stockListQuerySchema, rawQuery, "Stock query is invalid");
+      const filterFingerprint = await listFilterFingerprint("stock", {
+        lowStockOnly: query.lowStockOnly,
+        search: query.search ?? null,
+      });
+      const cursor = decodeCursor(query.cursor, filterFingerprint);
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["inventory:read"]);
+        const rows = await tx
+          .select(productRow())
           .from(catalogProduct)
           .where(
             and(
@@ -174,45 +151,39 @@ export function createCatalogQueries(db: Database): CatalogQueries {
               eq(catalogProduct.status, "active"),
               eq(catalogProduct.tracked, true),
               query.search
-                ? or(
-                    sql`${catalogProduct.name} ilike ${likePattern(query.search)} escape '\\'`,
-                    sql`${catalogProduct.sku} ilike ${likePattern(query.search)} escape '\\'`,
-                  )
+                ? containsText([catalogProduct.name, catalogProduct.sku], query.search)
                 : undefined,
-              query.lowStockOnly ? lowStockCondition : undefined,
-              cursorCondition(catalogProduct, cursor),
+              query.lowStockOnly
+                ? sql`${catalogProduct.lowStockThresholdMinorUnits} is not null
+                    and ${onHandQuantity()} <= ${catalogProduct.lowStockThresholdMinorUnits}`
+                : undefined,
+              keysetBefore(catalogProduct, cursor),
             ),
           )
           .orderBy(desc(catalogProduct.createdAt), desc(catalogProduct.id))
           .limit(query.limit + 1);
-        const page = pageRows(
-          rows.map(({ balance, record, createdAtExact }) => ({
-            ...record,
-            balance,
-            createdAtExact,
-          })),
-          query.limit,
-          "stock",
-        );
+        const page = pageRows(rows, query.limit, filterFingerprint);
         return {
-          items: page.rows.map((record) => {
-            const stock = stockFor(record, record.balance);
-            if (!stock) throw new Error("Tracked product did not produce stock state");
-            return { product: toProduct(record), stock };
-          }),
+          items: page.rows.map((record) => ({
+            product: toProduct(record),
+            stock: trackedStockFor(record, record.onHandMinorUnits),
+          })),
           nextCursor: page.nextCursor,
         };
       });
     },
 
-    async listMovements(actor, productId, inputQuery) {
-      const parsed = inventoryMovementListQuerySchema.safeParse(inputQuery);
-      if (!parsed.success) throw new ProductError("VALIDATION_ERROR", "Movement query is invalid");
-      const query = parsed.data;
-      const cursor = decodeCursor(query.cursor, "movement");
-      return db.transaction(async (transaction) => {
-        const access = await authorizeCatalogAction(transaction, actor, "inventory:read", "share");
-        const [product] = await transaction
+    async listMovements(actor, productId, rawQuery) {
+      const query = parseInput(
+        inventoryMovementListQuerySchema,
+        rawQuery,
+        "Movement query is invalid",
+      );
+      const filterFingerprint = await listFilterFingerprint("inventory-movements", { productId });
+      const cursor = decodeCursor(query.cursor, filterFingerprint);
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["inventory:read"]);
+        const [product] = await tx
           .select({ id: catalogProduct.id })
           .from(catalogProduct)
           .where(
@@ -220,40 +191,25 @@ export function createCatalogQueries(db: Database): CatalogQueries {
           )
           .limit(1);
         if (!product) throw new ProductError("NOT_FOUND", "Product was not found");
-        const rows = await transaction
+        const rows = await tx
           .select({
-            record: inventoryMovement,
+            ...getTableColumns(inventoryMovement),
             createdAtExact: exactCursorTimestamp(inventoryMovement.createdAt),
-            reversedByMovementId: sql<string | null>`(
-              select reversal.id::text
-              from inventory_movement reversal
-              where reversal.business_id = ${movementTable}.business_id
-                and reversal.product_id = ${movementTable}.product_id
-                and reversal.reverses_movement_id = ${movementTable}.id
-              limit 1
-            )`,
+            reversedByMovementId: reversedByMovementId(),
           })
           .from(inventoryMovement)
           .where(
             and(
               eq(inventoryMovement.businessId, access.businessId),
               eq(inventoryMovement.productId, productId),
-              cursorCondition(inventoryMovement, cursor),
+              keysetBefore(inventoryMovement, cursor),
             ),
           )
           .orderBy(desc(inventoryMovement.createdAt), desc(inventoryMovement.id))
           .limit(query.limit + 1);
-        const page = pageRows(
-          rows.map(({ record, reversedByMovementId, createdAtExact }) => ({
-            ...record,
-            reversedByMovementId,
-            createdAtExact,
-          })),
-          query.limit,
-          "movement",
-        );
+        const page = pageRows(rows, query.limit, filterFingerprint);
         return {
-          items: page.rows.map((record) => toMovement(record, record.reversedByMovementId ?? null)),
+          items: page.rows.map((record) => toMovement(record, record.reversedByMovementId)),
           nextCursor: page.nextCursor,
         };
       });

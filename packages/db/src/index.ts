@@ -1,11 +1,22 @@
-export * from "./business-access.ts";
-export * from "./cash.ts";
-export * from "./catalog.ts";
-export * from "./client.ts";
-export * from "./env.ts";
-export * from "./product.ts";
-export * from "./product-access.ts";
-export * from "./product-rate-limit.ts";
-export * from "./receivables.ts";
-export * from "./reports.ts";
+export type { ProductActor } from "./business-access.ts";
+export type { BusinessRepository } from "./businesses.ts";
+export { type CashRepository, createCashRepository } from "./cash.ts";
+export { type CatalogRepository, createCatalogRepository } from "./catalog.ts";
+export {
+  createDatabase,
+  type Database,
+  type DatabaseConfig,
+  type DatabaseHandle,
+} from "./client.ts";
+export { parseDatabaseConfig } from "./env.ts";
+export { ProductError, type ProductErrorCode } from "./errors.ts";
+export { createProductRepository, type ProductRepository } from "./product.ts";
+export {
+  type ConsumeProductRequest,
+  createProductRateLimiter,
+  type ProductRateLimitPolicy,
+} from "./product-rate-limit.ts";
+export { createReceivablesRepository, type ReceivablesRepository } from "./receivables.ts";
+export { createReportsRepository, type ReportsRepository } from "./reports.ts";
+export type { SaleCorrectionResult, SalesRepository } from "./sales.ts";
 export * from "./schema/index.ts";

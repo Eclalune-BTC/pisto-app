@@ -1,305 +1,240 @@
 import {
-  type CashAccount,
-  type CashAccountList,
-  type CashAccountListQuery,
-  type CashMovementList,
-  type CashMovementListQuery,
   cashAccountListQuerySchema,
   cashMovementListQuerySchema,
-  type Expense,
-  type ExpenseList,
-  type ExpenseListQuery,
-  type ExpensePeriodQuery,
-  type ExpensePeriodSummary,
+  expenseCategorySchema,
   expenseListQuerySchema,
   expensePeriodQuerySchema,
 } from "@pisto/contracts";
-import {
-  and,
-  desc,
-  eq,
-  getTableColumns,
-  getTableName,
-  gte,
-  lt,
-  or,
-  type SQL,
-  sql,
-} from "drizzle-orm";
+import { and, desc, eq, getTableColumns, gte, lt, sql } from "drizzle-orm";
 
+import { authorizeBusinessAction } from "../business-access.ts";
 import type { Database } from "../client.ts";
-import { exactCursorTimestamp } from "../pagination.ts";
-import { type ProductActor, ProductError, resolveLocalDateTime } from "../product-core.ts";
+import { ProductError, parseInput } from "../errors.ts";
+import { nextCalendarDate, requireCalendarDate, resolveLocalDateTime } from "../local-time.ts";
+import {
+  decodeCursor,
+  exactCursorTimestamp,
+  keysetBefore,
+  listFilterFingerprint,
+  pageRows,
+} from "../pagination.ts";
 import { cashAccount, cashMovement, expense } from "../schema/cash.ts";
-
-/**
- * A column reference inside a select projection renders without its table, so a
- * correlated subquery binds it to its own table and silently matches nothing.
- */
-const accountTable = sql.identifier(getTableName(cashAccount));
-
-import { requireAccess } from "./access.ts";
-import { decodeCashCursor, encodeCashCursor, isCashResourceId, nextCalendarDate } from "./codec.ts";
 import { toCashAccount, toCashMovement, toExpense } from "./mappers.ts";
-import type { CashCursorPayload } from "./types.ts";
+import { accountBalanceText } from "./records.ts";
+import type { CashRepository } from "./types.ts";
 
-function cursorCondition(
-  createdAtColumn:
-    | typeof cashAccount.createdAt
-    | typeof expense.createdAt
-    | typeof cashMovement.createdAt,
-  idColumn: typeof cashAccount.id | typeof expense.id | typeof cashMovement.id,
-  cursor: CashCursorPayload,
-): SQL {
-  return or(
-    sql`${createdAtColumn} < ${cursor.createdAt}::timestamptz`,
-    and(sql`${createdAtColumn} = ${cursor.createdAt}::timestamptz`, lt(idColumn, cursor.id)),
-  ) as SQL;
-}
+type CashQueries = Pick<
+  CashRepository,
+  | "getAccount"
+  | "getExpense"
+  | "getExpensePeriodSummary"
+  | "listAccounts"
+  | "listExpenses"
+  | "listMovements"
+>;
 
-export async function getCashAccount(
-  db: Database,
-  actor: ProductActor,
-  accountId: string,
-): Promise<CashAccount> {
-  if (!isCashResourceId(accountId)) {
-    throw new ProductError("NOT_FOUND", "Cash account was not found");
-  }
-  return db.transaction(async (tx) => {
-    const access = await requireAccess(tx, actor, ["cash:read"]);
-    const [row] = await tx
-      .select({
-        record: cashAccount,
-        balanceMinorUnits: sql<string>`coalesce(sum(${cashMovement.deltaMinorUnits}), 0)::text`,
-      })
-      .from(cashAccount)
-      .leftJoin(
-        cashMovement,
-        and(
-          eq(cashMovement.businessId, cashAccount.businessId),
-          eq(cashMovement.accountId, cashAccount.id),
-        ),
-      )
-      .where(and(eq(cashAccount.businessId, access.businessId), eq(cashAccount.id, accountId)))
-      .groupBy(cashAccount.id)
-      .limit(1);
-    if (!row) throw new ProductError("NOT_FOUND", "Cash account was not found");
-    return toCashAccount(row.record, row.balanceMinorUnits);
-  });
-}
+export function createCashQueries(db: Database): CashQueries {
+  return {
+    async getAccount(actor, accountId) {
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["cash:read"]);
+        const [row] = await tx
+          .select({ record: cashAccount, balanceMinorUnits: accountBalanceText() })
+          .from(cashAccount)
+          .where(and(eq(cashAccount.businessId, access.businessId), eq(cashAccount.id, accountId)))
+          .limit(1);
+        if (!row) throw new ProductError("NOT_FOUND", "Cash account was not found");
+        return toCashAccount(row.record, row.balanceMinorUnits);
+      });
+    },
 
-export async function listCashAccounts(
-  db: Database,
-  actor: ProductActor,
-  rawQuery: CashAccountListQuery,
-): Promise<CashAccountList> {
-  const parsed = cashAccountListQuerySchema.safeParse(rawQuery);
-  if (!parsed.success) throw new ProductError("VALIDATION_ERROR", "Account list query is invalid");
-  const query = parsed.data;
-  return db.transaction(async (tx) => {
-    const access = await requireAccess(tx, actor, ["cash:read"]);
-    const conditions: SQL[] = [eq(cashAccount.businessId, access.businessId)];
-    if (query.status !== "all") conditions.push(eq(cashAccount.status, query.status));
-    if (query.cursor) {
-      conditions.push(
-        cursorCondition(cashAccount.createdAt, cashAccount.id, decodeCashCursor(query.cursor)),
+    async listAccounts(actor, rawQuery) {
+      const query = parseInput(
+        cashAccountListQuerySchema,
+        rawQuery,
+        "Account list query is invalid",
       );
-    }
-    const rows = await tx
-      .select({
-        record: cashAccount,
-        createdAtExact: exactCursorTimestamp(cashAccount.createdAt),
-        balanceMinorUnits: sql<string>`coalesce((
-          select sum(${cashMovement.deltaMinorUnits})
-          from ${cashMovement}
-          where ${cashMovement.businessId} = ${accountTable}.business_id
-            and ${cashMovement.accountId} = ${accountTable}.id
-        ), 0)::text`,
-      })
-      .from(cashAccount)
-      .where(and(...conditions))
-      .orderBy(desc(cashAccount.createdAt), desc(cashAccount.id))
-      .limit(query.limit + 1);
-    const visible = rows.slice(0, query.limit);
-    const last = visible.at(-1);
-    return {
-      items: visible.map(({ record, balanceMinorUnits }) =>
-        toCashAccount(record, balanceMinorUnits),
-      ),
-      nextCursor:
-        rows.length > query.limit && last
-          ? encodeCashCursor({ createdAt: last.createdAtExact, id: last.record.id })
-          : null,
-      queriedAt: access.queriedAt.toISOString(),
-    };
-  });
-}
+      const filterFingerprint = await listFilterFingerprint("cash-accounts", {
+        status: query.status,
+      });
+      const cursor = decodeCursor(query.cursor, filterFingerprint);
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["cash:read"]);
+        const rows = await tx
+          .select({
+            record: cashAccount,
+            id: cashAccount.id,
+            createdAtExact: exactCursorTimestamp(cashAccount.createdAt),
+            balanceMinorUnits: accountBalanceText(),
+          })
+          .from(cashAccount)
+          .where(
+            and(
+              eq(cashAccount.businessId, access.businessId),
+              query.status === "all" ? undefined : eq(cashAccount.status, query.status),
+              keysetBefore(cashAccount, cursor),
+            ),
+          )
+          .orderBy(desc(cashAccount.createdAt), desc(cashAccount.id))
+          .limit(query.limit + 1);
+        const page = pageRows(rows, query.limit, filterFingerprint);
+        return {
+          items: page.rows.map(({ record, balanceMinorUnits }) =>
+            toCashAccount(record, balanceMinorUnits),
+          ),
+          nextCursor: page.nextCursor,
+          queriedAt: access.queriedAt.toISOString(),
+        };
+      });
+    },
 
-export async function getExpense(
-  db: Database,
-  actor: ProductActor,
-  expenseId: string,
-): Promise<Expense> {
-  if (!isCashResourceId(expenseId)) throw new ProductError("NOT_FOUND", "Expense was not found");
-  return db.transaction(async (tx) => {
-    const access = await requireAccess(tx, actor, ["expenses:read"]);
-    const [record] = await tx
-      .select()
-      .from(expense)
-      .where(and(eq(expense.businessId, access.businessId), eq(expense.id, expenseId)))
-      .limit(1);
-    if (!record) throw new ProductError("NOT_FOUND", "Expense was not found");
-    return toExpense(record);
-  });
-}
+    async getExpense(actor, expenseId) {
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["expenses:read"]);
+        const [record] = await tx
+          .select()
+          .from(expense)
+          .where(and(eq(expense.businessId, access.businessId), eq(expense.id, expenseId)))
+          .limit(1);
+        if (!record) throw new ProductError("NOT_FOUND", "Expense was not found");
+        return toExpense(record);
+      });
+    },
 
-export async function listExpenses(
-  db: Database,
-  actor: ProductActor,
-  rawQuery: ExpenseListQuery,
-): Promise<ExpenseList> {
-  const parsed = expenseListQuerySchema.safeParse(rawQuery);
-  if (!parsed.success) throw new ProductError("VALIDATION_ERROR", "Expense list query is invalid");
-  const query = parsed.data;
-  return db.transaction(async (tx) => {
-    const access = await requireAccess(tx, actor, ["expenses:read"]);
-    const conditions: SQL[] = [eq(expense.businessId, access.businessId)];
-    if (query.status !== "all") conditions.push(eq(expense.status, query.status));
-    if (query.category) conditions.push(eq(expense.category, query.category));
-    if (query.accountId) conditions.push(eq(expense.accountId, query.accountId));
-    if (query.cursor) {
-      conditions.push(
-        cursorCondition(expense.createdAt, expense.id, decodeCashCursor(query.cursor)),
+    async listExpenses(actor, rawQuery) {
+      const query = parseInput(expenseListQuerySchema, rawQuery, "Expense list query is invalid");
+      const filterFingerprint = await listFilterFingerprint("expenses", {
+        accountId: query.accountId ?? null,
+        category: query.category ?? null,
+        status: query.status,
+      });
+      const cursor = decodeCursor(query.cursor, filterFingerprint);
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["expenses:read"]);
+        const rows = await tx
+          .select({
+            ...getTableColumns(expense),
+            createdAtExact: exactCursorTimestamp(expense.createdAt),
+          })
+          .from(expense)
+          .where(
+            and(
+              eq(expense.businessId, access.businessId),
+              query.status === "all" ? undefined : eq(expense.status, query.status),
+              query.category ? eq(expense.category, query.category) : undefined,
+              query.accountId ? eq(expense.accountId, query.accountId) : undefined,
+              keysetBefore(expense, cursor),
+            ),
+          )
+          .orderBy(desc(expense.createdAt), desc(expense.id))
+          .limit(query.limit + 1);
+        const page = pageRows(rows, query.limit, filterFingerprint);
+        return {
+          items: page.rows.map(toExpense),
+          nextCursor: page.nextCursor,
+          queriedAt: access.queriedAt.toISOString(),
+        };
+      });
+    },
+
+    async getExpensePeriodSummary(actor, rawQuery) {
+      const query = parseInput(expensePeriodQuerySchema, rawQuery, "Expense period is invalid");
+      requireCalendarDate(query.startLocalDate, "The local date is invalid");
+      requireCalendarDate(query.endLocalDate, "The local date is invalid");
+      if (query.startLocalDate > query.endLocalDate) {
+        throw new ProductError("VALIDATION_ERROR", "Expense period start must not follow its end");
+      }
+      const endExclusiveLocal = nextCalendarDate(query.endLocalDate);
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["expenses:read"]);
+        const periodStartUtc = resolveLocalDateTime({
+          date: query.startLocalDate,
+          time: "00:00",
+          timeZone: access.timeZone,
+        });
+        const periodEndUtcExclusive = resolveLocalDateTime({
+          date: endExclusiveLocal,
+          time: "00:00",
+          timeZone: access.timeZone,
+        });
+        const rows = await tx
+          .select({
+            category: expense.category,
+            amountMinorUnits: sql<string>`sum(${expense.amountMinorUnits})::text`,
+            expenseCount: sql<string>`count(${expense.id})::bigint::text`,
+          })
+          .from(expense)
+          .where(
+            and(
+              eq(expense.businessId, access.businessId),
+              eq(expense.status, "posted"),
+              gte(expense.occurredAt, periodStartUtc),
+              lt(expense.occurredAt, periodEndUtcExclusive),
+            ),
+          )
+          .groupBy(expense.category)
+          .orderBy(expense.category);
+        let total = 0n;
+        let count = 0n;
+        const categories = rows.map((row) => {
+          total += BigInt(row.amountMinorUnits);
+          count += BigInt(row.expenseCount);
+          return {
+            category: expenseCategorySchema.parse(row.category),
+            amountMinorUnits: row.amountMinorUnits,
+            expenseCount: row.expenseCount,
+          };
+        });
+        return {
+          periodStartLocal: query.startLocalDate,
+          periodEndLocalInclusive: query.endLocalDate,
+          periodStartUtc: periodStartUtc.toISOString(),
+          periodEndUtcExclusive: periodEndUtcExclusive.toISOString(),
+          timeZone: access.timeZone,
+          currency: access.currency,
+          currencyMinorUnitDigits: access.currencyMinorUnitDigits,
+          totalMinorUnits: total.toString(),
+          expenseCount: count.toString(),
+          categories,
+          queriedAt: access.queriedAt.toISOString(),
+        };
+      });
+    },
+
+    async listMovements(actor, rawQuery) {
+      const query = parseInput(
+        cashMovementListQuerySchema,
+        rawQuery,
+        "Cash movement list query is invalid",
       );
-    }
-    const rows = await tx
-      .select({
-        ...getTableColumns(expense),
-        createdAtExact: exactCursorTimestamp(expense.createdAt),
-      })
-      .from(expense)
-      .where(and(...conditions))
-      .orderBy(desc(expense.createdAt), desc(expense.id))
-      .limit(query.limit + 1);
-    const visible = rows.slice(0, query.limit);
-    const last = visible.at(-1);
-    return {
-      items: visible.map(toExpense),
-      nextCursor:
-        rows.length > query.limit && last
-          ? encodeCashCursor({ createdAt: last.createdAtExact, id: last.id })
-          : null,
-      queriedAt: access.queriedAt.toISOString(),
-    };
-  });
-}
-
-export async function getExpensePeriodSummary(
-  db: Database,
-  actor: ProductActor,
-  rawQuery: ExpensePeriodQuery,
-): Promise<ExpensePeriodSummary> {
-  const parsed = expensePeriodQuerySchema.safeParse(rawQuery);
-  if (!parsed.success) throw new ProductError("VALIDATION_ERROR", "Expense period is invalid");
-  const query = parsed.data;
-  const endExclusiveLocal = nextCalendarDate(query.endLocalDate);
-  nextCalendarDate(query.startLocalDate);
-  if (query.startLocalDate > query.endLocalDate) {
-    throw new ProductError("VALIDATION_ERROR", "Expense period start must not follow its end");
-  }
-  return db.transaction(async (tx) => {
-    const access = await requireAccess(tx, actor, ["expenses:read"]);
-    const periodStartUtc = resolveLocalDateTime({
-      date: query.startLocalDate,
-      time: "00:00",
-      timeZone: access.timeZone,
-    });
-    const periodEndUtcExclusive = resolveLocalDateTime({
-      date: endExclusiveLocal,
-      time: "00:00",
-      timeZone: access.timeZone,
-    });
-    const rows = await tx
-      .select({
-        category: expense.category,
-        amountMinorUnits: sql<string>`sum(${expense.amountMinorUnits})::text`,
-        expenseCount: sql<string>`count(${expense.id})::bigint::text`,
-      })
-      .from(expense)
-      .where(
-        and(
-          eq(expense.businessId, access.businessId),
-          eq(expense.status, "posted"),
-          gte(expense.occurredAt, periodStartUtc),
-          lt(expense.occurredAt, periodEndUtcExclusive),
-        ),
-      )
-      .groupBy(expense.category)
-      .orderBy(expense.category);
-    let total = 0n;
-    let count = 0n;
-    const categories = rows.map((row) => {
-      total += BigInt(row.amountMinorUnits);
-      count += BigInt(row.expenseCount);
-      return {
-        category: row.category as Expense["category"],
-        amountMinorUnits: row.amountMinorUnits,
-        expenseCount: row.expenseCount,
-      };
-    });
-    return {
-      periodStartLocal: query.startLocalDate,
-      periodEndLocalInclusive: query.endLocalDate,
-      periodStartUtc: periodStartUtc.toISOString(),
-      periodEndUtcExclusive: periodEndUtcExclusive.toISOString(),
-      timeZone: access.timeZone,
-      currency: access.currency,
-      currencyMinorUnitDigits: access.currencyMinorUnitDigits,
-      totalMinorUnits: total.toString(),
-      expenseCount: count.toString(),
-      categories,
-      queriedAt: access.queriedAt.toISOString(),
-    };
-  });
-}
-
-export async function listCashMovements(
-  db: Database,
-  actor: ProductActor,
-  rawQuery: CashMovementListQuery,
-): Promise<CashMovementList> {
-  const parsed = cashMovementListQuerySchema.safeParse(rawQuery);
-  if (!parsed.success) {
-    throw new ProductError("VALIDATION_ERROR", "Cash movement list query is invalid");
-  }
-  const query = parsed.data;
-  return db.transaction(async (tx) => {
-    const access = await requireAccess(tx, actor, ["cash:read"]);
-    const conditions: SQL[] = [eq(cashMovement.businessId, access.businessId)];
-    if (query.accountId) conditions.push(eq(cashMovement.accountId, query.accountId));
-    if (query.cursor) {
-      conditions.push(
-        cursorCondition(cashMovement.createdAt, cashMovement.id, decodeCashCursor(query.cursor)),
-      );
-    }
-    const rows = await tx
-      .select({
-        ...getTableColumns(cashMovement),
-        createdAtExact: exactCursorTimestamp(cashMovement.createdAt),
-      })
-      .from(cashMovement)
-      .where(and(...conditions))
-      .orderBy(desc(cashMovement.createdAt), desc(cashMovement.id))
-      .limit(query.limit + 1);
-    const visible = rows.slice(0, query.limit);
-    const last = visible.at(-1);
-    return {
-      items: visible.map(toCashMovement),
-      nextCursor:
-        rows.length > query.limit && last
-          ? encodeCashCursor({ createdAt: last.createdAtExact, id: last.id })
-          : null,
-      queriedAt: access.queriedAt.toISOString(),
-    };
-  });
+      const filterFingerprint = await listFilterFingerprint("cash-movements", {
+        accountId: query.accountId ?? null,
+      });
+      const cursor = decodeCursor(query.cursor, filterFingerprint);
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["cash:read"]);
+        const rows = await tx
+          .select({
+            ...getTableColumns(cashMovement),
+            createdAtExact: exactCursorTimestamp(cashMovement.createdAt),
+          })
+          .from(cashMovement)
+          .where(
+            and(
+              eq(cashMovement.businessId, access.businessId),
+              query.accountId ? eq(cashMovement.accountId, query.accountId) : undefined,
+              keysetBefore(cashMovement, cursor),
+            ),
+          )
+          .orderBy(desc(cashMovement.createdAt), desc(cashMovement.id))
+          .limit(query.limit + 1);
+        const page = pageRows(rows, query.limit, filterFingerprint);
+        return {
+          items: page.rows.map(toCashMovement),
+          nextCursor: page.nextCursor,
+          queriedAt: access.queriedAt.toISOString(),
+        };
+      });
+    },
+  };
 }

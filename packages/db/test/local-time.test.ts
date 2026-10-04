@@ -1,18 +1,19 @@
 import { describe, expect, test } from "bun:test";
 
+import { ProductError } from "../src/errors.ts";
 import {
   getCurrencyMinorUnitDigits,
-  isSupportedCurrency,
   isSupportedTimeZone,
-  ProductError,
+  nextCalendarDate,
+  requireCalendarDate,
   resolveLocalDateTime,
-} from "../src/product.ts";
+} from "../src/local-time.ts";
 
-describe("product domain primitives", () => {
+describe("business-local time primitives", () => {
   test("validates configured currency and time-zone identifiers", () => {
-    expect(isSupportedCurrency("USD")).toBe(true);
     expect(getCurrencyMinorUnitDigits("USD")).toBe(2);
-    expect(isSupportedCurrency("ZZZ")).toBe(false);
+    expect(getCurrencyMinorUnitDigits("JPY")).toBe(0);
+    expect(getCurrencyMinorUnitDigits("ZZZ")).toBeNull();
     expect(isSupportedTimeZone("America/El_Salvador")).toBe(true);
     expect(isSupportedTimeZone("US/Central")).toBe(true);
     expect(isSupportedTimeZone("Mars/Olympus_Mons")).toBe(false);
@@ -83,5 +84,21 @@ describe("product domain primitives", () => {
         timeZone: "America/El_Salvador",
       }),
     ).toThrow(ProductError);
+  });
+
+  test("advances real calendar dates and rejects impossible dates", () => {
+    expect(nextCalendarDate("0099-12-31")).toBe("0100-01-01");
+    expect(nextCalendarDate("0001-01-01")).toBe("0001-01-02");
+    expect(nextCalendarDate("2024-02-29")).toBe("2024-03-01");
+    expect(nextCalendarDate("2026-12-31")).toBe("2027-01-01");
+    expect(() => nextCalendarDate("9999-12-31")).toThrow(ProductError);
+    for (const value of ["0001-01-01", "0099-12-31", "2000-02-29", "2028-02-29"]) {
+      expect(() => requireCalendarDate(value, "The posted date is invalid")).not.toThrow();
+    }
+    for (const value of ["0000-01-01", "1900-02-29", "2026-02-30", "2026-04-31", "2026-1-1"]) {
+      expect(() => requireCalendarDate(value, "The posted date is invalid")).toThrow(
+        "The posted date is invalid",
+      );
+    }
   });
 });

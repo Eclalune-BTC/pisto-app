@@ -22,8 +22,7 @@ import type {
   VoidExpenseRequest,
 } from "@pisto/contracts";
 
-import type { Database } from "../client.ts";
-import type { ProductActor } from "../product-core.ts";
+import type { ProductActor } from "../business-access.ts";
 import type { cashAccount, cashMovement, cashTransfer, expense } from "../schema/cash.ts";
 
 export type CashOperationAction =
@@ -36,22 +35,10 @@ export type CashOperationAction =
   | "cash.reverse"
   | "cash.transfer";
 
-export type CashTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 export type CashAccountRecord = typeof cashAccount.$inferSelect;
 export type CashMovementRecord = typeof cashMovement.$inferSelect;
 export type CashTransferRecord = typeof cashTransfer.$inferSelect;
 export type ExpenseRecord = typeof expense.$inferSelect;
-
-export type AuthorizedBusiness = {
-  businessId: string;
-  currency: string;
-  currencyMinorUnitDigits: number;
-  queriedAt: Date;
-  role: string;
-  timeZone: string;
-};
-
-export type CashCursorPayload = { createdAt: string; id: string };
 
 export interface CashRepository {
   createAccount(

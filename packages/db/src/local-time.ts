@@ -1,36 +1,10 @@
 /// <reference types="temporal-spec/global" />
-import type { BusinessAccess, BusinessPermission } from "@pisto/contracts";
+import { calendarLocalDateSchema } from "@pisto/contracts";
 
-import { resolveBusinessAccess } from "./product-access.ts";
+import { ProductError } from "./errors.ts";
 
 const supportedCurrencies = new Set(Intl.supportedValuesOf("currency"));
 const localFormatters = new Map<string, Intl.DateTimeFormat>();
-
-export type ProductErrorCode =
-  | "BUSINESS_REQUIRED"
-  | "CONFLICT"
-  | "FORBIDDEN"
-  | "IDEMPOTENCY_CONFLICT"
-  | "NOT_FOUND"
-  | "UNAUTHORIZED"
-  | "VALIDATION_ERROR";
-
-export class ProductError extends Error {
-  override readonly name = "ProductError";
-
-  constructor(
-    readonly code: ProductErrorCode,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-export interface ProductActor {
-  userId: string;
-  sessionId: string;
-  activeBusinessId: string | null;
-}
 
 function getFormatter(timeZone: string): Intl.DateTimeFormat {
   const existing = localFormatters.get(timeZone);
@@ -48,30 +22,41 @@ function getFormatter(timeZone: string): Intl.DateTimeFormat {
   return formatter;
 }
 
-export function isSupportedCurrency(currency: string): boolean {
-  return getCurrencyMinorUnitDigits(currency) !== null;
-}
-
 export function isSupportedTimeZone(timeZone: string): boolean {
   try {
     getFormatter(timeZone);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    // ICU reports an unknown IANA identifier as a RangeError.
+    if (error instanceof RangeError) return false;
+    throw error;
   }
 }
 
+/** ISO 4217 minor-unit exponent, or null for an unknown code or unsupported precision. */
 export function getCurrencyMinorUnitDigits(currency: string): number | null {
   if (!supportedCurrencies.has(currency)) return null;
-  try {
-    const digits = new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions()
-      .maximumFractionDigits;
-    return typeof digits === "number" && Number.isInteger(digits) && digits >= 0 && digits <= 4
-      ? digits
-      : null;
-  } catch {
-    return null;
+  const digits = new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions()
+    .maximumFractionDigits;
+  return digits !== undefined && Number.isInteger(digits) && digits >= 0 && digits <= 4
+    ? digits
+    : null;
+}
+
+export function requireCalendarDate(value: string, message: string): void {
+  if (!calendarLocalDateSchema.safeParse(value).success) {
+    throw new ProductError("VALIDATION_ERROR", message);
   }
+}
+
+/** The following calendar day of an already validated local date. */
+export function nextCalendarDate(localDate: string): string {
+  if (localDate === "9999-12-31") {
+    throw new ProductError("VALIDATION_ERROR", "The local date is invalid");
+  }
+  const date = new Date(`${localDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
 }
 
 export function resolveLocalDateTime(input: {
@@ -86,22 +71,18 @@ export function resolveLocalDateTime(input: {
   if (!match) {
     throw new ProductError("VALIDATION_ERROR", "The sale date and time are invalid");
   }
-  const [, yearText, monthText, dayText, hourText, minuteText] = match;
-  const parts = [yearText, monthText, dayText, hourText, minuteText].map(Number);
-  const [year, month, day, hour, minute] = parts;
-  if (
-    year === undefined ||
-    month === undefined ||
-    day === undefined ||
-    hour === undefined ||
-    minute === undefined
-  ) {
-    throw new ProductError("VALIDATION_ERROR", "The sale date and time are invalid");
-  }
+  const [year, month, day, hour, minute] = match.slice(1).map(Number) as [
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
   let plain: Temporal.PlainDateTime;
   try {
     plain = Temporal.PlainDateTime.from({ year, month, day, hour, minute }, { overflow: "reject" });
-  } catch {
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
     throw new ProductError("VALIDATION_ERROR", "The sale date and time are invalid");
   }
 
@@ -121,28 +102,4 @@ export function resolveLocalDateTime(input: {
     );
   }
   return new Date(earliest.epochMilliseconds);
-}
-
-// PostgreSQL treats % and _ as wildcards inside LIKE/ILIKE, so an unescaped
-// user search of "%" matches every row. Callers must pair this with `escape '\'`.
-export function likePattern(search: string): string {
-  return `%${search.replace(/[\\%_]/g, "\\$&")}%`;
-}
-
-export function requireActiveBusiness(actor: ProductActor): string {
-  if (!actor.activeBusinessId) {
-    throw new ProductError("BUSINESS_REQUIRED", "Select or create a business before continuing");
-  }
-  return actor.activeBusinessId;
-}
-
-export function requireBusinessPermission(
-  role: string,
-  permission: BusinessPermission,
-): BusinessAccess {
-  const access = resolveBusinessAccess(role);
-  if (!access?.permissions.includes(permission)) {
-    throw new ProductError("FORBIDDEN", "The business membership does not permit this action");
-  }
-  return access;
 }

@@ -1,15 +1,20 @@
 import { listCustomersQuerySchema } from "@pisto/contracts";
-import { and, desc, eq, getTableColumns, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
 
 import { authorizeBusinessAction } from "../business-access.ts";
 import type { Database } from "../client.ts";
-import { fingerprintValue } from "../operation-log.ts";
-import { exactCursorTimestamp } from "../pagination.ts";
-import { likePattern, ProductError } from "../product-core.ts";
-import { customer, receivable, receivablePayment } from "../schema/receivables.ts";
-import { authorize } from "./access.ts";
-import { decodeCursor, encodeCursor, uuidPattern, validate } from "./codec.ts";
+import { ProductError, parseInput } from "../errors.ts";
+import {
+  decodeCursor,
+  exactCursorTimestamp,
+  keysetBefore,
+  listFilterFingerprint,
+  pageRows,
+} from "../pagination.ts";
+import { customer, receivable } from "../schema/receivables.ts";
+import { containsText } from "../text-search.ts";
 import { toCustomer } from "./mappers.ts";
+import { businessLocalDate, paymentTotals } from "./records.ts";
 import type { ReceivablesRepository } from "./types.ts";
 
 type CustomerQueries = Pick<ReceivablesRepository, "getCustomer" | "listCustomers">;
@@ -17,74 +22,42 @@ type CustomerQueries = Pick<ReceivablesRepository, "getCustomer" | "listCustomer
 export function createCustomerQueries(db: Database): CustomerQueries {
   return {
     async listCustomers(actor, rawQuery) {
-      const query = validate(
+      const query = parseInput(
         listCustomersQuerySchema,
         rawQuery,
         "Customer list filters are invalid",
       );
-      const filterFingerprint = await fingerprintValue({
-        kind: "customers",
+      const filterFingerprint = await listFilterFingerprint("customers", {
         query: query.query ?? null,
         status: query.status,
-        version: 1,
       });
-      const cursor = query.cursor ? decodeCursor(query.cursor, filterFingerprint) : null;
+      const cursor = decodeCursor(query.cursor, filterFingerprint);
       return db.transaction(async (tx) => {
-        const access = await authorize(tx, actor, "customers:read");
-        const conditions = [eq(customer.businessId, access.businessId)];
-        if (query.status !== "all") conditions.push(eq(customer.status, query.status));
-        if (query.query) {
-          const pattern = likePattern(query.query);
-          conditions.push(
-            or(
-              sql`${customer.name} ilike ${pattern} escape '\\'`,
-              sql`${customer.email} ilike ${pattern} escape '\\'`,
-              sql`${customer.phone} ilike ${pattern} escape '\\'`,
-            ) as ReturnType<typeof eq>,
-          );
-        }
-        if (cursor) {
-          conditions.push(
-            or(
-              sql`${customer.createdAt} < ${cursor.createdAt}::timestamptz`,
-              and(
-                sql`${customer.createdAt} = ${cursor.createdAt}::timestamptz`,
-                lt(customer.id, cursor.id),
-              ),
-            ) as ReturnType<typeof eq>,
-          );
-        }
+        const access = await authorizeBusinessAction(tx, actor, ["customers:read"]);
         const rows = await tx
           .select({
             ...getTableColumns(customer),
             createdAtExact: exactCursorTimestamp(customer.createdAt),
           })
           .from(customer)
-          .where(and(...conditions))
+          .where(
+            and(
+              eq(customer.businessId, access.businessId),
+              query.status === "all" ? undefined : eq(customer.status, query.status),
+              query.query
+                ? containsText([customer.name, customer.email, customer.phone], query.query)
+                : undefined,
+              keysetBefore(customer, cursor),
+            ),
+          )
           .orderBy(desc(customer.createdAt), desc(customer.id))
           .limit(query.limit + 1);
-        const hasMore = rows.length > query.limit;
-        const page = rows.slice(0, query.limit);
-        const last = page.at(-1);
-        return {
-          items: page.map(toCustomer),
-          nextCursor:
-            hasMore && last
-              ? encodeCursor({
-                  createdAt: last.createdAtExact,
-                  filterFingerprint,
-                  id: last.id,
-                  version: 1,
-                })
-              : null,
-        };
+        const page = pageRows(rows, query.limit, filterFingerprint);
+        return { items: page.rows.map(toCustomer), nextCursor: page.nextCursor };
       });
     },
 
     async getCustomer(actor, customerId) {
-      if (!uuidPattern.test(customerId)) {
-        throw new ProductError("NOT_FOUND", "Customer was not found");
-      }
       return db.transaction(
         async (tx) => {
           const access = await authorizeBusinessAction(tx, actor, ["customers:read"], "none");
@@ -99,38 +72,26 @@ export function createCustomerQueries(db: Database): CustomerQueries {
             outstanding: string;
             overdue: string;
             overdue_count: string;
-            queried_at: Date | string;
           };
           const [balance] = await tx.execute<BalanceRow>(sql`
-          with payment_totals as (
+            with payment_totals as (${paymentTotals(access.businessId)}),
+            balances as (
+              select
+                (${receivable.originalMinorUnits} - coalesce(payment_totals.paid, 0::numeric)) as outstanding,
+                ${receivable.dueDate} < ${businessLocalDate(access.timeZone)} as overdue
+              from ${receivable}
+              left join payment_totals on payment_totals.receivable_id = ${receivable.id}
+              where ${receivable.businessId} = ${access.businessId}
+                and ${receivable.customerId} = ${customerId}
+                and ${receivable.status} = 'posted'
+            )
             select
-              ${receivablePayment.receivableId} as receivable_id,
-              coalesce(sum(case
-                when ${receivablePayment.kind} = 'payment' then ${receivablePayment.amountMinorUnits}
-                else -${receivablePayment.amountMinorUnits}
-              end), 0::numeric) as paid
-            from ${receivablePayment}
-            where ${receivablePayment.businessId} = ${access.businessId}
-            group by ${receivablePayment.receivableId}
-          ), balances as (
-            select
-              ${receivable.id},
-              (${receivable.originalMinorUnits} - coalesce(payment_totals.paid, 0::numeric)) as outstanding,
-              ${receivable.dueDate} < to_char(transaction_timestamp() at time zone ${access.timeZone}, 'YYYY-MM-DD') as overdue
-            from ${receivable}
-            left join payment_totals on payment_totals.receivable_id = ${receivable.id}
-            where ${receivable.businessId} = ${access.businessId}
-              and ${receivable.customerId} = ${customerId}
-              and ${receivable.status} = 'posted'
-          )
-          select
-            coalesce(sum(outstanding), 0::numeric)::text as outstanding,
-            coalesce(sum(case when overdue and outstanding > 0 then outstanding else 0 end), 0::numeric)::text as overdue,
-            count(*) filter (where outstanding > 0)::text as open_count,
-            count(*) filter (where overdue and outstanding > 0)::text as overdue_count,
-            transaction_timestamp() as queried_at
-          from balances
-        `);
+              coalesce(sum(outstanding), 0::numeric)::text as outstanding,
+              coalesce(sum(case when overdue and outstanding > 0 then outstanding else 0 end), 0::numeric)::text as overdue,
+              count(*) filter (where outstanding > 0)::text as open_count,
+              count(*) filter (where overdue and outstanding > 0)::text as overdue_count
+            from balances
+          `);
           if (!balance) throw new Error("Customer balance query returned no row");
           return {
             customer: toCustomer(record),
@@ -141,7 +102,7 @@ export function createCustomerQueries(db: Database): CustomerQueries {
               overdueMinorUnits: balance.overdue,
               openReceivableCount: balance.open_count,
               overdueReceivableCount: balance.overdue_count,
-              queriedAt: new Date(balance.queried_at).toISOString(),
+              queriedAt: access.queriedAt.toISOString(),
             },
           };
         },

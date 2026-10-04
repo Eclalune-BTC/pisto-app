@@ -1,25 +1,22 @@
 import type { BusinessPermission } from "@pisto/contracts";
-import { and, eq, sql } from "drizzle-orm";
-import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
+import { and, eq, getTableName, sql } from "drizzle-orm";
+import type { PgColumn, PgInsertValue, PgTable } from "drizzle-orm/pg-core";
 
 import {
   type AuthorizedBusinessContext,
   authorizeBusinessAction,
-  type BusinessLockStrength,
   type DatabaseTransaction,
+  type ProductActor,
 } from "./business-access.ts";
-import { type ProductActor, ProductError } from "./product-core.ts";
+import { ProductError } from "./errors.ts";
 
 /**
  * Shared idempotency plumbing for the append-only operation logs. Every capability
  * keeps its own table, foreign keys, and action CHECK constraint; only the command
- * identity, the advisory lock, and the replay comparison are shared here.
+ * identity, the advisory lock, the replay comparison, and the receipt write are
+ * shared here.
  */
 
-/** Largest value a PostgreSQL `bigint` money or quantity column can hold. */
-export const maximumMinorUnits = 9_223_372_036_854_775_807n;
-
-/** Identity of one confirmed command: what ran, who ran it, where, and with which key. */
 export interface OperationCommandIdentity<Action extends string = string> {
   action: Action;
   actorUserId: string;
@@ -28,11 +25,6 @@ export interface OperationCommandIdentity<Action extends string = string> {
   idempotencyKey: string;
 }
 
-/**
- * The columns every operation log shares, plus the capability-specific conflict
- * message. Domain tables stay separate because their foreign keys and action
- * constraints differ.
- */
 type OperationIdentityColumns = {
   action: PgColumn;
   actorUserId: PgColumn;
@@ -41,7 +33,6 @@ type OperationIdentityColumns = {
   idempotencyKey: PgColumn;
 };
 
-/** A table that carries the shared receipt identity under these exact names. */
 export type OperationLogTable = PgTable & OperationIdentityColumns;
 
 /**
@@ -61,6 +52,10 @@ export interface OperationLog<
   readonly table: Table;
 }
 
+type SnapshotSchema<T> = {
+  safeParse(value: unknown): { success: true; data: T } | { success: false };
+};
+
 export async function sha256Hex(canonical: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -71,9 +66,16 @@ export function fingerprintValue(value: unknown): Promise<string> {
   return sha256Hex(JSON.stringify(value));
 }
 
-/** Canonical `{ version, action, payload }` command fingerprint. */
 export function fingerprintCommand(action: string, payload: unknown): Promise<string> {
   return fingerprintValue({ version: 1, action, payload });
+}
+
+/**
+ * Idempotency keys are UUIDs, which PostgreSQL compares case-insensitively. The
+ * advisory lock hashes the text, so every command path must lock the same spelling.
+ */
+export function normalizeIdempotencyKey(key: string): string {
+  return key.toLowerCase();
 }
 
 /**
@@ -84,13 +86,14 @@ export async function lockCommandKey(
   tx: DatabaseTransaction,
   key: Pick<OperationCommandIdentity, "actorUserId" | "businessId" | "idempotencyKey">,
 ): Promise<void> {
+  const idempotencyKey = normalizeIdempotencyKey(key.idempotencyKey);
   await tx.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${`${key.businessId}:${key.actorUserId}:${key.idempotencyKey}`}, 0))`,
+    sql`select pg_advisory_xact_lock(hashtextextended(${`${key.businessId}:${key.actorUserId}:${idempotencyKey}`}, 0))`,
   );
 }
 
 /**
- * Serializes writers competing for one case-insensitive business-scoped name, so a
+ * Serializes writers competing for one case-insensitive business-scoped value, so a
  * uniqueness read cannot race another transaction's insert of the same value.
  */
 export async function lockSemanticKey(
@@ -105,27 +108,29 @@ export async function lockSemanticKey(
 }
 
 /**
- * A committed receipt for an exactly matching command. The wrapper keeps "no receipt
- * exists" distinguishable from whatever the receipt stored, so a capability that
- * validates its snapshot still fails loudly on a corrupt one instead of replaying
- * the command.
+ * Reads a stored result back through its public contract. A snapshot that no longer
+ * matches is a repository bug, not a user error, so it fails loudly.
  */
-export interface OperationReplay<Result = unknown> {
-  result: Result;
+export function parseReplaySnapshot<T>(
+  schema: SnapshotSchema<T>,
+  snapshot: unknown,
+  message: string,
+): T {
+  const parsed = schema.safeParse(snapshot);
+  if (!parsed.success) throw new Error(message);
+  return parsed.data;
 }
 
 /**
  * Returns the stored result when the same actor already committed this exact command,
  * and fails closed when the key was reused for a different action or payload.
  */
-export async function findOperationReplay<
-  Table extends OperationLogTable,
-  ResultColumn extends PgColumn,
->(
+async function findOperationReplay<T>(
   tx: DatabaseTransaction,
-  log: OperationLog<Table, ResultColumn>,
+  log: OperationLog,
   identity: OperationCommandIdentity,
-): Promise<OperationReplay<ResultColumn["_"]["data"]> | null> {
+  schema: SnapshotSchema<T>,
+): Promise<T | null> {
   const [receipt] = await tx
     .select({
       action: log.table.action,
@@ -148,80 +153,67 @@ export async function findOperationReplay<
   ) {
     throw new ProductError("IDEMPOTENCY_CONFLICT", log.conflictMessage);
   }
-  return { result: receipt.result as ResultColumn["_"]["data"] };
+  return parseReplaySnapshot(
+    schema,
+    receipt.result,
+    `Stored ${getTableName(log.table)} result does not match its contract`,
+  );
 }
 
 /**
- * The prologue the cash, catalog, and receivables commands share: authorize the fresh
- * session and membership first, then take the idempotency lock, then read the replay.
- * The order is deliberate — session, then business membership, then the command key
- * and the resource rows the caller locks next — and reordering it can deadlock.
+ * The prologue every confirmed command shares: authorize the fresh session and
+ * membership first, then take the idempotency lock, then read the replay. The order
+ * is deliberate — session, then business membership, then the command key and the
+ * resource rows the caller locks next — and reordering it can deadlock.
  *
  * Sales follow this same lock order but compose replay themselves because posting
- * and correction share a key space across two receipt tables. Every command must
- * acquire authorization rows before its command key, including across capabilities.
+ * and correction share a key space across two receipt tables.
  */
-export async function beginOperation<
-  Action extends string,
-  Table extends OperationLogTable,
-  ResultColumn extends PgColumn,
->(
+export async function beginOperation<Action extends string, Snapshot>(
   tx: DatabaseTransaction,
   input: {
     action: Action;
     actor: ProductActor;
     commandFingerprint: string;
     idempotencyKey: string;
-    lock: Exclude<BusinessLockStrength, "none">;
-    log: OperationLog<Table, ResultColumn>;
+    log: OperationLog;
     permissions: readonly BusinessPermission[];
+    /** The contract of the stored result snapshot, exactly as `saveOperation` wrote it. */
+    snapshot: SnapshotSchema<Snapshot>;
   },
 ): Promise<{
   access: AuthorizedBusinessContext;
   identity: OperationCommandIdentity<Action>;
-  replay: OperationReplay<ResultColumn["_"]["data"]> | null;
+  replay: Snapshot | null;
 }> {
-  const access = await authorizeBusinessAction(tx, input.actor, input.permissions, input.lock);
+  const access = await authorizeBusinessAction(tx, input.actor, input.permissions);
   const identity: OperationCommandIdentity<Action> = {
     action: input.action,
     actorUserId: input.actor.userId,
     businessId: access.businessId,
     commandFingerprint: input.commandFingerprint,
-    idempotencyKey: input.idempotencyKey,
+    idempotencyKey: normalizeIdempotencyKey(input.idempotencyKey),
   };
   await lockCommandKey(tx, identity);
-  return { access, identity, replay: await findOperationReplay(tx, input.log, identity) };
+  return {
+    access,
+    identity,
+    replay: await findOperationReplay(tx, input.log, identity, input.snapshot),
+  };
 }
 
-/** The column values every operation log row shares. */
-export function operationIdentityValues<Action extends string>(
-  identity: OperationCommandIdentity<Action>,
-): {
-  action: Action;
-  actorUserId: string;
-  businessId: string;
-  commandFingerprint: string;
-  idempotencyKey: string;
-} {
-  return {
+export async function saveOperation<Table extends OperationLogTable>(
+  tx: DatabaseTransaction,
+  log: OperationLog<Table>,
+  identity: OperationCommandIdentity,
+  values: Omit<PgInsertValue<Table>, keyof OperationCommandIdentity>,
+): Promise<void> {
+  await tx.insert(log.table).values({
     action: identity.action,
     actorUserId: identity.actorUserId,
     businessId: identity.businessId,
     commandFingerprint: identity.commandFingerprint,
     idempotencyKey: identity.idempotencyKey,
-  };
-}
-
-/**
- * Reads a stored result back through its public contract. A snapshot that no longer
- * matches is a repository bug, not a user error, so it fails loudly.
- */
-export function parseReplaySnapshot<T>(
-  schema: { safeParse(value: unknown): { success: true; data: T } | { success: false } },
-  snapshot: unknown,
-  message: string,
-): T {
-  const parsed = schema.safeParse(snapshot);
-  if (!parsed.success) throw new Error(message);
-  return parsed.data;
+    ...values,
+  } as PgInsertValue<Table>);
 }

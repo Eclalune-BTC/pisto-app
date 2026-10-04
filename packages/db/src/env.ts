@@ -4,6 +4,12 @@ export class DatabaseConfigurationError extends Error {
   override readonly name = "DatabaseConfigurationError";
 }
 
+const poolDefaults = {
+  maxConnections: 10,
+  connectTimeoutSeconds: 10,
+  idleTimeoutSeconds: 20,
+} as const;
+
 function parseInteger(
   value: string | undefined,
   fallback: number,
@@ -45,19 +51,24 @@ export function parseDatabaseConfig(env: Record<string, string | undefined>): Da
 
   return {
     url,
-    maxConnections: parseInteger(env.DATABASE_MAX_CONNECTIONS, 10, "DATABASE_MAX_CONNECTIONS", {
-      min: 1,
-      max: 100,
-    }),
+    maxConnections: parseInteger(
+      env.DATABASE_MAX_CONNECTIONS,
+      poolDefaults.maxConnections,
+      "DATABASE_MAX_CONNECTIONS",
+      {
+        min: 1,
+        max: 100,
+      },
+    ),
     connectTimeoutSeconds: parseInteger(
       env.DATABASE_CONNECT_TIMEOUT_SECONDS,
-      10,
+      poolDefaults.connectTimeoutSeconds,
       "DATABASE_CONNECT_TIMEOUT_SECONDS",
       { min: 1, max: 60 },
     ),
     idleTimeoutSeconds: parseInteger(
       env.DATABASE_IDLE_TIMEOUT_SECONDS,
-      20,
+      poolDefaults.idleTimeoutSeconds,
       "DATABASE_IDLE_TIMEOUT_SECONDS",
       { min: 1, max: 600 },
     ),

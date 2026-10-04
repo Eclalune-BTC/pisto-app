@@ -4,7 +4,7 @@ import {
   type BusinessDatabaseExecutor,
   type BusinessLockStrength,
 } from "../src/business-access.ts";
-import { ProductError } from "../src/product-core.ts";
+import { ProductError } from "../src/errors.ts";
 
 const actor = {
   userId: "user-test",
@@ -79,10 +79,13 @@ describe("business action authorization locks", () => {
     expect(locks).toEqual(["share", "share"]);
   });
 
-  test("keeps applying the update lock to both authorization reads", async () => {
-    const { locks } = await authorizeWith("owner", "update");
-
-    expect(locks).toEqual(["update", "update"]);
+  test("never takes an exclusive authorization lock", async () => {
+    // A shared lock already conflicts with role changes and removals; an exclusive one
+    // would only serialize every command of one member.
+    for (const lock of ["none", "share"] as const) {
+      const { locks } = await authorizeWith("owner", lock);
+      expect(locks.every((taken) => taken === "share")).toBe(true);
+    }
   });
 
   test("enforces the permission set even when no row lock is taken", async () => {

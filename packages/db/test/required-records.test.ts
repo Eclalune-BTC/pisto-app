@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { getAccountBalance } from "../src/cash/access.ts";
 import { toCashAccount, toCashMovement, toExpense } from "../src/cash/mappers.ts";
-import { toCategory, toProduct } from "../src/catalog/codec.ts";
-import { currentBalance } from "../src/catalog/operations.ts";
-import { getPaidMinorUnits } from "../src/receivables/access.ts";
+import { getAccountBalance } from "../src/cash/records.ts";
+import { toCategory, toProduct } from "../src/catalog/mappers.ts";
+import { currentBalance } from "../src/catalog/records.ts";
 import { deriveReceivableBalance, toCustomer, toPayment } from "../src/receivables/mappers.ts";
-import { toCorrection, toSale } from "../src/sales-records.ts";
+import { getPaidMinorUnits } from "../src/receivables/records.ts";
+import { toCorrection, toSale } from "../src/sales/records.ts";
 
 function aggregateExecutor(rows: unknown[]) {
   const query = { from: () => query, where: async () => rows };
@@ -16,7 +16,7 @@ describe("required aggregate query results", () => {
   for (const [name, read, field] of [
     ["cash", getAccountBalance, "value"],
     ["inventory", currentBalance, "value"],
-    ["receivable", getPaidMinorUnits, "paid"],
+    ["receivable", getPaidMinorUnits, "value"],
   ] as const) {
     test(`${name} accepts a real SQL zero but not a missing or malformed result`, async () => {
       expect(await read(aggregateExecutor([{ [field]: "0" }]) as never, "business", "record")).toBe(

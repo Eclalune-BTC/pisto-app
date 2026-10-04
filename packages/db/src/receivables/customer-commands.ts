@@ -6,12 +6,14 @@ import {
 } from "@pisto/contracts";
 import { and, eq, sql } from "drizzle-orm";
 
+import type { DatabaseTransaction } from "../business-access.ts";
 import type { Database } from "../client.ts";
-import { ProductError } from "../product-core.ts";
-import { customer, receivable, receivablePayment } from "../schema/receivables.ts";
-import { beginReceivableOperation, insertOperation } from "./access.ts";
-import { commandFingerprint, uuidPattern, validate } from "./codec.ts";
+import { ProductError, parseInput } from "../errors.ts";
+import { beginOperation, saveOperation } from "../operation-log.ts";
+import { customer, receivable } from "../schema/receivables.ts";
+import { receivableCommandFingerprint } from "./codec.ts";
 import { toCustomer } from "./mappers.ts";
+import { paymentTotals, receivableOperationLog } from "./records.ts";
 import type { ReceivablesRepository } from "./types.ts";
 
 type CustomerCommands = Pick<
@@ -19,33 +21,42 @@ type CustomerCommands = Pick<
   "archiveCustomer" | "createCustomer" | "updateCustomer"
 >;
 
+async function lockCustomer(tx: DatabaseTransaction, businessId: string, customerId: string) {
+  const [existing] = await tx
+    .select()
+    .from(customer)
+    .where(and(eq(customer.businessId, businessId), eq(customer.id, customerId)))
+    .limit(1)
+    .for("update");
+  if (!existing) throw new ProductError("NOT_FOUND", "Customer was not found");
+  return existing;
+}
+
 export function createCustomerCommands(db: Database): CustomerCommands {
   return {
     async createCustomer(actor, rawCommand) {
-      const command = validate(
+      const command = parseInput(
         createCustomerRequestSchema,
         rawCommand,
         "Customer details are invalid",
       );
       const action = "customer.created";
-      const fingerprint = await commandFingerprint(action, {
+      const commandFingerprint = await receivableCommandFingerprint(action, {
         email: command.email ?? null,
         name: command.name,
         notes: command.notes ?? null,
         phone: command.phone ?? null,
       });
       return db.transaction(async (tx) => {
-        const { access, identity, replay } = await beginReceivableOperation(
-          tx,
+        const { access, identity, replay } = await beginOperation(tx, {
+          action,
           actor,
-          "customers:manage",
-          {
-            action,
-            fingerprint,
-            idempotencyKey: command.idempotencyKey,
-            schema: customerSchema,
-          },
-        );
+          commandFingerprint,
+          idempotencyKey: command.idempotencyKey,
+          log: receivableOperationLog,
+          permissions: ["customers:manage"],
+          snapshot: customerSchema,
+        });
         if (replay) return { customer: replay, replayed: true };
 
         const [record] = await tx
@@ -60,7 +71,7 @@ export function createCustomerCommands(db: Database): CustomerCommands {
           .returning();
         if (!record) throw new Error("Customer insert returned no record");
         const result = toCustomer(record);
-        await insertOperation(tx, identity, {
+        await saveOperation(tx, receivableOperationLog, identity, {
           customerId: result.id,
           resultSnapshot: result,
         });
@@ -69,16 +80,13 @@ export function createCustomerCommands(db: Database): CustomerCommands {
     },
 
     async updateCustomer(actor, customerId, rawCommand) {
-      if (!uuidPattern.test(customerId)) {
-        throw new ProductError("NOT_FOUND", "Customer was not found");
-      }
-      const command = validate(
+      const command = parseInput(
         updateCustomerRequestSchema,
         rawCommand,
         "Customer changes are invalid",
       );
       const action = "customer.updated";
-      const fingerprint = await commandFingerprint(action, {
+      const commandFingerprint = await receivableCommandFingerprint(action, {
         customerId,
         email: command.email,
         name: command.name,
@@ -86,26 +94,18 @@ export function createCustomerCommands(db: Database): CustomerCommands {
         phone: command.phone,
       });
       return db.transaction(async (tx) => {
-        const { access, identity, replay } = await beginReceivableOperation(
-          tx,
+        const { access, identity, replay } = await beginOperation(tx, {
+          action,
           actor,
-          "customers:manage",
-          {
-            action,
-            fingerprint,
-            idempotencyKey: command.idempotencyKey,
-            schema: customerSchema,
-          },
-        );
+          commandFingerprint,
+          idempotencyKey: command.idempotencyKey,
+          log: receivableOperationLog,
+          permissions: ["customers:manage"],
+          snapshot: customerSchema,
+        });
         if (replay) return { customer: replay, replayed: true };
 
-        const [existing] = await tx
-          .select()
-          .from(customer)
-          .where(and(eq(customer.businessId, access.businessId), eq(customer.id, customerId)))
-          .limit(1)
-          .for("update");
-        if (!existing) throw new ProductError("NOT_FOUND", "Customer was not found");
+        const existing = await lockCustomer(tx, access.businessId, customerId);
         if (existing.status === "archived") {
           throw new ProductError("CONFLICT", "An archived customer cannot be changed");
         }
@@ -116,13 +116,13 @@ export function createCustomerCommands(db: Database): CustomerCommands {
             ...(command.phone !== undefined ? { phone: command.phone } : {}),
             ...(command.email !== undefined ? { email: command.email } : {}),
             ...(command.notes !== undefined ? { notes: command.notes } : {}),
-            updatedAt: new Date(),
+            updatedAt: access.queriedAt,
           })
           .where(and(eq(customer.businessId, access.businessId), eq(customer.id, customerId)))
           .returning();
         if (!record) throw new Error("Customer update returned no record");
         const result = toCustomer(record);
-        await insertOperation(tx, identity, {
+        await saveOperation(tx, receivableOperationLog, identity, {
           customerId,
           resultSnapshot: result,
         });
@@ -131,37 +131,26 @@ export function createCustomerCommands(db: Database): CustomerCommands {
     },
 
     async archiveCustomer(actor, customerId, rawCommand) {
-      if (!uuidPattern.test(customerId)) {
-        throw new ProductError("NOT_FOUND", "Customer was not found");
-      }
-      const command = validate(
+      const command = parseInput(
         archiveCustomerRequestSchema,
         rawCommand,
         "Customer archive confirmation is invalid",
       );
       const action = "customer.archived";
-      const fingerprint = await commandFingerprint(action, { customerId });
+      const commandFingerprint = await receivableCommandFingerprint(action, { customerId });
       return db.transaction(async (tx) => {
-        const { access, identity, replay } = await beginReceivableOperation(
-          tx,
+        const { access, identity, replay } = await beginOperation(tx, {
+          action,
           actor,
-          "customers:manage",
-          {
-            action,
-            fingerprint,
-            idempotencyKey: command.idempotencyKey,
-            schema: customerSchema,
-          },
-        );
+          commandFingerprint,
+          idempotencyKey: command.idempotencyKey,
+          log: receivableOperationLog,
+          permissions: ["customers:manage"],
+          snapshot: customerSchema,
+        });
         if (replay) return { customer: replay, replayed: true };
 
-        const [existing] = await tx
-          .select()
-          .from(customer)
-          .where(and(eq(customer.businessId, access.businessId), eq(customer.id, customerId)))
-          .limit(1)
-          .for("update");
-        if (!existing) throw new ProductError("NOT_FOUND", "Customer was not found");
+        const existing = await lockCustomer(tx, access.businessId, customerId);
         if (existing.status === "archived") {
           throw new ProductError("CONFLICT", "The customer is already archived");
         }
@@ -170,17 +159,8 @@ export function createCustomerCommands(db: Database): CustomerCommands {
           select exists (
             select 1
             from ${receivable}
-            left join (
-              select
-                ${receivablePayment.receivableId} as receivable_id,
-                coalesce(sum(case
-                  when ${receivablePayment.kind} = 'payment' then ${receivablePayment.amountMinorUnits}
-                  else -${receivablePayment.amountMinorUnits}
-                end), 0::numeric) as paid
-              from ${receivablePayment}
-              where ${receivablePayment.businessId} = ${access.businessId}
-              group by ${receivablePayment.receivableId}
-            ) payment_totals on payment_totals.receivable_id = ${receivable.id}
+            left join (${paymentTotals(access.businessId)}) payment_totals
+              on payment_totals.receivable_id = ${receivable.id}
             where ${receivable.businessId} = ${access.businessId}
               and ${receivable.customerId} = ${customerId}
               and ${receivable.status} = 'posted'
@@ -196,12 +176,12 @@ export function createCustomerCommands(db: Database): CustomerCommands {
         }
         const [record] = await tx
           .update(customer)
-          .set({ status: "archived", updatedAt: new Date() })
+          .set({ status: "archived", updatedAt: access.queriedAt })
           .where(and(eq(customer.businessId, access.businessId), eq(customer.id, customerId)))
           .returning();
         if (!record) throw new Error("Customer archive returned no record");
         const result = toCustomer(record);
-        await insertOperation(tx, identity, {
+        await saveOperation(tx, receivableOperationLog, identity, {
           customerId,
           resultSnapshot: result,
         });

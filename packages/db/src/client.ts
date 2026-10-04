@@ -7,9 +7,9 @@ export type Database = PostgresJsDatabase<typeof schema>;
 
 export interface DatabaseConfig {
   url: string;
-  maxConnections?: number;
-  connectTimeoutSeconds?: number;
-  idleTimeoutSeconds?: number;
+  maxConnections: number;
+  connectTimeoutSeconds: number;
+  idleTimeoutSeconds: number;
   ssl?: "disable" | "prefer" | "require" | "verify-full";
 }
 
@@ -22,9 +22,9 @@ export interface DatabaseHandle {
 
 export function createDatabase(config: DatabaseConfig): DatabaseHandle {
   const client = postgres(config.url, {
-    max: config.maxConnections ?? 10,
-    connect_timeout: config.connectTimeoutSeconds ?? 10,
-    idle_timeout: config.idleTimeoutSeconds ?? 20,
+    max: config.maxConnections,
+    connect_timeout: config.connectTimeoutSeconds,
+    idle_timeout: config.idleTimeoutSeconds,
     ...(config.ssl && config.ssl !== "disable" ? { ssl: config.ssl } : {}),
   });
   const db = drizzle(client, { schema });

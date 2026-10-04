@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { and, eq, inArray } from "drizzle-orm";
-import { fingerprint } from "../src/catalog/codec.ts";
 import { createCatalogRepository } from "../src/catalog.ts";
 import {
   businessSettings,
@@ -12,6 +11,7 @@ import {
   session,
   user,
 } from "../src/index.ts";
+import { fingerprintCommand } from "../src/operation-log.ts";
 import {
   catalogCategory,
   catalogOperation,
@@ -249,7 +249,9 @@ describe("catalog and inventory repository on PostgreSQL 18", () => {
       action: "product.archived",
       actorUserId: userIds.owner,
       businessId: firstBusinessId,
-      commandFingerprint: await fingerprint("category.created", { name: categoryCommand.name }),
+      commandFingerprint: await fingerprintCommand("category.created", {
+        name: categoryCommand.name,
+      }),
       idempotencyKey: categoryCommand.idempotencyKey,
       productId: product.product.id,
       resultSnapshot: { product: product.product },
@@ -288,7 +290,7 @@ describe("catalog and inventory repository on PostgreSQL 18", () => {
     // The list derives on hand through a correlated subquery while the detail sums the
     // movements directly. They must agree on a stocked product, or a reference that
     // silently matches nothing reads as zero and marks everything low on stock.
-    const stocked = await repository.listStock(actor("owner"), { limit: 50 });
+    const stocked = await repository.listStock(actor("owner"), { limit: 50, lowStockOnly: false });
     expect(
       stocked.items.find((item) => item.product.id === product.product.id)?.stock.onHandMinorUnits,
     ).toBe("10000");

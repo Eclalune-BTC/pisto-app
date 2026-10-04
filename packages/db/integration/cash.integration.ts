@@ -4,7 +4,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { createCashRepository } from "../src/cash.ts";
 import { createDatabase } from "../src/client.ts";
 import { parseDatabaseConfig } from "../src/env.ts";
-import { ProductError } from "../src/product.ts";
+import { ProductError } from "../src/errors.ts";
 import { member, organization, session, user } from "../src/schema/auth.ts";
 import { businessSettings } from "../src/schema/business.ts";
 import {
@@ -183,7 +183,7 @@ describe("expenses and cash repository on PostgreSQL 18", () => {
       );
 
     await expect(repository.createAccount(actors.admin, command)).rejects.toThrow(
-      "Stored cash account operation result is invalid",
+      "Stored cash_operation_receipt result does not match its contract",
     );
     const accounts = await database.db
       .select({ id: cashAccount.id })

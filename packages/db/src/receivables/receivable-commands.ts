@@ -6,29 +6,25 @@ import {
   voidReceivableRequestSchema,
 } from "@pisto/contracts";
 import { and, eq } from "drizzle-orm";
+
 import {
   appendReceivablePaymentCashMovement,
   reverseReceivablePaymentCashMovement,
 } from "../cash/receivable-ledger.ts";
 import type { Database } from "../client.ts";
-import { ProductError, resolveLocalDateTime } from "../product-core.ts";
+import { ProductError, parseInput } from "../errors.ts";
+import { requireCalendarDate, resolveLocalDateTime } from "../local-time.ts";
+import { parseMinorUnits } from "../money.ts";
+import { beginOperation, saveOperation } from "../operation-log.ts";
 import { customer, receivable, receivablePayment } from "../schema/receivables.ts";
+import { paymentResultSchema, receivableCommandFingerprint } from "./codec.ts";
+import { toPayment } from "./mappers.ts";
 import {
-  beginReceivableOperation,
   currentReceivable,
   getPaidMinorUnits,
-  insertOperation,
   loadReceivable,
-} from "./access.ts";
-import {
-  assertCalendarDate,
-  commandFingerprint,
-  parsePositiveMinorUnits,
-  paymentResultSchema,
-  uuidPattern,
-  validate,
-} from "./codec.ts";
-import { toPayment } from "./mappers.ts";
+  receivableOperationLog,
+} from "./records.ts";
 import type { ReceivablesRepository } from "./types.ts";
 
 type ReceivableCommands = Pick<
@@ -39,34 +35,34 @@ type ReceivableCommands = Pick<
 export function createReceivableCommands(db: Database): ReceivableCommands {
   return {
     async postReceivable(actor, rawCommand) {
-      const command = validate(
+      const command = parseInput(
         postReceivableRequestSchema,
         rawCommand,
         "Receivable details are invalid",
       );
-      assertCalendarDate(command.postedDate, "The posted date");
-      if (command.dueDate) assertCalendarDate(command.dueDate, "The due date");
+      requireCalendarDate(command.postedDate, "The posted date is invalid");
+      if (command.dueDate) requireCalendarDate(command.dueDate, "The due date is invalid");
       const action = "receivable.posted";
-      const fingerprint = await commandFingerprint(action, {
+      const commandFingerprint = await receivableCommandFingerprint(action, {
         customerId: command.customerId,
         description: command.description,
         dueDate: command.dueDate ?? null,
         originalMinorUnits: command.originalMinorUnits,
         postedDate: command.postedDate,
       });
-      const originalMinorUnits = parsePositiveMinorUnits(command.originalMinorUnits);
+      const originalMinorUnits = parseMinorUnits(command.originalMinorUnits, "The amount", {
+        allowZero: false,
+      });
       return db.transaction(async (tx) => {
-        const { access, identity, replay } = await beginReceivableOperation(
-          tx,
+        const { access, identity, replay } = await beginOperation(tx, {
+          action,
           actor,
-          "receivables:manage",
-          {
-            action,
-            fingerprint,
-            idempotencyKey: command.idempotencyKey,
-            schema: receivableSchema,
-          },
-        );
+          commandFingerprint,
+          idempotencyKey: command.idempotencyKey,
+          log: receivableOperationLog,
+          permissions: ["receivables:manage"],
+          snapshot: receivableSchema,
+        });
         if (replay) return { receivable: replay, replayed: true };
 
         const [customerRecord] = await tx
@@ -98,7 +94,7 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
           .returning();
         if (!record) throw new Error("Receivable insert returned no record");
         const result = await currentReceivable(tx, access, record);
-        await insertOperation(tx, identity, {
+        await saveOperation(tx, receivableOperationLog, identity, {
           customerId: command.customerId,
           receivableId: result.id,
           resultSnapshot: result,
@@ -108,39 +104,33 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
     },
 
     async voidReceivable(actor, receivableId, rawCommand) {
-      if (!uuidPattern.test(receivableId)) {
-        throw new ProductError("NOT_FOUND", "Receivable was not found");
-      }
-      const command = validate(
+      const command = parseInput(
         voidReceivableRequestSchema,
         rawCommand,
         "Receivable void confirmation is invalid",
       );
       const action = "receivable.voided";
-      const fingerprint = await commandFingerprint(action, {
+      const commandFingerprint = await receivableCommandFingerprint(action, {
         reason: command.reason,
         receivableId,
       });
       return db.transaction(async (tx) => {
-        const { access, identity, replay } = await beginReceivableOperation(
-          tx,
+        const { access, identity, replay } = await beginOperation(tx, {
+          action,
           actor,
-          "receivables:manage",
-          {
-            action,
-            fingerprint,
-            idempotencyKey: command.idempotencyKey,
-            schema: receivableSchema,
-          },
-        );
+          commandFingerprint,
+          idempotencyKey: command.idempotencyKey,
+          log: receivableOperationLog,
+          permissions: ["receivables:manage"],
+          snapshot: receivableSchema,
+        });
         if (replay) return { receivable: replay, replayed: true };
 
         const existing = await loadReceivable(tx, access, receivableId, true);
         if (existing.status === "voided") {
           throw new ProductError("CONFLICT", "The receivable is already voided");
         }
-        const paidMinorUnits = await getPaidMinorUnits(tx, access.businessId, receivableId);
-        if (paidMinorUnits !== 0n) {
+        if ((await getPaidMinorUnits(tx, access.businessId, receivableId)) !== 0n) {
           throw new ProductError(
             "CONFLICT",
             "Reverse every applied payment before voiding this receivable",
@@ -150,16 +140,16 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
           .update(receivable)
           .set({
             status: "voided",
-            voidedAt: new Date(),
+            voidedAt: access.queriedAt,
             voidedByUserId: actor.userId,
             voidReason: command.reason,
-            updatedAt: new Date(),
+            updatedAt: access.queriedAt,
           })
           .where(and(eq(receivable.businessId, access.businessId), eq(receivable.id, receivableId)))
           .returning();
         if (!record) throw new Error("Receivable void returned no record");
         const result = await currentReceivable(tx, access, record);
-        await insertOperation(tx, identity, {
+        await saveOperation(tx, receivableOperationLog, identity, {
           customerId: record.customerId,
           receivableId,
           resultSnapshot: result,
@@ -169,16 +159,13 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
     },
 
     async applyPayment(actor, receivableId, rawCommand) {
-      if (!uuidPattern.test(receivableId)) {
-        throw new ProductError("NOT_FOUND", "Receivable was not found");
-      }
-      const command = validate(
+      const command = parseInput(
         applyReceivablePaymentRequestSchema,
         rawCommand,
         "Receivable payment confirmation is invalid",
       );
       const action = "receivable.payment_applied";
-      const fingerprint = await commandFingerprint(action, {
+      const commandFingerprint = await receivableCommandFingerprint(action, {
         amountMinorUnits: command.amountMinorUnits,
         cashAccountId: command.cashAccountId,
         occurredLocalDate: command.occurredLocalDate,
@@ -186,19 +173,19 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
         receivableId,
         reference: command.reference ?? null,
       });
-      const amountMinorUnits = parsePositiveMinorUnits(command.amountMinorUnits);
+      const amountMinorUnits = parseMinorUnits(command.amountMinorUnits, "The amount", {
+        allowZero: false,
+      });
       return db.transaction(async (tx) => {
-        const { access, identity, replay } = await beginReceivableOperation(
-          tx,
+        const { access, identity, replay } = await beginOperation(tx, {
+          action,
           actor,
-          ["receivables:manage", "cash:manage"],
-          {
-            action,
-            fingerprint,
-            idempotencyKey: command.idempotencyKey,
-            schema: paymentResultSchema,
-          },
-        );
+          commandFingerprint,
+          idempotencyKey: command.idempotencyKey,
+          log: receivableOperationLog,
+          permissions: ["receivables:manage", "cash:manage"],
+          snapshot: paymentResultSchema,
+        });
         if (replay) return { ...replay, replayed: true };
 
         const receivableRecord = await loadReceivable(tx, access, receivableId, true);
@@ -265,7 +252,7 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
           payment: toPayment(record),
           receivable: await currentReceivable(tx, access, receivableRecord),
         };
-        await insertOperation(tx, identity, {
+        await saveOperation(tx, receivableOperationLog, identity, {
           customerId: receivableRecord.customerId,
           paymentId: record.id,
           receivableId,
@@ -276,33 +263,28 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
     },
 
     async reversePayment(actor, paymentId, rawCommand) {
-      if (!uuidPattern.test(paymentId)) {
-        throw new ProductError("NOT_FOUND", "Receivable payment was not found");
-      }
-      const command = validate(
+      const command = parseInput(
         reverseReceivablePaymentRequestSchema,
         rawCommand,
         "Payment reversal confirmation is invalid",
       );
       const action = "receivable.payment_reversed";
-      const fingerprint = await commandFingerprint(action, {
+      const commandFingerprint = await receivableCommandFingerprint(action, {
         occurredLocalDate: command.occurredLocalDate,
         occurredLocalTime: command.occurredLocalTime,
         paymentId,
         reference: command.reference ?? null,
       });
       return db.transaction(async (tx) => {
-        const { access, identity, replay } = await beginReceivableOperation(
-          tx,
+        const { access, identity, replay } = await beginOperation(tx, {
+          action,
           actor,
-          ["receivables:manage", "cash:manage"],
-          {
-            action,
-            fingerprint,
-            idempotencyKey: command.idempotencyKey,
-            schema: paymentResultSchema,
-          },
-        );
+          commandFingerprint,
+          idempotencyKey: command.idempotencyKey,
+          log: receivableOperationLog,
+          permissions: ["receivables:manage", "cash:manage"],
+          snapshot: paymentResultSchema,
+        });
         if (replay) return { ...replay, replayed: true };
 
         const [original] = await tx
@@ -370,7 +352,7 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
           payment: toPayment(record),
           receivable: await currentReceivable(tx, access, receivableRecord),
         };
-        await insertOperation(tx, identity, {
+        await saveOperation(tx, receivableOperationLog, identity, {
           customerId: original.customerId,
           paymentId: record.id,
           receivableId: original.receivableId,

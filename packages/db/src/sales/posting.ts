@@ -1,49 +1,57 @@
-import type { CreateSaleRequest } from "@pisto/contracts";
-import { createSaleRequestSchema } from "@pisto/contracts";
+import { type CreateSaleRequest, createSaleRequestSchema, type Sale } from "@pisto/contracts";
 import { and, eq } from "drizzle-orm";
-import { authorizeBusinessAction, type DatabaseTransaction } from "./business-access.ts";
-import { lockCommandKey } from "./operation-log.ts";
+
 import {
+  type AuthorizedBusinessContext,
+  authorizeBusinessAction,
+  type DatabaseTransaction,
   type ProductActor,
-  ProductError,
-  requireActiveBusiness,
-  resolveLocalDateTime,
-} from "./product-core.ts";
-import { parseSaleMinorUnits, saleFingerprint, toCorrection, toSale } from "./sales-records.ts";
-import { sale, saleCorrection, saleOperation, saleReview } from "./schema/sales.ts";
+} from "../business-access.ts";
+import { ProductError } from "../errors.ts";
+import { resolveLocalDateTime } from "../local-time.ts";
+import { parseMinorUnits } from "../money.ts";
+import { lockCommandKey, normalizeIdempotencyKey } from "../operation-log.ts";
+import { sale, saleCorrection, saleOperation, saleReview } from "../schema/sales.ts";
+import { requireKeyUnusedBy, saleFingerprint, toCorrection, toSale } from "./records.ts";
+
+export type PostedSale = { sale: Sale; replayed: boolean };
 
 export async function postSale(
   tx: DatabaseTransaction,
   actor: ProductActor,
   command: CreateSaleRequest,
-) {
-  const businessId = requireActiveBusiness(actor);
-  const grossMinorUnits = parseSaleMinorUnits(command.grossMinorUnits);
-  const commandFingerprint = await saleFingerprint(command);
+): Promise<PostedSale> {
+  const access = await authorizeBusinessAction(tx, actor, ["sales:create"]);
+  return postAuthorizedSale(tx, access, actor, command);
+}
 
-  const access = await authorizeBusinessAction(tx, actor, ["sales:create"], "update");
-  await lockCommandKey(tx, {
-    actorUserId: actor.userId,
-    businessId,
-    idempotencyKey: command.idempotencyKey,
+/** A key that a review reserved must carry exactly the reviewed sale. */
+export async function postAuthorizedSale(
+  tx: DatabaseTransaction,
+  access: AuthorizedBusinessContext,
+  actor: ProductActor,
+  rawCommand: CreateSaleRequest,
+): Promise<PostedSale> {
+  const command = {
+    ...rawCommand,
+    idempotencyKey: normalizeIdempotencyKey(rawCommand.idempotencyKey),
+  };
+  const grossMinorUnits = parseMinorUnits(command.grossMinorUnits, "Sale total", {
+    allowZero: false,
   });
-  const [existingCorrectionOperation] = await tx
-    .select({ id: saleCorrection.id })
-    .from(saleCorrection)
-    .where(
-      and(
-        eq(saleCorrection.businessId, businessId),
-        eq(saleCorrection.actorUserId, actor.userId),
-        eq(saleCorrection.idempotencyKey, command.idempotencyKey),
-      ),
-    )
-    .limit(1);
-  if (existingCorrectionOperation) {
-    throw new ProductError(
-      "IDEMPOTENCY_CONFLICT",
-      "That confirmation key was already used for another sale operation",
-    );
-  }
+  const commandFingerprint = await saleFingerprint(command);
+  const key = {
+    actorUserId: actor.userId,
+    businessId: access.businessId,
+    idempotencyKey: command.idempotencyKey,
+  };
+  await lockCommandKey(tx, key);
+  await requireKeyUnusedBy(
+    tx,
+    saleCorrection,
+    key,
+    "That confirmation key was already used for another sale operation",
+  );
 
   const [existingOperation] = await tx
     .select({
@@ -65,9 +73,9 @@ export async function postSale(
     )
     .where(
       and(
-        eq(saleOperation.businessId, businessId),
-        eq(saleOperation.actorUserId, actor.userId),
-        eq(saleOperation.idempotencyKey, command.idempotencyKey),
+        eq(saleOperation.businessId, key.businessId),
+        eq(saleOperation.actorUserId, key.actorUserId),
+        eq(saleOperation.idempotencyKey, key.idempotencyKey),
       ),
     )
     .limit(1);
@@ -93,8 +101,8 @@ export async function postSale(
     .where(
       and(
         eq(saleReview.id, command.idempotencyKey),
-        eq(saleReview.businessId, businessId),
-        eq(saleReview.actorUserId, actor.userId),
+        eq(saleReview.businessId, key.businessId),
+        eq(saleReview.actorUserId, key.actorUserId),
       ),
     )
     .for("update")
@@ -124,7 +132,7 @@ export async function postSale(
   const [createdSale] = await tx
     .insert(sale)
     .values({
-      businessId,
+      businessId: key.businessId,
       grossMinorUnits,
       currency: access.currency,
       currencyMinorUnitDigits: access.currencyMinorUnitDigits,
@@ -138,10 +146,8 @@ export async function postSale(
     .returning();
   if (!createdSale) throw new Error("Sale insert returned no record");
   await tx.insert(saleOperation).values({
-    businessId,
+    ...key,
     saleId: createdSale.id,
-    actorUserId: actor.userId,
-    idempotencyKey: command.idempotencyKey,
     commandFingerprint,
     action: "sale.posted",
   });

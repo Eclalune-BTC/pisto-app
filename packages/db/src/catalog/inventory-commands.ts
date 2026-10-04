@@ -6,21 +6,27 @@ import {
 import { and, eq } from "drizzle-orm";
 
 import type { Database } from "../client.ts";
-import { ProductError, resolveLocalDateTime } from "../product-core.ts";
+import { ProductError, parseInput } from "../errors.ts";
+import { resolveLocalDateTime } from "../local-time.ts";
+import { parseMinorUnits } from "../money.ts";
+import { beginOperation, fingerprintCommand, saveOperation } from "../operation-log.ts";
 import { catalogProduct, inventoryMovement } from "../schema/catalog.ts";
-import { fingerprint, parseMutationReplay, parseQuantity, stockFor, toMovement } from "./codec.ts";
-import { beginCatalogOperation, currentBalance, saveOperation } from "./operations.ts";
+import { toMovement, trackedStockFor } from "./mappers.ts";
+import { catalogOperationLog, currentBalance } from "./records.ts";
 import type { InventoryCommands } from "./types.ts";
+
+const movementSnapshotSchema = inventoryMutationResponseSchema.shape.data.omit({ replayed: true });
 
 export function createInventoryCommands(db: Database): InventoryCommands {
   return {
-    async recordMovement(actor, productId, inputCommand) {
-      const parsed = recordInventoryMovementRequestSchema.safeParse(inputCommand);
-      if (!parsed.success)
-        throw new ProductError("VALIDATION_ERROR", "Movement command is invalid");
-      const command = parsed.data;
+    async recordMovement(actor, productId, rawCommand) {
+      const command = parseInput(
+        recordInventoryMovementRequestSchema,
+        rawCommand,
+        "Movement command is invalid",
+      );
       const action = `inventory.${command.action}` as const;
-      const commandFingerprint = await fingerprint(action, {
+      const commandFingerprint = await fingerprintCommand(action, {
         productId,
         action: command.action,
         quantityMinorUnits: command.quantityMinorUnits,
@@ -28,17 +34,18 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         occurredLocalDate: command.occurredLocalDate,
         occurredLocalTime: command.occurredLocalTime,
       });
-      return db.transaction(async (transaction) => {
-        const { access, identity, replay } = await beginCatalogOperation(
-          transaction,
+      return db.transaction(async (tx) => {
+        const { access, identity, replay } = await beginOperation(tx, {
+          action,
           actor,
-          "inventory:manage",
-          { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
-        );
-        if (replay) {
-          return parseMutationReplay(inventoryMutationResponseSchema.shape.data, replay.result);
-        }
-        const [product] = await transaction
+          commandFingerprint,
+          idempotencyKey: command.idempotencyKey,
+          log: catalogOperationLog,
+          permissions: ["inventory:manage"],
+          snapshot: movementSnapshotSchema,
+        });
+        if (replay) return { ...replay, replayed: true };
+        const [product] = await tx
           .select()
           .from(catalogProduct)
           .where(
@@ -53,10 +60,11 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         if (!product.tracked) {
           throw new ProductError("CONFLICT", "Inventory is not tracked for this product");
         }
-        const quantity = parseQuantity(command.quantityMinorUnits, "Movement quantity", false);
+        const quantity = parseMinorUnits(command.quantityMinorUnits, "Movement quantity", {
+          allowZero: false,
+        });
         const delta = command.action === "adjust_out" ? -quantity : quantity;
-        const balance = await currentBalance(transaction, access.businessId, productId);
-        const nextBalance = balance + delta;
+        const nextBalance = (await currentBalance(tx, access.businessId, productId)) + delta;
         if (nextBalance < 0n) {
           throw new ProductError("CONFLICT", "The movement would make tracked stock negative");
         }
@@ -65,7 +73,7 @@ export function createInventoryCommands(db: Database): InventoryCommands {
           time: command.occurredLocalTime,
           timeZone: access.timeZone,
         });
-        const [created] = await transaction
+        const [created] = await tx
           .insert(inventoryMovement)
           .values({
             action: command.action,
@@ -84,9 +92,8 @@ export function createInventoryCommands(db: Database): InventoryCommands {
           .returning();
         if (!created) throw new Error("Inventory movement insert returned no record");
         const movement = toMovement(created, null);
-        const stock = stockFor(product, nextBalance.toString());
-        if (!stock) throw new Error("Tracked product did not produce stock state");
-        await saveOperation(transaction, identity, {
+        const stock = trackedStockFor(product, nextBalance.toString());
+        await saveOperation(tx, catalogOperationLog, identity, {
           movementId: movement.id,
           productId,
           resultSnapshot: { movement, stock },
@@ -95,29 +102,31 @@ export function createInventoryCommands(db: Database): InventoryCommands {
       });
     },
 
-    async reverseMovement(actor, movementId, inputCommand) {
-      const parsed = reverseInventoryMovementRequestSchema.safeParse(inputCommand);
-      if (!parsed.success)
-        throw new ProductError("VALIDATION_ERROR", "Reversal command is invalid");
-      const command = parsed.data;
-      const action = "inventory.reverse" as const;
-      const commandFingerprint = await fingerprint(action, {
+    async reverseMovement(actor, movementId, rawCommand) {
+      const command = parseInput(
+        reverseInventoryMovementRequestSchema,
+        rawCommand,
+        "Reversal command is invalid",
+      );
+      const action = "inventory.reverse";
+      const commandFingerprint = await fingerprintCommand(action, {
         movementId,
         reason: command.reason,
         occurredLocalDate: command.occurredLocalDate,
         occurredLocalTime: command.occurredLocalTime,
       });
-      return db.transaction(async (transaction) => {
-        const { access, identity, replay } = await beginCatalogOperation(
-          transaction,
+      return db.transaction(async (tx) => {
+        const { access, identity, replay } = await beginOperation(tx, {
+          action,
           actor,
-          "inventory:manage",
-          { action, commandFingerprint, idempotencyKey: command.idempotencyKey },
-        );
-        if (replay) {
-          return parseMutationReplay(inventoryMutationResponseSchema.shape.data, replay.result);
-        }
-        const [initial] = await transaction
+          commandFingerprint,
+          idempotencyKey: command.idempotencyKey,
+          log: catalogOperationLog,
+          permissions: ["inventory:manage"],
+          snapshot: movementSnapshotSchema,
+        });
+        if (replay) return { ...replay, replayed: true };
+        const [initial] = await tx
           .select({ productId: inventoryMovement.productId })
           .from(inventoryMovement)
           .where(
@@ -128,7 +137,7 @@ export function createInventoryCommands(db: Database): InventoryCommands {
           )
           .limit(1);
         if (!initial) throw new ProductError("NOT_FOUND", "Inventory movement was not found");
-        const [product] = await transaction
+        const [product] = await tx
           .select()
           .from(catalogProduct)
           .where(
@@ -143,7 +152,7 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         if (product.status === "archived") {
           throw new ProductError("CONFLICT", "Inventory cannot change for an archived product");
         }
-        const [original] = await transaction
+        const [original] = await tx
           .select()
           .from(inventoryMovement)
           .where(
@@ -158,7 +167,7 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         if (original.action === "reverse") {
           throw new ProductError("CONFLICT", "A reversal movement cannot itself be reversed");
         }
-        const [existingReversal] = await transaction
+        const [existingReversal] = await tx
           .select({ id: inventoryMovement.id })
           .from(inventoryMovement)
           .where(
@@ -171,9 +180,8 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         if (existingReversal) {
           throw new ProductError("CONFLICT", "The inventory movement was already reversed");
         }
-        const balance = await currentBalance(transaction, access.businessId, product.id);
         const delta = -original.deltaMinorUnits;
-        const nextBalance = balance + delta;
+        const nextBalance = (await currentBalance(tx, access.businessId, product.id)) + delta;
         if (nextBalance < 0n) {
           throw new ProductError("CONFLICT", "The reversal would make tracked stock negative");
         }
@@ -182,7 +190,7 @@ export function createInventoryCommands(db: Database): InventoryCommands {
           time: command.occurredLocalTime,
           timeZone: access.timeZone,
         });
-        const [created] = await transaction
+        const [created] = await tx
           .insert(inventoryMovement)
           .values({
             action: "reverse",
@@ -202,9 +210,8 @@ export function createInventoryCommands(db: Database): InventoryCommands {
           .returning();
         if (!created) throw new Error("Inventory reversal insert returned no record");
         const movement = toMovement(created, null);
-        const stock = stockFor(product, nextBalance.toString());
-        if (!stock) throw new Error("Tracked product did not produce stock state");
-        await saveOperation(transaction, identity, {
+        const stock = trackedStockFor(product, nextBalance.toString());
+        await saveOperation(tx, catalogOperationLog, identity, {
           movementId: movement.id,
           productId: product.id,
           resultSnapshot: { movement, stock },
