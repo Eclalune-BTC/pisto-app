@@ -1,28 +1,36 @@
-import type { CashAccount } from "@pisto/contracts";
+import type { CashAccount, PostExpenseRequest } from "@pisto/contracts";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
+import {
+  FeatureBoundary,
+  type FeatureRemoteState,
+  requireFeatureManageAccess,
+} from "@/components/feature-boundary";
+import { ContentSkeleton } from "@/components/layout/skeletons";
+import { Page } from "@/components/page";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { queryHasStaleData } from "@/lib/query-state";
 import { cashApi } from "../cash/api";
-import { cashIssueMessage } from "../cash/copy";
+import { cashIssueMessages } from "../cash/copy";
 import { invalidateExpensesAndCash } from "../cash/invalidate";
-import { cashConfirmationState } from "../cash/mutation-state";
+import { isLockedPhase, mutationPhase } from "../cash/mutation-state";
 import { activeCashAccountsInfiniteOptions, flattenPages } from "../cash/queries";
 import { featureRemoteState } from "../cash/remote-state";
 import { useCashAccess } from "../cash/use-cash-access";
-import { buildExpensesCopy } from "./copy";
+import { expensesBoundaryCopy } from "./copy";
 import { buildExpenseCommand } from "./drafts";
 import {
   type ExpenseDraft,
   type ExpenseDraftErrors,
   ExpenseEditorScreen,
 } from "./expense-editor-screen";
+import { expenseHref } from "./expense-history";
 
 const emptyDraft: ExpenseDraft = {
   accountId: "",
@@ -38,114 +46,97 @@ export function ExpenseEditorController() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildExpensesCopy(t), [t]);
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const {
-    business,
-    businesses,
-    canManage,
-    canRead,
-    isStale: accessIsStale,
-  } = useCashAccess("expenses");
-  const businessId = business?.id;
-  const accountsQuery = useInfiniteQuery({
-    ...activeCashAccountsInfiniteOptions(businessId),
-    enabled: Boolean(business && canRead),
-  });
+  const access = useCashAccess("expenses");
+  const { business, businesses, canRead } = access;
+  const accountsQuery = useInfiniteQuery(
+    activeCashAccountsInfiniteOptions(canRead ? business?.id : undefined),
+  );
   const accounts = flattenPages(accountsQuery.data);
   const [draft, setDraft] = useState<ExpenseDraft>(emptyDraft);
   const [errors, setErrors] = useState<ExpenseDraftErrors>({});
-  const [command, setCommand] = useState<Parameters<typeof cashApi.expenses.post>[0] | null>(null);
+  const [command, setCommand] = useState<PostExpenseRequest | null>(null);
   const [reviewAccount, setReviewAccount] = useState<CashAccount | null>(null);
 
   useEffect(() => {
     if (!business) return;
-    const current = currentLocalDateTime(business.timeZone);
+    const now = currentLocalDateTime(business.timeZone);
     setDraft((value) => ({
       ...value,
-      localDate: value.localDate || current.date,
-      localTime: value.localTime || current.time,
+      localDate: value.localDate || now.date,
+      localTime: value.localTime || now.time,
     }));
   }, [business]);
 
+  const firstAccountId = accounts[0]?.id;
   useEffect(() => {
-    const firstAccount = accounts[0];
-    if (firstAccount && !draft.accountId) {
-      setDraft((value) => ({ ...value, accountId: firstAccount.id }));
-    }
-  }, [accounts, draft.accountId]);
+    if (command || draft.accountId || !firstAccountId) return;
+    setDraft((value) => ({ ...value, accountId: firstAccountId }));
+  }, [command, draft.accountId, firstAccountId]);
 
   const mutation = useMutation({
     mutationFn: cashApi.expenses.post,
     onSuccess: async ({ expense }) => {
-      if (!business) return;
-      await invalidateExpensesAndCash(queryClient, business.id);
-      router.replace({
-        pathname: "/operate/expenses/[expenseId]",
-        params: { expenseId: expense.id },
-      });
+      if (business) await invalidateExpensesAndCash(queryClient, business.id);
+      notify.success(t("expenses.editor.success"));
+      router.replace(expenseHref(expense.id));
     },
   });
+  const phase = mutationPhase(mutation);
+  const locked = isLockedPhase(phase);
 
   if (businesses.data && !business) return <Redirect href="/business" />;
 
-  let remoteState = featureRemoteState({
+  const stale = access.isStale || queryHasStaleData(accountsQuery);
+  const canManage =
+    access.canManage && Boolean(business?.access.permissions.includes("cash:manage"));
+  let state: FeatureRemoteState = featureRemoteState({
     businessPending: businesses.isPending,
     canRead,
-    offlineMessage: copy.remote.offline,
-    queries: [businesses, ...(canRead ? [accountsQuery] : [])],
-    unavailableMessage: copy.remote.unavailable,
+    offlineMessage: t("remote.offlineLoad"),
+    queries: [businesses, accountsQuery],
+    unavailableMessage: t("expenses.remote.unavailable"),
   });
-  const stale = accessIsStale || queryHasStaleData(accountsQuery);
-  const canConfirm =
-    canManage && Boolean(business?.access.permissions.includes("cash:manage")) && !stale;
-  if (remoteState.kind === "ready" && stale) {
-    remoteState = { kind: "error", message: copy.remote.staleMutation };
+  if (state.kind === "ready" && stale)
+    state = { kind: "error", message: t("remote.staleMutation") };
+  state = requireFeatureManageAccess(state, canManage);
+  const retry = () => void Promise.all([businesses.refetch(), accountsQuery.refetch()]);
+
+  if (state.kind === "loading") {
+    return (
+      <Page width="form">
+        <ContentSkeleton label={t("expenses.boundary.loading")} variant="form" />
+      </Page>
+    );
+  }
+  if (state.kind !== "ready") {
+    return (
+      <FeatureBoundary copy={expensesBoundaryCopy(t)} onRetry={retry} state={state}>
+        {null}
+      </FeatureBoundary>
+    );
   }
 
-  const confirmation = cashConfirmationState(mutation);
-  const confirmationLocked = confirmation === "pending" || confirmation === "uncertain";
-
-  const prepareReview = () => {
-    if (confirmationLocked || command || !canConfirm || remoteState.kind !== "ready") return;
-    const result = buildExpenseCommand({
-      accounts,
-      draft,
-      idempotencyKey: Crypto.randomUUID(),
-    });
-    setErrors(
-      Object.fromEntries(
-        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(t, issue)]),
-      ) as ExpenseDraftErrors,
-    );
-    if (!result.command) return;
-    const account = accounts.find(({ id }) => id === result.command?.accountId);
-    if (!account) throw new Error("Expense review requires the selected cash account");
-    setReviewAccount(account);
-    setCommand(result.command);
-    mutation.reset();
-  };
-
+  const canConfirm = canManage && !stale;
   return (
     <ExpenseEditorScreen
       accounts={accounts}
-      reviewAccount={reviewAccount}
-      canManage={canConfirm}
-      categoryOptions={copy.categoryOptions}
+      accountsPage={{
+        hasMore: accountsQuery.hasNextPage,
+        loadingMore: accountsQuery.isFetchingNextPage,
+        onLoadMore: () => void accountsQuery.fetchNextPage(),
+      }}
+      canConfirm={canConfirm}
       command={command}
-      confirmation={confirmation}
-      copy={copy.editor}
-      currency={business?.currency ?? ""}
       draft={draft}
-      effect={copy.effects.create}
       errorMessage={
         mutation.error
-          ? productErrorMessage(mutation.error, copy.remote.mutationFallback, t)
+          ? productErrorMessage(mutation.error, t("expenses.remote.mutationFallback"), t)
           : undefined
       }
       errors={errors}
       formatMoney={(minorUnits, currency) => {
-        if (!reviewAccount) throw new Error("Expense review requires its cash account snapshot");
+        if (!reviewAccount) throw new Error("An expense review requires its paying account");
         return formatMinorUnits(
           minorUnits,
           currency,
@@ -153,29 +144,39 @@ export function ExpenseEditorController() {
           locale,
         );
       }}
-      hasMoreAccounts={Boolean(accountsQuery.hasNextPage)}
-      isLoadingMoreAccounts={accountsQuery.isFetchingNextPage}
-      onCheckStatus={() => {
-        if (command && !mutation.isPending) mutation.mutate(command);
+      onCancel={() => {
+        if (!locked) router.replace("/operate/expenses");
       }}
       onConfirm={() => {
-        if (command && !mutation.isPending && canConfirm) mutation.mutate(command);
+        if (command && phase !== "pending" && canConfirm) mutation.mutate(command);
       }}
-      onCreateAccount={() => router.push("/operate/cash/accounts/new")}
-      onDraftChange={(value) => {
-        if (!confirmationLocked && !command) setDraft(value);
+      onDraftChange={(next) => {
+        if (!command) setDraft(next);
       }}
       onEdit={() => {
-        if (confirmationLocked) return;
+        if (locked) return;
         setCommand(null);
         setReviewAccount(null);
         mutation.reset();
       }}
-      onLoadMoreAccounts={() => void accountsQuery.fetchNextPage()}
-      onPrepareReview={prepareReview}
-      onRetry={() => void Promise.all([businesses.refetch(), accountsQuery.refetch()])}
-      remoteState={remoteState}
-      stage={command ? "review" : "edit"}
+      onPrepareReview={() => {
+        if (command || !canConfirm) return;
+        const result = buildExpenseCommand({
+          accounts,
+          draft,
+          idempotencyKey: Crypto.randomUUID(),
+        });
+        setErrors(cashIssueMessages(t, result.issues));
+        const prepared = result.command;
+        if (!prepared) return;
+        const account = accounts.find(({ id }) => id === prepared.accountId);
+        if (!account) throw new Error("An expense review requires the selected paying account");
+        setReviewAccount(account);
+        setCommand(prepared);
+        mutation.reset();
+      }}
+      phase={phase}
+      reviewAccount={reviewAccount}
     />
   );
 }

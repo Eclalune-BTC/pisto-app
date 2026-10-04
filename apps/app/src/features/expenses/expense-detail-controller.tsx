@@ -1,165 +1,113 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import * as Crypto from "expo-crypto";
+import type { Expense } from "@pisto/contracts";
+import { useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { SearchX } from "lucide-react-native";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-
+import { FeatureBoundary } from "@/components/feature-boundary";
+import { ContentSkeleton } from "@/components/layout/skeletons";
+import { Page } from "@/components/page";
+import { useRouteLabel } from "@/components/shell/shell-context";
+import { StatePanel } from "@/components/ui/state-panel";
+import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { ApiClientError } from "@/lib/api-error";
-import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
-import { productErrorMessage } from "@/lib/product-errors";
-import { queryHasStaleData } from "@/lib/query-state";
-import { cashApi } from "../cash/api";
-import { cashIssueMessage } from "../cash/copy";
-import { invalidateExpensesAndCash } from "../cash/invalidate";
-import { cashConfirmationState } from "../cash/mutation-state";
-import { cashAccountQueryOptions, expenseQueryOptions } from "../cash/queries";
+import { formatMinorUnits } from "@/lib/money";
+import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
+import { expenseQueryOptions } from "../cash/queries";
 import { featureRemoteState } from "../cash/remote-state";
+import { firstParam, type RouteParam } from "../cash/search-params";
 import { useCashAccess } from "../cash/use-cash-access";
-import { buildExpensesCopy } from "./copy";
-import { buildVoidExpenseCommand } from "./drafts";
-import {
-  ExpenseDetailScreen,
-  type VoidExpenseDraft,
-  type VoidExpenseDraftErrors,
-} from "./expense-detail-screen";
+import { expensesBoundaryCopy } from "./copy";
+import { ExpenseDetailScreen } from "./expense-detail-screen";
+import { ExpenseVoidDialog } from "./expense-void-dialog";
 
 export function ExpenseDetailController() {
-  const params = useLocalSearchParams<{
-    action?: string | string[];
-    expenseId?: string | string[];
-  }>();
-  const expenseId = Array.isArray(params.expenseId) ? params.expenseId[0] : params.expenseId;
-  const action = Array.isArray(params.action) ? params.action[0] : params.action;
-  const queryClient = useQueryClient();
+  const params = useLocalSearchParams<{ expenseId?: RouteParam }>();
+  const expenseId = firstParam(params.expenseId);
   const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildExpensesCopy(t), [t]);
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const {
-    business,
-    businesses,
-    canManage,
-    canRead,
-    isStale: accessIsStale,
-  } = useCashAccess("expenses");
-  const businessId = business?.id;
-  const expenseQuery = useQuery({
-    ...expenseQueryOptions(businessId, expenseId),
-    enabled: Boolean(business && canRead && expenseId),
-  });
+  const access = useCashAccess("expenses");
+  const { business, businesses, canRead } = access;
+  const expenseQuery = useQuery(expenseQueryOptions(canRead ? business?.id : undefined, expenseId));
+  // The voided record is fixed when the dialog opens; a refetch cannot change what is confirmed.
+  const [voiding, setVoiding] = useState<Expense>();
   const expense = expenseQuery.data?.expense;
-  const accountQuery = useQuery({
-    ...cashAccountQueryOptions(businessId, expense?.accountId),
-    enabled: Boolean(business && canRead && expense?.accountId),
-  });
-  const [stage, setStage] = useState<"detail" | "void-edit" | "void-review">(
-    action === "void" ? "void-edit" : "detail",
-  );
-  const [voidDraft, setVoidDraft] = useState<VoidExpenseDraft>({
-    localDate: "",
-    localTime: "",
-    reason: "",
-  });
-  const [voidErrors, setVoidErrors] = useState<VoidExpenseDraftErrors>({});
-  const [voidCommand, setVoidCommand] = useState<
-    Parameters<typeof cashApi.expenses.void>[1] | null
-  >(null);
-
-  useEffect(() => {
-    if (!business || voidDraft.localDate || voidDraft.localTime) return;
-    const current = currentLocalDateTime(business.timeZone);
-    setVoidDraft((value) => ({ ...value, localDate: current.date, localTime: current.time }));
-  }, [business, voidDraft.localDate, voidDraft.localTime]);
-
-  const mutation = useMutation({
-    mutationFn: (command: Parameters<typeof cashApi.expenses.void>[1]) => {
-      if (!expenseId) throw new Error("Expense identifier is missing");
-      return cashApi.expenses.void(expenseId, command);
-    },
-    onSuccess: async () => {
-      if (!business) return;
-      await invalidateExpensesAndCash(queryClient, business.id);
-      setStage("detail");
-      setVoidCommand(null);
-    },
-  });
+  useRouteLabel("/operate/expenses/[expenseId]", expense?.description);
 
   if (businesses.data && !business) return <Redirect href="/business" />;
 
-  let remoteState = featureRemoteState({
-    businessPending: businesses.isPending,
-    canRead,
-    offlineMessage: copy.remote.offline,
-    queries: [businesses, ...(canRead ? [expenseQuery, ...(expense ? [accountQuery] : [])] : [])],
-    unavailableMessage: copy.remote.unavailable,
-  });
-  if (
-    expenseQuery.error instanceof ApiClientError &&
-    expenseQuery.error.code === "NOT_FOUND" &&
-    !expenseQuery.data
-  ) {
-    remoteState = { kind: "ready" };
-  }
-  const stale = accessIsStale || queryHasStaleData(expenseQuery) || queryHasStaleData(accountQuery);
-  const canConfirm =
-    canManage && Boolean(business?.access.permissions.includes("cash:manage")) && !stale;
-
-  const prepareVoidReview = () => {
-    const result = buildVoidExpenseCommand({
-      draft: voidDraft,
-      idempotencyKey: Crypto.randomUUID(),
-    });
-    setVoidErrors(
-      Object.fromEntries(
-        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(t, issue)]),
-      ) as VoidExpenseDraftErrors,
+  const retry = () => void Promise.all([businesses.refetch(), expenseQuery.refetch()]);
+  const notFound =
+    !expenseId ||
+    (expenseQuery.error instanceof ApiClientError &&
+      expenseQuery.error.code === "NOT_FOUND" &&
+      !expense);
+  const pageState = hasDeniedRead([expenseQuery])
+    ? ({ kind: "denied" } as const)
+    : featureRemoteState({
+        businessPending: businesses.isPending,
+        canRead,
+        offlineMessage: t("remote.offlineLoad"),
+        queries: notFound ? [businesses] : [businesses, expenseQuery],
+        unavailableMessage: t("expenses.remote.unavailable"),
+      });
+  if (pageState.kind === "loading") {
+    return (
+      <Page width="form">
+        <ContentSkeleton label={t("expenses.boundary.loading")} variant="detail" />
+      </Page>
     );
-    if (!result.command) return;
-    setVoidCommand(result.command);
-    setStage("void-review");
-    mutation.reset();
-  };
+  }
+  if (pageState.kind !== "ready") {
+    return (
+      <FeatureBoundary copy={expensesBoundaryCopy(t)} onRetry={retry} state={pageState}>
+        {null}
+      </FeatureBoundary>
+    );
+  }
+  if (notFound || !expense) {
+    return (
+      <Page width="form">
+        <StatePanel
+          description={t("expenses.detail.notFoundDescription")}
+          icon={SearchX}
+          level={1}
+          title={t("expenses.detail.notFoundTitle")}
+        />
+      </Page>
+    );
+  }
+  if (!business) throw new Error("A readable expense requires the active business");
 
-  const retry = () => {
-    void Promise.all([businesses.refetch(), expenseQuery.refetch(), accountQuery.refetch()]);
-  };
+  const stale = access.isStale || queryHasStaleData(expenseQuery);
+  const canVoid = access.canManage && business.access.permissions.includes("cash:manage") && !stale;
 
   return (
-    <ExpenseDetailScreen
-      accountName={accountQuery.data?.account.name ?? "—"}
-      canManage={canConfirm}
-      confirmation={cashConfirmationState(mutation)}
-      copy={copy.detail}
-      errorMessage={
-        mutation.error
-          ? productErrorMessage(mutation.error, copy.remote.mutationFallback, t)
-          : undefined
-      }
-      expense={expense ?? null}
-      formatMoney={(minorUnits, currency, fractionDigits) =>
-        formatMinorUnits(minorUnits, currency, fractionDigits, locale)
-      }
-      isStale={stale}
-      onBeginVoid={() => setStage("void-edit")}
-      onCancelVoid={() => {
-        setStage("detail");
-        setVoidCommand(null);
-        mutation.reset();
-      }}
-      onCheckStatus={() => voidCommand && mutation.mutate(voidCommand)}
-      onConfirmVoid={() => voidCommand && mutation.mutate(voidCommand)}
-      onEditVoid={() => {
-        setStage("void-edit");
-        mutation.reset();
-      }}
-      onPrepareVoidReview={prepareVoidReview}
-      onRetry={retry}
-      onVoidDraftChange={setVoidDraft}
-      remoteState={remoteState}
-      stage={canConfirm ? stage : "detail"}
-      voidCommand={canConfirm ? voidCommand : null}
-      voidDraft={voidDraft}
-      voidErrors={voidErrors}
-    />
+    <>
+      <ExpenseDetailScreen
+        businessId={business.id}
+        canVoid={canVoid}
+        expense={expense}
+        formatMoney={(minorUnits, currency, fractionDigits) =>
+          formatMinorUnits(minorUnits, currency, fractionDigits, locale)
+        }
+        formatTimestamp={(timestamp, timeZone) =>
+          formatLocalizedDateTime(timestamp, locale, timeZone)
+        }
+        isStale={stale}
+        onRetry={retry}
+        onVoid={() => setVoiding(expense)}
+      />
+      {voiding?.id === expense.id ? (
+        <ExpenseVoidDialog
+          businessId={business.id}
+          canConfirm={canVoid}
+          expense={voiding}
+          onClose={() => setVoiding(undefined)}
+          timeZone={business.timeZone}
+        />
+      ) : null}
+    </>
   );
 }

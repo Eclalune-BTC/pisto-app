@@ -1,73 +1,90 @@
-import type { Expense, ExpenseCategory } from "@pisto/contracts";
-import { useMemo } from "react";
+import type { Expense } from "@pisto/contracts";
+import type { Href } from "expo-router";
+import { Ban } from "lucide-react-native";
+import { type ReactElement, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { RowActions } from "@/components/ui/row-actions";
 import { Text } from "@/components/ui/text";
+import { CashAccountName } from "../cash/cash-account-name";
+import { expenseCategoryLabels, expenseStatusLabels } from "./copy";
 
 type ExpenseHistoryProps = {
+  /** Names already loaded on this page, keyed by account. */
+  accountNames: ReadonlyMap<string, string>;
+  businessId: string;
+  empty: ReactElement;
   expenses: Expense[];
-  canManage: boolean;
-  postedLabel: string;
-  voidedLabel: string;
-  voidActionLabel: string;
-  categoryLabels: Record<ExpenseCategory, string>;
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
-  onOpenExpense: (expenseId: string) => void;
-  onVoidExpense: (expenseId: string) => void;
+  formatOccurredAt: (expense: Expense) => string;
+  /** Present only for a manager allowed to void; voided rows never offer it. */
+  onVoidExpense?: (expense: Expense) => void;
 };
 
+export function expenseHref(expenseId: string): Href {
+  return { pathname: "/operate/expenses/[expenseId]", params: { expenseId } };
+}
+
 export function ExpenseHistory({
+  accountNames,
+  businessId,
+  empty,
   expenses,
-  canManage,
-  postedLabel,
-  voidedLabel,
-  voidActionLabel,
-  categoryLabels,
   formatMoney,
-  onOpenExpense,
+  formatOccurredAt,
   onVoidExpense,
 }: ExpenseHistoryProps) {
   const { t } = useTranslation();
-  const columns = useMemo<DataTableColumn<Expense>[]>(
-    () => [
+  const columns = useMemo<DataTableColumn<Expense>[]>(() => {
+    const categories = expenseCategoryLabels(t);
+    const statuses = expenseStatusLabels(t);
+    return [
       {
         id: "description",
         header: t("dataTable.columns.description"),
         meta: { primary: true },
         cell: ({ row: { original } }) => (
-          <Button
-            accessibilityLabel={t("dataTable.openRecord", { name: original.description })}
-            className="justify-start px-0"
-            label={original.description}
-            onPress={() => onOpenExpense(original.id)}
-            size="sm"
-            variant="ghost"
-          />
+          <Text className="text-[13px]" numberOfLines={1}>
+            {original.description}
+          </Text>
         ),
       },
       {
         id: "category",
         header: t("dataTable.columns.category"),
         cell: ({ row: { original } }) => (
-          <Text className="font-sans text-foreground">{categoryLabels[original.category]}</Text>
+          <Text className="text-[13px] text-muted-foreground">{categories[original.category]}</Text>
+        ),
+      },
+      {
+        id: "account",
+        header: t("dataTable.columns.account"),
+        cell: ({ row: { original } }) => (
+          <CashAccountName
+            accountId={original.accountId}
+            businessId={businessId}
+            className="text-muted-foreground"
+            knownName={accountNames.get(original.accountId)}
+          />
         ),
       },
       {
         id: "date",
         header: t("dataTable.columns.date"),
         cell: ({ row: { original } }) => (
-          <Text className="font-sans text-muted-foreground">{original.occurredLocalDate}</Text>
+          <Text className="text-[13px] text-muted-foreground tabular-nums">
+            {formatOccurredAt(original)}
+          </Text>
         ),
       },
       {
         id: "status",
         header: t("dataTable.columns.status"),
         cell: ({ row: { original } }) => (
-          <Text className="font-sans text-foreground">
-            {original.status === "posted" ? postedLabel : voidedLabel}
-          </Text>
+          <Badge variant={original.status === "voided" ? "outline" : "secondary"}>
+            <Text>{statuses[original.status]}</Text>
+          </Badge>
         ),
       },
       {
@@ -75,7 +92,13 @@ export function ExpenseHistory({
         header: t("dataTable.columns.amount"),
         meta: { align: "end" },
         cell: ({ row: { original } }) => (
-          <Text className="font-ui text-foreground">
+          <Text
+            className={
+              original.status === "voided"
+                ? "font-ui text-[13px] text-muted-foreground tabular-nums line-through"
+                : "font-ui text-[13px] tabular-nums"
+            }
+          >
             {formatMoney(
               original.amountMinorUnits,
               original.currency,
@@ -84,41 +107,34 @@ export function ExpenseHistory({
           </Text>
         ),
       },
-      {
-        id: "actions",
-        header: t("dataTable.columns.actions"),
-        cell: ({ row: { original } }) => (
-          <View className="min-w-0 items-start gap-2">
-            {canManage && original.status === "posted" ? (
-              <Button
-                label={voidActionLabel}
-                onPress={() => onVoidExpense(original.id)}
-                size="sm"
-                variant="ghost"
-              />
-            ) : null}
-          </View>
-        ),
-      },
-    ],
-    [
-      t,
-      categoryLabels,
-      postedLabel,
-      voidedLabel,
-      formatMoney,
-      canManage,
-      onOpenExpense,
-      onVoidExpense,
-      voidActionLabel,
-    ],
-  );
+    ];
+  }, [accountNames, businessId, formatMoney, formatOccurredAt, t]);
   return (
     <DataTable
       caption={t("filters.history")}
       columns={columns}
       data={expenses}
+      empty={empty}
+      getRowHref={(expense) => expenseHref(expense.id)}
       getRowId={(expense) => expense.id}
+      rowActions={
+        onVoidExpense
+          ? (expense) =>
+              expense.status === "posted" ? (
+                <RowActions
+                  actions={[
+                    {
+                      destructive: true,
+                      icon: Ban,
+                      label: t("expenses.void.action"),
+                      onPress: () => onVoidExpense(expense),
+                    },
+                  ]}
+                  label={t("expenses.overview.rowActions", { name: expense.description })}
+                />
+              ) : null
+          : undefined
+      }
     />
   );
 }

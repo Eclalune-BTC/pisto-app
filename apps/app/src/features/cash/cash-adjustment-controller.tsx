@@ -1,63 +1,61 @@
-import type { CashAccount } from "@pisto/contracts";
+import type { CashAccount, RecordCashAdjustmentRequest } from "@pisto/contracts";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
+import {
+  FeatureBoundary,
+  type FeatureRemoteState,
+  requireFeatureManageAccess,
+} from "@/components/feature-boundary";
+import { ContentSkeleton } from "@/components/layout/skeletons";
+import { Page } from "@/components/page";
+import { useRouteLabel } from "@/components/shell/shell-context";
 import { requireSupportedLocale } from "@/i18n/locale";
-import { ApiClientError, isAmbiguousMutationError } from "@/lib/api-error";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { queryHasStaleData } from "@/lib/query-state";
 import { cashApi } from "./api";
+import { accountHref } from "./cash-account-list";
 import {
   type CashAdjustmentDraft,
   type CashAdjustmentErrors,
   CashAdjustmentScreen,
 } from "./cash-adjustment-screen";
-import { buildCashCopy, cashIssueMessage } from "./copy";
+import { cashBoundaryCopy, cashIssueMessages } from "./copy";
 import { buildCashAdjustmentCommand } from "./drafts";
 import { invalidateCashLedger } from "./invalidate";
-import { cashConfirmationState } from "./mutation-state";
+import { isLockedPhase, mutationPhase } from "./mutation-state";
 import {
   activeCashAccountsInfiniteOptions,
   cashAccountQueryOptions,
   flattenPages,
 } from "./queries";
 import { featureRemoteState } from "./remote-state";
+import { isRequestedAccountUnavailable, withRequestedAccount } from "./requested-account";
+import { firstParam, type RouteParam } from "./search-params";
 import { useCashAccess } from "./use-cash-access";
 
 export function CashAdjustmentController() {
-  const params = useLocalSearchParams<{ accountId?: string | string[] }>();
-  const initialAccountId = Array.isArray(params.accountId) ? params.accountId[0] : params.accountId;
+  const params = useLocalSearchParams<{ accountId?: RouteParam }>();
+  const requestedAccountId = firstParam(params.accountId);
   const router = useRouter();
   const queryClient = useQueryClient();
   const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildCashCopy(t), [t]);
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const {
-    business,
-    businesses,
-    canManage,
-    canRead,
-    isStale: accessIsStale,
-  } = useCashAccess("cash");
-  const businessId = business?.id;
-  const accountsQuery = useInfiniteQuery({
-    ...activeCashAccountsInfiniteOptions(businessId),
-    enabled: Boolean(business && canRead),
-  });
-  const requestedAccount = useQuery({
-    ...cashAccountQueryOptions(businessId, initialAccountId),
-    enabled: Boolean(business && canRead && initialAccountId),
-  });
-  const listedAccounts = flattenPages(accountsQuery.data);
-  const accounts = requestedAccount.data
-    ? [requestedAccount.data.account, ...listedAccounts.filter(({ id }) => id !== initialAccountId)]
-    : listedAccounts;
+  const access = useCashAccess("cash");
+  const { business, businesses, canRead } = access;
+  const businessId = canRead ? business?.id : undefined;
+  const accountsQuery = useInfiniteQuery(activeCashAccountsInfiniteOptions(businessId));
+  const requestedAccount = useQuery(cashAccountQueryOptions(businessId, requestedAccountId));
+  const accounts = withRequestedAccount(
+    flattenPages(accountsQuery.data),
+    requestedAccount.data?.account,
+  );
   const [draft, setDraft] = useState<CashAdjustmentDraft>({
-    accountId: initialAccountId ?? "",
+    accountId: requestedAccountId ?? "",
     amount: "",
     direction: "in",
     localDate: "",
@@ -65,112 +63,104 @@ export function CashAdjustmentController() {
     reason: "",
   });
   const [errors, setErrors] = useState<CashAdjustmentErrors>({});
-  const [command, setCommand] = useState<
-    Parameters<typeof cashApi.movements.recordAdjustment>[0] | null
-  >(null);
+  const [command, setCommand] = useState<RecordCashAdjustmentRequest | null>(null);
   const [reviewAccount, setReviewAccount] = useState<CashAccount | null>(null);
+  useRouteLabel("/operate/cash/accounts/[accountId]", requestedAccount.data?.account.name);
 
   useEffect(() => {
     if (!business) return;
-    const current = currentLocalDateTime(business.timeZone);
+    const now = currentLocalDateTime(business.timeZone);
     setDraft((value) => ({
       ...value,
-      localDate: value.localDate || current.date,
-      localTime: value.localTime || current.time,
+      localDate: value.localDate || now.date,
+      localTime: value.localTime || now.time,
     }));
   }, [business]);
 
+  const firstAccountId = accounts[0]?.id;
   useEffect(() => {
-    if (command || draft.accountId) return;
-    const firstAccount = accounts[0];
-    if (firstAccount) {
-      setDraft((value) => ({ ...value, accountId: firstAccount.id }));
-    }
-  }, [accounts, draft.accountId, command]);
+    if (command || draft.accountId || !firstAccountId) return;
+    setDraft((value) => ({ ...value, accountId: firstAccountId }));
+  }, [command, draft.accountId, firstAccountId]);
 
   const mutation = useMutation({
     mutationFn: cashApi.movements.recordAdjustment,
     onSuccess: async ({ movement }) => {
-      if (!business) return;
-      await invalidateCashLedger(queryClient, business.id);
-      router.replace({
-        pathname: "/operate/cash/accounts/[accountId]",
-        params: { accountId: movement.accountId },
-      });
+      if (business) await invalidateCashLedger(queryClient, business.id);
+      notify.success(t("cash.adjustment.success"));
+      router.replace(accountHref(movement.accountId));
     },
   });
-  const confirmationLocked = mutation.isPending || isAmbiguousMutationError(mutation.error);
+  const phase = mutationPhase(mutation);
+  const locked = isLockedPhase(phase);
 
   if (businesses.data && !business) return <Redirect href="/business" />;
-  let remoteState = featureRemoteState({
+
+  const stale =
+    access.isStale ||
+    queryHasStaleData(accountsQuery) ||
+    (Boolean(requestedAccountId) && queryHasStaleData(requestedAccount));
+  let state: FeatureRemoteState = featureRemoteState({
     businessPending: businesses.isPending,
     canRead,
-    offlineMessage: copy.remote.offline,
-    queries: [
-      businesses,
-      ...(canRead ? [accountsQuery, ...(initialAccountId ? [requestedAccount] : [])] : []),
-    ],
-    unavailableMessage: copy.remote.unavailable,
+    offlineMessage: t("remote.offlineLoad"),
+    queries: [businesses, accountsQuery, ...(requestedAccountId ? [requestedAccount] : [])],
+    unavailableMessage: t("cash.remote.unavailable"),
   });
-  const stale =
-    accessIsStale ||
-    queryHasStaleData(accountsQuery) ||
-    (Boolean(initialAccountId) && queryHasStaleData(requestedAccount));
-  if (remoteState.kind === "ready" && stale) {
-    remoteState = { kind: "error", message: copy.remote.staleMutation };
-  }
+  if (state.kind === "ready" && stale)
+    state = { kind: "error", message: t("remote.staleMutation") };
+  // A reviewed command keeps its snapshot; only a new draft is refused for a vanished account.
   if (
-    remoteState.kind !== "denied" &&
+    state.kind !== "denied" &&
     !command &&
-    initialAccountId &&
-    (requestedAccount.data?.account.status === "archived" ||
-      (requestedAccount.error instanceof ApiClientError &&
-        requestedAccount.error.code === "NOT_FOUND"))
+    requestedAccountId &&
+    isRequestedAccountUnavailable(requestedAccount)
   ) {
-    remoteState = { kind: "error", message: copy.remote.requestedAccountUnavailable };
+    state = { kind: "error", message: t("cash.remote.requestedAccountUnavailable") };
+  }
+  state = requireFeatureManageAccess(state, access.canManage);
+  const retry = () =>
+    void Promise.all([
+      businesses.refetch(),
+      accountsQuery.refetch(),
+      ...(requestedAccountId ? [requestedAccount.refetch()] : []),
+    ]);
+
+  if (state.kind === "loading") {
+    return (
+      <Page width="form">
+        <ContentSkeleton label={t("cash.boundary.loading")} variant="form" />
+      </Page>
+    );
+  }
+  if (state.kind !== "ready") {
+    return (
+      <FeatureBoundary copy={cashBoundaryCopy(t)} onRetry={retry} state={state}>
+        {null}
+      </FeatureBoundary>
+    );
   }
 
-  const prepareReview = () => {
-    if (confirmationLocked || command || !canManage || stale || remoteState.kind !== "ready")
-      return;
-    const account = accounts.find(({ id }) => id === draft.accountId);
-    const result = buildCashAdjustmentCommand({
-      account,
-      draft,
-      idempotencyKey: Crypto.randomUUID(),
-    });
-    setErrors(
-      Object.fromEntries(
-        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(t, issue)]),
-      ) as CashAdjustmentErrors,
-    );
-    if (!result.command || !account) return;
-    setReviewAccount(account);
-    setCommand(result.command);
-    mutation.reset();
-  };
-  const confirm = () => {
-    if (command && !mutation.isPending && canManage && !stale && remoteState.kind === "ready")
-      mutation.mutate(command);
-  };
-
+  const canConfirm = access.canManage && !stale;
   return (
     <CashAdjustmentScreen
       accounts={accounts}
-      canManage={canManage && !stale}
+      accountsPage={{
+        hasMore: accountsQuery.hasNextPage,
+        loadingMore: accountsQuery.isFetchingNextPage,
+        onLoadMore: () => void accountsQuery.fetchNextPage(),
+      }}
+      canConfirm={canConfirm}
       command={command}
-      confirmation={cashConfirmationState(mutation)}
-      copy={copy.adjustment}
       draft={draft}
-      effect={copy.effects.adjustment}
       errorMessage={
         mutation.error
-          ? productErrorMessage(mutation.error, copy.remote.mutationFallback, t)
+          ? productErrorMessage(mutation.error, t("cash.remote.mutationFallback"), t)
           : undefined
       }
       errors={errors}
       formatMoney={(minorUnits, currency) => {
-        if (!reviewAccount) throw new Error("Cash adjustment review requires its account snapshot");
+        if (!reviewAccount) throw new Error("A cash adjustment review requires its account");
         return formatMinorUnits(
           minorUnits,
           currency,
@@ -178,35 +168,39 @@ export function CashAdjustmentController() {
           locale,
         );
       }}
-      hasMoreAccounts={Boolean(accountsQuery.hasNextPage)}
-      isLoadingMoreAccounts={accountsQuery.isFetchingNextPage}
       onCancel={() => {
-        if (!confirmationLocked) router.replace("/operate/cash");
+        if (!locked) {
+          router.replace(requestedAccountId ? accountHref(requestedAccountId) : "/operate/cash");
+        }
       }}
-      onCheckStatus={confirm}
-      onConfirm={confirm}
-      onCreateAccount={() => router.push("/operate/cash/accounts/new")}
+      onConfirm={() => {
+        if (command && phase !== "pending" && canConfirm) mutation.mutate(command);
+      }}
       onDraftChange={(next) => {
-        if (!confirmationLocked && !command) setDraft(next);
+        if (!command) setDraft(next);
       }}
       onEdit={() => {
-        if (confirmationLocked) return;
+        if (locked) return;
         setCommand(null);
         setReviewAccount(null);
         mutation.reset();
       }}
-      onLoadMoreAccounts={() => void accountsQuery.fetchNextPage()}
-      onPrepareReview={prepareReview}
-      onRetry={() =>
-        void Promise.all([
-          businesses.refetch(),
-          accountsQuery.refetch(),
-          ...(initialAccountId ? [requestedAccount.refetch()] : []),
-        ])
-      }
-      remoteState={remoteState}
+      onPrepareReview={() => {
+        if (command || !canConfirm) return;
+        const account = accounts.find(({ id }) => id === draft.accountId);
+        const result = buildCashAdjustmentCommand({
+          account,
+          draft,
+          idempotencyKey: Crypto.randomUUID(),
+        });
+        setErrors(cashIssueMessages(t, result.issues));
+        if (!result.command || !account) return;
+        setReviewAccount(account);
+        setCommand(result.command);
+        mutation.reset();
+      }}
+      phase={phase}
       reviewAccount={reviewAccount}
-      stage={command ? "review" : "edit"}
     />
   );
 }

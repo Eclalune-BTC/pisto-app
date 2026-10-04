@@ -2,10 +2,18 @@ import type { CreateCashAccountRequest, UpdateCashAccountRequest } from "@pisto/
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { SearchX } from "lucide-react-native";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FeatureBoundary, requireFeatureManageAccess } from "@/components/feature-boundary";
+import { ContentSkeleton } from "@/components/layout/skeletons";
+import { Page } from "@/components/page";
+import { useRouteLabel } from "@/components/shell/shell-context";
+import { StatePanel } from "@/components/ui/state-panel";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { ApiClientError } from "@/lib/api-error";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { queryHasStaleData } from "@/lib/query-state";
 import { cashApi } from "./api";
@@ -14,10 +22,11 @@ import {
   type CashAccountEditorErrors,
   CashAccountEditorScreen,
 } from "./cash-account-editor-screen";
-import { buildCashCopy, cashIssueMessage } from "./copy";
+import { accountHref } from "./cash-account-list";
+import { cashBoundaryCopy, cashIssueMessages } from "./copy";
 import { buildCashAccountCommand } from "./drafts";
 import { invalidateCashLedger } from "./invalidate";
-import { cashConfirmationState } from "./mutation-state";
+import { isLockedPhase, mutationPhase } from "./mutation-state";
 import { cashAccountQueryOptions } from "./queries";
 import { featureRemoteState } from "./remote-state";
 import { useCashAccess } from "./use-cash-access";
@@ -33,6 +42,8 @@ const emptyDraft: CashAccountEditorDraft = {
   openingReason: "",
 };
 
+type AccountCommand = CreateCashAccountRequest | UpdateCashAccountRequest;
+
 type CashAccountEditorControllerProps = {
   accountId?: string;
   mode: "create" | "update";
@@ -42,37 +53,29 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
   const router = useRouter();
   const queryClient = useQueryClient();
   const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildCashCopy(t), [t]);
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const {
-    business,
-    businesses,
-    canManage,
-    canRead,
-    isStale: accessIsStale,
-  } = useCashAccess("cash");
-  const businessId = business?.id;
-  const accountQuery = useQuery({
-    ...cashAccountQueryOptions(businessId, accountId),
-    enabled: Boolean(mode === "update" && accountId && business && canRead),
-  });
-  const account = mode === "update" ? (accountQuery.data?.account ?? null) : null;
+  const access = useCashAccess("cash");
+  const { business, businesses, canRead } = access;
+  const updating = mode === "update";
+  const accountQuery = useQuery(
+    cashAccountQueryOptions(updating && canRead ? business?.id : undefined, accountId),
+  );
+  const account = updating ? (accountQuery.data?.account ?? null) : null;
   const [draft, setDraft] = useState<CashAccountEditorDraft>(emptyDraft);
   const [errors, setErrors] = useState<CashAccountEditorErrors>({});
-  const [command, setCommand] = useState<
-    CreateCashAccountRequest | UpdateCashAccountRequest | null
-  >(null);
+  const [command, setCommand] = useState<AccountCommand | null>(null);
   const initializedAccount = useRef<string | undefined>(undefined);
+  useRouteLabel("/operate/cash/accounts/[accountId]", account?.name);
 
   useEffect(() => {
-    if (!business || draft.openingLocalDate || draft.openingLocalTime) return;
-    const current = currentLocalDateTime(business.timeZone);
+    if (!business) return;
+    const now = currentLocalDateTime(business.timeZone);
     setDraft((value) => ({
       ...value,
-      openingLocalDate: current.date,
-      openingLocalTime: current.time,
+      openingLocalDate: value.openingLocalDate || now.date,
+      openingLocalTime: value.openingLocalTime || now.time,
     }));
-  }, [business, draft.openingLocalDate, draft.openingLocalTime]);
+  }, [business]);
 
   useEffect(() => {
     if (!account || initializedAccount.current === account.id) return;
@@ -86,98 +89,116 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
   }, [account]);
 
   const mutation = useMutation({
-    mutationFn: (nextCommand: CreateCashAccountRequest | UpdateCashAccountRequest) => {
-      if (mode === "create")
-        return cashApi.accounts.create(nextCommand as CreateCashAccountRequest);
+    mutationFn: (next: AccountCommand) => {
+      if (!updating) return cashApi.accounts.create(next as CreateCashAccountRequest);
       if (!accountId) throw new Error("Cash account identifier is missing");
-      return cashApi.accounts.update(accountId, nextCommand as UpdateCashAccountRequest);
+      return cashApi.accounts.update(accountId, next as UpdateCashAccountRequest);
     },
-    onSuccess: async ({ account: savedAccount }) => {
-      if (!business) return;
-      await invalidateCashLedger(queryClient, business.id);
-      router.replace({
-        pathname: "/operate/cash/accounts/[accountId]",
-        params: { accountId: savedAccount.id },
-      });
+    onSuccess: async ({ account: saved }) => {
+      if (business) await invalidateCashLedger(queryClient, business.id);
+      notify.success(updating ? t("cash.accountEditor.updated") : t("cash.accountEditor.created"));
+      router.replace(accountHref(saved.id));
     },
   });
 
   if (businesses.data && !business) return <Redirect href="/business" />;
 
-  let remoteState = featureRemoteState({
+  const notFound =
+    updating &&
+    (!accountId ||
+      (accountQuery.error instanceof ApiClientError &&
+        accountQuery.error.code === "NOT_FOUND" &&
+        !accountQuery.data));
+  const stale = access.isStale || (updating && queryHasStaleData(accountQuery));
+  let state = featureRemoteState({
     businessPending: businesses.isPending,
     canRead,
-    offlineMessage: copy.remote.offline,
-    queries: [businesses, ...(canRead && mode === "update" ? [accountQuery] : [])],
-    unavailableMessage: copy.remote.unavailable,
+    offlineMessage: t("remote.offlineLoad"),
+    queries: [businesses, ...(updating && !notFound ? [accountQuery] : [])],
+    unavailableMessage: t("cash.remote.unavailable"),
   });
-  const stale = accessIsStale || (mode === "update" && queryHasStaleData(accountQuery));
-  if (remoteState.kind === "ready" && stale) {
-    remoteState = { kind: "error", message: copy.remote.staleMutation };
-  }
+  if (state.kind === "ready" && stale)
+    state = { kind: "error", message: t("remote.staleMutation") };
+  state = requireFeatureManageAccess(state, access.canManage);
+  const retry = () => void Promise.all([businesses.refetch(), accountQuery.refetch()]);
 
-  const prepareReview = () => {
-    if (!business) return;
-    const result = buildCashAccountCommand({
-      account,
-      currency: business.currency,
-      currencyMinorUnitDigits: business.currencyMinorUnitDigits,
-      draft,
-      idempotencyKey: Crypto.randomUUID(),
-      mode,
-    });
-    setErrors(
-      Object.fromEntries(
-        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(t, issue)]),
-      ) as CashAccountEditorErrors,
+  if (state.kind === "loading") {
+    return (
+      <Page width="form">
+        <ContentSkeleton label={t("cash.boundary.loading")} variant="form" />
+      </Page>
     );
-    if (!result.command) return;
-    setCommand(result.command);
-    mutation.reset();
-  };
+  }
+  if (state.kind !== "ready") {
+    return (
+      <FeatureBoundary copy={cashBoundaryCopy(t)} onRetry={retry} state={state}>
+        {null}
+      </FeatureBoundary>
+    );
+  }
+  if (notFound) {
+    return (
+      <Page width="form">
+        <StatePanel
+          description={t("cash.accountDetail.notFoundDescription")}
+          icon={SearchX}
+          level={1}
+          title={t("cash.accountDetail.notFoundTitle")}
+        />
+      </Page>
+    );
+  }
+  if (!business) throw new Error("A cash account form requires the active business");
 
-  const cancel = () => {
-    if (accountId) {
-      router.replace({ pathname: "/operate/cash/accounts/[accountId]", params: { accountId } });
-    } else {
-      router.replace("/operate/cash");
-    }
-  };
+  const phase = mutationPhase(mutation);
+  const locked = isLockedPhase(phase);
 
   return (
     <CashAccountEditorScreen
       account={account}
-      canManage={canManage && !stale}
+      canConfirm={access.canManage && !stale}
       command={command}
-      confirmation={cashConfirmationState(mutation)}
-      copy={copy.accountEditor}
-      currency={business?.currency ?? ""}
+      currency={business.currency}
       draft={draft}
-      effect={mode === "create" ? copy.effects.createAccount : copy.effects.editAccount}
       errorMessage={
         mutation.error
-          ? productErrorMessage(mutation.error, copy.remote.mutationFallback, t)
+          ? productErrorMessage(mutation.error, t("cash.remote.mutationFallback"), t)
           : undefined
       }
       errors={errors}
-      formatMoney={(minorUnits, currency) => {
-        if (!business) throw new Error("Cash account review requires business currency metadata");
-        return formatMinorUnits(minorUnits, currency, business.currencyMinorUnitDigits, locale);
+      formatMoney={(minorUnits, currency) =>
+        formatMinorUnits(minorUnits, currency, business.currencyMinorUnitDigits, locale)
+      }
+      onCancel={() =>
+        router.replace(updating && accountId ? accountHref(accountId) : "/operate/cash")
+      }
+      onConfirm={() => {
+        if (command && phase !== "pending" && access.canManage && !stale) mutation.mutate(command);
       }}
-      kindOptions={copy.kindOptions}
-      mode={mode}
-      onCancel={cancel}
-      onCheckStatus={() => command && mutation.mutate(command)}
-      onConfirm={() => command && mutation.mutate(command)}
-      onDraftChange={setDraft}
+      onDraftChange={(next) => {
+        if (!command) setDraft(next);
+      }}
       onEdit={() => {
+        if (locked) return;
         setCommand(null);
         mutation.reset();
       }}
-      onPrepareReview={prepareReview}
-      onRetry={() => void Promise.all([businesses.refetch(), accountQuery.refetch()])}
-      remoteState={remoteState}
-      stage={command ? "review" : "edit"}
+      onPrepareReview={() => {
+        if (command) return;
+        const result = buildCashAccountCommand({
+          account,
+          currency: business.currency,
+          currencyMinorUnitDigits: business.currencyMinorUnitDigits,
+          draft,
+          idempotencyKey: Crypto.randomUUID(),
+          mode,
+        });
+        setErrors(cashIssueMessages(t, result.issues));
+        if (!result.command) return;
+        setCommand(result.command);
+        mutation.reset();
+      }}
+      phase={phase}
     />
   );
 }

@@ -1,94 +1,78 @@
+import { CircleAlert, TriangleAlert } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { DetailList } from "@/components/detail-list";
+import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-
-import type { CashConfirmationState } from "./state";
-
-export type CashOperationReviewCopy = {
-  confirm: string;
-  edit: string;
-  failedTitle: string;
-  uncertainTitle: string;
-  uncertainDescription: string;
-  retrySameConfirmation: string;
-};
+import type { MutationPhase } from "./mutation-state";
 
 type CashOperationReviewProps = {
-  rows: { label: string; value: string }[];
-  effect: string;
-  state: CashConfirmationState;
-  errorMessage?: string;
+  confirmLabel: string;
+  /** Access or freshness was lost after the review was prepared. */
   disabled?: boolean;
-  copy: CashOperationReviewCopy;
+  effect: string;
+  errorMessage?: string;
+  items: readonly DescriptionItem[];
   onConfirm: () => void;
   onEdit: () => void;
-  onCheckStatus: () => void;
+  phase: MutationPhase;
 };
 
+/**
+ * The exact command about to be committed. An uncertain outcome removes the way back to editing:
+ * only the same reviewed command may be sent again.
+ */
 export function CashOperationReview({
-  rows,
-  effect,
-  state,
-  errorMessage,
+  confirmLabel,
   disabled = false,
-  copy,
+  effect,
+  errorMessage,
+  items,
   onConfirm,
   onEdit,
-  onCheckStatus,
+  phase,
 }: CashOperationReviewProps) {
+  const { t } = useTranslation();
   return (
-    <View className="gap-7">
-      <DetailList items={rows} />
-      <Text className="text-sm leading-5 text-muted-foreground">{effect}</Text>
-
-      {state === "uncertain" ? (
-        <View className="gap-3 border-l-4 border-warning bg-warning-surface p-4 ">
-          <Text
-            accessibilityRole="alert"
-            className="font-ui text-foreground text-warning-foreground"
-          >
-            {copy.uncertainTitle}
-          </Text>
-          <Text className="text-sm leading-5 text-muted-foreground text-warning-foreground">
-            {copy.uncertainDescription}
-          </Text>
-          <Button
-            className="self-start"
-            disabled={disabled}
-            label={copy.retrySameConfirmation}
-            onPress={onCheckStatus}
-            variant="outline"
-          />
-        </View>
-      ) : state === "failed" ? (
-        <View className="gap-2 border-l-4 border-danger bg-destructive-surface p-4 ">
-          <Text accessibilityRole="alert" className="font-ui text-destructive ">
-            {copy.failedTitle}
-          </Text>
-          {errorMessage ? (
-            <Text className="text-sm leading-5 text-muted-foreground ">{errorMessage}</Text>
-          ) : null}
-        </View>
+    <View className="gap-4">
+      <DescriptionList items={items} />
+      <Text className="text-[13px] leading-5 text-muted-foreground">{effect}</Text>
+      {phase === "uncertain" ? (
+        <Alert icon={TriangleAlert} variant="warning">
+          <AlertTitle>{t("common.uncertainTitle")}</AlertTitle>
+          <AlertDescription>{t("cash.review.uncertainDescription")}</AlertDescription>
+        </Alert>
+      ) : phase === "failed" ? (
+        <Alert icon={CircleAlert} variant="destructive">
+          <AlertTitle>{t("cash.review.failedTitle")}</AlertTitle>
+          {errorMessage ? <AlertDescription>{errorMessage}</AlertDescription> : null}
+        </Alert>
       ) : null}
-
-      {state !== "uncertain" ? (
-        <View className="gap-3 sm:flex-row">
+      <View className="flex-row flex-wrap justify-end gap-2">
+        {phase === "uncertain" ? (
           <Button
-            label={copy.confirm}
             disabled={disabled}
-            loading={state === "pending"}
+            label={t("common.retrySameConfirmation")}
             onPress={onConfirm}
-            variant="default"
           />
-          <Button
-            disabled={state === "pending"}
-            label={copy.edit}
-            onPress={onEdit}
-            variant="outline"
-          />
-        </View>
-      ) : null}
+        ) : (
+          <>
+            <Button
+              disabled={phase === "pending"}
+              label={t("common.edit")}
+              onPress={onEdit}
+              variant="outline"
+            />
+            <Button
+              disabled={disabled}
+              label={confirmLabel}
+              loading={phase === "pending"}
+              onPress={onConfirm}
+            />
+          </>
+        )}
+      </View>
     </View>
   );
 }

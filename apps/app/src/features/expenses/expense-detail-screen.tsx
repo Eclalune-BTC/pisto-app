@@ -1,229 +1,100 @@
-import type { Expense, ExpenseCategory, VoidExpenseRequest } from "@pisto/contracts";
-import { View } from "react-native";
-import { DetailList } from "@/components/detail-list";
-import {
-  FeatureBoundary,
-  type FeatureBoundaryCopy,
-  type FeatureRemoteState,
-} from "@/components/feature-boundary";
+import type { Expense } from "@pisto/contracts";
+import { useTranslation } from "react-i18next";
+import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
-import { ScreenHeader } from "@/components/screen-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
-import { CashOperationReview, type CashOperationReviewCopy } from "../cash/cash-operation-review";
-import { cashOperationPresentation } from "../cash/operation-state";
-import type { CashConfirmationState } from "../cash/state";
-
-export type VoidExpenseDraft = {
-  reason: string;
-  localDate: string;
-  localTime: string;
-};
-
-export type VoidExpenseDraftErrors = Partial<Record<keyof VoidExpenseDraft, string>>;
-
-export type ExpenseDetailCopy = FeatureBoundaryCopy &
-  CashOperationReviewCopy & {
-    eyebrow: string;
-    title: string;
-    description: string;
-    notFoundTitle: string;
-    notFoundDescription: string;
-    amount: string;
-    account: string;
-    category: string;
-    descriptionLabel: string;
-    payee: string;
-    noPayee: string;
-    date: string;
-    time: string;
-    status: string;
-    posted: string;
-    voided: string;
-    voidReason: string;
-    voidExpense: string;
-    voidTitle: string;
-    voidDescription: string;
-    reason: string;
-    reviewVoid: string;
-    cancel: string;
-    voidEffect: string;
-    categories: Record<ExpenseCategory, string>;
-  };
+import { CashAccountName } from "../cash/cash-account-name";
+import { expenseCategoryLabels, expenseStatusLabels } from "./copy";
 
 type ExpenseDetailScreenProps = {
-  remoteState: FeatureRemoteState;
-  expense: Expense | null;
-  accountName: string;
-  canManage: boolean;
-  stage: "detail" | "void-edit" | "void-review";
-  voidDraft: VoidExpenseDraft;
-  voidErrors: VoidExpenseDraftErrors;
-  voidCommand: VoidExpenseRequest | null;
-  confirmation: CashConfirmationState;
-  errorMessage?: string;
-  isStale: boolean;
-  copy: ExpenseDetailCopy;
+  businessId: string;
+  /** Voiding needs expense and cash management on fresh data. */
+  canVoid: boolean;
+  expense: Expense;
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
-  onBeginVoid: () => void;
-  onVoidDraftChange: (next: VoidExpenseDraft) => void;
-  onPrepareVoidReview: () => void;
-  onConfirmVoid: () => void;
-  onEditVoid: () => void;
-  onCancelVoid: () => void;
-  onCheckStatus: () => void;
+  formatTimestamp: (timestamp: string, timeZone: string) => string;
+  isStale: boolean;
   onRetry: () => void;
+  onVoid: () => void;
 };
 
 export function ExpenseDetailScreen({
-  remoteState,
+  businessId,
+  canVoid,
   expense,
-  accountName,
-  canManage,
-  stage,
-  voidDraft,
-  voidErrors,
-  voidCommand,
-  confirmation,
-  errorMessage,
-  isStale,
-  copy,
   formatMoney,
-  onBeginVoid,
-  onVoidDraftChange,
-  onPrepareVoidReview,
-  onConfirmVoid,
-  onEditVoid,
-  onCancelVoid,
-  onCheckStatus,
+  formatTimestamp,
+  isStale,
   onRetry,
+  onVoid,
 }: ExpenseDetailScreenProps) {
-  const operation = cashOperationPresentation({
-    remoteKind: remoteState.kind,
-    canManage,
-    confirmation,
-  });
-  const editingVoid = stage === "void-edit";
-  const reviewingVoid = stage === "void-review" && voidCommand !== null;
+  const { t } = useTranslation();
+  const voided = expense.status === "voided";
+  const items: DescriptionItem[] = [
+    {
+      label: t("expenses.detail.amount"),
+      numeric: true,
+      value: formatMoney(
+        expense.amountMinorUnits,
+        expense.currency,
+        expense.currencyMinorUnitDigits,
+      ),
+    },
+    { label: t("expenses.detail.category"), value: expenseCategoryLabels(t)[expense.category] },
+    {
+      label: t("expenses.detail.account"),
+      value: (
+        <CashAccountName
+          accountId={expense.accountId}
+          businessId={businessId}
+          className="text-sm"
+          linked
+        />
+      ),
+    },
+    {
+      label: t("expenses.detail.occurredAt"),
+      numeric: true,
+      value: formatTimestamp(expense.occurredAt, expense.timeZone),
+    },
+    { label: t("expenses.detail.payee"), value: expense.payee ?? t("expenses.detail.noPayee") },
+  ];
+  if (expense.voidedAt) {
+    items.push({
+      label: t("expenses.detail.voidedAt"),
+      numeric: true,
+      value: formatTimestamp(expense.voidedAt, expense.timeZone),
+    });
+  }
+  if (expense.voidReason) {
+    items.push({ label: t("expenses.detail.voidReason"), value: expense.voidReason });
+  }
 
   return (
-    <FeatureBoundary copy={copy} onRetry={onRetry} state={remoteState}>
-      <Page width="form">
-        <ScreenHeader
-          description={stage === "detail" ? copy.description : copy.voidDescription}
-          eyebrow={copy.eyebrow}
-          title={stage === "detail" ? copy.title : copy.voidTitle}
-        />
-
-        {isStale ? <StaleNotice /> : null}
-
-        {expense === null ? (
-          <View className="gap-3 border-y border-border py-8 ">
-            <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
-              {copy.notFoundTitle}
-            </Text>
-            <Text className="text-sm leading-5 text-muted-foreground">
-              {copy.notFoundDescription}
-            </Text>
-          </View>
-        ) : reviewingVoid ? (
-          <CashOperationReview
-            copy={copy}
-            effect={copy.voidEffect}
-            errorMessage={errorMessage}
-            onCheckStatus={onCheckStatus}
-            onConfirm={onConfirmVoid}
-            onEdit={onEditVoid}
-            rows={[
-              {
-                label: copy.amount,
-                value: formatMoney(
-                  expense.amountMinorUnits,
-                  expense.currency,
-                  expense.currencyMinorUnitDigits,
-                ),
-              },
-              { label: copy.account, value: accountName },
-              { label: copy.category, value: copy.categories[expense.category] },
-              { label: copy.descriptionLabel, value: expense.description },
-              { label: copy.reason, value: voidCommand.reason },
-              { label: copy.date, value: voidCommand.occurredLocalDate },
-              { label: copy.time, value: voidCommand.occurredLocalTime },
-            ]}
-            state={confirmation}
-          />
-        ) : editingVoid ? (
-          <View className="gap-7 border-y border-border py-7 ">
-            <Field
-              error={voidErrors.reason}
-              label={copy.reason}
-              maxLength={240}
-              onChangeText={(reason) => onVoidDraftChange({ ...voidDraft, reason })}
-              value={voidDraft.reason}
-            />
-            <View className="gap-5 sm:flex-row">
-              <View className="flex-1">
-                <Field
-                  error={voidErrors.localDate}
-                  label={copy.date}
-                  onChangeText={(localDate) => onVoidDraftChange({ ...voidDraft, localDate })}
-                  value={voidDraft.localDate}
-                />
-              </View>
-              <View className="flex-1">
-                <Field
-                  error={voidErrors.localTime}
-                  label={copy.time}
-                  onChangeText={(localTime) => onVoidDraftChange({ ...voidDraft, localTime })}
-                  value={voidDraft.localTime}
-                />
-              </View>
-            </View>
-            <View className="gap-3 sm:flex-row">
-              <Button label={copy.reviewVoid} onPress={onPrepareVoidReview} variant="destructive" />
-              <Button label={copy.cancel} onPress={onCancelVoid} variant="outline" />
-            </View>
-          </View>
-        ) : (
-          <View className="gap-7">
-            <DetailList
-              items={[
-                {
-                  label: copy.amount,
-                  value: formatMoney(
-                    expense.amountMinorUnits,
-                    expense.currency,
-                    expense.currencyMinorUnitDigits,
-                  ),
-                },
-                { label: copy.account, value: accountName },
-                { label: copy.category, value: copy.categories[expense.category] },
-                { label: copy.descriptionLabel, value: expense.description },
-                { label: copy.payee, value: expense.payee ?? copy.noPayee },
-                { label: copy.date, value: expense.occurredLocalDate },
-                { label: copy.time, value: expense.occurredLocalTime },
-                {
-                  label: copy.status,
-                  value: expense.status === "posted" ? copy.posted : copy.voided,
-                },
-                ...(expense.voidReason
-                  ? [{ label: copy.voidReason, value: expense.voidReason }]
-                  : []),
-              ]}
-            />
-            {expense.status === "posted" && operation.canStart ? (
-              <Button
-                className="self-start"
-                label={copy.voidExpense}
-                onPress={onBeginVoid}
-                variant="destructive"
-              />
-            ) : null}
-          </View>
-        )}
-      </Page>
-    </FeatureBoundary>
+    <Page width="form">
+      <PageHeader
+        actions={
+          canVoid && !voided ? (
+            <Button label={t("expenses.void.action")} onPress={onVoid} variant="outline" />
+          ) : undefined
+        }
+        adornment={
+          <Badge variant={voided ? "outline" : "secondary"}>
+            <Text>{expenseStatusLabels(t)[expense.status]}</Text>
+          </Badge>
+        }
+        description={voided ? t("expenses.detail.voidedDescription") : undefined}
+        title={expense.description}
+      />
+      {isStale ? <StaleNotice onRetry={onRetry} /> : null}
+      <Section title={t("expenses.detail.detailsTitle")}>
+        <DescriptionList items={items} />
+      </Section>
+    </Page>
   );
 }

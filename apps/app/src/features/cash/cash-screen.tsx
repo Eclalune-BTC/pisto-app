@@ -1,215 +1,178 @@
-import type { CashAccountStatus, CashMovementAction } from "@pisto/contracts";
-import { AlertTriangle } from "lucide-react-native";
+import type { CashAccount, CashMovement } from "@pisto/contracts";
+import { Link } from "expo-router";
+import { Landmark, Plus } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { FeatureBoundary } from "@/components/feature-boundary";
+import { FeatureBoundary, type FeatureRemoteState } from "@/components/feature-boundary";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
-import { ScreenHeader } from "@/components/screen-header";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
-import { FilterToolbar } from "@/components/ui/filter-toolbar";
-import { Heading } from "@/components/ui/heading";
+import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
 import { CashAccountList } from "./cash-account-list";
+import { CashAccountName } from "./cash-account-name";
 import { CashMovementList } from "./cash-movement-list";
-import { type CashScreenState, cashScreenPresentation } from "./state";
-
-export type { CashConfirmationState, CashScreenState } from "./state";
-
-export type CashScreenCopy = {
-  title: string;
-  description: string;
-  eyebrow: string;
-  loading: string;
-  retry: string;
-  deniedTitle: string;
-  offlineTitle: string;
-  deniedDescription: string;
-  unavailableTitle: string;
-  emptyTitle: string;
-  emptyDescription: string;
-  createAccount: string;
-  accountsTitle: string;
-  movementsTitle: string;
-  noMovements: string;
-  active: string;
-  archived: string;
-  negativeAllowed: string;
-  mutationFailedTitle: string;
-  uncertainTitle: string;
-  uncertainDescription: string;
-  retrySameConfirmation: string;
-  movementActions: Record<CashMovementAction, string>;
-  accountFilter: string;
-  activeAccounts: string;
-  archivedAccounts: string;
-  allAccounts: string;
-  loadMore: string;
-  loadingMore: string;
-};
+import { cashBoundaryCopy, cashMovementActionLabels } from "./copy";
+import { type CursorPage, LoadMoreButton } from "./load-more-button";
+import type { CashAccountStatusFilter } from "./search-params";
 
 type CashScreenProps = {
-  state: CashScreenState;
-  accountStatus: CashAccountStatus | "all";
-  hasMoreAccounts: boolean;
-  hasMoreMovements: boolean;
-  isLoadingMoreAccounts: boolean;
-  isLoadingMoreMovements: boolean;
-  copy: CashScreenCopy;
+  /** Names already loaded on this page, keyed by account. */
+  accountNames: ReadonlyMap<string, string>;
+  accountStatus: CashAccountStatusFilter;
+  accounts: CashAccount[];
+  accountsPage: CursorPage;
+  accountsState: FeatureRemoteState;
+  businessId: string;
+  /** Manager access confirmed by fresh reads. */
+  canManage: boolean;
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
-  onCreateAccount: () => void;
-  onOpenAccount: (accountId: string) => void;
+  formatOccurredAt: (movement: CashMovement) => string;
+  isStale: boolean;
+  movements: CashMovement[];
+  movementsPage: CursorPage;
+  movementsState: FeatureRemoteState;
+  onAccountStatusChange: (status: CashAccountStatusFilter) => void;
+  onOpenMovement: (movementId: string) => void;
   onRetry: () => void;
-  onCheckMutationStatus: () => void;
-  onAccountStatusChange: (status: CashAccountStatus | "all") => void;
-  onLoadMoreAccounts: () => void;
-  onLoadMoreMovements: () => void;
 };
 
 export function CashScreen({
-  state,
+  accountNames,
   accountStatus,
-  hasMoreAccounts,
-  hasMoreMovements,
-  isLoadingMoreAccounts,
-  isLoadingMoreMovements,
-  copy,
+  accounts,
+  accountsPage,
+  accountsState,
+  businessId,
+  canManage,
   formatMoney,
-  onCreateAccount,
-  onOpenAccount,
-  onRetry,
-  onCheckMutationStatus,
+  formatOccurredAt,
+  isStale,
+  movements,
+  movementsPage,
+  movementsState,
   onAccountStatusChange,
-  onLoadMoreAccounts,
-  onLoadMoreMovements,
+  onOpenMovement,
+  onRetry,
 }: CashScreenProps) {
-  const presentation = cashScreenPresentation(state);
   const { t } = useTranslation();
+  const boundary = cashBoundaryCopy(t);
   return (
-    <Page contentContainerClassName="gap-6">
-      <ScreenHeader
-        action={
-          presentation.showCreate ? (
-            <Button label={copy.createAccount} onPress={onCreateAccount} variant="default" />
+    <Page>
+      <PageHeader
+        actions={
+          canManage ? (
+            <>
+              <Link asChild href="/operate/cash/adjustments/new">
+                <Button accessibilityRole="link" variant="outline">
+                  <Text>{t("cash.overview.adjust")}</Text>
+                </Button>
+              </Link>
+              <Link asChild href="/operate/cash/transfers/new">
+                <Button accessibilityRole="link" variant="outline">
+                  <Text>{t("cash.overview.transfer")}</Text>
+                </Button>
+              </Link>
+              <Link asChild href="/operate/cash/accounts/new">
+                <Button accessibilityRole="link">
+                  <Icon as={Plus} className="text-primary-foreground" size={16} />
+                  <Text>{t("cash.overview.newAccount")}</Text>
+                </Button>
+              </Link>
+            </>
           ) : undefined
         }
-        description={state.kind === "denied" ? copy.deniedDescription : copy.description}
-        eyebrow={copy.eyebrow}
-        title={copy.title}
+        description={t("cash.overview.description")}
+        title={t("cash.overview.title")}
       />
-      {state.kind === "ready" && state.isStale ? <StaleNotice /> : null}
-      {state.kind === "ready" && state.confirmation === "uncertain" ? (
-        <Alert icon={AlertTriangle}>
-          <AlertTitle className="leading-6">{copy.uncertainTitle}</AlertTitle>
-          <AlertDescription>{copy.uncertainDescription}</AlertDescription>
-          <Button
-            className="mb-2 ml-6 mt-2 self-start"
-            label={copy.retrySameConfirmation}
-            onPress={onCheckMutationStatus}
-            variant="outline"
+
+      {isStale ? <StaleNotice onRetry={onRetry} /> : null}
+
+      <Section
+        actions={
+          <FilterBar
+            label={t("cash.overview.statusFilter")}
+            onChange={onAccountStatusChange}
+            options={[
+              { label: t("cash.overview.statusOptions.active"), value: "active" },
+              { label: t("cash.overview.statusOptions.archived"), value: "archived" },
+              { label: t("cash.overview.statusOptions.all"), value: "all" },
+            ]}
+            value={accountStatus}
           />
-        </Alert>
-      ) : state.kind === "ready" && state.confirmation === "failed" ? (
-        <Alert icon={AlertTriangle} variant="destructive">
-          <AlertTitle className="leading-6">{copy.mutationFailedTitle}</AlertTitle>
-          {state.mutationMessage ? (
-            <AlertDescription>{state.mutationMessage}</AlertDescription>
-          ) : null}
-          <Button
-            className="mb-2 ml-6 mt-2 self-start"
-            label={copy.retry}
-            onPress={onRetry}
-            variant="outline"
-          />
-        </Alert>
-      ) : null}
-      {state.kind === "denied" ? (
-        <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
-          {null}
-        </FeatureBoundary>
-      ) : (
-        <View className="gap-10">
-          <View accessibilityLabel={copy.accountsTitle} role="region" className="min-w-0 gap-4">
-            <Heading level={2} size="section">
-              {copy.accountsTitle}
-            </Heading>
-            <FilterToolbar
-              label={copy.accountFilter}
-              onReset={
-                accountStatus !== "active" ? () => onAccountStatusChange("active") : undefined
+        }
+        title={t("cash.overview.accountsTitle")}
+      >
+        <FeatureBoundary
+          copy={{ ...boundary, unavailableTitle: t("cash.overview.accountsUnavailable") }}
+          inline
+          onRetry={onRetry}
+          state={accountsState}
+        >
+          <View className="min-w-0 gap-3">
+            <CashAccountList
+              accounts={accounts}
+              empty={
+                <EmptyState
+                  action={
+                    canManage && accountStatus !== "archived" ? (
+                      <Link asChild href="/operate/cash/accounts/new">
+                        <Button accessibilityRole="link" size="sm">
+                          <Text>{t("cash.overview.newAccount")}</Text>
+                        </Button>
+                      </Link>
+                    ) : undefined
+                  }
+                  description={
+                    accountStatus === "archived"
+                      ? t("cash.overview.emptyArchivedDescription")
+                      : t("cash.overview.emptyDescription")
+                  }
+                  icon={Landmark}
+                  title={t(`cash.overview.emptyTitle.${accountStatus}`)}
+                />
               }
-              resetLabel={t("filters.reset")}
-            >
-              <FilterBar
-                showLabel
-                label={copy.accountFilter}
-                onChange={onAccountStatusChange}
-                options={[
-                  { label: copy.activeAccounts, value: "active" },
-                  { label: copy.archivedAccounts, value: "archived" },
-                  { label: copy.allAccounts, value: "all" },
-                ]}
-                value={accountStatus}
-              />
-            </FilterToolbar>
-            <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
-              {state.kind === "ready" ? (
-                <View className="min-w-0 gap-4">
-                  {state.accounts.length === 0 ? (
-                    <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
-                  ) : (
-                    <CashAccountList
-                      accounts={state.accounts}
-                      activeLabel={copy.active}
-                      archivedLabel={copy.archived}
-                      formatMoney={formatMoney}
-                      negativeAllowedLabel={copy.negativeAllowed}
-                      onOpenAccount={onOpenAccount}
-                    />
-                  )}
-                  {hasMoreAccounts ? (
-                    <Button
-                      className="self-start"
-                      label={isLoadingMoreAccounts ? copy.loadingMore : copy.loadMore}
-                      loading={isLoadingMoreAccounts}
-                      onPress={onLoadMoreAccounts}
-                      variant="outline"
-                    />
-                  ) : null}
-                </View>
-              ) : null}
-            </FeatureBoundary>
+              formatMoney={formatMoney}
+            />
+            <LoadMoreButton page={accountsPage} />
           </View>
-          <View accessibilityLabel={copy.movementsTitle} role="region" className="min-w-0 gap-4">
-            <Heading level={2} size="section">
-              {copy.movementsTitle}
-            </Heading>
-            <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
-              {state.kind === "ready" ? (
-                <View className="min-w-0 gap-4">
-                  <CashMovementList
-                    actionLabels={copy.movementActions}
-                    formatMoney={formatMoney}
-                    movements={state.movements}
-                    noMovements={copy.noMovements}
-                  />
-                  {hasMoreMovements ? (
-                    <Button
-                      className="self-start"
-                      label={isLoadingMoreMovements ? copy.loadingMore : copy.loadMore}
-                      loading={isLoadingMoreMovements}
-                      onPress={onLoadMoreMovements}
-                      variant="outline"
-                    />
-                  ) : null}
-                </View>
-              ) : null}
-            </FeatureBoundary>
+        </FeatureBoundary>
+      </Section>
+
+      <Section
+        description={t("cash.overview.movementsDescription")}
+        title={t("cash.overview.movementsTitle")}
+      >
+        <FeatureBoundary
+          copy={{ ...boundary, unavailableTitle: t("cash.overview.movementsUnavailable") }}
+          inline
+          onRetry={onRetry}
+          state={movementsState}
+        >
+          <View className="min-w-0 gap-3">
+            <CashMovementList
+              actionLabels={cashMovementActionLabels(t)}
+              formatMoney={formatMoney}
+              formatOccurredAt={formatOccurredAt}
+              movements={movements}
+              noMovements={t("cash.overview.noMovements")}
+              onOpenMovement={onOpenMovement}
+              renderAccount={(movement) => (
+                <CashAccountName
+                  accountId={movement.accountId}
+                  businessId={businessId}
+                  knownName={accountNames.get(movement.accountId)}
+                />
+              )}
+            />
+            <LoadMoreButton page={movementsPage} />
           </View>
-        </View>
-      )}
+        </FeatureBoundary>
+      </Section>
     </Page>
   );
 }

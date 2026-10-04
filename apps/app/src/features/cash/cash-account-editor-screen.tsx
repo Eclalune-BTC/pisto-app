@@ -4,89 +4,54 @@ import type {
   CreateCashAccountRequest,
   UpdateCashAccountRequest,
 } from "@pisto/contracts";
+import { CircleAlert } from "lucide-react-native";
+import { useId } from "react";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import {
-  FeatureBoundary,
-  type FeatureBoundaryCopy,
-  type FeatureRemoteState,
-  requireFeatureManageAccess,
-} from "@/components/feature-boundary";
+import type { DescriptionItem } from "@/components/layout/description-list";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
-import { ScreenHeader } from "@/components/screen-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
-import { CashOperationReview, type CashOperationReviewCopy } from "./cash-operation-review";
-import { ChoiceList, type ChoiceOption } from "./choice-list";
-import type { CashConfirmationState } from "./state";
+import { requireSupportedLocale } from "@/i18n/locale";
+import { CashOperationReview } from "./cash-operation-review";
+import { ChoiceList } from "./choice-list";
+import { cashAccountKindLabels } from "./copy";
+import type { AccountDraftValues } from "./drafts";
+import { formatLocalOccurrence } from "./format";
+import { LocalDateTimeFields } from "./local-date-time-fields";
+import type { MutationPhase } from "./mutation-state";
 
-export type CashAccountOpeningMode = "zero" | "in" | "out";
-
-export type CashAccountEditorDraft = {
-  name: string;
-  kind: CashAccountKind;
-  negativePolicy: "protected" | "allowed";
-  openingMode: CashAccountOpeningMode;
-  openingAmount: string;
-  openingReason: string;
-  openingLocalDate: string;
-  openingLocalTime: string;
-};
+export type CashAccountEditorDraft = AccountDraftValues;
 
 export type CashAccountEditorErrors = Partial<
   Record<keyof CashAccountEditorDraft | "form", string>
 >;
 
-export type CashAccountEditorCopy = FeatureBoundaryCopy &
-  CashOperationReviewCopy & {
-    eyebrow: string;
-    createTitle: string;
-    createDescription: string;
-    updateTitle: string;
-    updateDescription: string;
-    reviewTitle: string;
-    reviewDescription: string;
-    name: string;
-    kind: string;
-    negativePolicy: string;
-    protectedBalance: string;
-    allowNegative: string;
-    openingBalance: string;
-    startAtZero: string;
-    moneyIn: string;
-    moneyOut: string;
-    openingAmount: string;
-    openingReason: string;
-    date: string;
-    time: string;
-    currency: string;
-    review: string;
-    cancel: string;
-  };
-
 type CashAccountEditorScreenProps = {
-  remoteState: FeatureRemoteState;
-  canManage: boolean;
-  mode: "create" | "update";
-  stage: "edit" | "review";
+  /** The account being edited; null when creating one. */
   account: CashAccount | null;
-  draft: CashAccountEditorDraft;
-  errors: CashAccountEditorErrors;
-  kindOptions: readonly ChoiceOption<CashAccountKind>[];
-  currency: string;
+  /** Access or freshness was lost after the review was prepared. */
+  canConfirm: boolean;
+  /** Prepared command; when present the screen shows its review. */
   command: CreateCashAccountRequest | UpdateCashAccountRequest | null;
-  confirmation: CashConfirmationState;
+  currency: string;
+  draft: CashAccountEditorDraft;
   errorMessage?: string;
-  effect: string;
-  copy: CashAccountEditorCopy;
+  errors: CashAccountEditorErrors;
   formatMoney: (minorUnits: string, currency: string) => string;
-  onDraftChange: (next: CashAccountEditorDraft) => void;
-  onPrepareReview: () => void;
-  onConfirm: () => void;
-  onEdit: () => void;
   onCancel: () => void;
-  onCheckStatus: () => void;
-  onRetry: () => void;
+  onConfirm: () => void;
+  onDraftChange: (next: CashAccountEditorDraft) => void;
+  onEdit: () => void;
+  onPrepareReview: () => void;
+  phase: MutationPhase;
 };
 
 function isCreateCommand(
@@ -96,198 +61,218 @@ function isCreateCommand(
 }
 
 export function CashAccountEditorScreen({
-  remoteState,
-  canManage,
-  mode,
-  stage,
   account,
-  draft,
-  errors,
-  kindOptions,
-  currency,
+  canConfirm,
   command,
-  confirmation,
+  currency,
+  draft,
   errorMessage,
-  effect,
-  copy,
+  errors,
   formatMoney,
-  onDraftChange,
-  onPrepareReview,
-  onConfirm,
-  onEdit,
   onCancel,
-  onCheckStatus,
-  onRetry,
+  onConfirm,
+  onDraftChange,
+  onEdit,
+  onPrepareReview,
+  phase,
 }: CashAccountEditorScreenProps) {
-  const authorizedState = requireFeatureManageAccess(remoteState, canManage);
-  if (authorizedState.kind !== "ready") {
-    return (
-      <FeatureBoundary copy={copy} onRetry={onRetry} state={authorizedState}>
-        {null}
-      </FeatureBoundary>
-    );
-  }
-  const reviewing = stage === "review";
-  if (reviewing && !command) throw new Error("Cash account review requires its command");
-  const createCommand = command && isCreateCommand(command) ? command : null;
-  const original = createCommand ?? account;
-  let review: { name: string; kindLabel: string; allowNegativeBalance: boolean } | null = null;
-  if (reviewing && command) {
-    if (!original) throw new Error("Cash account update review requires its original account");
-    const kind = command.kind ?? original.kind;
-    const option = kindOptions.find(({ value }) => value === kind);
-    if (!option) throw new Error("Cash account kind has no translated option");
-    review = {
-      name: command.name ?? original.name,
-      kindLabel: option.label,
-      allowNegativeBalance: command.allowNegativeBalance ?? original.allowNegativeBalance,
-    };
-  }
-  const openingValue = createCommand?.opening
-    ? `${createCommand.opening.direction === "in" ? copy.moneyIn : copy.moneyOut} - ${formatMoney(createCommand.opening.amountMinorUnits, createCommand.currency)}`
-    : copy.startAtZero;
+  const { i18n, t } = useTranslation();
+  const policyId = useId();
+  const kinds = cashAccountKindLabels(t);
+  const creating = account === null;
 
-  return (
-    <FeatureBoundary copy={copy} onRetry={onRetry} state={authorizedState}>
+  if (command) {
+    const createCommand = isCreateCommand(command) ? command : null;
+    const original = createCommand ?? account;
+    if (!original) throw new Error("A cash account update review requires its original account");
+    const allowNegative = command.allowNegativeBalance ?? original.allowNegativeBalance;
+    const items: DescriptionItem[] = [
+      { label: t("cash.accountEditor.name"), value: command.name ?? original.name },
+      { label: t("cash.accountEditor.kind"), value: kinds[command.kind ?? original.kind] },
+      {
+        label: t("cash.accountDetail.negativePolicy"),
+        value: allowNegative
+          ? t("cash.accountDetail.negativeAllowed")
+          : t("cash.accountDetail.negativeProtected"),
+      },
+    ];
+    if (createCommand) {
+      const opening = createCommand.opening;
+      items.push(
+        { label: t("cash.accountDetail.currency"), value: createCommand.currency },
+        {
+          label: t("cash.accountEditor.openingBalance"),
+          numeric: true,
+          value: formatMoney(
+            // Concatenating the sign keeps the reviewed amount exact; no arithmetic is involved.
+            opening?.direction === "out"
+              ? `-${opening.amountMinorUnits}`
+              : (opening?.amountMinorUnits ?? "0"),
+            createCommand.currency,
+          ),
+        },
+      );
+      if (opening) {
+        items.push(
+          { label: t("cash.fields.reason"), value: opening.reason },
+          {
+            label: t("cash.fields.occurredAt"),
+            numeric: true,
+            value: formatLocalOccurrence(
+              opening.occurredLocalDate,
+              opening.occurredLocalTime,
+              requireSupportedLocale(i18n.resolvedLanguage),
+            ),
+          },
+        );
+      }
+    }
+    return (
       <Page width="form">
-        <ScreenHeader
-          description={
-            reviewing
-              ? copy.reviewDescription
-              : mode === "create"
-                ? copy.createDescription
-                : copy.updateDescription
-          }
-          eyebrow={copy.eyebrow}
+        <PageHeader
+          description={t("cash.accountEditor.reviewDescription")}
           title={
-            reviewing ? copy.reviewTitle : mode === "create" ? copy.createTitle : copy.updateTitle
+            creating
+              ? t("cash.accountEditor.reviewCreateTitle")
+              : t("cash.accountEditor.reviewUpdateTitle")
           }
         />
+        <CashOperationReview
+          confirmLabel={
+            creating ? t("cash.accountEditor.confirmCreate") : t("cash.accountEditor.confirmUpdate")
+          }
+          disabled={!canConfirm}
+          effect={
+            creating ? t("cash.accountEditor.createEffect") : t("cash.accountEditor.updateEffect")
+          }
+          errorMessage={errorMessage}
+          items={items}
+          onConfirm={onConfirm}
+          onEdit={onEdit}
+          phase={phase}
+        />
+      </Page>
+    );
+  }
 
-        {review ? (
-          <CashOperationReview
-            copy={copy}
-            effect={effect}
-            errorMessage={errorMessage}
-            onCheckStatus={onCheckStatus}
-            onConfirm={onConfirm}
-            onEdit={onEdit}
-            rows={[
-              { label: copy.name, value: review.name },
-              { label: copy.kind, value: review.kindLabel },
-              {
-                label: copy.negativePolicy,
-                value: review.allowNegativeBalance ? copy.allowNegative : copy.protectedBalance,
-              },
-              ...(createCommand
-                ? [
-                    { label: copy.currency, value: createCommand.currency },
-                    { label: copy.openingBalance, value: openingValue },
-                    ...(createCommand.opening
-                      ? [
-                          { label: copy.openingReason, value: createCommand.opening.reason },
-                          { label: copy.date, value: createCommand.opening.occurredLocalDate },
-                          { label: copy.time, value: createCommand.opening.occurredLocalTime },
-                        ]
-                      : []),
-                  ]
-                : []),
-            ]}
-            state={confirmation}
+  const togglePolicy = () =>
+    onDraftChange({
+      ...draft,
+      negativePolicy: draft.negativePolicy === "allowed" ? "protected" : "allowed",
+    });
+
+  return (
+    <Page width="form">
+      <PageHeader
+        description={
+          creating
+            ? t("cash.accountEditor.createDescription")
+            : t("cash.accountEditor.updateDescription")
+        }
+        title={creating ? t("cash.accountEditor.createTitle") : t("cash.accountEditor.updateTitle")}
+      />
+
+      <Section title={t("cash.accountEditor.accountSection")}>
+        <View className="gap-4">
+          <Field
+            error={errors.name}
+            label={t("cash.accountEditor.name")}
+            maxLength={80}
+            onChangeText={(name) => onDraftChange({ ...draft, name })}
+            value={draft.name}
           />
-        ) : (
-          <View className="gap-7 border-y border-border py-7 ">
-            <Field
-              error={errors.name}
-              label={copy.name}
-              maxLength={80}
-              onChangeText={(name) => onDraftChange({ ...draft, name })}
-              value={draft.name}
-            />
-            <ChoiceList
-              label={copy.kind}
-              onChange={(kind) => onDraftChange({ ...draft, kind })}
-              options={kindOptions}
-              value={draft.kind}
-            />
-            <ChoiceList
-              label={copy.negativePolicy}
-              onChange={(negativePolicy) => onDraftChange({ ...draft, negativePolicy })}
-              options={[
-                { label: copy.protectedBalance, value: "protected" },
-                { label: copy.allowNegative, value: "allowed" },
-              ]}
-              value={draft.negativePolicy}
-            />
+          <SelectField<CashAccountKind>
+            label={t("cash.accountEditor.kind")}
+            onChange={(kind) => onDraftChange({ ...draft, kind })}
+            options={(Object.keys(kinds) as CashAccountKind[]).map((value) => ({
+              label: kinds[value],
+              value,
+            }))}
+            value={draft.kind}
+          />
+        </View>
+      </Section>
 
-            {mode === "create" ? (
+      {creating ? (
+        <Section
+          description={t("cash.accountEditor.openingDescription")}
+          title={t("cash.accountEditor.openingBalance")}
+        >
+          <View className="gap-4">
+            <ChoiceList
+              label={t("cash.accountEditor.openingMode")}
+              onChange={(openingMode) => onDraftChange({ ...draft, openingMode })}
+              options={[
+                { label: t("cash.accountEditor.startAtZero"), value: "zero" },
+                { label: t("cash.accountEditor.moneyIn"), value: "in" },
+                { label: t("cash.accountEditor.moneyOut"), value: "out" },
+              ]}
+              value={draft.openingMode}
+            />
+            {draft.openingMode !== "zero" ? (
               <>
-                <ChoiceList
-                  label={copy.openingBalance}
-                  onChange={(openingMode) => onDraftChange({ ...draft, openingMode })}
-                  options={[
-                    { label: copy.startAtZero, value: "zero" },
-                    { label: copy.moneyIn, value: "in" },
-                    { label: copy.moneyOut, value: "out" },
-                  ]}
-                  value={draft.openingMode}
+                <Field
+                  error={errors.openingAmount}
+                  keyboardType="decimal-pad"
+                  label={t("cash.fields.amount")}
+                  onChangeText={(openingAmount) => onDraftChange({ ...draft, openingAmount })}
+                  trailing={
+                    <Text className="font-ui text-sm text-muted-foreground">{currency}</Text>
+                  }
+                  value={draft.openingAmount}
                 />
-                {draft.openingMode !== "zero" ? (
-                  <View className="gap-5">
-                    <Field
-                      error={errors.openingAmount}
-                      keyboardType="decimal-pad"
-                      label={copy.openingAmount}
-                      onChangeText={(openingAmount) => onDraftChange({ ...draft, openingAmount })}
-                      trailing={<Text className="font-ui text-muted-foreground">{currency}</Text>}
-                      value={draft.openingAmount}
-                    />
-                    <Field
-                      error={errors.openingReason}
-                      label={copy.openingReason}
-                      maxLength={240}
-                      onChangeText={(openingReason) => onDraftChange({ ...draft, openingReason })}
-                      value={draft.openingReason}
-                    />
-                    <View className="gap-5 sm:flex-row">
-                      <View className="flex-1">
-                        <Field
-                          error={errors.openingLocalDate}
-                          label={copy.date}
-                          onChangeText={(openingLocalDate) =>
-                            onDraftChange({ ...draft, openingLocalDate })
-                          }
-                          value={draft.openingLocalDate}
-                        />
-                      </View>
-                      <View className="flex-1">
-                        <Field
-                          error={errors.openingLocalTime}
-                          label={copy.time}
-                          onChangeText={(openingLocalTime) =>
-                            onDraftChange({ ...draft, openingLocalTime })
-                          }
-                          value={draft.openingLocalTime}
-                        />
-                      </View>
-                    </View>
-                  </View>
-                ) : null}
+                <Field
+                  error={errors.openingReason}
+                  label={t("cash.fields.reason")}
+                  maxLength={240}
+                  onChangeText={(openingReason) => onDraftChange({ ...draft, openingReason })}
+                  value={draft.openingReason}
+                />
+                <LocalDateTimeFields
+                  date={draft.openingLocalDate}
+                  dateError={errors.openingLocalDate}
+                  onDateChange={(openingLocalDate) => onDraftChange({ ...draft, openingLocalDate })}
+                  onTimeChange={(openingLocalTime) => onDraftChange({ ...draft, openingLocalTime })}
+                  time={draft.openingLocalTime}
+                  timeError={errors.openingLocalTime}
+                />
               </>
             ) : null}
-
-            <View className="gap-3 sm:flex-row">
-              <Button label={copy.review} onPress={onPrepareReview} variant="default" />
-              <Button label={copy.cancel} onPress={onCancel} variant="outline" />
-            </View>
-            {errors.form ? (
-              <Text accessibilityRole="alert" className="text-xs text-destructive">
-                {errors.form}
-              </Text>
-            ) : null}
           </View>
-        )}
-      </Page>
-    </FeatureBoundary>
+        </Section>
+      ) : null}
+
+      <Section title={t("cash.accountDetail.negativePolicy")}>
+        <View className="flex-row items-start gap-3">
+          <Checkbox
+            accessibilityLabel={t("cash.accountEditor.allowNegative")}
+            aria-labelledby={`${policyId}-label`}
+            checked={draft.negativePolicy === "allowed"}
+            className="mt-0.5"
+            nativeID={policyId}
+            onCheckedChange={togglePolicy}
+          />
+          <View className="min-w-0 flex-1 gap-1">
+            <Label nativeID={`${policyId}-label`} onPress={togglePolicy}>
+              {t("cash.accountEditor.allowNegative")}
+            </Label>
+            <Text className="text-[13px] leading-5 text-muted-foreground">
+              {t("cash.accountEditor.allowNegativeDescription")}
+            </Text>
+          </View>
+        </View>
+      </Section>
+
+      {errors.form ? (
+        <Alert icon={CircleAlert} variant="destructive">
+          <AlertDescription>{errors.form}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <View className="flex-row flex-wrap justify-end gap-2">
+        <Button label={t("common.cancel")} onPress={onCancel} variant="outline" />
+        <Button label={t("cash.accountEditor.review")} onPress={onPrepareReview} />
+      </View>
+    </Page>
   );
 }

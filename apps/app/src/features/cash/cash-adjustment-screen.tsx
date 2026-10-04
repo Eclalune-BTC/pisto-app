@@ -1,256 +1,202 @@
-import type {
-  CashAccount,
-  CashMovementDirection,
-  RecordCashAdjustmentRequest,
-} from "@pisto/contracts";
+import type { CashAccount, RecordCashAdjustmentRequest } from "@pisto/contracts";
+import { Link } from "expo-router";
+import { Landmark } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import {
-  FeatureBoundary,
-  type FeatureBoundaryCopy,
-  type FeatureRemoteState,
-  requireFeatureManageAccess,
-} from "@/components/feature-boundary";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
-import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
-import { CashOperationReview, type CashOperationReviewCopy } from "./cash-operation-review";
+import { requireSupportedLocale } from "@/i18n/locale";
+import { CashOperationReview } from "./cash-operation-review";
 import { ChoiceList } from "./choice-list";
-import type { CashConfirmationState } from "./state";
+import type { AdjustmentDraftValues } from "./drafts";
+import { FieldError } from "./field-error";
+import { formatLocalOccurrence } from "./format";
+import { type CursorPage, LoadMoreButton } from "./load-more-button";
+import { LocalDateTimeFields } from "./local-date-time-fields";
+import type { MutationPhase } from "./mutation-state";
 
-export type CashAdjustmentDraft = {
-  accountId: string;
-  direction: CashMovementDirection;
-  amount: string;
-  reason: string;
-  localDate: string;
-  localTime: string;
-};
+export type CashAdjustmentDraft = AdjustmentDraftValues;
 
 export type CashAdjustmentErrors = Partial<Record<keyof CashAdjustmentDraft, string>>;
 
-export type CashAdjustmentCopy = FeatureBoundaryCopy &
-  CashOperationReviewCopy & {
-    eyebrow: string;
-    title: string;
-    description: string;
-    reviewTitle: string;
-    reviewDescription: string;
-    accountUnavailableTitle: string;
-    accountUnavailableDescription: string;
-    createAccount: string;
-    account: string;
-    direction: string;
-    moneyIn: string;
-    moneyOut: string;
-    amount: string;
-    reason: string;
-    date: string;
-    time: string;
-    review: string;
-    cancel: string;
-    loadMore: string;
-    loadingMore: string;
-  };
-
 type CashAdjustmentScreenProps = {
-  remoteState: FeatureRemoteState;
-  canManage: boolean;
   accounts: CashAccount[];
-  reviewAccount: CashAccount | null;
-  hasMoreAccounts: boolean;
-  isLoadingMoreAccounts: boolean;
-  stage: "edit" | "review";
-  draft: CashAdjustmentDraft;
-  errors: CashAdjustmentErrors;
+  accountsPage: CursorPage;
+  canConfirm: boolean;
+  /** Prepared command; when present the screen shows its review. */
   command: RecordCashAdjustmentRequest | null;
-  confirmation: CashConfirmationState;
+  draft: CashAdjustmentDraft;
   errorMessage?: string;
-  effect: string;
-  copy: CashAdjustmentCopy;
+  errors: CashAdjustmentErrors;
   formatMoney: (minorUnits: string, currency: string) => string;
-  onDraftChange: (next: CashAdjustmentDraft) => void;
-  onPrepareReview: () => void;
-  onConfirm: () => void;
-  onEdit: () => void;
   onCancel: () => void;
-  onCheckStatus: () => void;
-  onRetry: () => void;
-  onCreateAccount: () => void;
-  onLoadMoreAccounts: () => void;
+  onConfirm: () => void;
+  onDraftChange: (next: CashAdjustmentDraft) => void;
+  onEdit: () => void;
+  onPrepareReview: () => void;
+  phase: MutationPhase;
+  /** The account as it was reviewed; a later refetch cannot change what is being confirmed. */
+  reviewAccount: CashAccount | null;
 };
 
 export function CashAdjustmentScreen({
-  remoteState,
-  canManage,
   accounts,
-  reviewAccount,
-  hasMoreAccounts,
-  isLoadingMoreAccounts,
-  stage,
-  draft,
-  errors,
+  accountsPage,
+  canConfirm,
   command,
-  confirmation,
+  draft,
   errorMessage,
-  effect,
-  copy,
+  errors,
   formatMoney,
-  onDraftChange,
-  onPrepareReview,
-  onConfirm,
-  onEdit,
   onCancel,
-  onCheckStatus,
-  onRetry,
-  onCreateAccount,
-  onLoadMoreAccounts,
+  onConfirm,
+  onDraftChange,
+  onEdit,
+  onPrepareReview,
+  phase,
+  reviewAccount,
 }: CashAdjustmentScreenProps) {
-  const authorizedState = requireFeatureManageAccess(remoteState, canManage);
-  if (authorizedState.kind !== "ready") {
+  const { i18n, t } = useTranslation();
+  const directions = [
+    { label: t("cash.adjustment.moneyIn"), value: "in" },
+    { label: t("cash.adjustment.moneyOut"), value: "out" },
+  ] as const;
+
+  if (command) {
+    if (!reviewAccount || reviewAccount.id !== command.accountId) {
+      throw new Error("A cash adjustment review requires its reviewed account");
+    }
     return (
-      <FeatureBoundary copy={copy} onRetry={onRetry} state={authorizedState}>
-        {null}
-      </FeatureBoundary>
+      <Page width="form">
+        <PageHeader
+          description={t("cash.adjustment.reviewDescription")}
+          title={t("cash.adjustment.reviewTitle")}
+        />
+        <CashOperationReview
+          confirmLabel={t("cash.adjustment.confirm")}
+          disabled={!canConfirm}
+          effect={t("cash.adjustment.effect")}
+          errorMessage={errorMessage}
+          items={[
+            { label: t("cash.fields.account"), value: reviewAccount.name },
+            {
+              label: t("cash.adjustment.direction"),
+              value: command.direction === "in" ? directions[0].label : directions[1].label,
+            },
+            {
+              label: t("cash.fields.amount"),
+              numeric: true,
+              value: formatMoney(command.amountMinorUnits, command.currency),
+            },
+            { label: t("cash.fields.reason"), value: command.reason },
+            {
+              label: t("cash.fields.occurredAt"),
+              numeric: true,
+              value: formatLocalOccurrence(
+                command.occurredLocalDate,
+                command.occurredLocalTime,
+                requireSupportedLocale(i18n.resolvedLanguage),
+              ),
+            },
+          ]}
+          onConfirm={onConfirm}
+          onEdit={onEdit}
+          phase={phase}
+        />
+      </Page>
     );
   }
+
   const activeAccounts = accounts.filter(({ status }) => status === "active");
-  const accountOptions = activeAccounts.map(({ id, name }) => ({ label: name, value: id }));
-  const account = command ? reviewAccount : activeAccounts.find(({ id }) => id === draft.accountId);
-  const reviewing = stage === "review" && command !== null;
-  if (
-    stage === "review" &&
-    (!command || !reviewAccount || reviewAccount.id !== command.accountId)
-  ) {
-    throw new Error("Cash adjustment review is missing its command or account snapshot");
-  }
-
+  const selected = activeAccounts.find(({ id }) => id === draft.accountId);
   return (
-    <FeatureBoundary copy={copy} onRetry={onRetry} state={authorizedState}>
-      <Page width="form">
-        <ScreenHeader
-          description={reviewing ? copy.reviewDescription : copy.description}
-          eyebrow={copy.eyebrow}
-          title={reviewing ? copy.reviewTitle : copy.title}
+    <Page width="form">
+      <PageHeader
+        description={t("cash.adjustment.description")}
+        title={t("cash.adjustment.title")}
+      />
+      {activeAccounts.length === 0 ? (
+        <EmptyState
+          action={
+            <Link asChild href="/operate/cash/accounts/new">
+              <Button accessibilityRole="link" size="sm">
+                <Text>{t("cash.overview.newAccount")}</Text>
+              </Button>
+            </Link>
+          }
+          description={t("cash.adjustment.noAccountsDescription")}
+          icon={Landmark}
+          title={t("cash.adjustment.noAccountsTitle")}
         />
-
-        {activeAccounts.length === 0 && !reviewing ? (
-          <View className="gap-3 border-y border-border py-8 ">
-            <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
-              {copy.accountUnavailableTitle}
-            </Text>
-            <Text className="text-sm leading-5 text-muted-foreground">
-              {copy.accountUnavailableDescription}
-            </Text>
-            <Button
-              className="self-start"
-              label={copy.createAccount}
-              onPress={onCreateAccount}
-              variant="default"
-            />
-          </View>
-        ) : reviewing && account ? (
-          <CashOperationReview
-            copy={copy}
-            effect={effect}
-            errorMessage={errorMessage}
-            onCheckStatus={onCheckStatus}
-            onConfirm={onConfirm}
-            onEdit={onEdit}
-            rows={[
-              { label: copy.account, value: account.name },
-              {
-                label: copy.direction,
-                value: command.direction === "in" ? copy.moneyIn : copy.moneyOut,
-              },
-              {
-                label: copy.amount,
-                value: formatMoney(command.amountMinorUnits, command.currency),
-              },
-              { label: copy.reason, value: command.reason },
-              { label: copy.date, value: command.occurredLocalDate },
-              { label: copy.time, value: command.occurredLocalTime },
-            ]}
-            state={confirmation}
-          />
-        ) : (
-          <View className="gap-7 border-y border-border py-7 ">
-            <SelectField
-              label={copy.account}
-              onChange={(accountId) => onDraftChange({ ...draft, accountId })}
-              options={accountOptions}
-              value={draft.accountId}
-            />
-            {errors.accountId ? (
-              <Text accessibilityRole="alert" className="text-xs text-destructive">
-                {errors.accountId}
-              </Text>
-            ) : null}
-            {hasMoreAccounts ? (
-              <Button
-                className="self-start"
-                label={isLoadingMoreAccounts ? copy.loadingMore : copy.loadMore}
-                loading={isLoadingMoreAccounts}
-                onPress={onLoadMoreAccounts}
-                size="sm"
-                variant="outline"
+      ) : (
+        <>
+          <Section title={t("cash.adjustment.detailsSection")}>
+            <View className="gap-4">
+              <View className="gap-2">
+                <SelectField
+                  label={t("cash.fields.account")}
+                  onChange={(accountId) => onDraftChange({ ...draft, accountId })}
+                  options={activeAccounts.map(({ id, name }) => ({ label: name, value: id }))}
+                  value={draft.accountId || null}
+                />
+                <FieldError message={errors.accountId} />
+                <LoadMoreButton
+                  className="self-start"
+                  label={t("cash.fields.loadMoreAccounts")}
+                  page={accountsPage}
+                />
+              </View>
+              <ChoiceList
+                label={t("cash.adjustment.direction")}
+                onChange={(direction) => onDraftChange({ ...draft, direction })}
+                options={directions}
+                value={draft.direction}
               />
-            ) : null}
-            <ChoiceList
-              label={copy.direction}
-              onChange={(direction) => onDraftChange({ ...draft, direction })}
-              options={[
-                { label: copy.moneyIn, value: "in" },
-                { label: copy.moneyOut, value: "out" },
-              ]}
-              value={draft.direction}
-            />
-            <Field
-              error={errors.amount}
-              keyboardType="decimal-pad"
-              label={copy.amount}
-              onChangeText={(amount) => onDraftChange({ ...draft, amount })}
-              trailing={
-                account ? (
-                  <Text className="font-ui text-muted-foreground">{account.currency}</Text>
-                ) : undefined
-              }
-              value={draft.amount}
-            />
-            <Field
-              error={errors.reason}
-              label={copy.reason}
-              maxLength={240}
-              onChangeText={(reason) => onDraftChange({ ...draft, reason })}
-              value={draft.reason}
-            />
-            <View className="gap-5 sm:flex-row">
-              <View className="flex-1">
-                <Field
-                  error={errors.localDate}
-                  label={copy.date}
-                  onChangeText={(localDate) => onDraftChange({ ...draft, localDate })}
-                  value={draft.localDate}
-                />
-              </View>
-              <View className="flex-1">
-                <Field
-                  error={errors.localTime}
-                  label={copy.time}
-                  onChangeText={(localTime) => onDraftChange({ ...draft, localTime })}
-                  value={draft.localTime}
-                />
-              </View>
+              <Field
+                error={errors.amount}
+                keyboardType="decimal-pad"
+                label={t("cash.fields.amount")}
+                onChangeText={(amount) => onDraftChange({ ...draft, amount })}
+                trailing={
+                  selected ? (
+                    <Text className="font-ui text-sm text-muted-foreground">
+                      {selected.currency}
+                    </Text>
+                  ) : undefined
+                }
+                value={draft.amount}
+              />
+              <Field
+                error={errors.reason}
+                label={t("cash.fields.reason")}
+                maxLength={240}
+                onChangeText={(reason) => onDraftChange({ ...draft, reason })}
+                value={draft.reason}
+              />
             </View>
-            <View className="gap-3 sm:flex-row">
-              <Button label={copy.review} onPress={onPrepareReview} variant="default" />
-              <Button label={copy.cancel} onPress={onCancel} variant="outline" />
-            </View>
+          </Section>
+          <Section title={t("cash.fields.occurredAt")}>
+            <LocalDateTimeFields
+              date={draft.localDate}
+              dateError={errors.localDate}
+              onDateChange={(localDate) => onDraftChange({ ...draft, localDate })}
+              onTimeChange={(localTime) => onDraftChange({ ...draft, localTime })}
+              time={draft.localTime}
+              timeError={errors.localTime}
+            />
+          </Section>
+          <View className="flex-row flex-wrap justify-end gap-2">
+            <Button label={t("common.cancel")} onPress={onCancel} variant="outline" />
+            <Button label={t("cash.adjustment.review")} onPress={onPrepareReview} />
           </View>
-        )}
-      </Page>
-    </FeatureBoundary>
+        </>
+      )}
+    </Page>
   );
 }

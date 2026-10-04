@@ -1,243 +1,155 @@
-import type { CashAccount, ExpenseCategory } from "@pisto/contracts";
-import { AlertTriangle } from "lucide-react-native";
+import type { CashAccount, Expense, ExpensePeriodSummary } from "@pisto/contracts";
+import { Link } from "expo-router";
+import { Plus, ReceiptText } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { FeatureBoundary } from "@/components/feature-boundary";
+import { FeatureBoundary, type FeatureRemoteState } from "@/components/feature-boundary";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
-import { ScreenHeader } from "@/components/screen-header";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Heading } from "@/components/ui/heading";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import {
-  ExpenseFilters,
-  type ExpenseFiltersCopy,
-  type ExpenseFiltersValue,
-  type ExpensePeriodValue,
-} from "./expense-filters";
+import { type CursorPage, LoadMoreButton } from "../cash/load-more-button";
+import { expensesBoundaryCopy } from "./copy";
+import { ExpenseFilters } from "./expense-filters";
 import { ExpenseHistory } from "./expense-history";
-import { ExpenseSummary } from "./expense-summary";
-import { type ExpensesScreenState, expensesScreenPresentation } from "./state";
-
-export type { ExpensesScreenState } from "./state";
-
-export type ExpensesScreenCopy = ExpenseFiltersCopy & {
-  title: string;
-  description: string;
-  eyebrow: string;
-  loading: string;
-  retry: string;
-  deniedTitle: string;
-  offlineTitle: string;
-  deniedDescription: string;
-  unavailableTitle: string;
-  registerExpense: string;
-  emptyTitle: string;
-  emptyDescription: string;
-  periodTotal: string;
-  recordedExpenses: string;
-  categoryBreakdown: string;
-  historyTitle: string;
-  expensesNotProfit: string;
-  posted: string;
-  voided: string;
-  voidAction: string;
-  mutationFailedTitle: string;
-  uncertainTitle: string;
-  uncertainDescription: string;
-  retrySameConfirmation: string;
-  loadMore: string;
-  loadingMore: string;
-  noCategoryData: string;
-  categories: Record<ExpenseCategory, string>;
-};
+import { ExpenseSummary, ExpenseSummarySkeleton } from "./expense-summary";
+import type { ExpenseHistoryFilters, ExpensePeriod } from "./search-params";
 
 type ExpensesScreenProps = {
-  state: ExpensesScreenState;
+  /** Names already loaded on this page, keyed by account. */
+  accountNames: ReadonlyMap<string, string>;
   accounts: CashAccount[];
-  filters: ExpenseFiltersValue;
-  hasMoreAccounts: boolean;
-  hasMoreExpenses: boolean;
-  isLoadingMoreAccounts: boolean;
-  isLoadingMoreExpenses: boolean;
-  period: ExpensePeriodValue;
-  periodError?: string;
-  copy: ExpensesScreenCopy;
+  accountsPage: CursorPage;
+  businessId: string;
+  /** Registering and voiding need expense and cash management on fresh data. */
+  canManage: boolean;
+  expenses: Expense[];
+  expensesPage: CursorPage;
+  filters: ExpenseHistoryFilters;
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
-  onRegisterExpense: () => void;
-  onOpenExpense: (expenseId: string) => void;
-  onVoidExpense: (expenseId: string) => void;
-  onRetry: () => void;
-  onCheckMutationStatus: () => void;
+  formatOccurredAt: (expense: Expense) => string;
+  historyState: FeatureRemoteState;
+  isStale: boolean;
   onApplyPeriod: () => void;
-  onFiltersChange: (next: ExpenseFiltersValue) => void;
-  onLoadMoreAccounts: () => void;
-  onLoadMoreExpenses: () => void;
-  onPeriodChange: (next: ExpensePeriodValue) => void;
-  categoryOptions: readonly { label: string; value: ExpenseCategory }[];
+  onFiltersChange: (next: ExpenseHistoryFilters) => void;
+  onPeriodChange: (next: ExpensePeriod) => void;
+  onRetry: () => void;
+  onVoidExpense: (expense: Expense) => void;
+  /** The dates shown in the range control, applied or not. */
+  period: ExpensePeriod;
+  periodError?: string;
+  summary: ExpensePeriodSummary | undefined;
+  summaryState: FeatureRemoteState;
 };
 
 export function ExpensesScreen({
-  state,
+  accountNames,
   accounts,
+  accountsPage,
+  businessId,
+  canManage,
+  expenses,
+  expensesPage,
   filters,
-  hasMoreAccounts,
-  hasMoreExpenses,
-  isLoadingMoreAccounts,
-  isLoadingMoreExpenses,
-  period,
-  periodError,
-  copy,
   formatMoney,
-  onRegisterExpense,
-  onOpenExpense,
-  onVoidExpense,
-  onRetry,
-  onCheckMutationStatus,
+  formatOccurredAt,
+  historyState,
+  isStale,
   onApplyPeriod,
   onFiltersChange,
-  onLoadMoreAccounts,
-  onLoadMoreExpenses,
   onPeriodChange,
-  categoryOptions,
+  onRetry,
+  onVoidExpense,
+  period,
+  periodError,
+  summary,
+  summaryState,
 }: ExpensesScreenProps) {
-  const presentation = expensesScreenPresentation(state);
   const { t } = useTranslation();
+  const boundary = expensesBoundaryCopy(t);
+  const register = (size?: "sm") => (
+    <Link asChild href="/operate/expenses/new">
+      <Button accessibilityRole="link" size={size}>
+        {size ? null : <Icon as={Plus} className="text-primary-foreground" size={16} />}
+        <Text>{t("expenses.overview.register")}</Text>
+      </Button>
+    </Link>
+  );
   return (
-    <Page contentContainerClassName="gap-6">
-      <ScreenHeader
-        action={
-          presentation.showCreate ? (
-            <Button label={copy.registerExpense} onPress={onRegisterExpense} variant="default" />
-          ) : undefined
-        }
-        description={state.kind === "denied" ? copy.deniedDescription : copy.description}
-        eyebrow={copy.eyebrow}
-        title={copy.title}
+    <Page>
+      <PageHeader
+        actions={canManage ? register() : undefined}
+        description={t("expenses.overview.description")}
+        title={t("expenses.overview.title")}
       />
-      {state.kind === "ready" && state.isStale ? <StaleNotice /> : null}
-      {state.kind === "ready" && state.confirmation === "uncertain" ? (
-        <Alert icon={AlertTriangle}>
-          <AlertTitle className="leading-6">{copy.uncertainTitle}</AlertTitle>
-          <AlertDescription>{copy.uncertainDescription}</AlertDescription>
-          <Button
-            className="mb-2 ml-6 mt-2 self-start"
-            label={copy.retrySameConfirmation}
-            onPress={onCheckMutationStatus}
-            variant="outline"
-          />
-        </Alert>
-      ) : state.kind === "ready" && state.confirmation === "failed" ? (
-        <Alert icon={AlertTriangle} variant="destructive">
-          <AlertTitle className="leading-6">{copy.mutationFailedTitle}</AlertTitle>
-          {state.mutationMessage ? (
-            <AlertDescription>{state.mutationMessage}</AlertDescription>
-          ) : null}
-          <Button
-            className="mb-2 ml-6 mt-2 self-start"
-            label={copy.retry}
-            onPress={onRetry}
-            variant="outline"
-          />
-        </Alert>
-      ) : null}
-      {state.kind === "denied" ? (
-        <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
-          {null}
-        </FeatureBoundary>
-      ) : (
-        <View className="gap-10">
-          <View accessibilityLabel={copy.historyTitle} role="region" className="min-w-0 gap-4">
-            <Heading level={2} size="section">
-              {copy.historyTitle}
-            </Heading>
-            <ExpenseFilters
-              accounts={accounts}
-              categoryOptions={categoryOptions}
-              copy={copy}
-              filters={filters}
-              hasMoreAccounts={hasMoreAccounts}
-              isLoadingMoreAccounts={isLoadingMoreAccounts}
-              onFiltersChange={onFiltersChange}
-              onLoadMoreAccounts={onLoadMoreAccounts}
-            />
-            <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
-              {state.kind === "ready" ? (
-                <View className="min-w-0 gap-4">
-                  {state.expenses.length === 0 ? (
-                    <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
-                  ) : (
-                    <ExpenseHistory
-                      canManage={state.canManage}
-                      categoryLabels={copy.categories}
-                      expenses={state.expenses}
-                      formatMoney={formatMoney}
-                      onOpenExpense={onOpenExpense}
-                      onVoidExpense={onVoidExpense}
-                      postedLabel={copy.posted}
-                      voidActionLabel={copy.voidAction}
-                      voidedLabel={copy.voided}
-                    />
-                  )}
-                  {hasMoreExpenses ? (
-                    <Button
-                      className="self-start"
-                      label={isLoadingMoreExpenses ? copy.loadingMore : copy.loadMore}
-                      loading={isLoadingMoreExpenses}
-                      onPress={onLoadMoreExpenses}
-                      variant="outline"
-                    />
-                  ) : null}
-                </View>
-              ) : null}
-            </FeatureBoundary>
-          </View>
-          <View
-            accessibilityLabel={t("filters.periodSummary")}
-            role="region"
-            className="min-w-0 gap-4"
+
+      {isStale ? <StaleNotice onRetry={onRetry} /> : null}
+
+      <Section description={t("expenses.summary.scope")} title={t("filters.periodSummary")}>
+        <DateRangeFilter
+          applyLabel={t("expenses.summary.apply")}
+          endDate={period.endLocalDate}
+          endLabel={t("expenses.summary.endDate")}
+          error={periodError}
+          onApply={onApplyPeriod}
+          onEndDateChange={(endLocalDate) => onPeriodChange({ ...period, endLocalDate })}
+          onStartDateChange={(startLocalDate) => onPeriodChange({ ...period, startLocalDate })}
+          startDate={period.startLocalDate}
+          startLabel={t("expenses.summary.startDate")}
+        />
+        {summaryState.kind === "loading" ? (
+          <ExpenseSummarySkeleton />
+        ) : (
+          <FeatureBoundary
+            copy={{ ...boundary, unavailableTitle: t("expenses.summary.unavailable") }}
+            inline
+            onRetry={onRetry}
+            state={summaryState}
           >
-            <Heading level={2} size="section">
-              {t("filters.periodSummary")}
-            </Heading>
-            <View className="min-w-0 gap-3">
-              <DateRangeFilter
-                applyLabel={copy.applyPeriod}
-                endDate={period.endLocalDate}
-                endLabel={copy.endDate}
-                error={periodError}
-                onApply={onApplyPeriod}
-                onEndDateChange={(endLocalDate) => onPeriodChange({ ...period, endLocalDate })}
-                onStartDateChange={(startLocalDate) =>
-                  onPeriodChange({ ...period, startLocalDate })
-                }
-                startDate={period.startLocalDate}
-                startLabel={copy.startDate}
-              />
-              <Text className="font-sans text-sm leading-6 text-muted-foreground">
-                {copy.periodScope}
-              </Text>
-            </View>
-            <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
-              {state.kind === "ready" ? (
-                <ExpenseSummary
-                  categoryBreakdownLabel={copy.categoryBreakdown}
-                  categoryLabels={copy.categories}
-                  expensesNotProfit={copy.expensesNotProfit}
-                  formatMoney={formatMoney}
-                  periodTotalLabel={copy.periodTotal}
-                  recordedExpensesLabel={copy.recordedExpenses}
-                  noCategoryData={copy.noCategoryData}
-                  summary={state.summary}
+            {summary ? <ExpenseSummary summary={summary} /> : null}
+          </FeatureBoundary>
+        )}
+      </Section>
+
+      <Section title={t("filters.history")}>
+        <ExpenseFilters
+          accounts={accounts}
+          accountsPage={accountsPage}
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+        />
+        <FeatureBoundary
+          copy={{ ...boundary, unavailableTitle: t("expenses.overview.historyUnavailable") }}
+          inline
+          onRetry={onRetry}
+          state={historyState}
+        >
+          <View className="min-w-0 gap-3">
+            <ExpenseHistory
+              accountNames={accountNames}
+              businessId={businessId}
+              empty={
+                <EmptyState
+                  action={canManage ? register("sm") : undefined}
+                  description={t("expenses.overview.emptyDescription")}
+                  icon={ReceiptText}
+                  title={t("expenses.overview.emptyTitle")}
                 />
-              ) : null}
-            </FeatureBoundary>
+              }
+              expenses={expenses}
+              formatMoney={formatMoney}
+              formatOccurredAt={formatOccurredAt}
+              onVoidExpense={canManage ? onVoidExpense : undefined}
+            />
+            <LoadMoreButton page={expensesPage} />
           </View>
-        </View>
-      )}
+        </FeatureBoundary>
+      </Section>
     </Page>
   );
 }

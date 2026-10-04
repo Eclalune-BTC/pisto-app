@@ -14,6 +14,7 @@ type ChoiceListProps<T extends string> = {
   disabled?: boolean;
 };
 
+/** A required exclusive choice whose options are short enough to show all at once. */
 export function ChoiceList<T extends string>({
   label,
   options,
@@ -32,31 +33,31 @@ export function ChoiceList<T extends string>({
     onChange(option.value);
   };
   return (
-    <View className="gap-2">
-      <Text className="text-sm font-ui text-foreground">{label}</Text>
+    <View className="min-w-0 gap-2">
+      <Text className="font-ui text-sm text-foreground">{label}</Text>
       <RadioGroup
         accessibilityLabel={label}
-        className="border-y border-border"
+        className="gap-0"
         disabled={disabled}
         onValueChange={select}
         value={value}
       >
         {options.map((option) => (
           <View
-            className="min-h-12 flex-row items-center gap-3 border-b border-border last:border-b-0"
+            className="min-h-9 flex-row items-center gap-2.5 native:min-h-11"
             key={option.value}
           >
             <RadioGroupItem
               accessibilityLabel={option.label}
               aria-labelledby={`${id}-${option.value}-label`}
               disabled={disabled}
-              hitSlop={14}
+              hitSlop={12}
               nativeID={`${id}-${option.value}`}
               value={option.value}
             />
             <View className="min-w-0 flex-1">
               <Label
-                className="min-h-11 flex-1 py-3 leading-5"
+                className="py-2 font-sans leading-5 native:py-3"
                 disabled={disabled}
                 nativeID={`${id}-${option.value}-label`}
                 onPress={() => select(option.value)}

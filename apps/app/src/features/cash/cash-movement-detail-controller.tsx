@@ -1,143 +1,132 @@
-import type { CashMovement } from "@pisto/contracts";
+import type { CashMovement, ReverseCashMovementRequest } from "@pisto/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { FeatureRemoteState } from "@/components/feature-boundary";
+import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "./api";
+import { CashAccountName } from "./cash-account-name";
 import {
-  CashMovementDetailScreen,
+  CashMovementDialog,
+  CashReversalDialog,
   type CashReversalDraft,
   type CashReversalErrors,
-} from "./cash-movement-detail-screen";
-import { buildCashCopy, cashIssueMessage } from "./copy";
+} from "./cash-movement-dialogs";
+import { cashIssueMessages, cashMovementActionLabels } from "./copy";
 import { buildCashReversalCommand } from "./drafts";
 import { invalidateCashLedger } from "./invalidate";
-import { cashConfirmationState } from "./mutation-state";
+import { mutationPhase, withStableIdempotencyKey } from "./mutation-state";
 
-type CashMovementDetailControllerProps = {
-  accountName: string;
+type CashMovementDetailProps = {
+  /** Known when the movement is shown inside its own account. */
+  accountName?: string;
   businessId: string;
+  /** Manager access confirmed by a fresh read; it can be lost while the dialog is open. */
   canManage: boolean;
-  isStale: boolean;
+  /** A snapshot: it stays on screen even if a refreshed page no longer contains the row. */
   movement: CashMovement;
-  movements: CashMovement[];
-  onBack: () => void;
-  onRetry: () => void;
-  remoteState: FeatureRemoteState;
+  /** Loaded history, used to tell whether this adjustment was already reversed. */
+  movements: readonly CashMovement[];
+  onClose: () => void;
   timeZone: string;
 };
 
-export function CashMovementDetailController({
+function isAdjustment(movement: CashMovement) {
+  return movement.action === "adjustment_in" || movement.action === "adjustment_out";
+}
+
+export function CashMovementDetail({
   accountName,
   businessId,
   canManage,
-  isStale,
   movement,
   movements,
-  onBack,
-  onRetry,
-  remoteState,
+  onClose,
   timeZone,
-}: CashMovementDetailControllerProps) {
+}: CashMovementDetailProps) {
   const queryClient = useQueryClient();
   const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildCashCopy(t), [t]);
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const [stage, setStage] = useState<"detail" | "reverse-edit" | "reverse-review">("detail");
-  const [draft, setDraft] = useState<CashReversalDraft>({
-    localDate: "",
-    localTime: "",
-    reason: "",
+  const [stage, setStage] = useState<"detail" | "reverse">("detail");
+  const [draft, setDraft] = useState<CashReversalDraft>(() => {
+    const now = currentLocalDateTime(timeZone);
+    return { localDate: now.date, localTime: now.time, reason: "" };
   });
   const [errors, setErrors] = useState<CashReversalErrors>({});
-  const [command, setCommand] = useState<Parameters<typeof cashApi.movements.reverse>[1] | null>(
-    null,
-  );
-
-  useEffect(() => {
-    if (draft.localDate || draft.localTime) return;
-    const current = currentLocalDateTime(timeZone);
-    setDraft((value) => ({ ...value, localDate: current.date, localTime: current.time }));
-  }, [draft.localDate, draft.localTime, timeZone]);
-
-  const mutation = useMutation({
-    mutationFn: (nextCommand: Parameters<typeof cashApi.movements.reverse>[1]) =>
-      cashApi.movements.reverse(movement.id, nextCommand),
+  const reversal = useMutation({
+    mutationFn: (command: ReverseCashMovementRequest) =>
+      cashApi.movements.reverse(movement.id, command),
     onSuccess: async () => {
       await invalidateCashLedger(queryClient, businessId);
-      setStage("detail");
-      setCommand(null);
+      notify.success(t("cash.reversal.success"));
+      onClose();
     },
   });
-
-  const prepareReview = () => {
-    if (!canManage || isStale || remoteState.kind !== "ready" || mutation.isPending) return;
-    const result = buildCashReversalCommand({
-      draft,
-      idempotencyKey: Crypto.randomUUID(),
-    });
-    setErrors(
-      Object.fromEntries(
-        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(t, issue)]),
-      ) as CashReversalErrors,
-    );
-    if (!result.command) return;
-    setCommand(result.command);
-    setStage("reverse-review");
-    mutation.reset();
-  };
-
-  const alreadyReversed = movements.some(
+  const phase = mutationPhase(reversal);
+  const reversed = movements.some(
     ({ reversalOfMovementId }) => reversalOfMovementId === movement.id,
   );
+  const money = (minorUnits: string) =>
+    formatMinorUnits(minorUnits, movement.currency, movement.currencyMinorUnitDigits, locale);
+
+  const confirm = () => {
+    if (!canManage || phase === "pending") return;
+    if (phase === "uncertain") {
+      if (reversal.variables) reversal.mutate(reversal.variables);
+      return;
+    }
+    const result = buildCashReversalCommand({ draft, idempotencyKey: Crypto.randomUUID() });
+    setErrors(cashIssueMessages(t, result.issues));
+    if (result.command)
+      reversal.mutate(withStableIdempotencyKey(reversal.variables, result.command));
+  };
+
   return (
-    <CashMovementDetailScreen
-      accountName={accountName}
-      canManage={canManage && !isStale}
-      canReverse={!alreadyReversed}
-      confirmation={cashConfirmationState(mutation)}
-      copy={copy.movementDetail}
-      errorMessage={
-        mutation.error
-          ? productErrorMessage(mutation.error, copy.remote.mutationFallback, t)
-          : undefined
-      }
-      formatMoney={(minorUnits, currency, fractionDigits) =>
-        formatMinorUnits(minorUnits, currency, fractionDigits, locale)
-      }
-      isStale={isStale}
-      movement={movement}
-      onBack={onBack}
-      onBeginReversal={() => setStage("reverse-edit")}
-      onCancelReversal={() => {
-        setStage("detail");
-        setCommand(null);
-        mutation.reset();
-      }}
-      onCheckStatus={() => {
-        if (command && canManage && !isStale && remoteState.kind === "ready" && !mutation.isPending)
-          mutation.mutate(command);
-      }}
-      onConfirmReversal={() => {
-        if (command && canManage && !isStale && remoteState.kind === "ready" && !mutation.isPending)
-          mutation.mutate(command);
-      }}
-      onEditReversal={() => {
-        setStage("reverse-edit");
-        mutation.reset();
-      }}
-      onPrepareReversalReview={prepareReview}
-      onRetry={onRetry}
-      onReversalDraftChange={setDraft}
-      remoteState={remoteState}
-      reversalCommand={command}
-      reversalDraft={draft}
-      reversalErrors={errors}
-      stage={stage}
-    />
+    <>
+      <CashMovementDialog
+        account={
+          <CashAccountName
+            accountId={movement.accountId}
+            businessId={businessId}
+            className="text-sm"
+            knownName={accountName}
+          />
+        }
+        actionLabel={cashMovementActionLabels(t)[movement.action]}
+        amount={money(movement.deltaMinorUnits)}
+        movement={movement}
+        occurredAt={formatLocalizedDateTime(movement.occurredAt, locale, movement.timeZone)}
+        onClose={onClose}
+        onReverse={
+          canManage && isAdjustment(movement) && !reversed ? () => setStage("reverse") : undefined
+        }
+        open={stage === "detail"}
+        reversed={reversed}
+      />
+      <CashReversalDialog
+        amount={money(movement.amountMinorUnits)}
+        canConfirm={canManage}
+        draft={draft}
+        errorMessage={
+          reversal.error
+            ? productErrorMessage(reversal.error, t("cash.remote.mutationFallback"), t)
+            : undefined
+        }
+        errors={errors}
+        onCancel={() => {
+          reversal.reset();
+          setErrors({});
+          setStage("detail");
+        }}
+        onConfirm={confirm}
+        onDraftChange={setDraft}
+        open={stage === "reverse"}
+        phase={phase}
+      />
+    </>
   );
 }

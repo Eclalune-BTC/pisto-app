@@ -23,5 +23,4 @@ export const common = {
   status: "Estado",
   loading: "cargando",
   loadingContent: "Cargando contenido…",
-  thisBusiness: "este negocio",
 } as const;

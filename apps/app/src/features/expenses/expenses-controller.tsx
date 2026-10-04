@@ -1,12 +1,13 @@
-import { calendarLocalDateSchema } from "@pisto/contracts";
+import type { Expense } from "@pisto/contracts";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Redirect, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-
+import { FeatureBoundary } from "@/components/feature-boundary";
+import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
-import { queryHasStaleData } from "@/lib/query-state";
+import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
 import {
   cashAccountsInfiniteOptions,
   expenseSummaryQueryOptions,
@@ -15,122 +16,56 @@ import {
 } from "../cash/queries";
 import { featureRemoteState } from "../cash/remote-state";
 import { useCashAccess } from "../cash/use-cash-access";
-import { buildExpensesCopy } from "./copy";
-import type { ExpenseFiltersValue, ExpensePeriodValue } from "./expense-filters";
-import { ExpensesScreen, type ExpensesScreenState } from "./expenses-screen";
+import { expensesBoundaryCopy } from "./copy";
+import { ExpenseVoidDialog } from "./expense-void-dialog";
+import { ExpensesScreen } from "./expenses-screen";
+import {
+  type ExpensePeriod,
+  type ExpenseSearchParams,
+  expenseFilterParams,
+  expenseListFilters,
+  expensePeriodParams,
+  isValidExpensePeriod,
+  parseExpenseSearch,
+} from "./search-params";
 
-function currentMonthPeriod(timeZone: string): ExpensePeriodValue {
-  const endLocalDate = currentLocalDateTime(timeZone).date;
-  return { endLocalDate, startLocalDate: `${endLocalDate.slice(0, 7)}-01` };
+/** The current business month up to today, in the business time zone. */
+export function currentMonthPeriod(timeZone: string): ExpensePeriod {
+  const today = currentLocalDateTime(timeZone).date;
+  return { endLocalDate: today, startLocalDate: `${today.slice(0, 7)}-01` };
 }
 
 export function ExpensesController() {
   const router = useRouter();
+  const params = useLocalSearchParams<ExpenseSearchParams>();
   const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildExpensesCopy(t), [t]);
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const {
-    business,
-    businesses,
-    canManage,
-    canRead,
-    isStale: accessIsStale,
-  } = useCashAccess("expenses");
-  const businessId = business?.id;
-  const timeZone = business?.timeZone;
-  const [filters, setFilters] = useState<ExpenseFiltersValue>({
-    accountId: "all",
-    category: "all",
-    status: "posted",
-  });
-  const [period, setPeriod] = useState<ExpensePeriodValue>({
-    endLocalDate: "",
-    startLocalDate: "",
-  });
-  const [appliedPeriod, setAppliedPeriod] = useState<ExpensePeriodValue>({
-    endLocalDate: "",
-    startLocalDate: "",
-  });
+  const access = useCashAccess("expenses");
+  const { business, businesses, canRead } = access;
+  const businessId = canRead ? business?.id : undefined;
+  const defaultPeriod = business ? currentMonthPeriod(business.timeZone) : undefined;
+  const { filters, period } = parseExpenseSearch(params, defaultPeriod);
+  const [draftPeriod, setDraftPeriod] = useState<ExpensePeriod>();
   const [periodError, setPeriodError] = useState<string>();
-
-  useEffect(() => {
-    if (!businessId || !timeZone) return;
-    const initialPeriod = currentMonthPeriod(timeZone);
-    setPeriod(initialPeriod);
-    setAppliedPeriod(initialPeriod);
-    setPeriodError(undefined);
-  }, [businessId, timeZone]);
-
-  const normalizedFilters = useMemo(
-    () => ({
-      ...(filters.accountId === "all" ? {} : { accountId: filters.accountId }),
-      ...(filters.category === "all" ? {} : { category: filters.category }),
-      status: filters.status,
-    }),
-    [filters],
+  const [voiding, setVoiding] = useState<{ businessId: string; expense: Expense }>();
+  const expenses = useInfiniteQuery(
+    expensesInfiniteOptions(businessId, expenseListFilters(filters)),
   );
-  const expenses = useInfiniteQuery({
-    ...expensesInfiniteOptions(businessId, normalizedFilters),
-    enabled: Boolean(business && canRead),
-  });
-  const accounts = useInfiniteQuery({
-    ...cashAccountsInfiniteOptions(businessId, "all", 50),
-    enabled: Boolean(business && canRead),
-  });
-  const summary = useQuery({
-    ...expenseSummaryQueryOptions(
+  const accounts = useInfiniteQuery(cashAccountsInfiniteOptions(businessId, "all", 50));
+  const summary = useQuery(
+    expenseSummaryQueryOptions(
       businessId,
-      appliedPeriod.startLocalDate,
-      appliedPeriod.endLocalDate,
+      period?.startLocalDate ?? "",
+      period?.endLocalDate ?? "",
     ),
-    enabled: Boolean(
-      business && canRead && appliedPeriod.startLocalDate && appliedPeriod.endLocalDate,
-    ),
-  });
+  );
 
   if (businesses.data && !business) return <Redirect href="/business" />;
 
-  const remoteState = featureRemoteState({
-    businessPending: businesses.isPending,
-    canRead,
-    offlineMessage: copy.remote.offline,
-    queries: [businesses, ...(canRead ? [expenses, accounts, summary] : [])],
-    unavailableMessage: copy.remote.unavailable,
-  });
-  const stale =
-    accessIsStale ||
-    queryHasStaleData(expenses) ||
-    queryHasStaleData(accounts) ||
-    queryHasStaleData(summary);
-  const expenseItems = flattenPages(expenses.data);
-  const accountItems = flattenPages(accounts.data);
-  const screenState: ExpensesScreenState =
-    remoteState.kind !== "ready"
-      ? remoteState
-      : summary.data
-        ? {
-            canManage: canManage && !stale,
-            confirmation: "idle",
-            expenses: expenseItems,
-            isStale: stale,
-            kind: "ready",
-            summary: summary.data.summary,
-          }
-        : { kind: "loading" };
-
-  const applyPeriod = () => {
-    if (
-      !calendarLocalDateSchema.safeParse(period.startLocalDate).success ||
-      !calendarLocalDateSchema.safeParse(period.endLocalDate).success ||
-      period.startLocalDate > period.endLocalDate
-    ) {
-      setPeriodError(copy.remote.invalidPeriod);
-      return;
-    }
-    setPeriodError(undefined);
-    setAppliedPeriod(period);
+  const messages = {
+    offlineMessage: t("remote.offlineLoad"),
+    unavailableMessage: t("expenses.remote.unavailable"),
   };
-
   const retry = () => {
     void Promise.all([
       businesses.refetch(),
@@ -139,40 +74,95 @@ export function ExpensesController() {
       summary.refetch(),
     ]);
   };
+  const pageState = hasDeniedRead([expenses, accounts, summary])
+    ? ({ kind: "denied" } as const)
+    : featureRemoteState({
+        ...messages,
+        businessPending: businesses.isPending,
+        canRead,
+        queries: [businesses],
+      });
+  if (pageState.kind !== "ready") {
+    return (
+      <FeatureBoundary copy={expensesBoundaryCopy(t)} onRetry={retry} state={pageState}>
+        {null}
+      </FeatureBoundary>
+    );
+  }
+  if (!business || !defaultPeriod || !period) {
+    throw new Error("A readable expense page requires the active business");
+  }
+
+  // Each section reports its own read, so a slow summary never holds back the history.
+  const sectionState = (query: typeof expenses | typeof summary) =>
+    featureRemoteState({ ...messages, businessPending: false, canRead: true, queries: [query] });
+  const stale =
+    access.isStale ||
+    queryHasStaleData(expenses) ||
+    queryHasStaleData(accounts) ||
+    queryHasStaleData(summary);
+  const canManage =
+    access.canManage && business.access.permissions.includes("cash:manage") && !stale;
+  const accountItems = flattenPages(accounts.data);
+  const voidTarget = voiding?.businessId === business.id ? voiding.expense : undefined;
 
   return (
-    <ExpensesScreen
-      accounts={accountItems}
-      categoryOptions={copy.categoryOptions}
-      copy={copy.overview(business?.name ?? t("common.thisBusiness"))}
-      filters={filters}
-      formatMoney={(minorUnits, currency, fractionDigits) =>
-        formatMinorUnits(minorUnits, currency, fractionDigits, locale)
-      }
-      hasMoreAccounts={Boolean(accounts.hasNextPage)}
-      hasMoreExpenses={Boolean(expenses.hasNextPage)}
-      isLoadingMoreAccounts={accounts.isFetchingNextPage}
-      isLoadingMoreExpenses={expenses.isFetchingNextPage}
-      onApplyPeriod={applyPeriod}
-      onCheckMutationStatus={retry}
-      onFiltersChange={setFilters}
-      onLoadMoreAccounts={() => void accounts.fetchNextPage()}
-      onLoadMoreExpenses={() => void expenses.fetchNextPage()}
-      onOpenExpense={(expenseId) =>
-        router.push({ pathname: "/operate/expenses/[expenseId]", params: { expenseId } })
-      }
-      onPeriodChange={setPeriod}
-      onRegisterExpense={() => router.push("/operate/expenses/new")}
-      onRetry={retry}
-      onVoidExpense={(expenseId) =>
-        router.push({
-          pathname: "/operate/expenses/[expenseId]",
-          params: { action: "void", expenseId },
-        })
-      }
-      period={period}
-      periodError={periodError}
-      state={screenState}
-    />
+    <>
+      <ExpensesScreen
+        accountNames={new Map(accountItems.map(({ id, name }) => [id, name]))}
+        accounts={accountItems}
+        accountsPage={{
+          hasMore: accounts.hasNextPage,
+          loadingMore: accounts.isFetchingNextPage,
+          onLoadMore: () => void accounts.fetchNextPage(),
+        }}
+        businessId={business.id}
+        canManage={canManage}
+        expenses={flattenPages(expenses.data)}
+        expensesPage={{
+          hasMore: expenses.hasNextPage,
+          loadingMore: expenses.isFetchingNextPage,
+          onLoadMore: () => void expenses.fetchNextPage(),
+        }}
+        filters={filters}
+        formatMoney={(minorUnits, currency, fractionDigits) =>
+          formatMinorUnits(minorUnits, currency, fractionDigits, locale)
+        }
+        formatOccurredAt={(expense) =>
+          formatLocalizedDateTime(expense.occurredAt, locale, expense.timeZone)
+        }
+        historyState={sectionState(expenses)}
+        isStale={stale}
+        onApplyPeriod={() => {
+          const next = draftPeriod ?? period;
+          if (!isValidExpensePeriod(next)) {
+            setPeriodError(t("expenses.remote.invalidPeriod"));
+            return;
+          }
+          setPeriodError(undefined);
+          setDraftPeriod(undefined);
+          router.setParams(expensePeriodParams(next, defaultPeriod));
+        }}
+        onFiltersChange={(next) => router.setParams(expenseFilterParams(next))}
+        onPeriodChange={setDraftPeriod}
+        onRetry={retry}
+        onVoidExpense={(expense) => setVoiding({ businessId: business.id, expense })}
+        period={draftPeriod ?? period}
+        periodError={periodError}
+        summary={summary.data?.summary}
+        summaryState={sectionState(summary)}
+      />
+      {voidTarget ? (
+        <ExpenseVoidDialog
+          businessId={business.id}
+          canConfirm={canManage}
+          expense={voidTarget}
+          key={voidTarget.id}
+          linkToRecord
+          onClose={() => setVoiding(undefined)}
+          timeZone={business.timeZone}
+        />
+      ) : null}
+    </>
   );
 }

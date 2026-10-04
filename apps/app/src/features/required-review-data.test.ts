@@ -1,4 +1,5 @@
-import type { ComponentProps } from "react";
+import type { CashAccount } from "@pisto/contracts";
+import type { ComponentProps, ReactElement } from "react";
 import { createElement } from "react";
 
 // These tests exercise review invariants, not the interactive draft selector.
@@ -21,67 +22,86 @@ import { i18n } from "@/i18n/config";
 import { CashAccountEditorScreen } from "./cash/cash-account-editor-screen";
 import { CashAdjustmentScreen } from "./cash/cash-adjustment-screen";
 import { CashTransferScreen } from "./cash/cash-transfer-screen";
-import { buildCashCopy } from "./cash/copy";
 import { buildCashAdjustmentCommand, buildCashTransferCommand } from "./cash/drafts";
-import { buildExpensesCopy } from "./expenses/copy";
 import { buildExpenseCommand } from "./expenses/drafts";
 import { ExpenseEditorScreen } from "./expenses/expense-editor-screen";
 
+const noop = () => undefined;
+const reviewed = {
+  id: "account",
+  name: "Original reviewed account",
+  status: "active",
+  currency: "USD",
+  currencyMinorUnitDigits: 2,
+} as CashAccount;
+const common = {
+  accounts: [],
+  accountsPage: { hasMore: false, loadingMore: false, onLoadMore: noop },
+  canConfirm: true,
+  errors: {},
+  formatMoney: () => "$12.50",
+  onCancel: noop,
+  onConfirm: noop,
+  onDraftChange: noop,
+  onEdit: noop,
+  onPrepareReview: noop,
+  phase: "idle" as const,
+};
+
+function render<P extends object>(Screen: (props: P) => ReactElement, props: P) {
+  return renderToStaticMarkup(createElement(Screen, props));
+}
+
 describe("required review data", () => {
-  test("shows denied access before inspecting unavailable review data", () => {
-    const copy = buildCashCopy(i18n.t).adjustment;
-    const markup = renderToStaticMarkup(
-      createElement(CashAdjustmentScreen, {
-        remoteState: { kind: "denied" },
-        canManage: false,
-        stage: "review",
-        command: null,
-        copy,
-        onRetry: vi.fn(),
-      } as never),
-    );
-    expect(markup).toContain(copy.deniedTitle);
-  });
   test("does not switch a malformed review back to editable input", () => {
+    const occurrence = { occurredLocalDate: "2026-09-01", occurredLocalTime: "12:00" };
     expect(() =>
-      CashAdjustmentScreen({
-        stage: "review",
-        command: null,
+      render(CashAdjustmentScreen, {
+        ...common,
+        command: {
+          ...occurrence,
+          accountId: "account",
+          amountMinorUnits: "1",
+          currency: "USD",
+          direction: "in",
+          idempotencyKey: "key",
+          reason: "Count",
+        },
+        draft: {} as never,
         reviewAccount: null,
-        remoteState: { kind: "ready" },
-        canManage: true,
-        accounts: [],
-        draft: {},
-      } as never),
-    ).toThrow("review is missing");
+      }),
+    ).toThrow("requires its reviewed account");
     expect(() =>
-      CashTransferScreen({
-        stage: "review",
-        command: null,
-        reviewAccounts: [],
-        remoteState: { kind: "ready" },
-        canManage: true,
-        accounts: [],
-      } as never),
-    ).toThrow("review is missing");
+      render(CashTransferScreen, {
+        ...common,
+        command: {
+          ...occurrence,
+          amountMinorUnits: "1",
+          currency: "USD",
+          fromAccountId: "account",
+          idempotencyKey: "key",
+          toAccountId: "other",
+        },
+        draft: {} as never,
+        reviewAccounts: [reviewed],
+      }),
+    ).toThrow("requires both reviewed accounts");
     expect(() =>
-      CashAccountEditorScreen({
-        stage: "review",
-        command: null,
-        remoteState: { kind: "ready" },
-        canManage: true,
-      } as never),
-    ).toThrow("review requires");
+      render(CashAccountEditorScreen, {
+        ...common,
+        account: null,
+        command: { idempotencyKey: "key", name: "Renamed" },
+        currency: "USD",
+        draft: {} as never,
+      }),
+    ).toThrow("requires its original account");
   });
 
   test("keeps the reviewed expense account when refreshed options no longer include it", () => {
-    const copy = buildExpensesCopy(i18n.t);
     const props: ComponentProps<typeof ExpenseEditorScreen> = {
-      remoteState: { kind: "ready" },
-      canManage: true,
-      stage: "review",
-      accounts: [],
-      reviewAccount: { id: "account", name: "Original reviewed account" },
+      ...common,
+      phase: "uncertain",
+      reviewAccount: reviewed,
       command: {
         accountId: "account",
         category: "other",
@@ -92,22 +112,6 @@ describe("required review data", () => {
         occurredLocalTime: "12:00",
         idempotencyKey: "review-key",
       },
-      categoryOptions: copy.categoryOptions,
-      copy: copy.editor,
-      confirmation: "uncertain",
-      effect: copy.effects.create,
-      formatMoney: () => "$12.50",
-      currency: "USD",
-      hasMoreAccounts: false,
-      isLoadingMoreAccounts: false,
-      onDraftChange: vi.fn(),
-      onPrepareReview: vi.fn(),
-      onConfirm: vi.fn(),
-      onEdit: vi.fn(),
-      onCheckStatus: vi.fn(),
-      onCreateAccount: vi.fn(),
-      onRetry: vi.fn(),
-      onLoadMoreAccounts: vi.fn(),
       draft: {
         accountId: "account",
         category: "other",
@@ -117,34 +121,36 @@ describe("required review data", () => {
         localDate: "2026-09-01",
         localTime: "12:00",
       },
-      errors: {},
     };
     const markup = renderToStaticMarkup(createElement(ExpenseEditorScreen, props));
     expect(markup).toContain("Original reviewed account");
     expect(markup).toContain("$12.50");
-    expect(markup).not.toContain(copy.editor.accountsEmptyTitle);
-    expect(() => ExpenseEditorScreen({ ...props, reviewAccount: null })).toThrow(
-      "review is missing",
+    expect(markup).toContain(i18n.t("common.retrySameConfirmation"));
+    expect(markup).not.toContain(i18n.t("expenses.editor.noAccountsTitle"));
+    expect(() => render(ExpenseEditorScreen, { ...props, reviewAccount: null })).toThrow(
+      "requires its reviewed paying account",
     );
   });
 
-  test("requires a translated account kind instead of displaying its internal identifier", () => {
-    expect(() =>
-      CashAccountEditorScreen({
-        stage: "review",
-        remoteState: { kind: "ready" },
-        canManage: true,
+  test("reviews the translated account kind instead of its internal identifier", () => {
+    const markup = renderToStaticMarkup(
+      createElement(CashAccountEditorScreen, {
+        ...common,
+        account: null,
         command: {
-          currency: "USD",
-          name: "Account",
-          kind: "bank",
           allowNegativeBalance: false,
+          currency: "USD",
+          idempotencyKey: "key",
+          kind: "bank",
+          name: "Account",
           opening: null,
         },
-        kindOptions: [],
-        copy: buildCashCopy(i18n.t).accountEditor,
-      } as never),
-    ).toThrow("no translated option");
+        currency: "USD",
+        draft: {} as never,
+      }),
+    );
+    expect(markup).toContain(i18n.t("cash.accountKinds.bank"));
+    expect(markup).not.toContain(">bank<");
   });
 
   test("does not parse money using an invented two-decimal account", () => {

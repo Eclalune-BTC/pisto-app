@@ -1,115 +1,75 @@
 import type { CashAccount, ExpenseCategory, ExpenseStatus } from "@pisto/contracts";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { Button } from "@/components/ui/button";
-import { FilterBar, type FilterOption } from "@/components/ui/filter-bar";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { FilterToolbar } from "@/components/ui/filter-toolbar";
 import { SelectField } from "@/components/ui/select-field";
-
-export type ExpenseFiltersValue = {
-  accountId: string;
-  category: ExpenseCategory | "all";
-  status: ExpenseStatus | "all";
-};
-
-export type ExpensePeriodValue = {
-  endLocalDate: string;
-  startLocalDate: string;
-};
-
-export type ExpenseFiltersCopy = {
-  accountFilter: string;
-  allAccounts: string;
-  allCategories: string;
-  allStatuses: string;
-  applyPeriod: string;
-  categoryFilter: string;
-  endDate: string;
-  filtersTitle: string;
-  loadMore: string;
-  loadingMore: string;
-  postedStatus: string;
-  periodScope: string;
-  startDate: string;
-  statusFilter: string;
-  voidedStatus: string;
-};
+import { type CursorPage, LoadMoreButton } from "../cash/load-more-button";
+import { expenseCategoryOptions } from "./copy";
+import { defaultExpenseFilters, type ExpenseHistoryFilters } from "./search-params";
 
 type ExpenseFiltersProps = {
   accounts: CashAccount[];
-  categoryOptions: readonly FilterOption<ExpenseCategory>[];
-  copy: ExpenseFiltersCopy;
-  filters: ExpenseFiltersValue;
-  hasMoreAccounts: boolean;
-  isLoadingMoreAccounts: boolean;
-  onFiltersChange: (next: ExpenseFiltersValue) => void;
-  onLoadMoreAccounts: () => void;
+  accountsPage: CursorPage;
+  filters: ExpenseHistoryFilters;
+  onFiltersChange: (next: ExpenseHistoryFilters) => void;
 };
 
+/** Filters the history only; the period summary has its own date range. */
 export function ExpenseFilters({
   accounts,
-  categoryOptions,
-  copy,
+  accountsPage,
   filters,
-  hasMoreAccounts,
-  isLoadingMoreAccounts,
   onFiltersChange,
-  onLoadMoreAccounts,
 }: ExpenseFiltersProps) {
   const { t } = useTranslation();
-  const hasFilters =
-    filters.status !== "posted" || filters.category !== "all" || filters.accountId !== "all";
+  const filtered =
+    filters.status !== defaultExpenseFilters.status ||
+    filters.category !== defaultExpenseFilters.category ||
+    filters.accountId !== defaultExpenseFilters.accountId;
   return (
     <FilterToolbar
-      label={copy.filtersTitle}
-      onReset={
-        hasFilters
-          ? () => onFiltersChange({ status: "posted", category: "all", accountId: "all" })
-          : undefined
-      }
+      label={t("expenses.overview.filtersLabel")}
+      onReset={filtered ? () => onFiltersChange(defaultExpenseFilters) : undefined}
       resetLabel={t("filters.reset")}
     >
-      <View className="min-w-0 gap-2 sm:min-w-72 sm:flex-1">
-        <FilterBar
-          showLabel
-          label={copy.statusFilter}
-          onChange={(status) => onFiltersChange({ ...filters, status })}
-          options={[
-            { label: copy.postedStatus, value: "posted" },
-            { label: copy.voidedStatus, value: "voided" },
-            { label: copy.allStatuses, value: "all" },
-          ]}
-          value={filters.status}
-        />
-      </View>
-      <View className="min-w-0 gap-2 sm:min-w-48 sm:flex-1">
-        <SelectField
-          label={copy.categoryFilter}
+      <FilterBar<ExpenseStatus | "all">
+        label={t("expenses.overview.statusFilter")}
+        onChange={(status) => onFiltersChange({ ...filters, status })}
+        options={[
+          { label: t("expenses.overview.statusOptions.posted"), value: "posted" },
+          { label: t("expenses.overview.statusOptions.voided"), value: "voided" },
+          { label: t("expenses.overview.statusOptions.all"), value: "all" },
+        ]}
+        showLabel
+        value={filters.status}
+      />
+      <View className="min-w-0 sm:w-52">
+        <SelectField<ExpenseCategory | "all">
+          label={t("expenses.overview.categoryFilter")}
           onChange={(category) => onFiltersChange({ ...filters, category })}
-          options={[{ label: copy.allCategories, value: "all" }, ...categoryOptions]}
+          options={[
+            { label: t("expenses.overview.allCategories"), value: "all" },
+            ...expenseCategoryOptions(t),
+          ]}
           value={filters.category}
         />
       </View>
-      <View className="min-w-0 gap-2 sm:min-w-48 sm:flex-1">
+      <View className="min-w-0 gap-2 sm:w-56">
         <SelectField
-          label={copy.accountFilter}
+          label={t("expenses.overview.accountFilter")}
           onChange={(accountId) => onFiltersChange({ ...filters, accountId })}
           options={[
-            { label: copy.allAccounts, value: "all" },
+            { label: t("expenses.overview.allAccounts"), value: "all" },
             ...accounts.map(({ id, name }) => ({ label: name, value: id })),
           ]}
           value={filters.accountId}
         />
-        {hasMoreAccounts ? (
-          <Button
-            className="self-start"
-            label={isLoadingMoreAccounts ? copy.loadingMore : copy.loadMore}
-            loading={isLoadingMoreAccounts}
-            onPress={onLoadMoreAccounts}
-            size="sm"
-            variant="outline"
-          />
-        ) : null}
+        <LoadMoreButton
+          className="self-start"
+          label={t("cash.fields.loadMoreAccounts")}
+          page={accountsPage}
+        />
       </View>
     </FilterToolbar>
   );

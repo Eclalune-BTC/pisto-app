@@ -1,51 +1,59 @@
 import type { CashAccount } from "@pisto/contracts";
-import { useMemo } from "react";
+import type { Href } from "expo-router";
+import { type ReactElement, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Text } from "@/components/ui/text";
+import { cn } from "@/lib/cn";
+import { cashAccountKindLabels, cashAccountStatusLabels } from "./copy";
 
 type CashAccountListProps = {
   accounts: CashAccount[];
-  activeLabel: string;
-  archivedLabel: string;
-  negativeAllowedLabel: string;
+  empty: ReactElement;
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
-  onOpenAccount: (accountId: string) => void;
 };
 
-export function CashAccountList({
-  accounts,
-  activeLabel,
-  archivedLabel,
-  negativeAllowedLabel,
-  formatMoney,
-  onOpenAccount,
-}: CashAccountListProps) {
+export function accountHref(accountId: string): Href {
+  return { pathname: "/operate/cash/accounts/[accountId]", params: { accountId } };
+}
+
+export function CashAccountList({ accounts, empty, formatMoney }: CashAccountListProps) {
   const { t } = useTranslation();
-  const columns = useMemo<DataTableColumn<CashAccount>[]>(
-    () => [
+  const columns = useMemo<DataTableColumn<CashAccount>[]>(() => {
+    const kinds = cashAccountKindLabels(t);
+    const statuses = cashAccountStatusLabels(t);
+    return [
       {
         id: "name",
         header: t("dataTable.columns.name"),
         meta: { primary: true },
         cell: ({ row: { original } }) => (
-          <Text className="font-ui text-foreground">{original.name}</Text>
+          <Text className="text-[13px]" numberOfLines={1}>
+            {original.name}
+          </Text>
+        ),
+      },
+      {
+        id: "kind",
+        header: t("dataTable.columns.type"),
+        cell: ({ row: { original } }) => (
+          <Text className="text-[13px] text-muted-foreground">{kinds[original.kind]}</Text>
         ),
       },
       {
         id: "status",
         header: t("dataTable.columns.status"),
         cell: ({ row: { original } }) => (
-          <View className="gap-1">
-            <Text className="font-sans text-foreground">
-              {original.status === "active" ? activeLabel : archivedLabel}
-            </Text>
+          <View className="flex-row flex-wrap gap-1">
+            <Badge variant={original.status === "active" ? "secondary" : "outline"}>
+              <Text>{statuses[original.status]}</Text>
+            </Badge>
             {original.allowNegativeBalance ? (
-              <Text className="font-sans text-sm text-muted-foreground">
-                {negativeAllowedLabel}
-              </Text>
+              <Badge variant="outline">
+                <Text>{t("cash.negativeAllowed")}</Text>
+              </Badge>
             ) : null}
           </View>
         ),
@@ -53,8 +61,9 @@ export function CashAccountList({
       {
         id: "currency",
         header: t("dataTable.columns.currency"),
+        meta: { hideOnCompact: true },
         cell: ({ row: { original } }) => (
-          <Text className="font-sans text-muted-foreground">{original.currency}</Text>
+          <Text className="text-[13px] text-muted-foreground">{original.currency}</Text>
         ),
       },
       {
@@ -62,7 +71,12 @@ export function CashAccountList({
         header: t("dataTable.columns.balance"),
         meta: { align: "end" },
         cell: ({ row: { original } }) => (
-          <Text className="font-ui text-foreground">
+          <Text
+            className={cn(
+              "font-ui text-[13px] tabular-nums",
+              original.balanceMinorUnits.startsWith("-") && "text-destructive",
+            )}
+          >
             {formatMoney(
               original.balanceMinorUnits,
               original.currency,
@@ -71,26 +85,15 @@ export function CashAccountList({
           </Text>
         ),
       },
-      {
-        id: "actions",
-        header: t("dataTable.columns.actions"),
-        cell: ({ row: { original } }) => (
-          <Button
-            label={t("dataTable.openRecord", { name: original.name })}
-            onPress={() => onOpenAccount(original.id)}
-            size="sm"
-            variant="ghost"
-          />
-        ),
-      },
-    ],
-    [t, activeLabel, archivedLabel, negativeAllowedLabel, formatMoney, onOpenAccount],
-  );
+    ];
+  }, [formatMoney, t]);
   return (
     <DataTable
       caption={t("filters.accounts")}
       columns={columns}
       data={accounts}
+      empty={empty}
+      getRowHref={(account) => accountHref(account.id)}
       getRowId={(account) => account.id}
     />
   );

@@ -1,225 +1,228 @@
-import type {
-  ArchiveCashAccountRequest,
-  CashAccount,
-  CashAccountKind,
-  CashMovement,
-  CashMovementAction,
-} from "@pisto/contracts";
+import type { CashAccount, CashMovement } from "@pisto/contracts";
+import { Link } from "expo-router";
+import { Archive, Ellipsis } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { DetailList } from "@/components/detail-list";
-import {
-  FeatureBoundary,
-  type FeatureBoundaryCopy,
-  type FeatureRemoteState,
-} from "@/components/feature-boundary";
+import { FeatureBoundary, type FeatureRemoteState } from "@/components/feature-boundary";
+import { DescriptionList } from "@/components/layout/description-list";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
+import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
-import { ScreenHeader } from "@/components/screen-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { CashMovementList } from "./cash-movement-list";
-import { CashOperationReview, type CashOperationReviewCopy } from "./cash-operation-review";
-import { cashOperationPresentation } from "./operation-state";
-import type { CashConfirmationState } from "./state";
+import { ConfirmCommandDialog } from "./confirm-command-dialog";
+import {
+  cashAccountKindLabels,
+  cashAccountStatusLabels,
+  cashBoundaryCopy,
+  cashMovementActionLabels,
+} from "./copy";
+import { type CursorPage, LoadMoreButton } from "./load-more-button";
+import type { MutationPhase } from "./mutation-state";
 
-export type CashAccountDetailCopy = FeatureBoundaryCopy &
-  CashOperationReviewCopy & {
-    eyebrow: string;
-    title: string;
-    description: string;
-    archiveTitle: string;
-    archiveDescription: string;
-    notFoundTitle: string;
-    notFoundDescription: string;
-    name: string;
-    kind: string;
-    balance: string;
-    currency: string;
-    negativePolicy: string;
-    protectedBalance: string;
-    allowNegative: string;
-    status: string;
-    active: string;
-    archived: string;
-    editAccount: string;
-    recordAdjustment: string;
-    transfer: string;
-    archiveAccount: string;
-    movementsTitle: string;
-    noMovements: string;
-    archiveEffect: string;
-    accountKinds: Record<CashAccountKind, string>;
-    movementActions: Record<CashMovementAction, string>;
-    loadMore: string;
-    loadingMore: string;
-  };
+export type CashArchiveState = {
+  errorMessage?: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  onOpen: () => void;
+  open: boolean;
+  phase: MutationPhase;
+};
 
 type CashAccountDetailScreenProps = {
-  remoteState: FeatureRemoteState;
-  account: CashAccount | null;
-  movements: CashMovement[];
+  account: CashAccount;
+  archive: CashArchiveState;
+  /** Manager access confirmed by fresh reads. */
   canManage: boolean;
-  stage: "detail" | "archive-review";
-  archiveCommand: ArchiveCashAccountRequest | null;
-  confirmation: CashConfirmationState;
-  errorMessage?: string;
-  hasMoreMovements: boolean;
-  isLoadingMoreMovements: boolean;
-  isStale: boolean;
-  copy: CashAccountDetailCopy;
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
-  onEditAccount: () => void;
-  onRecordAdjustment: () => void;
-  onTransfer: () => void;
+  formatOccurredAt: (movement: CashMovement) => string;
+  formatTimestamp: (timestamp: string) => string;
+  isStale: boolean;
+  movements: CashMovement[];
+  movementsPage: CursorPage;
+  movementsState: FeatureRemoteState;
   onOpenMovement: (movementId: string) => void;
-  onBeginArchive: () => void;
-  onConfirmArchive: () => void;
-  onCancelArchive: () => void;
-  onCheckStatus: () => void;
   onRetry: () => void;
-  onLoadMoreMovements: () => void;
 };
 
 export function CashAccountDetailScreen({
-  remoteState,
   account,
-  movements,
+  archive,
   canManage,
-  stage,
-  archiveCommand,
-  confirmation,
-  errorMessage,
-  hasMoreMovements,
-  isLoadingMoreMovements,
-  isStale,
-  copy,
   formatMoney,
-  onEditAccount,
-  onRecordAdjustment,
-  onTransfer,
+  formatOccurredAt,
+  formatTimestamp,
+  isStale,
+  movements,
+  movementsPage,
+  movementsState,
   onOpenMovement,
-  onBeginArchive,
-  onConfirmArchive,
-  onCancelArchive,
-  onCheckStatus,
   onRetry,
-  onLoadMoreMovements,
 }: CashAccountDetailScreenProps) {
-  const operation = cashOperationPresentation({
-    remoteKind: remoteState.kind,
-    canManage,
-    confirmation,
-  });
-  const reviewingArchive = stage === "archive-review" && archiveCommand !== null;
-
+  const { t } = useTranslation();
+  const active = account.status === "active";
+  const negative = account.balanceMinorUnits.startsWith("-");
   return (
-    <FeatureBoundary copy={copy} onRetry={onRetry} state={remoteState}>
-      <Page contentContainerClassName="gap-9">
-        <ScreenHeader
-          description={reviewingArchive ? copy.archiveDescription : copy.description}
-          eyebrow={copy.eyebrow}
-          title={reviewingArchive ? copy.archiveTitle : (account?.name ?? copy.title)}
+    <Page>
+      <PageHeader
+        actions={
+          canManage && active ? (
+            <>
+              <Link
+                asChild
+                href={{
+                  pathname: "/operate/cash/accounts/[accountId]/edit",
+                  params: { accountId: account.id },
+                }}
+              >
+                <Button accessibilityRole="link" variant="outline">
+                  <Text>{t("cash.accountDetail.edit")}</Text>
+                </Button>
+              </Link>
+              <Link
+                asChild
+                href={{
+                  pathname: "/operate/cash/transfers/new",
+                  params: { fromAccountId: account.id },
+                }}
+              >
+                <Button accessibilityRole="link" variant="outline">
+                  <Text>{t("cash.overview.transfer")}</Text>
+                </Button>
+              </Link>
+              <Link
+                asChild
+                href={{
+                  pathname: "/operate/cash/adjustments/new",
+                  params: { accountId: account.id },
+                }}
+              >
+                <Button accessibilityRole="link">
+                  <Text>{t("cash.overview.adjust")}</Text>
+                </Button>
+              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    accessibilityLabel={t("cash.accountDetail.moreActions")}
+                    size="icon"
+                    variant="outline"
+                  >
+                    <Icon as={Ellipsis} className="text-foreground" size={16} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-44" sideOffset={4}>
+                  <DropdownMenuItem onPress={archive.onOpen} variant="destructive">
+                    <Icon as={Archive} className="text-destructive" size={15} />
+                    <Text>{t("cash.accountDetail.archive")}</Text>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : undefined
+        }
+        adornment={
+          <Badge variant={active ? "secondary" : "outline"}>
+            <Text>{cashAccountStatusLabels(t)[account.status]}</Text>
+          </Badge>
+        }
+        title={account.name}
+      />
+
+      {isStale ? <StaleNotice onRetry={onRetry} /> : null}
+
+      <StatGroup>
+        <Stat
+          detail={t("cash.accountDetail.balanceDetail")}
+          label={t("cash.accountDetail.balance")}
+          tone={negative ? "destructive" : "default"}
+          value={formatMoney(
+            account.balanceMinorUnits,
+            account.currency,
+            account.currencyMinorUnitDigits,
+          )}
         />
+        <Stat
+          detail={
+            account.allowNegativeBalance
+              ? t("cash.accountDetail.negativeAllowedDetail")
+              : t("cash.accountDetail.negativeProtectedDetail")
+          }
+          label={t("cash.accountDetail.negativePolicy")}
+          value={
+            account.allowNegativeBalance
+              ? t("cash.accountDetail.negativeAllowed")
+              : t("cash.accountDetail.negativeProtected")
+          }
+        />
+      </StatGroup>
 
-        {isStale ? <StaleNotice /> : null}
+      <Section title={t("cash.accountDetail.detailsTitle")}>
+        <DescriptionList
+          items={[
+            { label: t("cash.accountDetail.kind"), value: cashAccountKindLabels(t)[account.kind] },
+            { label: t("cash.accountDetail.currency"), value: account.currency },
+            {
+              label: t("cash.accountDetail.createdAt"),
+              numeric: true,
+              value: formatTimestamp(account.createdAt),
+            },
+            {
+              label: t("cash.accountDetail.updatedAt"),
+              numeric: true,
+              value: formatTimestamp(account.updatedAt),
+            },
+          ]}
+        />
+      </Section>
 
-        {account === null ? (
-          <View className="gap-3 border-y border-border py-8 ">
-            <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
-              {copy.notFoundTitle}
-            </Text>
-            <Text className="text-sm leading-5 text-muted-foreground">
-              {copy.notFoundDescription}
-            </Text>
-          </View>
-        ) : reviewingArchive ? (
-          <CashOperationReview
-            copy={copy}
-            effect={copy.archiveEffect}
-            errorMessage={errorMessage}
-            onCheckStatus={onCheckStatus}
-            onConfirm={onConfirmArchive}
-            onEdit={onCancelArchive}
-            rows={[
-              { label: copy.name, value: account.name },
-              {
-                label: copy.balance,
-                value: formatMoney(
-                  account.balanceMinorUnits,
-                  account.currency,
-                  account.currencyMinorUnitDigits,
-                ),
-              },
-              { label: copy.status, value: copy.active },
-            ]}
-            state={confirmation}
-          />
-        ) : (
-          <>
-            <DetailList
-              items={[
-                { label: copy.kind, value: copy.accountKinds[account.kind] },
-                {
-                  label: copy.balance,
-                  value: formatMoney(
-                    account.balanceMinorUnits,
-                    account.currency,
-                    account.currencyMinorUnitDigits,
-                  ),
-                },
-                { label: copy.currency, value: account.currency },
-                {
-                  label: copy.negativePolicy,
-                  value: account.allowNegativeBalance ? copy.allowNegative : copy.protectedBalance,
-                },
-                {
-                  label: copy.status,
-                  value: account.status === "active" ? copy.active : copy.archived,
-                },
-              ]}
+      <Section title={t("cash.accountDetail.movementsTitle")}>
+        <FeatureBoundary
+          copy={{
+            ...cashBoundaryCopy(t),
+            unavailableTitle: t("cash.overview.movementsUnavailable"),
+          }}
+          inline
+          onRetry={onRetry}
+          state={movementsState}
+        >
+          <View className="min-w-0 gap-3">
+            <CashMovementList
+              actionLabels={cashMovementActionLabels(t)}
+              formatMoney={formatMoney}
+              formatOccurredAt={formatOccurredAt}
+              movements={movements}
+              noMovements={t("cash.accountDetail.noMovements")}
+              onOpenMovement={onOpenMovement}
             />
+            <LoadMoreButton page={movementsPage} />
+          </View>
+        </FeatureBoundary>
+      </Section>
 
-            {account.status === "active" && operation.canStart ? (
-              <View className="gap-3 sm:flex-row sm:flex-wrap">
-                <Button label={copy.editAccount} onPress={onEditAccount} variant="outline" />
-                <Button
-                  label={copy.recordAdjustment}
-                  onPress={onRecordAdjustment}
-                  variant="default"
-                />
-                <Button label={copy.transfer} onPress={onTransfer} variant="outline" />
-                <Button
-                  label={copy.archiveAccount}
-                  onPress={onBeginArchive}
-                  variant="destructive"
-                />
-              </View>
-            ) : null}
-
-            <View className="gap-4">
-              <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
-                {copy.movementsTitle}
-              </Text>
-              <CashMovementList
-                actionLabels={copy.movementActions}
-                formatMoney={formatMoney}
-                movements={movements}
-                noMovements={copy.noMovements}
-                onOpenMovement={onOpenMovement}
-              />
-              {hasMoreMovements ? (
-                <Button
-                  className="self-start"
-                  label={isLoadingMoreMovements ? copy.loadingMore : copy.loadMore}
-                  loading={isLoadingMoreMovements}
-                  onPress={onLoadMoreMovements}
-                  variant="outline"
-                />
-              ) : null}
-            </View>
-          </>
-        )}
-      </Page>
-    </FeatureBoundary>
+      <ConfirmCommandDialog
+        confirmLabel={t("cash.accountDetail.archive")}
+        description={t("cash.archive.description")}
+        destructive
+        disabled={!canManage}
+        errorMessage={archive.errorMessage}
+        onCancel={archive.onCancel}
+        onConfirm={archive.onConfirm}
+        open={archive.open}
+        phase={archive.phase}
+        title={t("cash.archive.title", { name: account.name })}
+      />
+    </Page>
   );
 }

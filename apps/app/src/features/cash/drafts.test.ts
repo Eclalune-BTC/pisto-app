@@ -8,7 +8,7 @@ import {
   buildCashReversalCommand,
   buildCashTransferCommand,
 } from "./drafts";
-import { cashConfirmationState } from "./mutation-state";
+import { isLockedPhase, mutationPhase, withStableIdempotencyKey } from "./mutation-state";
 
 const account = (overrides: Partial<CashAccount> = {}): CashAccount => ({
   allowNegativeBalance: false,
@@ -151,12 +151,54 @@ describe("cash draft commands", () => {
       }).command,
     ).toMatchObject({ idempotencyKey: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee" });
     expect(
-      cashConfirmationState({
+      mutationPhase({
         error: new ApiClientError("unreachable", 0),
         isError: true,
         isPending: false,
       }),
     ).toBe("uncertain");
+  });
+});
+
+describe("cash mutation phases", () => {
+  test.each([
+    [{ error: null, isError: false, isPending: true }, "pending"],
+    [{ error: null, isError: false, isPending: false }, "idle"],
+    [
+      { error: new ApiClientError("conflict", 409, "CONFLICT"), isError: true, isPending: false },
+      "failed",
+    ],
+    [{ error: new ApiClientError("lost", 502), isError: true, isPending: false }, "uncertain"],
+    [
+      {
+        error: new ApiClientError("paused", 503, "WRITES_PAUSED"),
+        isError: true,
+        isPending: false,
+      },
+      "failed",
+    ],
+  ] as const)("classifies %j as %s", (mutation, phase) => {
+    expect(mutationPhase(mutation)).toBe(phase);
+  });
+
+  test("locks inputs and exits only while the outcome is pending or unknown", () => {
+    expect(isLockedPhase("pending")).toBe(true);
+    expect(isLockedPhase("uncertain")).toBe(true);
+    expect(isLockedPhase("failed")).toBe(false);
+    expect(isLockedPhase("idle")).toBe(false);
+  });
+
+  test("reuses the idempotency key only for an unchanged command", () => {
+    const sent = {
+      idempotencyKey: "first-key",
+      reason: "Duplicado",
+      occurredLocalDate: "2026-08-22",
+    };
+    const rebuilt = { ...sent, idempotencyKey: "second-key" };
+    expect(withStableIdempotencyKey(undefined, rebuilt)).toBe(rebuilt);
+    expect(withStableIdempotencyKey(sent, rebuilt)).toBe(sent);
+    const edited = { ...rebuilt, reason: "Registro duplicado" };
+    expect(withStableIdempotencyKey(sent, edited)).toBe(edited);
   });
 });
 

@@ -1,223 +1,210 @@
-import type { CashAccount } from "@pisto/contracts";
+import type { CashAccount, TransferCashRequest } from "@pisto/contracts";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
+import {
+  FeatureBoundary,
+  type FeatureRemoteState,
+  requireFeatureManageAccess,
+} from "@/components/feature-boundary";
+import { ContentSkeleton } from "@/components/layout/skeletons";
+import { Page } from "@/components/page";
 import { requireSupportedLocale } from "@/i18n/locale";
-import { ApiClientError, isAmbiguousMutationError } from "@/lib/api-error";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { queryHasStaleData } from "@/lib/query-state";
 import { cashApi } from "./api";
+import { accountHref } from "./cash-account-list";
 import {
   type CashTransferDraft,
   type CashTransferErrors,
   CashTransferScreen,
 } from "./cash-transfer-screen";
-import { buildCashCopy, cashIssueMessage } from "./copy";
+import { cashBoundaryCopy, cashIssueMessages } from "./copy";
 import { buildCashTransferCommand } from "./drafts";
 import { invalidateCashLedger } from "./invalidate";
-import { cashConfirmationState } from "./mutation-state";
+import { isLockedPhase, mutationPhase } from "./mutation-state";
 import {
   activeCashAccountsInfiniteOptions,
   cashAccountQueryOptions,
   flattenPages,
 } from "./queries";
 import { featureRemoteState } from "./remote-state";
+import { isRequestedAccountUnavailable, withRequestedAccount } from "./requested-account";
+import { firstParam, type RouteParam } from "./search-params";
 import { useCashAccess } from "./use-cash-access";
 
 export function CashTransferController() {
-  const params = useLocalSearchParams<{ fromAccountId?: string | string[] }>();
-  const requestedFromAccount = Array.isArray(params.fromAccountId)
-    ? params.fromAccountId[0]
-    : params.fromAccountId;
+  const params = useLocalSearchParams<{ fromAccountId?: RouteParam }>();
+  const requestedFromId = firstParam(params.fromAccountId);
   const router = useRouter();
   const queryClient = useQueryClient();
   const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildCashCopy(t), [t]);
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const {
-    business,
-    businesses,
-    canManage,
-    canRead,
-    isStale: accessIsStale,
-  } = useCashAccess("cash");
-  const businessId = business?.id;
-  const accountsQuery = useInfiniteQuery({
-    ...activeCashAccountsInfiniteOptions(businessId),
-    enabled: Boolean(business && canRead),
-  });
-  const requestedAccount = useQuery({
-    ...cashAccountQueryOptions(businessId, requestedFromAccount),
-    enabled: Boolean(business && canRead && requestedFromAccount),
-  });
-  const listedAccounts = flattenPages(accountsQuery.data);
-  const accounts = requestedAccount.data
-    ? [
-        requestedAccount.data.account,
-        ...listedAccounts.filter(({ id }) => id !== requestedFromAccount),
-      ]
-    : listedAccounts;
+  const access = useCashAccess("cash");
+  const { business, businesses, canRead } = access;
+  const businessId = canRead ? business?.id : undefined;
+  const accountsQuery = useInfiniteQuery(activeCashAccountsInfiniteOptions(businessId));
+  const requestedAccount = useQuery(cashAccountQueryOptions(businessId, requestedFromId));
+  const accounts = withRequestedAccount(
+    flattenPages(accountsQuery.data),
+    requestedAccount.data?.account,
+  );
   const [draft, setDraft] = useState<CashTransferDraft>({
     amount: "",
-    fromAccountId: requestedFromAccount ?? "",
+    fromAccountId: requestedFromId ?? "",
     localDate: "",
     localTime: "",
     note: "",
     toAccountId: "",
   });
   const [errors, setErrors] = useState<CashTransferErrors>({});
-  const [command, setCommand] = useState<Parameters<typeof cashApi.movements.transfer>[0] | null>(
-    null,
-  );
+  const [command, setCommand] = useState<TransferCashRequest | null>(null);
   const [reviewAccounts, setReviewAccounts] = useState<CashAccount[]>([]);
 
   useEffect(() => {
     if (!business) return;
-    const current = currentLocalDateTime(business.timeZone);
+    const now = currentLocalDateTime(business.timeZone);
     setDraft((value) => ({
       ...value,
-      localDate: value.localDate || current.date,
-      localTime: value.localTime || current.time,
+      localDate: value.localDate || now.date,
+      localTime: value.localTime || now.time,
     }));
   }, [business]);
 
+  // Preselect a different destination once choices exist; an explicit choice is never replaced.
+  const choiceIds = accounts.map(({ id }) => id).join(",");
   useEffect(() => {
-    if (command) return;
-    const first = accounts[0];
-    if (!first) return;
-    const from = draft.fromAccountId || first.id;
-    const to = accounts.some(({ id }) => id === draft.toAccountId && id !== from)
-      ? draft.toAccountId
-      : (accounts.find(({ id }) => id !== from)?.id ?? "");
+    if (command || !choiceIds) return;
+    const ids = choiceIds.split(",");
+    const from = draft.fromAccountId || ids[0] || "";
+    const to =
+      ids.includes(draft.toAccountId) && draft.toAccountId !== from
+        ? draft.toAccountId
+        : (ids.find((id) => id !== from) ?? "");
     if (from !== draft.fromAccountId || to !== draft.toAccountId) {
       setDraft((value) => ({ ...value, fromAccountId: from, toAccountId: to }));
     }
-  }, [accounts, draft.fromAccountId, draft.toAccountId, command]);
+  }, [choiceIds, command, draft.fromAccountId, draft.toAccountId]);
 
   const mutation = useMutation({
     mutationFn: cashApi.movements.transfer,
-    onSuccess: async () => {
-      if (!business) return;
-      await invalidateCashLedger(queryClient, business.id);
-      router.replace("/operate/cash");
+    onSuccess: async ({ transfer }) => {
+      if (business) await invalidateCashLedger(queryClient, business.id);
+      notify.success(t("cash.transfer.success"));
+      router.replace(requestedFromId ? accountHref(transfer.fromAccountId) : "/operate/cash");
     },
   });
-  const confirmationLocked = mutation.isPending || isAmbiguousMutationError(mutation.error);
+  const phase = mutationPhase(mutation);
+  const locked = isLockedPhase(phase);
 
   if (businesses.data && !business) return <Redirect href="/business" />;
-  let remoteState = featureRemoteState({
+
+  const stale =
+    access.isStale ||
+    queryHasStaleData(accountsQuery) ||
+    (Boolean(requestedFromId) && queryHasStaleData(requestedAccount));
+  let state: FeatureRemoteState = featureRemoteState({
     businessPending: businesses.isPending,
     canRead,
-    offlineMessage: copy.remote.offline,
-    queries: [
-      businesses,
-      ...(canRead ? [accountsQuery, ...(requestedFromAccount ? [requestedAccount] : [])] : []),
-    ],
-    unavailableMessage: copy.remote.unavailable,
+    offlineMessage: t("remote.offlineLoad"),
+    queries: [businesses, accountsQuery, ...(requestedFromId ? [requestedAccount] : [])],
+    unavailableMessage: t("cash.remote.unavailable"),
   });
-  const stale =
-    accessIsStale ||
-    queryHasStaleData(accountsQuery) ||
-    (Boolean(requestedFromAccount) && queryHasStaleData(requestedAccount));
-  if (remoteState.kind === "ready" && stale) {
-    remoteState = { kind: "error", message: copy.remote.staleMutation };
-  }
+  if (state.kind === "ready" && stale)
+    state = { kind: "error", message: t("remote.staleMutation") };
   if (
-    remoteState.kind !== "denied" &&
+    state.kind !== "denied" &&
     !command &&
-    requestedFromAccount &&
-    (requestedAccount.data?.account.status === "archived" ||
-      (requestedAccount.error instanceof ApiClientError &&
-        requestedAccount.error.code === "NOT_FOUND"))
+    requestedFromId &&
+    isRequestedAccountUnavailable(requestedAccount)
   ) {
-    remoteState = { kind: "error", message: copy.remote.requestedAccountUnavailable };
+    state = { kind: "error", message: t("cash.remote.requestedAccountUnavailable") };
+  }
+  state = requireFeatureManageAccess(state, access.canManage);
+  const retry = () =>
+    void Promise.all([
+      businesses.refetch(),
+      accountsQuery.refetch(),
+      ...(requestedFromId ? [requestedAccount.refetch()] : []),
+    ]);
+
+  if (state.kind === "loading") {
+    return (
+      <Page width="form">
+        <ContentSkeleton label={t("cash.boundary.loading")} variant="form" />
+      </Page>
+    );
+  }
+  if (state.kind !== "ready") {
+    return (
+      <FeatureBoundary copy={cashBoundaryCopy(t)} onRetry={retry} state={state}>
+        {null}
+      </FeatureBoundary>
+    );
   }
 
-  const prepareReview = () => {
-    if (confirmationLocked || command || !canManage || stale || remoteState.kind !== "ready")
-      return;
-    const result = buildCashTransferCommand({
-      accounts,
-      draft,
-      idempotencyKey: Crypto.randomUUID(),
-    });
-    setErrors(
-      Object.fromEntries(
-        Object.entries(result.issues).map(([field, issue]) => [field, cashIssueMessage(t, issue)]),
-      ) as CashTransferErrors,
-    );
-    if (!result.command) return;
-    setReviewAccounts(
-      accounts.filter(
-        ({ id }) => id === result.command?.fromAccountId || id === result.command?.toAccountId,
-      ),
-    );
-    setCommand(result.command);
-    mutation.reset();
-  };
-  const confirm = () => {
-    if (command && !mutation.isPending && canManage && !stale && remoteState.kind === "ready")
-      mutation.mutate(command);
-  };
-
-  const selectedAccount = reviewAccounts.find(({ id }) => id === command?.fromAccountId);
+  const canConfirm = access.canManage && !stale;
+  const source = reviewAccounts.find(({ id }) => id === command?.fromAccountId);
   return (
     <CashTransferScreen
       accounts={accounts}
-      canManage={canManage && !stale}
+      accountsPage={{
+        hasMore: accountsQuery.hasNextPage,
+        loadingMore: accountsQuery.isFetchingNextPage,
+        onLoadMore: () => void accountsQuery.fetchNextPage(),
+      }}
+      canConfirm={canConfirm}
       command={command}
-      confirmation={cashConfirmationState(mutation)}
-      copy={copy.transfer}
       draft={draft}
-      effect={copy.effects.transfer}
       errorMessage={
         mutation.error
-          ? productErrorMessage(mutation.error, copy.remote.mutationFallback, t)
+          ? productErrorMessage(mutation.error, t("cash.remote.mutationFallback"), t)
           : undefined
       }
       errors={errors}
       formatMoney={(minorUnits, currency) => {
-        if (!selectedAccount) throw new Error("Cash transfer review requires its account snapshot");
-        return formatMinorUnits(
-          minorUnits,
-          currency,
-          selectedAccount.currencyMinorUnitDigits,
-          locale,
-        );
+        if (!source) throw new Error("A cash transfer review requires its source account");
+        return formatMinorUnits(minorUnits, currency, source.currencyMinorUnitDigits, locale);
       }}
-      hasMoreAccounts={Boolean(accountsQuery.hasNextPage)}
-      isLoadingMoreAccounts={accountsQuery.isFetchingNextPage}
       onCancel={() => {
-        if (!confirmationLocked) router.replace("/operate/cash");
+        if (!locked) {
+          router.replace(requestedFromId ? accountHref(requestedFromId) : "/operate/cash");
+        }
       }}
-      onCheckStatus={confirm}
-      onConfirm={confirm}
-      onCreateAccount={() => router.push("/operate/cash/accounts/new")}
+      onConfirm={() => {
+        if (command && phase !== "pending" && canConfirm) mutation.mutate(command);
+      }}
       onDraftChange={(next) => {
-        if (!confirmationLocked && !command) setDraft(next);
+        if (!command) setDraft(next);
       }}
       onEdit={() => {
-        if (confirmationLocked) return;
+        if (locked) return;
         setCommand(null);
         setReviewAccounts([]);
         mutation.reset();
       }}
-      onLoadMoreAccounts={() => void accountsQuery.fetchNextPage()}
-      onPrepareReview={prepareReview}
-      onRetry={() =>
-        void Promise.all([
-          businesses.refetch(),
-          accountsQuery.refetch(),
-          ...(requestedFromAccount ? [requestedAccount.refetch()] : []),
-        ])
-      }
-      remoteState={remoteState}
+      onPrepareReview={() => {
+        if (command || !canConfirm) return;
+        const result = buildCashTransferCommand({
+          accounts,
+          draft,
+          idempotencyKey: Crypto.randomUUID(),
+        });
+        setErrors(cashIssueMessages(t, result.issues));
+        const prepared = result.command;
+        if (!prepared) return;
+        setReviewAccounts(
+          accounts.filter(({ id }) => id === prepared.fromAccountId || id === prepared.toAccountId),
+        );
+        setCommand(prepared);
+        mutation.reset();
+      }}
+      phase={phase}
       reviewAccounts={reviewAccounts}
-      stage={command ? "review" : "edit"}
     />
   );
 }

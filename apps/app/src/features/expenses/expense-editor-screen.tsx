@@ -1,256 +1,211 @@
-import type { ExpenseCategory, PostExpenseRequest } from "@pisto/contracts";
+import type { CashAccount, ExpenseCategory, PostExpenseRequest } from "@pisto/contracts";
+import { Link } from "expo-router";
+import { Landmark } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import {
-  FeatureBoundary,
-  type FeatureBoundaryCopy,
-  type FeatureRemoteState,
-  requireFeatureManageAccess,
-} from "@/components/feature-boundary";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
-import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
-import type { ChoiceOption } from "../cash/choice-list";
-import type { CashConfirmationState } from "../cash/state";
-import { ExpenseReview } from "./expense-review";
+import { requireSupportedLocale } from "@/i18n/locale";
+import { CashOperationReview } from "../cash/cash-operation-review";
+import { FieldError } from "../cash/field-error";
+import { formatLocalOccurrence } from "../cash/format";
+import { type CursorPage, LoadMoreButton } from "../cash/load-more-button";
+import { LocalDateTimeFields } from "../cash/local-date-time-fields";
+import type { MutationPhase } from "../cash/mutation-state";
+import { expenseCategoryLabels, expenseCategoryOptions } from "./copy";
+import type { ExpenseDraftValues } from "./drafts";
 
-export type ExpenseDraft = {
-  accountId: string;
-  category: ExpenseCategory;
-  amount: string;
-  description: string;
-  payee: string;
-  localDate: string;
-  localTime: string;
-};
+export type ExpenseDraft = ExpenseDraftValues;
 
 export type ExpenseDraftErrors = Partial<Record<keyof ExpenseDraft, string>>;
 
-type AccountOption = { id: string; name: string };
-
-export type ExpenseEditorCopy = FeatureBoundaryCopy & {
-  eyebrow: string;
-  newTitle: string;
-  newDescription: string;
-  reviewTitle: string;
-  reviewDescription: string;
-  accountsEmptyTitle: string;
-  accountsEmptyDescription: string;
-  createAccount: string;
-  account: string;
-  category: string;
-  amount: string;
-  description: string;
-  payee: string;
-  payeeOptional: string;
-  date: string;
-  time: string;
-  review: string;
-  confirm: string;
-  edit: string;
-  failedTitle: string;
-  uncertainTitle: string;
-  uncertainDescription: string;
-  retrySameConfirmation: string;
-  currency: string;
-  noPayee: string;
-  loadMore: string;
-  loadingMore: string;
-};
-
 type ExpenseEditorScreenProps = {
-  remoteState: FeatureRemoteState;
-  canManage: boolean;
-  stage: "edit" | "review";
-  draft: ExpenseDraft;
-  errors: ExpenseDraftErrors;
-  accounts: AccountOption[];
-  reviewAccount: AccountOption | null;
-  categoryOptions: readonly ChoiceOption<ExpenseCategory>[];
-  currency: string;
+  accounts: CashAccount[];
+  accountsPage: CursorPage;
+  canConfirm: boolean;
+  /** Prepared command; when present the screen shows its review. */
   command: PostExpenseRequest | null;
-  confirmation: CashConfirmationState;
+  draft: ExpenseDraft;
   errorMessage?: string;
-  hasMoreAccounts: boolean;
-  isLoadingMoreAccounts: boolean;
-  effect: string;
-  copy: ExpenseEditorCopy;
+  errors: ExpenseDraftErrors;
   formatMoney: (minorUnits: string, currency: string) => string;
-  onDraftChange: (next: ExpenseDraft) => void;
-  onPrepareReview: () => void;
+  onCancel: () => void;
   onConfirm: () => void;
+  onDraftChange: (next: ExpenseDraft) => void;
   onEdit: () => void;
-  onCheckStatus: () => void;
-  onCreateAccount: () => void;
-  onRetry: () => void;
-  onLoadMoreAccounts: () => void;
+  onPrepareReview: () => void;
+  phase: MutationPhase;
+  /** The paying account as it was reviewed; a later refetch cannot change what is confirmed. */
+  reviewAccount: CashAccount | null;
 };
 
 export function ExpenseEditorScreen({
-  remoteState,
-  canManage,
-  stage,
-  draft,
-  errors,
   accounts,
-  reviewAccount,
-  categoryOptions,
-  currency,
+  accountsPage,
+  canConfirm,
   command,
-  confirmation,
+  draft,
   errorMessage,
-  hasMoreAccounts,
-  isLoadingMoreAccounts,
-  effect,
-  copy,
+  errors,
   formatMoney,
-  onDraftChange,
-  onPrepareReview,
+  onCancel,
   onConfirm,
+  onDraftChange,
   onEdit,
-  onCheckStatus,
-  onCreateAccount,
-  onRetry,
-  onLoadMoreAccounts,
+  onPrepareReview,
+  phase,
+  reviewAccount,
 }: ExpenseEditorScreenProps) {
-  const authorizedState = requireFeatureManageAccess(remoteState, canManage);
-  if (authorizedState.kind !== "ready") {
+  const { i18n, t } = useTranslation();
+
+  if (command) {
+    if (!reviewAccount || reviewAccount.id !== command.accountId) {
+      throw new Error("An expense review requires its reviewed paying account");
+    }
     return (
-      <FeatureBoundary copy={copy} onRetry={onRetry} state={authorizedState}>
-        {null}
-      </FeatureBoundary>
-    );
-  }
-  const accountOptions = accounts.map(({ id, name }) => ({ value: id, label: name }));
-  const selectedAccount = reviewAccount;
-  const selectedCategory = categoryOptions.find(({ value }) => value === command?.category);
-  if (
-    stage === "review" &&
-    (!command || !selectedAccount || selectedAccount.id !== command.accountId || !selectedCategory)
-  ) {
-    throw new Error(
-      "Expense review is missing its command, account snapshot or translated category",
-    );
-  }
-
-  return (
-    <FeatureBoundary copy={copy} onRetry={onRetry} state={authorizedState}>
       <Page width="form">
-        <ScreenHeader
-          description={stage === "review" ? copy.reviewDescription : copy.newDescription}
-          eyebrow={copy.eyebrow}
-          title={stage === "review" ? copy.reviewTitle : copy.newTitle}
+        <PageHeader
+          description={t("expenses.editor.reviewDescription")}
+          title={t("expenses.editor.reviewTitle")}
         />
-
-        {accounts.length === 0 && stage !== "review" ? (
-          <View className="gap-3 border-y border-border py-8 ">
-            <Text accessibilityRole="header" className="text-xl font-heading text-foreground">
-              {copy.accountsEmptyTitle}
-            </Text>
-            <Text className="text-sm leading-5 text-muted-foreground">
-              {copy.accountsEmptyDescription}
-            </Text>
-            <Button
-              className="self-start"
-              label={copy.createAccount}
-              onPress={onCreateAccount}
-              variant="default"
-            />
-          </View>
-        ) : stage === "review" && command && selectedAccount && selectedCategory ? (
-          <ExpenseReview
-            accountName={selectedAccount.name}
-            categoryLabel={selectedCategory.label}
-            command={command}
-            copy={copy}
-            effect={effect}
-            errorMessage={errorMessage}
-            formatMoney={formatMoney}
-            onCheckStatus={onCheckStatus}
-            onConfirm={onConfirm}
-            onEdit={onEdit}
-            state={confirmation}
-          />
-        ) : (
-          <View className="gap-7 border-y border-border py-7 ">
-            <SelectField
-              label={copy.account}
-              onChange={(accountId) => onDraftChange({ ...draft, accountId })}
-              options={accountOptions}
-              value={draft.accountId}
-            />
-            {errors.accountId ? (
-              <Text accessibilityRole="alert" className="text-xs text-destructive">
-                {errors.accountId}
-              </Text>
-            ) : null}
-            {hasMoreAccounts ? (
-              <Button
-                className="self-start"
-                label={isLoadingMoreAccounts ? copy.loadingMore : copy.loadMore}
-                loading={isLoadingMoreAccounts}
-                onPress={onLoadMoreAccounts}
-                size="sm"
-                variant="outline"
-              />
-            ) : null}
-            <SelectField
-              label={copy.category}
-              onChange={(category) => onDraftChange({ ...draft, category })}
-              options={categoryOptions}
-              value={draft.category}
-            />
-            <Field
-              error={errors.amount}
-              keyboardType="decimal-pad"
-              label={copy.amount}
-              onChangeText={(amount) => onDraftChange({ ...draft, amount })}
-              trailing={<Text className="font-ui text-muted-foreground">{currency}</Text>}
-              value={draft.amount}
-            />
-            <Field
-              error={errors.description}
-              label={copy.description}
-              maxLength={240}
-              onChangeText={(description) => onDraftChange({ ...draft, description })}
-              value={draft.description}
-            />
-            <Field
-              error={errors.payee}
-              label={copy.payeeOptional}
-              maxLength={120}
-              onChangeText={(payee) => onDraftChange({ ...draft, payee })}
-              value={draft.payee}
-            />
-            <View className="gap-5 sm:flex-row">
-              <View className="flex-1">
-                <Field
-                  error={errors.localDate}
-                  label={copy.date}
-                  onChangeText={(localDate) => onDraftChange({ ...draft, localDate })}
-                  value={draft.localDate}
-                />
-              </View>
-              <View className="flex-1">
-                <Field
-                  error={errors.localTime}
-                  label={copy.time}
-                  onChangeText={(localTime) => onDraftChange({ ...draft, localTime })}
-                  value={draft.localTime}
-                />
-              </View>
-            </View>
-            <Button
-              className="self-start"
-              label={copy.review}
-              onPress={onPrepareReview}
-              variant="default"
-            />
-          </View>
-        )}
+        <CashOperationReview
+          confirmLabel={t("expenses.editor.confirm")}
+          disabled={!canConfirm}
+          effect={t("expenses.editor.effect")}
+          errorMessage={errorMessage}
+          items={[
+            {
+              label: t("cash.fields.amount"),
+              numeric: true,
+              value: formatMoney(command.amountMinorUnits, command.currency),
+            },
+            { label: t("expenses.editor.account"), value: reviewAccount.name },
+            {
+              label: t("expenses.editor.category"),
+              value: expenseCategoryLabels(t)[command.category],
+            },
+            { label: t("expenses.editor.description"), value: command.description },
+            {
+              label: t("expenses.editor.payee"),
+              value: command.payee ?? t("expenses.detail.noPayee"),
+            },
+            {
+              label: t("cash.fields.occurredAt"),
+              numeric: true,
+              value: formatLocalOccurrence(
+                command.occurredLocalDate,
+                command.occurredLocalTime,
+                requireSupportedLocale(i18n.resolvedLanguage),
+              ),
+            },
+          ]}
+          onConfirm={onConfirm}
+          onEdit={onEdit}
+          phase={phase}
+        />
       </Page>
-    </FeatureBoundary>
+    );
+  }
+
+  const activeAccounts = accounts.filter(({ status }) => status === "active");
+  const currency = activeAccounts.find(({ id }) => id === draft.accountId)?.currency;
+  return (
+    <Page width="form">
+      <PageHeader
+        description={t("expenses.editor.pageDescription")}
+        title={t("expenses.editor.title")}
+      />
+      {activeAccounts.length === 0 ? (
+        <EmptyState
+          action={
+            <Link asChild href="/operate/cash/accounts/new">
+              <Button accessibilityRole="link" size="sm">
+                <Text>{t("cash.overview.newAccount")}</Text>
+              </Button>
+            </Link>
+          }
+          description={t("expenses.editor.noAccountsDescription")}
+          icon={Landmark}
+          title={t("expenses.editor.noAccountsTitle")}
+        />
+      ) : (
+        <>
+          <Section title={t("expenses.editor.paymentSection")}>
+            <View className="gap-4">
+              <View className="gap-2">
+                <SelectField
+                  label={t("expenses.editor.account")}
+                  onChange={(accountId) => onDraftChange({ ...draft, accountId })}
+                  options={activeAccounts.map(({ id, name }) => ({ label: name, value: id }))}
+                  value={draft.accountId || null}
+                />
+                <FieldError message={errors.accountId} />
+                <LoadMoreButton
+                  className="self-start"
+                  label={t("cash.fields.loadMoreAccounts")}
+                  page={accountsPage}
+                />
+              </View>
+              <Field
+                error={errors.amount}
+                keyboardType="decimal-pad"
+                label={t("cash.fields.amount")}
+                onChangeText={(amount) => onDraftChange({ ...draft, amount })}
+                trailing={
+                  currency ? (
+                    <Text className="font-ui text-sm text-muted-foreground">{currency}</Text>
+                  ) : undefined
+                }
+                value={draft.amount}
+              />
+            </View>
+          </Section>
+          <Section title={t("expenses.editor.detailSection")}>
+            <View className="gap-4">
+              <SelectField<ExpenseCategory>
+                label={t("expenses.editor.category")}
+                onChange={(category) => onDraftChange({ ...draft, category })}
+                options={expenseCategoryOptions(t)}
+                value={draft.category}
+              />
+              <Field
+                error={errors.description}
+                label={t("expenses.editor.description")}
+                maxLength={240}
+                onChangeText={(description) => onDraftChange({ ...draft, description })}
+                value={draft.description}
+              />
+              <Field
+                error={errors.payee}
+                label={t("expenses.editor.payeeOptional")}
+                maxLength={120}
+                onChangeText={(payee) => onDraftChange({ ...draft, payee })}
+                value={draft.payee}
+              />
+            </View>
+          </Section>
+          <Section title={t("cash.fields.occurredAt")}>
+            <LocalDateTimeFields
+              date={draft.localDate}
+              dateError={errors.localDate}
+              onDateChange={(localDate) => onDraftChange({ ...draft, localDate })}
+              onTimeChange={(localTime) => onDraftChange({ ...draft, localTime })}
+              time={draft.localTime}
+              timeError={errors.localTime}
+            />
+          </Section>
+          <View className="flex-row flex-wrap justify-end gap-2">
+            <Button label={t("common.cancel")} onPress={onCancel} variant="outline" />
+            <Button label={t("expenses.editor.review")} onPress={onPrepareReview} />
+          </View>
+        </>
+      )}
+    </Page>
   );
 }

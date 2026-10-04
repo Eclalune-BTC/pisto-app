@@ -32,9 +32,8 @@ import {
   updateCashAccountRequestSchema,
   voidExpenseRequestSchema,
 } from "@pisto/contracts";
-import type { ZodType, z } from "zod";
-import { apiRequest } from "@/lib/api-client";
-import { ApiClientError } from "@/lib/api-error";
+import type { z } from "zod";
+import { apiRequest, parseRequestPayload } from "@/lib/api-client";
 
 type CashAccountResponse = z.infer<typeof cashAccountResponseSchema>;
 type CashAccountDetailResponse = z.infer<typeof cashAccountDetailResponseSchema>;
@@ -46,14 +45,6 @@ type ExpenseResponse = z.infer<typeof expenseResponseSchema>;
 type ExpenseDetailResponse = z.infer<typeof expenseDetailResponseSchema>;
 type ExpenseListResponse = z.infer<typeof expenseListResponseSchema>;
 type ExpensePeriodSummaryResponse = z.infer<typeof expensePeriodSummaryResponseSchema>;
-
-function parseCommand<T>(schema: ZodType<T>, command: unknown): T {
-  const parsed = schema.safeParse(command);
-  if (!parsed.success) {
-    throw new ApiClientError("The request payload is invalid.", 400, "VALIDATION_ERROR");
-  }
-  return parsed.data;
-}
 
 function pathWithQuery(path: `/${string}`, query: Record<string, unknown>): `/${string}` {
   const search = Object.entries(query)
@@ -82,7 +73,7 @@ export const cashApi = {
         "/v1/cash/accounts",
         {
           authenticated: true,
-          body: parseCommand(createCashAccountRequestSchema, command),
+          body: parseRequestPayload(createCashAccountRequestSchema, command),
           method: "POST",
         },
         cashAccountResponseSchema,
@@ -92,7 +83,7 @@ export const cashApi = {
         `/v1/cash/accounts/${encodeURIComponent(accountId)}/update`,
         {
           authenticated: true,
-          body: parseCommand(updateCashAccountRequestSchema, command),
+          body: parseRequestPayload(updateCashAccountRequestSchema, command),
           method: "POST",
         },
         cashAccountResponseSchema,
@@ -102,7 +93,7 @@ export const cashApi = {
         `/v1/cash/accounts/${encodeURIComponent(accountId)}/archive`,
         {
           authenticated: true,
-          body: parseCommand(archiveCashAccountRequestSchema, command),
+          body: parseRequestPayload(archiveCashAccountRequestSchema, command),
           method: "POST",
         },
         cashAccountResponseSchema,
@@ -120,7 +111,7 @@ export const cashApi = {
         "/v1/cash/adjustments",
         {
           authenticated: true,
-          body: parseCommand(recordCashAdjustmentRequestSchema, command),
+          body: parseRequestPayload(recordCashAdjustmentRequestSchema, command),
           method: "POST",
         },
         cashMovementResponseSchema,
@@ -130,7 +121,7 @@ export const cashApi = {
         `/v1/cash/movements/${encodeURIComponent(movementId)}/reverse`,
         {
           authenticated: true,
-          body: parseCommand(reverseCashMovementRequestSchema, command),
+          body: parseRequestPayload(reverseCashMovementRequestSchema, command),
           method: "POST",
         },
         cashMovementResponseSchema,
@@ -140,7 +131,7 @@ export const cashApi = {
         "/v1/cash/transfers",
         {
           authenticated: true,
-          body: parseCommand(transferCashRequestSchema, command),
+          body: parseRequestPayload(transferCashRequestSchema, command),
           method: "POST",
         },
         cashTransferResponseSchema,
@@ -170,7 +161,7 @@ export const cashApi = {
         "/v1/expenses",
         {
           authenticated: true,
-          body: parseCommand(postExpenseRequestSchema, command),
+          body: parseRequestPayload(postExpenseRequestSchema, command),
           method: "POST",
         },
         expenseResponseSchema,
@@ -180,7 +171,7 @@ export const cashApi = {
         `/v1/expenses/${encodeURIComponent(expenseId)}/void`,
         {
           authenticated: true,
-          body: parseCommand(voidExpenseRequestSchema, command),
+          body: parseRequestPayload(voidExpenseRequestSchema, command),
           method: "POST",
         },
         expenseResponseSchema,
