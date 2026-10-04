@@ -44,12 +44,13 @@ working method. When a lesson below becomes a durable rule, move it into the des
 | Record facts | `components/layout/description-list.tsx` | label/value rows; `numeric` for money/dates |
 | Loading | `components/layout/skeletons.tsx` `ContentSkeleton` | `list`/`detail`/`form`/`section`; never a page spinner |
 | Remote states | `FeatureBoundary`, `ui/state-panel`, `ui/empty-state`, `remote-state` (`OfflineState`, `StaleNotice`) | empty only after a successful read |
-| Records | `ui/data-table` | `getRowHref` makes the row and its primary cell a real link; `rowActions` + `ui/row-actions`; `meta.primary`, `meta.align: "end"`, `meta.hideOnCompact` |
+| Records | `ui/data-table` | `getRowHref` makes the row and its primary cell a real link; `onRowPress` opens in place (dialog); `rowActions` + `ui/row-actions`; `meta.primary`, `meta.align: "end"`, `meta.figure`, `meta.width`, `meta.hideOnCompact` |
 | Status | `ui/badge` | `secondary`, `outline`, `positive`, `warning`, `destructive`; status is never plain text |
 | Callouts | `ui/alert` | `default`, `positive`, `warning`, `destructive`; `action` slot. No `border-l-4` boxes |
-| Confirm consequential command | `ui/confirm-dialog` | stays open while pending; caller closes after a definitive result |
+| Confirm consequential command | `ui/confirm-dialog` + `lib/mutation-phase` | `phase` (`idle`/`pending`/`failed`/`uncertain`) locks it while pending or uncertain; retry resends the same key; `returnFocus` from `lib/focus-return` |
 | Short forms | `ui/dialog` (wide) / `ui/sheet` | for create/rename of simple entities; money flows keep their routes |
-| Filters | `ui/filter-bar` (segmented), `ui/select-field`, `ui/input` with search icon | toolbar row above the table |
+| Filters | `ui/filter-bar` (segmented radios), `ui/select-field`, `ui/input` with search icon | toolbar row above the table |
+| Fields | `ui/field` (`description`, `error`), `ui/select-field` (`error`), `ui/date-field`, `ui/time-field` | pickers forward `ref` so a rejected form can focus them |
 | Feedback | `lib/notify.ts` `notify.success/warning/error` | after definitive results; uncertain outcomes stay inline and blocking |
 | Breadcrumb names | `useRouteLabel(route, name)` from `components/shell/shell-context` | call on detail screens once the record loaded |
 | Formatting | `lib/money` `formatMinorUnits`, `i18n/format` (`formatLocalDate`, `formatLocalizedDateTime`) | `tabular-nums` on every amount/date column |
@@ -122,6 +123,26 @@ database: API on port 3025 and Expo web on 8095 (see the lead's session notes or
 ## Lessons log
 
 Append one line per lesson: `YYYY-MM-DD · screen · lesson · where it is now enforced`.
+
+- 2026-10-04 · sales review · Review steps for irreversible commands focus "Editar", never the
+  commit button, so a repeated Enter cannot post unread · sales review screens.
+- 2026-10-04 · sales correction · Edit and replace flows seed from the source record only when
+  currency and time zone still match; defaults are seeded once, never from an effect watching
+  empty values · sales correction.
+- 2026-10-04 · static notices · A static notice is a note, not an alert: pass `role="note"` so it
+  is not announced assertively · `ui/alert` callers.
+- 2026-10-04 · chips · Check every "stronger chip" claim in dark mode too: fill vs surface ≥1.5:1.
+- 2026-10-04 · cash ledgers · Table containers scroll and never clip money; dates and amounts do not
+  wrap · `.pisto-data-table` CSS.
+- 2026-10-04 · cash ledgers · Copy never claims an ordering the visible dates contradict (lists are
+  ordered by recording time) · ledger section descriptions.
+- 2026-10-04 · dialogs · Dialogs opened from rows or menus return focus to their opener; `hitSlop`
+  does nothing on the web · `lib/focus-return`, `ui/confirm-dialog`.
+- 2026-10-04 · uncertain commands · An uncertain outcome keeps the dialog locked with only "Reintentar
+  la misma confirmación", even after freshness is lost, because the server re-authorizes the same
+  key · `ui/confirm-dialog`.
+- 2026-10-04 · compact rows · Compact rows keep the field that tells records apart; selects own
+  their errors · `ui/data-table` `meta.figure`, `ui/select-field` `error`.
 
 - 2026-10-04 · sidebar header · A bordered "workspace" label block reads as AI slop; the business
   belongs in a switcher button with initials, name and currency · pending business switcher.
