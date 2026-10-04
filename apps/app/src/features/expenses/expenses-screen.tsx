@@ -91,17 +91,19 @@ export function ExpensesScreen({
       {isStale ? <StaleNotice onRetry={onRetry} /> : null}
 
       <Section description={t("expenses.summary.scope")} title={t("filters.periodSummary")}>
-        <DateRangeFilter
-          applyLabel={t("expenses.summary.apply")}
-          endDate={period.endLocalDate}
-          endLabel={t("expenses.summary.endDate")}
-          error={periodError}
-          onApply={onApplyPeriod}
-          onEndDateChange={(endLocalDate) => onPeriodChange({ ...period, endLocalDate })}
-          onStartDateChange={(startLocalDate) => onPeriodChange({ ...period, startLocalDate })}
-          startDate={period.startLocalDate}
-          startLabel={t("expenses.summary.startDate")}
-        />
+        <View className="min-w-0 max-w-xl">
+          <DateRangeFilter
+            applyLabel={t("expenses.summary.apply")}
+            endDate={period.endLocalDate}
+            endLabel={t("expenses.summary.endDate")}
+            error={periodError}
+            onApply={onApplyPeriod}
+            onEndDateChange={(endLocalDate) => onPeriodChange({ ...period, endLocalDate })}
+            onStartDateChange={(startLocalDate) => onPeriodChange({ ...period, startLocalDate })}
+            startDate={period.startLocalDate}
+            startLabel={t("expenses.summary.startDate")}
+          />
+        </View>
         {summaryState.kind === "loading" ? (
           <ExpenseSummarySkeleton />
         ) : (

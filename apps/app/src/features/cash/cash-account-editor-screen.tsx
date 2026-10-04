@@ -10,7 +10,6 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import type { DescriptionItem } from "@/components/layout/description-list";
 import { PageHeader } from "@/components/layout/page-header";
-import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,7 @@ import { CashOperationReview } from "./cash-operation-review";
 import { ChoiceList } from "./choice-list";
 import { cashAccountKindLabels } from "./copy";
 import type { AccountDraftValues } from "./drafts";
+import { FormSection } from "./form-section";
 import { formatLocalOccurrence } from "./format";
 import { LocalDateTimeFields } from "./local-date-time-fields";
 import type { MutationPhase } from "./mutation-state";
@@ -172,77 +172,71 @@ export function CashAccountEditorScreen({
         title={creating ? t("cash.accountEditor.createTitle") : t("cash.accountEditor.updateTitle")}
       />
 
-      <Section title={t("cash.accountEditor.accountSection")}>
-        <View className="gap-4">
-          <Field
-            error={errors.name}
-            label={t("cash.accountEditor.name")}
-            maxLength={80}
-            onChangeText={(name) => onDraftChange({ ...draft, name })}
-            value={draft.name}
-          />
-          <SelectField<CashAccountKind>
-            label={t("cash.accountEditor.kind")}
-            onChange={(kind) => onDraftChange({ ...draft, kind })}
-            options={(Object.keys(kinds) as CashAccountKind[]).map((value) => ({
-              label: kinds[value],
-              value,
-            }))}
-            value={draft.kind}
-          />
-        </View>
-      </Section>
+      <FormSection title={t("cash.accountEditor.accountSection")}>
+        <Field
+          error={errors.name}
+          label={t("cash.accountEditor.name")}
+          maxLength={80}
+          onChangeText={(name) => onDraftChange({ ...draft, name })}
+          value={draft.name}
+        />
+        <SelectField<CashAccountKind>
+          label={t("cash.accountEditor.kind")}
+          onChange={(kind) => onDraftChange({ ...draft, kind })}
+          options={(Object.keys(kinds) as CashAccountKind[]).map((value) => ({
+            label: kinds[value],
+            value,
+          }))}
+          value={draft.kind}
+        />
+      </FormSection>
 
       {creating ? (
-        <Section
+        <FormSection
           description={t("cash.accountEditor.openingDescription")}
           title={t("cash.accountEditor.openingBalance")}
         >
-          <View className="gap-4">
-            <ChoiceList
-              label={t("cash.accountEditor.openingMode")}
-              onChange={(openingMode) => onDraftChange({ ...draft, openingMode })}
-              options={[
-                { label: t("cash.accountEditor.startAtZero"), value: "zero" },
-                { label: t("cash.accountEditor.moneyIn"), value: "in" },
-                { label: t("cash.accountEditor.moneyOut"), value: "out" },
-              ]}
-              value={draft.openingMode}
-            />
-            {draft.openingMode !== "zero" ? (
-              <>
-                <Field
-                  error={errors.openingAmount}
-                  keyboardType="decimal-pad"
-                  label={t("cash.fields.amount")}
-                  onChangeText={(openingAmount) => onDraftChange({ ...draft, openingAmount })}
-                  trailing={
-                    <Text className="font-ui text-sm text-muted-foreground">{currency}</Text>
-                  }
-                  value={draft.openingAmount}
-                />
-                <Field
-                  error={errors.openingReason}
-                  label={t("cash.fields.reason")}
-                  maxLength={240}
-                  onChangeText={(openingReason) => onDraftChange({ ...draft, openingReason })}
-                  value={draft.openingReason}
-                />
-                <LocalDateTimeFields
-                  date={draft.openingLocalDate}
-                  dateError={errors.openingLocalDate}
-                  onDateChange={(openingLocalDate) => onDraftChange({ ...draft, openingLocalDate })}
-                  onTimeChange={(openingLocalTime) => onDraftChange({ ...draft, openingLocalTime })}
-                  time={draft.openingLocalTime}
-                  timeError={errors.openingLocalTime}
-                />
-              </>
-            ) : null}
-          </View>
-        </Section>
+          <ChoiceList
+            label={t("cash.accountEditor.openingMode")}
+            onChange={(openingMode) => onDraftChange({ ...draft, openingMode })}
+            options={[
+              { label: t("cash.accountEditor.startAtZero"), value: "zero" },
+              { label: t("cash.accountEditor.moneyIn"), value: "in" },
+              { label: t("cash.accountEditor.moneyOut"), value: "out" },
+            ]}
+            value={draft.openingMode}
+          />
+          {draft.openingMode !== "zero" ? (
+            <>
+              <Field
+                error={errors.openingAmount}
+                keyboardType="decimal-pad"
+                label={t("cash.fields.amount")}
+                onChangeText={(openingAmount) => onDraftChange({ ...draft, openingAmount })}
+                trailing={<Text className="font-ui text-sm text-muted-foreground">{currency}</Text>}
+                value={draft.openingAmount}
+              />
+              <Field
+                error={errors.openingReason}
+                label={t("cash.fields.reason")}
+                maxLength={240}
+                onChangeText={(openingReason) => onDraftChange({ ...draft, openingReason })}
+                value={draft.openingReason}
+              />
+              <LocalDateTimeFields
+                date={draft.openingLocalDate}
+                dateError={errors.openingLocalDate}
+                onDateChange={(openingLocalDate) => onDraftChange({ ...draft, openingLocalDate })}
+                onTimeChange={(openingLocalTime) => onDraftChange({ ...draft, openingLocalTime })}
+                time={draft.openingLocalTime}
+                timeError={errors.openingLocalTime}
+              />
+            </>
+          ) : null}
+        </FormSection>
       ) : null}
 
-      <Section title={t("cash.accountDetail.negativePolicy")}>
+      <FormSection title={t("cash.accountDetail.negativePolicy")}>
         <View className="flex-row items-start gap-3">
           <Checkbox
             accessibilityLabel={t("cash.accountEditor.allowNegative")}
@@ -261,7 +255,7 @@ export function CashAccountEditorScreen({
             </Text>
           </View>
         </View>
-      </Section>
+      </FormSection>
 
       {errors.form ? (
         <Alert icon={CircleAlert} variant="destructive">
@@ -271,7 +265,12 @@ export function CashAccountEditorScreen({
 
       <View className="flex-row flex-wrap justify-end gap-2">
         <Button label={t("common.cancel")} onPress={onCancel} variant="outline" />
-        <Button label={t("cash.accountEditor.review")} onPress={onPrepareReview} />
+        <Button
+          label={
+            creating ? t("cash.accountEditor.reviewCreate") : t("cash.accountEditor.reviewUpdate")
+          }
+          onPress={onPrepareReview}
+        />
       </View>
     </Page>
   );

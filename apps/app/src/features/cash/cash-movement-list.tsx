@@ -39,7 +39,7 @@ export function CashMovementList({
         cell: ({ row: { original } }) =>
           onOpenMovement ? (
             <Button
-              className="min-h-0 self-start py-0"
+              className="min-h-0 self-start px-0 py-0"
               hitSlop={8}
               onPress={() => onOpenMovement(original.id)}
               variant="link"

@@ -4,7 +4,6 @@ import { Landmark } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { PageHeader } from "@/components/layout/page-header";
-import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -16,6 +15,7 @@ import { CashOperationReview } from "./cash-operation-review";
 import { ChoiceList } from "./choice-list";
 import type { AdjustmentDraftValues } from "./drafts";
 import { FieldError } from "./field-error";
+import { FormSection } from "./form-section";
 import { formatLocalOccurrence } from "./format";
 import { type CursorPage, LoadMoreButton } from "./load-more-button";
 import { LocalDateTimeFields } from "./local-date-time-fields";
@@ -136,52 +136,48 @@ export function CashAdjustmentScreen({
         />
       ) : (
         <>
-          <Section title={t("cash.adjustment.detailsSection")}>
-            <View className="gap-4">
-              <View className="gap-2">
-                <SelectField
-                  label={t("cash.fields.account")}
-                  onChange={(accountId) => onDraftChange({ ...draft, accountId })}
-                  options={activeAccounts.map(({ id, name }) => ({ label: name, value: id }))}
-                  value={draft.accountId || null}
-                />
-                <FieldError message={errors.accountId} />
-                <LoadMoreButton
-                  className="self-start"
-                  label={t("cash.fields.loadMoreAccounts")}
-                  page={accountsPage}
-                />
-              </View>
-              <ChoiceList
-                label={t("cash.adjustment.direction")}
-                onChange={(direction) => onDraftChange({ ...draft, direction })}
-                options={directions}
-                value={draft.direction}
+          <FormSection title={t("cash.adjustment.detailsSection")}>
+            <View className="gap-2">
+              <SelectField
+                label={t("cash.fields.account")}
+                onChange={(accountId) => onDraftChange({ ...draft, accountId })}
+                options={activeAccounts.map(({ id, name }) => ({ label: name, value: id }))}
+                value={draft.accountId || null}
               />
-              <Field
-                error={errors.amount}
-                keyboardType="decimal-pad"
-                label={t("cash.fields.amount")}
-                onChangeText={(amount) => onDraftChange({ ...draft, amount })}
-                trailing={
-                  selected ? (
-                    <Text className="font-ui text-sm text-muted-foreground">
-                      {selected.currency}
-                    </Text>
-                  ) : undefined
-                }
-                value={draft.amount}
-              />
-              <Field
-                error={errors.reason}
-                label={t("cash.fields.reason")}
-                maxLength={240}
-                onChangeText={(reason) => onDraftChange({ ...draft, reason })}
-                value={draft.reason}
+              <FieldError message={errors.accountId} />
+              <LoadMoreButton
+                className="self-start"
+                label={t("cash.fields.loadMoreAccounts")}
+                page={accountsPage}
               />
             </View>
-          </Section>
-          <Section title={t("cash.fields.occurredAt")}>
+            <ChoiceList
+              label={t("cash.adjustment.direction")}
+              onChange={(direction) => onDraftChange({ ...draft, direction })}
+              options={directions}
+              value={draft.direction}
+            />
+            <Field
+              error={errors.amount}
+              keyboardType="decimal-pad"
+              label={t("cash.fields.amount")}
+              onChangeText={(amount) => onDraftChange({ ...draft, amount })}
+              trailing={
+                selected ? (
+                  <Text className="font-ui text-sm text-muted-foreground">{selected.currency}</Text>
+                ) : undefined
+              }
+              value={draft.amount}
+            />
+            <Field
+              error={errors.reason}
+              label={t("cash.fields.reason")}
+              maxLength={240}
+              onChangeText={(reason) => onDraftChange({ ...draft, reason })}
+              value={draft.reason}
+            />
+          </FormSection>
+          <FormSection title={t("cash.fields.occurredAt")}>
             <LocalDateTimeFields
               date={draft.localDate}
               dateError={errors.localDate}
@@ -190,7 +186,7 @@ export function CashAdjustmentScreen({
               time={draft.localTime}
               timeError={errors.localTime}
             />
-          </Section>
+          </FormSection>
           <View className="flex-row flex-wrap justify-end gap-2">
             <Button label={t("common.cancel")} onPress={onCancel} variant="outline" />
             <Button label={t("cash.adjustment.review")} onPress={onPrepareReview} />

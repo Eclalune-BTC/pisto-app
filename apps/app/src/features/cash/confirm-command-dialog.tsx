@@ -1,6 +1,7 @@
 import { CircleAlert, TriangleAlert } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { useWindowDimensions } from "react-native";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -14,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { isLockedPhase, type MutationPhase } from "./mutation-state";
+
+const DIALOG_WIDTH = 448;
 
 type ConfirmCommandDialogProps = {
   children?: ReactNode;
@@ -50,6 +53,7 @@ export function ConfirmCommandDialog({
   title,
 }: ConfirmCommandDialogProps) {
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
   const locked = isLockedPhase(phase);
   return (
     <AlertDialog
@@ -58,7 +62,8 @@ export function ConfirmCommandDialog({
       }}
       open={open}
     >
-      <AlertDialogContent>
+      {/* The shared content ignores its width classes on the web; size it like the shared Sheet. */}
+      <AlertDialogContent style={{ width: Math.min(DIALOG_WIDTH, width - 32) }}>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>

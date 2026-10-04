@@ -4,7 +4,6 @@ import { Landmark } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { PageHeader } from "@/components/layout/page-header";
-import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -14,6 +13,7 @@ import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { CashOperationReview } from "../cash/cash-operation-review";
 import { FieldError } from "../cash/field-error";
+import { FormSection } from "../cash/form-section";
 import { formatLocalOccurrence } from "../cash/format";
 import { type CursorPage, LoadMoreButton } from "../cash/load-more-button";
 import { LocalDateTimeFields } from "../cash/local-date-time-fields";
@@ -136,61 +136,57 @@ export function ExpenseEditorScreen({
         />
       ) : (
         <>
-          <Section title={t("expenses.editor.paymentSection")}>
-            <View className="gap-4">
-              <View className="gap-2">
-                <SelectField
-                  label={t("expenses.editor.account")}
-                  onChange={(accountId) => onDraftChange({ ...draft, accountId })}
-                  options={activeAccounts.map(({ id, name }) => ({ label: name, value: id }))}
-                  value={draft.accountId || null}
-                />
-                <FieldError message={errors.accountId} />
-                <LoadMoreButton
-                  className="self-start"
-                  label={t("cash.fields.loadMoreAccounts")}
-                  page={accountsPage}
-                />
-              </View>
-              <Field
-                error={errors.amount}
-                keyboardType="decimal-pad"
-                label={t("cash.fields.amount")}
-                onChangeText={(amount) => onDraftChange({ ...draft, amount })}
-                trailing={
-                  currency ? (
-                    <Text className="font-ui text-sm text-muted-foreground">{currency}</Text>
-                  ) : undefined
-                }
-                value={draft.amount}
+          <FormSection title={t("expenses.editor.paymentSection")}>
+            <View className="gap-2">
+              <SelectField
+                label={t("expenses.editor.account")}
+                onChange={(accountId) => onDraftChange({ ...draft, accountId })}
+                options={activeAccounts.map(({ id, name }) => ({ label: name, value: id }))}
+                value={draft.accountId || null}
+              />
+              <FieldError message={errors.accountId} />
+              <LoadMoreButton
+                className="self-start"
+                label={t("cash.fields.loadMoreAccounts")}
+                page={accountsPage}
               />
             </View>
-          </Section>
-          <Section title={t("expenses.editor.detailSection")}>
-            <View className="gap-4">
-              <SelectField<ExpenseCategory>
-                label={t("expenses.editor.category")}
-                onChange={(category) => onDraftChange({ ...draft, category })}
-                options={expenseCategoryOptions(t)}
-                value={draft.category}
-              />
-              <Field
-                error={errors.description}
-                label={t("expenses.editor.description")}
-                maxLength={240}
-                onChangeText={(description) => onDraftChange({ ...draft, description })}
-                value={draft.description}
-              />
-              <Field
-                error={errors.payee}
-                label={t("expenses.editor.payeeOptional")}
-                maxLength={120}
-                onChangeText={(payee) => onDraftChange({ ...draft, payee })}
-                value={draft.payee}
-              />
-            </View>
-          </Section>
-          <Section title={t("cash.fields.occurredAt")}>
+            <Field
+              error={errors.amount}
+              keyboardType="decimal-pad"
+              label={t("cash.fields.amount")}
+              onChangeText={(amount) => onDraftChange({ ...draft, amount })}
+              trailing={
+                currency ? (
+                  <Text className="font-ui text-sm text-muted-foreground">{currency}</Text>
+                ) : undefined
+              }
+              value={draft.amount}
+            />
+          </FormSection>
+          <FormSection title={t("expenses.editor.detailSection")}>
+            <SelectField<ExpenseCategory>
+              label={t("expenses.editor.category")}
+              onChange={(category) => onDraftChange({ ...draft, category })}
+              options={expenseCategoryOptions(t)}
+              value={draft.category}
+            />
+            <Field
+              error={errors.description}
+              label={t("expenses.editor.description")}
+              maxLength={240}
+              onChangeText={(description) => onDraftChange({ ...draft, description })}
+              value={draft.description}
+            />
+            <Field
+              error={errors.payee}
+              label={t("expenses.editor.payeeOptional")}
+              maxLength={120}
+              onChangeText={(payee) => onDraftChange({ ...draft, payee })}
+              value={draft.payee}
+            />
+          </FormSection>
+          <FormSection title={t("cash.fields.occurredAt")}>
             <LocalDateTimeFields
               date={draft.localDate}
               dateError={errors.localDate}
@@ -199,7 +195,7 @@ export function ExpenseEditorScreen({
               time={draft.localTime}
               timeError={errors.localTime}
             />
-          </Section>
+          </FormSection>
           <View className="flex-row flex-wrap justify-end gap-2">
             <Button label={t("common.cancel")} onPress={onCancel} variant="outline" />
             <Button label={t("expenses.editor.review")} onPress={onPrepareReview} />

@@ -41,7 +41,6 @@ export function ExpenseFilters({
           { label: t("expenses.overview.statusOptions.voided"), value: "voided" },
           { label: t("expenses.overview.statusOptions.all"), value: "all" },
         ]}
-        showLabel
         value={filters.status}
       />
       <View className="min-w-0 sm:w-52">

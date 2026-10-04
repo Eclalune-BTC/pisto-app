@@ -98,7 +98,7 @@ export const expenses = {
     action: "Anular gasto",
     title: "¿Anular «{{description}}»?",
     description:
-      "{{amount}} volverán a la cuenta de pago con un movimiento nuevo. El gasto original se conserva como anulado.",
+      "Se devolverán {{amount}} a la cuenta de pago con un movimiento nuevo. El gasto original se conserva como anulado.",
     reason: "Motivo de anulación",
     confirm: "Anular gasto",
     success: "Gasto anulado",

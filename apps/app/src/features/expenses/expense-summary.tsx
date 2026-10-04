@@ -14,6 +14,14 @@ import { expenseCategoryLabels } from "./copy";
 
 type CategoryTotal = ExpensePeriodSummary["categories"][number];
 
+/** The breakdown is complete for the period, so ordering it by exact amount hides nothing. */
+function byAmount(categories: CategoryTotal[]): CategoryTotal[] {
+  return [...categories].sort((a, b) => {
+    const difference = BigInt(b.amountMinorUnits) - BigInt(a.amountMinorUnits);
+    return difference > 0n ? 1 : difference < 0n ? -1 : 0;
+  });
+}
+
 /** Exact totals of posted expenses; they are never presented as profit or total cost. */
 export function ExpenseSummary({ summary }: { summary: ExpensePeriodSummary }) {
   const { i18n, t } = useTranslation();
@@ -84,7 +92,7 @@ export function ExpenseSummary({ summary }: { summary: ExpensePeriodSummary }) {
           <DataTable
             caption={t("expenses.summary.byCategory")}
             columns={columns}
-            data={summary.categories}
+            data={byAmount(summary.categories)}
             getRowId={(category) => category.category}
           />
         </View>

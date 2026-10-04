@@ -146,7 +146,8 @@ export const cash = {
     moneyOut: "Con saldo negativo",
     allowNegative: "Permitir saldo negativo",
     allowNegativeDescription: "Las salidas podrán dejar la cuenta por debajo de cero.",
-    review: "Revisar",
+    reviewCreate: "Revisar cuenta",
+    reviewUpdate: "Revisar cambios",
     confirmCreate: "Crear cuenta",
     confirmUpdate: "Guardar cambios",
     createEffect:
@@ -158,7 +159,7 @@ export const cash = {
   adjustment: {
     title: "Ajustar saldo",
     description:
-      "Corrige el saldo de una cuenta con un motivo verificable. Los movimientos anteriores no cambian.",
+      "Corrige el saldo con un motivo verificable; los movimientos anteriores no cambian.",
     detailsSection: "Ajuste",
     direction: "Tipo de ajuste",
     moneyIn: "Entrada de dinero",
@@ -177,7 +178,7 @@ export const cash = {
     description:
       "Mueve dinero entre dos cuentas del negocio. La salida y la entrada se registran juntas.",
     accountsSection: "Cuentas",
-    amountSection: "Monto",
+    amountSection: "Detalle",
     fromAccount: "Desde",
     toAccount: "Hacia",
     note: "Nota",

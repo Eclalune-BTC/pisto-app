@@ -1,6 +1,7 @@
 import type { ExpenseCategory, ExpenseStatus } from "@pisto/contracts";
 import type { TFunction } from "i18next";
 import type { FeatureBoundaryCopy } from "@/components/feature-boundary";
+import { DEFAULT_LOCALE } from "@/i18n/locale";
 
 export function expenseCategoryLabels(t: TFunction): Record<ExpenseCategory, string> {
   return {
@@ -15,12 +16,18 @@ export function expenseCategoryLabels(t: TFunction): Record<ExpenseCategory, str
   };
 }
 
+/** Alphabetical in the catalog language, with the catch-all category last. */
 export function expenseCategoryOptions(t: TFunction) {
   const labels = expenseCategoryLabels(t);
-  return (Object.keys(labels) as ExpenseCategory[]).map((value) => ({
-    label: labels[value],
-    value,
-  }));
+  return (Object.keys(labels) as ExpenseCategory[])
+    .map((value) => ({ label: labels[value], value }))
+    .sort((a, b) =>
+      a.value === "other"
+        ? 1
+        : b.value === "other"
+          ? -1
+          : a.label.localeCompare(b.label, DEFAULT_LOCALE),
+    );
 }
 
 export function expenseStatusLabels(t: TFunction): Record<ExpenseStatus, string> {

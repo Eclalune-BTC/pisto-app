@@ -2,7 +2,7 @@ import type { CashMovement } from "@pisto/contracts";
 import { Link } from "expo-router";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 import { DescriptionList } from "@/components/layout/description-list";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,8 @@ import { Text } from "@/components/ui/text";
 import { ConfirmCommandDialog } from "./confirm-command-dialog";
 import { LocalDateTimeFields } from "./local-date-time-fields";
 import { isLockedPhase, type MutationPhase } from "./mutation-state";
+
+const DIALOG_WIDTH = 520;
 
 export type CashReversalDraft = {
   reason: string;
@@ -53,6 +55,7 @@ export function CashMovementDialog({
   reversed,
 }: CashMovementDialogProps) {
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
   const note = reversed
     ? t("cash.movementDetail.reversed")
     : movement.reversalOfMovementId
@@ -65,7 +68,8 @@ export function CashMovementDialog({
       }}
       open={open}
     >
-      <DialogContent className="sm:max-w-lg">
+      {/* The shared content ignores its width classes on the web; size it like the shared Sheet. */}
+      <DialogContent style={{ width: Math.min(DIALOG_WIDTH, width - 32) }}>
         <DialogHeader>
           <DialogTitle>{actionLabel}</DialogTitle>
           <DialogDescription>{occurredAt}</DialogDescription>

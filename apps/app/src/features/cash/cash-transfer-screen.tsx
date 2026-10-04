@@ -4,7 +4,6 @@ import { ArrowLeftRight } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { PageHeader } from "@/components/layout/page-header";
-import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -15,6 +14,7 @@ import { requireSupportedLocale } from "@/i18n/locale";
 import { CashOperationReview } from "./cash-operation-review";
 import type { TransferDraftValues } from "./drafts";
 import { FieldError } from "./field-error";
+import { FormSection } from "./form-section";
 import { formatLocalOccurrence } from "./format";
 import { type CursorPage, LoadMoreButton } from "./load-more-button";
 import { LocalDateTimeFields } from "./local-date-time-fields";
@@ -126,57 +126,53 @@ export function CashTransferScreen({
         />
       ) : (
         <>
-          <Section title={t("cash.transfer.accountsSection")}>
-            <View className="gap-4">
-              <View className="gap-2">
-                <SelectField
-                  label={t("cash.transfer.fromAccount")}
-                  onChange={(fromAccountId) => onDraftChange({ ...draft, fromAccountId })}
-                  options={options}
-                  value={draft.fromAccountId || null}
-                />
-                <FieldError message={errors.fromAccountId} />
-              </View>
-              <View className="gap-2">
-                <SelectField
-                  label={t("cash.transfer.toAccount")}
-                  onChange={(toAccountId) => onDraftChange({ ...draft, toAccountId })}
-                  options={options}
-                  value={draft.toAccountId || null}
-                />
-                <FieldError message={errors.toAccountId} />
-              </View>
-              <LoadMoreButton
-                className="self-start"
-                label={t("cash.fields.loadMoreAccounts")}
-                page={accountsPage}
+          <FormSection title={t("cash.transfer.accountsSection")}>
+            <View className="gap-2">
+              <SelectField
+                label={t("cash.transfer.fromAccount")}
+                onChange={(fromAccountId) => onDraftChange({ ...draft, fromAccountId })}
+                options={options}
+                value={draft.fromAccountId || null}
               />
+              <FieldError message={errors.fromAccountId} />
             </View>
-          </Section>
-          <Section title={t("cash.transfer.amountSection")}>
-            <View className="gap-4">
-              <Field
-                error={errors.amount}
-                keyboardType="decimal-pad"
-                label={t("cash.fields.amount")}
-                onChangeText={(amount) => onDraftChange({ ...draft, amount })}
-                trailing={
-                  currency ? (
-                    <Text className="font-ui text-sm text-muted-foreground">{currency}</Text>
-                  ) : undefined
-                }
-                value={draft.amount}
+            <View className="gap-2">
+              <SelectField
+                label={t("cash.transfer.toAccount")}
+                onChange={(toAccountId) => onDraftChange({ ...draft, toAccountId })}
+                options={options}
+                value={draft.toAccountId || null}
               />
-              <Field
-                error={errors.note}
-                label={t("cash.transfer.noteOptional")}
-                maxLength={240}
-                onChangeText={(note) => onDraftChange({ ...draft, note })}
-                value={draft.note}
-              />
+              <FieldError message={errors.toAccountId} />
             </View>
-          </Section>
-          <Section title={t("cash.fields.occurredAt")}>
+            <LoadMoreButton
+              className="self-start"
+              label={t("cash.fields.loadMoreAccounts")}
+              page={accountsPage}
+            />
+          </FormSection>
+          <FormSection title={t("cash.transfer.amountSection")}>
+            <Field
+              error={errors.amount}
+              keyboardType="decimal-pad"
+              label={t("cash.fields.amount")}
+              onChangeText={(amount) => onDraftChange({ ...draft, amount })}
+              trailing={
+                currency ? (
+                  <Text className="font-ui text-sm text-muted-foreground">{currency}</Text>
+                ) : undefined
+              }
+              value={draft.amount}
+            />
+            <Field
+              error={errors.note}
+              label={t("cash.transfer.noteOptional")}
+              maxLength={240}
+              onChangeText={(note) => onDraftChange({ ...draft, note })}
+              value={draft.note}
+            />
+          </FormSection>
+          <FormSection title={t("cash.fields.occurredAt")}>
             <LocalDateTimeFields
               date={draft.localDate}
               dateError={errors.localDate}
@@ -185,7 +181,7 @@ export function CashTransferScreen({
               time={draft.localTime}
               timeError={errors.localTime}
             />
-          </Section>
+          </FormSection>
           <View className="flex-row flex-wrap justify-end gap-2">
             <Button label={t("common.cancel")} onPress={onCancel} variant="outline" />
             <Button label={t("cash.transfer.review")} onPress={onPrepareReview} />

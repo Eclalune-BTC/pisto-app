@@ -384,26 +384,30 @@ describe("expenses overview", () => {
 
   test("opens expenses by their row and offers void only on posted rows to a manager", () => {
     const props = expenseProps();
-    const history = (onVoidExpense?: (expense: Expense) => void) =>
+    const history = (expenses: Expense[], onVoidExpense?: (expense: Expense) => void) =>
       capture(ExpenseHistory, {
         accountNames: props.accountNames,
         businessId: props.businessId,
         empty: createElement("p", {}, "empty"),
-        expenses: Array.from({ length: 51 }, (_, index) => ({
-          ...expense,
-          id: `expense-${index}`,
-          description: `Complete record ${index}`,
-        })),
+        expenses,
         formatMoney,
         formatOccurredAt: props.formatOccurredAt,
         onVoidExpense,
       });
-    const managed = history(props.onVoidExpense);
-    expect(managed.markup).toContain("Complete record 50");
-    expect(managed.markup.indexOf("Complete record 0")).toBeLessThan(
-      managed.markup.indexOf("Complete record 50"),
+    const loaded = history(
+      Array.from({ length: 51 }, (_, index) => ({
+        ...expense,
+        id: `expense-${index}`,
+        description: `Complete record ${index}`,
+      })),
     );
-    expect(managed.markup).toContain(account.name);
+    expect(loaded.markup).toContain("Complete record 50");
+    expect(loaded.markup.indexOf("Complete record 0")).toBeLessThan(
+      loaded.markup.indexOf("Complete record 50"),
+    );
+    expect(loaded.markup).toContain(account.name);
+    expect((loaded.tree.props as { rowActions?: unknown }).rowActions).toBeUndefined();
+    const managed = history([expense], props.onVoidExpense);
     const table = managed.tree.props as {
       getRowHref: (record: Expense) => unknown;
       rowActions?: (record: Expense) => ReactElement | null;
@@ -420,8 +424,6 @@ describe("expenses overview", () => {
     actions.props.actions[0]?.onPress();
     expect(props.onVoidExpense).toHaveBeenCalledWith(expense);
     expect(table.rowActions?.({ ...expense, status: "voided" })).toBeNull();
-    const readOnly = history(undefined).tree.props as { rowActions?: unknown };
-    expect(readOnly.rowActions).toBeUndefined();
   });
 
   test("renders an empty history only after a successful read", () => {
