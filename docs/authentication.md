@@ -18,7 +18,8 @@ remain separate concerns.
 | `BETTER_AUTH_URL` | Exact public API/auth origin; production requires HTTPS and rejects reserved/example hosts |
 | `TRUSTED_ORIGINS` | Explicit browser origins and approved exact app-scheme origins; wildcard entries and production placeholder hosts fail validation |
 | `EXPO_SCHEME` | Stable private deep-link scheme, expected to be `pisto`; the auth package adds its scheme variants |
-| `AUTH_EMAIL_PASSWORD_ENABLED` | Explicit feature switch; do not infer from missing variables |
+| `AUTH_EMAIL_PASSWORD_ENABLED` | Exactly `true` or `false`; unset means `true`. Any other value, including an empty string, fails startup |
+| `AUTH_TRUSTED_PROXY_HEADERS` | Exactly `true` or `false`; unset means `false` |
 
 A future production secret must come from restricted runtime secret storage, not a committed file
 or Docker build argument. No hosting vendor or secret service is selected by this guide.

@@ -9,6 +9,12 @@ describe("API configuration", () => {
     }
     expect(() => parseApiConfig({ PRODUCT_WRITES_ENABLED: "" })).toThrow("PRODUCT_WRITES_ENABLED");
     expect(parseApiConfig({ PRODUCT_WRITES_ENABLED: "false" }).productWritesEnabled).toBe(false);
+    expect(parseApiConfig({}).productWritesEnabled).toBe(true);
+    for (const value of ["0", "no", "False", " false"]) {
+      expect(() => parseApiConfig({ PRODUCT_WRITES_ENABLED: value })).toThrow(
+        "PRODUCT_WRITES_ENABLED must be true or false",
+      );
+    }
   });
   test("uses the documented bind defaults", () => {
     expect(parseApiConfig({})).toMatchObject({
@@ -20,6 +26,9 @@ describe("API configuration", () => {
 
   test("prioritizes the Cloud Run PORT contract", () => {
     expect(parseApiConfig({ PORT: "8080", API_PORT: "3001" }).port).toBe(8080);
+    expect(parseApiConfig({ API_PORT: "3015" }).port).toBe(3015);
+    expect(() => parseApiConfig({ PORT: "80.5" })).toThrow("PORT must be an integer");
+    expect(() => parseApiConfig({ API_PORT: "70000" })).toThrow("API_PORT must be an integer");
   });
 
   test("accepts exact comma-separated CORS origins", () => {
@@ -42,7 +51,7 @@ describe("API configuration", () => {
         NODE_ENV: "production",
         CORS_ORIGINS: "http://app.example.test",
       }),
-    ).toThrow("Production CORS_ORIGINS must contain exact HTTPS origins");
+    ).toThrow("CORS_ORIGINS must use HTTPS in production");
   });
 
   test("rejects reserved CORS hostnames in production", () => {
@@ -51,6 +60,6 @@ describe("API configuration", () => {
         NODE_ENV: "production",
         CORS_ORIGINS: "https://app.example.com",
       }),
-    ).toThrow("reserved or example hostnames");
+    ).toThrow("CORS_ORIGINS cannot use a reserved or example hostname");
   });
 });

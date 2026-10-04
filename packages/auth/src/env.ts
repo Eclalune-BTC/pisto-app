@@ -1,3 +1,5 @@
+import { type Environment, readEnvironment } from "@pisto/config";
+
 export interface VersionedAuthSecret {
   version: number;
   value: string;
@@ -15,32 +17,6 @@ export interface AuthConfig {
 
 export class AuthConfigurationError extends Error {
   override readonly name = "AuthConfigurationError";
-}
-
-function isReservedProductionHostname(hostname: string): boolean {
-  const normalized = hostname
-    .toLowerCase()
-    .replace(/\.$/, "")
-    .replace(/^\[|\]$/g, "");
-  if (normalized === "localhost" || normalized === "::1" || normalized === "0.0.0.0") return true;
-  if (/^127(?:\.\d{1,3}){3}$/.test(normalized)) return true;
-  return [
-    "localhost",
-    "test",
-    "invalid",
-    "example",
-    "example.com",
-    "example.net",
-    "example.org",
-  ].some((suffix) => normalized === suffix || normalized.endsWith(`.${suffix}`));
-}
-
-function parseBoolean(value: string | undefined, fallback: boolean): boolean {
-  if (value === undefined || value.trim() === "") return fallback;
-  const normalized = value.trim().toLowerCase();
-  if (["1", "true", "yes", "on"].includes(normalized)) return true;
-  if (["0", "false", "no", "off"].includes(normalized)) return false;
-  throw new AuthConfigurationError(`Invalid boolean value: ${value}`);
 }
 
 function parseVersionedSecrets(value: string | undefined) {
@@ -65,93 +41,11 @@ function parseVersionedSecrets(value: string | undefined) {
   return secrets;
 }
 
-function parseOrigins(input: {
-  value: string | undefined;
-  expoScheme: string | undefined;
-  production: boolean;
-}): string[] {
-  const { value, expoScheme, production } = input;
-  if (!value?.trim()) return [];
-  const origins = value
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-  for (const origin of origins) {
-    if (/[*?]/.test(origin)) {
-      throw new AuthConfigurationError(
-        "TRUSTED_ORIGINS must use exact origins; wildcard entries are not allowed",
-      );
-    }
-    if (/^https?:\/\//i.test(origin)) {
-      let url: URL;
-      try {
-        url = new URL(origin);
-      } catch {
-        throw new AuthConfigurationError("TRUSTED_ORIGINS contains an invalid HTTP(S) origin");
-      }
-      if (
-        url.origin !== origin ||
-        url.username ||
-        url.password ||
-        (production && url.protocol !== "https:")
-      ) {
-        throw new AuthConfigurationError(
-          production
-            ? "Production TRUSTED_ORIGINS entries must be exact HTTPS origins"
-            : "TRUSTED_ORIGINS HTTP(S) entries must be exact origins without paths",
-        );
-      }
-      if (production && isReservedProductionHostname(url.hostname)) {
-        throw new AuthConfigurationError(
-          "Production TRUSTED_ORIGINS cannot contain reserved or example hostnames",
-        );
-      }
-      continue;
-    }
+export function parseAuthConfig(env: Environment): AuthConfig {
+  const read = readEnvironment(env, AuthConfigurationError);
+  const baseUrl = read.httpOrigin(read.required("BETTER_AUTH_URL"), "BETTER_AUTH_URL");
 
-    const customScheme = origin.match(/^([a-z][a-z0-9+.-]*):\/\/(?:[a-z0-9._~-]+)?$/i)?.[1];
-    if (!customScheme || !expoScheme || customScheme.toLowerCase() !== expoScheme.toLowerCase()) {
-      throw new AuthConfigurationError(
-        "TRUSTED_ORIGINS custom-scheme entries must use the configured EXPO_SCHEME",
-      );
-    }
-  }
-  return origins;
-}
-
-export function parseAuthConfig(env: Record<string, string | undefined>): AuthConfig {
-  if (env.NODE_ENV !== undefined && !["development", "test", "production"].includes(env.NODE_ENV)) {
-    throw new AuthConfigurationError("NODE_ENV must be development, test, or production");
-  }
-  const production = (env.NODE_ENV ?? "development") === "production";
-  const baseUrlValue = env.BETTER_AUTH_URL?.trim();
-  let baseUrl: URL;
-  try {
-    baseUrl = new URL(baseUrlValue ?? "");
-  } catch {
-    throw new AuthConfigurationError(
-      "BETTER_AUTH_URL is required and must be an exact HTTP(S) origin",
-    );
-  }
-  if (
-    !["http:", "https:"].includes(baseUrl.protocol) ||
-    baseUrl.origin !== baseUrlValue ||
-    baseUrl.username ||
-    baseUrl.password
-  ) {
-    throw new AuthConfigurationError(
-      "BETTER_AUTH_URL is required and must be an exact HTTP(S) origin",
-    );
-  }
-  if (production && baseUrl.protocol !== "https:") {
-    throw new AuthConfigurationError("BETTER_AUTH_URL must use HTTPS in production");
-  }
-  if (production && isReservedProductionHostname(baseUrl.hostname)) {
-    throw new AuthConfigurationError(
-      "BETTER_AUTH_URL cannot use a reserved or example hostname in production",
-    );
-  }
-  const secret = env.BETTER_AUTH_SECRET?.trim();
+  const secret = read.optional("BETTER_AUTH_SECRET");
   if (secret === "__GENERATED_BETTER_AUTH_SECRET__") {
     throw new AuthConfigurationError("BETTER_AUTH_SECRET must be generated before startup");
   }
@@ -163,29 +57,30 @@ export function parseAuthConfig(env: Record<string, string | undefined>): AuthCo
     throw new AuthConfigurationError("BETTER_AUTH_SECRET or BETTER_AUTH_SECRETS is required");
   }
 
-  const expoScheme = env.EXPO_SCHEME?.trim().toLowerCase();
-  if (expoScheme && !/^[a-z][a-z0-9+.-]*$/i.test(expoScheme)) {
+  const expoScheme = read.optional("EXPO_SCHEME")?.toLowerCase();
+  if (expoScheme && !/^[a-z][a-z0-9+.-]*$/.test(expoScheme)) {
     throw new AuthConfigurationError("EXPO_SCHEME is not a valid URL scheme");
   }
   if (expoScheme && ["http", "https", "javascript", "data", "file", "blob"].includes(expoScheme)) {
     throw new AuthConfigurationError("EXPO_SCHEME must be a private application URL scheme");
   }
-  const trustedOrigins = [
-    ...parseOrigins({
-      value: env.TRUSTED_ORIGINS,
-      expoScheme,
-      production,
-    }),
-    ...(expoScheme ? [`${expoScheme}://`, `${expoScheme}://*`] : []),
-  ];
+  const trustedOrigins = read.originList("TRUSTED_ORIGINS", (origin) => {
+    const customScheme = origin.match(/^([a-z][a-z0-9+.-]*):\/\/(?:[a-z0-9._~-]+)?$/i)?.[1];
+    if (!customScheme || !expoScheme || customScheme.toLowerCase() !== expoScheme) {
+      throw new AuthConfigurationError(
+        "TRUSTED_ORIGINS custom-scheme entries must use the configured EXPO_SCHEME",
+      );
+    }
+  });
+  if (expoScheme) trustedOrigins.push(`${expoScheme}://`, `${expoScheme}://*`);
 
   return {
-    baseUrl: baseUrl.href.replace(/\/$/, ""),
+    baseUrl,
     ...(secret ? { secret } : {}),
     ...(secrets ? { secrets } : {}),
     trustedOrigins: [...new Set(trustedOrigins)],
-    emailAndPasswordEnabled: parseBoolean(env.AUTH_EMAIL_PASSWORD_ENABLED, true),
-    production,
-    trustedProxyHeaders: parseBoolean(env.AUTH_TRUSTED_PROXY_HEADERS, false),
+    emailAndPasswordEnabled: read.boolean("AUTH_EMAIL_PASSWORD_ENABLED", true),
+    production: read.production,
+    trustedProxyHeaders: read.boolean("AUTH_TRUSTED_PROXY_HEADERS", false),
   };
 }

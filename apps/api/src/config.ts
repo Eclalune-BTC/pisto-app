@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { type Environment, readEnvironment } from "@pisto/config";
 
 export interface ApiConfig {
   host: string;
@@ -15,106 +15,20 @@ export class ApiConfigurationError extends Error {
   override readonly name = "ApiConfigurationError";
 }
 
-function isReservedProductionHostname(hostname: string): boolean {
-  const normalized = hostname
-    .toLowerCase()
-    .replace(/\.$/, "")
-    .replace(/^\[|\]$/g, "");
-  if (normalized === "localhost" || normalized === "::1" || normalized === "0.0.0.0") return true;
-  if (/^127(?:\.\d{1,3}){3}$/.test(normalized)) return true;
-  return [
-    "localhost",
-    "test",
-    "invalid",
-    "example",
-    "example.com",
-    "example.net",
-    "example.org",
-  ].some((suffix) => normalized === suffix || normalized.endsWith(`.${suffix}`));
-}
-
-function parseCorsOrigins(value: string | undefined, production: boolean): string[] {
-  if (!value?.trim()) return [];
-  const origins = value
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-  for (const origin of origins) {
-    const parsed = z.string().url().safeParse(origin);
-    const url = parsed.success ? new URL(origin) : null;
-    if (
-      !url ||
-      !["http:", "https:"].includes(url.protocol) ||
-      url.origin !== origin ||
-      (production && url.protocol !== "https:")
-    ) {
-      throw new ApiConfigurationError(
-        production
-          ? "Production CORS_ORIGINS must contain exact HTTPS origins"
-          : "CORS_ORIGINS must contain exact HTTP(S) origins without paths",
-      );
-    }
-    if (production && isReservedProductionHostname(url.hostname)) {
-      throw new ApiConfigurationError(
-        "Production CORS_ORIGINS cannot contain reserved or example hostnames",
-      );
-    }
-  }
-  return [...new Set(origins)];
-}
-
-function parseInteger(
-  value: string | undefined,
-  fallback: number,
-  variable: string,
-  min: number,
-  max: number,
-) {
-  if (!value?.trim()) return fallback;
-  const result = z.coerce.number().int().min(min).max(max).safeParse(value);
-  if (!result.success) {
-    throw new ApiConfigurationError(`${variable} must be an integer from ${min} to ${max}`);
-  }
-  return result.data;
-}
-
-export function parseApiConfig(env: Record<string, string | undefined>): ApiConfig {
-  if (env.NODE_ENV !== undefined && !["development", "test", "production"].includes(env.NODE_ENV)) {
-    throw new ApiConfigurationError("NODE_ENV must be development, test, or production");
-  }
-  const production = (env.NODE_ENV ?? "development") === "production";
-  if (
-    env.PRODUCT_WRITES_ENABLED !== undefined &&
-    !["true", "false"].includes(env.PRODUCT_WRITES_ENABLED)
-  ) {
-    throw new ApiConfigurationError("PRODUCT_WRITES_ENABLED must be true or false");
-  }
+export function parseApiConfig(env: Environment): ApiConfig {
+  const read = readEnvironment(env, ApiConfigurationError);
   return {
-    host: env.API_HOST?.trim() || "0.0.0.0",
-    port: parseInteger(env.PORT ?? env.API_PORT, 3001, "PORT", 1, 65_535),
-    corsOrigins: parseCorsOrigins(env.CORS_ORIGINS, production),
-    requestBodyLimitBytes: parseInteger(
-      env.API_REQUEST_BODY_LIMIT_BYTES,
-      1_048_576,
-      "API_REQUEST_BODY_LIMIT_BYTES",
-      1_024,
-      10_485_760,
-    ),
-    production,
-    productWritesEnabled: env.PRODUCT_WRITES_ENABLED !== "false",
-    productReadLimit: parseInteger(
-      env.PRODUCT_READ_LIMIT_PER_MINUTE,
-      300,
-      "PRODUCT_READ_LIMIT_PER_MINUTE",
-      1,
-      10_000,
-    ),
-    productWriteLimit: parseInteger(
-      env.PRODUCT_WRITE_LIMIT_PER_MINUTE,
-      60,
-      "PRODUCT_WRITE_LIMIT_PER_MINUTE",
-      1,
-      1_000,
-    ),
+    // Container platforms such as Cloud Run inject PORT; API_PORT is the local setting.
+    host: read.optional("API_HOST") ?? "0.0.0.0",
+    port: read.integer(read.optional("PORT") ? "PORT" : "API_PORT", 3001, { min: 1, max: 65_535 }),
+    corsOrigins: read.originList("CORS_ORIGINS"),
+    requestBodyLimitBytes: read.integer("API_REQUEST_BODY_LIMIT_BYTES", 1_048_576, {
+      min: 1_024,
+      max: 10_485_760,
+    }),
+    production: read.production,
+    productWritesEnabled: read.boolean("PRODUCT_WRITES_ENABLED", true),
+    productReadLimit: read.integer("PRODUCT_READ_LIMIT_PER_MINUTE", 300, { min: 1, max: 10_000 }),
+    productWriteLimit: read.integer("PRODUCT_WRITE_LIMIT_PER_MINUTE", 60, { min: 1, max: 1_000 }),
   };
 }

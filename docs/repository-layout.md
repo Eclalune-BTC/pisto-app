@@ -12,6 +12,7 @@ pisto-stack/
 |-- packages/
 |   |-- auth/                # @pisto/auth: Better Auth configuration and schema checks
 |   |-- billing/             # @pisto/billing: providers and entitlement decisions
+|   |-- config/              # @pisto/config: shared server environment parsing rules
 |   |-- contracts/           # @pisto/contracts: shared transport schemas and types
 |   `-- db/                  # @pisto/db: Drizzle schema, migrations, repositories
 |-- docs/
@@ -47,9 +48,9 @@ The manifests currently encode this dependency graph:
 
 ```text
 apps/app --------> packages/contracts
-apps/api --------> packages/auth, packages/billing, packages/contracts, packages/db
-packages/auth ---> packages/billing, packages/db
-packages/billing -> packages/contracts, packages/db
+apps/api --------> packages/auth, packages/billing, packages/config, packages/contracts, packages/db
+packages/auth ---> packages/billing, packages/config, packages/db
+packages/billing -> packages/config, packages/contracts, packages/db
 packages/db ------> packages/contracts
 
 No package imports either application workspace.
@@ -73,6 +74,7 @@ for undeclared dependencies: each workspace must still declare every package it 
 | Add a table, index, query, or transaction | `packages/db/src` plus a migration |
 | Change session or sign-in behavior | `packages/auth/src` |
 | Add a billing provider or access rule | `packages/billing/src` |
+| Change how a server environment variable kind is parsed | `packages/config/src` |
 | Add a safe developer workflow | `scripts` with tests |
 | Change shared agent delivery rules | `AGENTS.md`, `.agents/skills`, `CLAUDE.md`, and matching docs |
 | Define how a future product capability composes | Its approved brief plus `docs/product-capability-architecture.md` |
@@ -86,7 +88,10 @@ not create either package as empty scaffolding. Sales/domain code must not depen
 the API composes authorized sales capabilities into assistant tools.
 
 If a feature crosses boundaries, keep orchestration in the API and domain logic in the owning
-package. Do not create a generic `utils` package for code with a clear owner.
+package. Do not create a generic `utils` package for code with a clear owner. `@pisto/config` is
+not one: it owns only the environment rules that the API, auth and billing configuration parsers
+must apply identically, has no runtime dependencies, and each consumer keeps its own variables and
+error type.
 
 The capability map is not a directory generator. Do not mirror every future product row with an
 empty workspace. Routes, navigation, assistant tools, jobs, and permissions remain explicitly

@@ -16,6 +16,7 @@
   "dependencies": {
     "@better-auth/expo": "1.7.1",
     "@pisto/billing": "workspace:*",
+    "@pisto/config": "workspace:*",
     "@pisto/db": "workspace:*",
     "better-auth": "1.7.1",
     "drizzle-orm": "0.45.2"

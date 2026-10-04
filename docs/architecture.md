@@ -62,6 +62,7 @@ manifests and `bun.lock`; [versioning](versioning-upgrades.md) owns the upgrade 
 | `@pisto/db` | Drizzle schema, migrations, repositories, transaction helpers | HTTP or UI concerns |
 | `@pisto/auth` | Better Auth configuration, session access, auth schema integration | Product catalog or UI navigation |
 | `@pisto/billing` | Provider adapters, webhook normalization, entitlement resolution | React components or HTTP framework composition |
+| `@pisto/config` | Shared server environment rules: `NODE_ENV`, exact booleans, bounded integers, HTTP(S) URLs and origins | Package-specific variables, defaults or error types |
 
 Dependencies point inward toward contracts and domain packages. The API composes packages; packages
 do not import the API. The app may import public contracts, but never server implementations.

@@ -13,6 +13,7 @@
     "test:integration": "bun test ./integration/webhooks.integration.ts"
   },
   "dependencies": {
+    "@pisto/config": "workspace:*",
     "@pisto/contracts": "workspace:*",
     "@pisto/db": "workspace:*",
     "@polar-sh/better-auth": "2.0.1",

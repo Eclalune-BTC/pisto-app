@@ -17,6 +17,7 @@
         "@elysiajs/cors": "1.4.2",
         "@pisto/auth": "workspace:*",
         "@pisto/billing": "workspace:*",
+        "@pisto/config": "workspace:*",
         "@pisto/contracts": "workspace:*",
         "@pisto/db": "workspace:*",
         "@sinclair/typebox": "0.34.52",
@@ -104,6 +105,7 @@
       "dependencies": {
         "@better-auth/expo": "1.7.1",
         "@pisto/billing": "workspace:*",
+        "@pisto/config": "workspace:*",
         "@pisto/db": "workspace:*",
         "better-auth": "1.7.1",
         "drizzle-orm": "0.45.2",
@@ -118,6 +120,7 @@
       "name": "@pisto/billing",
       "version": "0.0.0",
       "dependencies": {
+        "@pisto/config": "workspace:*",
         "@pisto/contracts": "workspace:*",
         "@pisto/db": "workspace:*",
         "@polar-sh/better-auth": "2.0.1",
@@ -126,6 +129,14 @@
         "drizzle-orm": "0.45.2",
         "zod": "4.4.3",
       },
+      "devDependencies": {
+        "@types/bun": "1.4.0",
+        "typescript": "6.0.3",
+      },
+    },
+    "packages/config": {
+      "name": "@pisto/config",
+      "version": "0.0.0",
       "devDependencies": {
         "@types/bun": "1.4.0",
         "typescript": "6.0.3",
@@ -597,6 +608,8 @@
     "@pisto/auth": ["@pisto/auth@workspace:packages/auth"],
 
     "@pisto/billing": ["@pisto/billing@workspace:packages/billing"],
+
+    "@pisto/config": ["@pisto/config@workspace:packages/config"],
 
     "@pisto/contracts": ["@pisto/contracts@workspace:packages/contracts"],
 

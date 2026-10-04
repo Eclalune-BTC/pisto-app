@@ -17,6 +17,7 @@
     "@elysiajs/cors": "1.4.2",
     "@pisto/auth": "workspace:*",
     "@pisto/billing": "workspace:*",
+    "@pisto/config": "workspace:*",
     "@pisto/contracts": "workspace:*",
     "@pisto/db": "workspace:*",
     "@sinclair/typebox": "0.34.52",

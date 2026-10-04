@@ -29,6 +29,7 @@
 - packages/db owns PostgreSQL schema, migrations, and repositories.
 - packages/auth owns Better Auth server configuration.
 - packages/billing owns provider adapters and entitlement decisions.
+- packages/config owns shared server environment parsing rules (NODE_ENV, booleans, integers, URLs).
 - scripts owns the local CLI and must remain safe to run repeatedly.
 - docs owns operational decisions and links to primary sources.
 

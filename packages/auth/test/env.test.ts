@@ -15,7 +15,32 @@ describe("auth configuration", () => {
     expect(parseAuthConfig({ ...baseEnvironment, NODE_ENV: "test" }).production).toBe(false);
   });
   test("requires an explicit secret and canonical URL", () => {
-    expect(() => parseAuthConfig({})).toThrow(AuthConfigurationError);
+    expect(() => parseAuthConfig({})).toThrow("BETTER_AUTH_URL is required");
+    expect(() =>
+      parseAuthConfig({ ...baseEnvironment, BETTER_AUTH_URL: "https://api.example.test/auth" }),
+    ).toThrow("BETTER_AUTH_URL must be an exact HTTP(S) origin without a path");
+    expect(() => parseAuthConfig({ BETTER_AUTH_URL: baseEnvironment.BETTER_AUTH_URL })).toThrow(
+      "BETTER_AUTH_SECRET or BETTER_AUTH_SECRETS is required",
+    );
+  });
+
+  test("accepts only exact boolean switches and defaults only when unset", () => {
+    expect(parseAuthConfig(baseEnvironment)).toMatchObject({
+      emailAndPasswordEnabled: true,
+      trustedProxyHeaders: false,
+    });
+    expect(
+      parseAuthConfig({
+        ...baseEnvironment,
+        AUTH_EMAIL_PASSWORD_ENABLED: "false",
+        AUTH_TRUSTED_PROXY_HEADERS: "true",
+      }),
+    ).toMatchObject({ emailAndPasswordEnabled: false, trustedProxyHeaders: true });
+    for (const value of ["", "1", "yes", "on", "TRUE", " true"]) {
+      expect(() =>
+        parseAuthConfig({ ...baseEnvironment, AUTH_TRUSTED_PROXY_HEADERS: value }),
+      ).toThrow("AUTH_TRUSTED_PROXY_HEADERS must be true or false");
+    }
   });
 
   test("rejects the public setup placeholder as an auth secret", () => {
@@ -83,7 +108,7 @@ describe("auth configuration", () => {
         TRUSTED_ORIGINS: "https://app.example.com",
         NODE_ENV: "production",
       }),
-    ).toThrow("reserved or example hostnames");
+    ).toThrow("TRUSTED_ORIGINS cannot use a reserved or example hostname");
   });
 
   test("rejects typoed and wildcard trusted origins", () => {
@@ -98,7 +123,7 @@ describe("auth configuration", () => {
         ...baseEnvironment,
         TRUSTED_ORIGINS: "https://*.example.test",
       }),
-    ).toThrow("wildcard entries are not allowed");
+    ).toThrow("TRUSTED_ORIGINS must use exact origins without wildcards");
   });
 
   test("accepts an exact configured application scheme", () => {

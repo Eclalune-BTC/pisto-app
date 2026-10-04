@@ -43,6 +43,40 @@ describe("billing configuration", () => {
     }
   });
 
+  test("requires an explicit Polar API server instead of defaulting to sandbox", () => {
+    const environment = {
+      BILLING_ENABLED: "true",
+      POLAR_ACCESS_TOKEN: "configured-access-token",
+      POLAR_WEBHOOK_SECRET: "configured-webhook-secret",
+      POLAR_SUCCESS_URL: "https://app.example.test/billing/success",
+      POLAR_PRODUCTS_JSON: JSON.stringify([
+        { productId: "d8dd2de1-21b7-4a41-8bc3-ce909c0cfe23", slug: "pro", entitlementKey: "pro" },
+      ]),
+    };
+    for (const POLAR_SERVER of [undefined, "", "live", "Sandbox"]) {
+      expect(() => parseBillingConfig({ ...environment, POLAR_SERVER })).toThrow(
+        "POLAR_SERVER must be one of sandbox, production",
+      );
+    }
+    const config = parseBillingConfig({ ...environment, POLAR_SERVER: "production" });
+    expect(config.polar.enabled && config.polar.server).toBe("production");
+  });
+
+  test("accepts only exact boolean provider switches", () => {
+    expect(parseBillingConfig({ BILLING_ENABLED: "false", REVENUECAT_ENABLED: "false" })).toEqual({
+      polar: { enabled: false },
+      revenueCat: { enabled: false },
+    });
+    for (const value of ["", "0", "off", "yes", "1", "TRUE"]) {
+      expect(() => parseBillingConfig({ BILLING_ENABLED: value })).toThrow(
+        "BILLING_ENABLED must be true or false",
+      );
+      expect(() => parseBillingConfig({ REVENUECAT_ENABLED: value })).toThrow(
+        "REVENUECAT_ENABLED must be true or false",
+      );
+    }
+  });
+
   test("fails closed when RevenueCat has no entitlement map", () => {
     expect(() =>
       parseBillingConfig({
@@ -59,6 +93,7 @@ describe("billing configuration", () => {
         BILLING_ENABLED: "true",
         POLAR_ACCESS_TOKEN: "configured-access-token",
         POLAR_WEBHOOK_SECRET: "configured-webhook-secret",
+        POLAR_SERVER: "production",
         POLAR_PRODUCTS_JSON: JSON.stringify([
           {
             productId: "9dcb86e0-0e80-4a18-b354-4c1723c7e8cd",
@@ -84,6 +119,7 @@ describe("billing configuration", () => {
       BILLING_ENABLED: "true",
       POLAR_ACCESS_TOKEN: "configured-access-token",
       POLAR_WEBHOOK_SECRET: "configured-webhook-secret",
+      POLAR_SERVER: "production",
       POLAR_PRODUCTS_JSON: productJson,
       POLAR_SUCCESS_URL: "https://app.pisto.dev/billing/success",
     };
