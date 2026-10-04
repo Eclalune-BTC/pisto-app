@@ -186,8 +186,6 @@ tables, one per capability, because their foreign keys and action `CHECK` constr
 
 Cash, catalog, and receivables share one prologue, `beginOperation`, which authorizes the fresh
 session and membership first, then takes the idempotency lock, then reads the replay.
-Internal modules import domain primitives from `product-core.ts`, keeping the composition of sales
-repositories out of their dependency path. Public package exports remain stable.
 
 Each capability lives in its own folder (`cash/`, `catalog/`, `receivables/`, `sales/`) with the
 same roles: `types.ts` for the repository interface, `mappers.ts` for record-to-contract mapping,
