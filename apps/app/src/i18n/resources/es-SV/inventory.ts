@@ -50,7 +50,7 @@ export const inventory = {
   },
   history: {
     title: "Movimientos",
-    description: "Del más reciente al más antiguo según su registro.",
+    description: "Por fecha del movimiento, del más reciente al más antiguo.",
     loading: "Cargando movimientos…",
     unavailableTitle: "No pudimos cargar los movimientos",
     unavailableDescription: "Vuelve a intentarlo en un momento.",

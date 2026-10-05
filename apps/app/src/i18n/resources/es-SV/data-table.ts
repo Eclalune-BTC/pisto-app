@@ -15,7 +15,7 @@ export const dataTable = {
     phone: "Teléfono",
     email: "Correo",
     price: "Precio",
-    stock: "Existencias",
+    stock: "Existencia",
     customer: "Cliente",
     outstanding: "Pendiente",
     quantity: "Cantidad",

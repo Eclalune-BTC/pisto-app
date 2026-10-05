@@ -156,10 +156,11 @@ explicitly separate selected-period sales/expenses/cash from current inventory a
 positions. A report must not call gross revenue profit or treat internal transfers as external income.
 
 Existing indexes lead with tenant identity, then relevant status/account/customer/product filters
-and deterministic ordering columns. Sales include both business-created and
-business-status-created indexes. Cash movements are indexed by business/account/creation and by
-business/occurrence. Receivables have customer/history and status/due-date paths; unique operation
-keys support exact replay.
+and deterministic ordering columns. Ledger lists (sales, expenses, cash and inventory movements,
+receivable payments) are ordered by `(occurred_at, created_at, id)` and each has a matching
+business/occurrence index, with status, account or product variants where the list filters on them;
+the same indexes serve report period ranges. Receivables have customer/history and status/due-date
+paths; unique operation keys support exact replay.
 
 Before adding an index or materialized balance, measure the actual authorized query with
 `EXPLAIN (ANALYZE, BUFFERS)` on representative data. In particular, unfiltered cash history and

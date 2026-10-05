@@ -94,8 +94,8 @@ creating an unbounded correction chain.
 ## Queries and HTTP contract
 
 All routes use the existing `{ data: ... }` success envelope and stable error envelope. Lists default
-to 25, accept 1 through 50, use an opaque creation-time/UUID cursor, and reject invalid or cross-list
-cursors.
+to 25, accept 1 through 50, use an opaque cursor (creation time and UUID for categories and products; occurrence time,
+creation time and UUID for inventory movements), and reject invalid or cross-list cursors.
 
 | Method | Path | Permission | Result |
 | --- | --- | --- | --- |

@@ -9,7 +9,7 @@ export function StatGroup({ children }: PropsWithChildren) {
     <View
       className={cn(
         "flex-row flex-wrap gap-px overflow-hidden rounded-lg border border-border bg-border",
-        Children.count(children) === 1 && "self-start",
+        Children.toArray(children).length === 1 && "self-start",
       )}
     >
       {children}

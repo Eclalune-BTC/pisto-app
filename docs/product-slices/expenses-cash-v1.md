@@ -65,7 +65,9 @@ and marks the expense voided in one transaction; it does not delete or overwrite
 ### Cash movement
 
 Each movement stores a positive amount, explicit direction, signed derived delta, action, account,
-currency/time snapshots, reason, actor, and an applicable source link. Database checks require the
+currency/time snapshots, actor, an applicable source link, and the reason a person typed. Movements
+the system writes for a transfer without a note or for a receivable payment and its reversal store no
+reason; clients describe them from their action. Database checks require the
 direction and delta to agree and require the source shape for expenses, transfers, receivable
 payments, and reversals. Account balance is the exact sum of movement deltas. A reversal points to
 the original movement through a business-scoped foreign key and a uniqueness constraint permits it
@@ -112,8 +114,9 @@ new expenses, adjustments, and transfers require active accounts.
 - Calculate posted expense total, count, and category breakdown for an inclusive business-local date
   range using half-open UTC boundaries.
 
-Lists default to 25 and accept 1 through 50 records. Creation time and UUID form the deterministic
-descending order. Invalid cursors and impossible dates are validation errors. A valid empty query
+Lists default to 25 and accept 1 through 50 records. Occurrence time, then creation time
+and UUID form the deterministic descending order of expenses and movements; accounts use creation
+time and UUID. Invalid cursors and impossible dates are validation errors. A valid empty query
 returns real empty items or zero totals; authorization, database, and network failures do not become
 empty data.
 

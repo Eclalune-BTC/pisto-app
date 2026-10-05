@@ -38,7 +38,7 @@ export const sales = {
   },
   list: {
     title: "Historial",
-    sortNote: "Ordenadas por fecha de registro, de la más reciente a la más antigua.",
+    sortNote: "Por fecha de la venta, de la más reciente a la más antigua.",
     statusAll: "Todas",
     statusPosted: "Registradas",
     statusVoided: "Anuladas",

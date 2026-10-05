@@ -97,12 +97,20 @@ Never edit an already-applied migration. Add a forward migration.
 The Drizzle schema object in `packages/db/src/schema/index.ts` is the authoritative inventory: 30
 tables, of which 8 are Better Auth, 4 are billing, and 18 are Pisto business tables. Migration
 `0001` created `business_settings`, `sale`, and `sale_operation`; migration `0003` created the other
-14. Migration `0004` adds sale-history indexes. Migration `0005` strengthens complete optional-price
+14. Migration `0004` added sale-history indexes that `0009` later replaced. Migration `0005` strengthens complete optional-price
 and void-record constraints without adding tables. Migration `0006` adds `sale_review`, with one
 open working snapshot per actor/business, a same-business saved-sale reference and closed-key
 retention. See [ADR 0018](adrs/0018-durable-sale-review.md). Migration `0007` adds
 `entitlement_source_check`; it validates existing rows and fails on any other stored source rather
-than rewriting it. Reports add no reporting ledger or materialized balance.
+than rewriting it. Migration `0008` makes `cash_movement.reason` nullable for system-written
+transfer and receivable movements and rewrites the English reasons the system stored before to
+NULL, matching only rows whose source proves they were generated. Migration `0009` replaces the
+creation-order indexes of the ledger lists with occurrence-order indexes. Drizzle applies pending
+migrations in one transaction and `DROP INDEX` holds an exclusive lock, so `sale`, `expense`,
+`cash_movement`, `inventory_movement` and `receivable_payment` are unavailable until every new index
+is built; apply it outside business hours on large data. Apply the migrations before deploying the
+code that writes NULL reasons; rerunning the three `0008` updates afterwards is safe if an older API
+wrote system reasons in between. Reports add no reporting ledger or materialized balance.
 
 Raw JSON is evidence and forward-compatibility data. Queryable authorization fields remain typed
 columns with indexes; code does not scan provider JSON to authorize each request.

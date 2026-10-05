@@ -19,7 +19,7 @@ export const productErrors = {
       fallback: "No pudimos archivar el producto. Su estado no se confirmó como cambiado.",
       forbidden: "Tu rol actual no permite archivar productos.",
       idempotency:
-        "Esta clave de confirmación ya se usó con otra operación. Abre de nuevo el producto.",
+        "Esta confirmación ya se envió con otra operación. Abre de nuevo el producto.",
       notFound: "El producto ya no está disponible en este negocio.",
       validation: "La confirmación para archivar no es válida.",
     },
@@ -27,11 +27,11 @@ export const productErrors = {
       conflict: "Esta cuenta ya pertenece a un negocio con una configuración diferente.",
     },
     category: {
-      conflict: "Ya existe una categoría con ese nombre o la categoría ya no admite cambios.",
+      conflict: "Ya existe una categoría con ese nombre.",
       fallback: "No pudimos guardar la categoría. Ningún cambio se confirmó.",
       forbidden: "Tu rol actual no permite administrar categorías.",
       idempotency:
-        "Esta clave de confirmación ya se usó con otros datos. Edita y vuelve a revisar la operación.",
+        "Esta confirmación ya se envió con otros datos. Edita y vuelve a revisar la operación.",
       notFound: "La categoría ya no está disponible en este negocio.",
       validation: "Revisa el nombre antes de continuar.",
     },
@@ -41,7 +41,7 @@ export const productErrors = {
       fallback: "No pudimos confirmar el movimiento. La existencia no se muestra como modificada.",
       forbidden: "Tu rol actual no permite cambiar existencias.",
       idempotency:
-        "Esta clave de confirmación ya se usó con otros datos. Edita y vuelve a revisar el movimiento.",
+        "Esta confirmación ya se envió con otros datos. Edita y vuelve a revisar el movimiento.",
       notFound: "El producto ya no está disponible en este negocio.",
       validation: "Revisa la cantidad, el motivo, la fecha y la hora antes de continuar.",
     },
@@ -51,7 +51,7 @@ export const productErrors = {
       fallback: "No pudimos guardar el producto. Ningún cambio se confirmó.",
       forbidden: "Tu rol actual no permite administrar productos.",
       idempotency:
-        "Esta clave de confirmación ya se usó con otros datos. Edita y vuelve a revisar la operación.",
+        "Esta confirmación ya se envió con otros datos. Edita y vuelve a revisar la operación.",
       notFound: "El producto ya no está disponible en este negocio.",
       validation: "Revisa los datos del producto antes de continuar.",
     },
@@ -61,7 +61,7 @@ export const productErrors = {
       fallback: "No pudimos confirmar la reversión. La existencia no se muestra como modificada.",
       forbidden: "Tu rol actual no permite revertir movimientos.",
       idempotency:
-        "Esta clave de confirmación ya se usó con otros datos. Abre de nuevo el movimiento.",
+        "Esta confirmación ya se envió con otros datos. Abre de nuevo el movimiento.",
       notFound: "El movimiento ya no está disponible en este negocio.",
       validation: "Revisa el motivo, la fecha y la hora antes de continuar.",
     },

@@ -65,7 +65,7 @@ commands, queries, and failure behavior; applications compose those capabilities
 
 - Domain routes live under `/v1` and return `{ data: ... }`; errors use the existing stable envelope.
 - List queries use an optional opaque cursor and a bounded `limit` from 1 through 50, default 25.
-  Results are ordered deterministically by creation time and ID. Cursors preserve PostgreSQL
+  Sales are ordered deterministically by occurrence time, creation time and ID. Cursors preserve PostgreSQL
   microseconds and encode UTC explicitly. Invalid cursors are validation errors, not empty results.
 - Every list distinguishes successful empty data from denied, unavailable, malformed, and network
   states. Every `/v1` response remains `Cache-Control: no-store`.
