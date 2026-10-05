@@ -1,204 +1,290 @@
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
-import { AlertTriangle, CreditCard, LockKeyhole, LogOut, ShieldCheck } from "lucide-react-native";
+import { Link } from "expo-router";
+import { LogOut, TriangleAlert } from "lucide-react-native";
+import type { PropsWithChildren, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { AppearanceControl } from "@/components/appearance-control";
+import { DescriptionList } from "@/components/layout/description-list";
+import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
-import { ScreenHeader } from "@/components/screen-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button, ButtonText } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { formatLocalizedDate } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { api } from "@/lib/api-client";
+import { cn } from "@/lib/cn";
+import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { hasDeniedRead } from "@/lib/query-state";
+
+/**
+ * Label and description on the left, the controls on the right; stacked on narrow screens. The
+ * controls carry their own outline, so the sections are separated by space alone.
+ */
+function SettingsSection({
+  children,
+  description,
+  title,
+}: PropsWithChildren<{ description: string; title: string }>) {
+  return (
+    <View accessibilityLabel={title} className="min-w-0 gap-3 lg:flex-row lg:gap-10" role="region">
+      <View className="min-w-0 gap-0.5 lg:w-64 lg:shrink-0">
+        <Heading level={2} size="section">
+          {title}
+        </Heading>
+        <Text className="text-[13px] leading-5 text-muted-foreground">{description}</Text>
+      </View>
+      <View className="min-w-0 flex-1 gap-3 lg:max-w-2xl">{children}</View>
+    </View>
+  );
+}
+
+function FactsSkeleton({ label, rows }: { label: string; rows: number }) {
+  return (
+    <View
+      accessibilityLabel={label}
+      aria-busy
+      className="overflow-hidden rounded-lg border border-border bg-card"
+    >
+      <Text className="sr-only">{label}</Text>
+      {Array.from({ length: rows }, (_, index) => (
+        <View
+          className={cn(
+            "flex-row items-center gap-6 px-4 py-3.5",
+            index > 0 && "border-t border-border",
+          )}
+          // biome-ignore lint/suspicious/noArrayIndexKey: Placeholder rows have no identity.
+          key={index}
+        >
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-40" />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function RetryAlert({
+  description,
+  onRetry,
+  retrying,
+}: {
+  description: string;
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Alert
+      action={
+        <Button
+          label={t("common.retry")}
+          loading={retrying}
+          onPress={onRetry}
+          size="sm"
+          variant="outline"
+        />
+      }
+      icon={TriangleAlert}
+    >
+      <AlertDescription>{description}</AlertDescription>
+    </Alert>
+  );
+}
+
+/** "Dólar estadounidense (USD)" where the engine can name currencies; the code alone otherwise. */
+function currencyLabel(code: string, locale: string): string {
+  if (typeof Intl.DisplayNames !== "function") return code;
+  const name = new Intl.DisplayNames(locale, { type: "currency" }).of(code);
+  if (!name || name === code) return code;
+  return `${name.charAt(0).toLocaleUpperCase(locale)}${name.slice(1)} (${code})`;
+}
+
+/** "El Salvador (GMT-6)": the zone's place name and its current offset, not the raw zone ID. */
+function timeZoneLabel(timeZone: string, locale: string): string {
+  const place = timeZone.slice(timeZone.lastIndexOf("/") + 1).replace(/_/g, " ");
+  const offset = new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: "short" })
+    .formatToParts(new Date())
+    .find((part) => part.type === "timeZoneName")?.value;
+  return offset ? `${place} (${offset})` : place;
+}
+
+function BusinessFacts({ locale }: { locale: string }) {
+  const { t } = useTranslation();
+  const businesses = useQuery(businessesQueryOptions);
+  // A rejected read hides the cached business as well.
+  if (businesses.data === undefined || hasDeniedRead([businesses])) {
+    return businesses.isPending && businesses.fetchStatus !== "paused" ? (
+      <FactsSkeleton label={t("settings.loadingBusiness")} rows={4} />
+    ) : (
+      <RetryAlert
+        description={t("settings.businessUnavailable")}
+        onRetry={() => void businesses.refetch()}
+        retrying={businesses.isFetching}
+      />
+    );
+  }
+  const business = getActiveBusiness(businesses.data);
+  if (!business) {
+    return (
+      <View className="items-start gap-3">
+        <Text className="text-sm leading-5 text-muted-foreground">{t("settings.noBusiness")}</Text>
+        <Link asChild href="/business">
+          <Button accessibilityRole="link" size="sm" variant="outline">
+            <Text>{t("settings.setUpBusiness")}</Text>
+          </Button>
+        </Link>
+      </View>
+    );
+  }
+  return (
+    <>
+      <DescriptionList
+        items={[
+          { label: t("settings.name"), value: business.name },
+          { label: t("common.currency"), value: currencyLabel(business.currency, locale) },
+          { label: t("common.timeZone"), value: timeZoneLabel(business.timeZone, locale) },
+          { label: t("settings.role"), value: t(`settings.roles.${business.access.role}`) },
+        ]}
+      />
+      {businesses.data.items.length > 1 ? (
+        <Text className="text-[13px] leading-5 text-muted-foreground">
+          {t("settings.businessSwitchHint")}
+        </Text>
+      ) : null}
+    </>
+  );
+}
 
 export default function SettingsScreen() {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const router = useRouter();
   const profile = useQuery({ queryFn: api.me, queryKey: ["account", "me"] });
+  const signOut = useSignOut();
+  // These are the account's current authentication facts, so a profile that could not be
+  // refreshed is reported as unconfirmed instead of being shown from cache.
   const profileUnavailable = profile.isError || profile.fetchStatus === "paused";
-  const currentProfile = profileUnavailable ? undefined : profile.data;
-  const user = currentProfile?.user;
-  const checkingProfile = profile.isPending && !profileUnavailable;
-  const signOutAction = useSignOut();
+  const current = profileUnavailable ? undefined : profile.data;
+  const checking = profile.isPending && !profileUnavailable;
+
+  let profileFacts: ReactNode;
+  if (current) {
+    profileFacts = (
+      <DescriptionList
+        items={[
+          {
+            label: t("settings.name"),
+            value: current.user.name || (
+              <Text className="text-sm leading-5 text-muted-foreground">
+                {t("settings.noName")}
+              </Text>
+            ),
+          },
+          {
+            label: t("settings.email"),
+            value: (
+              <View className="min-w-0 flex-row flex-wrap items-center gap-2">
+                <Text className="min-w-0 shrink text-sm leading-5">{current.user.email}</Text>
+                {current.user.emailVerified ? (
+                  <StatusBadge label={t("settings.verifiedEmail")} tone="settled" />
+                ) : (
+                  <StatusBadge label={t("settings.unverifiedEmail")} tone="attention" />
+                )}
+              </View>
+            ),
+          },
+        ]}
+      />
+    );
+  } else if (checking) {
+    profileFacts = <FactsSkeleton label={t("settings.loadingAccount")} rows={2} />;
+  } else {
+    profileFacts = (
+      <RetryAlert
+        description={t("settings.profileUnavailable")}
+        onRetry={() => void profile.refetch()}
+        retrying={profile.isFetching}
+      />
+    );
+  }
 
   return (
     <Page>
-      <ScreenHeader
-        description={t("settings.description")}
-        eyebrow={t("settings.eyebrow")}
-        title={t("settings.title")}
-      />
+      <PageHeader description={t("settings.description")} title={t("settings.title")} />
 
-      <View className="gap-9 lg:flex-row lg:items-start lg:gap-12">
-        <View className="gap-8 lg:w-[38%]">
-          {user ? (
-            <View className="gap-5 border-y border-border py-6  sm:flex-row sm:items-center">
-              <View className="h-14 w-14 items-center justify-center rounded-full bg-accent">
-                <Text className="text-xl font-heading text-accent-foreground">
-                  {user.name.slice(0, 1).toUpperCase() || "P"}
-                </Text>
-              </View>
-              <View className="min-w-0 flex-1 gap-1">
-                <Text className="text-xl font-heading text-foreground">
-                  {user.name || t("common.pistoAccount")}
-                </Text>
-                <Text className="text-sm text-muted-foreground">{user.email}</Text>
-              </View>
-              <Badge
-                variant="outline"
-                className={
-                  user.emailVerified
-                    ? "bg-positive-surface border-transparent"
-                    : "bg-warning-surface border-transparent"
-                }
-              >
-                <Text
-                  className={
-                    user.emailVerified ? "text-positive-foreground" : "text-warning-foreground"
-                  }
-                >
-                  {user.emailVerified ? t("settings.verifiedEmail") : t("settings.unverifiedEmail")}
-                </Text>
-              </Badge>
-            </View>
-          ) : checkingProfile ? (
-            <Text accessibilityLiveRegion="polite" className="py-6 text-muted-foreground">
-              {t("settings.loadingAccount")}
-            </Text>
-          ) : (
-            <View className="gap-3">
-              <Alert icon={AlertTriangle} variant="default">
-                <AlertDescription>{t("settings.profileUnavailable")}</AlertDescription>
-              </Alert>
-              <Button
-                label={t("common.retry")}
-                loading={profile.isFetching}
-                onPress={() => profile.refetch()}
-                variant="outline"
-              />
-            </View>
-          )}
+      <View className="min-w-0 gap-8">
+        <SettingsSection
+          description={t("settings.profileDescription")}
+          title={t("settings.profile")}
+        >
+          {profileFacts}
+        </SettingsSection>
 
-          <View className="gap-5">
-            <View className="gap-0.5">
-              <Heading level={2} size="section">
-                {t("settings.appearance")}
-              </Heading>
-              <Text className="text-sm text-muted-foreground">
-                {t("settings.appearanceDescription")}
-              </Text>
-            </View>
-            <AppearanceControl />
-          </View>
-        </View>
+        <SettingsSection
+          description={t("settings.appearanceDescription")}
+          title={t("settings.appearance")}
+        >
+          <AppearanceControl />
+        </SettingsSection>
 
-        <View className="min-w-0 flex-1 gap-8">
-          <View className="gap-6 border-y border-border py-6 ">
-            <View className="flex-row items-start gap-3">
-              <Icon as={ShieldCheck} className="text-positive-foreground" size={23} />
-              <View className="min-w-0 flex-1 gap-1">
-                <Heading level={2} size="section">
-                  {t("settings.security")}
-                </Heading>
-                <Text className="text-sm leading-5 text-muted-foreground">
-                  {t("settings.securityDescription")}
-                </Text>
-              </View>
-            </View>
-            <View className="gap-3 border-t border-border pt-5  sm:flex-row sm:items-center">
-              <View className="flex-row items-center gap-3 sm:min-w-0 sm:flex-1">
-                <Icon as={LockKeyhole} className="text-muted-foreground" size={20} />
-                <View className="min-w-0 flex-1">
-                  <Text className="font-ui text-foreground">{t("settings.currentSession")}</Text>
-                  <Text className="text-sm text-muted-foreground">
-                    {currentProfile
-                      ? t("settings.expires", {
-                          date: formatLocalizedDate(currentProfile.session.expiresAt, locale),
-                        })
-                      : checkingProfile
-                        ? t("settings.checkingSession")
-                        : t("session.checkFailedDescription")}
-                  </Text>
-                </View>
-              </View>
-              <Badge
-                variant="outline"
-                className={
-                  currentProfile
-                    ? "bg-positive-surface border-transparent"
-                    : checkingProfile
-                      ? "bg-muted border-transparent"
-                      : "bg-warning-surface border-transparent"
-                }
-              >
-                <Text
-                  className={
-                    currentProfile
-                      ? "text-positive-foreground"
-                      : checkingProfile
-                        ? "text-muted-foreground"
-                        : "text-warning-foreground"
-                  }
-                >
-                  {checkingProfile
-                    ? t("settings.checking")
-                    : currentProfile
-                      ? t("settings.active")
-                      : t("settings.unconfirmed")}
-                </Text>
-              </Badge>
-            </View>
+        <SettingsSection
+          description={t("settings.businessDescription")}
+          title={t("settings.business")}
+        >
+          <BusinessFacts locale={locale} />
+        </SettingsSection>
 
-            <View className="gap-4 border-t border-border pt-5  sm:flex-row sm:items-start">
-              <View className="flex-row items-start gap-3 sm:min-w-0 sm:flex-1">
-                <Icon as={CreditCard} className="text-muted-foreground" size={20} />
-                <View className="min-w-0 flex-1 gap-1">
-                  <Text className="font-ui text-foreground">{t("settings.billing")}</Text>
-                  <Text className="text-sm leading-5 text-muted-foreground">
-                    {t("settings.billingDescription")}
-                  </Text>
-                </View>
-              </View>
-              <Button
-                className="self-start"
-                label={t("settings.view")}
-                onPress={() => router.push("/billing")}
-                size="sm"
-                variant="outline"
-              />
-            </View>
-          </View>
-
-          <View className="gap-4 border-t border-destructive pt-6 ">
-            <View className="gap-1">
-              <Heading level={2} size="section">
-                {t("common.signOut")}
-              </Heading>
-              <Text className="text-sm text-muted-foreground">
-                {t("settings.signOutDescription")}
-              </Text>
-            </View>
-            {signOutAction.error ? (
-              <Text className="text-sm leading-5 text-destructive ">{signOutAction.error}</Text>
-            ) : null}
+        <SettingsSection
+          description={t("settings.sessionDescription")}
+          title={t("settings.session")}
+        >
+          <DescriptionList
+            items={[
+              {
+                label: t("common.status"),
+                value: current ? (
+                  <StatusBadge label={t("settings.active")} tone="normal" />
+                ) : checking ? (
+                  <StatusBadge label={t("settings.checking")} tone="normal" />
+                ) : (
+                  <StatusBadge label={t("settings.unconfirmed")} tone="attention" />
+                ),
+              },
+              ...(current
+                ? [
+                    {
+                      label: t("settings.expires"),
+                      numeric: true,
+                      value: formatLocalizedDate(current.session.expiresAt, locale),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+          {/* The user menu holds the everyday sign-out; here it is a deliberate, secondary action. */}
+          <View className="items-start gap-2">
             <Button
-              className="self-start"
-              loading={signOutAction.isPending}
-              onPress={signOutAction.signOut}
-              variant="destructive"
+              className="border-destructive/40 active:bg-destructive-surface web:hover:bg-destructive-surface"
+              loading={signOut.isPending}
+              onPress={() => void signOut.signOut()}
+              variant="outline"
             >
-              <Icon as={LogOut} size={17} />
-              <ButtonText variant="destructive">{t("common.signOut")}</ButtonText>
+              <Icon as={LogOut} className="text-destructive" size={16} />
+              <Text className="text-destructive">{t("common.signOut")}</Text>
             </Button>
+            {signOut.error ? (
+              <Text accessibilityRole="alert" className="text-sm leading-5 text-destructive">
+                {signOut.error}
+              </Text>
+            ) : null}
           </View>
-        </View>
+        </SettingsSection>
       </View>
     </Page>
   );

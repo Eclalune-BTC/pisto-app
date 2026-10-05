@@ -1,21 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { AlertCircle, CheckCircle2, Clock3 } from "lucide-react-native";
+import { Link } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
+import { formatLocalizedDateTime } from "@/i18n/format";
+import { requireSupportedLocale } from "@/i18n/locale";
 import { api } from "@/lib/api-client";
 import { deriveBillingAccessState } from "@/lib/billing/billing-access";
 
+/**
+ * Returning from checkout is not proof of payment: this screen reports only what a fresh read of
+ * the entitlements says, checked once on entry and again on request.
+ */
 export default function BillingSuccessScreen() {
-  const { t } = useTranslation();
-  const router = useRouter();
+  const { i18n, t } = useTranslation();
+  const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const [verifiedAfterReturn, setVerifiedAfterReturn] = useState(false);
-  const { checkout_id: checkoutId } = useLocalSearchParams<{ checkout_id?: string }>();
   const entitlements = useQuery({
     enabled: false,
     queryFn: api.billing.entitlements,
@@ -23,21 +28,13 @@ export default function BillingSuccessScreen() {
   });
   const activeCount =
     entitlements.data?.items.filter((item) => item.status === "active").length ?? 0;
-  const billingAccessState = deriveBillingAccessState({
+  const access = deriveBillingAccessState({
     activeCount,
     fetchStatus: entitlements.fetchStatus,
     isError: entitlements.isError,
     isPending: entitlements.isPending,
     verifiedAfterReturn,
   });
-  const accessState =
-    billingAccessState === "active"
-      ? "active"
-      : billingAccessState === "unknown"
-        ? "error"
-        : billingAccessState === "standard"
-          ? "inactive"
-          : "pending";
 
   const verifyAccess = useCallback(async () => {
     setVerifiedAfterReturn(false);
@@ -49,52 +46,60 @@ export default function BillingSuccessScreen() {
     void verifyAccess();
   }, [verifyAccess]);
 
-  const StateIcon =
-    accessState === "active" ? CheckCircle2 : accessState === "error" ? AlertCircle : Clock3;
-  const iconClass =
-    accessState === "active"
-      ? "text-positive-foreground"
-      : accessState === "error"
-        ? "text-destructive"
-        : "text-warning-foreground";
+  const outcome =
+    access === "active"
+      ? "active"
+      : access === "unknown"
+        ? "error"
+        : access === "standard"
+          ? "inactive"
+          : "pending";
+  const checkedAt =
+    verifiedAfterReturn && entitlements.dataUpdatedAt > 0
+      ? formatLocalizedDateTime(new Date(entitlements.dataUpdatedAt), locale)
+      : undefined;
 
   return (
-    <Page contentContainerClassName="gap-7" width="reading">
-      <View className="flex-row items-start gap-4">
-        <Icon as={StateIcon} className={iconClass} size={32} strokeWidth={2.4} />
-        <View className="min-w-0 flex-1 gap-2">
-          <Text className="text-xs font-ui uppercase tracking-[1.6px] text-positive-foreground ">
-            {t("billing.returnEyebrow")}
-          </Text>
-          <Text
-            accessibilityRole="header"
-            className="text-[30px] font-heading leading-[36px] tracking-[-1px] text-foreground"
-          >
-            {t(`billing.returnTitle.${accessState}`)}
-          </Text>
-          <Text className="text-base leading-6 text-muted-foreground">
-            {t(`billing.returnDescription.${accessState}`)}
-          </Text>
-          {checkoutId ? (
-            <Text className="text-xs text-muted-foreground ">{t("billing.returnReference")}</Text>
-          ) : null}
-        </View>
-      </View>
-
-      <View className="gap-3 border-y border-border py-6  sm:flex-row">
-        <Button
-          label={t("billing.back")}
-          onPress={() => router.replace("/billing")}
-          variant="outline"
+    <Page width="reading">
+      {/* The outcome changes in place after each check, so it is announced rather than focused. */}
+      <View accessibilityLiveRegion="polite" className="gap-2">
+        <PageHeader
+          adornment={
+            outcome === "active" ? (
+              <StatusBadge label={t("billing.access.active")} tone="settled" />
+            ) : outcome === "error" ? (
+              <StatusBadge label={t("billing.return.unverified")} tone="attention" />
+            ) : undefined
+          }
+          description={
+            outcome === "active"
+              ? t("billing.accessCount", { count: activeCount })
+              : t(`billing.return.description.${outcome}`)
+          }
+          title={t(`billing.return.title.${outcome}`)}
         />
-        {accessState !== "active" ? (
-          <Button
-            label={t("billing.refresh")}
-            loading={entitlements.isFetching}
-            onPress={() => void verifyAccess()}
-            variant="default"
-          />
+        {checkedAt && outcome !== "pending" ? (
+          <Text className="text-xs leading-4 text-muted-foreground tabular-nums">
+            {t("billing.return.checkedAt", { date: checkedAt })}
+          </Text>
         ) : null}
+      </View>
+      <View className="flex-row flex-wrap gap-2">
+        {outcome === "active" ? (
+          <Link asChild href="/operate">
+            <Button accessibilityRole="link">
+              <Text>{t("billing.return.home")}</Text>
+            </Button>
+          </Link>
+        ) : (
+          // Not `loading`: a disabled button would drop keyboard focus while the check runs.
+          <Button
+            label={t("billing.return.refresh")}
+            onPress={() => {
+              if (!entitlements.isFetching) void verifyAccess();
+            }}
+          />
+        )}
       </View>
     </Page>
   );

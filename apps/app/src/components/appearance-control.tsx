@@ -15,6 +15,10 @@ const choices = [
   { value: "system", icon: Laptop },
 ] as const;
 
+/**
+ * The appearance choice. `compact` is a single light/dark switch for headers; the full control is a
+ * segmented group of toggle buttons that also offers following the system.
+ */
 export function AppearanceControl({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
   const { theme } = useUniwind();
@@ -47,26 +51,50 @@ export function AppearanceControl({ compact = false }: { compact?: boolean }) {
           switchControl
         )
       ) : (
-        <View accessibilityLabel={t("settings.appearance")} className="flex-row flex-wrap gap-1">
-          {choices.map(({ value, icon: ChoiceIcon }) => (
-            <Button
-              accessibilityLabel={t(`settings.themes.${value}`)}
-              accessibilityRole={Platform.OS === "web" ? "button" : "togglebutton"}
-              accessibilityState={
-                Platform.OS === "web" ? undefined : { checked: appearance.choice === value }
-              }
-              aria-pressed={Platform.OS === "web" ? appearance.choice === value : undefined}
-              className={cn("px-3", appearance.choice === value && "bg-muted")}
-              disabled={appearance.pending}
-              key={value}
-              onPress={() => void appearance.select(value)}
-              size="sm"
-              variant="ghost"
-            >
-              <Icon as={ChoiceIcon} size={16} />
-              <ButtonText variant="ghost">{t(`settings.themes.${value}`)}</ButtonText>
-            </Button>
-          ))}
+        <View
+          accessibilityLabel={t("settings.appearance")}
+          className="max-w-full flex-row flex-wrap gap-0.5 self-start rounded-md border border-border bg-muted p-0.5"
+          role="group"
+        >
+          {choices.map(({ value, icon: ChoiceIcon }) => {
+            const selected = appearance.choice === value;
+            return (
+              <Button
+                accessibilityLabel={t(`settings.themes.${value}`)}
+                accessibilityRole={Platform.OS === "web" ? "button" : "togglebutton"}
+                accessibilityState={Platform.OS === "web" ? undefined : { checked: selected }}
+                aria-pressed={Platform.OS === "web" ? selected : undefined}
+                // Same segment as `FilterBar`, which this control cannot reuse: a theme choice is a
+                // pressed toggle, not one radio of a filter.
+                className={cn(
+                  "gap-1.5 rounded-sm border",
+                  Platform.select({ web: "h-[30px] min-h-0 px-2.5 py-0" }),
+                  selected
+                    ? "border-border bg-card shadow-sm shadow-black/5 web:hover:bg-card dark:bg-foreground/15 dark:web:hover:bg-foreground/15"
+                    : "border-transparent bg-transparent web:hover:bg-background/60",
+                )}
+                disabled={appearance.pending}
+                key={value}
+                onPress={() => void appearance.select(value)}
+                size="sm"
+                variant="ghost"
+              >
+                <Icon
+                  as={ChoiceIcon}
+                  className={selected ? "text-foreground" : "text-muted-foreground"}
+                  size={14}
+                />
+                <ButtonText
+                  className={cn(
+                    "text-[13px] native:text-sm",
+                    selected ? "text-foreground" : "text-muted-foreground",
+                  )}
+                >
+                  {t(`settings.themes.${value}`)}
+                </ButtonText>
+              </Button>
+            );
+          })}
         </View>
       )}
       {appearance.issue ? (
