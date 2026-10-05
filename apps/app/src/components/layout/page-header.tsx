@@ -19,7 +19,8 @@ export function PageHeader({ actions, adornment, description, title }: PageHeade
       <View className="min-w-0 shrink grow basis-[280px] gap-1">
         <View className="min-w-0 flex-row flex-wrap items-center gap-2">
           <Heading className="shrink">{title}</Heading>
-          {adornment}
+          {/* Badges align to their row's start; the wrapper is what centers on the title. */}
+          {adornment ? <View>{adornment}</View> : null}
         </View>
         {description ? (
           <Text className="max-w-[640px] text-sm leading-5 text-muted-foreground">

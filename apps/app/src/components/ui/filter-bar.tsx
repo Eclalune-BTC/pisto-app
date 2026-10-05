@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { cn } from "@/lib/cn";
 import { Text } from "./text";
 import { ToggleGroup, ToggleGroupItem } from "./toggle-group";
@@ -48,7 +48,12 @@ export function FilterBar<T extends string>({
               accessibilityLabel={`${label}: ${option.label}`}
               role="radio"
               className={cn(
-                "h-auto min-h-7 max-w-full rounded-sm px-2.5 py-1 native:min-h-10 native:px-3 web:flex-none web:whitespace-nowrap",
+                "max-w-full rounded-sm",
+                // Pointer rows match the 36px fields beside them; touch keeps a 40pt target.
+                Platform.select({
+                  web: "h-[30px] min-w-0 flex-none whitespace-nowrap px-2.5 sm:h-[30px] sm:min-w-0 sm:px-2.5",
+                  default: "h-10 min-w-0 px-3 sm:h-10 sm:min-w-0 sm:px-3",
+                }),
                 "border",
                 selected
                   ? "border-border bg-card shadow-sm shadow-black/5 dark:bg-foreground/15"

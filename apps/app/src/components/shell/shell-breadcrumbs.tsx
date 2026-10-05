@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import {
   buildRouteTrail,
+  hrefFor,
   queryOutsideRoute,
   routeFromSegments,
   type ShellRoute,
@@ -29,9 +30,11 @@ export function ShellBreadcrumbs({ compact }: { compact: boolean }) {
   const route = routeFromSegments(segments);
   const query = route ? queryOutsideRoute(route, params) : "";
 
+  // Only a settled URL is remembered: mid-navigation the segments and parameters can disagree.
+  const settled = route !== null && hrefFor(route, params) === pathname;
   useEffect(() => {
-    if (route) rememberVisit(route, pathname, query);
-  }, [pathname, query, rememberVisit, route]);
+    if (route && settled) rememberVisit(route, pathname, query);
+  }, [pathname, query, rememberVisit, route, settled]);
 
   if (!route) return null;
 

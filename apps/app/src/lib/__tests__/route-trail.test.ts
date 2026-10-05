@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { buildRouteTrail, queryOutsideRoute, routeFromSegments } from "@/lib/route-trail";
+import { buildRouteTrail, hrefFor, queryOutsideRoute, routeFromSegments } from "@/lib/route-trail";
 
 describe("route trail", () => {
   test("maps router segments to a known route pattern", () => {
@@ -74,5 +74,25 @@ describe("route query memory", () => {
       }),
     ).toBe("status=active&status=archived&tab=movements");
     expect(queryOutsideRoute("/operate/sales", {})).toBe("");
+  });
+
+  test("never lets a child record id into a list's remembered query", () => {
+    expect(
+      queryOutsideRoute("/operate/catalog", { productId: "product-1", q: "café", status: "all" }),
+    ).toBe("q=caf%C3%A9&status=all");
+    expect(
+      queryOutsideRoute("/operate/receivables", {
+        receivableId: "receivable-1",
+        paymentId: "payment-1",
+        state: "overdue",
+      }),
+    ).toBe("state=overdue");
+  });
+
+  test("rebuilds a route's own path only when every parameter is known", () => {
+    expect(hrefFor("/operate/catalog/[productId]", { productId: "product 1" })).toBe(
+      "/operate/catalog/product%201",
+    );
+    expect(hrefFor("/operate/catalog/[productId]", {})).toBeNull();
   });
 });

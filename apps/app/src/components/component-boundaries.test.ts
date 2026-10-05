@@ -109,6 +109,17 @@ describe("shared component boundaries", () => {
     expect(violations).toEqual([]);
   });
 
+  test("keeps TanStack row renderers out of compiler memoization", () => {
+    // Rows keep their identity when only the columns change, so a memoized renderer would keep
+    // drawing the previous columns' cells.
+    const violations = Object.entries(sources)
+      .filter(([path]) => !/\.test\./.test(path))
+      .filter(([, source]) => /\b(?:flexRender|getVisibleCells|useReactTable)\(/.test(source))
+      .filter(([, source]) => !source.includes('"use no memo"'))
+      .map(([path]) => path);
+    expect(violations).toEqual([]);
+  });
+
   test("does not replace missing query identity with a fictitious record", () => {
     const violations = Object.entries(sources)
       .filter(([, source]) =>

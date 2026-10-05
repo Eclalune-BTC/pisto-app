@@ -28,6 +28,9 @@ export function DataTableRecords<T>({
   rowActions,
   rows,
 }: DataTableSurfaceProps<T>) {
+  // TanStack keeps the same row objects when only the columns change; memoized output would
+  // keep rendering the previous columns' cells.
+  "use no memo";
   return (
     <View
       accessibilityLabel={caption}

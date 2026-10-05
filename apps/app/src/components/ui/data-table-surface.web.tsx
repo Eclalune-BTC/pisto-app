@@ -16,6 +16,8 @@ function isInteractiveTarget(event: MouseEvent<HTMLTableRowElement>) {
 }
 
 export function DataTableSurface<T>(props: DataTableSurfaceProps<T>) {
+  // Same reason as DataTableRecords: rows keep their identity when only the columns change.
+  "use no memo";
   const { t } = useTranslation();
   const router = useRouter();
   const window = useWindowDimensions();

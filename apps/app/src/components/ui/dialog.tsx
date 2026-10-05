@@ -90,7 +90,7 @@ function DialogContent({
           className={cn(
             "bg-background border-border z-50 mx-auto flex w-full flex-col gap-4 rounded-lg border p-5 shadow-xl shadow-black/15 sm:max-w-lg",
             Platform.select({
-              web: "pisto-enter-pop max-w-[calc(100%-2rem)]",
+              web: "pisto-enter-pop max-w-[calc(100%-2rem)] outline-none",
             }),
             className,
           )}
@@ -101,9 +101,9 @@ function DialogContent({
             <DialogPrimitive.Close
               accessibilityLabel={closeLabel ?? t("common.close")}
               className={cn(
-                "absolute right-4 top-4 rounded opacity-70 active:opacity-100",
+                "absolute right-3 top-3 size-8 items-center justify-center rounded-sm opacity-70 active:opacity-100 native:size-11",
                 Platform.select({
-                  web: "ring-offset-background focus:ring-ring data-[state=open]:bg-accent transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2",
+                  web: "transition-opacity outline-none hover:bg-accent hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring",
                 }),
               )}
               hitSlop={12}

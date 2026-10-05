@@ -64,7 +64,7 @@ function AlertDialogContent({
           className={cn(
             "bg-background border-border z-50 flex w-full flex-col gap-4 rounded-lg border p-5 shadow-xl shadow-black/15 sm:max-w-md",
             Platform.select({
-              web: "pisto-enter-pop max-w-[calc(100%-2rem)]",
+              web: "pisto-enter-pop max-w-[calc(100%-2rem)] outline-none",
             }),
             className,
           )}

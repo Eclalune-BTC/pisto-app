@@ -42,7 +42,35 @@ function parentOf(route: ShellRoute): ShellRoute | null {
   return OPERATE_ROUTE_PARENTS[route as Exclude<OperateRoute, typeof OPERATE_ROOT>];
 }
 
-function hrefFor(route: ShellRoute, params: Readonly<Record<string, unknown>>): string | null {
+const SHELL_ROUTES = [
+  OPERATE_ROOT,
+  ...Object.keys(OPERATE_ROUTE_PARENTS),
+  ...Object.keys(ACCOUNT_ROUTE_PARENTS),
+] as ShellRoute[];
+
+function parametersOf(route: ShellRoute): string[] {
+  return [...route.matchAll(PARAMETER)].map(([, name]) => name as string);
+}
+
+/** Path parameters of the route and of every route beneath it, such as a list's record ids. */
+function ownedParameters(route: ShellRoute): Set<string> {
+  const owned = new Set(parametersOf(route));
+  for (const candidate of SHELL_ROUTES) {
+    for (let current = parentOf(candidate); current; current = parentOf(current)) {
+      if (current === route) {
+        for (const name of parametersOf(candidate)) owned.add(name);
+        break;
+      }
+    }
+  }
+  return owned;
+}
+
+/** The route's own path for the given parameters, or null when one of them is unknown. */
+export function hrefFor(
+  route: ShellRoute,
+  params: Readonly<Record<string, unknown>>,
+): string | null {
   let complete = true;
   const href = route.replace(PARAMETER, (_, name: string) => {
     const value = params[name];
@@ -55,12 +83,16 @@ function hrefFor(route: ShellRoute, params: Readonly<Record<string, unknown>>): 
   return complete ? href : null;
 }
 
-/** The search parameters that are not part of the route's own path, as a stable query string. */
+/**
+ * The route's own search parameters as a stable query string. Path parameters of the route and of
+ * its descendants are excluded: during a navigation to a record the global parameters already hold
+ * the child's id, and a list link must never carry it.
+ */
 export function queryOutsideRoute(
   route: ShellRoute,
   params: Readonly<Record<string, unknown>>,
 ): string {
-  const pathParameters = new Set([...route.matchAll(PARAMETER)].map(([, name]) => name));
+  const pathParameters = ownedParameters(route);
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params).sort(([a], [b]) => a.localeCompare(b))) {
     if (pathParameters.has(key)) continue;
