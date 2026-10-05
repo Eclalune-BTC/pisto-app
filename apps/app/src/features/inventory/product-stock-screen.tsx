@@ -1,4 +1,5 @@
 import type { InventoryMovement, Product, ProductStock } from "@pisto/contracts";
+import { Link } from "expo-router";
 import { ArrowRightLeft, History, PackageSearch, TriangleAlert, Undo2 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
@@ -12,17 +13,19 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RowActions } from "@/components/ui/row-actions";
 import { StatePanel } from "@/components/ui/state-panel";
+import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { HeaderActions } from "../cash/header-actions";
 import { type CursorPage, LoadMoreButton } from "../cash/load-more-button";
-import { LowStockBadge, ProductStatusBadge } from "../catalog/catalog-cells";
+import { EMPTY_VALUE, LowStockBadge, ProductStatusBadge } from "../catalog/catalog-cells";
 import { productHref } from "../catalog/catalog-screen";
 import { quantityText } from "../catalog/format";
 import type { ReadState } from "../catalog/state";
+import { newMovementHref } from "./inventory-screen";
 import { MovementTable, movementMoment } from "./movement-table";
 
 type ProductStockScreenProps = {
-  /** Inventory management confirmed by fresh reads. */
+  /** The role may record and reverse movements; a stale read still blocks a new reversal. */
   canManage: boolean;
   isStale: boolean;
   movements: { items: InventoryMovement[]; page: CursorPage; read: ReadState };
@@ -54,6 +57,8 @@ export function ProductStockScreen({
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const active = product.status === "active";
   const manage = canManage && active;
+  // An archived product is out of operation, so its balance asks for no attention.
+  const lowStock = active && stock.lowStock;
   const quantity = (minorUnits: string) =>
     quantityText(t, locale, {
       minorUnits,
@@ -70,10 +75,7 @@ export function ProductStockScreen({
             primary={
               manage
                 ? {
-                    href: {
-                      pathname: "/operate/inventory/[productId]/new",
-                      params: { productId: product.id },
-                    },
+                    href: newMovementHref(product.id),
                     icon: ArrowRightLeft,
                     label: t("inventory.product.recordMovement"),
                   }
@@ -89,13 +91,7 @@ export function ProductStockScreen({
           />
         }
         adornment={
-          active ? (
-            stock.lowStock ? (
-              <LowStockBadge />
-            ) : null
-          ) : (
-            <ProductStatusBadge status="archived" />
-          )
+          lowStock ? <LowStockBadge /> : active ? null : <ProductStatusBadge status="archived" />
         }
         description={active ? undefined : t("inventory.product.archivedDescription")}
         title={product.name}
@@ -105,21 +101,21 @@ export function ProductStockScreen({
 
       <StatGroup>
         <Stat
-          detail={stock.lowStock ? t("inventory.product.lowStockDetail") : undefined}
+          detail={lowStock ? t("inventory.product.lowStockDetail") : undefined}
           label={t("inventory.product.onHand")}
-          tone={stock.lowStock ? "warning" : "default"}
+          tone={lowStock ? "warning" : "default"}
           value={quantity(stock.onHandMinorUnits)}
         />
         <Stat
           detail={
             stock.lowStockThresholdMinorUnits === null
-              ? undefined
+              ? t("inventory.product.noThreshold")
               : t("inventory.product.thresholdDetail")
           }
           label={t("inventory.product.threshold")}
           value={
             stock.lowStockThresholdMinorUnits === null
-              ? t("inventory.product.noThreshold")
+              ? EMPTY_VALUE
               : quantity(stock.lowStockThresholdMinorUnits)
           }
         />
@@ -162,6 +158,15 @@ export function ProductStockScreen({
               caption={t("inventory.history.title")}
               empty={
                 <EmptyState
+                  action={
+                    manage ? (
+                      <Link asChild href={newMovementHref(product.id)}>
+                        <Button accessibilityRole="link" size="sm" variant="outline">
+                          <Text>{t("inventory.product.recordMovement")}</Text>
+                        </Button>
+                      </Link>
+                    ) : undefined
+                  }
                   description={t("inventory.history.emptyDescription")}
                   icon={History}
                   title={t("inventory.history.emptyTitle")}

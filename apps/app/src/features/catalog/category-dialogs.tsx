@@ -4,12 +4,12 @@ import type {
   CreateCategoryRequest,
   UpdateCategoryRequest,
 } from "@pisto/contracts";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { CircleAlert, TriangleAlert } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useWindowDimensions } from "react-native";
+import type { TextInput } from "react-native";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -22,24 +22,27 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
+import { ApiClientError } from "@/lib/api-error";
 import { returnFocusOnClose } from "@/lib/focus-return";
-import { isLockedPhase, mutationPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
+import { isLockedPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { catalogApi } from "./api";
 import { buildCategoryCommand } from "./category-draft";
 import { invalidateCatalogInventory } from "./queries";
-
-const DIALOG_WIDTH = 440;
+import { type DialogFocus, dialogReturnFocus } from "./screen-heading";
+import { useKeyedCommand } from "./use-keyed-command";
 
 type CategoryDialogProps = {
   businessId: string;
   /** Catalog management on fresh data; it can be lost while the dialog is open. */
   canConfirm: boolean;
+  /** Focus returns to the opener on close, or to the screen title after an archive. */
+  focus: DialogFocus;
   onClose: () => void;
-  /** The control that opened the dialog; focus returns to it on close. */
-  returnFocus: HTMLElement | null;
 };
+
+type CategoryNameCommand = CreateCategoryRequest | UpdateCategoryRequest;
 
 /**
  * Creates a category, or renames the given one. Mounted while open, so every dialog starts with a
@@ -49,20 +52,20 @@ export function CategoryNameDialog({
   businessId,
   canConfirm,
   category,
+  focus,
   onClose,
-  returnFocus,
 }: CategoryDialogProps & { category: Category | null }) {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
-  const { width } = useWindowDimensions();
   const [name, setName] = useState(category?.name ?? "");
   const [error, setError] = useState<string>();
-  const mutation = useMutation({
-    mutationFn: (command: CreateCategoryRequest | UpdateCategoryRequest) =>
+  const nameRef = useRef<TextInput>(null);
+  const command = useKeyedCommand({
+    mutationFn: (variables: CategoryNameCommand) =>
       category
-        ? catalogApi.categories.update(category.id, command)
-        : catalogApi.categories.create(command),
-    onSuccess: async ({ category: saved }) => {
+        ? catalogApi.categories.update(category.id, variables)
+        : catalogApi.categories.create(variables),
+    onConfirmed: async ({ category: saved }) => {
       await invalidateCatalogInventory(queryClient, businessId);
       notify.success(category ? t("catalog.categories.renamed") : t("catalog.categories.created"), {
         description: saved.name,
@@ -70,14 +73,26 @@ export function CategoryNameDialog({
       onClose();
     },
   });
-  const phase = mutationPhase(mutation);
+  const { phase } = command;
   const locked = isLockedPhase(phase);
+  // A taken name is the field's problem; any other failure belongs to the whole command.
+  const conflict =
+    phase === "failed" &&
+    command.error instanceof ApiClientError &&
+    command.error.code === "CONFLICT";
+  const fieldError =
+    error ??
+    (conflict
+      ? category
+        ? t("catalog.categories.renameConflict")
+        : t("catalog.categories.duplicateName")
+      : undefined);
 
   const confirm = () => {
     if (phase === "pending") return;
     // Sending the same command again cannot apply it twice; only a new decision needs access.
     if (phase === "uncertain") {
-      if (mutation.variables) mutation.mutate(mutation.variables);
+      if (command.variables) command.send(command.variables);
       return;
     }
     if (!canConfirm) return;
@@ -87,19 +102,30 @@ export function CategoryNameDialog({
       name,
     });
     if ("error" in result) {
-      setError(t("catalog.categories.nameValidation"));
+      setError(
+        result.error === "missing-name"
+          ? t("catalog.categories.nameMissing")
+          : t("catalog.categories.nameTooLong"),
+      );
+      // A rejected name takes focus back, so the person can correct it right away.
+      nameRef.current?.focus();
       return;
     }
     if (category && result.command.name === category.name) {
       setError(t("catalog.categories.unchangedName"));
+      nameRef.current?.focus();
       return;
     }
     setError(undefined);
-    mutation.mutate(withStableIdempotencyKey(mutation.variables, result.command));
+    command.send(withStableIdempotencyKey(command.variables, result.command));
   };
   const close = () => {
     if (!locked) onClose();
   };
+
+  useEffect(() => {
+    if (conflict) nameRef.current?.focus();
+  }, [conflict]);
 
   return (
     <Dialog
@@ -108,11 +134,11 @@ export function CategoryNameDialog({
       }}
       open
     >
-      {/* The shared content ignores its width classes on the web; size it like the shared Sheet. */}
       <DialogContent
+        // The same width as a confirmation; the container itself never shows a focus ring.
+        className="sm:max-w-md web:outline-none"
         hideClose={locked}
-        onCloseAutoFocus={returnFocusOnClose(returnFocus)}
-        style={{ width: Math.min(DIALOG_WIDTH, width - 32) }}
+        onCloseAutoFocus={returnFocusOnClose(focus.opener)}
       >
         <DialogHeader>
           <DialogTitle>
@@ -129,17 +155,18 @@ export function CategoryNameDialog({
         <Field
           autoFocus
           editable={!locked}
-          error={error}
+          error={fieldError}
           label={t("catalog.categories.name")}
           maxLength={80}
           onChangeText={(value) => {
             setName(value);
             setError(undefined);
             // A rejected name being corrected is a new command; its stale failure goes away.
-            if (phase === "failed") mutation.reset();
+            if (phase === "failed") command.reset();
           }}
           onSubmitEditing={confirm}
           placeholder={t("catalog.categories.namePlaceholder")}
+          ref={nameRef}
           returnKeyType="done"
           value={name}
         />
@@ -148,11 +175,11 @@ export function CategoryNameDialog({
             <AlertTitle>{t("common.uncertainTitle")}</AlertTitle>
             <AlertDescription>{t("catalog.categories.uncertainDescription")}</AlertDescription>
           </Alert>
-        ) : phase === "failed" ? (
+        ) : phase === "failed" && !conflict ? (
           <Alert icon={CircleAlert} variant="destructive">
             <AlertDescription>
               {productErrorMessage(
-                mutation.error,
+                command.error,
                 t("productErrors.contexts.category.fallback"),
                 t,
                 "category",
@@ -161,13 +188,7 @@ export function CategoryNameDialog({
           </Alert>
         ) : null}
         <DialogFooter>
-          <Button
-            className={locked ? "opacity-50" : undefined}
-            disabled={locked}
-            label={t("common.cancel")}
-            onPress={close}
-            variant="outline"
-          />
+          <Button disabled={locked} label={t("common.cancel")} onPress={close} variant="outline" />
           <Button
             disabled={!canConfirm && phase !== "uncertain"}
             label={
@@ -191,21 +212,23 @@ export function CategoryArchiveDialog({
   businessId,
   canConfirm,
   category,
+  focus,
   onClose,
-  returnFocus,
 }: CategoryDialogProps & { category: Category }) {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
-  const archive = useMutation({
+  const [archived, setArchived] = useState(false);
+  const archive = useKeyedCommand({
     mutationFn: (command: ArchiveCategoryRequest) =>
       catalogApi.categories.archive(category.id, command),
-    onSuccess: async () => {
+    onConfirmed: async () => {
+      setArchived(true);
       await invalidateCatalogInventory(queryClient, businessId);
       notify.success(t("catalog.categories.archived"), { description: category.name });
       onClose();
     },
   });
-  const phase = mutationPhase(archive);
+  const { phase } = archive;
   return (
     <ConfirmDialog
       confirmLabel={t("catalog.categories.archiveConfirm")}
@@ -226,16 +249,16 @@ export function CategoryArchiveDialog({
       onConfirm={() => {
         if (phase === "pending") return;
         if (phase === "uncertain" && archive.variables) {
-          archive.mutate(archive.variables);
+          archive.send(archive.variables);
           return;
         }
         if (!canConfirm) return;
         // Archiving has no reviewable fields; every attempt in one dialog is the same command.
-        archive.mutate(archive.variables ?? { idempotencyKey: Crypto.randomUUID() });
+        archive.send(archive.variables ?? { idempotencyKey: Crypto.randomUUID() });
       }}
       open
       phase={phase}
-      returnFocus={returnFocus}
+      returnFocus={dialogReturnFocus(focus, archived)}
       title={t("catalog.categories.archiveTitle", { name: category.name })}
       uncertainDescription={t("catalog.categories.uncertainDescription")}
     />

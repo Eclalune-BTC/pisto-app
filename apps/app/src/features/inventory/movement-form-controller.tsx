@@ -1,5 +1,5 @@
 import type { RecordInventoryMovementRequest } from "@pisto/contracts";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Link, Redirect, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
@@ -10,17 +10,19 @@ import type { DescriptionItem } from "@/components/layout/description-list";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { formatLocalMoment } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime } from "@/lib/money";
-import { isLockedPhase, mutationPhase } from "@/lib/mutation-phase";
+import { isLockedPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { ChangedValue } from "../cash/review-values";
-import { formatLocalMoment, quantityText, signedQuantityText } from "../catalog/format";
+import { ReviewChange } from "../catalog/command-review";
+import { quantityText, signedQuantityText } from "../catalog/format";
 import { invalidateCatalogInventory, productQueryOptions } from "../catalog/queries";
 import { CapabilityRouteState } from "../catalog/route-state";
 import { hasStaleRead, readState } from "../catalog/state";
+import { useKeyedCommand } from "../catalog/use-keyed-command";
 import { inventoryApi } from "./api";
 import { stockHref } from "./inventory-screen";
 import {
@@ -49,10 +51,28 @@ const fieldOrder: readonly InventoryMovementField[] = [
   "occurredLocalTime",
 ];
 
-function localizedErrors(errors: InventoryMovementErrors, t: TFunction): InventoryMovementErrors {
+function localizedErrors(
+  errors: InventoryMovementErrors,
+  precision: number,
+  t: TFunction,
+): InventoryMovementErrors {
   return {
-    ...(errors.quantity ? { quantity: t("inventory.movementEditor.validation.quantity") } : {}),
-    ...(errors.reason ? { reason: t("inventory.movementEditor.validation.reason") } : {}),
+    ...(errors.quantity
+      ? {
+          quantity:
+            precision === 0
+              ? t("inventory.movementEditor.validation.quantityWhole")
+              : t("inventory.movementEditor.validation.quantity", { count: precision }),
+        }
+      : {}),
+    ...(errors.reason
+      ? {
+          reason:
+            errors.reason === "missing"
+              ? t("inventory.movementEditor.validation.reasonMissing")
+              : t("inventory.movementEditor.validation.reasonTooLong"),
+        }
+      : {}),
     ...(errors.occurredLocalDate
       ? { occurredLocalDate: t("inventory.movementEditor.validation.date") }
       : {}),
@@ -74,9 +94,11 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
   // The product, its unit and its balance come from the catalog read.
   const canManage =
     permissions.includes("inventory:manage") && permissions.includes("catalog:read");
-  const productQuery = useQuery(
-    productQueryOptions(canManage ? business?.id : undefined, productId),
-  );
+  // The form checks an outflow against this balance, so it reads the balance afresh.
+  const productQuery = useQuery({
+    ...productQueryOptions(canManage ? business?.id : undefined, productId),
+    refetchOnMount: "always",
+  });
   const detail = productQuery.data;
   const [draft, setDraft] = useState<InventoryMovementDraft>(emptyDraft);
   const [errors, setErrors] = useState<InventoryMovementErrors>({});
@@ -101,7 +123,11 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
     pendingFocus.current = null;
     if (target) fieldRefs[target].current?.focus();
   });
-  useRouteLabel("/operate/inventory/[productId]", detail?.product.name);
+  // A rejected read takes the cached product name out of the breadcrumb too.
+  useRouteLabel(
+    "/operate/inventory/[productId]",
+    readState([businesses, productQuery]) === "denied" ? undefined : detail?.product.name,
+  );
 
   // A new movement starts at the business's current local moment, once; clearing a field later
   // must not refill it while the person is editing.
@@ -111,12 +137,12 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
     setDraft((value) => ({ ...value, occurredLocalDate: now.date, occurredLocalTime: now.time }));
   }
 
-  const mutation = useMutation({
+  const mutation = useKeyedCommand({
     mutationFn: (input: RecordInventoryMovementRequest) => {
       if (!productId) throw new Error("The product identifier is missing");
       return inventoryApi.recordMovement(productId, input);
     },
-    onSuccess: async ({ movement }) => {
+    onConfirmed: async ({ movement }) => {
       if (business) await invalidateCatalogInventory(queryClient, business.id);
       notify.success(t("inventory.movementEditor.recorded"), {
         description: detail
@@ -134,7 +160,7 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
       router.replace(stockHref(movement.productId));
     },
   });
-  const phase = mutationPhase(mutation);
+  const { phase } = mutation;
   const locked = isLockedPhase(phase);
 
   if (access === "offline") return <CapabilityRouteState kind="offline" width="form" />;
@@ -216,7 +242,7 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
       quantityPrecision: product.quantityPrecision,
     });
     if ("errors" in result) {
-      setErrors(localizedErrors(result.errors, t));
+      setErrors(localizedErrors(result.errors, product.quantityPrecision, t));
       pendingFocus.current = fieldOrder.find((field) => result.errors[field]) ?? null;
       return;
     }
@@ -233,6 +259,7 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
 
   const reviewItems: DescriptionItem[] | null = command
     ? [
+        { label: t("inventory.movementEditor.product"), value: product.name },
         {
           label: t("inventory.movementEditor.actionLabel"),
           value: t(`inventory.movementActions.${command.action}`),
@@ -250,9 +277,10 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
           label: t("inventory.movementEditor.stockChange"),
           numeric: true,
           value: (
-            <ChangedValue
+            <ReviewChange
               after={quantity(balanceAfter(stock.onHandMinorUnits, command).toString())}
               before={onHand}
+              numeric
             />
           ),
         },
@@ -288,7 +316,7 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
       onConfirm={() => {
         if (!command || phase === "pending") return;
         // The same command may always be sent again; only a first attempt needs fresh data.
-        if (phase === "uncertain" || !isStale) mutation.mutate(command);
+        if (phase === "uncertain" || !isStale) mutation.send(command);
       }}
       onDraftChange={(next) => {
         if (command || locked) return;
@@ -299,6 +327,8 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
         if (locked) return;
         setCommand(null);
         mutation.reset();
+        // The review that held focus is gone; the form continues at its first field.
+        pendingFocus.current = "quantity";
       }}
       onHand={onHand}
       onRetryRead={() => {

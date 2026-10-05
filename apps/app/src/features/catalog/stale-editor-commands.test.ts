@@ -1,3 +1,4 @@
+import type { Product } from "@pisto/contracts";
 import type { ComponentProps, ReactElement } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ApiClientError } from "@/lib/api-error";
@@ -51,6 +52,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-query")>()),
   useQuery: (options: { queryKey: readonly unknown[] }) =>
     options.queryKey[0] === "businesses" ? fixture.queries.businesses : fixture.queries.product,
+  useInfiniteQuery: () => fixture.queries.history,
   useMutation: () => fixture.mutation,
   useQueryClient: () => ({ invalidateQueries: async () => undefined }),
 }));
@@ -94,7 +96,8 @@ import { Button } from "@/components/ui/button";
 import { elements } from "../../../test-support/element-tree";
 import { MovementFormRoute } from "../inventory/movement-form-controller";
 import { MovementFormScreen } from "../inventory/movement-form-screen";
-import { ProductFormRoute } from "./product-form-controller";
+import type { ProductCommand } from "./product-draft";
+import { ProductFormRoute, productSaveMessage } from "./product-form-controller";
 import { ProductFormScreen } from "./product-form-screen";
 
 function read(data: unknown): Read {
@@ -158,6 +161,7 @@ beforeEach(() => {
       },
     }),
     categories: read({ pages: [{ items: [], nextCursor: null }] }),
+    history: read({ pages: [{ items: [], nextCursor: null }] }),
     product: read({ product, stock }),
   };
 });
@@ -357,4 +361,124 @@ test("refuses an outbound movement larger than the balance before reviewing it",
   screen.props.onReview();
   screen = render(() => MovementFormRoute({ productId: "product" })) as MovementScreen;
   expect(screen.props.reviewItems).not.toBeNull();
+});
+
+describe("product edit after inventory movements", () => {
+  type Screen = ReactElement<ComponentProps<typeof ProductFormScreen>>;
+  const renderEdit = () =>
+    render(() => ProductFormRoute({ mode: "edit", productId: "product" })) as Screen;
+
+  beforeEach(() => {
+    // A zero balance proves nothing about history; only the history read can.
+    fixture.queries.product = read({ product, stock: { ...stock, onHandMinorUnits: "0" } });
+  });
+
+  test("waits for the history, then freezes the unit, decimals and tracking", () => {
+    fixture.queries.history = {
+      ...read(undefined),
+      fetchStatus: "fetching",
+      isFetching: true,
+      isPending: true,
+    };
+    renderEdit();
+    const waiting = renderEdit() as unknown as ReactElement<{ kind: string }>;
+    expect(waiting.props.kind).toBe("loading");
+
+    fixture.queries.history = read({ pages: [{ items: [{ id: "movement" }], nextCursor: null }] });
+    let screen = renderEdit();
+    expect(screen.props.historyLocked).toBe(true);
+    screen.props.onDraftChange({
+      ...screen.props.draft,
+      name: "Coffee beans",
+      quantityPrecision: 2,
+      tracked: false,
+      unitKind: "kilogram",
+    });
+    screen = renderEdit();
+    expect(screen.props.draft).toMatchObject({
+      name: "Coffee beans",
+      quantityPrecision: 0,
+      tracked: true,
+      unitKind: "unit",
+    });
+    screen.props.onReview();
+    expect(renderEdit().props.reviewItems).not.toBeNull();
+  });
+
+  test("leaves the decision to the server when the history cannot be read", () => {
+    fixture.queries.history = {
+      ...read(undefined),
+      error: new ApiClientError("Unavailable", 503),
+      isError: true,
+    };
+    renderEdit();
+    expect(renderEdit().props.historyLocked).toBe(false);
+    fixture.queries.history = read({ pages: [{ items: [], nextCursor: null }] });
+    expect(renderEdit().props.historyLocked).toBe(false);
+  });
+
+  test("treats a balance other than zero as history without reading it", () => {
+    fixture.queries.product = read({ product, stock });
+    fixture.queries.history = read(undefined);
+    renderEdit();
+    expect(renderEdit().props.historyLocked).toBe(true);
+  });
+});
+
+describe("product save refusal", () => {
+  const t = ((key: string) => key) as Parameters<typeof productSaveMessage>[3];
+  const key = "11111111-1111-4111-8111-111111111111";
+  const conflict = new ApiClientError("Conflict", 409, "CONFLICT");
+  const active = product as Product;
+  const create = {
+    idempotencyKey: key,
+    categoryId: null,
+    lowStockThresholdMinorUnits: null,
+    name: "Coffee",
+    quantityPrecision: 0,
+    sellingPriceMinorUnits: null,
+    sku: "CAFE-1",
+    tracked: false,
+    unitKind: "unit",
+  } satisfies ProductCommand;
+
+  test("names the only cause a conflict can have", () => {
+    expect(productSaveMessage(conflict, create, undefined, t)).toBe("catalog.form.conflicts.sku");
+    expect(productSaveMessage(conflict, { idempotencyKey: key, sku: "CAFE-2" }, active, t)).toBe(
+      "catalog.form.conflicts.sku",
+    );
+    expect(
+      productSaveMessage(conflict, { idempotencyKey: key, unitKind: "kilogram" }, active, t),
+    ).toBe("catalog.form.conflicts.history");
+    expect(productSaveMessage(conflict, { idempotencyKey: key, tracked: false }, active, t)).toBe(
+      "catalog.form.conflicts.history",
+    );
+    expect(
+      productSaveMessage(
+        conflict,
+        { idempotencyKey: key, name: "Beans" },
+        { ...active, status: "archived" as const },
+        t,
+      ),
+    ).toBe("catalog.form.conflicts.archived");
+  });
+
+  test("keeps the general message when the cause is ambiguous or not a conflict", () => {
+    expect(
+      productSaveMessage(
+        conflict,
+        { idempotencyKey: key, quantityPrecision: 2, sku: "CAFE-2" },
+        active,
+        t,
+      ),
+    ).toBe("productErrors.contexts.product.conflict");
+    expect(
+      productSaveMessage(
+        new ApiClientError("Forbidden", 403, "FORBIDDEN"),
+        { idempotencyKey: key, sku: "CAFE-2" },
+        active,
+        t,
+      ),
+    ).toBe("productErrors.contexts.product.forbidden");
+  });
 });

@@ -141,7 +141,7 @@ describe("product detail", () => {
     ).toContain(t("catalog.detail.archivedDescription"));
   });
 
-  test("states an untracked product without a balance or a movement history", () => {
+  test("states an untracked product with its price only and no movement history", () => {
     const markup = render({
       detail: {
         product: { ...detail.product, tracked: false, lowStockThresholdMinorUnits: null },
@@ -149,11 +149,52 @@ describe("product detail", () => {
       },
       movements: null,
     });
-    expect(markup).toContain(t("catalog.list.notTracked"));
-    expect(markup).toContain(t("catalog.detail.notTrackedDetail"));
+    expect(markup).toContain("$12.50");
+    expect(markup).not.toContain(`>${t("catalog.detail.onHand")}<`);
+    expect(markup).not.toContain(`>${t("catalog.detail.threshold")}<`);
     expect(markup).not.toContain(t("catalog.detail.movementsTitle"));
     expect(markup).not.toContain(`>${t("inventory.product.recordMovement")}<`);
     expect(markup).toContain(`>${t("catalog.detail.edit")}<`);
+  });
+
+  test("shows an absent price or minimum as a dash and says once what is missing", () => {
+    const markup = render({
+      detail: {
+        product: {
+          ...detail.product,
+          lowStockThresholdMinorUnits: null,
+          sellingPriceCurrency: null,
+          sellingPriceCurrencyMinorUnitDigits: null,
+          sellingPriceMinorUnits: null,
+        },
+        stock: {
+          productId: "product-a",
+          onHandMinorUnits: "2500",
+          quantityPrecision: 3,
+          lowStockThresholdMinorUnits: null,
+          lowStock: false,
+        },
+      },
+    });
+    expect(markup.split(t("catalog.detail.noPrice"))).toHaveLength(2);
+    expect(markup.split(t("catalog.detail.noThreshold"))).toHaveLength(2);
+    expect(markup.split(">—<")).toHaveLength(3);
+  });
+
+  test("asks for no attention on the balance of an archived product", () => {
+    const markup = render({
+      detail: { ...detail, product: { ...detail.product, status: "archived" } },
+    });
+    expect(markup).toContain("2.500 kg");
+    expect(markup).not.toContain(t("catalog.detail.lowStockDetail"));
+  });
+
+  test("offers an empty history the action that starts it", () => {
+    const empty = render({ movements: { items: [], read: "ready" } });
+    expect(empty).toContain(t("inventory.history.emptyTitle"));
+    expect(empty.split(`>${t("inventory.product.recordMovement")}<`)).toHaveLength(3);
+    const readOnly = render({ canRecordMovement: false, movements: { items: [], read: "ready" } });
+    expect(readOnly).not.toContain(`>${t("inventory.product.recordMovement")}<`);
   });
 
   test("never names a category it has not read and keeps a failed history visible as failed", () => {
@@ -174,5 +215,15 @@ describe("product detail", () => {
     });
     expect(markup).toContain(t("catalog.detail.archiveTitle", { name: "Café molido" }));
     expect(markup).toContain('data-disabled="true"');
+  });
+
+  test("keeps every action in place on a stale read but blocks a new archive", () => {
+    const markup = render({ archive: { ...props.archive, open: true }, isStale: true });
+    expect(markup).toContain(`>${t("catalog.detail.edit")}<`);
+    expect(markup).toContain(`>${t("catalog.detail.archive")}<`);
+    expect(markup).toContain('data-disabled="true"');
+    expect(render({ archive: { ...props.archive, open: true } })).toContain(
+      'data-disabled="false"',
+    );
   });
 });

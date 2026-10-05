@@ -1,9 +1,4 @@
-import {
-  calendarLocalDateSchema,
-  localTimeSchema,
-  type Product,
-  type ProductUnitKind,
-} from "@pisto/contracts";
+import type { Product, ProductUnitKind } from "@pisto/contracts";
 import type { TFunction } from "i18next";
 import { formatMinorUnits } from "@/lib/money";
 import { formatQuantity, formatQuantityMinorUnits } from "../inventory/quantity";
@@ -40,35 +35,4 @@ export function signedQuantityText(
     unitKind: delta.unitKind,
   });
   return `${negative ? "−" : "+"}${magnitude}`;
-}
-
-// Movements are entered with a 24-hour HH:MM time, so every movement shows the same clock.
-const momentFormat = {
-  dateStyle: "medium",
-  timeStyle: "short",
-  hourCycle: "h23",
-} as const satisfies Intl.DateTimeFormatOptions;
-
-/**
- * A business-local wall-clock moment such as a movement's date and time. It is rendered in UTC on
- * purpose: the values are already local to the business, so no offset may shift them.
- */
-export function formatLocalMoment(localDate: string, localTime: string, locale: string): string {
-  const date = calendarLocalDateSchema.parse(localDate);
-  const time = localTimeSchema.parse(localTime);
-  return new Intl.DateTimeFormat(locale, { ...momentFormat, timeZone: "UTC" }).format(
-    new Date(`${date}T${time}:00.000Z`),
-  );
-}
-
-/** An exact recorded instant, shown in the business time zone. */
-export function formatInstant(instant: string, locale: string, timeZone: string): string {
-  return new Intl.DateTimeFormat(locale, { ...momentFormat, timeZone }).format(new Date(instant));
-}
-
-/** The business-local calendar day of a recorded instant. */
-export function formatInstantDate(instant: string, locale: string, timeZone: string): string {
-  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone }).format(
-    new Date(instant),
-  );
 }

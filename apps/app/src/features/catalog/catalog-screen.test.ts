@@ -107,10 +107,18 @@ describe("catalog list", () => {
     expect(markup).toContain("Bebidas");
     expect(markup).toContain("$12.50");
     expect(markup).toContain("2.500 kg");
-    expect(markup).toContain(i18n.t("catalog.list.lowStock"));
     expect(markup).toContain(i18n.t("catalog.status.archived"));
     expect(markup).toContain(i18n.t("remote.stale"));
     expect(markup).toContain(i18n.t("common.loadMore"));
+    // An archived product is out of operation, so its low balance asks for no attention.
+    const lowStock = `>${i18n.t("catalog.list.lowStockShort")}<`;
+    expect(markup).not.toContain(lowStock);
+    const active = { ...item, product: { ...item.product, status: "active" as const } };
+    expect(
+      render({
+        state: { status: "ready", items: [active], hasNextPage: false, loadingMore: false },
+      }),
+    ).toContain(lowStock);
   });
 
   test("states an absent price and untracked stock without manufacturing values", () => {

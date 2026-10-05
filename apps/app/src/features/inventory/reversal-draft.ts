@@ -21,7 +21,8 @@ export function buildReversalCommand(input: {
 }): { command: ReverseInventoryMovementRequest } | { errors: ReversalDraftErrors } {
   const errors: ReversalDraftErrors = {};
   const reason = input.draft.reason.trim();
-  if (!reason || reason.length > 240) errors.reason = "invalid";
+  if (!reason) errors.reason = "missing";
+  else if (reason.length > 240) errors.reason = "too-long";
   if (!calendarLocalDateSchema.safeParse(input.draft.occurredLocalDate).success) {
     errors.occurredLocalDate = "invalid";
   }
@@ -35,5 +36,7 @@ export function buildReversalCommand(input: {
     occurredLocalTime: input.draft.occurredLocalTime,
     reason,
   });
-  return parsed.success ? { command: parsed.data } : { errors: { reason: "invalid" } };
+  // Every field was validated above, so only a malformed key can fail here.
+  if (!parsed.success) throw new Error("The reversal command does not match its contract");
+  return { command: parsed.data };
 }

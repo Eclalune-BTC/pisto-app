@@ -1,5 +1,5 @@
 import type { ArchiveProductRequest } from "@pisto/contracts";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Link, Redirect, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -7,8 +7,6 @@ import { useTranslation } from "react-i18next";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { focusReturnTarget } from "@/lib/focus-return";
-import { mutationPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
@@ -25,7 +23,9 @@ import {
   useCategoryChoices,
 } from "./queries";
 import { CapabilityRouteState } from "./route-state";
+import { captureDialogFocus, type DialogFocus, dialogReturnFocus } from "./screen-heading";
 import { hasStaleRead, readState } from "./state";
+import { useKeyedCommand } from "./use-keyed-command";
 
 export function CatalogLink() {
   const { t } = useTranslation();
@@ -58,20 +58,26 @@ export default function ProductDetailController() {
     movementsInfiniteOptions(showsMovements ? business?.id : undefined, productId),
   );
   const [archiving, setArchiving] = useState(false);
-  // Kept after the dialog closes: focus returns to the opener once the dialog has unmounted.
-  const [archiveOpener, setArchiveOpener] = useState<HTMLElement | null>(null);
-  const archive = useMutation({
+  // Kept after the dialog closes: focus moves once the dialog has unmounted.
+  const [archiveFocus, setArchiveFocus] = useState<DialogFocus>({ opener: null, title: null });
+  const [archived, setArchived] = useState(false);
+  const archive = useKeyedCommand({
     mutationFn: (command: ArchiveProductRequest) => {
       if (!productId) throw new Error("The product identifier is missing");
       return catalogApi.products.archive(productId, command);
     },
-    onSuccess: async ({ product }) => {
+    onConfirmed: async ({ product }) => {
+      setArchived(true);
       if (business) await invalidateCatalogInventory(queryClient, business.id);
       notify.success(t("catalog.detail.archived"), { description: product.name });
       setArchiving(false);
     },
   });
-  useRouteLabel("/operate/catalog/[productId]", detail?.product.name);
+  // A rejected read takes the cached product name out of the breadcrumb too.
+  useRouteLabel(
+    "/operate/catalog/[productId]",
+    readState([businesses, productQuery]) === "denied" ? undefined : detail?.product.name,
+  );
 
   if (access === "offline") return <CapabilityRouteState kind="offline" />;
   if (access === "loading") return <CapabilityRouteState kind="loading" variant="detail" />;
@@ -105,8 +111,8 @@ export default function ProductDetailController() {
   }
 
   const stale = hasStaleRead([businesses, productQuery]);
-  const canManage = permissions.includes("catalog:manage") && !stale;
-  const phase = mutationPhase(archive);
+  const canManage = permissions.includes("catalog:manage");
+  const { phase } = archive;
   const choices = categoryChoices(categories);
   const categoryId = detail.product.categoryId;
   const categoryName =
@@ -136,24 +142,25 @@ export default function ProductDetailController() {
           if (phase === "pending") return;
           // The same command may always be sent again; only a first attempt needs fresh access.
           if (phase === "uncertain" && archive.variables) {
-            archive.mutate(archive.variables);
+            archive.send(archive.variables);
             return;
           }
-          if (!canManage) return;
+          if (stale || !canManage) return;
           // Archiving has no reviewable fields; every attempt in one dialog is the same command.
-          archive.mutate(archive.variables ?? { idempotencyKey: Crypto.randomUUID() });
+          archive.send(archive.variables ?? { idempotencyKey: Crypto.randomUUID() });
         },
         onOpen: () => {
           archive.reset();
-          setArchiveOpener(focusReturnTarget());
+          setArchiveFocus(captureDialogFocus());
+          setArchived(false);
           setArchiving(true);
         },
         open: archiving,
         phase,
-        returnFocus: archiveOpener,
+        returnFocus: dialogReturnFocus(archiveFocus, archived),
       }}
       canManage={canManage}
-      canRecordMovement={permissions.includes("inventory:manage") && !stale}
+      canRecordMovement={permissions.includes("inventory:manage")}
       categoryName={categoryName}
       detail={detail}
       isStale={stale}

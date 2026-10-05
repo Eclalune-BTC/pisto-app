@@ -6,6 +6,7 @@ import { ApiClientError } from "@/lib/api-error";
 const fixture = vi.hoisted(() => ({
   states: [] as unknown[],
   index: 0,
+  focusReason: vi.fn(),
   mutation: {
     error: null as unknown,
     isError: false,
@@ -14,7 +15,9 @@ const fixture = vi.hoisted(() => ({
     reset: vi.fn(),
     variables: undefined as unknown,
   },
-  mutationOptions: undefined as { onSuccess: () => Promise<void> } | undefined,
+  mutationOptions: undefined as
+    | { onSuccess: (result: unknown, variables: { idempotencyKey: string }) => Promise<void> }
+    | undefined,
   notify: vi.fn(),
   invalidate: vi.fn(async () => undefined),
   keys: 0,
@@ -28,6 +31,7 @@ vi.mock("uniwind", () => ({
 }));
 vi.mock("react", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react")>()),
+  useRef: () => ({ current: { focus: fixture.focusReason } }),
   useState: (initial: unknown) => {
     const index = fixture.index++;
     if (!(index in fixture.states))
@@ -42,7 +46,7 @@ vi.mock("react", async (importOriginal) => ({
 }));
 vi.mock("@tanstack/react-query", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-query")>()),
-  useMutation: (options: { onSuccess: () => Promise<void> }) => {
+  useMutation: (options: NonNullable<typeof fixture.mutationOptions>) => {
     fixture.mutationOptions = options;
     return fixture.mutation;
   },
@@ -87,16 +91,18 @@ const movement: InventoryMovement = {
   createdAt: timestamp,
 };
 const onClose = vi.fn();
+const opener = { isConnected: true, focus: vi.fn() } as unknown as HTMLElement;
+const title = { isConnected: true, focus: vi.fn() } as unknown as HTMLElement;
 
 function render(changes: Partial<Parameters<typeof ReversalDialog>[0]> = {}) {
   fixture.index = 0;
   return ReversalDialog({
     businessId: "business",
     canConfirm: true,
+    focus: { opener, title },
     movement,
     onClose,
     product,
-    returnFocus: null,
     timeZone: "America/El_Salvador",
     ...changes,
   }) as Rendered;
@@ -133,7 +139,9 @@ describe("movement reversal", () => {
   test("refuses an empty reason and a lost permission without sending anything", () => {
     (render().props.onConfirm as () => void)();
     expect(fixture.mutation.mutate).not.toHaveBeenCalled();
-    expect(reason(render()).error).toBe("inventory.reversal.validation.reason");
+    expect(reason(render()).error).toBe("inventory.movementEditor.validation.reasonMissing");
+    // The refused reason takes focus so it can be written right away.
+    expect(fixture.focusReason).toHaveBeenCalledOnce();
     reason(render()).onChangeText("Counted twice");
     (render({ canConfirm: false }).props.onConfirm as () => void)();
     expect(fixture.mutation.mutate).not.toHaveBeenCalled();
@@ -175,11 +183,16 @@ describe("movement reversal", () => {
     });
   });
 
-  test("announces the definitive result and closes", async () => {
-    render();
-    await fixture.mutationOptions?.onSuccess();
+  test("announces the definitive result, closes and continues from the screen title", async () => {
+    expect(render().props.returnFocus).toBe(opener);
+    await fixture.mutationOptions?.onSuccess(
+      { movement: { ...movement, id: "movement-b", reversesMovementId: movement.id } },
+      { idempotencyKey: "00000000-0000-4000-8000-000000000001" },
+    );
     expect(fixture.invalidate).toHaveBeenCalledWith({}, "business");
     expect(fixture.notify.mock.lastCall?.[0]).toBe("inventory.reversal.reversed");
     expect(onClose).toHaveBeenCalledOnce();
+    // The reversed row no longer offers its menu, so focus cannot go back to it.
+    expect(render().props.returnFocus).toBe(title);
   });
 });

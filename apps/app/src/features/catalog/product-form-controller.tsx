@@ -1,5 +1,5 @@
 import type { CreateProductRequest, Product, UpdateProductRequest } from "@pisto/contracts";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
@@ -9,14 +9,17 @@ import type { TextInput } from "react-native";
 import type { DescriptionItem } from "@/components/layout/description-list";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { ApiClientError } from "@/lib/api-error";
 import { formatMinorUnits } from "@/lib/money";
-import { isLockedPhase, mutationPhase } from "@/lib/mutation-phase";
+import { isLockedPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { ChangedValue } from "../cash/review-values";
+import { isAccessDeniedError } from "@/lib/query-state";
+import { movementsInfiniteOptions } from "../inventory/queries";
 import { catalogApi } from "./api";
 import { productHref } from "./catalog-screen";
+import { ReviewChange } from "./command-review";
 import { productPrice, quantityText } from "./format";
 import { CatalogLink } from "./product-detail-controller";
 import {
@@ -29,16 +32,19 @@ import {
   productToDraft,
   type ResolvedProductFields,
   resolvedProductFields,
+  withFrozenHistoryFields,
 } from "./product-draft";
 import { type ProductFieldRefs, ProductFormScreen } from "./product-form-screen";
 import {
   categoryChoices,
+  flattenPages,
   invalidateCatalogInventory,
   productQueryOptions,
   useCategoryChoices,
 } from "./queries";
 import { CapabilityRouteState } from "./route-state";
 import { hasStaleRead, readState } from "./state";
+import { useKeyedCommand } from "./use-keyed-command";
 
 const fieldOrder: readonly ProductDraftField[] = [
   "name",
@@ -47,16 +53,62 @@ const fieldOrder: readonly ProductDraftField[] = [
   "lowStockThreshold",
 ];
 
-function localizedErrors(errors: ProductDraftErrors, t: TFunction): ProductDraftErrors {
+function localizedErrors(
+  errors: ProductDraftErrors,
+  decimals: { price: number; quantity: number },
+  t: TFunction,
+): ProductDraftErrors {
   return {
     ...(errors.form ? { form: t("catalog.form.validation.noChanges") } : {}),
     ...(errors.lowStockThreshold
-      ? { lowStockThreshold: t("catalog.form.validation.threshold") }
+      ? {
+          lowStockThreshold:
+            decimals.quantity === 0
+              ? t("catalog.form.validation.thresholdWhole")
+              : t("catalog.form.validation.threshold", { count: decimals.quantity }),
+        }
       : {}),
-    ...(errors.name ? { name: t("catalog.form.validation.name") } : {}),
-    ...(errors.sellingPrice ? { sellingPrice: t("catalog.form.validation.price") } : {}),
+    ...(errors.name
+      ? {
+          name:
+            errors.name === "missing"
+              ? t("catalog.form.validation.nameMissing")
+              : t("catalog.form.validation.nameTooLong"),
+        }
+      : {}),
+    ...(errors.sellingPrice
+      ? {
+          sellingPrice:
+            decimals.price === 0
+              ? t("catalog.form.validation.priceWhole")
+              : t("catalog.form.validation.price", { count: decimals.price }),
+        }
+      : {}),
     ...(errors.sku ? { sku: t("catalog.form.validation.sku") } : {}),
   };
+}
+
+/**
+ * Why a save was refused. The server refuses a duplicate SKU, an archived product, and a unit,
+ * decimals or tracking change once movements exist; while the product is still active and the
+ * command changed only one of those, the message names it.
+ */
+export function productSaveMessage(
+  error: unknown,
+  command: ProductCommand,
+  current: Product | undefined,
+  t: TFunction,
+): string {
+  if (error instanceof ApiClientError && error.code === "CONFLICT") {
+    if (current?.status === "archived") return t("catalog.form.conflicts.archived");
+    const changesSku = command.sku != null;
+    const changesHistory =
+      current !== undefined &&
+      ("unitKind" in command || "quantityPrecision" in command || command.tracked === false);
+    if (changesSku && !changesHistory) return t("catalog.form.conflicts.sku");
+    if (changesHistory && !changesSku) return t("catalog.form.conflicts.history");
+  }
+  return productErrorMessage(error, t("productErrors.contexts.product.fallback"), t, "product");
 }
 
 type ReviewContext = {
@@ -109,9 +161,9 @@ function productReviewItems(command: ProductCommand, context: ReviewContext): De
             locale,
           );
   const after = describe(resolved, priceAfter);
-  const value = (key: keyof typeof after) =>
+  const value = (key: keyof typeof after, numeric = false) =>
     before && before[key] !== after[key] ? (
-      <ChangedValue after={after[key]} before={before[key]} />
+      <ReviewChange after={after[key]} before={before[key]} numeric={numeric} />
     ) : (
       after[key]
     );
@@ -119,12 +171,28 @@ function productReviewItems(command: ProductCommand, context: ReviewContext): De
     { label: t("catalog.form.name"), value: value("name") },
     { label: t("dataTable.columns.sku"), value: value("sku") },
     { label: t("catalog.detail.category"), value: value("category") },
-    { label: t("catalog.detail.price"), numeric: true, value: value("price") },
+    { label: t("catalog.detail.price"), numeric: true, value: value("price", true) },
     { label: t("catalog.detail.tracked"), value: value("tracked") },
     { label: t("catalog.detail.unit"), value: value("unit") },
     { label: t("catalog.detail.precision"), value: value("precision") },
-    { label: t("catalog.detail.threshold"), numeric: true, value: value("threshold") },
+    { label: t("catalog.detail.threshold"), numeric: true, value: value("threshold", true) },
   ];
+}
+
+/**
+ * Whether movements freeze the unit, decimals and tracking: once a tracked product has history,
+ * the server refuses those changes. A balance other than zero proves history without reading it;
+ * otherwise the first page of the history answers, and a history that cannot be read leaves the
+ * decision to the server.
+ */
+function historyFreezes(
+  product: Product,
+  onHandMinorUnits: string | undefined,
+  history: { read: boolean; movements: number },
+): boolean {
+  if (!product.tracked) return false;
+  if (onHandMinorUnits !== undefined && onHandMinorUnits !== "0") return true;
+  return history.read && history.movements > 0;
 }
 
 export function ProductFormRoute({
@@ -141,13 +209,19 @@ export function ProductFormRoute({
   const businesses = useQuery(businessesQueryOptions);
   const access = readState([businesses]);
   const business = access === "denied" ? undefined : getActiveBusiness(businesses.data);
-  const canManage = business?.access.permissions.includes("catalog:manage") ?? false;
+  const permissions = business?.access.permissions ?? [];
+  const canManage = permissions.includes("catalog:manage");
   const businessId = canManage ? business?.id : undefined;
   const categories = useCategoryChoices(businessId);
   const productQuery = useQuery(
     productQueryOptions(mode === "edit" ? businessId : undefined, productId),
   );
   const product = productQuery.data?.product;
+  const readsHistory =
+    mode === "edit" && permissions.includes("inventory:read") && product?.tracked === true;
+  const history = useInfiniteQuery(
+    movementsInfiniteOptions(readsHistory ? businessId : undefined, productId),
+  );
   const [draft, setDraft] = useState<ProductDraftFields>(emptyProductDraft);
   const [errors, setErrors] = useState<ProductDraftErrors>({});
   const [command, setCommand] = useState<ProductCommand | null>(null);
@@ -171,7 +245,13 @@ export function ProductFormRoute({
     pendingFocus.current = null;
     if (target) fieldRefs[target].current?.focus();
   });
-  useRouteLabel("/operate/catalog/[productId]", mode === "edit" ? product?.name : undefined);
+  // A rejected read takes the cached product name out of the breadcrumb too.
+  useRouteLabel(
+    "/operate/catalog/[productId]",
+    mode === "edit" && readState([businesses, productQuery]) !== "denied"
+      ? product?.name
+      : undefined,
+  );
 
   // An edit starts from the product once; refreshing it later must not overwrite the draft.
   if (mode === "edit" && product && initializedProduct !== product.id) {
@@ -179,21 +259,27 @@ export function ProductFormRoute({
     setDraft(productToDraft(product));
   }
 
-  const mutation = useMutation({
+  const mutation = useKeyedCommand({
     mutationFn: (input: ProductCommand) => {
       if (mode === "create") return catalogApi.products.create(input as CreateProductRequest);
       if (!productId) throw new Error("The product identifier is missing");
       return catalogApi.products.update(productId, input as UpdateProductRequest);
     },
-    onSuccess: async ({ product: saved }) => {
+    onConfirmed: async ({ product: saved }) => {
       if (business) await invalidateCatalogInventory(queryClient, business.id);
       notify.success(mode === "create" ? t("catalog.form.created") : t("catalog.form.updated"), {
         description: saved.name,
       });
       router.replace(productHref(saved.id));
     },
+    // A conflict means the product or its history changed; the message reads the current state.
+    onRejected: (error) => {
+      if (business && error instanceof ApiClientError && error.code === "CONFLICT") {
+        void invalidateCatalogInventory(queryClient, business.id);
+      }
+    },
   });
-  const phase = mutationPhase(mutation);
+  const { phase } = mutation;
   const locked = isLockedPhase(phase);
 
   if (access === "offline") return <CapabilityRouteState kind="offline" width="form" />;
@@ -221,6 +307,15 @@ export function ProductFormRoute({
       />
     );
   }
+  const original = mode === "edit" ? product : undefined;
+  const historyRead =
+    readsHistory && !isAccessDeniedError(history.error) ? readState([history]) : null;
+  const historyLocked = original
+    ? historyFreezes(original, productQuery.data?.stock?.onHandMinorUnits, {
+        movements: flattenPages(history.data).length,
+        read: historyRead === "ready",
+      })
+    : false;
   if (mode === "edit") {
     const read = readState([productQuery]);
     if (read === "offline") return <CapabilityRouteState kind="offline" width="form" />;
@@ -237,7 +332,12 @@ export function ProductFormRoute({
     if (product?.status === "archived" && !command) {
       return <CapabilityRouteState action={<CatalogLink />} kind="unavailable" width="form" />;
     }
-    if (!product || initializedProduct !== product.id) {
+    // An unproven lock waits for the history, so frozen controls never appear editable first.
+    if (
+      !product ||
+      initializedProduct !== product.id ||
+      (historyRead === "loading" && !historyLocked)
+    ) {
       return <CapabilityRouteState kind="loading" variant="form" width="form" />;
     }
   }
@@ -246,23 +346,34 @@ export function ProductFormRoute({
     mode === "edit" ? [businesses, categories, productQuery] : [businesses, categories],
   );
   const choices = categoryChoices(categories);
-  const original = mode === "edit" ? product : undefined;
+  // Frozen fields show and send the product's values, also when a conflict revealed new history.
+  const effectiveDraft =
+    original && historyLocked ? withFrozenHistoryFields(draft, original) : draft;
 
   const prepareReview = () => {
     if (isStale || locked || command) return;
-    if (draft.categoryId && !choices.names.has(draft.categoryId)) {
+    if (effectiveDraft.categoryId && !choices.names.has(effectiveDraft.categoryId)) {
       setErrors({ form: t("catalog.form.categoriesUnavailable") });
       return;
     }
     const result = buildProductCommand({
       currencyMinorUnitDigits: business.currencyMinorUnitDigits,
-      draft,
+      draft: effectiveDraft,
       idempotencyKey: Crypto.randomUUID(),
       mode,
       original,
     });
     if ("errors" in result) {
-      setErrors(localizedErrors(result.errors, t));
+      setErrors(
+        localizedErrors(
+          result.errors,
+          {
+            price: business.currencyMinorUnitDigits,
+            quantity: effectiveDraft.quantityPrecision,
+          },
+          t,
+        ),
+      );
       pendingFocus.current = fieldOrder.find((field) => result.errors[field]) ?? null;
       return;
     }
@@ -277,10 +388,10 @@ export function ProductFormRoute({
       categoriesError={categories.isError}
       categoriesLoading={!choices.complete && !categories.isError}
       currency={business.currency}
-      draft={draft}
+      draft={effectiveDraft}
       errors={errors}
       fieldRefs={fieldRefs}
-      hasHistoryLock={original?.tracked ?? false}
+      historyLocked={historyLocked}
       isRefreshing={
         businesses.isFetching ||
         categories.isFetching ||
@@ -289,13 +400,8 @@ export function ProductFormRoute({
       isStale={isStale}
       mode={mode}
       mutationMessage={
-        mutation.error
-          ? productErrorMessage(
-              mutation.error,
-              t("productErrors.contexts.product.fallback"),
-              t,
-              "product",
-            )
+        mutation.error && command
+          ? productSaveMessage(mutation.error, command, original, t)
           : undefined
       }
       onCancel={() => {
@@ -305,7 +411,7 @@ export function ProductFormRoute({
       onConfirm={() => {
         if (!command || phase === "pending") return;
         // The same command may always be sent again; only a first attempt needs fresh data.
-        if (phase === "uncertain" || !isStale) mutation.mutate(command);
+        if (phase === "uncertain" || !isStale) mutation.send(command);
       }}
       onDraftChange={(next) => {
         if (command || locked) return;
@@ -316,6 +422,8 @@ export function ProductFormRoute({
         if (locked) return;
         setCommand(null);
         mutation.reset();
+        // The review that held focus is gone; the form continues at its first field.
+        pendingFocus.current = "name";
       }}
       onRetryCategories={() => void categories.refetch()}
       onRetryRead={() => {

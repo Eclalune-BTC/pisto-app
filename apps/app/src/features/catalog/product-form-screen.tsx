@@ -48,8 +48,8 @@ type ProductFormScreenProps = {
   draft: ProductDraftFields;
   errors: ProductDraftErrors;
   fieldRefs: ProductFieldRefs;
-  /** The product tracked stock before this edit, so its history may lock the unit and tracking. */
-  hasHistoryLock: boolean;
+  /** Movements exist, so the unit, the decimals and tracking can no longer change. */
+  historyLocked: boolean;
   isRefreshing: boolean;
   isStale: boolean;
   mode: "create" | "edit";
@@ -74,7 +74,7 @@ export function ProductFormScreen({
   draft,
   errors,
   fieldRefs,
-  hasHistoryLock,
+  historyLocked,
   isRefreshing,
   isStale,
   mode,
@@ -132,7 +132,9 @@ export function ProductFormScreen({
   );
   const chosenCategoryKnown =
     draft.categoryId === null || offeredCategories.some(({ id }) => id === draft.categoryId);
-  const toggleTracked = (tracked: boolean) => onDraftChange({ ...draft, tracked });
+  const toggleTracked = (tracked: boolean) => {
+    if (!historyLocked) onDraftChange({ ...draft, tracked });
+  };
 
   return (
     <Page width="form">
@@ -218,10 +220,13 @@ export function ProductFormScreen({
         />
       </FormSection>
 
-      <FormSection
-        description={hasHistoryLock ? t("catalog.form.historyLocked") : undefined}
-        title={t("catalog.form.inventorySection")}
-      >
+      <FormSection title={t("catalog.form.inventorySection")}>
+        {/* The reason sits next to the controls it disables, not in the narrow title column. */}
+        {historyLocked ? (
+          <Text className="text-[13px] leading-5 text-muted-foreground">
+            {t("catalog.form.historyLocked")}
+          </Text>
+        ) : null}
         <View className="min-w-0 flex-row items-start justify-between gap-4">
           <View className="min-w-0 flex-1 gap-1">
             <Label nativeID={`${trackedId}-label`} onPress={() => toggleTracked(!draft.tracked)}>
@@ -236,10 +241,12 @@ export function ProductFormScreen({
             aria-labelledby={`${trackedId}-label`}
             checked={draft.tracked}
             className="mt-0.5"
+            disabled={historyLocked}
             onCheckedChange={toggleTracked}
           />
         </View>
         <SelectField<ProductUnitKind>
+          disabled={historyLocked}
           label={t("catalog.form.unit")}
           onChange={(unitKind) => onDraftChange({ ...draft, unitKind })}
           options={unitKinds.map((value) => ({
@@ -251,6 +258,7 @@ export function ProductFormScreen({
         <View className="min-w-0 gap-1.5">
           <Label className="text-[13px]">{t("catalog.form.precision")}</Label>
           <FilterBar
+            disabled={historyLocked}
             label={t("catalog.form.precision")}
             onChange={(value) => {
               const quantityPrecision = quantityPrecisions.find(

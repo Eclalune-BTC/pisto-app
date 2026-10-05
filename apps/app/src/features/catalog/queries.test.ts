@@ -99,7 +99,7 @@ describe("catalog and inventory query ownership", () => {
     client.clear();
   });
 
-  test("flattens only successful server pages and calls choices complete after the last one", () => {
+  test("flattens loaded pages in order and calls choices complete only after the last one", () => {
     const category = {
       id: "category",
       name: "Bebidas",

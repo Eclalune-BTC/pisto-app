@@ -61,8 +61,13 @@ export default function CatalogController() {
   }
 
   const stale = hasStaleRead([businesses, products]);
-  // A rejected category read is a rejection of the catalog too; its cached names must go.
-  const productsRead = hasDeniedRead([categories]) ? "denied" : readState([products]);
+  // A rejected category read is a rejection of the catalog too; its cached names must go. Rows
+  // kept from the previous filter must not stand in for a filter that cannot load offline.
+  const productsRead = hasDeniedRead([categories])
+    ? "denied"
+    : products.isPlaceholderData && products.fetchStatus === "paused"
+      ? "offline"
+      : readState([products]);
   let state: CatalogCollectionState;
   if (productsRead === "ready") {
     state = {
@@ -87,7 +92,7 @@ export default function CatalogController() {
 
   return (
     <CatalogScreen
-      canManage={permissions.includes("catalog:manage") && !stale}
+      canManage={permissions.includes("catalog:manage")}
       categories={choices.items}
       categoriesError={categories.isError}
       categoriesLoading={!choices.complete && !categories.isError}
@@ -95,7 +100,7 @@ export default function CatalogController() {
       onCategoryChange={(categoryId) => router.setParams({ category: categoryId ?? undefined })}
       onClearFilters={() => {
         setSearch("");
-        router.setParams({ category: undefined, q: undefined, status: undefined });
+        router.replace("/operate/catalog");
       }}
       onLoadMore={() => void products.fetchNextPage()}
       onRetry={refresh}
@@ -103,6 +108,7 @@ export default function CatalogController() {
       onSearchChange={setSearch}
       onStatusChange={(status) => router.setParams({ status: statusParam(status) })}
       search={search}
+      searching={search.trim() !== filters.search || products.isPlaceholderData}
       state={state}
       status={filters.status}
     />

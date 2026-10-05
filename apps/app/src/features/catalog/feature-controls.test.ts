@@ -4,8 +4,13 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const controls = vi.hoisted(() => ({
   groups: [] as { value: string | undefined; onValueChange: (value: string) => void }[],
-  filters: [] as { value: string; onChange: (value: string) => void }[],
-  switches: [] as { checked: boolean; onCheckedChange: (value: boolean) => void }[],
+  filters: [] as { disabled?: boolean; value: string; onChange: (value: string) => void }[],
+  selects: [] as { disabled?: boolean; label: string }[],
+  switches: [] as {
+    checked: boolean;
+    disabled?: boolean;
+    onCheckedChange: (value: boolean) => void;
+  }[],
 }));
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("uniwind", () => ({
@@ -33,6 +38,16 @@ vi.mock("@/components/ui/filter-bar", async (importOriginal) => {
     FilterBar: (props: ComponentProps<typeof actual.FilterBar>) => {
       controls.filters.push(props);
       return createElement(actual.FilterBar, props);
+    },
+  };
+});
+vi.mock("@/components/ui/select-field", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/ui/select-field")>();
+  return {
+    ...actual,
+    SelectField: (props: ComponentProps<typeof actual.SelectField>) => {
+      controls.selects.push(props);
+      return createElement(actual.SelectField, props);
     },
   };
 });
@@ -86,7 +101,7 @@ const product: ComponentProps<typeof ProductFormScreen> = {
     sellingPrice: createRef(),
     sku: createRef(),
   },
-  hasHistoryLock: false,
+  historyLocked: false,
   mode: "create",
   onDraftChange: noop,
   onRetryCategories: noop,
@@ -115,6 +130,7 @@ const movement: ComponentProps<typeof MovementFormScreen> = {
 beforeEach(() => {
   controls.groups.length = 0;
   controls.filters.length = 0;
+  controls.selects.length = 0;
   controls.switches.length = 0;
 });
 
@@ -166,6 +182,30 @@ describe("catalog and inventory form controls", () => {
     expect(onDraftChange).toHaveBeenCalledExactlyOnceWith({ ...product.draft, tracked: !tracked });
     // The minimum only exists for tracked stock.
     expect(markup.includes(i18n.t("catalog.form.threshold"))).toBe(tracked);
+  });
+
+  test("freezes the unit, the decimals and tracking once the product has movements", () => {
+    const onDraftChange = vi.fn();
+    const markup = renderToStaticMarkup(
+      createElement(ProductFormScreen, {
+        ...product,
+        draft: { ...product.draft, tracked: true },
+        historyLocked: true,
+        mode: "edit",
+        onDraftChange,
+      }),
+    );
+    expect(markup).toContain(i18n.t("catalog.form.historyLocked"));
+    expect(controls.switches[0]?.disabled).toBe(true);
+    expect(controls.filters[0]?.disabled).toBe(true);
+    const unit = controls.selects.find(({ label }) => label === i18n.t("catalog.form.unit"));
+    expect(unit?.disabled).toBe(true);
+    const category = controls.selects.find(
+      ({ label }) => label === i18n.t("catalog.form.category"),
+    );
+    expect(category?.disabled).toBe(false);
+    controls.switches[0]?.onCheckedChange(false);
+    expect(onDraftChange).not.toHaveBeenCalled();
   });
 
   test.each(["receive", "adjust_in", "adjust_out"] as const)(

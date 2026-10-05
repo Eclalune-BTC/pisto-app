@@ -5,7 +5,35 @@ import { Platform, View } from "react-native";
 import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { cn } from "@/lib/cn";
 import { isLockedPhase, type MutationPhase } from "@/lib/mutation-phase";
+
+/**
+ * A reviewed change: the value being replaced, muted, then the new one in the stronger weight. The
+ * arrow only works visually, so screen readers get the change as a sentence naming both values.
+ */
+export function ReviewChange({
+  after,
+  before,
+  numeric = false,
+}: {
+  after: string;
+  before: string;
+  numeric?: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <View className="min-w-0">
+      <Text aria-hidden className={cn("text-sm leading-5", numeric && "tabular-nums")}>
+        <Text className="text-sm leading-5 text-muted-foreground">{before}</Text>
+        {"  →  "}
+        <Text className="font-ui text-sm leading-5">{after}</Text>
+      </Text>
+      <Text className="sr-only">{t("catalog.review.change", { after, before })}</Text>
+    </View>
+  );
+}
 
 type CommandReviewProps = {
   /** Figures shown above the summary, such as the balance a movement changes. */

@@ -27,8 +27,8 @@ vi.mock("react", async (importOriginal) => ({
 
 import { Button } from "@/components/ui/button";
 import { ApiClientError } from "@/lib/api-error";
-import { mutationPhase } from "@/lib/mutation-phase";
 import { CommandReview } from "../catalog/command-review";
+import { keyedCommandPhase } from "../catalog/use-keyed-command";
 import { buildMovementCommand } from "./movement-draft";
 
 function buttons(node: ReactNode): ReactElement<ComponentProps<typeof Button>>[] {
@@ -42,7 +42,7 @@ function buttons(node: ReactNode): ReactElement<ComponentProps<typeof Button>>[]
 }
 
 describe("reviewed inventory confirmation", () => {
-  test("cannot discard or resubmit a pending command and retries uncertainty with the original key", async () => {
+  test("locks the review while pending and resends the original command after an unknown outcome", async () => {
     const client = new QueryClient();
     const requests: {
       command: RecordInventoryMovementRequest;
@@ -85,7 +85,7 @@ describe("reviewed inventory confirmation", () => {
         items: [{ label: "Quantity", value: "+5 unidades" }],
         onConfirm: submit,
         onEdit: discard,
-        phase: mutationPhase(observer.getCurrentResult()),
+        phase: keyedCommandPhase(observer.getCurrentResult(), null),
         title: "Review",
         uncertainDescription: "Retry the same confirmation",
       });

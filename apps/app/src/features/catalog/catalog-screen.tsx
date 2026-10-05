@@ -1,19 +1,18 @@
 import type { Category, ProductDetail } from "@pisto/contracts";
 import { type Href, Link } from "expo-router";
 import { Lock, PackageSearch, Plus, Tags, TriangleAlert } from "lucide-react-native";
-import { type ReactElement, useMemo } from "react";
+import { type ReactElement, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { type TextInput, View } from "react-native";
 import { PageHeader } from "@/components/layout/page-header";
 import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
-import { FilterToolbar } from "@/components/ui/filter-toolbar";
 import { SelectField } from "@/components/ui/select-field";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
@@ -21,7 +20,17 @@ import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
 import { HeaderActions } from "../cash/header-actions";
 import { LoadMoreButton } from "../cash/load-more-button";
-import { CategoryName, MissingValue, ProductStatusBadge, StockValue } from "./catalog-cells";
+import { CellText } from "../customers/cell-text";
+import { type FittedColumn, fitColumns } from "../customers/fit-columns";
+import { useMeasuredWidth } from "../customers/use-measured-width";
+import {
+  type CategoryCell,
+  CategoryName,
+  categoryCell,
+  MissingValue,
+  ProductStatusBadge,
+  StockValue,
+} from "./catalog-cells";
 import { productPrice } from "./format";
 import type { CatalogStatusFilter } from "./queries";
 import { SearchBox } from "./search-box";
@@ -44,7 +53,7 @@ export type CatalogCollectionState =
     };
 
 type CatalogScreenProps = {
-  /** Catalog management confirmed by fresh reads. */
+  /** The role may manage the catalog; it does not depend on the state of the list read. */
   canManage: boolean;
   /** Every category of the business, for the filter and the category column. */
   categories: Category[];
@@ -61,11 +70,16 @@ type CatalogScreenProps = {
   onSearchChange: (value: string) => void;
   onStatusChange: (status: CatalogStatusFilter) => void;
   search: string;
+  /** The typed search is not applied yet or its results are still loading. */
+  searching?: boolean;
   state: CatalogCollectionState;
   status: CatalogStatusFilter;
 };
 
 const ALL_CATEGORIES = "all";
+
+/** A product with the category name its row shows, so the row redraws when that name arrives. */
+type CatalogRow = { category: CategoryCell; detail: ProductDetail };
 
 export function productHref(productId: string): Href {
   return { pathname: "/operate/catalog/[productId]", params: { productId } };
@@ -85,82 +99,14 @@ export function CatalogScreen({
   onSearchChange,
   onStatusChange,
   search,
+  searching = false,
   state,
   status,
 }: CatalogScreenProps) {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const columns = useMemo<DataTableColumn<ProductDetail>[]>(() => {
-    const names = new Map(categories.map((category) => [category.id, category.name]));
-    return [
-      {
-        id: "product",
-        header: t("catalog.list.product"),
-        meta: { primary: true },
-        cell: ({ row: { original } }) => (
-          <Text className="text-[13px]" numberOfLines={2}>
-            {original.product.name}
-          </Text>
-        ),
-      },
-      {
-        id: "sku",
-        header: t("dataTable.columns.sku"),
-        cell: ({ row: { original } }) =>
-          original.product.sku ? (
-            <Text className="text-[13px] text-muted-foreground" numberOfLines={1}>
-              {original.product.sku}
-            </Text>
-          ) : (
-            <MissingValue label={t("catalog.detail.noSku")} />
-          ),
-      },
-      {
-        id: "category",
-        header: t("dataTable.columns.category"),
-        cell: ({ row: { original } }) => (
-          <CategoryName
-            categoryId={original.product.categoryId}
-            loading={categoriesLoading}
-            names={names}
-          />
-        ),
-      },
-      {
-        id: "price",
-        header: t("dataTable.columns.price"),
-        meta: { align: "end", width: 120 },
-        cell: ({ row: { original } }) => {
-          const price = productPrice(original.product, locale);
-          return price ? (
-            <Text className="font-ui text-[13px] tabular-nums">{price}</Text>
-          ) : (
-            <MissingValue label={t("catalog.list.noPrice")} />
-          );
-        },
-      },
-      {
-        id: "stock",
-        header: t("dataTable.columns.stock"),
-        meta: { align: "end", width: 240 },
-        cell: ({ row: { original } }) => (
-          <StockValue product={original.product} stock={original.stock} />
-        ),
-      },
-      ...(status === "all"
-        ? [
-            {
-              id: "status",
-              header: t("dataTable.columns.status"),
-              meta: { width: 110 },
-              cell: ({ row: { original } }) => (
-                <ProductStatusBadge status={original.product.status} />
-              ),
-            } satisfies DataTableColumn<ProductDetail>,
-          ]
-        : []),
-    ];
-  }, [categories, categoriesLoading, locale, status, t]);
+  const searchRef = useRef<TextInput>(null);
+  const { onLayout, width } = useMeasuredWidth();
 
   if (state.status === "denied") {
     return (
@@ -175,11 +121,104 @@ export function CatalogScreen({
     );
   }
 
+  const columns = fitColumns<CatalogRow>(
+    [
+      {
+        estimate: 240,
+        column: {
+          id: "product",
+          header: t("catalog.list.product"),
+          meta: { primary: true },
+          cell: ({ row: { original } }) => (
+            <Text className="text-[13px]" numberOfLines={2}>
+              {original.detail.product.name}
+            </Text>
+          ),
+        },
+      },
+      {
+        estimate: 120,
+        dropRank: 0,
+        column: {
+          id: "sku",
+          header: t("dataTable.columns.sku"),
+          cell: ({ row: { original } }) =>
+            original.detail.product.sku ? (
+              <CellText className="text-muted-foreground" maxWidth="max-w-[8rem]">
+                {original.detail.product.sku}
+              </CellText>
+            ) : (
+              <MissingValue label={t("catalog.detail.noSku")} />
+            ),
+        },
+      },
+      {
+        estimate: 150,
+        dropRank: 1,
+        column: {
+          id: "category",
+          header: t("dataTable.columns.category"),
+          cell: ({ row: { original } }) => <CategoryName cell={original.category} />,
+        },
+      },
+      {
+        estimate: 110,
+        column: {
+          id: "price",
+          header: t("dataTable.columns.price"),
+          meta: { align: "end", width: 110 },
+          cell: ({ row: { original } }) => {
+            const price = productPrice(original.detail.product, locale);
+            return price ? (
+              <Text className="font-ui text-[13px] tabular-nums" numberOfLines={1}>
+                {price}
+              </Text>
+            ) : (
+              <MissingValue label={t("catalog.list.noPrice")} />
+            );
+          },
+        },
+      },
+      {
+        estimate: 170,
+        column: {
+          id: "stock",
+          header: t("dataTable.columns.stock"),
+          meta: { align: "end", width: 170 },
+          cell: ({ row: { original } }) => (
+            <StockValue product={original.detail.product} stock={original.detail.stock} />
+          ),
+        },
+      },
+      // A filter on one status makes the column identical on every row.
+      ...(status === "all"
+        ? [
+            {
+              estimate: 110,
+              column: {
+                id: "status",
+                header: t("dataTable.columns.status"),
+                meta: { width: 110 },
+                cell: ({ row: { original } }) => (
+                  <ProductStatusBadge status={original.detail.product.status} />
+                ),
+              },
+            } satisfies FittedColumn<CatalogRow>,
+          ]
+        : []),
+    ],
+    width,
+  );
+  const names = new Map(categories.map((category) => [category.id, category.name]));
+  const choices = { complete: !categoriesLoading, failed: categoriesError, names };
   const filtered = search.trim() !== "" || categoryId !== null || status !== "active";
-  const selectedCategory = categoryId ?? ALL_CATEGORIES;
+  // Active categories come first; an archived one is still offered so its products can be found.
   const categoryOptions = [
     { label: t("catalog.list.allCategories"), value: ALL_CATEGORIES },
-    ...categories.map((category) => ({
+    ...[
+      ...categories.filter((category) => category.status === "active"),
+      ...categories.filter((category) => category.status === "archived"),
+    ].map((category) => ({
       label:
         category.status === "archived"
           ? t("catalog.list.archivedCategory", { name: category.name })
@@ -187,6 +226,13 @@ export function CatalogScreen({
       value: category.id,
     })),
   ];
+  const clearFilters = onClearFilters
+    ? () => {
+        onClearFilters();
+        searchRef.current?.focus();
+      }
+    : undefined;
+
   let body: ReactElement;
   if (state.status === "loading") {
     body = <ContentSkeleton label={t("catalog.list.loading")} variant="section" />;
@@ -204,6 +250,10 @@ export function CatalogScreen({
       />
     );
   } else {
+    const rows = state.items.map((detail) => ({
+      category: categoryCell(detail.product.categoryId, choices),
+      detail,
+    }));
     body = (
       <View
         aria-busy={state.previous}
@@ -212,15 +262,15 @@ export function CatalogScreen({
         <DataTable
           caption={t("catalog.list.title")}
           columns={columns}
-          data={state.items}
+          data={rows}
           empty={
             filtered ? (
               <EmptyState
                 action={
-                  onClearFilters ? (
+                  clearFilters ? (
                     <Button
                       label={t("filters.reset")}
-                      onPress={onClearFilters}
+                      onPress={clearFilters}
                       size="sm"
                       variant="outline"
                     />
@@ -239,8 +289,8 @@ export function CatalogScreen({
               />
             )
           }
-          getRowHref={({ product }) => productHref(product.id)}
-          getRowId={({ product }) => product.id}
+          getRowHref={({ detail }) => productHref(detail.product.id)}
+          getRowId={({ detail }) => detail.product.id}
         />
         {state.previous ? null : (
           <LoadMoreButton
@@ -285,17 +335,24 @@ export function CatalogScreen({
       {state.status === "ready" && state.stale ? (
         <StaleNotice loading={state.refreshing} onRetry={onRetry} />
       ) : null}
-      <View className="min-w-0 gap-3">
-        <FilterToolbar label={t("catalog.list.filtersLabel")}>
-          <View className="min-w-0 sm:w-72">
+      <View className="min-w-0 gap-3" onLayout={onLayout}>
+        <View
+          accessibilityLabel={t("catalog.list.filtersLabel")}
+          className="min-w-0 flex-row flex-wrap items-end gap-2"
+          role="toolbar"
+        >
+          <View className="min-w-0 grow basis-[220px] sm:max-w-[320px]">
             <SearchBox
+              busy={searching}
+              clearLabel={t("catalog.list.clearSearch")}
               label={t("catalog.list.searchLabel")}
               onChange={onSearchChange}
               placeholder={t("catalog.list.searchPlaceholder")}
+              ref={searchRef}
               value={search}
             />
           </View>
-          <View className="min-w-0 sm:w-56">
+          <View className="min-w-0 grow basis-[200px] sm:max-w-[240px]">
             <SelectField
               disabled={categoriesLoading}
               label={t("catalog.list.categoryLabel")}
@@ -303,7 +360,7 @@ export function CatalogScreen({
               options={categoryOptions}
               placeholder={t("catalog.list.loadingCategories")}
               // Until every category is read, a filtered category may not be among the options yet.
-              value={categoriesLoading && categoryId ? null : selectedCategory}
+              value={categoriesLoading && categoryId ? null : (categoryId ?? ALL_CATEGORIES)}
             />
           </View>
           <FilterBar
@@ -315,7 +372,7 @@ export function CatalogScreen({
             }))}
             value={status}
           />
-        </FilterToolbar>
+        </View>
         {categoriesError ? (
           <Alert
             action={

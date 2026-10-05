@@ -36,7 +36,8 @@ export function buildMovementCommand(input: {
   const quantity = parseQuantityToMinorUnits(input.draft.quantity, input.quantityPrecision);
   const reason = input.draft.reason.trim();
   if ("error" in quantity) errors.quantity = quantity.error;
-  if (!reason || reason.length > 240) errors.reason = "invalid";
+  if (!reason) errors.reason = "missing";
+  else if (reason.length > 240) errors.reason = "too-long";
   if (!calendarLocalDateSchema.safeParse(input.draft.occurredLocalDate).success) {
     errors.occurredLocalDate = "invalid";
   }
@@ -52,7 +53,8 @@ export function buildMovementCommand(input: {
     occurredLocalDate: input.draft.occurredLocalDate,
     occurredLocalTime: input.draft.occurredLocalTime,
   });
-  if (!parsed.success) return { errors: { reason: "invalid" } };
+  // Every field was validated above, so only a malformed key can fail here.
+  if (!parsed.success) throw new Error("The movement command does not match its contract");
   return { command: parsed.data };
 }
 

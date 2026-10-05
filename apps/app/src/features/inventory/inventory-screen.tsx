@@ -1,26 +1,34 @@
 import type { StockListResponse } from "@pisto/contracts";
 import { type Href, Link } from "expo-router";
 import { Boxes, Lock, TriangleAlert } from "lucide-react-native";
-import { type ReactElement, useMemo } from "react";
+import { type ReactElement, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { type TextInput, View } from "react-native";
 import { PageHeader } from "@/components/layout/page-header";
 import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
-import { FilterToolbar } from "@/components/ui/filter-toolbar";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
 import { LoadMoreButton } from "../cash/load-more-button";
-import { CategoryName, MissingValue, StockValue } from "../catalog/catalog-cells";
+import {
+  type CategoryCell,
+  CategoryName,
+  categoryCell,
+  MissingValue,
+  StockValue,
+} from "../catalog/catalog-cells";
 import { quantityText } from "../catalog/format";
 import { SearchBox } from "../catalog/search-box";
+import { CellText } from "../customers/cell-text";
+import { type FittedColumn, fitColumns } from "../customers/fit-columns";
+import { useMeasuredWidth } from "../customers/use-measured-width";
 
 export type StockItem = StockListResponse["data"]["items"][number];
 
@@ -41,8 +49,12 @@ export type InventoryCollectionState =
     };
 
 type InventoryScreenProps = {
-  /** Category names, when the role can read the catalog; null hides the column. */
-  categories: { loading: boolean; names: ReadonlyMap<string, string> } | null;
+  /** Category choices when the role can read the catalog; null leaves the column out. */
+  categories: {
+    complete: boolean;
+    failed: boolean;
+    names: ReadonlyMap<string, string>;
+  } | null;
   lowStockOnly: boolean;
   onClearFilters: () => void;
   onLoadMore: () => void;
@@ -50,11 +62,20 @@ type InventoryScreenProps = {
   onRetry: () => void;
   onSearchChange: (value: string) => void;
   search: string;
+  /** The typed search is not applied yet or its results are still loading. */
+  searching: boolean;
   state: InventoryCollectionState;
 };
 
+/** A stock line with the category name its row shows, so the row redraws when that name arrives. */
+type StockRow = { category: CategoryCell | null; item: StockItem };
+
 export function stockHref(productId: string): Href {
   return { pathname: "/operate/inventory/[productId]", params: { productId } };
+}
+
+export function newMovementHref(productId: string): Href {
+  return { pathname: "/operate/inventory/[productId]/new", params: { productId } };
 }
 
 export function InventoryScreen({
@@ -66,77 +87,13 @@ export function InventoryScreen({
   onRetry,
   onSearchChange,
   search,
+  searching,
   state,
 }: InventoryScreenProps) {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const columns = useMemo<DataTableColumn<StockItem>[]>(
-    () => [
-      {
-        id: "product",
-        header: t("inventory.list.product"),
-        meta: { primary: true },
-        cell: ({ row: { original } }) => (
-          <Text className="text-[13px]" numberOfLines={2}>
-            {original.product.name}
-          </Text>
-        ),
-      },
-      {
-        id: "sku",
-        header: t("dataTable.columns.sku"),
-        cell: ({ row: { original } }) =>
-          original.product.sku ? (
-            <Text className="text-[13px] text-muted-foreground" numberOfLines={1}>
-              {original.product.sku}
-            </Text>
-          ) : (
-            <MissingValue label={t("catalog.detail.noSku")} />
-          ),
-      },
-      ...(categories
-        ? [
-            {
-              id: "category",
-              header: t("dataTable.columns.category"),
-              cell: ({ row: { original } }) => (
-                <CategoryName
-                  categoryId={original.product.categoryId}
-                  loading={categories.loading}
-                  names={categories.names}
-                />
-              ),
-            } satisfies DataTableColumn<StockItem>,
-          ]
-        : []),
-      {
-        id: "onHand",
-        header: t("inventory.list.onHand"),
-        meta: { align: "end", figure: true, width: 240 },
-        cell: ({ row: { original } }) => (
-          <StockValue product={original.product} stock={original.stock} />
-        ),
-      },
-      {
-        id: "threshold",
-        header: t("dataTable.columns.minimum"),
-        meta: { align: "end", width: 140 },
-        cell: ({ row: { original } }) =>
-          original.stock.lowStockThresholdMinorUnits === null ? (
-            <MissingValue label={t("inventory.list.noThreshold")} />
-          ) : (
-            <Text className="text-[13px] text-muted-foreground tabular-nums">
-              {quantityText(t, locale, {
-                minorUnits: original.stock.lowStockThresholdMinorUnits,
-                precision: original.stock.quantityPrecision,
-                unitKind: original.product.unitKind,
-              })}
-            </Text>
-          ),
-      },
-    ],
-    [categories, locale, t],
-  );
+  const searchRef = useRef<TextInput>(null);
+  const { onLayout, width } = useMeasuredWidth();
 
   if (state.status === "denied") {
     return (
@@ -150,6 +107,90 @@ export function InventoryScreen({
       </Page>
     );
   }
+
+  const columns = fitColumns<StockRow>(
+    [
+      {
+        estimate: 240,
+        column: {
+          id: "product",
+          header: t("inventory.list.product"),
+          meta: { primary: true },
+          cell: ({ row: { original } }) => (
+            <Text className="text-[13px]" numberOfLines={2}>
+              {original.item.product.name}
+            </Text>
+          ),
+        },
+      },
+      {
+        estimate: 120,
+        dropRank: 0,
+        column: {
+          id: "sku",
+          header: t("dataTable.columns.sku"),
+          cell: ({ row: { original } }) =>
+            original.item.product.sku ? (
+              <CellText className="text-muted-foreground" maxWidth="max-w-[8rem]">
+                {original.item.product.sku}
+              </CellText>
+            ) : (
+              <MissingValue label={t("catalog.detail.noSku")} />
+            ),
+        },
+      },
+      ...(categories
+        ? [
+            {
+              estimate: 150,
+              dropRank: 1,
+              column: {
+                id: "category",
+                header: t("dataTable.columns.category"),
+                cell: ({ row: { original } }) =>
+                  original.category ? <CategoryName cell={original.category} /> : null,
+              },
+            } satisfies FittedColumn<StockRow>,
+          ]
+        : []),
+      {
+        estimate: 170,
+        column: {
+          id: "onHand",
+          header: t("dataTable.columns.stock"),
+          meta: { align: "end", figure: true, width: 170 },
+          cell: ({ row: { original } }) => (
+            <StockValue product={original.item.product} stock={original.item.stock} />
+          ),
+        },
+      },
+      {
+        estimate: 130,
+        column: {
+          id: "threshold",
+          header: t("dataTable.columns.minimum"),
+          meta: { align: "end", width: 130 },
+          cell: ({ row: { original } }) =>
+            original.item.stock.lowStockThresholdMinorUnits === null ? (
+              <MissingValue label={t("inventory.list.noThreshold")} />
+            ) : (
+              <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
+                {quantityText(t, locale, {
+                  minorUnits: original.item.stock.lowStockThresholdMinorUnits,
+                  precision: original.item.stock.quantityPrecision,
+                  unitKind: original.item.product.unitKind,
+                })}
+              </Text>
+            ),
+        },
+      },
+    ],
+    width,
+  );
+  const clearFilters = () => {
+    onClearFilters();
+    searchRef.current?.focus();
+  };
 
   let body: ReactElement;
   if (state.status === "loading") {
@@ -169,8 +210,12 @@ export function InventoryScreen({
     );
   } else {
     const clear = (
-      <Button label={t("filters.reset")} onPress={onClearFilters} size="sm" variant="outline" />
+      <Button label={t("filters.reset")} onPress={clearFilters} size="sm" variant="outline" />
     );
+    const rows = state.items.map((item) => ({
+      category: categories ? categoryCell(item.product.categoryId, categories) : null,
+      item,
+    }));
     body = (
       <View
         aria-busy={state.previous}
@@ -179,7 +224,7 @@ export function InventoryScreen({
         <DataTable
           caption={t("inventory.list.title")}
           columns={columns}
-          data={state.items}
+          data={rows}
           empty={
             search.trim() ? (
               <EmptyState
@@ -212,8 +257,8 @@ export function InventoryScreen({
               />
             )
           }
-          getRowHref={({ product }) => stockHref(product.id)}
-          getRowId={({ product }) => product.id}
+          getRowHref={({ item }) => stockHref(item.product.id)}
+          getRowId={({ item }) => item.product.id}
         />
         {state.previous ? null : (
           <LoadMoreButton
@@ -230,13 +275,20 @@ export function InventoryScreen({
       {state.status === "ready" && state.stale ? (
         <StaleNotice loading={state.refreshing} onRetry={onRetry} />
       ) : null}
-      <View className="min-w-0 gap-3">
-        <FilterToolbar label={t("inventory.list.filtersLabel")}>
-          <View className="min-w-0 sm:w-72">
+      <View className="min-w-0 gap-3" onLayout={onLayout}>
+        <View
+          accessibilityLabel={t("inventory.list.filtersLabel")}
+          className="min-w-0 flex-row flex-wrap items-center gap-2"
+          role="toolbar"
+        >
+          <View className="min-w-0 grow basis-[220px] sm:max-w-[320px]">
             <SearchBox
+              busy={searching}
+              clearLabel={t("inventory.list.clearSearch")}
               label={t("inventory.list.searchLabel")}
               onChange={onSearchChange}
               placeholder={t("inventory.list.searchPlaceholder")}
+              ref={searchRef}
               value={search}
             />
           </View>
@@ -249,7 +301,7 @@ export function InventoryScreen({
             ]}
             value={lowStockOnly ? "low" : "all"}
           />
-        </FilterToolbar>
+        </View>
         {body}
       </View>
     </Page>

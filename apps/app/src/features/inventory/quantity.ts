@@ -18,6 +18,11 @@ export function parseQuantityToMinorUnits(
   const normalized = input.trim();
   if (normalized.startsWith("-")) return { error: "negative" };
   if (!/^\d+(?:[.,]\d+)?$/.test(normalized)) return { error: "invalid-integer" };
+  // "1,500" groups thousands for some readers and marks decimals for others, a thousandfold
+  // difference, so it is refused as amounts are. A leading "0," never groups.
+  if (/,\d{3}$/.test(normalized) && !normalized.startsWith("0,")) {
+    return { error: "invalid-decimals" };
+  }
   const [whole = "", fraction = ""] = normalized.replace(",", ".").split(".");
   if (fraction.length > precision) return { error: "invalid-decimals" };
   const canonicalWhole = whole.replace(/^0+(?=\d)/, "");
@@ -45,7 +50,8 @@ export function formatQuantityMinorUnits(value: string, precision: number): stri
 
 /**
  * A quantity grouped for the locale with exactly its product's decimals. Intl formats the decimal
- * text, which keeps every digit; a number would round above 2^53.
+ * text, which keeps every digit; a number would round above 2^53. Exactness past 2^53 is verified
+ * on web/Bun, not on Hermes, whose Intl is its own implementation.
  */
 export function formatQuantity(minorUnits: string, precision: number, locale: string): string {
   return new Intl.NumberFormat(locale, {

@@ -9,6 +9,13 @@ describe("fixed-scale inventory quantity", () => {
     expect(parseQuantityToMinorUnits("0002", 0)).toEqual({ value: "2" });
   });
 
+  test("refuses a comma that could group thousands instead of guessing", () => {
+    expect(parseQuantityToMinorUnits("1,500", 3)).toEqual({ error: "invalid-decimals" });
+    expect(parseQuantityToMinorUnits("1,500", 0)).toEqual({ error: "invalid-decimals" });
+    expect(parseQuantityToMinorUnits("0,500", 3)).toEqual({ value: "500" });
+    expect(parseQuantityToMinorUnits("1.500", 3)).toEqual({ value: "1500" });
+  });
+
   test("rejects excess precision, negative, zero, and int64 overflow", () => {
     expect(parseQuantityToMinorUnits("1.2345", 3)).toEqual({ error: "invalid-decimals" });
     expect(parseQuantityToMinorUnits("-1", 0)).toEqual({ error: "negative" });

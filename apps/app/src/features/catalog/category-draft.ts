@@ -2,7 +2,7 @@ import type { CreateCategoryRequest, UpdateCategoryRequest } from "@pisto/contra
 import { createCategoryRequestSchema, updateCategoryRequestSchema } from "@pisto/contracts";
 
 export type CategoryDraftResult =
-  | { error: "invalid-name" }
+  | { error: "missing-name" | "name-too-long" }
   | { command: CreateCategoryRequest | UpdateCategoryRequest };
 
 export function buildCategoryCommand(input: {
@@ -11,11 +11,13 @@ export function buildCategoryCommand(input: {
   name: string;
 }): CategoryDraftResult {
   const name = input.name.trim();
-  if (!name || name.length > 80) return { error: "invalid-name" };
+  if (!name) return { error: "missing-name" };
+  if (name.length > 80) return { error: "name-too-long" };
   const candidate = { idempotencyKey: input.idempotencyKey, name };
   const parsed =
     input.mode === "create"
       ? createCategoryRequestSchema.safeParse(candidate)
       : updateCategoryRequestSchema.safeParse(candidate);
-  return parsed.success ? { command: parsed.data } : { error: "invalid-name" };
+  if (!parsed.success) throw new Error("A trimmed category name of 1 to 80 characters must parse");
+  return { command: parsed.data };
 }

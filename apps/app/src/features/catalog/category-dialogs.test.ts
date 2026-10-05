@@ -6,6 +6,8 @@ import { ApiClientError } from "@/lib/api-error";
 const fixture = vi.hoisted(() => ({
   states: [] as unknown[],
   index: 0,
+  effects: [] as (() => void)[],
+  focusName: vi.fn(),
   mutation: {
     error: null as unknown,
     isError: false,
@@ -14,7 +16,12 @@ const fixture = vi.hoisted(() => ({
     reset: vi.fn(),
     variables: undefined as unknown,
   },
-  mutationOptions: undefined as { onSuccess: (result: unknown) => Promise<void> } | undefined,
+  mutationOptions: undefined as
+    | {
+        onError: (error: unknown, variables: { idempotencyKey: string }) => void;
+        onSuccess: (result: unknown, variables: { idempotencyKey: string }) => Promise<void>;
+      }
+    | undefined,
   notify: vi.fn(),
   invalidate: vi.fn(async () => undefined),
   keys: 0,
@@ -31,6 +38,8 @@ vi.mock("uniwind", () => ({
 }));
 vi.mock("react", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react")>()),
+  useEffect: (effect: () => void) => fixture.effects.push(effect),
+  useRef: () => ({ current: { focus: fixture.focusName } }),
   useState: (initial: unknown) => {
     const index = fixture.index++;
     if (!(index in fixture.states))
@@ -45,7 +54,7 @@ vi.mock("react", async (importOriginal) => ({
 }));
 vi.mock("@tanstack/react-query", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-query")>()),
-  useMutation: (options: { onSuccess: (result: unknown) => Promise<void> }) => {
+  useMutation: (options: NonNullable<typeof fixture.mutationOptions>) => {
     fixture.mutationOptions = options;
     return fixture.mutation;
   },
@@ -74,12 +83,16 @@ vi.mock("@/components/ui/dialog", () => {
   };
 });
 
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { elements } from "../../../test-support/element-tree";
 import { CategoryArchiveDialog, CategoryNameDialog } from "./category-dialogs";
 
 type Rendered = ReactElement<Record<string, unknown> & { children?: ReactNode }>;
+
+const opener = { isConnected: true, focus: vi.fn() } as unknown as HTMLElement;
+const title = { isConnected: true, focus: vi.fn() } as unknown as HTMLElement;
 
 const category: Category = {
   id: "category-a",
@@ -92,14 +105,17 @@ const onClose = vi.fn();
 
 function renderName(changes: Partial<Parameters<typeof CategoryNameDialog>[0]> = {}) {
   fixture.index = 0;
-  return CategoryNameDialog({
+  fixture.effects = [];
+  const dialog = CategoryNameDialog({
     businessId: "business",
     canConfirm: true,
     category: null,
+    focus: { opener, title },
     onClose,
-    returnFocus: null,
     ...changes,
   }) as Rendered;
+  for (const effect of fixture.effects) effect();
+  return dialog;
 }
 function field(dialog: Rendered) {
   const [input] = elements<{
@@ -135,11 +151,17 @@ beforeEach(() => {
 describe("category name dialog", () => {
   test("refuses an empty name, an unchanged rename and a lost permission without sending", () => {
     confirmButton(renderName()).onPress?.();
-    expect(field(renderName()).error).toBe("catalog.categories.nameValidation");
+    expect(field(renderName()).error).toBe("catalog.categories.nameMissing");
+    // A refused name takes focus back so it can be corrected right away.
+    expect(fixture.focusName).toHaveBeenCalledOnce();
     // Each dialog mounts with its own state, starting from the category's current name.
     fixture.states = [];
     confirmButton(renderName({ category })).onPress?.();
     expect(field(renderName({ category })).error).toBe("catalog.categories.unchangedName");
+    fixture.states = [];
+    field(renderName()).onChangeText("x".repeat(81));
+    confirmButton(renderName()).onPress?.();
+    expect(field(renderName()).error).toBe("catalog.categories.nameTooLong");
     fixture.states = [];
     field(renderName()).onChangeText("Snacks");
     confirmButton(renderName({ canConfirm: false })).onPress?.();
@@ -172,6 +194,41 @@ describe("category name dialog", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  test.each([
+    { mode: "create", message: "catalog.categories.duplicateName" },
+    { mode: "rename", message: "catalog.categories.renameConflict" },
+  ] as const)(
+    "shows a refused $mode as the name's own error and focuses it",
+    ({ mode, message }) => {
+      const changes = mode === "rename" ? { category } : {};
+      field(renderName(changes)).onChangeText("Snacks");
+      confirmButton(renderName(changes)).onPress?.();
+      Object.assign(fixture.mutation, {
+        error: new ApiClientError("conflict", 409, "CONFLICT"),
+        isError: true,
+        variables: fixture.mutation.mutate.mock.lastCall?.[0],
+      });
+      fixture.focusName.mockClear();
+      const refused = renderName(changes);
+      expect(field(refused).error).toBe(message);
+      expect(elements(refused.props.children, Alert)).toHaveLength(0);
+      expect(fixture.focusName).toHaveBeenCalled();
+    },
+  );
+
+  test("states a failure that is not about the name next to the actions", () => {
+    field(renderName()).onChangeText("Snacks");
+    confirmButton(renderName()).onPress?.();
+    Object.assign(fixture.mutation, {
+      error: new ApiClientError("slow down", 429, "RATE_LIMITED"),
+      isError: true,
+      variables: fixture.mutation.mutate.mock.lastCall?.[0],
+    });
+    const refused = renderName();
+    expect(field(refused).error).toBeUndefined();
+    expect(elements(refused.props.children, Alert)).toHaveLength(1);
+  });
+
   test("starts a new command once a rejected name is corrected", () => {
     field(renderName()).onChangeText("Bebidas");
     confirmButton(renderName()).onPress?.();
@@ -187,7 +244,10 @@ describe("category name dialog", () => {
 
   test("announces the definitive result and closes", async () => {
     renderName({ category });
-    await fixture.mutationOptions?.onSuccess({ category: { ...category, name: "Bebidas frías" } });
+    await fixture.mutationOptions?.onSuccess(
+      { category: { ...category, name: "Bebidas frías" } },
+      { idempotencyKey: "00000000-0000-4000-8000-000000000001" },
+    );
     expect(fixture.invalidate).toHaveBeenCalledWith({}, "business");
     expect(fixture.notify).toHaveBeenCalledWith("catalog.categories.renamed", {
       description: "Bebidas frías",
@@ -203,8 +263,8 @@ describe("category archive dialog", () => {
       businessId: "business",
       canConfirm,
       category,
+      focus: { opener, title },
       onClose,
-      returnFocus: null,
     }) as Rendered;
   }
 
@@ -227,5 +287,15 @@ describe("category archive dialog", () => {
   test("refuses a first archive without fresh access", () => {
     (renderArchive(false).props.onConfirm as () => void)();
     expect(fixture.mutation.mutate).not.toHaveBeenCalled();
+  });
+
+  test("returns focus to the opener, or to the screen title once the row lost its menu", async () => {
+    expect(renderArchive().props.returnFocus).toBe(opener);
+    await fixture.mutationOptions?.onSuccess(
+      { category: { ...category, status: "archived" } },
+      { idempotencyKey: "00000000-0000-4000-8000-000000000001" },
+    );
+    expect(renderArchive().props.returnFocus).toBe(title);
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });

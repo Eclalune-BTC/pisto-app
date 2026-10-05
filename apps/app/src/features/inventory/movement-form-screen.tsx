@@ -1,4 +1,4 @@
-import { type Ref, type RefObject, useId } from "react";
+import { type RefObject, useId } from "react";
 import { useTranslation } from "react-i18next";
 import { type TextInput, View } from "react-native";
 import type { DescriptionItem } from "@/components/layout/description-list";
@@ -139,12 +139,14 @@ export function MovementFormScreen({
         <MomentFields
           date={draft.occurredLocalDate}
           dateError={errors.occurredLocalDate}
-          dateRef={fieldRefs.occurredLocalDate as Ref<TextInput | HTMLInputElement>}
+          dateLabel={t("inventory.movementEditor.date")}
+          dateRef={fieldRefs.occurredLocalDate}
           onDateChange={(occurredLocalDate) => onDraftChange({ ...draft, occurredLocalDate })}
           onTimeChange={(occurredLocalTime) => onDraftChange({ ...draft, occurredLocalTime })}
           time={draft.occurredLocalTime}
           timeError={errors.occurredLocalTime}
-          timeRef={fieldRefs.occurredLocalTime as Ref<TextInput | HTMLInputElement>}
+          timeLabel={t("inventory.movementEditor.time")}
+          timeRef={fieldRefs.occurredLocalTime}
         />
       </FormSection>
       <View className="flex-row flex-wrap justify-end gap-2">

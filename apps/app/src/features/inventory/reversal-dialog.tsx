@@ -1,19 +1,21 @@
 import type { InventoryMovement, Product, ReverseInventoryMovementRequest } from "@pisto/contracts";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { type TextInput, View } from "react-native";
 import { DescriptionList } from "@/components/layout/description-list";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field } from "@/components/ui/field";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { currentLocalDateTime } from "@/lib/money";
-import { isLockedPhase, mutationPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
+import { isLockedPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { signedQuantityText } from "../catalog/format";
 import { invalidateCatalogInventory } from "../catalog/queries";
+import { type DialogFocus, dialogReturnFocus } from "../catalog/screen-heading";
+import { useKeyedCommand } from "../catalog/use-keyed-command";
 import { inventoryApi } from "./api";
 import { MomentFields } from "./moment-fields";
 import { movementMoment } from "./movement-table";
@@ -27,12 +29,12 @@ type ReversalDialogProps = {
   businessId: string;
   /** Inventory management on fresh data; it can be lost while the dialog is open. */
   canConfirm: boolean;
+  /** Focus returns to the opener on close, or to the screen title after the reversal. */
+  focus: DialogFocus;
   /** A snapshot: a refreshed history cannot change which movement is being reversed. */
   movement: InventoryMovement;
   onClose: () => void;
   product: Product;
-  /** The control that opened the dialog; focus returns to it on close. */
-  returnFocus: HTMLElement | null;
   timeZone: string;
 };
 
@@ -48,10 +50,10 @@ export function reversalDelta(deltaMinorUnits: string): string {
 export function ReversalDialog({
   businessId,
   canConfirm,
+  focus,
   movement,
   onClose,
   product,
-  returnFocus,
   timeZone,
 }: ReversalDialogProps) {
   const queryClient = useQueryClient();
@@ -62,16 +64,19 @@ export function ReversalDialog({
     return { occurredLocalDate: now.date, occurredLocalTime: now.time, reason: "" };
   });
   const [errors, setErrors] = useState<ReversalDraftErrors>({});
+  const [reversed, setReversed] = useState(false);
+  const reasonRef = useRef<TextInput>(null);
   const delta = (deltaMinorUnits: string) =>
     signedQuantityText(t, locale, {
       deltaMinorUnits,
       precision: movement.quantityPrecision,
       unitKind: product.unitKind,
     });
-  const reversal = useMutation({
+  const reversal = useKeyedCommand({
     mutationFn: (command: ReverseInventoryMovementRequest) =>
       inventoryApi.reverseMovement(movement.id, command),
-    onSuccess: async () => {
+    onConfirmed: async () => {
+      setReversed(true);
       await invalidateCatalogInventory(queryClient, businessId);
       notify.success(t("inventory.reversal.reversed"), {
         description: `${product.name} · ${delta(reversalDelta(movement.deltaMinorUnits))}`,
@@ -79,32 +84,41 @@ export function ReversalDialog({
       onClose();
     },
   });
-  const phase = mutationPhase(reversal);
+  const { phase } = reversal;
   const locked = isLockedPhase(phase);
 
   const confirm = () => {
     if (phase === "pending") return;
     // Sending the same command again cannot apply it twice; only a new decision needs access.
     if (phase === "uncertain") {
-      if (reversal.variables) reversal.mutate(reversal.variables);
+      if (reversal.variables) reversal.send(reversal.variables);
       return;
     }
     if (!canConfirm) return;
     const result = buildReversalCommand({ draft, idempotencyKey: Crypto.randomUUID() });
     if ("errors" in result) {
+      const { occurredLocalDate, occurredLocalTime, reason } = result.errors;
       setErrors({
-        ...(result.errors.reason ? { reason: t("inventory.reversal.validation.reason") } : {}),
-        ...(result.errors.occurredLocalDate
-          ? { occurredLocalDate: t("inventory.reversal.validation.date") }
+        ...(reason
+          ? {
+              reason:
+                reason === "missing"
+                  ? t("inventory.movementEditor.validation.reasonMissing")
+                  : t("inventory.movementEditor.validation.reasonTooLong"),
+            }
           : {}),
-        ...(result.errors.occurredLocalTime
-          ? { occurredLocalTime: t("inventory.reversal.validation.time") }
+        ...(occurredLocalDate
+          ? { occurredLocalDate: t("inventory.movementEditor.validation.date") }
+          : {}),
+        ...(occurredLocalTime
+          ? { occurredLocalTime: t("inventory.movementEditor.validation.time") }
           : {}),
       });
+      if (reason) reasonRef.current?.focus();
       return;
     }
     setErrors({});
-    reversal.mutate(withStableIdempotencyKey(reversal.variables, result.command));
+    reversal.send(withStableIdempotencyKey(reversal.variables, result.command));
   };
 
   return (
@@ -129,7 +143,7 @@ export function ReversalDialog({
       onConfirm={confirm}
       open
       phase={phase}
-      returnFocus={returnFocus}
+      returnFocus={dialogReturnFocus(focus, reversed)}
       title={t("inventory.reversal.title")}
       uncertainDescription={t("inventory.reversal.uncertainDescription")}
     >
@@ -159,11 +173,13 @@ export function ReversalDialog({
           maxLength={240}
           onChangeText={(reason) => setDraft((value) => ({ ...value, reason }))}
           placeholder={t("inventory.reversal.reasonPlaceholder")}
+          ref={reasonRef}
           value={draft.reason}
         />
         <MomentFields
           date={draft.occurredLocalDate}
           dateError={errors.occurredLocalDate}
+          dateLabel={t("inventory.reversal.date")}
           disabled={locked}
           onDateChange={(occurredLocalDate) =>
             setDraft((value) => ({ ...value, occurredLocalDate }))
@@ -173,6 +189,7 @@ export function ReversalDialog({
           }
           time={draft.occurredLocalTime}
           timeError={errors.occurredLocalTime}
+          timeLabel={t("inventory.reversal.time")}
         />
       </View>
     </ConfirmDialog>

@@ -1,5 +1,5 @@
 import type { InventoryMovement, ProductDetail } from "@pisto/contracts";
-import { type Href, Link } from "expo-router";
+import { Link } from "expo-router";
 import {
   Archive,
   ArrowRight,
@@ -24,13 +24,15 @@ import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
+import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { type HeaderAction, HeaderActions } from "../cash/header-actions";
 import { MutedValue } from "../cash/review-values";
+import { newMovementHref, stockHref } from "../inventory/inventory-screen";
 import { MovementTable } from "../inventory/movement-table";
-import { ProductStatusBadge } from "./catalog-cells";
-import { formatInstant, productPrice, quantityText } from "./format";
+import { EMPTY_VALUE, ProductStatusBadge } from "./catalog-cells";
+import { productPrice, quantityText } from "./format";
 import type { ReadState } from "./state";
 
 const RECENT_MOVEMENTS = 5;
@@ -42,15 +44,15 @@ export type ArchiveDialogState = {
   onOpen: () => void;
   open: boolean;
   phase: MutationPhase;
-  /** The control that opened the dialog; focus returns to it on close. */
+  /** Where focus goes when the dialog closes. */
   returnFocus: HTMLElement | null;
 };
 
 type ProductDetailScreenProps = {
   archive: ArchiveDialogState;
-  /** Catalog management confirmed by fresh reads. */
+  /** The role may manage the catalog; a stale read still blocks a new archive. */
   canManage: boolean;
-  /** Inventory management confirmed by fresh reads. */
+  /** The role may record inventory movements. */
   canRecordMovement: boolean;
   /** Undefined while the category name is still being read. */
   categoryName: string | null | undefined;
@@ -63,10 +65,6 @@ type ProductDetailScreenProps = {
   refreshing: boolean;
   timeZone: string;
 };
-
-export function inventoryHref(productId: string): Href {
-  return { pathname: "/operate/inventory/[productId]", params: { productId } };
-}
 
 export function ProductDetailScreen({
   archive,
@@ -96,15 +94,21 @@ export function ProductDetailScreen({
   const record: HeaderAction | undefined =
     canRecordMovement && active && stock
       ? {
-          href: {
-            pathname: "/operate/inventory/[productId]/new",
-            params: { productId: product.id },
-          },
+          href: newMovementHref(product.id),
           icon: ArrowRightLeft,
           label: t("inventory.product.recordMovement"),
         }
       : undefined;
   const manage = canManage && active;
+  // An archived product is out of operation, so its balance asks for no attention.
+  const lowStock = active && stock?.lowStock === true;
+  const priceStat = (
+    <Stat
+      detail={price === null ? t("catalog.detail.noPrice") : undefined}
+      label={t("catalog.detail.price")}
+      value={price ?? EMPTY_VALUE}
+    />
+  );
 
   return (
     <Page>
@@ -137,38 +141,33 @@ export function ProductDetailScreen({
 
       {isStale ? <StaleNotice loading={refreshing} onRetry={onRetry} /> : null}
 
-      <StatGroup>
-        <Stat label={t("catalog.detail.price")} value={price ?? t("catalog.detail.noPrice")} />
-        {stock ? (
-          <>
-            <Stat
-              detail={stock.lowStock ? t("catalog.detail.lowStockDetail") : undefined}
-              label={t("catalog.detail.onHand")}
-              tone={stock.lowStock ? "warning" : "default"}
-              value={quantity(stock.onHandMinorUnits, stock.quantityPrecision)}
-            />
-            <Stat
-              detail={
-                stock.lowStockThresholdMinorUnits === null
-                  ? undefined
-                  : t("catalog.detail.thresholdDetail")
-              }
-              label={t("catalog.detail.threshold")}
-              value={
-                stock.lowStockThresholdMinorUnits === null
-                  ? t("catalog.detail.noThreshold")
-                  : quantity(stock.lowStockThresholdMinorUnits, stock.quantityPrecision)
-              }
-            />
-          </>
-        ) : (
+      {/* An untracked product has no balance or minimum; its details say it is not tracked. */}
+      {stock ? (
+        <StatGroup>
+          {priceStat}
           <Stat
-            detail={t("catalog.detail.notTrackedDetail")}
+            detail={lowStock ? t("catalog.detail.lowStockDetail") : undefined}
             label={t("catalog.detail.onHand")}
-            value={t("catalog.list.notTracked")}
+            tone={lowStock ? "warning" : "default"}
+            value={quantity(stock.onHandMinorUnits, stock.quantityPrecision)}
           />
-        )}
-      </StatGroup>
+          <Stat
+            detail={
+              stock.lowStockThresholdMinorUnits === null
+                ? t("catalog.detail.noThreshold")
+                : t("catalog.detail.thresholdDetail")
+            }
+            label={t("catalog.detail.threshold")}
+            value={
+              stock.lowStockThresholdMinorUnits === null
+                ? EMPTY_VALUE
+                : quantity(stock.lowStockThresholdMinorUnits, stock.quantityPrecision)
+            }
+          />
+        </StatGroup>
+      ) : (
+        <StatGroup>{priceStat}</StatGroup>
+      )}
 
       <Section title={t("catalog.detail.detailsTitle")}>
         <DescriptionList
@@ -203,12 +202,12 @@ export function ProductDetailScreen({
             {
               label: t("catalog.detail.createdAt"),
               numeric: true,
-              value: formatInstant(product.createdAt, locale, timeZone),
+              value: formatLocalizedDateTime(product.createdAt, locale, timeZone),
             },
             {
               label: t("catalog.detail.updatedAt"),
               numeric: true,
-              value: formatInstant(product.updatedAt, locale, timeZone),
+              value: formatLocalizedDateTime(product.updatedAt, locale, timeZone),
             },
           ]}
         />
@@ -218,7 +217,7 @@ export function ProductDetailScreen({
         <Section
           actions={
             movements.read === "ready" && movements.items.length > 0 ? (
-              <Link asChild href={inventoryHref(product.id)}>
+              <Link asChild href={stockHref(product.id)}>
                 <Button accessibilityRole="link" className="gap-1 px-1" size="sm" variant="ghost">
                   <Text className="text-[13px]">{t("catalog.detail.viewHistory")}</Text>
                   <Icon as={ArrowRight} className="text-foreground" size={14} />
@@ -229,7 +228,12 @@ export function ProductDetailScreen({
           description={t("catalog.detail.movementsDescription")}
           title={t("catalog.detail.movementsTitle")}
         >
-          <RecentMovements detail={detail} movements={movements} onRetry={onRetryMovements} />
+          <RecentMovements
+            detail={detail}
+            movements={movements}
+            onRetry={onRetryMovements}
+            recordAction={record}
+          />
         </Section>
       ) : null}
 
@@ -237,7 +241,7 @@ export function ProductDetailScreen({
         confirmLabel={t("catalog.detail.archiveConfirm")}
         description={t("catalog.detail.archiveDescription")}
         destructive
-        disabled={!canManage}
+        disabled={!canManage || isStale}
         errorMessage={archive.errorMessage}
         onCancel={archive.onCancel}
         onConfirm={archive.onConfirm}
@@ -255,10 +259,12 @@ function RecentMovements({
   detail,
   movements,
   onRetry,
+  recordAction,
 }: {
   detail: ProductDetail;
   movements: { items: InventoryMovement[]; read: ReadState };
   onRetry: () => void;
+  recordAction: HeaderAction | undefined;
 }) {
   const { t } = useTranslation();
   if (movements.read === "loading") {
@@ -283,6 +289,15 @@ function RecentMovements({
         caption={t("catalog.detail.movementsTitle")}
         empty={
           <EmptyState
+            action={
+              recordAction?.href ? (
+                <Link asChild href={recordAction.href}>
+                  <Button accessibilityRole="link" size="sm" variant="outline">
+                    <Text>{recordAction.label}</Text>
+                  </Button>
+                </Link>
+              ) : undefined
+            }
             description={t("inventory.history.emptyDescription")}
             icon={History}
             title={t("inventory.history.emptyTitle")}

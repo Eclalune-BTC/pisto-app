@@ -3,23 +3,19 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { focusReturnTarget } from "@/lib/focus-return";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import type { RouteParam } from "../cash/search-params";
 import { CategoriesScreen, type CategoryCollectionState } from "./categories-screen";
 import { CategoryArchiveDialog, CategoryNameDialog } from "./category-dialogs";
 import { type CategoryListFilters, categoriesInfiniteOptions, flattenPages } from "./queries";
 import { CapabilityRouteState } from "./route-state";
+import { captureDialogFocus, type DialogFocus } from "./screen-heading";
 import { parseSearchParam, parseStatusParam, statusParam, useSearchInput } from "./search-params";
 import { hasStaleRead, readState } from "./state";
 
 type CategoryDialogTarget = { kind: "create" } | { kind: "rename" | "archive"; category: Category };
 
-type CategoryDialog = CategoryDialogTarget & {
-  businessId: string;
-  /** The control that opened the dialog; focus returns to it on close. */
-  returnFocus: HTMLElement | null;
-};
+type CategoryDialog = CategoryDialogTarget & { businessId: string; focus: DialogFocus };
 
 export default function CategoriesController() {
   const { t } = useTranslation();
@@ -40,12 +36,10 @@ export default function CategoriesController() {
     categoriesInfiniteOptions(canRead ? business?.id : undefined, filters),
   );
 
-  if (access === "offline") return <CapabilityRouteState kind="offline" width="form" />;
-  if (access === "loading") return <CapabilityRouteState kind="loading" width="form" />;
+  if (access === "offline") return <CapabilityRouteState kind="offline" />;
+  if (access === "loading") return <CapabilityRouteState kind="loading" />;
   if (access === "error" || access === "notFound") {
-    return (
-      <CapabilityRouteState kind="error" onRetry={() => void businesses.refetch()} width="form" />
-    );
+    return <CapabilityRouteState kind="error" onRetry={() => void businesses.refetch()} />;
   }
   if (access === "ready" && !business) return <Redirect href="/business" />;
   if (!business || !canRead) {
@@ -54,14 +48,19 @@ export default function CategoriesController() {
         description={t("catalog.categories.deniedDescription")}
         kind="denied"
         title={t("catalog.categories.deniedTitle")}
-        width="form"
       />
     );
   }
 
   const stale = hasStaleRead([businesses, categories]);
-  const canManage = permissions.includes("catalog:manage") && !stale;
-  const read = readState([categories]);
+  const canManage = permissions.includes("catalog:manage");
+  // A dialog may open on stale reads, but only a fresh read lets it send a first command.
+  const canConfirm = canManage && !stale;
+  // Rows kept from the previous filter must not stand in for a filter that cannot load offline.
+  const read =
+    categories.isPlaceholderData && categories.fetchStatus === "paused"
+      ? "offline"
+      : readState([categories]);
   const state: CategoryCollectionState =
     read === "ready"
       ? {
@@ -75,7 +74,7 @@ export default function CategoriesController() {
         }
       : { status: read === "notFound" ? "error" : read };
   const open = (target: CategoryDialogTarget) =>
-    setDialog({ ...target, businessId: business.id, returnFocus: focusReturnTarget() });
+    setDialog({ ...target, businessId: business.id, focus: captureDialogFocus() });
   const current = dialog?.businessId === business.id ? dialog : undefined;
   const close = () => setDialog(undefined);
 
@@ -86,7 +85,7 @@ export default function CategoriesController() {
         onArchive={(category) => open({ category, kind: "archive" })}
         onClearFilters={() => {
           setSearch("");
-          router.setParams({ q: undefined, status: undefined });
+          router.replace("/operate/catalog/categories");
         }}
         onCreate={() => open({ kind: "create" })}
         onLoadMore={() => void categories.fetchNextPage()}
@@ -98,6 +97,7 @@ export default function CategoriesController() {
         onSearchChange={setSearch}
         onStatusChange={(status) => router.setParams({ status: statusParam(status) })}
         search={search}
+        searching={search.trim() !== filters.search || categories.isPlaceholderData}
         state={state}
         status={filters.status}
         timeZone={business.timeZone}
@@ -105,20 +105,20 @@ export default function CategoriesController() {
       {current?.kind === "archive" ? (
         <CategoryArchiveDialog
           businessId={business.id}
-          canConfirm={canManage}
+          canConfirm={canConfirm}
           category={current.category}
+          focus={current.focus}
           key={`archive-${current.category.id}`}
           onClose={close}
-          returnFocus={current.returnFocus}
         />
       ) : current ? (
         <CategoryNameDialog
           businessId={business.id}
-          canConfirm={canManage}
+          canConfirm={canConfirm}
           category={current.kind === "rename" ? current.category : null}
+          focus={current.focus}
           key={current.kind === "rename" ? `rename-${current.category.id}` : "create"}
           onClose={close}
-          returnFocus={current.returnFocus}
         />
       ) : null}
     </>

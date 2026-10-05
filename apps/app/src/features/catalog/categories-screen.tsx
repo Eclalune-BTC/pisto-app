@@ -1,26 +1,25 @@
 import type { Category } from "@pisto/contracts";
 import { Archive, Lock, Pencil, Plus, Tags, TriangleAlert } from "lucide-react-native";
-import { type ReactElement, useMemo } from "react";
+import { type ReactElement, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { type TextInput, View } from "react-native";
 import { PageHeader } from "@/components/layout/page-header";
 import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
-import { FilterToolbar } from "@/components/ui/filter-toolbar";
 import { Icon } from "@/components/ui/icon";
 import { RowActions } from "@/components/ui/row-actions";
 import { StatePanel } from "@/components/ui/state-panel";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
+import { formatLocalizedDate } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
 import { LoadMoreButton } from "../cash/load-more-button";
-import { formatInstantDate } from "./format";
 import type { CatalogStatusFilter } from "./queries";
 import { SearchBox } from "./search-box";
 
@@ -41,7 +40,7 @@ export type CategoryCollectionState =
     };
 
 type CategoriesScreenProps = {
-  /** Catalog management confirmed by fresh reads. */
+  /** The role may manage categories; it does not depend on the state of the list read. */
   canManage: boolean;
   onArchive: (category: Category) => void;
   onClearFilters: () => void;
@@ -52,6 +51,8 @@ type CategoriesScreenProps = {
   onSearchChange: (value: string) => void;
   onStatusChange: (status: CatalogStatusFilter) => void;
   search: string;
+  /** The typed search is not applied yet or its results are still loading. */
+  searching: boolean;
   state: CategoryCollectionState;
   status: CatalogStatusFilter;
   timeZone: string;
@@ -68,12 +69,14 @@ export function CategoriesScreen({
   onSearchChange,
   onStatusChange,
   search,
+  searching,
   state,
   status,
   timeZone,
 }: CategoriesScreenProps) {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
+  const searchRef = useRef<TextInput>(null);
   const columns = useMemo<DataTableColumn<Category>[]>(
     () => [
       {
@@ -86,6 +89,7 @@ export function CategoriesScreen({
           </Text>
         ),
       },
+      // A filter on one status makes the column identical on every row.
       ...(status === "all"
         ? [
             {
@@ -93,13 +97,10 @@ export function CategoriesScreen({
               header: t("dataTable.columns.status"),
               meta: { width: 120 },
               cell: ({ row: { original } }) => (
-                <Badge
-                  // Archived is the exception, so it carries the stronger chip.
-                  className={original.status === "archived" ? "bg-foreground/20" : undefined}
-                  variant={original.status === "archived" ? "secondary" : "outline"}
-                >
-                  <Text>{t(`catalog.categories.status.${original.status}`)}</Text>
-                </Badge>
+                <StatusBadge
+                  label={t(`catalog.categories.status.${original.status}`)}
+                  tone={original.status === "archived" ? "exception" : "normal"}
+                />
               ),
             } satisfies DataTableColumn<Category>,
           ]
@@ -110,7 +111,7 @@ export function CategoriesScreen({
         meta: { align: "end", width: 140 },
         cell: ({ row: { original } }) => (
           <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
-            {formatInstantDate(original.createdAt, locale, timeZone)}
+            {formatLocalizedDate(original.createdAt, locale, timeZone)}
           </Text>
         ),
       },
@@ -120,7 +121,7 @@ export function CategoriesScreen({
 
   if (state.status === "denied") {
     return (
-      <Page width="form">
+      <Page>
         <StatePanel
           description={t("catalog.categories.deniedDescription")}
           icon={Lock}
@@ -132,6 +133,10 @@ export function CategoriesScreen({
   }
 
   const filtered = search.trim() !== "" || status !== "active";
+  const clearFilters = () => {
+    onClearFilters();
+    searchRef.current?.focus();
+  };
   let body: ReactElement;
   if (state.status === "loading") {
     body = <ContentSkeleton label={t("catalog.categories.loading")} variant="section" />;
@@ -164,7 +169,7 @@ export function CategoriesScreen({
                 action={
                   <Button
                     label={t("filters.reset")}
-                    onPress={onClearFilters}
+                    onPress={clearFilters}
                     size="sm"
                     variant="outline"
                   />
@@ -228,7 +233,7 @@ export function CategoriesScreen({
   }
 
   return (
-    <Page width="form">
+    <Page>
       <PageHeader
         actions={
           canManage ? (
@@ -245,12 +250,19 @@ export function CategoriesScreen({
         <StaleNotice loading={state.refreshing} onRetry={onRetry} />
       ) : null}
       <View className="min-w-0 gap-3">
-        <FilterToolbar label={t("catalog.categories.filtersLabel")}>
-          <View className="min-w-0 sm:w-72">
+        <View
+          accessibilityLabel={t("catalog.categories.filtersLabel")}
+          className="min-w-0 flex-row flex-wrap items-center gap-2"
+          role="toolbar"
+        >
+          <View className="min-w-0 grow basis-[220px] sm:max-w-[320px]">
             <SearchBox
+              busy={searching}
+              clearLabel={t("catalog.categories.clearSearch")}
               label={t("catalog.categories.searchLabel")}
               onChange={onSearchChange}
               placeholder={t("catalog.categories.searchPlaceholder")}
+              ref={searchRef}
               value={search}
             />
           </View>
@@ -263,7 +275,7 @@ export function CategoriesScreen({
             }))}
             value={status}
           />
-        </FilterToolbar>
+        </View>
         {body}
       </View>
     </Page>

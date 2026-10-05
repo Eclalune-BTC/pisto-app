@@ -33,8 +33,18 @@ describe("inventory reversal draft", () => {
       errors: {
         occurredLocalDate: "invalid",
         occurredLocalTime: "invalid",
-        reason: "invalid",
+        reason: "missing",
       },
     });
+    expect(
+      buildReversalCommand({
+        draft: {
+          occurredLocalDate: "2026-08-22",
+          occurredLocalTime: "16:10",
+          reason: "a".repeat(241),
+        },
+        idempotencyKey: "40fc459c-d802-48fb-ad38-e7a5f71d9878",
+      }),
+    ).toEqual({ errors: { reason: "too-long" } });
   });
 });

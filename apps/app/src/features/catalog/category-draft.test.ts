@@ -25,13 +25,13 @@ describe("category reviewed command", () => {
         mode: "edit",
         name: "   ",
       }),
-    ).toEqual({ error: "invalid-name" });
+    ).toEqual({ error: "missing-name" });
     expect(
       buildCategoryCommand({
         idempotencyKey: "2dde2239-e032-4802-930e-3b07dc8d299d",
         mode: "edit",
         name: "a".repeat(81),
       }),
-    ).toEqual({ error: "invalid-name" });
+    ).toEqual({ error: "name-too-long" });
   });
 });

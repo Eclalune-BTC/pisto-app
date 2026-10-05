@@ -2,6 +2,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { hasDeniedRead } from "@/lib/query-state";
 import type { RouteParam } from "../cash/search-params";
 import {
   categoryChoices,
@@ -51,7 +52,9 @@ export default function InventoryController() {
   }
 
   const stale = hasStaleRead([businesses, stock]);
-  const read = readState([stock]);
+  // Rows kept from the previous filter must not stand in for a filter that cannot load offline.
+  const read =
+    stock.isPlaceholderData && stock.fetchStatus === "paused" ? "offline" : readState([stock]);
   const state: InventoryCollectionState =
     read === "ready"
       ? {
@@ -69,14 +72,15 @@ export default function InventoryController() {
   return (
     <InventoryScreen
       categories={
-        canReadCatalog
-          ? { loading: !choices.complete && !categories.isError, names: choices.names }
+        // A rejected category read takes every cached category name off the table.
+        canReadCatalog && !hasDeniedRead([categories])
+          ? { complete: choices.complete, failed: categories.isError, names: choices.names }
           : null
       }
       lowStockOnly={filters.lowStockOnly}
       onClearFilters={() => {
         setSearch("");
-        router.setParams({ low: undefined, q: undefined });
+        router.replace("/operate/inventory");
       }}
       onLoadMore={() => void stock.fetchNextPage()}
       onLowStockOnlyChange={(lowStockOnly) =>
@@ -88,6 +92,7 @@ export default function InventoryController() {
       }}
       onSearchChange={setSearch}
       search={search}
+      searching={search.trim() !== filters.search || stock.isPlaceholderData}
       state={state}
     />
   );

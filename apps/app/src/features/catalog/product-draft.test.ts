@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { validateSaleDraft } from "../sales/sale-draft";
 
-import { buildProductCommand } from "./product-draft";
+import { buildProductCommand, withFrozenHistoryFields } from "./product-draft";
 
 const base = {
   categoryId: null,
@@ -68,6 +68,17 @@ describe("product draft command", () => {
         tracked: false,
       },
     });
+  });
+
+  test("keeps the unit, decimals and tracking a product's movements froze", () => {
+    const draft = { ...base, name: "Beans", sellingPrice: "1.25" };
+    expect(withFrozenHistoryFields(draft, original)).toBe(draft);
+    expect(
+      withFrozenHistoryFields(
+        { ...draft, quantityPrecision: 0, tracked: false, unitKind: "unit" },
+        original,
+      ),
+    ).toEqual(draft);
   });
 
   test("returns field errors instead of a guessed rounded value", () => {

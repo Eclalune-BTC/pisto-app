@@ -50,8 +50,9 @@ export function buildProductCommand(input: {
   const errors: ProductDraftErrors = {};
   const name = input.draft.name.trim();
   const sku = input.draft.sku.trim();
-  if (!name || name.length > 120) errors.name = "invalid";
-  if (sku.length > 64) errors.sku = "invalid";
+  if (!name) errors.name = "missing";
+  else if (name.length > 120) errors.name = "too-long";
+  if (sku.length > 64) errors.sku = "too-long";
   const price = input.draft.sellingPrice.trim()
     ? parseAmountToMinorUnits(input.draft.sellingPrice, input.currencyMinorUnitDigits, {
         allowZero: true,
@@ -89,7 +90,8 @@ export function buildProductCommand(input: {
     input.mode === "create"
       ? createProductRequestSchema.safeParse(candidate)
       : updateProductRequestSchema.safeParse(candidate);
-  if (!parsed.success) return { errors: { name: "invalid" } };
+  // Every field was validated above, so only a malformed key or category can fail here.
+  if (!parsed.success) throw new Error("The product command does not match its contract");
   return { command: parsed.data };
 }
 
@@ -141,6 +143,27 @@ export function productToDraft(product: Product): ProductDraftFields {
     tracked: product.tracked,
     unitKind: product.unitKind,
   };
+}
+
+/**
+ * The draft with the unit, decimals and tracking the product already has. Movements freeze those
+ * fields; an unchanged draft is returned as is.
+ */
+export function withFrozenHistoryFields(
+  draft: ProductDraftFields,
+  product: Product,
+): ProductDraftFields {
+  const frozen = productToDraft(product);
+  return draft.quantityPrecision === frozen.quantityPrecision &&
+    draft.tracked === frozen.tracked &&
+    draft.unitKind === frozen.unitKind
+    ? draft
+    : {
+        ...draft,
+        quantityPrecision: frozen.quantityPrecision,
+        tracked: frozen.tracked,
+        unitKind: frozen.unitKind,
+      };
 }
 
 /** The values a reviewed command leaves on the product: changed fields over the original. */

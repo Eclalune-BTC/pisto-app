@@ -6,12 +6,12 @@ import { useTranslation } from "react-i18next";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { focusReturnTarget } from "@/lib/focus-return";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { firstParam, type RouteParam } from "../cash/search-params";
 import { productHref } from "../catalog/catalog-screen";
 import { flattenPages, productQueryOptions } from "../catalog/queries";
 import { CapabilityRouteState } from "../catalog/route-state";
+import { captureDialogFocus, type DialogFocus } from "../catalog/screen-heading";
 import { hasStaleRead, readState } from "../catalog/state";
 import { ProductStockScreen } from "./product-stock-screen";
 import { movementsInfiniteOptions } from "./queries";
@@ -43,11 +43,15 @@ export default function ProductStockController() {
   const movements = useInfiniteQuery(movementsInfiniteOptions(readableBusinessId, productId));
   const [reversing, setReversing] = useState<{
     businessId: string;
+    focus: DialogFocus;
     movement: InventoryMovement;
-    returnFocus: HTMLElement | null;
   }>();
   const detail = productQuery.data;
-  useRouteLabel("/operate/inventory/[productId]", detail?.product.name);
+  // A rejected read takes the cached product name out of the breadcrumb too.
+  useRouteLabel(
+    "/operate/inventory/[productId]",
+    readState([businesses, productQuery]) === "denied" ? undefined : detail?.product.name,
+  );
 
   if (access === "offline") return <CapabilityRouteState kind="offline" />;
   if (access === "loading") return <CapabilityRouteState kind="loading" variant="detail" />;
@@ -100,7 +104,7 @@ export default function ProductStockController() {
   }
 
   const stale = hasStaleRead([businesses, productQuery, movements]);
-  const canManage = permissions.includes("inventory:manage") && !stale;
+  const canManage = permissions.includes("inventory:manage");
   const selected = reversing?.businessId === business.id ? reversing : undefined;
 
   return (
@@ -124,7 +128,7 @@ export default function ProductStockController() {
         }}
         onRetryMovements={() => void movements.refetch()}
         onReverse={(movement) =>
-          setReversing({ businessId: business.id, movement, returnFocus: focusReturnTarget() })
+          setReversing({ businessId: business.id, focus: captureDialogFocus(), movement })
         }
         product={detail.product}
         refreshing={businesses.isFetching || productQuery.isFetching || movements.isFetching}
@@ -133,12 +137,12 @@ export default function ProductStockController() {
       {selected ? (
         <ReversalDialog
           businessId={business.id}
-          canConfirm={canManage && detail.product.status === "active"}
+          canConfirm={canManage && !stale && detail.product.status === "active"}
+          focus={selected.focus}
           key={selected.movement.id}
           movement={selected.movement}
           onClose={() => setReversing(undefined)}
           product={detail.product}
-          returnFocus={selected.returnFocus}
           timeZone={business.timeZone}
         />
       ) : null}

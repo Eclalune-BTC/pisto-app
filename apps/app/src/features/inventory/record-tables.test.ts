@@ -154,7 +154,8 @@ describe("inventory record tables", () => {
         read: "ready",
       },
     });
-    expect(markup).toContain(i18n.t("dataTable.columns.reference"));
+    // Compact rows name the reversed movement under the reversal's type, not in a column.
+    expect(markup).not.toContain(i18n.t("dataTable.columns.reference"));
     expect(markup).toContain(
       i18n.t("inventory.history.reverses", {
         action: i18n.t("inventory.movementActions.adjust_out"),
@@ -163,6 +164,31 @@ describe("inventory record tables", () => {
     );
     expect(markup).toContain(i18n.t("inventory.history.reversed"));
     expect(markup).not.toContain(movement.id);
+  });
+
+  test("asks for no attention on an archived product and offers an empty history its action", () => {
+    const archived = renderStock({ product: { ...product, status: "archived" } });
+    expect(archived).toContain("2.500 kg");
+    expect(archived).not.toContain(i18n.t("inventory.product.lowStockDetail"));
+    expect(archived).not.toContain(i18n.t("catalog.list.lowStock"));
+
+    const page = { hasMore: false, loadingMore: false, onLoadMore: noop };
+    const empty = renderStock({ movements: { items: [], page, read: "ready" } });
+    expect(empty).toContain(i18n.t("inventory.history.emptyTitle"));
+    expect(empty.split(`>${i18n.t("inventory.product.recordMovement")}<`)).toHaveLength(3);
+    const readOnly = renderStock({
+      canManage: false,
+      movements: { items: [], page, read: "ready" },
+    });
+    expect(readOnly).not.toContain(`>${i18n.t("inventory.product.recordMovement")}<`);
+  });
+
+  test("shows an absent minimum as a dash and says once that it is missing", () => {
+    const markup = renderStock({
+      stock: { ...stock, lowStock: false, lowStockThresholdMinorUnits: null },
+    });
+    expect(markup.split(i18n.t("inventory.product.noThreshold"))).toHaveLength(2);
+    expect(markup).toContain(">—<");
   });
 
   test("keeps the balance and states a failed history read without an empty table", () => {
@@ -181,7 +207,11 @@ describe("inventory record tables", () => {
   test("keeps exact stock, unit, threshold, SKU and the stale notice in the stock table", () => {
     const markup = renderToStaticMarkup(
       createElement(InventoryScreen, {
-        categories: { loading: false, names: new Map([["category-a", "Café en grano"]]) },
+        categories: {
+          complete: true,
+          failed: false,
+          names: new Map([["category-a", "Café en grano"]]),
+        },
         lowStockOnly: true,
         onClearFilters: noop,
         onLoadMore: noop,
@@ -189,6 +219,7 @@ describe("inventory record tables", () => {
         onRetry: noop,
         onSearchChange: noop,
         search: "coffee",
+        searching: false,
         state: {
           status: "ready",
           items: [
@@ -231,6 +262,7 @@ describe("inventory record tables", () => {
         onRetry: noop,
         onSearchChange: noop,
         search: "",
+        searching: false,
         state: {
           status: "ready",
           items: [{ product, stock }],
