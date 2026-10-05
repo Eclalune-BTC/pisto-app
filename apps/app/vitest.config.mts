@@ -16,10 +16,13 @@ export default defineConfig({
   oxc: { jsx: { runtime: "automatic" } },
   resolve: {
     alias: [
-      // Exact match only: tests that need `expo-router/head` mock that subpath themselves.
       {
         find: /^expo-router$/,
         replacement: fileURLToPath(new URL("./test-support/expo-router.tsx", import.meta.url)),
+      },
+      {
+        find: /^expo-router\/head$/,
+        replacement: fileURLToPath(new URL("./test-support/expo-router-head.tsx", import.meta.url)),
       },
       ...Object.entries({
         "@": fileURLToPath(new URL("./src", import.meta.url)),

@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppearanceControl } from "@/components/appearance-control";
 import { Brand } from "@/components/brand";
+import { DocumentTitle } from "@/components/document-title";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -190,6 +191,9 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
               <View className="flex-1 items-center justify-center py-6" role="main">
                 <View className="w-full max-w-[360px] gap-6">
                   <View className="gap-1.5">
+                    <DocumentTitle
+                      title={isSignUp ? t("auth.signUpTitle") : t("auth.signInTitle")}
+                    />
                     <Heading className="text-2xl leading-8">
                       {isSignUp ? t("auth.signUpTitle") : t("auth.signInTitle")}
                     </Heading>

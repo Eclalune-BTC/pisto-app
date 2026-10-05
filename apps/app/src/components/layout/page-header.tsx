@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
+import { DocumentTitle } from "@/components/document-title";
 import { Heading } from "@/components/ui/heading";
 import { Text } from "@/components/ui/text";
 
@@ -16,6 +17,7 @@ type PageHeaderProps = {
 export function PageHeader({ actions, adornment, description, title }: PageHeaderProps) {
   return (
     <View className="flex-row flex-wrap items-start justify-between gap-x-6 gap-y-3">
+      <DocumentTitle title={title} />
       <View className="min-w-0 shrink grow basis-[280px] gap-1">
         <View className="min-w-0 flex-row flex-wrap items-center gap-2">
           <Heading className="shrink">{title}</Heading>

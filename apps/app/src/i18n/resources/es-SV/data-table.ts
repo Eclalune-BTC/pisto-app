@@ -1,5 +1,4 @@
 export const dataTable = {
-  openRecord: "Ver {{name}}",
   columns: {
     description: "Descripción",
     category: "Categoría",
