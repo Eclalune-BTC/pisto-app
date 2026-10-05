@@ -60,14 +60,17 @@ function ReportStats({ locale, report }: { locale: string; report: OperatingRepo
       />
       <Stat
         detail={
-          overdue
-            ? t("operate.home.overdue", { amount: money(report.receivables.overdueMinorUnits) })
-            : t("operate.home.openReceivables", {
-                count: Number(report.receivables.openReceivableCount),
-              })
+          overdue ? (
+            <Text className="text-xs leading-4 text-warning-foreground">
+              {t("operate.home.overdue", { amount: money(report.receivables.overdueMinorUnits) })}
+            </Text>
+          ) : (
+            t("operate.home.openReceivables", {
+              count: Number(report.receivables.openReceivableCount),
+            })
+          )
         }
         label={t("operate.home.receivables")}
-        tone={overdue ? "warning" : "default"}
         value={money(report.receivables.outstandingMinorUnits)}
       />
     </StatGroup>
@@ -285,6 +288,7 @@ export default function OperateHomeScreen() {
             </Link>
           }
           icon={TriangleAlert}
+          role="note"
           variant="warning"
         >
           <AlertDescription>{t("operate.home.lowStock", { count: lowStock })}</AlertDescription>

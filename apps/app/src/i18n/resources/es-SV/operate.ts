@@ -7,7 +7,7 @@ export const operate = {
   noAccessDescription:
     "Tu membresía no incluye permisos de lectura para estas operaciones. Pídele acceso a una persona administradora del negocio.",
   home: {
-    title: "Resumen",
+    title: "Inicio",
     description: "{{month}} · Cifras en {{currency}}",
     newExpense: "Registrar gasto",
     sales: "Ventas del mes",
@@ -22,7 +22,8 @@ export const operate = {
     overdue: "{{amount}} vencido",
     openReceivables_one: "{{count}} cuenta abierta",
     openReceivables_other: "{{count}} cuentas abiertas",
-    period: "Del {{start}} al {{end}}. Saldo por cobrar al {{position}}.",
+    period:
+      "Del {{start}} al {{end}}. Saldo por cobrar al {{position}}. Las ventas no se registran como movimientos de caja.",
     fullReport: "Ver reporte",
     reportUnavailableTitle: "No pudimos cargar el resumen del mes",
     reportUnavailable:
