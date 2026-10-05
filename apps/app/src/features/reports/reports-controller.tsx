@@ -1,97 +1,99 @@
-import type { OperatingReportQuery } from "@pisto/contracts";
+import type { BusinessPermission, OperatingReportQuery } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
-import { Redirect } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { resolveBusinessPermission } from "@/features/customers/access";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-
-import { buildReportsCopy } from "./copy";
+import { refetchEnabled } from "../cash/remote-state";
 import {
-  currentBusinessMonthRange,
+  businessPresetRanges,
+  matchingPreset,
+  parseReportRangeParams,
   type ReportRangeIssue,
+  type ReportRangeSearchParams,
+  reportRangeParams,
+  sameRange,
   validateReportRange,
 } from "./date-range";
 import { operatingReportQueryOptions } from "./queries";
+import type { ReportRangeToolbarProps } from "./range-toolbar";
 import { ReportsScreen } from "./reports-screen";
 import { reportsScreenState } from "./state";
 
 const unseededRange: OperatingReportQuery = { endLocalDate: "", startLocalDate: "" };
 
 export function ReportsController() {
+  const router = useRouter();
+  const params = useLocalSearchParams<ReportRangeSearchParams>();
   const { i18n, t } = useTranslation();
-  const copy = useMemo(() => buildReportsCopy(t), [t]);
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
-  const canRead = resolveBusinessPermission(business, "reports:read");
-  const businessId = business?.id;
-  const timeZone = business?.timeZone;
-  const [draftRange, setDraftRange] = useState<OperatingReportQuery>(unseededRange);
-  const [appliedRange, setAppliedRange] = useState<OperatingReportQuery>(unseededRange);
-  const [rangeIssue, setRangeIssue] = useState<ReportRangeIssue | null>(null);
-  const seededBusinessId = useRef<string | null>(null);
-
-  // A refetch hands back a new businesses payload, so the range is seeded once
-  // per business rather than whenever that payload changes identity.
-  useEffect(() => {
-    if (!businessId || !timeZone || seededBusinessId.current === businessId) return;
-    seededBusinessId.current = businessId;
-    const initialRange = currentBusinessMonthRange(timeZone);
-    setDraftRange(initialRange);
-    setAppliedRange(initialRange);
-    setRangeIssue(null);
-  }, [businessId, timeZone]);
-
-  const seeded = Boolean(appliedRange.startLocalDate && appliedRange.endLocalDate);
-  const report = useQuery({
-    ...operatingReportQueryOptions(businessId, appliedRange),
-    enabled: Boolean(business) && canRead && seeded,
-  });
+  const can = (permission: BusinessPermission) =>
+    business?.access.permissions.includes(permission) ?? false;
+  const canRead = can("reports:read");
+  // The default range and the presets are dates in the business time zone, unknown until it loads.
+  const presets = business ? businessPresetRanges(business.timeZone) : undefined;
+  const appliedRange = parseReportRangeParams(params) ?? presets?.thisMonth ?? unseededRange;
+  const report = useQuery(
+    operatingReportQueryOptions(canRead ? business?.id : undefined, appliedRange),
+  );
+  // Typed dates stay a draft of the business they were typed for until they are applied.
+  const [draft, setDraft] = useState<{ businessId: string; range: OperatingReportQuery }>();
+  const [issue, setIssue] = useState<ReportRangeIssue | null>(null);
 
   if (businesses.data && !business) return <Redirect href="/business" />;
 
   const state = reportsScreenState({
     businesses,
     canRead,
-    offlineMessage: copy.remote.offline,
+    offlineMessage: t("remote.offlineLoad"),
     report,
-    unavailableMessage: copy.remote.unavailable,
+    unavailableMessage: t("reports.unavailable"),
   });
 
-  const applyRange = () => {
-    const validation = validateReportRange(draftRange);
-    if (!validation.valid) {
-      setRangeIssue(validation.issue);
-      return;
-    }
-    setRangeIssue(null);
-    setAppliedRange(validation.value);
-  };
-  const retry = () => {
-    void Promise.all([businesses.refetch(), report.refetch()]);
-  };
+  let range: ReportRangeToolbarProps | undefined;
+  if (business && presets) {
+    const shown = draft?.businessId === business.id ? draft.range : appliedRange;
+    const edit = (change: Partial<OperatingReportQuery>) => {
+      setIssue(null);
+      setDraft({ businessId: business.id, range: { ...shown, ...change } });
+    };
+    const apply = (next: OperatingReportQuery) => {
+      setIssue(null);
+      setDraft(undefined);
+      router.setParams(reportRangeParams(next, presets.thisMonth));
+    };
+    range = {
+      dirty: !sameRange(shown, appliedRange),
+      endLocalDate: shown.endLocalDate,
+      issue,
+      onApply: () => {
+        const validation = validateReportRange(shown);
+        if (validation.valid) apply(validation.value);
+        else setIssue(validation.issue);
+      },
+      onEndLocalDateChange: (endLocalDate) => edit({ endLocalDate }),
+      onPresetChange: (preset) => apply(presets[preset]),
+      onStartLocalDateChange: (startLocalDate) => edit({ startLocalDate }),
+      preset: matchingPreset(shown, presets),
+      startLocalDate: shown.startLocalDate,
+    };
+  }
 
   return (
     <ReportsScreen
-      applying={report.isFetching}
-      copy={copy.screen}
-      endLocalDate={draftRange.endLocalDate}
-      issue={rangeIssue}
+      links={{
+        cashAccounts: can("cash:read"),
+        inventory: can("inventory:read"),
+        receivables: can("receivables:read"),
+      }}
       locale={locale}
-      onApply={applyRange}
-      onEndLocalDateChange={(endLocalDate) => {
-        setRangeIssue(null);
-        setDraftRange((current) => ({ ...current, endLocalDate }));
-      }}
-      onRetry={retry}
-      onStartLocalDateChange={(startLocalDate) => {
-        setRangeIssue(null);
-        setDraftRange((current) => ({ ...current, startLocalDate }));
-      }}
-      startLocalDate={draftRange.startLocalDate}
+      onRetry={() => void refetchEnabled([businesses, report])}
+      range={range}
+      retrying={businesses.isFetching || report.isFetching}
       state={state}
     />
   );

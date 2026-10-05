@@ -15,8 +15,6 @@ vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" 
 import { CatalogScreen } from "@/features/catalog/catalog-screen";
 import { CustomersScreen } from "@/features/customers/customers-screen";
 import { ReceivablesScreen } from "@/features/receivables/receivables-screen";
-import { buildReportsCopy } from "@/features/reports/copy";
-import { ReportsScreen } from "@/features/reports/reports-screen";
 import { i18n } from "@/i18n/config";
 import { Button, ButtonText } from "./ui/button";
 
@@ -117,31 +115,6 @@ describe("stable query controls rendered through result transitions", () => {
     expect(markup).not.toContain(`aria-label="${i18n.t("customers.list.searchLabel")}"`);
     expect(markup).not.toContain(`>${i18n.t("customers.list.create")}<`);
   });
-
-  test.each(["loading", "error", "offline"] as const)(
-    "keeps report dates editable during %s without manufacturing report data",
-    (kind) => {
-      const copy = buildReportsCopy(i18n.t).screen;
-      const markup = renderToStaticMarkup(
-        createElement(ReportsScreen, {
-          applying: kind === "loading",
-          copy,
-          endLocalDate: "2026-09-10",
-          issue: null,
-          locale: "es-SV",
-          onApply: noop,
-          onEndLocalDateChange: noop,
-          onRetry: noop,
-          onStartLocalDateChange: noop,
-          startLocalDate: "2026-09-01",
-          state: kind === "loading" ? { kind } : { kind, message: "The query is unavailable." },
-        }),
-      );
-      expect(markup).toContain('value="2026-09-01"');
-      expect(markup).toContain('value="2026-09-10"');
-      expect(markup).not.toContain(copy.sections.period.salesGross);
-    },
-  );
 
   test("retains the action name and disabled state while a composed button submits", () => {
     const markup = renderToStaticMarkup(

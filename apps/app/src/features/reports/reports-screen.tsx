@@ -1,68 +1,59 @@
-import { FeatureBoundary, type FeatureBoundaryCopy } from "@/components/feature-boundary";
+import { useTranslation } from "react-i18next";
+import { FeatureBoundary } from "@/components/feature-boundary";
+import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
-import { ScreenHeader } from "@/components/screen-header";
-import type { ReportRangeIssue } from "./date-range";
-import { type ReportRangeCopy, ReportRangeSelector } from "./range-selector";
-import { ReportSections, type ReportSectionsCopy } from "./report-sections";
+import { ReportRangeToolbar, type ReportRangeToolbarProps } from "./range-toolbar";
+import { type ReportLinks, ReportSections, ReportSkeleton } from "./report-sections";
 import type { ReportsScreenState } from "./state";
 
-export type ReportsScreenCopy = FeatureBoundaryCopy & {
-  description: string;
-  eyebrow: string;
-  range: ReportRangeCopy;
-  sections: ReportSectionsCopy;
-  title: string;
-};
-
 type ReportsScreenProps = {
-  applying: boolean;
-  copy: ReportsScreenCopy;
-  endLocalDate: string;
-  issue: ReportRangeIssue | null;
+  links: ReportLinks;
   locale: string;
-  onApply: () => void;
-  onEndLocalDateChange: (value: string) => void;
   onRetry: () => void;
-  onStartLocalDateChange: (value: string) => void;
-  startLocalDate: string;
+  /** Present once the business time zone is known; the range stays editable while a read fails. */
+  range: ReportRangeToolbarProps | undefined;
+  retrying: boolean;
   state: ReportsScreenState;
 };
 
 export function ReportsScreen({
-  applying,
-  copy,
-  endLocalDate,
-  issue,
+  links,
   locale,
-  onApply,
-  onEndLocalDateChange,
   onRetry,
-  onStartLocalDateChange,
-  startLocalDate,
+  range,
+  retrying,
   state,
 }: ReportsScreenProps) {
+  const { t } = useTranslation();
   return (
-    <Page contentContainerClassName="gap-8">
-      <ScreenHeader description={copy.description} eyebrow={copy.eyebrow} title={copy.title} />
-      {state.kind === "ready" && state.isStale ? <StaleNotice /> : null}
-      {state.kind !== "denied" ? (
-        <ReportRangeSelector
-          applying={applying}
-          copy={copy.range}
-          endLocalDate={endLocalDate}
-          issue={issue}
-          onApply={onApply}
-          onEndLocalDateChange={onEndLocalDateChange}
-          onStartLocalDateChange={onStartLocalDateChange}
-          startLocalDate={startLocalDate}
-        />
+    <Page>
+      <PageHeader description={t("reports.description")} title={t("reports.title")} />
+      {range && state.kind !== "denied" ? <ReportRangeToolbar {...range} /> : null}
+      {state.kind === "ready" && state.isStale ? (
+        <StaleNotice loading={retrying} onRetry={onRetry} />
       ) : null}
-      <FeatureBoundary copy={copy} inline onRetry={onRetry} state={state}>
-        {state.kind === "ready" ? (
-          <ReportSections copy={copy.sections} locale={locale} report={state.report} />
-        ) : null}
-      </FeatureBoundary>
+      {state.kind === "loading" ? (
+        <ReportSkeleton />
+      ) : (
+        <FeatureBoundary
+          copy={{
+            deniedDescription: t("reports.deniedDescription"),
+            deniedTitle: t("reports.deniedTitle"),
+            loading: t("reports.loading"),
+            offlineTitle: t("remote.offlineTitle"),
+            retry: t("common.retry"),
+            unavailableTitle: t("reports.unavailableTitle"),
+          }}
+          inline
+          onRetry={onRetry}
+          state={state}
+        >
+          {state.kind === "ready" ? (
+            <ReportSections links={links} locale={locale} report={state.report} />
+          ) : null}
+        </FeatureBoundary>
+      )}
     </Page>
   );
 }
