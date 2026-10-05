@@ -1,16 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "expo-router";
 import { LogOut, TriangleAlert } from "lucide-react-native";
-import type { PropsWithChildren, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { AppearanceControl } from "@/components/appearance-control";
 import { DescriptionList } from "@/components/layout/description-list";
 import { PageHeader } from "@/components/layout/page-header";
+import { SettingsSection } from "@/components/layout/settings-section";
 import { Page } from "@/components/page";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -27,24 +27,6 @@ import { hasDeniedRead } from "@/lib/query-state";
  * Label and description on the left, the controls on the right; stacked on narrow screens. The
  * controls carry their own outline, so the sections are separated by space alone.
  */
-function SettingsSection({
-  children,
-  description,
-  title,
-}: PropsWithChildren<{ description: string; title: string }>) {
-  return (
-    <View accessibilityLabel={title} className="min-w-0 gap-3 lg:flex-row lg:gap-10" role="region">
-      <View className="min-w-0 gap-0.5 lg:w-64 lg:shrink-0">
-        <Heading level={2} size="section">
-          {title}
-        </Heading>
-        <Text className="text-[13px] leading-5 text-muted-foreground">{description}</Text>
-      </View>
-      <View className="min-w-0 flex-1 gap-3 lg:max-w-2xl">{children}</View>
-    </View>
-  );
-}
-
 function FactsSkeleton({ label, rows }: { label: string; rows: number }) {
   return (
     <View

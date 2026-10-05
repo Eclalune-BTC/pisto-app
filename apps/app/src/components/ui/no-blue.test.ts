@@ -36,6 +36,16 @@ describe("owner's no-blue requirement", () => {
     }
     expect(violations).toEqual([]);
   });
+  test("replaces the browser's blue highlight on focused date and time segments", () => {
+    const css = readFileSync(new URL("../../global.css", import.meta.url), "utf8");
+    for (const segment of ["month", "day", "year", "hour", "minute", "ampm"]) {
+      expect(css).toContain(`::-webkit-datetime-edit-${segment}-field:focus`);
+    }
+    expect(css).toMatch(
+      /-ampm-field:focus \{\s*background-color: var\(--color-selection\);\s*color: var\(--color-foreground\);/,
+    );
+  });
+
   test("uses the shared semantic navigation theme instead of blue platform defaults", () => {
     const layout = readFileSync(new URL("../../app/_layout.tsx", import.meta.url), "utf8");
     expect(layout).toContain('useNavigationTheme(theme === "dark")');

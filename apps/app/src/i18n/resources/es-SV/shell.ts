@@ -47,6 +47,6 @@ export const shell = {
     "/operate/reports": "Reportes",
     "/settings": "Cuenta",
     "/billing": "Plan y facturación",
-    "/billing/success": "Pago completado",
+    "/billing/success": "Estado del pago",
   },
 } as const;

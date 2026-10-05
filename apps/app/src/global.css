@@ -298,6 +298,17 @@ html.dark {
   outline-offset: 1px;
 }
 
+/* Chrome paints the focused date and time segment in its blue system highlight. */
+.pisto-picker-field input::-webkit-datetime-edit-month-field:focus,
+.pisto-picker-field input::-webkit-datetime-edit-day-field:focus,
+.pisto-picker-field input::-webkit-datetime-edit-year-field:focus,
+.pisto-picker-field input::-webkit-datetime-edit-hour-field:focus,
+.pisto-picker-field input::-webkit-datetime-edit-minute-field:focus,
+.pisto-picker-field input::-webkit-datetime-edit-ampm-field:focus {
+  background-color: var(--color-selection);
+  color: var(--color-foreground);
+}
+
 .pisto-picker-field input[aria-invalid="true"] {
   border-color: var(--color-destructive);
 }

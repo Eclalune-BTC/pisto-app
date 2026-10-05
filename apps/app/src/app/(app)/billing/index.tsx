@@ -7,16 +7,16 @@ import {
   Smartphone,
   TriangleAlert,
 } from "lucide-react-native";
-import { type PropsWithChildren, type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { DescriptionList } from "@/components/layout/description-list";
 import { PageHeader } from "@/components/layout/page-header";
+import { SettingsSection } from "@/components/layout/settings-section";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
-import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
@@ -33,24 +33,6 @@ import { notify } from "@/lib/notify";
 type EntitlementRow = Entitlement & { rowId: string };
 
 /** The account area's two-column section, matching Cuenta: label left, content right. */
-function AccountSection({
-  children,
-  description,
-  title,
-}: PropsWithChildren<{ description: string; title: string }>) {
-  return (
-    <View accessibilityLabel={title} className="min-w-0 gap-3 lg:flex-row lg:gap-10" role="region">
-      <View className="min-w-0 gap-0.5 lg:w-64 lg:shrink-0">
-        <Heading level={2} size="section">
-          {title}
-        </Heading>
-        <Text className="text-[13px] leading-5 text-muted-foreground">{description}</Text>
-      </View>
-      <View className="min-w-0 flex-1 gap-3 lg:max-w-2xl">{children}</View>
-    </View>
-  );
-}
-
 function BlockSkeleton({ label }: { label: string }) {
   return (
     <View accessibilityLabel={label} aria-busy className="gap-2">
@@ -356,18 +338,18 @@ export default function BillingScreen() {
         title={t("billing.title")}
       />
       <View className="min-w-0 gap-8">
-        <AccountSection
+        <SettingsSection
           description={t("billing.access.description")}
           title={t("billing.access.title")}
         >
           {accessContent}
-        </AccountSection>
-        <AccountSection
+        </SettingsSection>
+        <SettingsSection
           description={t("billing.plans.description")}
           title={t("billing.plans.title")}
         >
           {offerContent}
-        </AccountSection>
+        </SettingsSection>
       </View>
     </Page>
   );
