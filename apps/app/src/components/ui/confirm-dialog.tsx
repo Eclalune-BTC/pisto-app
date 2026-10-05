@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { returnFocusOnClose } from "@/lib/focus-return";
+import { type FocusReturnRef, returnFocusOnClose } from "@/lib/focus-return";
 import { isLockedPhase, type MutationPhase } from "@/lib/mutation-phase";
 
 type ConfirmDialogProps = {
@@ -35,7 +35,7 @@ type ConfirmDialogProps = {
   open: boolean;
   phase: MutationPhase;
   /** The control that opened the dialog; focus returns to it when the dialog closes. */
-  returnFocus?: HTMLElement | null;
+  returnFocus?: HTMLElement | FocusReturnRef | null;
   title: string;
   /** What the user should know when the outcome is unknown, phrased for this command. */
   uncertainDescription: string;

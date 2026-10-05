@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 
-import type { FocusReturnRef } from "./focus-return";
+import type { FocusReturnRef } from "@/lib/focus-return";
 import type { ReadState } from "./read-state";
 import { SearchField } from "./search-field";
 

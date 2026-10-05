@@ -23,8 +23,8 @@ const captured = vi.hoisted(() => ({
   dialog: {} as Record<string, unknown> & { children?: ReactNode; onConfirm?: () => void },
   stats: [] as { label: string; tone?: string; value: string }[],
 }));
-vi.mock("@/features/customers/confirm-command-dialog", () => ({
-  ConfirmCommandDialog: (props: typeof captured.dialog) => {
+vi.mock("@/components/ui/confirm-dialog", () => ({
+  ConfirmDialog: (props: typeof captured.dialog) => {
     captured.dialog = props;
     return null;
   },
@@ -97,7 +97,7 @@ describe("archive confirmation", () => {
       confirmLabel: i18n.t("customers.archive.confirm"),
       destructive: true,
       open: true,
-      pending: false,
+      phase: "idle",
     });
     captured.dialog.onConfirm?.();
     expect(confirm.mock.calls[0]?.[0]()).toEqual({
@@ -113,9 +113,11 @@ describe("archive confirmation", () => {
     renderToStaticMarkup(
       createElement(CustomerArchiveDialog, { ...dialogContext, action, customerName: "Ana" }),
     );
-    expect(captured.dialog.confirmLabel).toBe(i18n.t("common.retrySameConfirmation"));
-    expect(captured.dialog.error).toBeUndefined();
-    expect(renderToStaticMarkup(captured.dialog.children)).toContain("Connection lost");
+    expect(captured.dialog).toMatchObject({
+      errorMessage: undefined,
+      phase: "uncertain",
+      uncertainDescription: "Connection lost",
+    });
   });
 
   test("keeps a definitive failure inside the dialog and stays open while pending", () => {
@@ -128,7 +130,7 @@ describe("archive confirmation", () => {
         ...dialogContext,
       }),
     );
-    expect(captured.dialog).toMatchObject({ error: "Has a balance", pending: false });
+    expect(captured.dialog).toMatchObject({ errorMessage: "Has a balance", phase: "failed" });
     renderToStaticMarkup(
       createElement(CustomerArchiveDialog, {
         action: confirmable<ArchiveCustomerRequest>({ state: { phase: "pending" } }).action,
@@ -136,7 +138,7 @@ describe("archive confirmation", () => {
         ...dialogContext,
       }),
     );
-    expect(captured.dialog.pending).toBe(true);
+    expect(captured.dialog.phase).toBe("pending");
   });
 
   test("blocks a first archive on stale data but never the retry of an uncertain one", () => {
@@ -148,7 +150,7 @@ describe("archive confirmation", () => {
         stale: true,
       }),
     );
-    expect(captured.dialog.confirmDisabled).toBe(true);
+    expect(captured.dialog.disabled).toBe(true);
     expect(renderToStaticMarkup(captured.dialog.children)).toContain(i18n.t("remote.stale"));
     renderToStaticMarkup(
       createElement(CustomerArchiveDialog, {
@@ -161,7 +163,9 @@ describe("archive confirmation", () => {
         stale: true,
       }),
     );
-    expect(captured.dialog.confirmDisabled).toBe(false);
+    // The shared dialog never disables the retry of an uncertain command, whatever `disabled` says.
+    expect(captured.dialog).toMatchObject({ disabled: true, phase: "uncertain" });
+    expect(renderToStaticMarkup(captured.dialog.children)).not.toContain(i18n.t("remote.stale"));
   });
 });
 
@@ -187,7 +191,7 @@ describe("void confirmation", () => {
     );
     const [reason] = elements<ComponentProps<typeof Field>>(captured.dialog.children, Field);
     expect(reason?.props).toMatchObject({ editable: false, value: "Cargo duplicado" });
-    expect(captured.dialog.confirmLabel).toBe(i18n.t("common.retrySameConfirmation"));
+    expect(captured.dialog.phase).toBe("uncertain");
   });
 
   test("returns focus to the menu that opened it", () => {
@@ -200,7 +204,7 @@ describe("void confirmation", () => {
         returnFocusRef,
       }),
     );
-    expect(captured.dialog.returnFocusRef).toBe(returnFocusRef);
+    expect(captured.dialog.returnFocus).toBe(returnFocusRef);
   });
 });
 

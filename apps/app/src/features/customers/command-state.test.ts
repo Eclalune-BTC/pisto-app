@@ -4,13 +4,13 @@ import type { TFunction } from "i18next";
 import { afterEach, describe, expect, test } from "vitest";
 
 import { ApiClientError } from "@/lib/api-error";
+import { provesNotCommitted } from "@/lib/mutation-phase";
 import {
   type CommandState,
   commandAction,
   commandAfterClose,
   commandState,
   commandToSend,
-  provesNotCommitted,
 } from "./command-state";
 import { unresolvedKeyAfter } from "./use-command";
 

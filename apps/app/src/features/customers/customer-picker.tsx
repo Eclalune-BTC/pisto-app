@@ -3,7 +3,7 @@ import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { FocusReturnRef } from "./focus-return";
+import type { FocusReturnRef } from "@/lib/focus-return";
 import { customerContact } from "./format";
 import { CUSTOMER_SEARCH_MAX_LENGTH } from "./list-params";
 import { customersQueryOptions } from "./queries";

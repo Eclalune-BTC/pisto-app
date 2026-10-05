@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 
 import { ApiClientError, isAmbiguousMutationError } from "@/lib/api-error";
+import { type MutationPhase, provesNotCommitted } from "@/lib/mutation-phase";
 import { productErrorMessage } from "@/lib/product-errors";
 
 /**
@@ -20,17 +21,6 @@ export type CommandAction = "confirm" | "none" | "retry" | "waiting";
  * may already have reached the server.
  */
 export type EditorAvailability = "available" | "stale" | "unavailable";
-
-/**
- * A rejection the server returns only after finding no receipt for the idempotency key in the same
- * transaction, so the key was never committed. Session, permission, rate, pause and request-shape
- * rejections happen before that lookup and prove nothing about an earlier attempt.
- */
-export function provesNotCommitted(error: unknown): boolean {
-  return (
-    error instanceof ApiClientError && (error.code === "CONFLICT" || error.code === "NOT_FOUND")
-  );
-}
 
 /**
  * @param unresolved an earlier attempt with the same idempotency key had an unknown outcome, so a
@@ -84,4 +74,9 @@ export function commandToSend<T>(
 /** Closing a confirmation keeps an unresolved command so that reopening retries the same key. */
 export function commandAfterClose<T>(previous: T | null, state: CommandState): T | null {
   return state.phase === "uncertain" ? previous : null;
+}
+
+/** The customers command vocabulary seen through the shared dialog's phases. */
+export function dialogPhase(state: CommandState): MutationPhase {
+  return state.phase === "confirmed" ? "idle" : state.phase;
 }

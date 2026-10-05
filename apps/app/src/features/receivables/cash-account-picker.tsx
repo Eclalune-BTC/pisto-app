@@ -1,9 +1,8 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-
-import type { FocusReturnRef } from "@/features/customers/focus-return";
 import { readState } from "@/features/customers/read-state";
 import { pickerStatus, RecordPicker } from "@/features/customers/record-picker";
+import type { FocusReturnRef } from "@/lib/focus-return";
 
 import { type CashAccountChoice, cashAccountChoicesQueryOptions } from "./cash-account-source";
 

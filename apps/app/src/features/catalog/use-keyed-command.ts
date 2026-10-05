@@ -1,8 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { provesNotCommitted } from "@/features/customers/command-state";
 import { unresolvedKeyAfter } from "@/features/customers/use-command";
-import { type MutationPhase, mutationPhase } from "@/lib/mutation-phase";
+import { type MutationPhase, mutationPhase, provesNotCommitted } from "@/lib/mutation-phase";
 
 type KeyedVariables = { idempotencyKey: string };
 

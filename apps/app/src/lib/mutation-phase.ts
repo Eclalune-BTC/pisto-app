@@ -1,4 +1,4 @@
-import { isAmbiguousMutationError } from "@/lib/api-error";
+import { ApiClientError, isAmbiguousMutationError } from "@/lib/api-error";
 
 /**
  * Where a confirmed money command stands. "uncertain" means the server may already have applied
@@ -30,4 +30,15 @@ export function withStableIdempotencyKey<T extends { idempotencyKey: string }>(
   const { idempotencyKey: _previousKey, ...previousPayload } = previous;
   const { idempotencyKey: _nextKey, ...nextPayload } = next;
   return JSON.stringify(previousPayload) === JSON.stringify(nextPayload) ? previous : next;
+}
+
+/**
+ * A rejection the server returns only after finding no receipt for the idempotency key in the same
+ * transaction, so the key was never committed. Session, permission, rate, pause and request-shape
+ * rejections happen before that lookup and prove nothing about an earlier attempt.
+ */
+export function provesNotCommitted(error: unknown): boolean {
+  return (
+    error instanceof ApiClientError && (error.code === "CONFLICT" || error.code === "NOT_FOUND")
+  );
 }

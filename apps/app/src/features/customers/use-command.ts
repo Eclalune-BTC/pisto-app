@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 
 import { isAmbiguousMutationError } from "@/lib/api-error";
 
-import { type CommandState, commandState, provesNotCommitted } from "./command-state";
+import { provesNotCommitted } from "@/lib/mutation-phase";
+import { type CommandState, commandState } from "./command-state";
 
 /**
  * The idempotency key whose outcome is still unknown once an attempt settles. An unknown outcome

@@ -1,4 +1,8 @@
+import type { RefObject } from "react";
 import { Platform } from "react-native";
+
+/** A control that can take focus back on every platform, held by the screen that opened a dialog. */
+export type FocusReturnRef = RefObject<{ focus: () => void } | null>;
 
 /**
  * The control that is opening a dialog, read before the dialog takes focus. A menu item leaves
@@ -16,9 +20,11 @@ export function focusReturnTarget(): HTMLElement | null {
  * Radix returns focus to a dialog's own trigger, and these dialogs open from rows and menus
  * without one; focus goes back to the captured control while it is still on the page.
  */
-export function returnFocusOnClose(target: HTMLElement | null | undefined) {
+export function returnFocusOnClose(target: HTMLElement | FocusReturnRef | null | undefined) {
   return (event: Event) => {
     event.preventDefault();
-    if (target?.isConnected) target.focus();
+    if (!target) return;
+    if ("current" in target) target.current?.focus();
+    else if (target.isConnected) target.focus();
   };
 }

@@ -1,17 +1,16 @@
 import type { Receivable, VoidReceivableRequest } from "@pisto/contracts";
 import * as Crypto from "expo-crypto";
-import { TriangleAlert } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { DescriptionList } from "@/components/layout/description-list";
 import { StaleNotice } from "@/components/remote-state";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field } from "@/components/ui/field";
-import { ConfirmCommandDialog } from "@/features/customers/confirm-command-dialog";
-import type { FocusReturnRef } from "@/features/customers/focus-return";
+import { dialogPhase } from "@/features/customers/command-state";
 import { useRecordFormat } from "@/features/customers/format";
 import type { ConfirmableCommand } from "@/features/customers/use-confirmable-command";
+import type { FocusReturnRef } from "@/lib/focus-return";
 
 import { buildVoidReceivableCommand } from "./draft";
 
@@ -42,17 +41,13 @@ export function ReceivableVoidDialog({
   const blocked = stale && state.phase !== "uncertain";
 
   return (
-    <ConfirmCommandDialog
-      cancelLabel={t("common.cancel")}
-      confirmDisabled={blocked}
-      confirmLabel={
-        state.phase === "uncertain"
-          ? t("common.retrySameConfirmation")
-          : t("receivables.void.confirm")
-      }
+    <ConfirmDialog
+      confirmLabel={t("receivables.void.confirm")}
       description={t("receivables.void.description")}
       destructive
-      error={state.phase === "failed" ? state.message : undefined}
+      disabled={stale}
+      errorMessage={state.phase === "failed" ? state.message : undefined}
+      onCancel={() => action.onOpenChange(false)}
       onConfirm={() =>
         action.confirm(() => {
           const result = buildVoidReceivableCommand(reason, Crypto.randomUUID());
@@ -60,11 +55,11 @@ export function ReceivableVoidDialog({
           return "command" in result ? result.command : null;
         })
       }
-      onOpenChange={action.onOpenChange}
       open={action.open}
-      pending={state.phase === "pending"}
-      returnFocusRef={returnFocusRef}
+      phase={dialogPhase(state)}
+      returnFocus={returnFocusRef}
       title={t("receivables.void.title")}
+      uncertainDescription={state.phase === "uncertain" ? state.message : ""}
     >
       {blocked ? <StaleNotice onRetry={onRetryRead} /> : null}
       <DescriptionList
@@ -94,12 +89,6 @@ export function ReceivableVoidDialog({
         placeholder={t("receivables.void.reasonPlaceholder")}
         value={locked && action.command ? action.command.reason : reason}
       />
-      {state.phase === "uncertain" ? (
-        <Alert icon={TriangleAlert} variant="warning">
-          <AlertTitle>{t("common.uncertainTitle")}</AlertTitle>
-          <AlertDescription>{state.message}</AlertDescription>
-        </Alert>
-      ) : null}
-    </ConfirmCommandDialog>
+    </ConfirmDialog>
   );
 }
