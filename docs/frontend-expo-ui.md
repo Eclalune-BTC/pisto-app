@@ -66,19 +66,16 @@ when the resolved business access lacks it. The complete route inventory is:
 | `/operate/catalog/:productId` | `catalog:read` | Product detail and archive review |
 | `/operate/catalog/:productId/edit` | `catalog:manage` | Product update and review |
 | `/operate/inventory` | `inventory:read` | Derived stock and low-stock filter |
-| `/operate/inventory/:productId` | `inventory:read` | Signed movement history |
+| `/operate/inventory/:productId` | `inventory:read`; reversal needs `inventory:manage` | Signed movement history; a reversal is reviewed in a dialog |
 | `/operate/inventory/:productId/new` | `inventory:manage` | Receive or adjust entry and review |
-| `/operate/inventory/:productId/reverse/:movementId` | `inventory:manage` | One-time movement reversal review |
 | `/operate/customers` | `customers:read` | Customer search and list |
 | `/operate/customers/new` | `customers:manage` | Customer creation |
-| `/operate/customers/:customerId` | `customers:read` | Customer detail, contact, and receivable history |
+| `/operate/customers/:customerId` | `customers:read`; archive needs `customers:manage` | Customer detail, contact, receivable history; archive is confirmed in a dialog |
 | `/operate/customers/:customerId/edit` | `customers:manage` | Customer update |
-| `/operate/customers/:customerId/archive` | `customers:manage` | Archive review |
 | `/operate/receivables` | `receivables:read` | Business totals and state-filtered list |
 | `/operate/receivables/new` | `receivables:manage` | Charge entry and review |
-| `/operate/receivables/:receivableId` | `receivables:read` | Charge detail and payment history |
+| `/operate/receivables/:receivableId` | `receivables:read`; void needs `receivables:manage` | Charge detail and payment history; void is confirmed in a dialog |
 | `/operate/receivables/:receivableId/payment` | `receivables:manage` and `cash:manage` | Payment entry and review |
-| `/operate/receivables/:receivableId/void` | `receivables:manage` | Void review |
 | `/operate/receivables/:receivableId/payments/:paymentId/reverse` | `receivables:manage` and `cash:manage` | Payment reversal review |
 
 Route groups and layouts may add file-system parentheses without changing these public paths. Keep

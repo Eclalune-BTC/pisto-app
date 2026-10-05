@@ -43,17 +43,23 @@ working method. When a lesson below becomes a durable rule, move it into the des
 | Exact figures | `components/layout/stat-group.tsx` `StatGroup`/`Stat` | one shared border; `tone` only for overdue/negative/warning |
 | Record facts | `components/layout/description-list.tsx` | label/value rows; `numeric` for money/dates |
 | Loading | `components/layout/skeletons.tsx` `ContentSkeleton` | `list`/`detail`/`form`/`section`; never a page spinner |
-| Remote states | `FeatureBoundary`, `ui/state-panel`, `ui/empty-state`, `remote-state` (`OfflineState`, `StaleNotice`) | empty only after a successful read |
+| Whole-route state | `components/route-state.tsx` `RouteState` | `kind` loading/offline/denied/notFound/unavailable/error, `variant` skeleton, `onRetry` on error; pass `title`/`description` when the record matters |
+| Section states | `FeatureBoundary`, `ui/state-panel`, `ui/empty-state`, `remote-state` (`OfflineState`, `StaleNotice`) | empty only after a successful read |
 | Records | `ui/data-table` | `getRowHref` makes the row and its primary cell a real link; `onRowPress` opens in place (dialog); `rowActions` + `ui/row-actions`; `meta.primary`, `meta.align: "end"`, `meta.figure`, `meta.width`, `meta.hideOnCompact` |
-| Status | `ui/badge` | `secondary`, `outline`, `positive`, `warning`, `destructive`; status is never plain text |
+| Status | `ui/status-badge` `StatusBadge` | `tone`: `normal` (quiet), `exception` (voided/archived), `attention` (overdue, low stock), `settled` (paid); red never marks a state |
+| Header actions | `components/layout/header-actions.tsx` | `primary` stays visible, `secondary` folds into the one overflow menu on phones, `overflow` with `destructive` last and `disabledReason`; `menuTriggerRef` for focus return |
 | Callouts | `ui/alert` | `default`, `positive`, `warning`, `destructive`; `action` slot. No `border-l-4` boxes |
+| Send a keyed command | `lib/keyed-command` `useKeyedCommand` | the only way to send a command with an idempotency key: an unknown outcome stays `uncertain` through later refusals of that key until CONFLICT/NOT_FOUND proves it never committed |
+| Review a command | `components/command-review.tsx` | the page header shows the review title; `note` states the consequence; `disabled` blocks the first send only |
 | Confirm consequential command | `ui/confirm-dialog` + `lib/mutation-phase` | `phase` (`idle`/`pending`/`failed`/`uncertain`) locks it while pending or uncertain; retry resends the same key; `returnFocus` from `lib/focus-return` |
 | Short forms | `ui/dialog` (wide) / `ui/sheet` | for create/rename of simple entities; money flows keep their routes |
-| Filters | `ui/filter-bar` (segmented radios), `ui/select-field`, `ui/input` with search icon | toolbar row above the table |
-| Fields | `ui/field` (`description`, `error`), `ui/select-field` (`error`), `ui/date-field`, `ui/time-field` | pickers forward `ref` so a rejected form can focus them |
+| Filters | `ui/filter-toolbar`, `ui/filter-bar` (segmented, "Todos" first), `ui/select-field` `labelHidden`, `ui/search-field` | one wrapping row under the section title, never in the section header |
+| Form end | `components/layout/form-actions.tsx` | cancel (href with replace, or handler) then the primary step, trailing edge |
+| Fields | `ui/field` (`description`, `error`), `ui/select-field` (`error`), `ui/moment-fields` (date + time pair), `ui/date-field`, `ui/time-field` | pickers forward `ref` so a rejected form can focus them |
 | Feedback | `lib/notify.ts` `notify.success/warning/error` | after definitive results; uncertain outcomes stay inline and blocking |
 | Breadcrumb names | `useRouteLabel(route, name)` from `components/shell/shell-context` | call on detail screens once the record loaded |
-| Formatting | `lib/money` `formatMinorUnits`, `i18n/format` (`formatLocalDate`, `formatLocalizedDateTime`) | `tabular-nums` on every amount/date column |
+| Formatting | `lib/money` `formatMinorUnits`, `i18n/format` (`formatLocalizedDateTime`, `formatLocalMoment`, `formatLocalDate`) | one format: spelled month + 24 h; a test forbids feature-local `Intl.DateTimeFormat`; `tabular-nums` on every amount/date column |
+| Reviewed change | `components/layout/review-values.tsx` `ChangedValue` | arrow hidden from readers, one "Antes … Ahora …" sentence |
 
 Reference implementation: `features/operate/operate-home-screen.tsx` (home summary).
 
@@ -150,3 +156,22 @@ Append one line per lesson: `YYYY-MM-DD · screen · lesson · where it is now e
   landing page; titles are 20-24 px with one muted line at most · pending PageHeader.
 - 2026-10-04 · cash, sales · Centered spinners and nav items appearing after load felt broken;
   shells render immediately and content uses skeletons · pending skeleton templates.
+
+- 2026-10-04 · all screens · Hooks inside object literals crash under the React Compiler; TanStack
+  row renderers must opt out with "use no memo" · `component-boundaries.test.ts`.
+- 2026-10-04 · shell · Keep the navigator mounted during session restore; never swap it for a
+  spinner, and remember only settled URLs without child record ids · `app/(app)/_layout.tsx`,
+  `lib/route-trail.ts`.
+- 2026-10-04 · all lists · Ledger lists order by when entries happened `(occurred_at, created_at,
+  id)`; copy says "por fecha" · `packages/db/src/pagination.ts`.
+- 2026-10-04 · cash · System-written text is never shown verbatim; system movements store no reason
+  and are labelled from their action · `features/cash/copy.ts` `cashMovementReason`.
+- 2026-10-04 · money reviews · A review shows each account's resulting balance and stops an outflow
+  a protected account cannot cover · `features/cash/drafts.ts` `balanceAfter`.
+- 2026-10-04 · commands · A retry refused by rate limit, pause or session after an unknown outcome
+  stays uncertain; editing would mint a second key · `lib/keyed-command`.
+- 2026-10-04 · modules · Parallel module work forked confirm dialogs, reviews, route states, search,
+  header menus and form footers; reuse the shared block or extend it, never copy it into a feature.
+- 2026-10-04 · tooling · On Windows the Expo typed-routes watcher writes files outside `src/app` as
+  routes and TypeScript reports TS2590; restart Expo with `--clear` before trusting tsc.
+
