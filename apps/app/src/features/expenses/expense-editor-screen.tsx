@@ -3,6 +3,7 @@ import { Link } from "expo-router";
 import { Landmark } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { CommandReview } from "@/components/command-review";
 import { FormSection } from "@/components/layout/form-section";
 import { PageHeader } from "@/components/layout/page-header";
 import { MutedValue } from "@/components/layout/review-values";
@@ -18,7 +19,6 @@ import { formatLocalMoment } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { AccountBalanceHint } from "../cash/account-balance-hint";
-import { CashOperationReview } from "../cash/cash-operation-review";
 import { balanceAfter } from "../cash/drafts";
 import { LocalDateTimeFields } from "../cash/local-date-time-fields";
 import { expenseCategoryLabels, expenseCategoryOptions } from "./copy";
@@ -77,10 +77,10 @@ export function ExpenseEditorScreen({
           description={t("expenses.editor.reviewDescription")}
           title={t("expenses.editor.reviewTitle")}
         />
-        <CashOperationReview
+        <CommandReview
           confirmLabel={t("expenses.editor.confirm")}
           disabled={!canConfirm}
-          effect={t("expenses.editor.effect")}
+          note={t("expenses.editor.effect")}
           errorMessage={errorMessage}
           items={[
             {

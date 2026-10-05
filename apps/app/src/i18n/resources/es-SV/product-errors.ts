@@ -18,8 +18,7 @@ export const productErrors = {
       conflict: "El producto ya está archivado o su estado cambió antes de confirmar.",
       fallback: "No pudimos archivar el producto. Su estado no se confirmó como cambiado.",
       forbidden: "Tu rol actual no permite archivar productos.",
-      idempotency:
-        "Esta confirmación ya se envió con otra operación. Abre de nuevo el producto.",
+      idempotency: "Esta confirmación ya se envió con otra operación. Abre de nuevo el producto.",
       notFound: "El producto ya no está disponible en este negocio.",
       validation: "La confirmación para archivar no es válida.",
     },
@@ -60,8 +59,7 @@ export const productErrors = {
         "El movimiento ya fue revertido, no admite reversión o la reversión dejaría una existencia negativa.",
       fallback: "No pudimos confirmar la reversión. La existencia no se muestra como modificada.",
       forbidden: "Tu rol actual no permite revertir movimientos.",
-      idempotency:
-        "Esta confirmación ya se envió con otros datos. Abre de nuevo el movimiento.",
+      idempotency: "Esta confirmación ya se envió con otros datos. Abre de nuevo el movimiento.",
       notFound: "El movimiento ya no está disponible en este negocio.",
       validation: "Revisa el motivo, la fecha y la hora antes de continuar.",
     },

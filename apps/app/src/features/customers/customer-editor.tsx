@@ -11,7 +11,7 @@ import type { TFunction } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-
+import { CommandReview } from "@/components/command-review";
 import type { DescriptionItem } from "@/components/layout/description-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
@@ -20,8 +20,7 @@ import { RouteState } from "@/components/route-state";
 import { Text } from "@/components/ui/text";
 import { notify } from "@/lib/notify";
 import { customersApi } from "./api";
-import { CommandReview } from "./command-review";
-import { commandInFlight, type EditorAvailability } from "./command-state";
+import { commandInFlight, commandPhase, type EditorAvailability } from "./command-state";
 import { CustomerForm, type CustomerFormErrors } from "./customer-form";
 import {
   buildCreateCustomerCommand,
@@ -157,7 +156,13 @@ export function CustomerEditor({
         description={
           editing ? t("customers.editor.editDescription") : t("customers.editor.createDescription")
         }
-        title={editing ? t("customers.editor.editTitle") : t("customers.editor.createTitle")}
+        title={
+          review
+            ? t("customers.editor.reviewTitle")
+            : editing
+              ? t("customers.editor.editTitle")
+              : t("customers.editor.createTitle")
+        }
       />
       {stale ? <StaleNotice onRetry={onRetryRead} /> : null}
       {review ? (
@@ -165,7 +170,7 @@ export function CustomerEditor({
           confirmLabel={
             editing ? t("customers.editor.confirmEdit") : t("customers.editor.confirmCreate")
           }
-          description={
+          note={
             editing
               ? t("customers.editor.reviewEditDescription")
               : t("customers.editor.reviewCreateDescription")
@@ -176,8 +181,10 @@ export function CustomerEditor({
             setReview(null);
             reset();
           }}
-          stale={stale}
-          state={state}
+          disabled={stale}
+          errorMessage={state.phase === "failed" ? state.message : undefined}
+          phase={commandPhase(state)}
+          uncertainDescription={state.phase === "uncertain" ? state.message : undefined}
           title={t("customers.editor.reviewTitle")}
         />
       ) : (

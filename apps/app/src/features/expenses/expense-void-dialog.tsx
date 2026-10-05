@@ -88,7 +88,7 @@ export function ExpenseVoidDialog({
 
   return (
     <ConfirmDialog
-      uncertainDescription={t("cash.review.uncertainDescription")}
+      uncertainDescription={t("common.reviewUncertainDescription")}
       confirmLabel={t("expenses.void.confirm")}
       description={t("expenses.void.description", {
         amount: formatMinorUnits(

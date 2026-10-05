@@ -6,13 +6,16 @@ import type { TFunction } from "i18next";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-
+import { CommandReview } from "@/components/command-review";
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { RouteState } from "@/components/route-state";
-import { CommandReview } from "@/features/customers/command-review";
-import { commandInFlight, type EditorAvailability } from "@/features/customers/command-state";
+import {
+  commandInFlight,
+  commandPhase,
+  type EditorAvailability,
+} from "@/features/customers/command-state";
 import { useRecordFormat } from "@/features/customers/format";
 import { useCommand } from "@/features/customers/use-command";
 import { useFirstInvalidFocus } from "@/features/customers/use-first-invalid-focus";
@@ -132,13 +135,15 @@ export function PaymentEditor({
           charge: receivable.description,
           customer: customerName,
         })}
-        title={t("receivables.payment.title")}
+        title={
+          command && account ? t("receivables.payment.reviewTitle") : t("receivables.payment.title")
+        }
       />
       {stale ? <StaleNotice onRetry={onRetryRead} /> : null}
       {command && account ? (
         <CommandReview
           confirmLabel={t("receivables.payment.confirm")}
-          description={t("receivables.payment.reviewDescription")}
+          note={t("receivables.payment.reviewDescription")}
           items={[
             {
               label: t("receivables.payment.amount"),
@@ -163,8 +168,10 @@ export function PaymentEditor({
             setCommand(null);
             reset();
           }}
-          stale={stale}
-          state={state}
+          disabled={stale}
+          errorMessage={state.phase === "failed" ? state.message : undefined}
+          phase={commandPhase(state)}
+          uncertainDescription={state.phase === "uncertain" ? state.message : undefined}
           title={t("receivables.payment.reviewTitle")}
         />
       ) : (

@@ -150,7 +150,7 @@ export function CashReversalDialog({
   const locked = isLockedPhase(phase);
   return (
     <ConfirmDialog
-      uncertainDescription={t("cash.review.uncertainDescription")}
+      uncertainDescription={t("common.reviewUncertainDescription")}
       confirmLabel={t("cash.reversal.confirm")}
       description={t("cash.reversal.description", { amount })}
       destructive

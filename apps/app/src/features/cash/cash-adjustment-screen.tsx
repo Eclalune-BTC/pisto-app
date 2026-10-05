@@ -3,6 +3,7 @@ import { Link } from "expo-router";
 import { Landmark } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { CommandReview } from "@/components/command-review";
 import { FormSection } from "@/components/layout/form-section";
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
@@ -17,7 +18,6 @@ import { formatLocalMoment } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { AccountBalanceHint } from "./account-balance-hint";
-import { CashOperationReview } from "./cash-operation-review";
 import { ChoiceList } from "./choice-list";
 import { type AdjustmentDraftValues, balanceAfter } from "./drafts";
 import { LocalDateTimeFields } from "./local-date-time-fields";
@@ -79,10 +79,10 @@ export function CashAdjustmentScreen({
           description={t("cash.adjustment.reviewDescription")}
           title={t("cash.adjustment.reviewTitle")}
         />
-        <CashOperationReview
+        <CommandReview
           confirmLabel={t("cash.adjustment.confirm")}
           disabled={!canConfirm}
-          effect={t("cash.adjustment.effect")}
+          note={t("cash.adjustment.effect")}
           errorMessage={errorMessage}
           items={[
             { label: t("cash.fields.account"), value: reviewAccount.name },

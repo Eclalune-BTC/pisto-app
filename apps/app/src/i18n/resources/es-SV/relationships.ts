@@ -9,8 +9,6 @@ export const relationships = {
       "Tu acceso actual no permite consultar ni administrar clientes y cuentas por cobrar.",
   },
   command: {
-    edit: "Editar",
-    failedTitle: "No se pudo confirmar",
     failedDescription: "No pudimos completar la operación. Revisa los datos y vuelve a intentarlo.",
   },
   picker: {

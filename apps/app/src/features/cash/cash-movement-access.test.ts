@@ -64,7 +64,7 @@ function dialog(phase: MutationPhase, changes: Partial<ComponentProps<typeof Con
     open: true,
     phase,
     title: "Title",
-    uncertainDescription: t("cash.review.uncertainDescription"),
+    uncertainDescription: t("common.reviewUncertainDescription"),
     ...changes,
   };
   const { tree } = capture(ConfirmDialog, props);
@@ -84,7 +84,7 @@ describe("confirmed money commands in a dialog", () => {
     expect(cancel.props.disabled).toBe(true);
     root.props.onOpenChange?.(false);
     expect(props.onCancel).not.toHaveBeenCalled();
-    expect(textOf(tree)).toContain(t("cash.review.uncertainDescription"));
+    expect(textOf(tree)).toContain(t("common.reviewUncertainDescription"));
     expect(textOf(tree)).not.toContain(props.errorMessage);
   });
 
@@ -245,9 +245,11 @@ describe("cash reviews keep what was reviewed across list refetches", () => {
     expect(markup).not.toContain(t("cash.overview.newAccount"));
     if (phase === "uncertain") {
       expect(markup).toContain(t("common.retrySameConfirmation"));
-      expect(markup).not.toContain(`>${t("common.edit")}<`);
+      expect(markup).not.toContain(`>${t("common.editData")}<`);
     } else {
-      expect(markup).toMatch(new RegExp(`disabled=""[^>]*>[^<]*<div[^>]*>${t("common.edit")}<`));
+      expect(markup).toMatch(
+        new RegExp(`disabled=""[^>]*>[^<]*<div[^>]*>${t("common.editData")}<`),
+      );
     }
   }
 

@@ -186,7 +186,7 @@ export function CashAccountDetailScreen({
       </Section>
 
       <ConfirmDialog
-        uncertainDescription={t("cash.review.uncertainDescription")}
+        uncertainDescription={t("common.reviewUncertainDescription")}
         confirmLabel={t("cash.accountDetail.archive")}
         description={t("cash.archive.description", {
           balance: formatMoney(

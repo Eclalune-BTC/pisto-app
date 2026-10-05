@@ -5,28 +5,27 @@ import { Platform, View } from "react-native";
 import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 import { isLockedPhase, type MutationPhase } from "@/lib/mutation-phase";
-
-/**
- * A reviewed change: the value being replaced, muted, then the new one in the stronger weight. The
- * arrow only works visually, so screen readers get the change as a sentence naming both values.
- */
 
 type CommandReviewProps = {
   /** Figures shown above the summary, such as the balance a movement changes. */
   children?: ReactNode;
   confirmLabel: string;
+  destructive?: boolean;
   /** Access or freshness was lost; it blocks a first confirmation, never the same-command retry. */
   disabled?: boolean;
   errorMessage?: string;
-  failedTitle: string;
+  failedTitle?: string;
   items: readonly DescriptionItem[];
+  /** The consequence of confirming, stated under the facts. */
+  note?: string;
   onConfirm: () => void;
   onEdit: () => void;
   phase: MutationPhase;
-  /** Names the review region that receives focus. */
+  /** Names the review region that receives focus; the page header shows it. */
   title: string;
-  uncertainDescription: string;
+  uncertainDescription?: string;
 };
 
 /**
@@ -36,10 +35,12 @@ type CommandReviewProps = {
 export function CommandReview({
   children,
   confirmLabel,
+  destructive = false,
   disabled = false,
   errorMessage,
   failedTitle,
   items,
+  note,
   onConfirm,
   onEdit,
   phase,
@@ -63,14 +64,17 @@ export function CommandReview({
     >
       {children}
       <DescriptionList items={items} />
+      {note ? <Text className="text-[13px] leading-5 text-muted-foreground">{note}</Text> : null}
       {phase === "uncertain" ? (
         <Alert icon={TriangleAlert} variant="warning">
           <AlertTitle>{t("common.uncertainTitle")}</AlertTitle>
-          <AlertDescription>{uncertainDescription}</AlertDescription>
+          <AlertDescription>
+            {uncertainDescription || t("common.reviewUncertainDescription")}
+          </AlertDescription>
         </Alert>
       ) : phase === "failed" ? (
         <Alert icon={CircleAlert} variant="destructive">
-          <AlertTitle>{failedTitle}</AlertTitle>
+          <AlertTitle>{failedTitle ?? t("common.reviewFailedTitle")}</AlertTitle>
           {errorMessage ? <AlertDescription>{errorMessage}</AlertDescription> : null}
         </Alert>
       ) : null}
@@ -90,6 +94,7 @@ export function CommandReview({
               label={confirmLabel}
               loading={phase === "pending"}
               onPress={disabled || locked ? undefined : onConfirm}
+              variant={destructive ? "destructive" : "default"}
             />
           </>
         )}

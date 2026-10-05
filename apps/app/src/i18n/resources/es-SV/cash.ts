@@ -38,11 +38,6 @@ export const cash = {
       "La cuenta indicada no existe o está archivada. Elige otra desde Caja y cuentas.",
     mutationFallback: "Revisa los datos e intenta de nuevo.",
   },
-  review: {
-    failedTitle: "No se completó la operación",
-    uncertainDescription:
-      "No pudimos confirmar el resultado. Reintenta la misma confirmación: Pisto la reconoce y no la registra dos veces.",
-  },
   fields: {
     account: "Cuenta",
     amount: "Importe",

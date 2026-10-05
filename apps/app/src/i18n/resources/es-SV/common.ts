@@ -6,8 +6,10 @@ export const common = {
   retry: "Volver a intentar",
   retrySameConfirmation: "Reintentar la misma confirmación",
   uncertainTitle: "No sabemos si llegó la confirmación",
+  reviewFailedTitle: "No se completó la operación",
+  reviewUncertainDescription:
+    "No pudimos confirmar el resultado. Reintenta la misma confirmación: Pisto la reconoce y no la registra dos veces.",
   cancel: "Cancelar",
-  edit: "Editar",
   editData: "Editar datos",
   yes: "Sí",
   no: "No",

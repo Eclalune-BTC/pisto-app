@@ -76,7 +76,7 @@ export function commandAfterClose<T>(previous: T | null, state: CommandState): T
   return state.phase === "uncertain" ? previous : null;
 }
 
-/** The customers command vocabulary seen through the shared dialog's phases. */
-export function dialogPhase(state: CommandState): MutationPhase {
+/** The command vocabulary seen through the shared dialog and review phases. */
+export function commandPhase(state: CommandState): MutationPhase {
   return state.phase === "confirmed" ? "idle" : state.phase;
 }

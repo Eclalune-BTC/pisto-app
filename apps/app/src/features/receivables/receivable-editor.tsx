@@ -6,12 +6,12 @@ import type { TFunction } from "i18next";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-
+import { CommandReview } from "@/components/command-review";
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { RouteState } from "@/components/route-state";
-import { CommandReview } from "@/features/customers/command-review";
+import { commandPhase } from "@/features/customers/command-state";
 import { CustomerPickerDialog } from "@/features/customers/customer-picker";
 import { customerContact, useRecordFormat } from "@/features/customers/format";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
@@ -166,7 +166,7 @@ export function ReceivableEditor({
     <Page width="form">
       <PageHeader
         description={t("receivables.form.pageDescription")}
-        title={t("receivables.form.title")}
+        title={review ? t("receivables.form.reviewTitle") : t("receivables.form.title")}
       />
       {stale || (review && initialUnconfirmed) ? (
         <StaleNotice
@@ -179,7 +179,7 @@ export function ReceivableEditor({
       {review ? (
         <CommandReview
           confirmLabel={t("receivables.form.confirm")}
-          description={t("receivables.form.reviewDescription")}
+          note={t("receivables.form.reviewDescription")}
           items={[
             { label: t("receivables.form.customer"), value: review.customerName },
             {
@@ -210,8 +210,10 @@ export function ReceivableEditor({
             setReview(null);
             reset();
           }}
-          stale={stale || initialUnconfirmed}
-          state={state}
+          disabled={stale || initialUnconfirmed}
+          errorMessage={state.phase === "failed" ? state.message : undefined}
+          phase={commandPhase(state)}
+          uncertainDescription={state.phase === "uncertain" ? state.message : undefined}
           title={t("receivables.form.reviewTitle")}
         />
       ) : (

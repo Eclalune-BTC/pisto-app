@@ -10,15 +10,18 @@ import type { TFunction } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-
+import { CommandReview } from "@/components/command-review";
 import { DescriptionList } from "@/components/layout/description-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { RouteState } from "@/components/route-state";
-import { CommandReview } from "@/features/customers/command-review";
-import { commandInFlight, type EditorAvailability } from "@/features/customers/command-state";
+import {
+  commandInFlight,
+  commandPhase,
+  type EditorAvailability,
+} from "@/features/customers/command-state";
 import { useRecordFormat } from "@/features/customers/format";
 import { useCommand } from "@/features/customers/use-command";
 import { useFirstInvalidFocus } from "@/features/customers/use-first-invalid-focus";
@@ -134,7 +137,7 @@ export function PaymentReversalEditor({
     <Page width="form">
       <PageHeader
         description={t("receivables.reversal.description")}
-        title={t("receivables.reversal.title")}
+        title={command ? t("receivables.reversal.reviewTitle") : t("receivables.reversal.title")}
       />
       {stale ? <StaleNotice onRetry={onRetryRead} /> : null}
       <Section title={t("receivables.reversal.originalSection")}>
@@ -143,7 +146,7 @@ export function PaymentReversalEditor({
       {command ? (
         <CommandReview
           confirmLabel={t("receivables.reversal.confirm")}
-          description={t("receivables.reversal.reviewDescription", { amount })}
+          note={t("receivables.reversal.reviewDescription", { amount })}
           destructive
           items={[
             {
@@ -163,8 +166,10 @@ export function PaymentReversalEditor({
             setCommand(null);
             reset();
           }}
-          stale={stale}
-          state={state}
+          disabled={stale}
+          errorMessage={state.phase === "failed" ? state.message : undefined}
+          phase={commandPhase(state)}
+          uncertainDescription={state.phase === "uncertain" ? state.message : undefined}
           title={t("receivables.reversal.reviewTitle")}
         />
       ) : (

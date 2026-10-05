@@ -21,12 +21,12 @@ vi.mock("@/lib/api-client", () => ({
   pathWithQuery: (path: string) => path,
 }));
 
+import { CommandReview } from "@/components/command-review";
 import type { DataTableColumn } from "@/components/ui/data-table";
 import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
 import { PaymentEditor } from "@/features/receivables/payment-editor";
 import { i18n } from "@/i18n/config";
-import { CommandReview } from "./command-review";
-import { type CommandState, commandInFlight } from "./command-state";
+import { type CommandState, commandInFlight, commandPhase } from "./command-state";
 
 const noop = () => undefined;
 
@@ -78,13 +78,15 @@ describe("reviews on stale reads", () => {
     renderToStaticMarkup(
       createElement(CommandReview, {
         confirmLabel: "Confirmar cargo",
-        description: "Revisa",
+        disabled: stale,
+        errorMessage: state.phase === "failed" ? state.message : undefined,
         items: [{ label: "Monto", value: "$1.00" }],
+        note: "Revisa",
         onConfirm: noop,
         onEdit: noop,
-        stale,
-        state,
+        phase: commandPhase(state),
         title: "Revisión",
+        uncertainDescription: state.phase === "uncertain" ? state.message : undefined,
       }),
     );
 

@@ -7,7 +7,7 @@ import { DescriptionList } from "@/components/layout/description-list";
 import { StaleNotice } from "@/components/remote-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field } from "@/components/ui/field";
-import { dialogPhase } from "@/features/customers/command-state";
+import { commandPhase } from "@/features/customers/command-state";
 import { useRecordFormat } from "@/features/customers/format";
 import type { ConfirmableCommand } from "@/features/customers/use-confirmable-command";
 import type { FocusReturnRef } from "@/lib/focus-return";
@@ -56,7 +56,7 @@ export function ReceivableVoidDialog({
         })
       }
       open={action.open}
-      phase={dialogPhase(state)}
+      phase={commandPhase(state)}
       returnFocus={returnFocusRef}
       title={t("receivables.void.title")}
       uncertainDescription={state.phase === "uncertain" ? state.message : ""}

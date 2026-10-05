@@ -6,7 +6,7 @@ import { StaleNotice } from "@/components/remote-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { FocusReturnRef } from "@/lib/focus-return";
 
-import { dialogPhase } from "./command-state";
+import { commandPhase } from "./command-state";
 import type { ConfirmableCommand } from "./use-confirmable-command";
 
 export function CustomerArchiveDialog({
@@ -36,7 +36,7 @@ export function CustomerArchiveDialog({
       onCancel={() => action.onOpenChange(false)}
       onConfirm={() => action.confirm(() => ({ idempotencyKey: Crypto.randomUUID() }))}
       open={action.open}
-      phase={dialogPhase(state)}
+      phase={commandPhase(state)}
       returnFocus={returnFocusRef}
       title={t("customers.archive.title")}
       uncertainDescription={state.phase === "uncertain" ? state.message : ""}

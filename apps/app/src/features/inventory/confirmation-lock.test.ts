@@ -25,9 +25,9 @@ vi.mock("react", async (importOriginal) => ({
   useRef: (initial: unknown) => ({ current: initial }),
 }));
 
+import { CommandReview } from "@/components/command-review";
 import { Button } from "@/components/ui/button";
 import { ApiClientError } from "@/lib/api-error";
-import { CommandReview } from "../catalog/command-review";
 import { keyedCommandPhase } from "../catalog/use-keyed-command";
 import { buildMovementCommand } from "./movement-draft";
 

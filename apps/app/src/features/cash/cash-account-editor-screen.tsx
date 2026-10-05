@@ -8,6 +8,7 @@ import { CircleAlert } from "lucide-react-native";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { CommandReview } from "@/components/command-review";
 import type { DescriptionItem } from "@/components/layout/description-list";
 import { FormSection } from "@/components/layout/form-section";
 import { PageHeader } from "@/components/layout/page-header";
@@ -23,7 +24,6 @@ import { Text } from "@/components/ui/text";
 import { formatLocalMoment } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import type { MutationPhase } from "@/lib/mutation-phase";
-import { CashOperationReview } from "./cash-operation-review";
 import { ChoiceList } from "./choice-list";
 import { cashAccountKindLabels } from "./copy";
 import type { AccountDraftValues } from "./drafts";
@@ -149,12 +149,12 @@ export function CashAccountEditorScreen({
               : t("cash.accountEditor.reviewUpdateTitle")
           }
         />
-        <CashOperationReview
+        <CommandReview
           confirmLabel={
             creating ? t("cash.accountEditor.confirmCreate") : t("cash.accountEditor.confirmUpdate")
           }
           disabled={!canConfirm}
-          effect={
+          note={
             creating ? t("cash.accountEditor.createEffect") : t("cash.accountEditor.updateEffect")
           }
           errorMessage={errorMessage}
