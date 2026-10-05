@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DateField } from "@/components/ui/date-field";
 import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
+import { TimeField } from "@/components/ui/time-field";
 import { FormActions } from "@/features/customers/form-actions";
 import { PickerField } from "@/features/customers/picker-field";
 
@@ -97,13 +98,10 @@ export function PaymentForm({
             />
           </View>
           <View className="min-w-0 flex-1">
-            <Field
+            <TimeField
               error={errors.time}
-              keyboardType="numbers-and-punctuation"
               label={t("receivables.payment.time")}
-              maxLength={5}
-              onChangeText={(value) => onChange("time", value)}
-              placeholder={t("receivables.payment.timePlaceholder")}
+              onChange={(value) => onChange("time", value)}
               value={draft.time}
             />
           </View>

@@ -17,7 +17,6 @@ export const sales = {
     moment: "Fecha y hora",
     date: "Fecha",
     time: "Hora",
-    timePlaceholder: "HH:MM",
     timeHint: "Hora local del negocio.",
     description: "Descripción (opcional)",
     descriptionPlaceholder: "Ej. Pedido del mostrador",

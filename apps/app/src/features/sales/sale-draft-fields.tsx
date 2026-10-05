@@ -4,6 +4,7 @@ import { type TextInput, View } from "react-native";
 import { DateField } from "@/components/ui/date-field";
 import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
+import { TimeField } from "@/components/ui/time-field";
 import type { SaleDraftErrors, SaleDraftIssues, SaleDraftValues } from "./sale-draft";
 
 /** Inputs that can take focus; the shared date field does not expose one. */
@@ -61,15 +62,10 @@ export function SaleDraftFields({
             />
           </View>
           <View className="min-w-0 grow basis-[120px] sm:max-w-[160px]">
-            <Field
-              autoCorrect={false}
-              className="tabular-nums"
+            <TimeField
               error={errors.time}
-              keyboardType="numbers-and-punctuation"
               label={t("sales.fields.time")}
-              maxLength={5}
-              onChangeText={(value) => onChange("time", value)}
-              placeholder={t("sales.fields.timePlaceholder")}
+              onChange={(value) => onChange("time", value)}
               ref={fieldRefs.time}
               value={values.time}
             />

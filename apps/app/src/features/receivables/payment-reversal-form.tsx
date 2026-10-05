@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { Section } from "@/components/layout/section";
 import { DateField } from "@/components/ui/date-field";
 import { Field } from "@/components/ui/field";
+import { TimeField } from "@/components/ui/time-field";
 import { FormActions } from "@/features/customers/form-actions";
 
 import type { PaymentReversalDraft } from "./draft";
@@ -46,13 +47,10 @@ export function PaymentReversalForm({
             />
           </View>
           <View className="min-w-0 flex-1">
-            <Field
+            <TimeField
               error={errors.time}
-              keyboardType="numbers-and-punctuation"
               label={t("receivables.reversal.time")}
-              maxLength={5}
-              onChangeText={(value) => onChange("time", value)}
-              placeholder={t("receivables.payment.timePlaceholder")}
+              onChange={(value) => onChange("time", value)}
               value={draft.time}
             />
           </View>

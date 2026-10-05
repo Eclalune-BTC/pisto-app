@@ -118,7 +118,6 @@ export const receivables = {
     whenDescription: "Cuándo recibiste el dinero.",
     date: "Fecha",
     time: "Hora",
-    timePlaceholder: "HH:MM",
     reference: "Referencia (opcional)",
     referenceLabel: "Referencia",
     referencePlaceholder: "Comprobante o nota breve",

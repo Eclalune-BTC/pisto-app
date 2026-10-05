@@ -50,7 +50,6 @@ export const cash = {
     reason: "Motivo",
     date: "Fecha",
     time: "Hora",
-    timePlaceholder: "Ej. 14:30",
     currentBalance: "Saldo actual:",
     occurredAt: "Fecha y hora",
     loadMoreAccounts: "Cargar más cuentas",

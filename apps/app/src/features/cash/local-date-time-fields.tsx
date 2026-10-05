@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { DateField } from "@/components/ui/date-field";
-import { Field } from "@/components/ui/field";
+import { TimeField } from "@/components/ui/time-field";
 
 type LocalDateTimeFieldsProps = {
   date: string;
@@ -36,16 +36,11 @@ export function LocalDateTimeFields({
         />
       </View>
       <View className="min-w-0 sm:flex-1">
-        <Field
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={!disabled}
+        <TimeField
+          disabled={disabled}
           error={timeError}
-          keyboardType="numbers-and-punctuation"
           label={t("cash.fields.time")}
-          maxLength={5}
-          onChangeText={onTimeChange}
-          placeholder={t("cash.fields.timePlaceholder")}
+          onChange={onTimeChange}
           value={time}
         />
       </View>
