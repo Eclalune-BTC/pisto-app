@@ -3,6 +3,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { Redirect, useLocalSearchParams } from "expo-router";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
+import type { MenuTrigger } from "@/components/layout/header-actions";
 import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import {
@@ -13,7 +14,6 @@ import {
 import { customersApi } from "@/features/customers/api";
 import { CustomerArchiveDialog } from "@/features/customers/customer-archive-dialog";
 import { CustomerDetailScreen } from "@/features/customers/customer-detail-screen";
-import type { MenuTrigger } from "@/features/customers/overflow-action-menu";
 import { customerDetailQueryOptions, customerQueryKeys } from "@/features/customers/queries";
 import { readState } from "@/features/customers/read-state";
 import type { CustomerDetailLoadState, CustomerReceivablesState } from "@/features/customers/types";

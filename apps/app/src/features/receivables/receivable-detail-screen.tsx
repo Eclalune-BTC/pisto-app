@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
 import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
+import { HeaderActions, type MenuTrigger } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
@@ -19,12 +20,10 @@ import { CellText } from "@/components/ui/cell-text";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { type FittedColumn, fitColumns, rendersCompactRecords } from "@/components/ui/fit-columns";
-import { Icon } from "@/components/ui/icon";
 import { RowActions } from "@/components/ui/row-actions";
 import { Text } from "@/components/ui/text";
 import { isPositiveAmount, type RecordFormat, useRecordFormat } from "@/features/customers/format";
 import { MoneyText } from "@/features/customers/money-text";
-import { type MenuTrigger, OverflowActionMenu } from "@/features/customers/overflow-action-menu";
 import { useMeasuredWidth } from "@/lib/use-measured-width";
 
 import { ReceivableStateBadge } from "./receivable-state-badge";
@@ -228,30 +227,34 @@ export function ReceivableDetailScreen({
       <PageHeader
         actions={
           payable || voidable ? (
-            <>
-              {voidable ? (
-                <OverflowActionMenu
-                  action={{
-                    disabledReason: acceptsVoid(receivable)
-                      ? undefined
-                      : t("receivables.detail.voidNeedsNoPayments"),
-                    icon: Ban,
-                    label: t("receivables.detail.void"),
-                    onPress: onVoid,
-                  }}
-                  label={t("receivables.detail.moreActions")}
-                  triggerRef={menuTriggerRef}
-                />
-              ) : null}
-              {payable ? (
-                <Link asChild href={paymentHref}>
-                  <Button accessibilityRole="link">
-                    <Icon as={Banknote} className="text-primary-foreground" size={16} />
-                    <Text>{t("receivables.detail.applyPayment")}</Text>
-                  </Button>
-                </Link>
-              ) : null}
-            </>
+            <HeaderActions
+              menuLabel={t("receivables.detail.moreActions")}
+              menuTriggerRef={menuTriggerRef}
+              overflow={
+                voidable
+                  ? [
+                      {
+                        destructive: true,
+                        disabledReason: acceptsVoid(receivable)
+                          ? undefined
+                          : t("receivables.detail.voidNeedsNoPayments"),
+                        icon: Ban,
+                        label: t("receivables.detail.void"),
+                        onPress: onVoid,
+                      },
+                    ]
+                  : []
+              }
+              primary={
+                payable
+                  ? {
+                      href: paymentHref,
+                      icon: Banknote,
+                      label: t("receivables.detail.applyPayment"),
+                    }
+                  : undefined
+              }
+            />
           ) : undefined
         }
         adornment={<ReceivableStateBadge state={receivable.state} />}

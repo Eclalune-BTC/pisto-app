@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
 import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
+import { HeaderActions, type MenuTrigger } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { ContentSkeleton } from "@/components/layout/skeletons";
@@ -16,13 +17,11 @@ import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { RouteState } from "@/components/route-state";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Icon } from "@/components/ui/icon";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { ReceivablesTable } from "@/features/receivables/receivables-table";
 import { CustomerStatusBadge } from "./customer-status-badge";
 import { isPositiveAmount, useRecordFormat } from "./format";
-import { type MenuTrigger, OverflowActionMenu } from "./overflow-action-menu";
 import type { CustomerDetailLoadState, CustomerReceivablesState } from "./types";
 
 type CustomerDetailScreenProps = {
@@ -163,38 +162,39 @@ export function CustomerDetailScreen({
       <PageHeader
         actions={
           active && (canManage || canCharge) ? (
-            <>
-              {canManage ? (
-                <Link asChild href={editHref}>
-                  <Button accessibilityRole="link" variant="outline">
-                    <Icon as={Pencil} className="text-foreground" size={15} />
-                    <Text>{t("customers.detail.edit")}</Text>
-                  </Button>
-                </Link>
-              ) : null}
-              {canManage ? (
-                <OverflowActionMenu
-                  action={{
-                    disabledReason: isPositiveAmount(balance.outstandingMinorUnits)
-                      ? t("customers.detail.archiveNeedsZeroBalance")
-                      : undefined,
-                    icon: Archive,
-                    label: t("customers.detail.archive"),
-                    onPress: onArchive,
-                  }}
-                  label={t("customers.detail.moreActions")}
-                  triggerRef={menuTriggerRef}
-                />
-              ) : null}
-              {canCharge ? (
-                <Link asChild href={newChargeHref(customer.id)}>
-                  <Button accessibilityRole="link">
-                    <Icon as={Plus} className="text-primary-foreground" size={16} />
-                    <Text>{t("customers.detail.newCharge")}</Text>
-                  </Button>
-                </Link>
-              ) : null}
-            </>
+            <HeaderActions
+              menuLabel={t("customers.detail.moreActions")}
+              menuTriggerRef={menuTriggerRef}
+              overflow={
+                canManage
+                  ? [
+                      {
+                        destructive: true,
+                        disabledReason: isPositiveAmount(balance.outstandingMinorUnits)
+                          ? t("customers.detail.archiveNeedsZeroBalance")
+                          : undefined,
+                        icon: Archive,
+                        label: t("customers.detail.archive"),
+                        onPress: onArchive,
+                      },
+                    ]
+                  : []
+              }
+              primary={
+                canCharge
+                  ? {
+                      href: newChargeHref(customer.id),
+                      icon: Plus,
+                      label: t("customers.detail.newCharge"),
+                    }
+                  : undefined
+              }
+              secondary={
+                canManage
+                  ? [{ href: editHref, icon: Pencil, label: t("customers.detail.edit") }]
+                  : []
+              }
+            />
           ) : undefined
         }
         adornment={<CustomerStatusBadge status={customer.status} />}

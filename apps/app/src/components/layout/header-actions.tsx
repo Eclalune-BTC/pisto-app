@@ -1,6 +1,6 @@
 import { type Href, Link, useRouter } from "expo-router";
 import { Ellipsis, type LucideIcon } from "lucide-react-native";
-import { Fragment } from "react";
+import { type ComponentRef, Fragment, type RefObject } from "react";
 import { View } from "react-native";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,18 +12,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { cn } from "@/lib/cn";
 
 export type HeaderAction = {
   destructive?: boolean;
   /** Visible but unavailable, for example while the page shows figures it could not refresh. */
   disabled?: boolean;
+  /** Why the action is unavailable; shown under it in the menu at full contrast. */
+  disabledReason?: string;
   icon?: LucideIcon;
   label: string;
 } & ({ href: Href; onPress?: never } | { href?: never; onPress: () => void });
 
+/** The overflow menu trigger, which can take focus back from a dialog the menu opened. */
+export type MenuTrigger = ComponentRef<typeof DropdownMenuTrigger>;
+
 type HeaderActionsProps = {
   /** Accessible name of the overflow menu. */
   menuLabel: string;
+  /** Receives the overflow trigger so a dialog opened from the menu can return focus to it. */
+  menuTriggerRef?: RefObject<MenuTrigger | null>;
   /** Always inside the overflow menu; destructive actions go last. */
   overflow?: readonly HeaderAction[];
   /** The one action that stays a visible button at every width. */
@@ -32,13 +40,24 @@ type HeaderActionsProps = {
   secondary?: readonly HeaderAction[];
 };
 
-/** Page header actions that keep one row on a phone: the primary button and an overflow menu. */
+/** Keeps the menu off the screen edges on phones. */
+const MENU_INSETS = { bottom: 12, left: 12, right: 12, top: 12 };
+
+/**
+ * Page header actions that keep one row on a phone: the primary button and one overflow menu,
+ * which also holds the secondary buttons on narrow screens.
+ */
 export function HeaderActions({
   menuLabel,
+  menuTriggerRef,
   overflow = [],
   primary,
   secondary = [],
 }: HeaderActionsProps) {
+  const menuItems = [
+    ...secondary.map((action) => ({ action, phoneOnly: true })),
+    ...overflow.map((action) => ({ action, phoneOnly: false })),
+  ];
   return (
     <>
       {secondary.map((action) => (
@@ -47,14 +66,9 @@ export function HeaderActions({
         </View>
       ))}
       {primary ? <ActionButton action={primary} variant="default" /> : null}
-      {secondary.length + overflow.length > 0 ? (
-        <View className="sm:hidden">
-          <OverflowMenu actions={[...secondary, ...overflow]} label={menuLabel} />
-        </View>
-      ) : null}
-      {overflow.length > 0 ? (
-        <View className="hidden sm:flex">
-          <OverflowMenu actions={overflow} label={menuLabel} />
+      {menuItems.length > 0 ? (
+        <View className={overflow.length > 0 ? undefined : "sm:hidden"}>
+          <OverflowMenu items={menuItems} label={menuLabel} triggerRef={menuTriggerRef} />
         </View>
       ) : null}
     </>
@@ -80,7 +94,7 @@ function ActionButton({
       <Text>{action.label}</Text>
     </>
   );
-  if (action.disabled) {
+  if (action.disabled || action.disabledReason) {
     return (
       <Button disabled variant={variant}>
         {content}
@@ -103,45 +117,65 @@ function ActionButton({
   );
 }
 
-function OverflowMenu({ actions, label }: { actions: readonly HeaderAction[]; label: string }) {
+type MenuItem = { action: HeaderAction; phoneOnly: boolean };
+
+function OverflowMenu({
+  items,
+  label,
+  triggerRef,
+}: {
+  items: readonly MenuItem[];
+  label: string;
+  triggerRef?: RefObject<MenuTrigger | null>;
+}) {
   const router = useRouter();
-  const regular = actions.filter((action) => !action.destructive);
-  const destructive = actions.filter((action) => action.destructive);
+  const regular = items.filter(({ action }) => !action.destructive);
+  const destructive = items.filter(({ action }) => action.destructive);
   const press = (action: HeaderAction) => {
     if (action.href) router.push(action.href);
     else action.onPress?.();
   };
+  const item = ({ action, phoneOnly }: MenuItem) => (
+    <Fragment key={action.label}>
+      <DropdownMenuItem
+        accessibilityHint={action.disabledReason}
+        className={cn(phoneOnly && "sm:hidden")}
+        disabled={action.disabled || action.disabledReason !== undefined}
+        onPress={() => press(action)}
+        variant={action.destructive ? "destructive" : "default"}
+      >
+        {action.icon ? (
+          <Icon
+            as={action.icon}
+            className={action.destructive ? "text-destructive" : "text-muted-foreground"}
+            size={15}
+          />
+        ) : null}
+        <Text>{action.label}</Text>
+      </DropdownMenuItem>
+      {/* Outside the faded item, so the reason keeps its full contrast. */}
+      {action.disabledReason ? (
+        <Text className="px-2 pb-1.5 text-xs leading-4 text-muted-foreground">
+          {action.disabledReason}
+        </Text>
+      ) : null}
+    </Fragment>
+  );
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <DropdownMenuTrigger asChild ref={triggerRef}>
         <Button accessibilityLabel={label} size="icon" variant="outline">
           <Icon as={Ellipsis} className="text-foreground" size={16} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-44" sideOffset={4}>
-        {regular.map((action) => (
-          <DropdownMenuItem
-            disabled={action.disabled}
-            key={action.label}
-            onPress={() => press(action)}
-          >
-            {action.icon ? (
-              <Icon as={action.icon} className="text-muted-foreground" size={15} />
-            ) : null}
-            <Text>{action.label}</Text>
-          </DropdownMenuItem>
-        ))}
-        {destructive.map((action, index) => (
-          <Fragment key={action.label}>
-            {index === 0 && regular.length ? <DropdownMenuSeparator /> : null}
-            <DropdownMenuItem onPress={() => press(action)} variant="destructive">
-              {action.icon ? (
-                <Icon as={action.icon} className="text-destructive" size={15} />
-              ) : null}
-              <Text>{action.label}</Text>
-            </DropdownMenuItem>
-          </Fragment>
-        ))}
+      <DropdownMenuContent align="end" className="min-w-44" insets={MENU_INSETS} sideOffset={4}>
+        {regular.map(item)}
+        {destructive.length > 0 && regular.length > 0 ? (
+          <DropdownMenuSeparator
+            className={regular.every(({ phoneOnly }) => phoneOnly) ? "sm:hidden" : undefined}
+          />
+        ) : null}
+        {destructive.map(item)}
       </DropdownMenuContent>
     </DropdownMenu>
   );
