@@ -358,6 +358,7 @@ export function CatalogScreen({
             <SelectField
               disabled={categoriesLoading}
               label={t("catalog.list.categoryLabel")}
+              labelHidden
               onChange={(value) => onCategoryChange(value === ALL_CATEGORIES ? null : value)}
               options={categoryOptions}
               placeholder={t("catalog.list.loadingCategories")}
@@ -368,7 +369,7 @@ export function CatalogScreen({
           <FilterBar
             label={t("catalog.list.statusLabel")}
             onChange={onStatusChange}
-            options={(["active", "archived", "all"] as const).map((value) => ({
+            options={(["all", "active", "archived"] as const).map((value) => ({
               label: t(`catalog.list.statuses.${value}`),
               value,
             }))}

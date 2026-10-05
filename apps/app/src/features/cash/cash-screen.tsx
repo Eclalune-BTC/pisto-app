@@ -94,21 +94,17 @@ export function CashScreen({
 
       {isStale ? <StaleNotice onRetry={onRetry} /> : null}
 
-      <Section
-        actions={
-          <FilterBar
-            label={t("cash.overview.statusFilter")}
-            onChange={onAccountStatusChange}
-            options={[
-              { label: t("cash.overview.statusOptions.active"), value: "active" },
-              { label: t("cash.overview.statusOptions.archived"), value: "archived" },
-              { label: t("cash.overview.statusOptions.all"), value: "all" },
-            ]}
-            value={accountStatus}
-          />
-        }
-        title={t("cash.overview.accountsTitle")}
-      >
+      <Section title={t("cash.overview.accountsTitle")}>
+        <FilterBar
+          label={t("cash.overview.statusFilter")}
+          onChange={onAccountStatusChange}
+          options={[
+            { label: t("cash.overview.statusOptions.all"), value: "all" },
+            { label: t("cash.overview.statusOptions.active"), value: "active" },
+            { label: t("cash.overview.statusOptions.archived"), value: "archived" },
+          ]}
+          value={accountStatus}
+        />
         <FeatureBoundary
           copy={{ ...boundary, unavailableTitle: t("cash.overview.accountsUnavailable") }}
           inline

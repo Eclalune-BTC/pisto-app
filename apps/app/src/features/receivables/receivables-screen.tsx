@@ -229,6 +229,7 @@ export function ReceivablesScreen({
               <View className="min-w-0 basis-full">
                 <SelectField
                   label={t("receivables.list.stateFilter")}
+                  labelHidden
                   onChange={onStateChange}
                   options={stateOptions}
                   value={filters.state}

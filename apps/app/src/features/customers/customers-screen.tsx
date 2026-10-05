@@ -236,9 +236,9 @@ export function CustomersScreen({
               label={t("customers.list.statusFilter")}
               onChange={onStatusChange}
               options={[
+                { value: "all", label: t("customers.list.filterAll") },
                 { value: "active", label: t("customers.list.filterActive") },
                 { value: "archived", label: t("customers.list.filterArchived") },
-                { value: "all", label: t("customers.list.filterAll") },
               ]}
               value={status}
             />

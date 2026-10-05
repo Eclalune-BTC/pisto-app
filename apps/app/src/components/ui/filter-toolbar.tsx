@@ -9,18 +9,17 @@ type FilterToolbarProps = PropsWithChildren<{
   resetLabel?: string;
 }>;
 
+/** The filters of a list, in one row under its section title; it wraps on narrow screens. */
 export function FilterToolbar({ children, label, onReset, resetLabel }: FilterToolbarProps) {
   return (
-    <View accessibilityLabel={label} className="min-w-0 gap-3" role="group">
-      <View className="min-w-0 gap-4 sm:flex-row sm:flex-wrap sm:items-end">{children}</View>
+    <View
+      accessibilityLabel={label}
+      className="min-w-0 flex-row flex-wrap items-center gap-2"
+      role="group"
+    >
+      {children}
       {onReset && resetLabel ? (
-        <Button
-          className="self-start"
-          label={resetLabel}
-          onPress={onReset}
-          size="sm"
-          variant="ghost"
-        />
+        <Button label={resetLabel} onPress={onReset} size="sm" variant="ghost" />
       ) : null}
     </View>
   );

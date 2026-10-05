@@ -11,6 +11,8 @@ export type SelectFieldProps<T extends string> = {
   /** Validation message owned by the field: outlines the trigger and is announced with it. */
   error?: string;
   label: string;
+  /** Toolbar filters show their value only; the label still names the control for readers. */
+  labelHidden?: boolean;
   onChange: (value: T) => void;
   options: readonly { label: string; value: T }[];
   placeholder?: string;
@@ -21,6 +23,7 @@ export function SelectField<T extends string>({
   disabled,
   error,
   label,
+  labelHidden = false,
   onChange,
   options,
   placeholder,
@@ -41,7 +44,7 @@ export function SelectField<T extends string>({
       : (placeholder ?? t("filters.selectOption"));
   return (
     <View className="min-w-0 gap-1.5">
-      <Label className="text-[13px]" htmlFor={id}>
+      <Label className={cn("text-[13px]", labelHidden && "sr-only")} htmlFor={id}>
         {label}
       </Label>
       <Select

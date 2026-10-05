@@ -37,15 +37,16 @@ export function ExpenseFilters({
         label={t("expenses.overview.statusFilter")}
         onChange={(status) => onFiltersChange({ ...filters, status })}
         options={[
+          { label: t("expenses.overview.statusOptions.all"), value: "all" },
           { label: t("expenses.overview.statusOptions.posted"), value: "posted" },
           { label: t("expenses.overview.statusOptions.voided"), value: "voided" },
-          { label: t("expenses.overview.statusOptions.all"), value: "all" },
         ]}
         value={filters.status}
       />
-      <View className="min-w-0 sm:w-52">
+      <View className="min-w-0 grow basis-[180px] sm:max-w-[220px] sm:grow-0">
         <SelectField<ExpenseCategory | "all">
           label={t("expenses.overview.categoryFilter")}
+          labelHidden
           onChange={(category) => onFiltersChange({ ...filters, category })}
           options={[
             { label: t("expenses.overview.allCategories"), value: "all" },
@@ -54,21 +55,20 @@ export function ExpenseFilters({
           value={filters.category}
         />
       </View>
-      <View className="min-w-0 gap-2 sm:w-56">
-        <SelectField
-          label={t("expenses.overview.accountFilter")}
-          onChange={(accountId) => onFiltersChange({ ...filters, accountId })}
-          options={[
-            { label: t("expenses.overview.allAccounts"), value: "all" },
-            ...accounts.map(({ id, name }) => ({ label: name, value: id })),
-          ]}
-          value={filters.accountId}
-        />
-        <LoadMoreButton
-          className="self-start"
-          label={t("cash.fields.loadMoreAccounts")}
-          page={accountsPage}
-        />
+      <View className="min-w-0 grow basis-[180px] flex-row items-center gap-2 sm:max-w-[280px] sm:grow-0">
+        <View className="min-w-0 flex-1">
+          <SelectField
+            label={t("expenses.overview.accountFilter")}
+            labelHidden
+            onChange={(accountId) => onFiltersChange({ ...filters, accountId })}
+            options={[
+              { label: t("expenses.overview.allAccounts"), value: "all" },
+              ...accounts.map(({ id, name }) => ({ label: name, value: id })),
+            ]}
+            value={filters.accountId}
+          />
+        </View>
+        <LoadMoreButton label={t("cash.fields.loadMoreAccounts")} page={accountsPage} />
       </View>
     </FilterToolbar>
   );

@@ -271,7 +271,7 @@ export function CategoriesScreen({
           <FilterBar
             label={t("catalog.categories.statusLabel")}
             onChange={onStatusChange}
-            options={(["active", "archived", "all"] as const).map((value) => ({
+            options={(["all", "active", "archived"] as const).map((value) => ({
               label: t(`catalog.categories.statuses.${value}`),
               value,
             }))}
