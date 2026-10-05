@@ -206,7 +206,8 @@ export const cashMovement = pgTable(
     occurredLocalDate: text("occurred_local_date").notNull(),
     occurredLocalTime: text("occurred_local_time").notNull(),
     timeZone: text("time_zone").notNull(),
-    reason: text("reason").notNull(),
+    /** Typed by a person; null only for movements the system writes for a transfer or receivable. */
+    reason: text("reason"),
     expenseId: uuid("expense_id"),
     transferId: uuid("transfer_id"),
     receivablePaymentId: uuid("receivable_payment_id"),
@@ -245,7 +246,13 @@ export const cashMovement = pgTable(
       "cash_movement_time_zone_length_check",
       sql`char_length(${table.timeZone}) between 1 and 64`,
     ),
-    check("cash_movement_reason_length_check", sql`char_length(${table.reason}) between 1 and 240`),
+    check(
+      "cash_movement_reason_length_check",
+      sql`(${table.reason} is not null and char_length(${table.reason}) between 1 and 240) or (
+        ${table.reason} is null
+        and ${table.action} in ('transfer_in', 'transfer_out', 'receivable_payment', 'reverse')
+      )`,
+    ),
     check(
       "cash_movement_action_direction_check",
       sql`(

@@ -19,6 +19,11 @@ export const cash = {
     transfer_in: "Transferencia recibida",
     transfer_out: "Transferencia enviada",
   },
+  systemReasons: {
+    transfer: "Transferencia entre cuentas",
+    receivablePayment: "Pago registrado en cuentas por cobrar",
+    receivablePaymentReversal: "Pago revertido en cuentas por cobrar",
+  },
   negativeAllowed: "Admite saldo negativo",
   boundary: {
     deniedTitle: "No tienes acceso a caja y cuentas",

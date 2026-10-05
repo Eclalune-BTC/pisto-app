@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   cashAccountCommandResultSchema,
   cashAccountListQuerySchema,
+  cashMovementListResponseSchema,
   createCashAccountRequestSchema,
   expensePeriodQuerySchema,
   postExpenseRequestSchema,
@@ -125,5 +126,40 @@ describe("cash and expense contracts", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  test("lets only a system-written movement omit its reason", () => {
+    const movement = {
+      id: "0b8a1cf3-4e4d-4b9f-9f0a-6c1d7f2a3b4c",
+      accountId,
+      direction: "in",
+      action: "receivable_payment",
+      amountMinorUnits: "700",
+      deltaMinorUnits: "700",
+      currency: "USD",
+      currencyMinorUnitDigits: 2,
+      occurredAt: "2026-08-05T18:00:00.000Z",
+      occurredLocalDate: "2026-08-05",
+      occurredLocalTime: "12:00",
+      timeZone: "America/El_Salvador",
+      reason: null,
+      expenseId: null,
+      transferId: null,
+      receivablePaymentId: "5d0c0a64-34a4-4b52-9f8e-1f5d0e7a9c21",
+      reversalOfMovementId: null,
+      createdAt: "2026-08-05T18:00:01.000Z",
+    };
+    const page = (item: object) => ({
+      data: { items: [item], nextCursor: null, queriedAt: "2026-08-05T18:00:02.000Z" },
+    });
+    expect(cashMovementListResponseSchema.safeParse(page(movement)).success).toBe(true);
+    expect(
+      cashMovementListResponseSchema.safeParse(
+        page({ ...movement, action: "adjustment_in", receivablePaymentId: null }),
+      ).success,
+    ).toBe(false);
+    expect(
+      cashMovementListResponseSchema.safeParse(page({ ...movement, reason: "" })).success,
+    ).toBe(false);
   });
 });

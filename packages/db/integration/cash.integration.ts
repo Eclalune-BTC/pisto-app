@@ -369,6 +369,49 @@ describe("expenses and cash repository on PostgreSQL 18", () => {
     ]);
     expect(transfer.movements[0]?.transferId).toBe(transfer.transfer.id);
     expect(transfer.movements[1]?.transferId).toBe(transfer.transfer.id);
+    expect(transfer.movements.map(({ reason }) => reason)).toEqual([
+      "Move to bank",
+      "Move to bank",
+    ]);
+
+    // A transfer without a note stores no invented reason; clients describe it from its source.
+    for (const [fromAccountId, toAccountId] of [
+      [secondAccount.account.id, firstAccount.account.id],
+      [firstAccount.account.id, secondAccount.account.id],
+    ]) {
+      const unnoted = await repository.transfer(actors.admin, {
+        idempotencyKey: crypto.randomUUID(),
+        fromAccountId,
+        toAccountId,
+        amountMinorUnits: "1",
+        currency: "USD",
+        occurredLocalDate: "2026-08-05",
+        occurredLocalTime: "12:05",
+      });
+      expect(unnoted.movements.map(({ reason }) => reason)).toEqual([null, null]);
+    }
+    await expect(
+      (async () => {
+        await database.db.insert(cashMovement).values({
+          businessId: businessA,
+          accountId: firstAccount.account.id,
+          direction: "in",
+          action: "adjustment_in",
+          amountMinorUnits: 1n,
+          deltaMinorUnits: 1n,
+          currency: "USD",
+          currencyMinorUnitDigits: 2,
+          occurredAt: new Date("2026-08-05T18:05:00.000Z"),
+          occurredLocalDate: "2026-08-05",
+          occurredLocalTime: "12:05",
+          timeZone: "America/El_Salvador",
+          reason: null,
+          createdByUserId: userIds.admin,
+        });
+      })(),
+    ).rejects.toMatchObject({
+      cause: { code: "23514", constraint_name: "cash_movement_reason_length_check" },
+    });
     expect(
       (await repository.getAccount(actors.ownerA, secondAccount.account.id)).balanceMinorUnits,
     ).toBe("1000");

@@ -1,4 +1,9 @@
-import type { CashAccountKind, CashAccountStatus, CashMovementAction } from "@pisto/contracts";
+import type {
+  CashAccountKind,
+  CashAccountStatus,
+  CashMovement,
+  CashMovementAction,
+} from "@pisto/contracts";
 import type { TFunction } from "i18next";
 import type { FeatureBoundaryCopy } from "@/components/feature-boundary";
 import type { CashDraftIssue } from "./drafts";
@@ -41,6 +46,22 @@ export function cashMovementActionLabels(t: TFunction): Record<CashMovementActio
     transfer_in: t("cash.movementActions.transfer_in"),
     transfer_out: t("cash.movementActions.transfer_out"),
   };
+}
+
+/** The typed reason, or the description of a movement the system wrote for a transfer or receivable. */
+export function cashMovementReason(t: TFunction, movement: CashMovement): string {
+  if (movement.reason !== null) return movement.reason;
+  switch (movement.action) {
+    case "transfer_in":
+    case "transfer_out":
+      return t("cash.systemReasons.transfer");
+    case "receivable_payment":
+      return t("cash.systemReasons.receivablePayment");
+    case "reverse":
+      return t("cash.systemReasons.receivablePaymentReversal");
+    default:
+      throw new Error(`Cash movement ${movement.id} has no reason`);
+  }
 }
 
 /** Field errors for a draft, keyed like the draft itself. */

@@ -2,7 +2,7 @@ import type { CashMovement } from "@pisto/contracts";
 import { Link } from "expo-router";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useWindowDimensions, View } from "react-native";
+import { View } from "react-native";
 import { DescriptionList } from "@/components/layout/description-list";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -18,9 +18,8 @@ import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
 import { returnFocusOnClose } from "@/lib/focus-return";
 import { isLockedPhase, type MutationPhase } from "@/lib/mutation-phase";
+import { cashMovementReason } from "./copy";
 import { LocalDateTimeFields } from "./local-date-time-fields";
-
-const DIALOG_WIDTH = 520;
 
 export type CashReversalDraft = {
   reason: string;
@@ -62,7 +61,6 @@ export function CashMovementDialog({
   reversed,
 }: CashMovementDialogProps) {
   const { t } = useTranslation();
-  const { width } = useWindowDimensions();
   const note = reversed
     ? t("cash.movementDetail.reversed")
     : movement.reversalOfMovementId
@@ -75,11 +73,7 @@ export function CashMovementDialog({
       }}
       open={open}
     >
-      {/* The shared content ignores its width classes on the web; size it like the shared Sheet. */}
-      <DialogContent
-        onCloseAutoFocus={returnFocusOnClose(returnFocus)}
-        style={{ width: Math.min(DIALOG_WIDTH, width - 32) }}
-      >
+      <DialogContent onCloseAutoFocus={returnFocusOnClose(returnFocus)}>
         <DialogHeader>
           <DialogTitle>{actionLabel}</DialogTitle>
           <DialogDescription>{occurredAt}</DialogDescription>
@@ -88,7 +82,7 @@ export function CashMovementDialog({
           items={[
             { label: t("cash.movementDetail.amount"), numeric: true, value: amount },
             { label: t("cash.movementDetail.account"), value: account },
-            { label: t("cash.movementDetail.reason"), value: movement.reason },
+            { label: t("cash.movementDetail.reason"), value: cashMovementReason(t, movement) },
             { label: t("cash.movementDetail.recordedAt"), numeric: true, value: recordedAt },
           ]}
         />

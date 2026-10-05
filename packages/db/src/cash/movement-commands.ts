@@ -251,7 +251,7 @@ export function createMovementCommands(db: Database): MovementCommands {
           occurredLocalDate: command.occurredLocalDate,
           occurredLocalTime: command.occurredLocalTime,
           timeZone: access.timeZone,
-          reason: command.note ?? "Cash transfer",
+          reason: command.note ?? null,
           transferId: createdTransfer.id,
           createdByUserId: actor.userId,
         };

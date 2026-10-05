@@ -34,7 +34,7 @@ describe("date and time formatting", () => {
     const local = Object.entries(featureSources)
       .filter(([path]) => !/\.test\./.test(path))
       .filter(([, source]) =>
-        /new Intl\.DateTimeFormat\([^)]*\{[^}]*(?:dateStyle|timeStyle|hour|month|day)/s.test(
+        /new Intl\.DateTimeFormat\([^)]*\{[^}]*\b(?:dateStyle|timeStyle|hour|month|day)\b/s.test(
           source,
         ),
       )

@@ -61,7 +61,7 @@ export async function appendReceivablePaymentCashMovement(
       occurredLocalDate: input.occurredLocalDate,
       occurredLocalTime: input.occurredLocalTime,
       timeZone: input.access.timeZone,
-      reason: "Receivable payment",
+      reason: null,
       receivablePaymentId: input.receivablePaymentId,
       createdByUserId: input.actorUserId,
     })
@@ -130,7 +130,7 @@ export async function reverseReceivablePaymentCashMovement(
       occurredLocalDate: input.occurredLocalDate,
       occurredLocalTime: input.occurredLocalTime,
       timeZone: input.access.timeZone,
-      reason: "Receivable payment reversal",
+      reason: null,
       reversalOfMovementId: original.id,
       createdByUserId: input.actorUserId,
     })

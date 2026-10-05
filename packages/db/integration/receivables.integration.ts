@@ -330,6 +330,7 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
       accountId: cashAccountAId,
       action: "receivable_payment",
       deltaMinorUnits: 700n,
+      reason: null,
     });
     if (!paymentMovement) throw new Error("Receivable payment cash movement was not created");
 
@@ -381,6 +382,7 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
       accountId: cashAccountAId,
       action: "reverse",
       deltaMinorUnits: -700n,
+      reason: null,
     });
     await expect(
       repository.reversePayment(actor("ownerA", businessA), successfulPayment.value.payment.id, {

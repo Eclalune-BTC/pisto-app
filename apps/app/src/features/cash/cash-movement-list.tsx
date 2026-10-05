@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Text } from "@/components/ui/text";
+import { cashMovementReason } from "./copy";
 
 type CashMovementListProps = {
   actionLabels: Record<CashMovementAction, string>;
@@ -90,7 +91,7 @@ export function CashMovementList({
         // Rows of one type look alike; the reason tells them apart, on phones too.
         cell: ({ row: { original } }) => (
           <Text className="text-[13px] text-muted-foreground" numberOfLines={2}>
-            {original.reason}
+            {cashMovementReason(t, original)}
           </Text>
         ),
       },

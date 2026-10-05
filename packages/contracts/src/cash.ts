@@ -61,6 +61,14 @@ const cashAccountSchema = z
   })
   .strict();
 
+/** Movements the system writes for transfers and receivables, which may carry no typed reason. */
+export const systemDescribedCashActions = [
+  "transfer_in",
+  "transfer_out",
+  "receivable_payment",
+  "reverse",
+] as const;
+
 const cashMovementSchema = z
   .object({
     id: uuidSchema,
@@ -75,14 +83,21 @@ const cashMovementSchema = z
     occurredLocalDate: calendarLocalDateSchema,
     occurredLocalTime: localTimeSchema,
     timeZone: timeZoneSchema,
-    reason: z.string().min(1).max(240),
+    /** Null when the system wrote the movement; clients describe it from its action and source. */
+    reason: z.string().min(1).max(240).nullable(),
     expenseId: uuidSchema.nullable(),
     transferId: uuidSchema.nullable(),
     receivablePaymentId: uuidSchema.nullable(),
     reversalOfMovementId: uuidSchema.nullable(),
     createdAt: timestampSchema,
   })
-  .strict();
+  .strict()
+  .refine(
+    (movement) =>
+      movement.reason !== null ||
+      (systemDescribedCashActions as readonly string[]).includes(movement.action),
+    { message: "Only a system-written movement may omit its reason", path: ["reason"] },
+  );
 
 const cashTransferSchema = z
   .object({
