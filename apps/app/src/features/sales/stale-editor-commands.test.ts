@@ -106,6 +106,7 @@ import { StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { elements } from "../../../test-support/element-tree";
+import { HeaderActions } from "../cash/header-actions";
 import { CorrectionModeField } from "./correction-mode-field";
 import { SalesRouteState } from "./route-state";
 import SaleCorrectionScreen from "./sale-correction-screen";
@@ -287,15 +288,15 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
   test.each(["businesses", "sale"] as const)(
     "sale detail blocks new command navigation when %s is stale",
     (dependency) => {
+      const primaryCommand = (node: ReactNode) => {
+        const header = elements<ComponentProps<typeof HeaderActions>>(node, HeaderActions);
+        expect(header).toHaveLength(1);
+        return header[0]?.props.primary;
+      };
       setFailure(dependency, failure);
       const tree = render(SaleDetailScreen);
       expect(elements(tree, StaleNotice)).toHaveLength(1);
-      const actions = elements<ComponentProps<typeof Button>>(tree, Button).filter(
-        ({ props }) => props.disabled,
-      );
-      expect(actions).toHaveLength(2);
-      for (const action of actions) press(action.props);
-      expect(fixture.navigate).not.toHaveBeenCalled();
+      expect(primaryCommand(tree)).toMatchObject({ disabled: true });
       const notice = elements<ComponentProps<typeof StaleNotice>>(tree, StaleNotice)[0];
       if (!notice) throw new Error("Missing stale notice");
       press(button(StaleNotice(notice.props), ({ label }) => label === "common.retry"));
@@ -303,14 +304,10 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       expect(fixture.queries.sale?.refetch).toHaveBeenCalledTimes(1);
       expect(fixture.navigate).not.toHaveBeenCalled();
       recover(dependency);
-      const fresh = render(SaleDetailScreen);
-      expect(
-        elements<ComponentProps<typeof Button>>(fresh, Button).some(({ props }) => props.disabled),
-      ).toBe(false);
-      expect(elements<{ href: unknown }>(fresh, "link").map(({ props }) => props.href)).toEqual([
-        { pathname: "/operate/sales/correct/[saleId]", params: { saleId: "sale" } },
-        "/operate/sales/new",
-      ]);
+      expect(primaryCommand(render(SaleDetailScreen))).toMatchObject({
+        disabled: false,
+        href: { pathname: "/operate/sales/correct/[saleId]", params: { saleId: "sale" } },
+      });
     },
   );
 });
@@ -420,7 +417,17 @@ describe("confirmed sale corrections", () => {
 
   test("names the sale in the breadcrumb once it has loaded", () => {
     render(SaleDetailScreen);
-    expect(fixture.routeLabel).toHaveBeenCalledWith("/operate/sales/[saleId]", "$5.00");
+    expect(fixture.routeLabel).toHaveBeenCalledWith(
+      "/operate/sales/[saleId]",
+      "sales.detail.title",
+    );
+    const data = fixture.queries.sale?.data as { sale: Record<string, unknown> };
+    data.sale = { ...data.sale, description: "Pedido del mostrador" };
+    render(SaleDetailScreen);
+    expect(fixture.routeLabel).toHaveBeenLastCalledWith(
+      "/operate/sales/[saleId]",
+      "Pedido del mostrador",
+    );
   });
 });
 
@@ -533,7 +540,6 @@ describe("sale detail states", () => {
         correctedAt: "2026-09-10T12:05:00.000Z",
       },
     };
-    const links = elements<{ href: unknown }>(render(SaleDetailScreen), "link");
-    expect(links.map(({ props }) => props.href)).toEqual(["/operate/sales/new"]);
+    expect(elements(render(SaleDetailScreen), HeaderActions)).toHaveLength(0);
   });
 });

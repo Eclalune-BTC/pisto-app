@@ -15,6 +15,8 @@ import { Text } from "@/components/ui/text";
 
 export type HeaderAction = {
   destructive?: boolean;
+  /** Visible but unavailable, for example while the page shows figures it could not refresh. */
+  disabled?: boolean;
   icon?: LucideIcon;
   label: string;
 } & ({ href: Href; onPress?: never } | { href?: never; onPress: () => void });
@@ -78,6 +80,13 @@ function ActionButton({
       <Text>{action.label}</Text>
     </>
   );
+  if (action.disabled) {
+    return (
+      <Button disabled variant={variant}>
+        {content}
+      </Button>
+    );
+  }
   if (action.href) {
     return (
       <Link asChild href={action.href}>
@@ -111,7 +120,11 @@ function OverflowMenu({ actions, label }: { actions: readonly HeaderAction[]; la
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44" sideOffset={4}>
         {regular.map((action) => (
-          <DropdownMenuItem key={action.label} onPress={() => press(action)}>
+          <DropdownMenuItem
+            disabled={action.disabled}
+            key={action.label}
+            onPress={() => press(action)}
+          >
             {action.icon ? (
               <Icon as={action.icon} className="text-muted-foreground" size={15} />
             ) : null}

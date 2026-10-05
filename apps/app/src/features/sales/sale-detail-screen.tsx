@@ -2,54 +2,30 @@ import type { Business, Sale } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { type Href, Link, Redirect, useLocalSearchParams } from "expo-router";
 import type { TFunction } from "i18next";
-import { Info, type LucideIcon, Pencil, Plus } from "lucide-react-native";
-import type { ReactNode } from "react";
+import { Info, Pencil } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
+import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead, queryHasStaleData, readFailureKind } from "@/lib/query-state";
+import { HeaderActions } from "../cash/header-actions";
 import { saleQueryOptions } from "./queries";
 import { SalesRouteState } from "./route-state";
-import { SaleStatusBadge, saleAmount, saleOccurrenceItems } from "./sale-facts";
+import { SaleStatusBadge, saleAmount, saleMoment } from "./sale-facts";
 import { canCorrectSale, readState } from "./state";
 
 function saleHref(saleId: string): Href {
   return { pathname: "/operate/sales/[saleId]", params: { saleId } };
-}
-
-/**
- * A header command: a real link while the page is current, a disabled button while it is stale,
- * because a financial command must not start from figures that could not be refreshed.
- */
-function headerCommand(command: { href: Href; icon: LucideIcon; label: string; stale: boolean }) {
-  const content: ReactNode = (
-    <>
-      <Icon as={command.icon} size={15} />
-      <Text>{command.label}</Text>
-    </>
-  );
-  return command.stale ? (
-    <Button disabled key={command.label} variant="outline">
-      {content}
-    </Button>
-  ) : (
-    <Link asChild href={command.href} key={command.label}>
-      <Button accessibilityRole="link" variant="outline">
-        {content}
-      </Button>
-    </Link>
-  );
 }
 
 /** What happened to a corrected sale and, when there is one, the way to the other side. */
@@ -113,7 +89,10 @@ export default function SaleDetailScreen() {
   const canRead = permissions.includes("sales:read");
   const result = useQuery(saleQueryOptions(canRead ? business?.id : undefined, saleId));
   const sale = result.data?.sale;
-  useRouteLabel("/operate/sales/[saleId]", sale ? saleAmount(sale, locale) : undefined);
+  const title = sale
+    ? (sale.description ?? t("sales.detail.title", { moment: saleMoment(sale, locale) }))
+    : undefined;
+  useRouteLabel("/operate/sales/[saleId]", title);
 
   const access = readState([businesses]);
   if (access === "denied" || hasDeniedRead([result]) || (business && !canRead)) {
@@ -182,37 +161,24 @@ export default function SaleDetailScreen() {
 
   const stale = queryHasStaleData(businesses) || queryHasStaleData(result);
   const canCorrect = permissions.includes("sales:correct") && canCorrectSale(sale);
-  const canCreate = permissions.includes("sales:create");
   return (
-    <Page width="form">
+    <Page>
       <PageHeader
         actions={
-          canCorrect || canCreate ? (
-            <>
-              {canCorrect
-                ? headerCommand({
-                    href: {
-                      pathname: "/operate/sales/correct/[saleId]",
-                      params: { saleId: sale.id },
-                    },
-                    icon: Pencil,
-                    label: t("sales.correction.open"),
-                    stale,
-                  })
-                : null}
-              {canCreate
-                ? headerCommand({
-                    href: "/operate/sales/new",
-                    icon: Plus,
-                    label: t("sales.register"),
-                    stale,
-                  })
-                : null}
-            </>
+          canCorrect ? (
+            <HeaderActions
+              menuLabel={t("sales.detail.moreActions")}
+              primary={{
+                disabled: stale,
+                href: { pathname: "/operate/sales/correct/[saleId]", params: { saleId: sale.id } },
+                icon: Pencil,
+                label: t("sales.correction.open"),
+              }}
+            />
           ) : undefined
         }
         adornment={<SaleStatusBadge status={sale.status} />}
-        title={saleAmount(sale, locale)}
+        title={title ?? ""}
       />
       {stale ? (
         <StaleNotice
@@ -224,17 +190,26 @@ export default function SaleDetailScreen() {
         />
       ) : null}
       <CorrectionNotice sale={sale} t={t} />
-      <DescriptionList
-        items={[
-          ...saleOccurrenceItems(sale, locale, t),
-          {
-            label: t("sales.fields.recordedAt"),
-            numeric: true,
-            value: formatLocalizedDateTime(sale.createdAt, locale, sale.timeZone),
-          },
-          ...settingItems(sale, business, t),
-        ]}
-      />
+      <StatGroup>
+        <Stat
+          detail={sale.status === "voided" ? t("sales.detail.voidedTotal") : undefined}
+          label={t("sales.fields.total")}
+          value={saleAmount(sale, locale)}
+        />
+      </StatGroup>
+      <Section title={t("sales.detail.detailsTitle")}>
+        <DescriptionList
+          items={[
+            { label: t("sales.fields.moment"), numeric: true, value: saleMoment(sale, locale) },
+            {
+              label: t("sales.fields.recordedAt"),
+              numeric: true,
+              value: formatLocalizedDateTime(sale.createdAt, locale, sale.timeZone),
+            },
+            ...settingItems(sale, business, t),
+          ]}
+        />
+      </Section>
       {sale.correction ? (
         <Section title={t("sales.correction.details")}>
           <DescriptionList

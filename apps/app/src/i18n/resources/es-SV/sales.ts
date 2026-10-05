@@ -137,6 +137,10 @@ export const sales = {
     correctedAt: "Fecha de corrección",
   },
   detail: {
+    title: "Venta del {{moment}}",
+    moreActions: "Más acciones de la venta",
+    detailsTitle: "Detalles",
+    voidedTotal: "Anulada: no cuenta en los totales.",
     loading: "Cargando la venta…",
     notFoundTitle: "No encontramos esta venta",
     notFoundDescription: "Puede que pertenezca a otro negocio o que el enlace esté incompleto.",
