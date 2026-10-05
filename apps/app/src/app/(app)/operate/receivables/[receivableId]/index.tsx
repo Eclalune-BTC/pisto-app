@@ -3,13 +3,12 @@ import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-
+import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import type { MenuTrigger } from "@/features/customers/overflow-action-menu";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { readState } from "@/features/customers/read-state";
-import { ScreenState } from "@/features/customers/screen-state";
 import { UncertainCommandNotice } from "@/features/customers/uncertain-command-notice";
 import { useConfirmableCommand } from "@/features/customers/use-confirmable-command";
 import { receivablesApi } from "@/features/receivables/api";
@@ -81,10 +80,10 @@ export default function ReceivableDetailRoute() {
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
   if (accessState !== "ready" || !access.business) {
     return (
-      <ScreenState
+      <RouteState
         kind={accessState === "ready" ? "error" : accessState}
         onRetry={() => void access.refetch()}
-        skeleton="detail"
+        variant="detail"
       />
     );
   }

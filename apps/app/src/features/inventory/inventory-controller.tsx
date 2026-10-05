@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { RouteState } from "@/components/route-state";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead } from "@/lib/query-state";
 import type { RouteParam } from "@/lib/route-params";
@@ -10,7 +11,6 @@ import {
   type StockListFilters,
   useCategoryChoices,
 } from "../catalog/queries";
-import { CapabilityRouteState } from "../catalog/route-state";
 import { parseLowStockParam, parseSearchParam, useSearchInput } from "../catalog/search-params";
 import { hasStaleRead, readState } from "../catalog/state";
 import { type InventoryCollectionState, InventoryScreen } from "./inventory-screen";
@@ -35,15 +35,15 @@ export default function InventoryController() {
   const stock = useInfiniteQuery(stockInfiniteOptions(canRead ? business?.id : undefined, filters));
   const categories = useCategoryChoices(canRead && canReadCatalog ? business?.id : undefined);
 
-  if (access === "offline") return <CapabilityRouteState kind="offline" />;
-  if (access === "loading") return <CapabilityRouteState kind="loading" />;
+  if (access === "offline") return <RouteState kind="offline" />;
+  if (access === "loading") return <RouteState kind="loading" />;
   if (access === "error" || access === "notFound") {
-    return <CapabilityRouteState kind="error" onRetry={() => void businesses.refetch()} />;
+    return <RouteState kind="error" onRetry={() => void businesses.refetch()} />;
   }
   if (access === "ready" && !business) return <Redirect href="/business" />;
   if (!business || !canRead) {
     return (
-      <CapabilityRouteState
+      <RouteState
         description={t("inventory.list.deniedDescription")}
         kind="denied"
         title={t("inventory.list.deniedTitle")}

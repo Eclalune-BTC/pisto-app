@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TextInput } from "react-native";
 import type { DescriptionItem } from "@/components/layout/description-list";
+import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { ApiClientError } from "@/lib/api-error";
@@ -42,7 +43,6 @@ import {
   productQueryOptions,
   useCategoryChoices,
 } from "./queries";
-import { CapabilityRouteState } from "./route-state";
 import { hasStaleRead, readState } from "./state";
 import { useKeyedCommand } from "./use-keyed-command";
 
@@ -282,23 +282,21 @@ export function ProductFormRoute({
   const { phase } = mutation;
   const locked = isLockedPhase(phase);
 
-  if (access === "offline") return <CapabilityRouteState kind="offline" width="form" />;
+  if (access === "offline") return <RouteState kind="offline" width="form" />;
   if (access === "loading") {
-    return <CapabilityRouteState kind="loading" variant="form" width="form" />;
+    return <RouteState kind="loading" variant="form" width="form" />;
   }
   if (access === "error" || access === "notFound") {
-    return (
-      <CapabilityRouteState kind="error" onRetry={() => void businesses.refetch()} width="form" />
-    );
+    return <RouteState kind="error" onRetry={() => void businesses.refetch()} width="form" />;
   }
   if (access === "ready" && !business) return <Redirect href="/business" />;
   const reads = mode === "edit" ? [categories, productQuery] : [categories];
   if (!business || !canManage || readState(reads) === "denied") {
-    return <CapabilityRouteState kind="denied" width="form" />;
+    return <RouteState kind="denied" width="form" />;
   }
   if (mode === "edit" && (!productId || readState([productQuery]) === "notFound")) {
     return (
-      <CapabilityRouteState
+      <RouteState
         action={<CatalogLink />}
         description={t("catalog.detail.notFoundDescription")}
         kind="notFound"
@@ -318,19 +316,13 @@ export function ProductFormRoute({
     : false;
   if (mode === "edit") {
     const read = readState([productQuery]);
-    if (read === "offline") return <CapabilityRouteState kind="offline" width="form" />;
+    if (read === "offline") return <RouteState kind="offline" width="form" />;
     if (read === "error") {
-      return (
-        <CapabilityRouteState
-          kind="error"
-          onRetry={() => void productQuery.refetch()}
-          width="form"
-        />
-      );
+      return <RouteState kind="error" onRetry={() => void productQuery.refetch()} width="form" />;
     }
     // A reviewed command keeps its screen: an uncertain one must stay resendable with its key.
     if (product?.status === "archived" && !command) {
-      return <CapabilityRouteState action={<CatalogLink />} kind="unavailable" width="form" />;
+      return <RouteState action={<CatalogLink />} kind="unavailable" width="form" />;
     }
     // An unproven lock waits for the history, so frozen controls never appear editable first.
     if (
@@ -338,7 +330,7 @@ export function ProductFormRoute({
       initializedProduct !== product.id ||
       (historyRead === "loading" && !historyLocked)
     ) {
-      return <CapabilityRouteState kind="loading" variant="form" width="form" />;
+      return <RouteState kind="loading" variant="form" width="form" />;
     }
   }
 

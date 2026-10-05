@@ -104,11 +104,11 @@ vi.mock("@/components/shell/shell-context", () => ({ useRouteLabel: fixture.rout
 
 import { HeaderActions } from "@/components/layout/header-actions";
 import { StaleNotice } from "@/components/remote-state";
+import { RouteState } from "@/components/route-state";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { elements } from "../../../test-support/element-tree";
 import { CorrectionModeField } from "./correction-mode-field";
-import { SalesRouteState } from "./route-state";
 import SaleCorrectionScreen from "./sale-correction-screen";
 import SaleDetailScreen from "./sale-detail-screen";
 import { SaleDraftFields } from "./sale-draft-fields";
@@ -505,7 +505,7 @@ describe("sale detail states", () => {
   ] as const)("shows %s when the sale read fails without data", (kind, error) => {
     Object.assign(fixture.queries.sale ?? {}, { data: undefined, error, isError: true });
     const tree = render(SaleDetailScreen);
-    expect(tree.type).toBe(SalesRouteState);
+    expect(tree.type).toBe(RouteState);
     expect(tree.props.kind).toBe(kind);
   });
 
@@ -523,7 +523,7 @@ describe("sale detail states", () => {
       permissions: ["sales:create"],
     };
     const tree = render(SaleDetailScreen);
-    expect(tree.type).toBe(SalesRouteState);
+    expect(tree.type).toBe(RouteState);
     expect(tree.props.kind).toBe("denied");
   });
 

@@ -12,6 +12,7 @@ import { Section } from "@/components/layout/section";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
+import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,6 @@ import { hasDeniedRead, queryHasStaleData, readFailureKind } from "@/lib/query-s
 import { ActionBar } from "./action-bar";
 import { type CorrectionMode, CorrectionModeField } from "./correction-mode-field";
 import { invalidateSaleReads, saleQueryOptions } from "./queries";
-import { SalesRouteState } from "./route-state";
 import {
   emptySaleDraft,
   type SaleDraftErrors,
@@ -129,7 +129,7 @@ export default function SaleCorrectionScreen() {
   const access = readState([businesses]);
   if (access === "denied" || hasDeniedRead([saleResult]) || (business && !canCorrect)) {
     return (
-      <SalesRouteState
+      <RouteState
         description={t("sales.correction.deniedDescription")}
         kind="denied"
         title={t("sales.correction.deniedTitle")}
@@ -139,7 +139,7 @@ export default function SaleCorrectionScreen() {
   }
   if (access === "error") {
     return (
-      <SalesRouteState
+      <RouteState
         description={t("sales.unavailableDescription")}
         kind="error"
         onRetry={() => void businesses.refetch()}
@@ -153,7 +153,7 @@ export default function SaleCorrectionScreen() {
   const read = access === "ready" ? readState([saleResult]) : access;
   if (missing || (read === "error" && readFailureKind(saleResult.error) === "notFound")) {
     return (
-      <SalesRouteState
+      <RouteState
         action={
           <Link asChild href="/operate/sales">
             <Button accessibilityRole="link" size="sm" variant="outline">
@@ -170,7 +170,7 @@ export default function SaleCorrectionScreen() {
   }
   if (read === "error") {
     return (
-      <SalesRouteState
+      <RouteState
         description={t("sales.detail.unavailableDescription")}
         kind="error"
         onRetry={() => void saleResult.refetch()}
@@ -179,22 +179,17 @@ export default function SaleCorrectionScreen() {
       />
     );
   }
-  if (read === "offline") return <SalesRouteState kind="offline" width="form" />;
+  if (read === "offline") return <RouteState kind="offline" width="form" />;
   if (!sale || !business) {
     return (
-      <SalesRouteState
-        kind="loading"
-        label={t("sales.detail.loading")}
-        variant="form"
-        width="form"
-      />
+      <RouteState kind="loading" label={t("sales.detail.loading")} variant="form" width="form" />
     );
   }
   // A confirmed correction refreshes the sale before navigating to it; while that runs the sale is
   // no longer correctable, but the screen keeps its review instead of claiming it cannot proceed.
   if (!canCorrectSale(sale) && !correction.isPending && !correction.isSuccess) {
     return (
-      <SalesRouteState
+      <RouteState
         action={
           <Link asChild href={saleHref(sale.id)}>
             <Button accessibilityRole="link" size="sm" variant="outline">

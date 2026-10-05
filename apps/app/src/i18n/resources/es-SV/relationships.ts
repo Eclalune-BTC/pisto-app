@@ -1,13 +1,7 @@
 export const relationships = {
   common: {
     clearSearch: "Limpiar búsqueda",
-    unavailableTitle: "No pudimos cargar esta información",
     unavailableDescription: "Revisa tu conexión e inténtalo otra vez.",
-    notFoundTitle: "Registro no disponible",
-    notFoundDescription: "No existe o no está disponible en el negocio activo.",
-    actionUnavailableTitle: "Esta acción ya no está disponible",
-    actionUnavailableDescription:
-      "El estado actual del cliente, la cuenta o el pago ya no permite esta operación.",
   },
   access: {
     deniedTitle: "No tienes acceso a esta sección",

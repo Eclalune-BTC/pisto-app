@@ -3,6 +3,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link, Redirect, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -10,7 +11,6 @@ import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/busines
 import { firstParam, type RouteParam } from "@/lib/route-params";
 import { productHref } from "../catalog/catalog-screen";
 import { flattenPages, productQueryOptions } from "../catalog/queries";
-import { CapabilityRouteState } from "../catalog/route-state";
 import { captureDialogFocus, type DialogFocus } from "../catalog/screen-heading";
 import { hasStaleRead, readState } from "../catalog/state";
 import { ProductStockScreen } from "./product-stock-screen";
@@ -53,19 +53,19 @@ export default function ProductStockController() {
     readState([businesses, productQuery]) === "denied" ? undefined : detail?.product.name,
   );
 
-  if (access === "offline") return <CapabilityRouteState kind="offline" />;
-  if (access === "loading") return <CapabilityRouteState kind="loading" variant="detail" />;
+  if (access === "offline") return <RouteState kind="offline" />;
+  if (access === "loading") return <RouteState kind="loading" variant="detail" />;
   if (access === "error" || access === "notFound") {
-    return <CapabilityRouteState kind="error" onRetry={() => void businesses.refetch()} />;
+    return <RouteState kind="error" onRetry={() => void businesses.refetch()} />;
   }
   if (access === "ready" && !business) return <Redirect href="/business" />;
   if (!business || !canRead || readState([productQuery]) === "denied") {
-    return <CapabilityRouteState kind="denied" />;
+    return <RouteState kind="denied" />;
   }
   const read = readState([productQuery]);
   if (!productId || read === "notFound") {
     return (
-      <CapabilityRouteState
+      <RouteState
         action={<InventoryLink />}
         description={t("inventory.product.notFoundDescription")}
         kind="notFound"
@@ -73,22 +73,16 @@ export default function ProductStockController() {
       />
     );
   }
-  if (read === "offline") return <CapabilityRouteState kind="offline" />;
+  if (read === "offline") return <RouteState kind="offline" />;
   if (read === "error") {
-    return <CapabilityRouteState kind="error" onRetry={() => void productQuery.refetch()} />;
+    return <RouteState kind="error" onRetry={() => void productQuery.refetch()} />;
   }
   if (!detail) {
-    return (
-      <CapabilityRouteState
-        kind="loading"
-        label={t("inventory.product.loading")}
-        variant="detail"
-      />
-    );
+    return <RouteState kind="loading" label={t("inventory.product.loading")} variant="detail" />;
   }
   if (!detail.stock) {
     return (
-      <CapabilityRouteState
+      <RouteState
         action={
           <Link asChild href={productHref(detail.product.id)}>
             <Button accessibilityRole="link" size="sm" variant="outline">

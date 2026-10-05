@@ -13,17 +13,16 @@ import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
+import { RouteState } from "@/components/route-state";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { ReceivablesTable } from "@/features/receivables/receivables-table";
-
 import { CustomerStatusBadge } from "./customer-status-badge";
 import { isPositiveAmount, useRecordFormat } from "./format";
 import { type MenuTrigger, OverflowActionMenu } from "./overflow-action-menu";
-import { ScreenState } from "./screen-state";
 import type { CustomerDetailLoadState, CustomerReceivablesState } from "./types";
 
 type CustomerDetailScreenProps = {
@@ -145,7 +144,7 @@ export function CustomerDetailScreen({
   const { t } = useTranslation();
   const format = useRecordFormat();
   if (state.kind !== "ready") {
-    return <ScreenState kind={state.kind} onRetry={onRetry} skeleton="detail" />;
+    return <RouteState kind={state.kind} onRetry={onRetry} variant="detail" />;
   }
 
   const { balance, customer } = state.detail;

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TextInput } from "react-native";
 import type { DescriptionItem } from "@/components/layout/description-list";
+import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -20,7 +21,6 @@ import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/busines
 import { ReviewChange } from "../catalog/command-review";
 import { quantityText, signedQuantityText } from "../catalog/format";
 import { invalidateCatalogInventory, productQueryOptions } from "../catalog/queries";
-import { CapabilityRouteState } from "../catalog/route-state";
 import { hasStaleRead, readState } from "../catalog/state";
 import { useKeyedCommand } from "../catalog/use-keyed-command";
 import { inventoryApi } from "./api";
@@ -163,23 +163,21 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
   const { phase } = mutation;
   const locked = isLockedPhase(phase);
 
-  if (access === "offline") return <CapabilityRouteState kind="offline" width="form" />;
+  if (access === "offline") return <RouteState kind="offline" width="form" />;
   if (access === "loading") {
-    return <CapabilityRouteState kind="loading" variant="form" width="form" />;
+    return <RouteState kind="loading" variant="form" width="form" />;
   }
   if (access === "error" || access === "notFound") {
-    return (
-      <CapabilityRouteState kind="error" onRetry={() => void businesses.refetch()} width="form" />
-    );
+    return <RouteState kind="error" onRetry={() => void businesses.refetch()} width="form" />;
   }
   if (access === "ready" && !business) return <Redirect href="/business" />;
   if (!business || !canManage || readState([productQuery]) === "denied") {
-    return <CapabilityRouteState kind="denied" width="form" />;
+    return <RouteState kind="denied" width="form" />;
   }
   const read = readState([productQuery]);
   if (!productId || read === "notFound") {
     return (
-      <CapabilityRouteState
+      <RouteState
         action={<InventoryLink />}
         description={t("inventory.product.notFoundDescription")}
         kind="notFound"
@@ -188,20 +186,18 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
       />
     );
   }
-  if (read === "offline") return <CapabilityRouteState kind="offline" width="form" />;
+  if (read === "offline") return <RouteState kind="offline" width="form" />;
   if (read === "error") {
-    return (
-      <CapabilityRouteState kind="error" onRetry={() => void productQuery.refetch()} width="form" />
-    );
+    return <RouteState kind="error" onRetry={() => void productQuery.refetch()} width="form" />;
   }
   if (!detail || initializedBusiness !== business.id) {
-    return <CapabilityRouteState kind="loading" variant="form" width="form" />;
+    return <RouteState kind="loading" variant="form" width="form" />;
   }
   const { product, stock } = detail;
   // A reviewed command keeps its screen: an uncertain one must stay resendable with its key.
   if (!stock || (product.status !== "active" && !command)) {
     return (
-      <CapabilityRouteState
+      <RouteState
         action={
           <Link asChild href={stock ? stockHref(product.id) : "/operate/inventory"}>
             <Button accessibilityRole="link" size="sm" variant="outline">

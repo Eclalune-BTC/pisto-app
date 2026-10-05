@@ -1,8 +1,7 @@
 import { uuidSchema } from "@pisto/contracts";
 import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-router";
-
+import { RouteState } from "@/components/route-state";
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
-import { ScreenState } from "@/features/customers/screen-state";
 import { ReceivableEditor } from "@/features/receivables/receivable-editor";
 import { firstParam } from "@/lib/route-params";
 
@@ -18,10 +17,10 @@ export default function NewReceivableRoute() {
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
   if (accessState !== "ready" || !access.business) {
     return (
-      <ScreenState
+      <RouteState
         kind={accessState === "ready" ? "error" : accessState}
         onRetry={() => void access.refetch()}
-        skeleton="form"
+        variant="form"
         width="form"
       />
     );

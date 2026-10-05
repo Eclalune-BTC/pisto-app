@@ -11,6 +11,7 @@ import { Section } from "@/components/layout/section";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
+import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,6 @@ import { requireSupportedLocale } from "@/i18n/locale";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead, queryHasStaleData, readFailureKind } from "@/lib/query-state";
 import { saleQueryOptions } from "./queries";
-import { SalesRouteState } from "./route-state";
 import { SaleStatusBadge, saleAmount, saleMoment } from "./sale-facts";
 import { canCorrectSale, readState } from "./state";
 
@@ -97,7 +97,7 @@ export default function SaleDetailScreen() {
   const access = readState([businesses]);
   if (access === "denied" || hasDeniedRead([result]) || (business && !canRead)) {
     return (
-      <SalesRouteState
+      <RouteState
         description={t("sales.deniedDescription")}
         kind="denied"
         title={t("sales.deniedTitle")}
@@ -107,7 +107,7 @@ export default function SaleDetailScreen() {
   }
   if (access === "error") {
     return (
-      <SalesRouteState
+      <RouteState
         description={t("sales.unavailableDescription")}
         kind="error"
         onRetry={() => void businesses.refetch()}
@@ -121,7 +121,7 @@ export default function SaleDetailScreen() {
   const read = access === "ready" ? readState([result]) : access;
   if (missing || (read === "error" && readFailureKind(result.error) === "notFound")) {
     return (
-      <SalesRouteState
+      <RouteState
         action={
           <Link asChild href="/operate/sales">
             <Button accessibilityRole="link" size="sm" variant="outline">
@@ -138,7 +138,7 @@ export default function SaleDetailScreen() {
   }
   if (read === "error") {
     return (
-      <SalesRouteState
+      <RouteState
         description={t("sales.detail.unavailableDescription")}
         kind="error"
         onRetry={() => void result.refetch()}
@@ -147,15 +147,10 @@ export default function SaleDetailScreen() {
       />
     );
   }
-  if (read === "offline") return <SalesRouteState kind="offline" width="form" />;
+  if (read === "offline") return <RouteState kind="offline" width="form" />;
   if (!sale || !business) {
     return (
-      <SalesRouteState
-        kind="loading"
-        label={t("sales.detail.loading")}
-        variant="record"
-        width="form"
-      />
+      <RouteState kind="loading" label={t("sales.detail.loading")} variant="detail" width="form" />
     );
   }
 

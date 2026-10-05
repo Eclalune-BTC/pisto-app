@@ -3,7 +3,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { Redirect, useLocalSearchParams } from "expo-router";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-
+import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import {
   capabilityBoundaryState,
@@ -16,7 +16,6 @@ import { CustomerDetailScreen } from "@/features/customers/customer-detail-scree
 import type { MenuTrigger } from "@/features/customers/overflow-action-menu";
 import { customerDetailQueryOptions, customerQueryKeys } from "@/features/customers/queries";
 import { readState } from "@/features/customers/read-state";
-import { ScreenState } from "@/features/customers/screen-state";
 import type { CustomerDetailLoadState, CustomerReceivablesState } from "@/features/customers/types";
 import { UncertainCommandNotice } from "@/features/customers/uncertain-command-notice";
 import { useConfirmableCommand } from "@/features/customers/use-confirmable-command";
@@ -62,9 +61,7 @@ export default function CustomerDetailRoute() {
   const accessState = capabilityBoundaryState(access);
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
   if (accessState !== "ready") {
-    return (
-      <ScreenState kind={accessState} onRetry={() => void access.refetch()} skeleton="detail" />
-    );
+    return <RouteState kind={accessState} onRetry={() => void access.refetch()} variant="detail" />;
   }
 
   // Both reads come from the same business access, so a rejected one hides the whole record.

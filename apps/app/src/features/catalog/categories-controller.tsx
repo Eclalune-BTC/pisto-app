@@ -3,12 +3,12 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { RouteState } from "@/components/route-state";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import type { RouteParam } from "@/lib/route-params";
 import { CategoriesScreen, type CategoryCollectionState } from "./categories-screen";
 import { CategoryArchiveDialog, CategoryNameDialog } from "./category-dialogs";
 import { type CategoryListFilters, categoriesInfiniteOptions, flattenPages } from "./queries";
-import { CapabilityRouteState } from "./route-state";
 import { captureDialogFocus, type DialogFocus } from "./screen-heading";
 import { parseSearchParam, parseStatusParam, statusParam, useSearchInput } from "./search-params";
 import { hasStaleRead, readState } from "./state";
@@ -36,15 +36,15 @@ export default function CategoriesController() {
     categoriesInfiniteOptions(canRead ? business?.id : undefined, filters),
   );
 
-  if (access === "offline") return <CapabilityRouteState kind="offline" />;
-  if (access === "loading") return <CapabilityRouteState kind="loading" />;
+  if (access === "offline") return <RouteState kind="offline" />;
+  if (access === "loading") return <RouteState kind="loading" />;
   if (access === "error" || access === "notFound") {
-    return <CapabilityRouteState kind="error" onRetry={() => void businesses.refetch()} />;
+    return <RouteState kind="error" onRetry={() => void businesses.refetch()} />;
   }
   if (access === "ready" && !business) return <Redirect href="/business" />;
   if (!business || !canRead) {
     return (
-      <CapabilityRouteState
+      <RouteState
         description={t("catalog.categories.deniedDescription")}
         kind="denied"
         title={t("catalog.categories.deniedTitle")}

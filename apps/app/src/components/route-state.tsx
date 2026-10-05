@@ -7,7 +7,7 @@ import { OfflineState } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { StatePanel } from "@/components/ui/state-panel";
 
-export type CapabilityRouteStateKind =
+export type RouteStateKind =
   | "denied"
   | "error"
   | "loading"
@@ -17,63 +17,70 @@ export type CapabilityRouteStateKind =
 
 type PageWidth = NonNullable<ComponentProps<typeof Page>["width"]>;
 
-type CapabilityRouteStateProps = {
+type RouteStateProps = {
   /** The way forward from a state that ends the route, such as a link to its list. */
   action?: ReactNode;
   /** Replaces the generic description with one that names the record. */
   description?: string;
+  kind: RouteStateKind;
   /** What is loading, for assistive technology. */
   label?: string;
+  /** Offered with the error state only. */
+  onRetry?: () => void;
   /** Replaces the generic title with one that names the record. */
   title?: string;
   /** The shape the route takes once loaded, so the page does not jump. */
   variant?: "detail" | "form" | "list";
   width?: PageWidth;
-} & (
-  | { kind: "error"; onRetry: () => void }
-  | { kind: Exclude<CapabilityRouteStateKind, "error">; onRetry?: never }
-);
+};
 
 /**
  * A whole route that cannot show its records yet or at all. Its panel is the page's only heading,
  * and it never keeps cached private records on screen.
  */
-export function CapabilityRouteState(props: CapabilityRouteStateProps) {
+export function RouteState({
+  action,
+  description,
+  kind,
+  label,
+  onRetry,
+  title,
+  variant = "list",
+  width = "content",
+}: RouteStateProps) {
   const { t } = useTranslation();
-  const { action, variant = "list", width = "content" } = props;
-  if (props.kind === "loading") {
+  if (kind === "loading") {
     return (
       <Page width={width}>
-        <ContentSkeleton label={props.label ?? t("catalog.remote.loading")} variant={variant} />
+        <ContentSkeleton label={label ?? t("routeState.loading")} variant={variant} />
       </Page>
     );
   }
-  if (props.kind === "offline") {
+  if (kind === "offline") {
     return (
       <Page width={width}>
         <OfflineState />
       </Page>
     );
   }
-  if (props.kind === "error") {
+  if (kind === "error") {
     return (
       <Page width={width}>
         <StatePanel
           action={
-            <>
-              <Button
-                label={t("common.retry")}
-                onPress={props.onRetry}
-                size="sm"
-                variant="outline"
-              />
-              {action}
-            </>
+            onRetry || action ? (
+              <>
+                {onRetry ? (
+                  <Button label={t("common.retry")} onPress={onRetry} size="sm" variant="outline" />
+                ) : null}
+                {action}
+              </>
+            ) : undefined
           }
-          description={props.description ?? t("catalog.remote.errorDescription")}
+          description={description ?? t("routeState.errorDescription")}
           icon={TriangleAlert}
           level={1}
-          title={props.title ?? t("catalog.remote.errorTitle")}
+          title={title ?? t("routeState.errorTitle")}
           tone="destructive"
         />
       </Page>
@@ -81,29 +88,29 @@ export function CapabilityRouteState(props: CapabilityRouteStateProps) {
   }
   const copy = {
     denied: {
-      description: t("catalog.remote.deniedDescription"),
+      description: t("routeState.deniedDescription"),
       icon: Lock,
-      title: t("catalog.remote.deniedTitle"),
+      title: t("routeState.deniedTitle"),
     },
     notFound: {
-      description: t("catalog.remote.notFoundDescription"),
+      description: t("routeState.notFoundDescription"),
       icon: SearchX,
-      title: t("catalog.remote.notFoundTitle"),
+      title: t("routeState.notFoundTitle"),
     },
     unavailable: {
-      description: t("catalog.remote.unavailableDescription"),
+      description: t("routeState.unavailableDescription"),
       icon: Ban,
-      title: t("catalog.remote.unavailableTitle"),
+      title: t("routeState.unavailableTitle"),
     },
-  }[props.kind];
+  }[kind];
   return (
     <Page width={width}>
       <StatePanel
         action={action}
-        description={props.description ?? copy.description}
+        description={description ?? copy.description}
         icon={copy.icon}
         level={1}
-        title={props.title ?? copy.title}
+        title={title ?? copy.title}
       />
     </Page>
   );

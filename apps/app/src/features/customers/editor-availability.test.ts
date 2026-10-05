@@ -143,7 +143,7 @@ describe("payment editor availability", () => {
 
   test("closes when the receivable no longer accepts a payment", () => {
     const markup = editor("unavailable");
-    expect(markup).toContain(i18n.t("relationships.common.actionUnavailableTitle"));
+    expect(markup).toContain(i18n.t("routeState.unavailableTitle"));
     expect(markup).not.toContain(i18n.t("receivables.payment.review"));
   });
 

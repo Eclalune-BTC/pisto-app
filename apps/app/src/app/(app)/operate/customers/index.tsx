@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQueries } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-
+import { RouteState } from "@/components/route-state";
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CustomersScreen } from "@/features/customers/customers-screen";
 import {
@@ -10,7 +10,6 @@ import {
 } from "@/features/customers/list-params";
 import { customerDetailQueryOptions, customersQueryOptions } from "@/features/customers/queries";
 import { readState } from "@/features/customers/read-state";
-import { ScreenState } from "@/features/customers/screen-state";
 import type { CustomerBalanceCell, CustomersLoadState } from "@/features/customers/types";
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "@/features/customers/use-debounced-value";
 import { hasDeniedRead } from "@/lib/query-state";
@@ -54,7 +53,7 @@ export default function CustomersRoute() {
   const accessState = capabilityBoundaryState(access);
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
   if (accessState !== "ready") {
-    return <ScreenState kind={accessState} onRetry={() => void access.refetch()} />;
+    return <RouteState kind={accessState} onRetry={() => void access.refetch()} />;
   }
 
   // A balance rejected for access revokes the whole private list, not only its cell.

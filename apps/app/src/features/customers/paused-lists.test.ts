@@ -41,7 +41,7 @@ vi.mock("@/features/customers/access", () => ({
     refetch: vi.fn(),
   }),
 }));
-vi.mock("@/features/customers/screen-state", () => ({ ScreenState: () => null }));
+vi.mock("@/components/route-state", () => ({ RouteState: () => null }));
 vi.mock("@/features/customers/customer-picker", () => ({ CustomerPickerDialog: () => null }));
 vi.mock("@/features/customers/queries", () => ({
   customerDetailQueryOptions: () => ({ read: "customer" }),

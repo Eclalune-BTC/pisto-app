@@ -16,10 +16,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
+import { RouteState } from "@/components/route-state";
 import { CommandReview } from "@/features/customers/command-review";
 import { commandInFlight, type EditorAvailability } from "@/features/customers/command-state";
 import { useRecordFormat } from "@/features/customers/format";
-import { ScreenState } from "@/features/customers/screen-state";
 import { useCommand } from "@/features/customers/use-command";
 import { useFirstInvalidFocus } from "@/features/customers/use-first-invalid-focus";
 import { currentLocalDateTime } from "@/lib/money";
@@ -127,7 +127,7 @@ export function PaymentReversalEditor({
   ];
 
   if (availability === "unavailable" && !commandInFlight(state)) {
-    return <ScreenState kind="unavailable" width="form" />;
+    return <RouteState kind="unavailable" width="form" />;
   }
 
   return (

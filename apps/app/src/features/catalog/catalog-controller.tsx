@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { RouteState } from "@/components/route-state";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead } from "@/lib/query-state";
 import type { RouteParam } from "@/lib/route-params";
@@ -12,7 +13,6 @@ import {
   productsInfiniteOptions,
   useCategoryChoices,
 } from "./queries";
-import { CapabilityRouteState } from "./route-state";
 import {
   parseCategoryParam,
   parseSearchParam,
@@ -44,15 +44,15 @@ export default function CatalogController() {
   const products = useInfiniteQuery(productsInfiniteOptions(readableBusinessId, filters));
   const categories = useCategoryChoices(readableBusinessId);
 
-  if (access === "offline") return <CapabilityRouteState kind="offline" />;
-  if (access === "loading") return <CapabilityRouteState kind="loading" />;
+  if (access === "offline") return <RouteState kind="offline" />;
+  if (access === "loading") return <RouteState kind="loading" />;
   if (access === "error" || access === "notFound") {
-    return <CapabilityRouteState kind="error" onRetry={() => void businesses.refetch()} />;
+    return <RouteState kind="error" onRetry={() => void businesses.refetch()} />;
   }
   if (access === "ready" && !business) return <Redirect href="/business" />;
   if (!business || !canRead) {
     return (
-      <CapabilityRouteState
+      <RouteState
         description={t("catalog.list.deniedDescription")}
         kind="denied"
         title={t("catalog.list.deniedTitle")}

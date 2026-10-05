@@ -1,12 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-router";
-
+import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CustomerEditor } from "@/features/customers/customer-editor";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { readState } from "@/features/customers/read-state";
-import { ScreenState } from "@/features/customers/screen-state";
 import { hasDeniedRead } from "@/lib/query-state";
 import { firstParam } from "@/lib/route-params";
 
@@ -32,10 +31,10 @@ export default function EditCustomerRoute() {
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
   if (accessState !== "ready") {
     return (
-      <ScreenState
+      <RouteState
         kind={accessState}
         onRetry={() => void access.refetch()}
-        skeleton="form"
+        variant="form"
         width="form"
       />
     );
@@ -44,10 +43,10 @@ export default function EditCustomerRoute() {
   const read = customerId ? readState([customer]) : { kind: "notFound" as const };
   if (read.kind !== "ready" || !access.business || !customer.data || !customerId) {
     return (
-      <ScreenState
+      <RouteState
         kind={read.kind === "ready" ? "error" : read.kind}
         onRetry={() => void customer.refetch()}
-        skeleton="form"
+        variant="form"
         width="form"
       />
     );

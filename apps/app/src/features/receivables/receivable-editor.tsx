@@ -10,11 +10,11 @@ import { View } from "react-native";
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
+import { RouteState } from "@/components/route-state";
 import { CommandReview } from "@/features/customers/command-review";
 import { CustomerPickerDialog } from "@/features/customers/customer-picker";
 import { customerContact, useRecordFormat } from "@/features/customers/format";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
-import { ScreenState } from "@/features/customers/screen-state";
 import { useCommand } from "@/features/customers/use-command";
 import { useFirstInvalidFocus } from "@/features/customers/use-first-invalid-focus";
 import { currentLocalDateTime } from "@/lib/money";
@@ -160,7 +160,7 @@ export function ReceivableEditor({
     setReview({ command: result.command, customerName: customer.name });
   };
 
-  if (hasDeniedRead([initial])) return <ScreenState kind="denied" width="form" />;
+  if (hasDeniedRead([initial])) return <RouteState kind="denied" width="form" />;
 
   return (
     <Page width="form">

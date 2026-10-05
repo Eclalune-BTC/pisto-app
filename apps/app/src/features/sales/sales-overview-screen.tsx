@@ -6,13 +6,13 @@ import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
+import { RouteState } from "@/components/route-state";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { isAccessDeniedError, queryHasStaleData } from "@/lib/query-state";
 import { previousMonthSummaryQueryOptions, salesInfiniteOptions } from "./queries";
-import { SalesRouteState } from "./route-state";
 import { SalesHistory } from "./sales-history";
 import { SalesSummary } from "./sales-summary";
 import { parseSaleStatusFilter, readState, salesHistoryState } from "./state";
@@ -37,7 +37,7 @@ export default function SalesOverviewScreen() {
 
   if (access === "denied" || (business && !canRead && !canSummarize)) {
     return (
-      <SalesRouteState
+      <RouteState
         description={t("sales.deniedDescription")}
         kind="denied"
         title={t("sales.deniedTitle")}
@@ -45,15 +45,13 @@ export default function SalesOverviewScreen() {
       />
     );
   }
-  if (access === "offline") return <SalesRouteState kind="offline" width="content" />;
+  if (access === "offline") return <RouteState kind="offline" width="content" />;
   if (access === "loading") {
-    return (
-      <SalesRouteState kind="loading" label={t("sales.loading")} variant="list" width="content" />
-    );
+    return <RouteState kind="loading" label={t("sales.loading")} variant="list" width="content" />;
   }
   if (access === "error") {
     return (
-      <SalesRouteState
+      <RouteState
         description={t("sales.unavailableDescription")}
         kind="error"
         onRetry={() => void businesses.refetch()}

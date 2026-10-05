@@ -1,8 +1,7 @@
 import { Redirect, useRouter } from "expo-router";
-
+import { RouteState } from "@/components/route-state";
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CustomerEditor } from "@/features/customers/customer-editor";
-import { ScreenState } from "@/features/customers/screen-state";
 
 export default function NewCustomerRoute() {
   const router = useRouter();
@@ -12,10 +11,10 @@ export default function NewCustomerRoute() {
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
   if (accessState !== "ready" || !access.business) {
     return (
-      <ScreenState
+      <RouteState
         kind={accessState === "ready" ? "error" : accessState}
         onRetry={() => void access.refetch()}
-        skeleton="form"
+        variant="form"
         width="form"
       />
     );

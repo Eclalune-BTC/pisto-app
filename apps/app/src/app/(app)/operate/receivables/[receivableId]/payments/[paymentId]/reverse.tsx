@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-router";
-
+import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { readState } from "@/features/customers/read-state";
-import { ScreenState } from "@/features/customers/screen-state";
 import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-account-source";
 import { PaymentReversalEditor } from "@/features/receivables/payment-reversal-editor";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
@@ -42,10 +41,10 @@ export default function ReversePaymentRoute() {
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
   if (accessState !== "ready" || !access.business) {
     return (
-      <ScreenState
+      <RouteState
         kind={accessState === "ready" ? "error" : accessState}
         onRetry={() => void access.refetch()}
-        skeleton="form"
+        variant="form"
         width="form"
       />
     );
@@ -61,13 +60,13 @@ export default function ReversePaymentRoute() {
         : detailRead;
   if (read.kind !== "ready" || !receivableId || !detail.data || !payment || !account.data) {
     return (
-      <ScreenState
+      <RouteState
         kind={read.kind === "ready" ? "error" : read.kind}
         onRetry={() => {
           void detail.refetch();
           void account.refetch();
         }}
-        skeleton="form"
+        variant="form"
         width="form"
       />
     );

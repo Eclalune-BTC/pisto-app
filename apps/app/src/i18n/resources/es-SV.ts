@@ -17,6 +17,7 @@ import { receivables } from "./es-SV/receivables";
 import { relationships } from "./es-SV/relationships";
 import { remote } from "./es-SV/remote";
 import { reports } from "./es-SV/reports";
+import { routeState } from "./es-SV/route-state";
 import { sales } from "./es-SV/sales";
 import { session } from "./es-SV/session";
 import { settings } from "./es-SV/settings";
@@ -35,6 +36,7 @@ export const esSV = {
   session,
   shell,
   remote,
+  routeState,
   business,
   operate,
   sales,

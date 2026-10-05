@@ -16,9 +16,9 @@ import type { DescriptionItem } from "@/components/layout/description-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
+import { RouteState } from "@/components/route-state";
 import { Text } from "@/components/ui/text";
 import { notify } from "@/lib/notify";
-
 import { customersApi } from "./api";
 import { CommandReview } from "./command-review";
 import { commandInFlight, type EditorAvailability } from "./command-state";
@@ -31,7 +31,6 @@ import {
   customerValues,
 } from "./draft";
 import { customerQueryKeys } from "./queries";
-import { ScreenState } from "./screen-state";
 import { useCommand } from "./use-command";
 import { useFirstInvalidFocus } from "./use-first-invalid-focus";
 
@@ -149,7 +148,7 @@ export function CustomerEditor({
   };
 
   if (availability === "unavailable" && !commandInFlight(state)) {
-    return <ScreenState kind="unavailable" width="form" />;
+    return <RouteState kind="unavailable" width="form" />;
   }
 
   return (

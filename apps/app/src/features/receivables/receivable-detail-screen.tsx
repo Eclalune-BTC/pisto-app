@@ -12,6 +12,7 @@ import { Section } from "@/components/layout/section";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
+import { RouteState } from "@/components/route-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CellText } from "@/components/ui/cell-text";
@@ -24,7 +25,6 @@ import { Text } from "@/components/ui/text";
 import { isPositiveAmount, type RecordFormat, useRecordFormat } from "@/features/customers/format";
 import { MoneyText } from "@/features/customers/money-text";
 import { type MenuTrigger, OverflowActionMenu } from "@/features/customers/overflow-action-menu";
-import { ScreenState } from "@/features/customers/screen-state";
 import { useMeasuredWidth } from "@/lib/use-measured-width";
 
 import { ReceivableStateBadge } from "./receivable-state-badge";
@@ -181,7 +181,7 @@ export function ReceivableDetailScreen({
   const format = useRecordFormat();
   const { onLayout, width } = useMeasuredWidth();
   if (state.kind !== "ready") {
-    return <ScreenState kind={state.kind} onRetry={onRetry} skeleton="detail" />;
+    return <RouteState kind={state.kind} onRetry={onRetry} variant="detail" />;
   }
 
   const { customer, payments, receivable } = state;

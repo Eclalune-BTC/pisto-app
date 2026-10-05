@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
+import { RouteState } from "@/components/route-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -23,7 +24,6 @@ import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/busines
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
 import { ActionBar } from "./action-bar";
 import { invalidateSaleReads, saleQueryKeys, saleReviewQueryOptions } from "./queries";
-import { SalesRouteState } from "./route-state";
 import {
   emptySaleDraft,
   type SaleDraftErrors,
@@ -42,7 +42,7 @@ export default function NewSaleScreen() {
   const read = readState([businesses]);
   if (read === "denied" || (business && !business.access.permissions.includes("sales:create"))) {
     return (
-      <SalesRouteState
+      <RouteState
         description={t("sales.new.deniedDescription")}
         kind="denied"
         title={t("sales.new.deniedTitle")}
@@ -50,15 +50,13 @@ export default function NewSaleScreen() {
       />
     );
   }
-  if (read === "offline") return <SalesRouteState kind="offline" width="form" />;
+  if (read === "offline") return <RouteState kind="offline" width="form" />;
   if (read === "loading") {
-    return (
-      <SalesRouteState kind="loading" label={t("sales.loading")} variant="form" width="form" />
-    );
+    return <RouteState kind="loading" label={t("sales.loading")} variant="form" width="form" />;
   }
   if (read === "error") {
     return (
-      <SalesRouteState
+      <RouteState
         description={t("sales.unavailableDescription")}
         kind="error"
         onRetry={() => void businesses.refetch()}
@@ -218,7 +216,7 @@ export function SaleReviewScreen({
 
   if (hasDeniedRead([recovery])) {
     return (
-      <SalesRouteState
+      <RouteState
         description={t("sales.new.deniedDescription")}
         kind="denied"
         title={t("sales.new.deniedTitle")}
@@ -227,12 +225,10 @@ export function SaleReviewScreen({
     );
   }
   if (recovery.fetchStatus === "paused" && !recovery.data) {
-    return <SalesRouteState kind="offline" width="form" />;
+    return <RouteState kind="offline" width="form" />;
   }
   if (recovery.isPending) {
-    return (
-      <SalesRouteState kind="loading" label={t("sales.new.loading")} variant="form" width="form" />
-    );
+    return <RouteState kind="loading" label={t("sales.new.loading")} variant="form" width="form" />;
   }
 
   const contextChanged = Boolean(review && review.businessId !== business.id);

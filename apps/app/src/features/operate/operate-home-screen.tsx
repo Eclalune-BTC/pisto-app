@@ -11,6 +11,7 @@ import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
+import { RouteState } from "@/components/route-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
@@ -19,7 +20,6 @@ import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
-import { CapabilityRouteState } from "@/features/catalog/route-state";
 import { currentBusinessMonthRange } from "@/features/reports/date-range";
 import { operatingReportQueryOptions } from "@/features/reports/queries";
 import { salesInfiniteOptions } from "@/features/sales/queries";
@@ -141,7 +141,7 @@ export default function OperateHomeScreen() {
     [locale, t],
   );
 
-  if (denied) return <CapabilityRouteState kind="denied" />;
+  if (denied) return <RouteState kind="denied" />;
   if (businesses.fetchStatus === "paused" && !businesses.data) {
     return (
       <Page>

@@ -4,6 +4,7 @@ import * as Crypto from "expo-crypto";
 import { Link, Redirect, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -22,7 +23,6 @@ import {
   productQueryOptions,
   useCategoryChoices,
 } from "./queries";
-import { CapabilityRouteState } from "./route-state";
 import { captureDialogFocus, type DialogFocus, dialogReturnFocus } from "./screen-heading";
 import { hasStaleRead, readState } from "./state";
 import { useKeyedCommand } from "./use-keyed-command";
@@ -79,19 +79,19 @@ export default function ProductDetailController() {
     readState([businesses, productQuery]) === "denied" ? undefined : detail?.product.name,
   );
 
-  if (access === "offline") return <CapabilityRouteState kind="offline" />;
-  if (access === "loading") return <CapabilityRouteState kind="loading" variant="detail" />;
+  if (access === "offline") return <RouteState kind="offline" />;
+  if (access === "loading") return <RouteState kind="loading" variant="detail" />;
   if (access === "error" || access === "notFound") {
-    return <CapabilityRouteState kind="error" onRetry={() => void businesses.refetch()} />;
+    return <RouteState kind="error" onRetry={() => void businesses.refetch()} />;
   }
   if (access === "ready" && !business) return <Redirect href="/business" />;
   const productRead = readState([productQuery, categories]);
   if (!business || !canRead || productRead === "denied") {
-    return <CapabilityRouteState kind="denied" />;
+    return <RouteState kind="denied" />;
   }
   if (!productId || readState([productQuery]) === "notFound") {
     return (
-      <CapabilityRouteState
+      <RouteState
         action={<CatalogLink />}
         description={t("catalog.detail.notFoundDescription")}
         kind="notFound"
@@ -100,14 +100,12 @@ export default function ProductDetailController() {
     );
   }
   const read = readState([productQuery]);
-  if (read === "offline") return <CapabilityRouteState kind="offline" />;
+  if (read === "offline") return <RouteState kind="offline" />;
   if (read === "error") {
-    return <CapabilityRouteState kind="error" onRetry={() => void productQuery.refetch()} />;
+    return <RouteState kind="error" onRetry={() => void productQuery.refetch()} />;
   }
   if (!detail) {
-    return (
-      <CapabilityRouteState kind="loading" label={t("catalog.detail.loading")} variant="detail" />
-    );
+    return <RouteState kind="loading" label={t("catalog.detail.loading")} variant="detail" />;
   }
 
   const stale = hasStaleRead([businesses, productQuery]);

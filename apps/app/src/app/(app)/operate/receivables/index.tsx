@@ -2,12 +2,11 @@ import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import type { View } from "react-native";
-
+import { RouteState } from "@/components/route-state";
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CustomerPickerDialog } from "@/features/customers/customer-picker";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { type ReadQuery, readState } from "@/features/customers/read-state";
-import { ScreenState } from "@/features/customers/screen-state";
 import {
   parseReceivableListParams,
   type ReceivableListParams,
@@ -67,7 +66,7 @@ export default function ReceivablesRoute() {
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
   if (accessState !== "ready" || !access.business) {
     return (
-      <ScreenState
+      <RouteState
         kind={accessState === "ready" ? "error" : accessState}
         onRetry={() => void access.refetch()}
       />

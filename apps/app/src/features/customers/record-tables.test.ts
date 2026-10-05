@@ -253,7 +253,7 @@ describe("record table presentation", () => {
     const markup = renderToStaticMarkup(
       createElement(ReceivableDetailScreen, { ...detailProps, state: { kind: "denied" } }),
     );
-    expect(markup).toContain(i18n.t("relationships.access.deniedTitle"));
+    expect(markup).toContain(i18n.t("routeState.deniedTitle"));
     expect(markup).not.toContain(customer.name);
     expect(markup).not.toContain("Operating account");
     expect(markup).not.toContain(paymentActions);
