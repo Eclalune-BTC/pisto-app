@@ -1,13 +1,5 @@
 import { useRouter } from "expo-router";
-import {
-  ChevronsUpDown,
-  CreditCard,
-  Laptop,
-  LogOut,
-  Moon,
-  Sun,
-  UserRound,
-} from "lucide-react-native";
+import { ChevronsUpDown, CreditCard, LogOut, UserRound } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import type { ShellUser } from "@/components/app-shell";
@@ -33,11 +25,7 @@ import { cn } from "@/lib/cn";
 import { initialsOf } from "@/lib/initials";
 import { useAppearance } from "@/providers/appearance-provider";
 
-const appearanceChoices = [
-  { value: "light", icon: Sun },
-  { value: "dark", icon: Moon },
-  { value: "system", icon: Laptop },
-] as const;
+const appearanceChoices = ["light", "dark", "system"] as const;
 
 type NavUserProps = {
   collapsed?: boolean;
@@ -153,9 +141,9 @@ function NavUserMenu({
             value={appearance.choice}
             onValueChange={(value) => void appearance.select(parseAppearanceChoice(value))}
           >
-            {appearanceChoices.map(({ icon, value }) => (
+            {/* The selection dot takes the place of an icon, so the labels align with the items above. */}
+            {appearanceChoices.map((value) => (
               <DropdownMenuRadioItem disabled={appearance.pending} key={value} value={value}>
-                <Icon as={icon} className="text-muted-foreground" size={15} />
                 <Text>{t(`settings.themes.${value}`)}</Text>
               </DropdownMenuRadioItem>
             ))}
@@ -165,9 +153,8 @@ function NavUserMenu({
             closeOnPress={false}
             disabled={signOut.isPending}
             onPress={signOut.signOut}
-            variant="destructive"
           >
-            <Icon as={LogOut} className="text-destructive" size={15} />
+            <Icon as={LogOut} className="text-muted-foreground" size={15} />
             <Text>{signOut.isPending ? t("shell.signingOut") : t("common.signOut")}</Text>
           </DropdownMenuItem>
           {signOut.error ? (

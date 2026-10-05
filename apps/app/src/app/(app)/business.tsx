@@ -15,6 +15,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { Label } from "@/components/ui/label";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { PressableSurface } from "@/components/ui/pressable-surface";
 import { SelectField } from "@/components/ui/select-field";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
@@ -26,6 +28,7 @@ import {
   OTHER_OPTION,
 } from "@/features/business/business-options";
 import { api, isAmbiguousMutationError } from "@/lib/api-client";
+import { cn } from "@/lib/cn";
 import { initialsOf } from "@/lib/initials";
 import { productErrorMessage } from "@/lib/product-errors";
 import {
@@ -71,6 +74,16 @@ export default function BusinessSetupScreen() {
       router.replace("/operate");
     },
   });
+
+  // With one business there is nothing to choose: it becomes the active one directly.
+  const onlyBusinessId =
+    businesses.data && !businesses.data.activeBusinessId && businesses.data.items.length === 1
+      ? businesses.data.items[0]?.id
+      : undefined;
+  const { isIdle: selectionIdle, mutate: selectBusiness } = selection;
+  useEffect(() => {
+    if (onlyBusinessId && selectionIdle) selectBusiness(onlyBusinessId);
+  }, [onlyBusinessId, selectBusiness, selectionIdle]);
 
   const creation = useMutation({
     mutationFn: api.businesses.create,
@@ -151,37 +164,42 @@ export default function BusinessSetupScreen() {
       ) : existing.length > 0 ? (
         <View className="gap-3">
           <View className="overflow-hidden rounded-lg border border-border bg-card">
-            {existing.map((business, index) => (
-              <View
-                className={`flex-row items-center gap-3 px-3 py-2.5 ${index > 0 ? "border-t border-border" : ""}`}
-                key={business.id}
-              >
-                <Avatar alt={business.name} className="size-8">
-                  <AvatarFallback className="bg-foreground">
-                    <Text className="font-heading text-xs text-background">
-                      {initialsOf(business.name)}
-                    </Text>
-                  </AvatarFallback>
-                </Avatar>
-                <View className="min-w-0 flex-1">
-                  <Text className="font-ui text-sm" numberOfLines={1}>
-                    {business.name}
-                  </Text>
-                  <Text className="text-xs text-muted-foreground">{business.currency}</Text>
-                </View>
-                <Button
+            {existing.map((business, index) => {
+              const choosing = selection.isPending && selection.variables === business.id;
+              return (
+                <PressableSurface
                   accessibilityLabel={t("business.continueWith", { name: business.name })}
+                  accessibilityRole="button"
+                  accessibilityState={{ busy: choosing, disabled: selection.isPending }}
+                  className={cn(
+                    "flex-row items-center gap-3 px-3 py-2.5",
+                    index > 0 && "border-t border-border",
+                  )}
                   disabled={selection.isPending}
-                  loading={selection.isPending && selection.variables === business.id}
+                  key={business.id}
                   onPress={() => selection.mutate(business.id)}
-                  size="sm"
-                  variant={index === 0 ? "default" : "outline"}
                 >
-                  <Text>{t("business.continue")}</Text>
-                  <Icon as={ArrowRight} size={14} />
-                </Button>
-              </View>
-            ))}
+                  <Avatar alt={business.name} className="size-8">
+                    <AvatarFallback className="bg-foreground">
+                      <Text className="font-heading text-xs text-background">
+                        {initialsOf(business.name)}
+                      </Text>
+                    </AvatarFallback>
+                  </Avatar>
+                  <View className="min-w-0 flex-1">
+                    <Text className="font-ui text-sm" numberOfLines={1}>
+                      {business.name}
+                    </Text>
+                    <Text className="text-xs text-muted-foreground">{business.currency}</Text>
+                  </View>
+                  {choosing ? (
+                    <LoadingIndicator size="small" />
+                  ) : (
+                    <Icon as={ArrowRight} className="text-muted-foreground" size={16} />
+                  )}
+                </PressableSurface>
+              );
+            })}
           </View>
           {selection.error ? (
             <Alert icon={CircleAlert} variant="destructive">

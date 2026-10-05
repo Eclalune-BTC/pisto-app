@@ -7,7 +7,6 @@ export const business = {
   chooseDescription: "Tu cuenta tiene acceso a estos negocios. Elige con cuál quieres trabajar.",
   loadFailedTitle: "No pudimos consultar tus negocios",
   loadFailed: "Revisa tu conexión y vuelve a intentarlo. Ningún dato cambió.",
-  continue: "Continuar",
   continueWith: "Continuar con {{name}}",
   continueFailed: "No pudimos seleccionar este negocio. Vuelve a intentarlo.",
   name: "Nombre del negocio",
