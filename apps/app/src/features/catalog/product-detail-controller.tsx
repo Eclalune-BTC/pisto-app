@@ -8,6 +8,7 @@ import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { useKeyedCommand } from "@/lib/keyed-command";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
@@ -25,7 +26,6 @@ import {
 } from "./queries";
 import { captureDialogFocus, type DialogFocus, dialogReturnFocus } from "./screen-heading";
 import { hasStaleRead, readState } from "./state";
-import { useKeyedCommand } from "./use-keyed-command";
 
 export function CatalogLink() {
   const { t } = useTranslation();

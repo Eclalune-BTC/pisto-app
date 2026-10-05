@@ -1,5 +1,5 @@
 import type { CashAccount, PostExpenseRequest } from "@pisto/contracts";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -12,8 +12,9 @@ import {
 import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Page } from "@/components/page";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { useKeyedCommand } from "@/lib/keyed-command";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
-import { isLockedPhase, mutationPhase } from "@/lib/mutation-phase";
+import { isLockedPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { queryHasStaleData } from "@/lib/query-state";
@@ -74,15 +75,15 @@ export function ExpenseEditorController() {
     setDraft((value) => ({ ...value, accountId: firstAccountId }));
   }, [command, draft.accountId, firstAccountId]);
 
-  const mutation = useMutation({
+  const mutation = useKeyedCommand({
     mutationFn: cashApi.expenses.post,
-    onSuccess: async ({ expense }) => {
+    onConfirmed: async ({ expense }) => {
       if (business) await invalidateExpensesAndCash(queryClient, business.id);
       notify.success(t("expenses.editor.success"));
       router.replace(expenseHref(expense.id));
     },
   });
-  const phase = mutationPhase(mutation);
+  const phase = mutation.phase;
   const locked = isLockedPhase(phase);
 
   if (businesses.data && !business) return <Redirect href="/business" />;
@@ -149,7 +150,7 @@ export function ExpenseEditorController() {
       }}
       onConfirm={() => {
         if (command && (phase === "uncertain" || (phase !== "pending" && canConfirm))) {
-          mutation.mutate(command);
+          mutation.send(command);
         }
       }}
       onDraftChange={(next) => {

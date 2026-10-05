@@ -1,5 +1,5 @@
 import type { CashAccount, TransferCashRequest } from "@pisto/contracts";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -12,8 +12,9 @@ import {
 import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Page } from "@/components/page";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { useKeyedCommand } from "@/lib/keyed-command";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
-import { isLockedPhase, mutationPhase } from "@/lib/mutation-phase";
+import { isLockedPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { queryHasStaleData } from "@/lib/query-state";
@@ -88,15 +89,15 @@ export function CashTransferController() {
     }
   }, [choiceIds, command, draft.fromAccountId, draft.toAccountId]);
 
-  const mutation = useMutation({
+  const mutation = useKeyedCommand({
     mutationFn: cashApi.movements.transfer,
-    onSuccess: async ({ transfer }) => {
+    onConfirmed: async ({ transfer }) => {
       if (business) await invalidateCashLedger(queryClient, business.id);
       notify.success(t("cash.transfer.success"));
       router.replace(requestedFromId ? accountHref(transfer.fromAccountId) : "/operate/cash");
     },
   });
-  const phase = mutationPhase(mutation);
+  const phase = mutation.phase;
   const locked = isLockedPhase(phase);
 
   if (businesses.data && !business) return <Redirect href="/business" />;
@@ -170,7 +171,7 @@ export function CashTransferController() {
       }}
       onConfirm={() => {
         if (command && (phase === "uncertain" || (phase !== "pending" && canConfirm))) {
-          mutation.mutate(command);
+          mutation.send(command);
         }
       }}
       onDraftChange={(next) => {

@@ -14,7 +14,9 @@ const fixture = vi.hoisted(() => ({
     reset: vi.fn(),
     variables: undefined as unknown,
   },
-  mutationOptions: undefined as { onSuccess: () => Promise<void> } | undefined,
+  mutationOptions: undefined as
+    | { onSuccess: (result: unknown, variables: { idempotencyKey: string }) => Promise<void> }
+    | undefined,
   router: { push: vi.fn() },
   notify: vi.fn(),
   invalidate: vi.fn(async () => undefined),
@@ -43,7 +45,7 @@ vi.mock("react", async (importOriginal) => ({
 }));
 vi.mock("@tanstack/react-query", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-query")>()),
-  useMutation: (options: { onSuccess: () => Promise<void> }) => {
+  useMutation: (options: NonNullable<typeof fixture.mutationOptions>) => {
     fixture.mutationOptions = options;
     return fixture.mutation;
   },
@@ -162,7 +164,7 @@ describe("expense void confirmation", () => {
 
   test("announces the definitive result with a link to the record and closes", async () => {
     render({ linkToRecord: true });
-    await fixture.mutationOptions?.onSuccess();
+    await fixture.mutationOptions?.onSuccess({}, { idempotencyKey: "sent-key" });
     expect(fixture.invalidate).toHaveBeenCalledWith({}, "business");
     const [title, options] = fixture.notify.mock.lastCall as [
       string,

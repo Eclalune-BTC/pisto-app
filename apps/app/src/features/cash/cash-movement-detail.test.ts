@@ -14,7 +14,9 @@ const fixture = vi.hoisted(() => ({
     reset: vi.fn(),
     variables: undefined as unknown,
   },
-  mutationOptions: undefined as { onSuccess: () => Promise<void> } | undefined,
+  mutationOptions: undefined as
+    | { onSuccess: (result: unknown, variables: { idempotencyKey: string }) => Promise<void> }
+    | undefined,
   keys: 0,
   notify: vi.fn(),
   invalidate: vi.fn(async () => undefined),
@@ -42,7 +44,7 @@ vi.mock("react", async (importOriginal) => ({
 }));
 vi.mock("@tanstack/react-query", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-query")>()),
-  useMutation: (options: { onSuccess: () => Promise<void> }) => {
+  useMutation: (options: NonNullable<typeof fixture.mutationOptions>) => {
     fixture.mutationOptions = options;
     return fixture.mutation;
   },
@@ -201,7 +203,7 @@ describe("cash movement reversal", () => {
   test("closes and confirms with a toast only after the server result", async () => {
     render();
     expect(onClose).not.toHaveBeenCalled();
-    await fixture.mutationOptions?.onSuccess();
+    await fixture.mutationOptions?.onSuccess({}, { idempotencyKey: "sent-key" });
     expect(fixture.invalidate).toHaveBeenCalledWith({}, "business");
     expect(fixture.notify).toHaveBeenCalledWith("cash.reversal.success");
     expect(onClose).toHaveBeenCalledOnce();

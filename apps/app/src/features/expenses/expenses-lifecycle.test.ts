@@ -19,7 +19,12 @@ const fixture = vi.hoisted(() => ({
     variables: undefined as unknown,
   },
   mutationOptions: undefined as
-    | { onSuccess: (result: { expense: { id: string } }) => Promise<void> }
+    | {
+        onSuccess: (
+          result: { expense: { id: string } },
+          variables: { idempotencyKey: string },
+        ) => Promise<void>;
+      }
     | undefined,
   router: { push: vi.fn(), replace: vi.fn(), setParams: vi.fn() },
   routeLabels: vi.fn(),
@@ -390,7 +395,10 @@ describe("expense registration", () => {
     expect(screen.props.reviewAccount).toBe(account);
     (screen.props.onConfirm as () => void)();
     expect(fixture.mutation.mutate).toHaveBeenCalledWith(command);
-    await fixture.mutationOptions?.onSuccess({ expense: { id: "expense-new" } });
+    await fixture.mutationOptions?.onSuccess(
+      { expense: { id: "expense-new" } },
+      { idempotencyKey: "sent-key" },
+    );
     expect(fixture.notify).toHaveBeenCalledWith("expenses.editor.success");
     expect(fixture.router.replace).toHaveBeenCalledWith({
       pathname: "/operate/expenses/[expenseId]",

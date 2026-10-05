@@ -1,5 +1,5 @@
 import type { ArchiveCashAccountRequest, CashMovement } from "@pisto/contracts";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams } from "expo-router";
 import { SearchX } from "lucide-react-native";
@@ -14,8 +14,8 @@ import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { ApiClientError } from "@/lib/api-error";
 import { focusReturnTarget } from "@/lib/focus-return";
+import { useKeyedCommand } from "@/lib/keyed-command";
 import { formatMinorUnits } from "@/lib/money";
-import { mutationPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
@@ -51,12 +51,12 @@ export function CashAccountDetailController() {
   const [archiving, setArchiving] = useState(false);
   // Kept after the dialog closes: focus returns to the opener once the dialog has unmounted.
   const [archiveOpener, setArchiveOpener] = useState<HTMLElement | null>(null);
-  const archive = useMutation({
+  const archive = useKeyedCommand({
     mutationFn: (command: ArchiveCashAccountRequest) => {
       if (!accountId) throw new Error("Cash account identifier is missing");
       return cashApi.accounts.archive(accountId, command);
     },
-    onSuccess: async () => {
+    onConfirmed: async () => {
       if (business) await invalidateCashLedger(queryClient, business.id);
       notify.success(t("cash.archive.success"));
       setArchiving(false);
@@ -119,7 +119,7 @@ export function CashAccountDetailController() {
     access.isStale || queryHasStaleData(accountQuery) || queryHasStaleData(movementsQuery);
   const canManage = access.canManage && !stale;
   const movements = flattenPages(movementsQuery.data);
-  const archivePhase = mutationPhase(archive);
+  const archivePhase = archive.phase;
   const selected =
     selection?.businessId === business.id && selection.accountId === account.id
       ? selection
@@ -141,12 +141,12 @@ export function CashAccountDetailController() {
             if (archivePhase === "pending") return;
             // The same command may always be sent again; only a first attempt needs fresh access.
             if (archivePhase === "uncertain" && archive.variables) {
-              archive.mutate(archive.variables);
+              archive.send(archive.variables);
               return;
             }
             if (!canManage) return;
             // The command has no reviewable fields; every attempt in one dialog is the same command.
-            archive.mutate(archive.variables ?? { idempotencyKey: Crypto.randomUUID() });
+            archive.send(archive.variables ?? { idempotencyKey: Crypto.randomUUID() });
           },
           onOpen: () => {
             archive.reset();

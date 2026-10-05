@@ -1,12 +1,13 @@
 import type { CashMovement, ReverseCashMovementRequest } from "@pisto/contracts";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { useKeyedCommand } from "@/lib/keyed-command";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
-import { mutationPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
+import { withStableIdempotencyKey } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "./api";
@@ -60,16 +61,16 @@ export function CashMovementDetail({
     return { localDate: now.date, localTime: now.time, reason: "" };
   });
   const [errors, setErrors] = useState<CashReversalErrors>({});
-  const reversal = useMutation({
+  const reversal = useKeyedCommand({
     mutationFn: (command: ReverseCashMovementRequest) =>
       cashApi.movements.reverse(movement.id, command),
-    onSuccess: async () => {
+    onConfirmed: async () => {
       await invalidateCashLedger(queryClient, businessId);
       notify.success(t("cash.reversal.success"));
       onClose();
     },
   });
-  const phase = mutationPhase(reversal);
+  const phase = reversal.phase;
   const reversed = movements.some(
     ({ reversalOfMovementId }) => reversalOfMovementId === movement.id,
   );
@@ -80,14 +81,13 @@ export function CashMovementDetail({
     if (phase === "pending") return;
     // Sending the same command again cannot apply it twice; only a new decision needs fresh access.
     if (phase === "uncertain") {
-      if (reversal.variables) reversal.mutate(reversal.variables);
+      if (reversal.variables) reversal.send(reversal.variables);
       return;
     }
     if (!canManage) return;
     const result = buildCashReversalCommand({ draft, idempotencyKey: Crypto.randomUUID() });
     setErrors(cashIssueMessages(t, result.issues));
-    if (result.command)
-      reversal.mutate(withStableIdempotencyKey(reversal.variables, result.command));
+    if (result.command) reversal.send(withStableIdempotencyKey(reversal.variables, result.command));
   };
 
   return (

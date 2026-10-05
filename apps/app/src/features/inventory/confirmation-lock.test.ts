@@ -28,7 +28,7 @@ vi.mock("react", async (importOriginal) => ({
 import { CommandReview } from "@/components/command-review";
 import { Button } from "@/components/ui/button";
 import { ApiClientError } from "@/lib/api-error";
-import { keyedCommandPhase } from "../catalog/use-keyed-command";
+import { keyedCommandPhase } from "@/lib/keyed-command";
 import { buildMovementCommand } from "./movement-draft";
 
 function buttons(node: ReactNode): ReactElement<ComponentProps<typeof Button>>[] {

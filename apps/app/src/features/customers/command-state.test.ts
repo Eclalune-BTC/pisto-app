@@ -4,6 +4,7 @@ import type { TFunction } from "i18next";
 import { afterEach, describe, expect, test } from "vitest";
 
 import { ApiClientError } from "@/lib/api-error";
+import { unresolvedKeyAfter } from "@/lib/keyed-command";
 import { provesNotCommitted } from "@/lib/mutation-phase";
 import {
   type CommandState,
@@ -12,7 +13,6 @@ import {
   commandState,
   commandToSend,
 } from "./command-state";
-import { unresolvedKeyAfter } from "./use-command";
 
 const t = ((key: string) => key) as unknown as TFunction;
 const settled = { isPending: false, isSuccess: false };

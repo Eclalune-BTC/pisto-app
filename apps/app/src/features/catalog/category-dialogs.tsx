@@ -24,6 +24,7 @@ import {
 import { Field } from "@/components/ui/field";
 import { ApiClientError } from "@/lib/api-error";
 import { returnFocusOnClose } from "@/lib/focus-return";
+import { useKeyedCommand } from "@/lib/keyed-command";
 import { isLockedPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
@@ -31,7 +32,6 @@ import { catalogApi } from "./api";
 import { buildCategoryCommand } from "./category-draft";
 import { invalidateCatalogInventory } from "./queries";
 import { type DialogFocus, dialogReturnFocus } from "./screen-heading";
-import { useKeyedCommand } from "./use-keyed-command";
 
 type CategoryDialogProps = {
   businessId: string;

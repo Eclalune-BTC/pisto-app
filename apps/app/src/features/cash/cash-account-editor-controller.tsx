@@ -1,5 +1,5 @@
 import type { CreateCashAccountRequest, UpdateCashAccountRequest } from "@pisto/contracts";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
 import { SearchX } from "lucide-react-native";
@@ -12,8 +12,9 @@ import { useRouteLabel } from "@/components/shell/shell-context";
 import { StatePanel } from "@/components/ui/state-panel";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { ApiClientError } from "@/lib/api-error";
+import { useKeyedCommand } from "@/lib/keyed-command";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
-import { isLockedPhase, mutationPhase } from "@/lib/mutation-phase";
+import { isLockedPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { queryHasStaleData } from "@/lib/query-state";
@@ -88,13 +89,13 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
     }));
   }, [account]);
 
-  const mutation = useMutation({
+  const mutation = useKeyedCommand({
     mutationFn: (next: AccountCommand) => {
       if (!updating) return cashApi.accounts.create(next as CreateCashAccountRequest);
       if (!accountId) throw new Error("Cash account identifier is missing");
       return cashApi.accounts.update(accountId, next as UpdateCashAccountRequest);
     },
-    onSuccess: async ({ account: saved }) => {
+    onConfirmed: async ({ account: saved }) => {
       if (business) await invalidateCashLedger(queryClient, business.id);
       notify.success(updating ? t("cash.accountEditor.updated") : t("cash.accountEditor.created"));
       router.replace(accountHref(saved.id));
@@ -150,7 +151,7 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
   }
   if (!business) throw new Error("A cash account form requires the active business");
 
-  const phase = mutationPhase(mutation);
+  const phase = mutation.phase;
   const locked = isLockedPhase(phase);
 
   return (
@@ -175,7 +176,7 @@ export function CashAccountEditorController({ accountId, mode }: CashAccountEdit
       onConfirm={() => {
         const canConfirm = access.canManage && !stale;
         if (command && (phase === "uncertain" || (phase !== "pending" && canConfirm))) {
-          mutation.mutate(command);
+          mutation.send(command);
         }
       }}
       onDraftChange={(next) => {

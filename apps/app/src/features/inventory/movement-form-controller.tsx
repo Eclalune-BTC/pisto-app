@@ -14,16 +14,15 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { formatLocalMoment } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { useKeyedCommand } from "@/lib/keyed-command";
 import { currentLocalDateTime } from "@/lib/money";
 import { isLockedPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-
 import { quantityText, signedQuantityText } from "../catalog/format";
 import { invalidateCatalogInventory, productQueryOptions } from "../catalog/queries";
 import { hasStaleRead, readState } from "../catalog/state";
-import { useKeyedCommand } from "../catalog/use-keyed-command";
 import { inventoryApi } from "./api";
 import { stockHref } from "./inventory-screen";
 import {

@@ -1,5 +1,5 @@
 import type { Expense, VoidExpenseRequest } from "@pisto/contracts";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -8,8 +8,9 @@ import { View } from "react-native";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field } from "@/components/ui/field";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { useKeyedCommand } from "@/lib/keyed-command";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
-import { isLockedPhase, mutationPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
+import { isLockedPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "../cash/api";
@@ -52,9 +53,9 @@ export function ExpenseVoidDialog({
     return { localDate: now.date, localTime: now.time, reason: "" };
   });
   const [errors, setErrors] = useState<Partial<Record<keyof VoidExpenseDraftValues, string>>>({});
-  const voiding = useMutation({
+  const voiding = useKeyedCommand({
     mutationFn: (command: VoidExpenseRequest) => cashApi.expenses.void(expense.id, command),
-    onSuccess: async () => {
+    onConfirmed: async () => {
       await invalidateExpensesAndCash(queryClient, businessId);
       notify.success(t("expenses.void.success"), {
         description: expense.description,
@@ -70,20 +71,20 @@ export function ExpenseVoidDialog({
       onClose();
     },
   });
-  const phase = mutationPhase(voiding);
+  const phase = voiding.phase;
   const locked = isLockedPhase(phase);
 
   const confirm = () => {
     if (phase === "pending") return;
     // Sending the same command again cannot apply it twice; only a new decision needs fresh access.
     if (phase === "uncertain") {
-      if (voiding.variables) voiding.mutate(voiding.variables);
+      if (voiding.variables) voiding.send(voiding.variables);
       return;
     }
     if (!canConfirm) return;
     const result = buildVoidExpenseCommand({ draft, idempotencyKey: Crypto.randomUUID() });
     setErrors(cashIssueMessages(t, result.issues));
-    if (result.command) voiding.mutate(withStableIdempotencyKey(voiding.variables, result.command));
+    if (result.command) voiding.send(withStableIdempotencyKey(voiding.variables, result.command));
   };
 
   return (

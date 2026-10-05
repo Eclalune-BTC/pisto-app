@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { ApiClientError } from "@/lib/api-error";
-import { keyedCommandPhase } from "./use-keyed-command";
+import { keyedCommandPhase } from "@/lib/keyed-command";
 
 const key = "00000000-0000-4000-8000-000000000001";
 

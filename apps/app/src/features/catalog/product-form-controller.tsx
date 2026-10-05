@@ -12,6 +12,7 @@ import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { ApiClientError } from "@/lib/api-error";
+import { useKeyedCommand } from "@/lib/keyed-command";
 import { formatMinorUnits } from "@/lib/money";
 import { isLockedPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
@@ -21,7 +22,6 @@ import { isAccessDeniedError } from "@/lib/query-state";
 import { movementsInfiniteOptions } from "../inventory/queries";
 import { catalogApi } from "./api";
 import { productHref } from "./catalog-screen";
-
 import { productPrice, quantityText } from "./format";
 import { CatalogLink } from "./product-detail-controller";
 import {
@@ -45,7 +45,6 @@ import {
   useCategoryChoices,
 } from "./queries";
 import { hasStaleRead, readState } from "./state";
-import { useKeyedCommand } from "./use-keyed-command";
 
 const fieldOrder: readonly ProductDraftField[] = [
   "name",

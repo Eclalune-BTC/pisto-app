@@ -1,5 +1,5 @@
 import type { CashAccount, RecordCashAdjustmentRequest } from "@pisto/contracts";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -13,8 +13,9 @@ import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Page } from "@/components/page";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { useKeyedCommand } from "@/lib/keyed-command";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
-import { isLockedPhase, mutationPhase } from "@/lib/mutation-phase";
+import { isLockedPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { queryHasStaleData } from "@/lib/query-state";
@@ -83,15 +84,15 @@ export function CashAdjustmentController() {
     setDraft((value) => ({ ...value, accountId: firstAccountId }));
   }, [command, draft.accountId, firstAccountId]);
 
-  const mutation = useMutation({
+  const mutation = useKeyedCommand({
     mutationFn: cashApi.movements.recordAdjustment,
-    onSuccess: async ({ movement }) => {
+    onConfirmed: async ({ movement }) => {
       if (business) await invalidateCashLedger(queryClient, business.id);
       notify.success(t("cash.adjustment.success"));
       router.replace(accountHref(movement.accountId));
     },
   });
-  const phase = mutationPhase(mutation);
+  const phase = mutation.phase;
   const locked = isLockedPhase(phase);
 
   if (businesses.data && !business) return <Redirect href="/business" />;
@@ -170,7 +171,7 @@ export function CashAdjustmentController() {
       }}
       onConfirm={() => {
         if (command && (phase === "uncertain" || (phase !== "pending" && canConfirm))) {
-          mutation.mutate(command);
+          mutation.send(command);
         }
       }}
       onDraftChange={(next) => {
