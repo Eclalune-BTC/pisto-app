@@ -126,7 +126,3 @@ export function expenseSummaryQueryOptions(
     queryKey: expenseQueryKeys.summary(businessId, startLocalDate, endLocalDate),
   });
 }
-
-export function flattenPages<T>(data: { pages: { items: T[] }[] } | undefined): T[] {
-  return data?.pages.flatMap(({ items }) => items) ?? [];
-}

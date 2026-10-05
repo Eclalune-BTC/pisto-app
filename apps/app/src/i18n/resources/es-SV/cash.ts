@@ -42,8 +42,6 @@ export const cash = {
     account: "Cuenta",
     amount: "Importe",
     reason: "Motivo",
-    date: "Fecha",
-    time: "Hora",
     currentBalance: "Saldo actual:",
     occurredAt: "Fecha y hora",
     loadMoreAccounts: "Cargar más cuentas",

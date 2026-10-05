@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
+import { MomentFields } from "@/components/ui/moment-fields";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
 import { formatLocalMoment } from "@/i18n/format";
@@ -27,7 +28,6 @@ import type { MutationPhase } from "@/lib/mutation-phase";
 import { ChoiceList } from "./choice-list";
 import { cashAccountKindLabels } from "./copy";
 import type { AccountDraftValues } from "./drafts";
-import { LocalDateTimeFields } from "./local-date-time-fields";
 
 export type CashAccountEditorDraft = AccountDraftValues;
 
@@ -240,7 +240,7 @@ export function CashAccountEditorScreen({
                 onChangeText={(openingReason) => onDraftChange({ ...draft, openingReason })}
                 value={draft.openingReason}
               />
-              <LocalDateTimeFields
+              <MomentFields
                 date={draft.openingLocalDate}
                 dateError={errors.openingLocalDate}
                 onDateChange={(openingLocalDate) => onDraftChange({ ...draft, openingLocalDate })}

@@ -65,8 +65,8 @@ vi.mock("../catalog/queries", () => ({ invalidateCatalogInventory: fixture.inval
 vi.mock("@/components/ui/confirm-dialog", () => ({ ConfirmDialog: "confirm-dialog" }));
 
 import { Field } from "@/components/ui/field";
+import { MomentFields } from "@/components/ui/moment-fields";
 import { elements } from "../../../test-support/element-tree";
-import { MomentFields } from "./moment-fields";
 import { ReversalDialog, reversalDelta } from "./reversal-dialog";
 
 type Rendered = ReactElement<Record<string, unknown> & { children?: ReactNode }>;

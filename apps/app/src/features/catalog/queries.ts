@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { reportsQueryKeys } from "@/features/reports/queries";
+import { flattenPages } from "@/lib/pages";
 import { catalogApi } from "./api";
 
 export const CATALOG_PAGE_SIZE = 25;
@@ -138,10 +139,6 @@ export function useCategoryChoices(businessId: string | undefined) {
     if (hasNextPage && !isFetchingNextPage && !isError) void fetchNextPage();
   }, [fetchNextPage, hasNextPage, isError, isFetchingNextPage]);
   return query;
-}
-
-export function flattenPages<T>(data: { pages: readonly { items: readonly T[] }[] } | undefined) {
-  return data?.pages.flatMap(({ items }) => items) ?? [];
 }
 
 /** Choices are complete only after the last page; until then a missing name is still loading. */

@@ -18,9 +18,9 @@ import {
 } from "@/features/customers/command-state";
 import { useRecordFormat } from "@/features/customers/format";
 import { useCommand } from "@/features/customers/use-command";
-import { useFirstInvalidFocus } from "@/features/customers/use-first-invalid-focus";
 import { currentLocalDateTime, toDecimalString } from "@/lib/money";
 import { notify } from "@/lib/notify";
+import { useFirstInvalidFocus } from "@/lib/use-first-invalid-focus";
 
 import { receivablesApi } from "./api";
 import { CashAccountPickerDialog } from "./cash-account-picker";

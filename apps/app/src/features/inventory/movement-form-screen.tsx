@@ -10,11 +10,11 @@ import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { Field } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
+import { MomentFields } from "@/components/ui/moment-fields";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import type { MutationPhase } from "@/lib/mutation-phase";
-import { MomentFields } from "./moment-fields";
 import {
   type InventoryDraftAction,
   type InventoryMovementDraft,

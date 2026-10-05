@@ -24,6 +24,7 @@ const fixture = vi.hoisted(() => ({
   navigate: vi.fn(),
   randomUUID: vi.fn(() => "11111111-1111-4111-8111-111111111111"),
   mutation: {
+    isError: false,
     isPending: false,
     isSuccess: false,
     error: null as unknown,
@@ -139,6 +140,7 @@ beforeEach(() => {
   fixture.mutation.isPending = false;
   fixture.mutation.isSuccess = false;
   fixture.mutation.error = null;
+  fixture.mutation.isError = false;
   vi.clearAllMocks();
   fixture.queries = {
     businesses: query({
@@ -269,6 +271,7 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       expect(fixture.mutation.mutate).toHaveBeenCalledTimes(1);
       fixture.mutation.isPending = false;
       fixture.mutation.error = new ApiClientError("Response lost", 0);
+      fixture.mutation.isError = true;
       tree = render(component);
       expect(elements(tree, StaleNotice)).toHaveLength(1);
       expect(

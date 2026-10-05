@@ -1,6 +1,8 @@
 export const common = {
   close: "Cerrar",
   appName: "Pisto",
+  date: "Fecha",
+  time: "Hora",
   change: "Antes: {{before}}. Ahora: {{after}}.",
   documentTitle: "{{page}} · Pisto",
   retry: "Volver a intentar",

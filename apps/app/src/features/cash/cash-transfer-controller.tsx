@@ -16,6 +16,7 @@ import { useKeyedCommand } from "@/lib/keyed-command";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { isLockedPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
+import { flattenPages } from "@/lib/pages";
 import { productErrorMessage } from "@/lib/product-errors";
 import { queryHasStaleData } from "@/lib/query-state";
 import { firstParam, type RouteParam } from "@/lib/route-params";
@@ -29,11 +30,7 @@ import {
 import { cashBoundaryCopy, cashIssueMessages } from "./copy";
 import { buildCashTransferCommand } from "./drafts";
 import { invalidateCashLedger } from "./invalidate";
-import {
-  activeCashAccountsInfiniteOptions,
-  cashAccountQueryOptions,
-  flattenPages,
-} from "./queries";
+import { activeCashAccountsInfiniteOptions, cashAccountQueryOptions } from "./queries";
 import { featureRemoteState, refetchEnabled } from "./remote-state";
 import { isRequestedAccountUnavailable, withRequestedAccount } from "./requested-account";
 import { useCashAccess } from "./use-cash-access";

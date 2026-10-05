@@ -7,6 +7,7 @@ import { type TextInput, View } from "react-native";
 import { DescriptionList } from "@/components/layout/description-list";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field } from "@/components/ui/field";
+import { MomentFields } from "@/components/ui/moment-fields";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { useKeyedCommand } from "@/lib/keyed-command";
 import { currentLocalDateTime } from "@/lib/money";
@@ -17,7 +18,6 @@ import { signedQuantityText } from "../catalog/format";
 import { invalidateCatalogInventory } from "../catalog/queries";
 import { type DialogFocus, dialogReturnFocus } from "../catalog/screen-heading";
 import { inventoryApi } from "./api";
-import { MomentFields } from "./moment-fields";
 import { movementMoment } from "./movement-table";
 import {
   buildReversalCommand,

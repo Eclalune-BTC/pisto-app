@@ -11,8 +11,8 @@ import {
 import { customerDetailQueryOptions, customersQueryOptions } from "@/features/customers/queries";
 import { readState } from "@/features/customers/read-state";
 import type { CustomerBalanceCell, CustomersLoadState } from "@/features/customers/types";
-import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "@/features/customers/use-debounced-value";
 import { hasDeniedRead } from "@/lib/query-state";
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "@/lib/use-debounced-value";
 
 export default function CustomersRoute() {
   const router = useRouter();

@@ -16,10 +16,10 @@ import { CustomerPickerDialog } from "@/features/customers/customer-picker";
 import { customerContact, useRecordFormat } from "@/features/customers/format";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { useCommand } from "@/features/customers/use-command";
-import { useFirstInvalidFocus } from "@/features/customers/use-first-invalid-focus";
 import { currentLocalDateTime } from "@/lib/money";
 import { notify } from "@/lib/notify";
 import { hasDeniedRead } from "@/lib/query-state";
+import { useFirstInvalidFocus } from "@/lib/use-first-invalid-focus";
 
 import { receivablesApi } from "./api";
 import {

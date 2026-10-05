@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useKeyedCommand } from "@/lib/keyed-command";
 import { notify } from "@/lib/notify";
+import { flattenPages } from "@/lib/pages";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { isAccessDeniedError } from "@/lib/query-state";
@@ -19,7 +20,6 @@ import { catalogApi } from "./api";
 import { ProductDetailScreen } from "./product-detail-screen";
 import {
   categoryChoices,
-  flattenPages,
   invalidateCatalogInventory,
   productQueryOptions,
   useCategoryChoices,

@@ -15,11 +15,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
+import { MomentFields } from "@/components/ui/moment-fields";
 import { Text } from "@/components/ui/text";
 import { returnFocusOnClose } from "@/lib/focus-return";
 import { isLockedPhase, type MutationPhase } from "@/lib/mutation-phase";
 import { cashMovementReason } from "./copy";
-import { LocalDateTimeFields } from "./local-date-time-fields";
 
 export type CashReversalDraft = {
   reason: string;
@@ -172,7 +172,7 @@ export function CashReversalDialog({
           onChangeText={(reason) => onDraftChange({ ...draft, reason })}
           value={draft.reason}
         />
-        <LocalDateTimeFields
+        <MomentFields
           date={draft.localDate}
           dateError={errors.localDate}
           disabled={locked}

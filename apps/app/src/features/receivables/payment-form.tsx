@@ -5,10 +5,9 @@ import { View } from "react-native";
 import { FormActions } from "@/components/layout/form-actions";
 import { Section } from "@/components/layout/section";
 import { Button } from "@/components/ui/button";
-import { DateField } from "@/components/ui/date-field";
 import { Field } from "@/components/ui/field";
+import { MomentFields } from "@/components/ui/moment-fields";
 import { Text } from "@/components/ui/text";
-import { TimeField } from "@/components/ui/time-field";
 import { PickerField } from "@/features/customers/picker-field";
 
 import type { PaymentDraft } from "./draft";
@@ -87,24 +86,16 @@ export function PaymentForm({
         description={t("receivables.payment.whenDescription")}
         title={t("receivables.payment.whenSection")}
       >
-        <View className="gap-4 sm:flex-row">
-          <View className="min-w-0 flex-1">
-            <DateField
-              error={errors.date}
-              label={t("receivables.payment.date")}
-              onChange={(value) => onChange("date", value)}
-              value={draft.date}
-            />
-          </View>
-          <View className="min-w-0 flex-1">
-            <TimeField
-              error={errors.time}
-              label={t("receivables.payment.time")}
-              onChange={(value) => onChange("time", value)}
-              value={draft.time}
-            />
-          </View>
-        </View>
+        <MomentFields
+          date={draft.date}
+          dateError={errors.date}
+          dateLabel={t("receivables.payment.date")}
+          onDateChange={(value) => onChange("date", value)}
+          onTimeChange={(value) => onChange("time", value)}
+          time={draft.time}
+          timeError={errors.time}
+          timeLabel={t("receivables.payment.time")}
+        />
         <Field
           error={errors.reference}
           label={t("receivables.payment.reference")}

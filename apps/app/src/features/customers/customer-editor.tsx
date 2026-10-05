@@ -19,6 +19,7 @@ import { StaleNotice } from "@/components/remote-state";
 import { RouteState } from "@/components/route-state";
 import { Text } from "@/components/ui/text";
 import { notify } from "@/lib/notify";
+import { useFirstInvalidFocus } from "@/lib/use-first-invalid-focus";
 import { customersApi } from "./api";
 import { commandInFlight, commandPhase, type EditorAvailability } from "./command-state";
 import { CustomerForm, type CustomerFormErrors } from "./customer-form";
@@ -31,7 +32,6 @@ import {
 } from "./draft";
 import { customerQueryKeys } from "./queries";
 import { useCommand } from "./use-command";
-import { useFirstInvalidFocus } from "./use-first-invalid-focus";
 
 type CustomerCommand = CreateCustomerRequest | UpdateCustomerRequest;
 

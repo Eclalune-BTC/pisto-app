@@ -2,13 +2,13 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { RouteState } from "@/components/route-state";
+import { flattenPages } from "@/lib/pages";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead } from "@/lib/query-state";
 import type { RouteParam } from "@/lib/route-params";
 import { type CatalogCollectionState, CatalogScreen } from "./catalog-screen";
 import {
   categoryChoices,
-  flattenPages,
   type ProductListFilters,
   productsInfiniteOptions,
   useCategoryChoices,

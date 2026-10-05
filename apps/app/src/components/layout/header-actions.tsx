@@ -155,7 +155,12 @@ function OverflowMenu({
       </DropdownMenuItem>
       {/* Outside the faded item, so the reason keeps its full contrast. */}
       {action.disabledReason ? (
-        <Text className="px-2 pb-1.5 text-xs leading-4 text-muted-foreground">
+        <Text
+          className={cn(
+            "px-2 pb-1.5 text-xs leading-4 text-muted-foreground",
+            phoneOnly && "sm:hidden",
+          )}
+        >
           {action.disabledReason}
         </Text>
       ) : null}
@@ -168,7 +173,12 @@ function OverflowMenu({
           <Icon as={Ellipsis} className="text-foreground" size={16} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-44" insets={MENU_INSETS} sideOffset={4}>
+      <DropdownMenuContent
+        align="end"
+        className="min-w-44 max-w-72"
+        insets={MENU_INSETS}
+        sideOffset={4}
+      >
         {regular.map(item)}
         {destructive.length > 0 && regular.length > 0 ? (
           <DropdownMenuSeparator

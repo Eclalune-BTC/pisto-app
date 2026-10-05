@@ -16,6 +16,7 @@ import { useKeyedCommand } from "@/lib/keyed-command";
 import { formatMinorUnits } from "@/lib/money";
 import { isLockedPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
+import { flattenPages } from "@/lib/pages";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { isAccessDeniedError } from "@/lib/query-state";
@@ -39,7 +40,6 @@ import {
 import { type ProductFieldRefs, ProductFormScreen } from "./product-form-screen";
 import {
   categoryChoices,
-  flattenPages,
   invalidateCatalogInventory,
   productQueryOptions,
   useCategoryChoices,

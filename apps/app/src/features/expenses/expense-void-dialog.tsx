@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field } from "@/components/ui/field";
+import { MomentFields } from "@/components/ui/moment-fields";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { useKeyedCommand } from "@/lib/keyed-command";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
@@ -16,7 +17,6 @@ import { productErrorMessage } from "@/lib/product-errors";
 import { cashApi } from "../cash/api";
 import { cashIssueMessages } from "../cash/copy";
 import { invalidateExpensesAndCash } from "../cash/invalidate";
-import { LocalDateTimeFields } from "../cash/local-date-time-fields";
 import { buildVoidExpenseCommand, type VoidExpenseDraftValues } from "./drafts";
 import { expenseHref } from "./expense-history";
 
@@ -122,7 +122,7 @@ export function ExpenseVoidDialog({
           onChangeText={(reason) => setDraft((value) => ({ ...value, reason }))}
           value={draft.reason}
         />
-        <LocalDateTimeFields
+        <MomentFields
           date={draft.localDate}
           dateError={errors.localDate}
           disabled={locked}

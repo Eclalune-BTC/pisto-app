@@ -8,13 +8,13 @@ import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { focusReturnTarget } from "@/lib/focus-return";
 import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
+import { flattenPages } from "@/lib/pages";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
 import {
   cashAccountQueryOptions,
   cashAccountsInfiniteOptions,
   expenseSummaryQueryOptions,
   expensesInfiniteOptions,
-  flattenPages,
 } from "../cash/queries";
 import { featureRemoteState, refetchEnabled } from "../cash/remote-state";
 import { withRequestedAccount } from "../cash/requested-account";

@@ -62,8 +62,8 @@ vi.mock("../cash/invalidate", () => ({ invalidateExpensesAndCash: fixture.invali
 vi.mock("@/components/ui/confirm-dialog", () => ({ ConfirmDialog: "confirm-dialog" }));
 
 import { Field } from "@/components/ui/field";
+import { MomentFields } from "@/components/ui/moment-fields";
 import { elements } from "../../../test-support/element-tree";
-import { LocalDateTimeFields } from "../cash/local-date-time-fields";
 import { ExpenseVoidDialog } from "./expense-void-dialog";
 
 type Rendered = ReactElement<Record<string, unknown> & { children?: ReactNode }>;
@@ -133,7 +133,7 @@ describe("expense void confirmation", () => {
     const uncertain = render();
     expect(uncertain.props.phase).toBe("uncertain");
     expect(reason(uncertain).editable).toBe(false);
-    const [when] = elements<{ disabled: boolean }>(uncertain.props.children, LocalDateTimeFields);
+    const [when] = elements<{ disabled: boolean }>(uncertain.props.children, MomentFields);
     expect(when?.props.disabled).toBe(true);
     (uncertain.props.onConfirm as () => void)();
     expect(fixture.mutation.mutate).toHaveBeenLastCalledWith(sent);

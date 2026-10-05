@@ -2,15 +2,11 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { RouteState } from "@/components/route-state";
+import { flattenPages } from "@/lib/pages";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead } from "@/lib/query-state";
 import type { RouteParam } from "@/lib/route-params";
-import {
-  categoryChoices,
-  flattenPages,
-  type StockListFilters,
-  useCategoryChoices,
-} from "../catalog/queries";
+import { categoryChoices, type StockListFilters, useCategoryChoices } from "../catalog/queries";
 import { parseLowStockParam, parseSearchParam, useSearchInput } from "../catalog/search-params";
 import { hasStaleRead, readState } from "../catalog/state";
 import { type InventoryCollectionState, InventoryScreen } from "./inventory-screen";

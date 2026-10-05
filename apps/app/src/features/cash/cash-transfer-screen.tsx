@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { FieldError } from "@/components/ui/field-error";
 import { type CursorPage, LoadMoreButton } from "@/components/ui/load-more-button";
+import { MomentFields } from "@/components/ui/moment-fields";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
 import { formatLocalMoment } from "@/i18n/format";
@@ -21,7 +22,6 @@ import { requireSupportedLocale } from "@/i18n/locale";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { AccountBalanceHint } from "./account-balance-hint";
 import { balanceAfter, type TransferDraftValues } from "./drafts";
-import { LocalDateTimeFields } from "./local-date-time-fields";
 
 export type CashTransferDraft = TransferDraftValues;
 
@@ -197,7 +197,7 @@ export function CashTransferScreen({
             />
           </FormSection>
           <FormSection title={t("cash.fields.occurredAt")}>
-            <LocalDateTimeFields
+            <MomentFields
               date={draft.localDate}
               dateError={errors.localDate}
               onDateChange={(localDate) => onDraftChange({ ...draft, localDate })}

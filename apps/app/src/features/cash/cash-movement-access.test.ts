@@ -19,6 +19,7 @@ import { AlertDialog, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field } from "@/components/ui/field";
+import { MomentFields } from "@/components/ui/moment-fields";
 import { i18n } from "@/i18n/config";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { elements } from "../../../test-support/element-tree";
@@ -26,7 +27,6 @@ import { CashAccountEditorScreen } from "./cash-account-editor-screen";
 import { CashAdjustmentScreen } from "./cash-adjustment-screen";
 import { CashMovementDialog, CashReversalDialog } from "./cash-movement-dialogs";
 import { CashTransferScreen } from "./cash-transfer-screen";
-import { LocalDateTimeFields } from "./local-date-time-fields";
 
 const t = i18n.t;
 const noop = () => undefined;
@@ -206,10 +206,7 @@ describe("cash movement facts", () => {
         phase,
       });
       const [reason] = elements<ComponentProps<typeof Field>>(tree, Field);
-      const [when] = elements<ComponentProps<typeof LocalDateTimeFields>>(
-        tree,
-        LocalDateTimeFields,
-      );
+      const [when] = elements<ComponentProps<typeof MomentFields>>(tree, MomentFields);
       expect(reason?.props.editable, phase).toBe(!locked);
       expect(when?.props.disabled, phase).toBe(locked);
       expect((tree.props as { phase: MutationPhase }).phase).toBe(phase);

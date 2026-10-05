@@ -17,11 +17,11 @@ vi.mock("./api", () => ({
 vi.mock("../inventory/api", () => ({ inventoryApi: { listStock: api.listStock } }));
 
 import { reportsQueryKeys } from "@/features/reports/queries";
+import { flattenPages } from "@/lib/pages";
 import { stockInfiniteOptions } from "../inventory/queries";
 import {
   catalogInventoryQueryKeys,
   categoryChoices,
-  flattenPages,
   invalidateCatalogInventory,
   previousPageOfBusiness,
   productQueryOptions,

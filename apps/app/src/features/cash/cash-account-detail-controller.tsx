@@ -17,6 +17,7 @@ import { focusReturnTarget } from "@/lib/focus-return";
 import { useKeyedCommand } from "@/lib/keyed-command";
 import { formatMinorUnits } from "@/lib/money";
 import { notify } from "@/lib/notify";
+import { flattenPages } from "@/lib/pages";
 import { productErrorMessage } from "@/lib/product-errors";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
 import { firstParam, type RouteParam } from "@/lib/route-params";
@@ -25,7 +26,7 @@ import { CashAccountDetailScreen } from "./cash-account-detail-screen";
 import { CashMovementDetail } from "./cash-movement-detail-controller";
 import { cashBoundaryCopy } from "./copy";
 import { invalidateCashLedger } from "./invalidate";
-import { cashAccountQueryOptions, cashMovementsInfiniteOptions, flattenPages } from "./queries";
+import { cashAccountQueryOptions, cashMovementsInfiniteOptions } from "./queries";
 import { featureRemoteState, refetchEnabled } from "./remote-state";
 import { useCashAccess } from "./use-cash-access";
 

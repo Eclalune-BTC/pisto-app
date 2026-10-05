@@ -1,5 +1,5 @@
 import type { ReplaceSaleRequest, VoidSaleRequest } from "@pisto/contracts";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Link, Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { CircleAlert, TriangleAlert } from "lucide-react-native";
@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
-import { api, isAmbiguousMutationError } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
+import { useKeyedCommand } from "@/lib/keyed-command";
 import { toDecimalString } from "@/lib/money";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
@@ -95,12 +96,13 @@ export default function SaleCorrectionScreen() {
 
   const saleHref = (id: string) =>
     ({ pathname: "/operate/sales/[saleId]", params: { saleId: id } }) as const;
-  const correction = useMutation({
+  const correction = useKeyedCommand({
+    keyOf: (input: CorrectionReview) => input.command.idempotencyKey,
     mutationFn: (input: CorrectionReview) =>
       input.kind === "void"
         ? api.sales.void(input.saleId, input.command)
         : api.sales.replace(input.saleId, input.command),
-    onSuccess: async (result, input) => {
+    onConfirmed: async (result, input) => {
       await invalidateSaleReads(queryClient, input.businessId);
       const replacement = result.replacementSale;
       notify.success(
@@ -206,7 +208,8 @@ export default function SaleCorrectionScreen() {
   }
 
   const isStale = queryHasStaleData(businesses) || queryHasStaleData(saleResult);
-  const ambiguousFailure = isAmbiguousMutationError(correction.error);
+  // An unknown outcome stays unknown through later refusals of the same key.
+  const ambiguousFailure = correction.phase === "uncertain";
   const confirmationLocked = correction.isPending || ambiguousFailure || correction.isSuccess;
   const leave = () => {
     if (!confirmationLocked) router.replace(saleHref(sale.id));
@@ -394,7 +397,7 @@ export default function SaleCorrectionScreen() {
             loading={correction.isPending}
             onPress={() => {
               if (correction.isPending || correction.isSuccess) return;
-              if (!isStale || ambiguousFailure) correction.mutate(review);
+              if (!isStale || ambiguousFailure) correction.send(review);
             }}
             variant={review.kind === "void" ? "destructive" : "default"}
           />

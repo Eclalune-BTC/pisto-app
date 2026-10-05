@@ -4,12 +4,12 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { FocusReturnRef } from "@/lib/focus-return";
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "@/lib/use-debounced-value";
 import { customerContact } from "./format";
 import { CUSTOMER_SEARCH_MAX_LENGTH } from "./list-params";
 import { customersQueryOptions } from "./queries";
 import { readState } from "./read-state";
 import { pickerStatus, RecordPicker } from "./record-picker";
-import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "./use-debounced-value";
 
 type CustomerPickerDialogProps = {
   businessId: string;
