@@ -91,6 +91,7 @@ vi.mock("@/lib/notify", () => ({ notify: { success: vi.fn() } }));
 vi.mock("./api", () => ({ catalogApi: { products: { create: vi.fn(), update: vi.fn() } } }));
 vi.mock("../inventory/api", () => ({ inventoryApi: { recordMovement: vi.fn() } }));
 
+import { FormActions } from "@/components/layout/form-actions";
 import { StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { elements } from "../../../test-support/element-tree";
@@ -241,11 +242,12 @@ describe.each(["paused", "error"] as const)("cached %s editor dependencies", (fa
       expect(elements(staleTree, StaleNotice)).toHaveLength(1);
       const reviewLabel =
         editor === "movement" ? "inventory.movementEditor.review" : "catalog.form.review";
-      const reviewButton = elements<ComponentProps<typeof Button>>(staleTree, Button).find(
-        ({ props }) => props.label === reviewLabel,
-      );
-      expect(reviewButton?.props.disabled).toBe(true);
-      expect(reviewButton?.props.onPress).toBeUndefined();
+      const reviewActions = elements<ComponentProps<typeof FormActions>>(
+        staleTree,
+        FormActions,
+      ).find(({ props }) => props.submitLabel === reviewLabel);
+      // FormActions drops the press handler of a disabled submit.
+      expect(reviewActions?.props.disabled).toBe(true);
       screen.props.onReview();
       screen.props.onConfirm();
       expect(fixture.randomUUID).not.toHaveBeenCalled();

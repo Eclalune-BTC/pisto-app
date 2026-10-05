@@ -4,6 +4,7 @@ import { Landmark } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { CommandReview } from "@/components/command-review";
+import { FormActions } from "@/components/layout/form-actions";
 import { FormSection } from "@/components/layout/form-section";
 import { PageHeader } from "@/components/layout/page-header";
 import { MutedValue } from "@/components/layout/review-values";
@@ -210,10 +211,11 @@ export function ExpenseEditorScreen({
               timeError={errors.localTime}
             />
           </FormSection>
-          <View className="flex-row flex-wrap justify-end gap-2">
-            <Button label={t("common.cancel")} onPress={onCancel} variant="outline" />
-            <Button label={t("expenses.editor.review")} onPress={onPrepareReview} />
-          </View>
+          <FormActions
+            onCancel={onCancel}
+            onSubmit={onPrepareReview}
+            submitLabel={t("expenses.editor.review")}
+          />
         </>
       )}
     </Page>

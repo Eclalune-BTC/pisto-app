@@ -3,11 +3,11 @@ import { useTranslation } from "react-i18next";
 import { type TextInput, View } from "react-native";
 import { CommandReview } from "@/components/command-review";
 import type { DescriptionItem } from "@/components/layout/description-list";
+import { FormActions } from "@/components/layout/form-actions";
 import { FormSection } from "@/components/layout/form-section";
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
-import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -149,14 +149,12 @@ export function MovementFormScreen({
           timeRef={fieldRefs.occurredLocalTime}
         />
       </FormSection>
-      <View className="flex-row flex-wrap justify-end gap-2">
-        <Button label={t("common.cancel")} onPress={onCancel} variant="outline" />
-        <Button
-          disabled={isStale}
-          label={t("inventory.movementEditor.review")}
-          onPress={isStale ? undefined : onReview}
-        />
-      </View>
+      <FormActions
+        disabled={isStale}
+        onCancel={onCancel}
+        onSubmit={onReview}
+        submitLabel={t("inventory.movementEditor.review")}
+      />
     </Page>
   );
 }

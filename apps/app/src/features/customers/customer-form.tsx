@@ -2,13 +2,11 @@ import type { Href } from "expo-router";
 import { Info } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-
+import { FormActions } from "@/components/layout/form-actions";
 import { Section } from "@/components/layout/section";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Field } from "@/components/ui/field";
-
 import type { CustomerDraftValues } from "./draft";
-import { FormActions } from "./form-actions";
 
 export type CustomerFormErrors = Partial<Record<keyof CustomerDraftValues, string>>;
 

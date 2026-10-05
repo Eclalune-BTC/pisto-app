@@ -2,14 +2,13 @@ import type { Href } from "expo-router";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-
+import { FormActions } from "@/components/layout/form-actions";
 import { Section } from "@/components/layout/section";
 import { Button } from "@/components/ui/button";
 import { DateField } from "@/components/ui/date-field";
 import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
 import { TimeField } from "@/components/ui/time-field";
-import { FormActions } from "@/features/customers/form-actions";
 import { PickerField } from "@/features/customers/picker-field";
 
 import type { PaymentDraft } from "./draft";

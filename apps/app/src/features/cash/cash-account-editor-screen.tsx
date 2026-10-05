@@ -10,12 +10,12 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { CommandReview } from "@/components/command-review";
 import type { DescriptionItem } from "@/components/layout/description-list";
+import { FormActions } from "@/components/layout/form-actions";
 import { FormSection } from "@/components/layout/form-section";
 import { PageHeader } from "@/components/layout/page-header";
 import { ChangedValue } from "@/components/layout/review-values";
 import { Page } from "@/components/page";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
@@ -280,15 +280,13 @@ export function CashAccountEditorScreen({
         </Alert>
       ) : null}
 
-      <View className="flex-row flex-wrap justify-end gap-2">
-        <Button label={t("common.cancel")} onPress={onCancel} variant="outline" />
-        <Button
-          label={
-            creating ? t("cash.accountEditor.reviewCreate") : t("cash.accountEditor.reviewUpdate")
-          }
-          onPress={onPrepareReview}
-        />
-      </View>
+      <FormActions
+        onCancel={onCancel}
+        onSubmit={onPrepareReview}
+        submitLabel={
+          creating ? t("cash.accountEditor.reviewCreate") : t("cash.accountEditor.reviewUpdate")
+        }
+      />
     </Page>
   );
 }

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { type TextInput, View } from "react-native";
 import { CommandReview } from "@/components/command-review";
 import type { DescriptionItem } from "@/components/layout/description-list";
+import { FormActions } from "@/components/layout/form-actions";
 import { FormSection } from "@/components/layout/form-section";
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
@@ -303,14 +304,12 @@ export function ProductFormScreen({
         </Alert>
       ) : null}
 
-      <View className="flex-row flex-wrap justify-end gap-2">
-        <Button label={t("common.cancel")} onPress={onCancel} variant="outline" />
-        <Button
-          disabled={isStale}
-          label={t("catalog.form.review")}
-          onPress={isStale ? undefined : onReview}
-        />
-      </View>
+      <FormActions
+        disabled={isStale}
+        onCancel={onCancel}
+        onSubmit={onReview}
+        submitLabel={t("catalog.form.review")}
+      />
     </Page>
   );
 }
