@@ -4,15 +4,15 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
 import { formatLocalMoment } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
+import { useMeasuredWidth } from "@/lib/use-measured-width";
 import { MissingValue } from "../catalog/catalog-cells";
 import { signedQuantityText } from "../catalog/format";
-import { type FittedColumn, fitColumns } from "../customers/fit-columns";
-import { useMeasuredWidth } from "../customers/use-measured-width";
 
 type MovementTableProps = {
   caption: string;

@@ -9,7 +9,9 @@ import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import type { DescriptionItem } from "@/components/layout/description-list";
+import { FormSection } from "@/components/layout/form-section";
 import { PageHeader } from "@/components/layout/page-header";
+import { ChangedValue } from "@/components/layout/review-values";
 import { Page } from "@/components/page";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -25,9 +27,7 @@ import { CashOperationReview } from "./cash-operation-review";
 import { ChoiceList } from "./choice-list";
 import { cashAccountKindLabels } from "./copy";
 import type { AccountDraftValues } from "./drafts";
-import { FormSection } from "./form-section";
 import { LocalDateTimeFields } from "./local-date-time-fields";
-import { ChangedValue } from "./review-values";
 
 export type CashAccountEditorDraft = AccountDraftValues;
 

@@ -102,11 +102,11 @@ vi.mock("@/lib/api-client", async () => ({
 vi.mock("@/lib/notify", () => ({ notify: fixture.notify }));
 vi.mock("@/components/shell/shell-context", () => ({ useRouteLabel: fixture.routeLabel }));
 
+import { HeaderActions } from "@/components/layout/header-actions";
 import { StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { elements } from "../../../test-support/element-tree";
-import { HeaderActions } from "../cash/header-actions";
 import { CorrectionModeField } from "./correction-mode-field";
 import { SalesRouteState } from "./route-state";
 import SaleCorrectionScreen from "./sale-correction-screen";

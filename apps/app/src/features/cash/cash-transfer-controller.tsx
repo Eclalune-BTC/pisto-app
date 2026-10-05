@@ -17,6 +17,7 @@ import { isLockedPhase, mutationPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { queryHasStaleData } from "@/lib/query-state";
+import { firstParam, type RouteParam } from "@/lib/route-params";
 import { cashApi } from "./api";
 import { accountHref } from "./cash-account-list";
 import {
@@ -34,7 +35,6 @@ import {
 } from "./queries";
 import { featureRemoteState, refetchEnabled } from "./remote-state";
 import { isRequestedAccountUnavailable, withRequestedAccount } from "./requested-account";
-import { firstParam, type RouteParam } from "./search-params";
 import { useCashAccess } from "./use-cash-access";
 
 export function CashTransferController() {

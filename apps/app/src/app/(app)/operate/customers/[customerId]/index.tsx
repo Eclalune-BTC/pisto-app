@@ -13,7 +13,6 @@ import {
 import { customersApi } from "@/features/customers/api";
 import { CustomerArchiveDialog } from "@/features/customers/customer-archive-dialog";
 import { CustomerDetailScreen } from "@/features/customers/customer-detail-screen";
-import { firstParam } from "@/features/customers/list-params";
 import type { MenuTrigger } from "@/features/customers/overflow-action-menu";
 import { customerDetailQueryOptions, customerQueryKeys } from "@/features/customers/queries";
 import { readState } from "@/features/customers/read-state";
@@ -24,6 +23,7 @@ import { useConfirmableCommand } from "@/features/customers/use-confirmable-comm
 import { receivablesQueryOptions } from "@/features/receivables/queries";
 import { notify } from "@/lib/notify";
 import { hasDeniedRead } from "@/lib/query-state";
+import { firstParam } from "@/lib/route-params";
 
 export default function CustomerDetailRoute() {
   const { t } = useTranslation();

@@ -12,6 +12,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { Icon } from "@/components/ui/icon";
+import { LoadMoreButton } from "@/components/ui/load-more-button";
 import { RowActions } from "@/components/ui/row-actions";
 import { StatePanel } from "@/components/ui/state-panel";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -19,7 +20,6 @@ import { Text } from "@/components/ui/text";
 import { formatLocalizedDate } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
-import { LoadMoreButton } from "../cash/load-more-button";
 import type { CatalogStatusFilter } from "./queries";
 import { SearchBox } from "./search-box";
 

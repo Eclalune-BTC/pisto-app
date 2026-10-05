@@ -22,11 +22,11 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 import type { DataTableColumn } from "@/components/ui/data-table";
+import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
 import { PaymentEditor } from "@/features/receivables/payment-editor";
 import { i18n } from "@/i18n/config";
 import { CommandReview } from "./command-review";
 import { type CommandState, commandInFlight } from "./command-state";
-import { type FittedColumn, fitColumns } from "./fit-columns";
 
 const noop = () => undefined;
 

@@ -11,7 +11,9 @@ import {
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { DescriptionList } from "@/components/layout/description-list";
+import { type HeaderAction, HeaderActions } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
+import { MutedValue } from "@/components/layout/review-values";
 import { Section } from "@/components/layout/section";
 import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
@@ -27,8 +29,6 @@ import { Text } from "@/components/ui/text";
 import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import type { MutationPhase } from "@/lib/mutation-phase";
-import { type HeaderAction, HeaderActions } from "../cash/header-actions";
-import { MutedValue } from "../cash/review-values";
 import { newMovementHref, stockHref } from "../inventory/inventory-screen";
 import { MovementTable } from "../inventory/movement-table";
 import { EMPTY_VALUE, ProductStatusBadge } from "./catalog-cells";

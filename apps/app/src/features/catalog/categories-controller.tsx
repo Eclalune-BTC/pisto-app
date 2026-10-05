@@ -4,7 +4,7 @@ import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import type { RouteParam } from "../cash/search-params";
+import type { RouteParam } from "@/lib/route-params";
 import { CategoriesScreen, type CategoryCollectionState } from "./categories-screen";
 import { CategoryArchiveDialog, CategoryNameDialog } from "./category-dialogs";
 import { type CategoryListFilters, categoriesInfiniteOptions, flattenPages } from "./queries";

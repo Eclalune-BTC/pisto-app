@@ -1,11 +1,11 @@
 import type { Product, ProductStock } from "@pisto/contracts";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { CellText } from "@/components/ui/cell-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
-import { CellText } from "../customers/cell-text";
 import { quantityText } from "./format";
 
 /** Stands in for an absent value; the label or detail next to it says what is missing. */

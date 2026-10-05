@@ -1,13 +1,7 @@
 import type { CashAccountStatus } from "@pisto/contracts";
+import { firstParam, type RouteParam } from "@/lib/route-params";
 
 export type CashAccountStatusFilter = CashAccountStatus | "all";
-
-/** A route parameter as Expo Router delivers it: absent, single or repeated. */
-export type RouteParam = string | string[] | undefined;
-
-export function firstParam(value: RouteParam): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
 
 const accountStatuses: readonly CashAccountStatusFilter[] = ["active", "archived", "all"];
 

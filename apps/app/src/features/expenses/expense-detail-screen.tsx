@@ -2,15 +2,15 @@ import type { Expense } from "@pisto/contracts";
 import { Ban } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
+import { HeaderActions } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
+import { MutedValue } from "@/components/layout/review-values";
 import { Section } from "@/components/layout/section";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CashAccountName } from "../cash/cash-account-name";
-import { HeaderActions } from "../cash/header-actions";
-import { MutedValue } from "../cash/review-values";
 import { expenseCategoryLabels, expenseStatusLabels } from "./copy";
 
 type ExpenseDetailScreenProps = {

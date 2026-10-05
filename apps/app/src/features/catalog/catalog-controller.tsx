@@ -3,7 +3,7 @@ import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead } from "@/lib/query-state";
-import type { RouteParam } from "../cash/search-params";
+import type { RouteParam } from "@/lib/route-params";
 import { type CatalogCollectionState, CatalogScreen } from "./catalog-screen";
 import {
   categoryChoices,

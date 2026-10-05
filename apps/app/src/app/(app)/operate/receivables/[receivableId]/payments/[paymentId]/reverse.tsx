@@ -3,7 +3,6 @@ import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-route
 
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
-import { firstParam } from "@/features/customers/list-params";
 import { readState } from "@/features/customers/read-state";
 import { ScreenState } from "@/features/customers/screen-state";
 import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-account-source";
@@ -11,6 +10,7 @@ import { PaymentReversalEditor } from "@/features/receivables/payment-reversal-e
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
 import { isReversed } from "@/features/receivables/rules";
 import { hasDeniedRead } from "@/lib/query-state";
+import { firstParam } from "@/lib/route-params";
 
 export default function ReversePaymentRoute() {
   const router = useRouter();

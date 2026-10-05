@@ -1,6 +1,6 @@
 import { uuidSchema } from "@pisto/contracts";
 import { useEffect, useRef, useState } from "react";
-import { firstParam, type RouteParam } from "../cash/search-params";
+import { firstParam, type RouteParam } from "@/lib/route-params";
 import type { CatalogStatusFilter } from "./queries";
 
 export const SEARCH_DEBOUNCE_MS = 300;

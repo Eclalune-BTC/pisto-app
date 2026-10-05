@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FilterToolbar } from "@/components/ui/filter-toolbar";
+import { type CursorPage, LoadMoreButton } from "@/components/ui/load-more-button";
 import { SelectField } from "@/components/ui/select-field";
-import { type CursorPage, LoadMoreButton } from "../cash/load-more-button";
 import { expenseCategoryOptions } from "./copy";
 import { defaultExpenseFilters, type ExpenseHistoryFilters } from "./search-params";
 

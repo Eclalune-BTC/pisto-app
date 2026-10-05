@@ -14,22 +14,18 @@ import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CellText } from "@/components/ui/cell-text";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { type FittedColumn, fitColumns, rendersCompactRecords } from "@/components/ui/fit-columns";
 import { Icon } from "@/components/ui/icon";
 import { RowActions } from "@/components/ui/row-actions";
 import { Text } from "@/components/ui/text";
-import { CellText } from "@/features/customers/cell-text";
-import {
-  type FittedColumn,
-  fitColumns,
-  rendersCompactRecords,
-} from "@/features/customers/fit-columns";
 import { isPositiveAmount, type RecordFormat, useRecordFormat } from "@/features/customers/format";
 import { MoneyText } from "@/features/customers/money-text";
 import { type MenuTrigger, OverflowActionMenu } from "@/features/customers/overflow-action-menu";
 import { ScreenState } from "@/features/customers/screen-state";
-import { useMeasuredWidth } from "@/features/customers/use-measured-width";
+import { useMeasuredWidth } from "@/lib/use-measured-width";
 
 import { ReceivableStateBadge } from "./receivable-state-badge";
 import { acceptsPayment, acceptsVoid, isReversed } from "./rules";

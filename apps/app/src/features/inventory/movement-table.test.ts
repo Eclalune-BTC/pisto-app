@@ -18,7 +18,7 @@ vi.mock("uniwind", () => ({
   withUniwind: (component: unknown) => component,
 }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
-vi.mock("../customers/use-measured-width", () => ({
+vi.mock("@/lib/use-measured-width", () => ({
   useMeasuredWidth: () => ({ onLayout: () => undefined, width: table.width }),
 }));
 vi.mock("@/components/ui/data-table", () => ({

@@ -9,14 +9,17 @@ import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
+import { CellText } from "@/components/ui/cell-text";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
+import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
+import { LoadMoreButton } from "@/components/ui/load-more-button";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
-import { LoadMoreButton } from "../cash/load-more-button";
+import { useMeasuredWidth } from "@/lib/use-measured-width";
 import {
   type CategoryCell,
   CategoryName,
@@ -26,9 +29,6 @@ import {
 } from "../catalog/catalog-cells";
 import { quantityText } from "../catalog/format";
 import { SearchBox } from "../catalog/search-box";
-import { CellText } from "../customers/cell-text";
-import { type FittedColumn, fitColumns } from "../customers/fit-columns";
-import { useMeasuredWidth } from "../customers/use-measured-width";
 
 export type StockItem = StockListResponse["data"]["items"][number];
 

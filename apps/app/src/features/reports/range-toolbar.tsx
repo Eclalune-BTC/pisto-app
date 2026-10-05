@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { DateField } from "@/components/ui/date-field";
+import { FieldError } from "@/components/ui/field-error";
 import { FilterBar } from "@/components/ui/filter-bar";
-import { FieldError } from "../cash/field-error";
 import { type ReportRangeIssue, type ReportRangePreset, reportRangePresets } from "./date-range";
 
 export type ReportRangeToolbarProps = {

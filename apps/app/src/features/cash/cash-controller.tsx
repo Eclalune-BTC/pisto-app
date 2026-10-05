@@ -9,12 +9,13 @@ import { requireSupportedLocale } from "@/i18n/locale";
 import { focusReturnTarget } from "@/lib/focus-return";
 import { formatMinorUnits } from "@/lib/money";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
+import type { RouteParam } from "@/lib/route-params";
 import { CashMovementDetail } from "./cash-movement-detail-controller";
 import { CashScreen } from "./cash-screen";
 import { cashBoundaryCopy } from "./copy";
 import { cashAccountsInfiniteOptions, cashMovementsInfiniteOptions, flattenPages } from "./queries";
 import { featureRemoteState, refetchEnabled } from "./remote-state";
-import { accountStatusParam, parseAccountStatus, type RouteParam } from "./search-params";
+import { accountStatusParam, parseAccountStatus } from "./search-params";
 import { useCashAccess } from "./use-cash-access";
 
 export function CashController() {

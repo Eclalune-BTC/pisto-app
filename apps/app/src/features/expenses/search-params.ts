@@ -5,7 +5,7 @@ import {
   expenseCategorySchema,
   uuidSchema,
 } from "@pisto/contracts";
-import { firstParam, type RouteParam } from "../cash/search-params";
+import { firstParam, type RouteParam } from "@/lib/route-params";
 
 export type ExpenseHistoryFilters = {
   accountId: string | "all";

@@ -4,12 +4,14 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { FeatureBoundary, type FeatureRemoteState } from "@/components/feature-boundary";
 import { DescriptionList } from "@/components/layout/description-list";
+import { HeaderActions } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { type CursorPage, LoadMoreButton } from "@/components/ui/load-more-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { CashMovementList } from "./cash-movement-list";
@@ -19,8 +21,6 @@ import {
   cashBoundaryCopy,
   cashMovementActionLabels,
 } from "./copy";
-import { HeaderActions } from "./header-actions";
-import { type CursorPage, LoadMoreButton } from "./load-more-button";
 
 export type CashArchiveState = {
   errorMessage?: string;

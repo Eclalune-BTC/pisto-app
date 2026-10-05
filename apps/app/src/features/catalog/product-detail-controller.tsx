@@ -11,7 +11,7 @@ import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { isAccessDeniedError } from "@/lib/query-state";
-import { firstParam, type RouteParam } from "../cash/search-params";
+import { firstParam, type RouteParam } from "@/lib/route-params";
 import { movementsInfiniteOptions } from "../inventory/queries";
 import { catalogApi } from "./api";
 import { ProductDetailScreen } from "./product-detail-screen";

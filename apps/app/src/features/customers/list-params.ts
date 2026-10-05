@@ -1,3 +1,5 @@
+import { firstParam, type RouteParam } from "@/lib/route-params";
+
 export const CUSTOMER_STATUS_FILTERS = ["active", "archived", "all"] as const;
 
 export type CustomerStatusFilter = (typeof CUSTOMER_STATUS_FILTERS)[number];
@@ -6,12 +8,6 @@ export type CustomerListParams = { query: string; status: CustomerStatusFilter }
 
 /** The contract's search limit; longer input could never be sent. */
 export const CUSTOMER_SEARCH_MAX_LENGTH = 80;
-
-type SearchParam = string | string[] | undefined;
-
-export function firstParam(value: SearchParam): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
 
 function isStatusFilter(value: string | undefined): value is CustomerStatusFilter {
   return CUSTOMER_STATUS_FILTERS.some((status) => status === value);
@@ -22,8 +18,8 @@ function isStatusFilter(value: string | undefined): value is CustomerStatusFilte
  * a search longer than the contract allows is cut to its limit.
  */
 export function parseCustomerListParams(params: {
-  q?: SearchParam;
-  status?: SearchParam;
+  q?: RouteParam;
+  status?: RouteParam;
 }): CustomerListParams {
   const status = firstParam(params.status);
   return {

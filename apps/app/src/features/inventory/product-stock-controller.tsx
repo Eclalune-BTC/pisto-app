@@ -7,7 +7,7 @@ import { useRouteLabel } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { firstParam, type RouteParam } from "../cash/search-params";
+import { firstParam, type RouteParam } from "@/lib/route-params";
 import { productHref } from "../catalog/catalog-screen";
 import { flattenPages, productQueryOptions } from "../catalog/queries";
 import { CapabilityRouteState } from "../catalog/route-state";

@@ -4,11 +4,11 @@ import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-route
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { CustomerEditor } from "@/features/customers/customer-editor";
-import { firstParam } from "@/features/customers/list-params";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { readState } from "@/features/customers/read-state";
 import { ScreenState } from "@/features/customers/screen-state";
 import { hasDeniedRead } from "@/lib/query-state";
+import { firstParam } from "@/lib/route-params";
 
 export default function EditCustomerRoute() {
   const router = useRouter();

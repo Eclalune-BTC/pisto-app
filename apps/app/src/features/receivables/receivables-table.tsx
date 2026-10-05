@@ -2,14 +2,13 @@ import type { Receivable } from "@pisto/contracts";
 import type { Href } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-
+import { CellText } from "@/components/ui/cell-text";
 import { DataTable } from "@/components/ui/data-table";
+import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
 import { Text } from "@/components/ui/text";
-import { CellText } from "@/features/customers/cell-text";
-import { type FittedColumn, fitColumns } from "@/features/customers/fit-columns";
 import { useRecordFormat } from "@/features/customers/format";
 import { MoneyText } from "@/features/customers/money-text";
-import { useMeasuredWidth } from "@/features/customers/use-measured-width";
+import { useMeasuredWidth } from "@/lib/use-measured-width";
 
 import { ReceivableStateBadge } from "./receivable-state-badge";
 

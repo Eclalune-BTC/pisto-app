@@ -1,6 +1,6 @@
 import { uuidSchema } from "@pisto/contracts";
 
-import { firstParam } from "@/features/customers/list-params";
+import { firstParam } from "@/lib/route-params";
 
 export const RECEIVABLE_STATE_FILTERS = ["all", "open", "overdue", "paid", "voided"] as const;
 

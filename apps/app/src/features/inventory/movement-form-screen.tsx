@@ -2,6 +2,7 @@ import { type RefObject, useId } from "react";
 import { useTranslation } from "react-i18next";
 import { type TextInput, View } from "react-native";
 import type { DescriptionItem } from "@/components/layout/description-list";
+import { FormSection } from "@/components/layout/form-section";
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
@@ -12,7 +13,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import type { MutationPhase } from "@/lib/mutation-phase";
-import { FormSection } from "../cash/form-section";
 import { CommandReview } from "../catalog/command-review";
 import { MomentFields } from "./moment-fields";
 import {

@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
-import { firstParam } from "@/features/customers/list-params";
 import type { MenuTrigger } from "@/features/customers/overflow-action-menu";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { readState } from "@/features/customers/read-state";
@@ -24,6 +23,7 @@ import { acceptsVoid } from "@/features/receivables/rules";
 import type { AccountNameCell, ReceivableDetailLoadState } from "@/features/receivables/types";
 import { notify } from "@/lib/notify";
 import { hasDeniedRead } from "@/lib/query-state";
+import { firstParam } from "@/lib/route-params";
 
 export default function ReceivableDetailRoute() {
   const { t } = useTranslation();

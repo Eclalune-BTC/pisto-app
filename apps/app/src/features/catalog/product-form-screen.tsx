@@ -5,6 +5,7 @@ import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { type TextInput, View } from "react-native";
 import type { DescriptionItem } from "@/components/layout/description-list";
+import { FormSection } from "@/components/layout/form-section";
 import { PageHeader } from "@/components/layout/page-header";
 import { Page } from "@/components/page";
 import { StaleNotice } from "@/components/remote-state";
@@ -17,7 +18,6 @@ import { SelectField } from "@/components/ui/select-field";
 import { Switch } from "@/components/ui/switch";
 import { Text } from "@/components/ui/text";
 import type { MutationPhase } from "@/lib/mutation-phase";
-import { FormSection } from "../cash/form-section";
 import { CommandReview } from "./command-review";
 import {
   type ProductDraftErrors,

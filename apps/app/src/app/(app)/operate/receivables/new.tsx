@@ -2,9 +2,9 @@ import { uuidSchema } from "@pisto/contracts";
 import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-router";
 
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
-import { firstParam } from "@/features/customers/list-params";
 import { ScreenState } from "@/features/customers/screen-state";
 import { ReceivableEditor } from "@/features/receivables/receivable-editor";
+import { firstParam } from "@/lib/route-params";
 
 export default function NewReceivableRoute() {
   const router = useRouter();

@@ -9,22 +9,21 @@ import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
+import { CellText } from "@/components/ui/cell-text";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
+import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
 import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
-
-import { CellText } from "./cell-text";
+import { useMeasuredWidth } from "@/lib/use-measured-width";
 import { CustomerStatusBadge } from "./customer-status-badge";
-import { type FittedColumn, fitColumns } from "./fit-columns";
 import { CUSTOMER_SEARCH_MAX_LENGTH, type CustomerStatusFilter } from "./list-params";
 import { MoneyText } from "./money-text";
 import { SearchField } from "./search-field";
 import type { CustomerBalanceCell, CustomersLoadState } from "./types";
-import { useMeasuredWidth } from "./use-measured-width";
 
 type CustomersScreenProps = {
   balanceFor: (customerId: string) => CustomerBalanceCell;

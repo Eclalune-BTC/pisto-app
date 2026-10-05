@@ -19,6 +19,7 @@ import { mutationPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
+import { firstParam, type RouteParam } from "@/lib/route-params";
 import { cashApi } from "./api";
 import { CashAccountDetailScreen } from "./cash-account-detail-screen";
 import { CashMovementDetail } from "./cash-movement-detail-controller";
@@ -26,7 +27,6 @@ import { cashBoundaryCopy } from "./copy";
 import { invalidateCashLedger } from "./invalidate";
 import { cashAccountQueryOptions, cashMovementsInfiniteOptions, flattenPages } from "./queries";
 import { featureRemoteState, refetchEnabled } from "./remote-state";
-import { firstParam, type RouteParam } from "./search-params";
 import { useCashAccess } from "./use-cash-access";
 
 export function CashAccountDetailController() {

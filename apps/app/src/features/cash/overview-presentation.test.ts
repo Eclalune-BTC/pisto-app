@@ -23,6 +23,7 @@ import { Section } from "@/components/layout/section";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FilterToolbar } from "@/components/ui/filter-toolbar";
+import { LoadMoreButton } from "@/components/ui/load-more-button";
 import { SelectField } from "@/components/ui/select-field";
 import { ExpenseFilters } from "@/features/expenses/expense-filters";
 import { ExpenseHistory } from "@/features/expenses/expense-history";
@@ -32,7 +33,6 @@ import { elements } from "../../../test-support/element-tree";
 import { CashAccountList } from "./cash-account-list";
 import { CashMovementList } from "./cash-movement-list";
 import { CashScreen } from "./cash-screen";
-import { LoadMoreButton } from "./load-more-button";
 
 const t = i18n.t;
 const formatMoney = (amount: string, currency: string, digits: number) =>

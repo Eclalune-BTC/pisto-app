@@ -1,10 +1,9 @@
 import { describe, expect, test } from "vitest";
-
+import { firstParam } from "@/lib/route-params";
 import { isPositiveAmount } from "./format";
 import {
   CUSTOMER_SEARCH_MAX_LENGTH,
   customerListSearchParams,
-  firstParam,
   parseCustomerListParams,
 } from "./list-params";
 

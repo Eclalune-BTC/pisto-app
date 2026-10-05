@@ -2,7 +2,7 @@ import type { OperatingReportQuery } from "@pisto/contracts";
 import { calendarLocalDateSchema, operatingReportQuerySchema } from "@pisto/contracts";
 
 import { currentLocalDateTime } from "@/lib/money";
-import { firstParam, type RouteParam } from "../cash/search-params";
+import { firstParam, type RouteParam } from "@/lib/route-params";
 
 export type ReportRangeIssue = "invalid-end" | "invalid-start" | "reversed" | "too-long";
 
