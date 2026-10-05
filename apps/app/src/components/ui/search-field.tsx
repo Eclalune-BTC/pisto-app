@@ -1,34 +1,38 @@
 import { Search, X } from "lucide-react-native";
 import type { Ref } from "react";
 import { type TextInput, View } from "react-native";
+
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
-import { SEARCH_MAX_LENGTH } from "./search-params";
 
-type SearchBoxProps = {
-  /** The typed search is not applied yet or its results are still loading. */
-  busy: boolean;
+type SearchFieldProps = {
+  autoFocus?: boolean;
+  /** The typed search is still being applied; the leading icon becomes a spinner. */
+  busy?: boolean;
   clearLabel: string;
   label: string;
-  onChange: (value: string) => void;
+  maxLength?: number;
+  onChangeText: (value: string) => void;
   placeholder: string;
-  /** Lets the list take focus back to the search after its filters are cleared. */
+  /** Lets a list take focus back to the search, for example after clearing its filters. */
   ref?: Ref<TextInput>;
   value: string;
 };
 
-/** A toolbar search: the icon and placeholder say what it does, the label names it for readers. */
-export function SearchBox({
-  busy,
+/** A labelled search box with a leading icon and a clear action once it holds text. */
+export function SearchField({
+  autoFocus,
+  busy = false,
   clearLabel,
   label,
-  onChange,
+  maxLength,
+  onChangeText,
   placeholder,
   ref,
   value,
-}: SearchBoxProps) {
+}: SearchFieldProps) {
   return (
     <View className="relative min-w-0">
       <View className="pointer-events-none absolute inset-y-0 left-2.5 z-10 justify-center">
@@ -43,11 +47,12 @@ export function SearchBox({
         aria-busy={busy}
         autoCapitalize="none"
         autoCorrect={false}
+        autoFocus={autoFocus}
         className="pl-8 pr-9 native:pl-9"
         enterKeyHint="search"
         inputMode="search"
-        maxLength={SEARCH_MAX_LENGTH}
-        onChangeText={onChange}
+        maxLength={maxLength}
+        onChangeText={onChangeText}
         placeholder={placeholder}
         ref={ref}
         role="searchbox"
@@ -57,7 +62,7 @@ export function SearchBox({
         <View className="absolute inset-y-0 right-0.5 justify-center">
           <Button
             accessibilityLabel={clearLabel}
-            onPress={() => onChange("")}
+            onPress={() => onChangeText("")}
             size="icon-sm"
             variant="ghost"
           >

@@ -15,13 +15,12 @@ import {
 } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
 import { PressableSurface } from "@/components/ui/pressable-surface";
+import { SearchField } from "@/components/ui/search-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
-
 import type { FocusReturnRef } from "@/lib/focus-return";
 import type { ReadState } from "./read-state";
-import { SearchField } from "./search-field";
 
 export type PickerStatus = "denied" | "error" | "loading" | "offline" | "ready";
 

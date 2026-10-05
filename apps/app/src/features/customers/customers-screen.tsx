@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
 import { Icon } from "@/components/ui/icon";
+import { SearchField } from "@/components/ui/search-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
@@ -22,7 +23,6 @@ import { useMeasuredWidth } from "@/lib/use-measured-width";
 import { CustomerStatusBadge } from "./customer-status-badge";
 import { CUSTOMER_SEARCH_MAX_LENGTH, type CustomerStatusFilter } from "./list-params";
 import { MoneyText } from "./money-text";
-import { SearchField } from "./search-field";
 import type { CustomerBalanceCell, CustomersLoadState } from "./types";
 
 type CustomersScreenProps = {

@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
 import { LoadMoreButton } from "@/components/ui/load-more-button";
+import { SearchField } from "@/components/ui/search-field";
 import { SelectField } from "@/components/ui/select-field";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
@@ -33,7 +34,7 @@ import {
 } from "./catalog-cells";
 import { productPrice } from "./format";
 import type { CatalogStatusFilter } from "./queries";
-import { SearchBox } from "./search-box";
+import { SEARCH_MAX_LENGTH } from "./search-params";
 
 export type CatalogCollectionState =
   | { status: "loading" }
@@ -342,11 +343,12 @@ export function CatalogScreen({
           role="toolbar"
         >
           <View className="min-w-0 grow basis-[220px] sm:max-w-[320px]">
-            <SearchBox
+            <SearchField
+              maxLength={SEARCH_MAX_LENGTH}
               busy={searching}
               clearLabel={t("catalog.list.clearSearch")}
               label={t("catalog.list.searchLabel")}
-              onChange={onSearchChange}
+              onChangeText={onSearchChange}
               placeholder={t("catalog.list.searchPlaceholder")}
               ref={searchRef}
               value={search}

@@ -14,6 +14,7 @@ import { FilterBar } from "@/components/ui/filter-bar";
 import { Icon } from "@/components/ui/icon";
 import { LoadMoreButton } from "@/components/ui/load-more-button";
 import { RowActions } from "@/components/ui/row-actions";
+import { SearchField } from "@/components/ui/search-field";
 import { StatePanel } from "@/components/ui/state-panel";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
@@ -21,7 +22,7 @@ import { formatLocalizedDate } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
 import type { CatalogStatusFilter } from "./queries";
-import { SearchBox } from "./search-box";
+import { SEARCH_MAX_LENGTH } from "./search-params";
 
 export type CategoryCollectionState =
   | { status: "loading" }
@@ -256,11 +257,12 @@ export function CategoriesScreen({
           role="toolbar"
         >
           <View className="min-w-0 grow basis-[220px] sm:max-w-[320px]">
-            <SearchBox
+            <SearchField
+              maxLength={SEARCH_MAX_LENGTH}
               busy={searching}
               clearLabel={t("catalog.categories.clearSearch")}
               label={t("catalog.categories.searchLabel")}
-              onChange={onSearchChange}
+              onChangeText={onSearchChange}
               placeholder={t("catalog.categories.searchPlaceholder")}
               ref={searchRef}
               value={search}

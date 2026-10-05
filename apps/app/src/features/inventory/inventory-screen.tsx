@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
 import { LoadMoreButton } from "@/components/ui/load-more-button";
+import { SearchField } from "@/components/ui/search-field";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
@@ -28,7 +29,7 @@ import {
   StockValue,
 } from "../catalog/catalog-cells";
 import { quantityText } from "../catalog/format";
-import { SearchBox } from "../catalog/search-box";
+import { SEARCH_MAX_LENGTH } from "../catalog/search-params";
 
 export type StockItem = StockListResponse["data"]["items"][number];
 
@@ -282,11 +283,12 @@ export function InventoryScreen({
           role="toolbar"
         >
           <View className="min-w-0 grow basis-[220px] sm:max-w-[320px]">
-            <SearchBox
+            <SearchField
+              maxLength={SEARCH_MAX_LENGTH}
               busy={searching}
               clearLabel={t("inventory.list.clearSearch")}
               label={t("inventory.list.searchLabel")}
-              onChange={onSearchChange}
+              onChangeText={onSearchChange}
               placeholder={t("inventory.list.searchPlaceholder")}
               ref={searchRef}
               value={search}
