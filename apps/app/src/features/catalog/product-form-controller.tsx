@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TextInput } from "react-native";
 import type { DescriptionItem } from "@/components/layout/description-list";
+import { ChangedValue } from "@/components/layout/review-values";
 import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { requireSupportedLocale } from "@/i18n/locale";
@@ -20,7 +21,7 @@ import { isAccessDeniedError } from "@/lib/query-state";
 import { movementsInfiniteOptions } from "../inventory/queries";
 import { catalogApi } from "./api";
 import { productHref } from "./catalog-screen";
-import { ReviewChange } from "./command-review";
+
 import { productPrice, quantityText } from "./format";
 import { CatalogLink } from "./product-detail-controller";
 import {
@@ -163,7 +164,7 @@ function productReviewItems(command: ProductCommand, context: ReviewContext): De
   const after = describe(resolved, priceAfter);
   const value = (key: keyof typeof after, numeric = false) =>
     before && before[key] !== after[key] ? (
-      <ReviewChange after={after[key]} before={before[key]} numeric={numeric} />
+      <ChangedValue after={after[key]} before={before[key]} numeric={numeric} />
     ) : (
       after[key]
     );

@@ -366,14 +366,12 @@ describe("cash reviews keep what was reviewed across list refetches", () => {
       }),
     );
     expect(markup).toContain(
-      t("cash.review.change", {
+      t("common.change", {
         after: t("cash.accountDetail.negativeAllowed"),
         before: t("cash.accountDetail.negativeProtected"),
       }),
     );
     expect(markup).toContain(account.name);
-    expect(markup).not.toContain(
-      t("cash.review.change", { after: account.name, before: account.name }),
-    );
+    expect(markup).not.toContain(t("common.change", { after: account.name, before: account.name }));
   });
 });

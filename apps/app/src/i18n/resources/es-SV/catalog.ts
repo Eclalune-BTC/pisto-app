@@ -21,9 +21,7 @@ export const catalog = {
     active: "Activo",
     archived: "Archivado",
   },
-  review: {
-    change: "Antes: {{before}}. Ahora: {{after}}.",
-  },
+  review: {},
   list: {
     title: "Catálogo",
     description: "Los productos que vendes, con su precio y su existencia.",

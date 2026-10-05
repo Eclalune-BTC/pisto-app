@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TextInput } from "react-native";
 import type { DescriptionItem } from "@/components/layout/description-list";
+import { ChangedValue } from "@/components/layout/review-values";
 import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ import { isLockedPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { ReviewChange } from "../catalog/command-review";
+
 import { quantityText, signedQuantityText } from "../catalog/format";
 import { invalidateCatalogInventory, productQueryOptions } from "../catalog/queries";
 import { hasStaleRead, readState } from "../catalog/state";
@@ -273,7 +274,7 @@ export function MovementFormRoute({ productId }: { productId: string | undefined
           label: t("inventory.movementEditor.stockChange"),
           numeric: true,
           value: (
-            <ReviewChange
+            <ChangedValue
               after={quantity(balanceAfter(stock.onHandMinorUnits, command).toString())}
               before={onHand}
               numeric

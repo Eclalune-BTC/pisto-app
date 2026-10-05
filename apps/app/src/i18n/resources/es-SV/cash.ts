@@ -40,7 +40,6 @@ export const cash = {
   },
   review: {
     failedTitle: "No se completó la operación",
-    change: "Antes: {{before}}. Ahora: {{after}}.",
     uncertainDescription:
       "No pudimos confirmar el resultado. Reintenta la misma confirmación: Pisto la reconoce y no la registra dos veces.",
   },
