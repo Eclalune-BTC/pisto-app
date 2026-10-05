@@ -16,7 +16,7 @@ import type { MutationPhase } from "@/lib/mutation-phase";
 import { AccountBalanceHint } from "./account-balance-hint";
 import { CashOperationReview } from "./cash-operation-review";
 import { ChoiceList } from "./choice-list";
-import type { AdjustmentDraftValues } from "./drafts";
+import { type AdjustmentDraftValues, balanceAfter } from "./drafts";
 import { FieldError } from "./field-error";
 import { FormSection } from "./form-section";
 import { type CursorPage, LoadMoreButton } from "./load-more-button";
@@ -94,6 +94,19 @@ export function CashAdjustmentScreen({
               label: t("cash.fields.amount"),
               numeric: true,
               value: formatMoney(command.amountMinorUnits, command.currency),
+            },
+            {
+              label: t("cash.balanceAfter", { account: reviewAccount.name }),
+              numeric: true,
+              value: formatMoney(
+                balanceAfter(
+                  reviewAccount,
+                  command.direction === "in"
+                    ? command.amountMinorUnits
+                    : `-${command.amountMinorUnits}`,
+                ),
+                command.currency,
+              ),
             },
             { label: t("cash.fields.reason"), value: command.reason },
             {

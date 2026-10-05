@@ -45,6 +45,23 @@ describe("expense draft commands", () => {
     });
   });
 
+  test("refuses an expense that would overdraw a protected account", () => {
+    const result = buildExpenseCommand({
+      accounts: [{ ...activeAccount, balanceMinorUnits: "1000" }],
+      draft: {
+        accountId: activeAccount.id,
+        amount: "14.75",
+        category: "utilities",
+        description: "Energía eléctrica",
+        localDate: "2026-08-22",
+        localTime: "14:30",
+        payee: "",
+      },
+      idempotencyKey: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    });
+    expect(result).toEqual({ command: null, issues: { amount: "insufficient-balance" } });
+  });
+
   test("rejects archived account choices", () => {
     const result = buildExpenseCommand({
       accounts: [{ ...activeAccount, status: "archived" }],

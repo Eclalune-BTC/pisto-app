@@ -19,6 +19,7 @@ export type CashDraftIssue =
   | "invalid-time"
   | "account-required"
   | "accounts-must-differ"
+  | "insufficient-balance"
   | "no-changes";
 
 export type AccountDraftValues = {
@@ -153,6 +154,22 @@ export function buildCashAccountCommand(input: {
   };
 }
 
+/** The server refuses an outflow that leaves a protected account below zero; review catches it first. */
+export function overdrawsProtectedAccount(
+  account: CashAccount,
+  outflowMinorUnits: string,
+): boolean {
+  return (
+    !account.allowNegativeBalance &&
+    BigInt(account.balanceMinorUnits) - BigInt(outflowMinorUnits) < 0n
+  );
+}
+
+/** The balance an account would show after a signed change, in canonical minor units. */
+export function balanceAfter(account: CashAccount, deltaMinorUnits: string): string {
+  return (BigInt(account.balanceMinorUnits) + BigInt(deltaMinorUnits)).toString();
+}
+
 export function buildCashAdjustmentCommand(input: {
   account: CashAccount | undefined;
   draft: AdjustmentDraftValues;
@@ -168,6 +185,14 @@ export function buildCashAdjustmentCommand(input: {
       ? parseAmountToMinorUnits(input.draft.amount, input.account.currencyMinorUnitDigits)
       : null;
   if (amount && "error" in amount) issues.amount = amountIssue(input.draft.amount);
+  else if (
+    amount &&
+    input.account &&
+    input.draft.direction === "out" &&
+    overdrawsProtectedAccount(input.account, amount.value)
+  ) {
+    issues.amount = "insufficient-balance";
+  }
   const reason = validateText(input.draft.reason, 240, true);
   if (reason.issue) issues.reason = reason.issue;
   const dateTimeIssues = validateDateTime(input.draft.localDate, input.draft.localTime);
@@ -221,6 +246,9 @@ export function buildCashTransferCommand(input: {
     ? parseAmountToMinorUnits(input.draft.amount, fromAccount.currencyMinorUnitDigits)
     : null;
   if (amount && "error" in amount) issues.amount = amountIssue(input.draft.amount);
+  else if (amount && fromAccount && overdrawsProtectedAccount(fromAccount, amount.value)) {
+    issues.amount = "insufficient-balance";
+  }
   const note = validateText(input.draft.note, 240, false);
   if (note.issue) issues.note = note.issue;
   const dateTimeIssues = validateDateTime(input.draft.localDate, input.draft.localTime);

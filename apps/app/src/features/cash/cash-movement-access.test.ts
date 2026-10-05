@@ -222,6 +222,8 @@ describe("cash reviews keep what was reviewed across list refetches", () => {
     id: "original-account",
     name: "Reviewed source",
     status: "active",
+    allowNegativeBalance: false,
+    balanceMinorUnits: "100000",
     currency: "USD",
     currencyMinorUnitDigits: 2,
   } as CashAccount;

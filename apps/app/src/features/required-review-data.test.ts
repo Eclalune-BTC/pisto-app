@@ -33,6 +33,8 @@ const reviewed = {
   status: "active",
   currency: "USD",
   currencyMinorUnitDigits: 2,
+  allowNegativeBalance: false,
+  balanceMinorUnits: "100000",
 } as CashAccount;
 const common = {
   accounts: [],

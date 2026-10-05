@@ -122,6 +122,8 @@ const account = {
   id: "11111111-1111-4111-8111-111111111111",
   name: "Caja",
   status: "active",
+  allowNegativeBalance: false,
+  balanceMinorUnits: "100000",
   currency: "USD",
   currencyMinorUnitDigits: 2,
 } as CashAccount;

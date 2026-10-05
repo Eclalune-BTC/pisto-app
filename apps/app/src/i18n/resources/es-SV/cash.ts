@@ -24,6 +24,7 @@ export const cash = {
     receivablePayment: "Pago registrado en cuentas por cobrar",
     receivablePaymentReversal: "Pago revertido en cuentas por cobrar",
   },
+  balanceAfter: "Saldo después en {{account}}",
   negativeAllowed: "Admite saldo negativo",
   boundary: {
     deniedTitle: "No tienes acceso a caja y cuentas",
@@ -204,6 +205,8 @@ export const cash = {
   issues: {
     accountRequired: "Selecciona una cuenta activa.",
     accountsMustDiffer: "Elige una cuenta de destino diferente.",
+    insufficientBalance:
+      "La cuenta no tiene saldo suficiente y no admite saldo negativo. Usa un importe menor u otra cuenta.",
     invalidAmount: "Ingresa un importe positivo, sin comas y con los decimales permitidos.",
     invalidDate: "Ingresa una fecha válida.",
     invalidTime: "Ingresa una hora válida, por ejemplo 14:30.",

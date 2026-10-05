@@ -15,6 +15,7 @@ import { requireSupportedLocale } from "@/i18n/locale";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { AccountBalanceHint } from "../cash/account-balance-hint";
 import { CashOperationReview } from "../cash/cash-operation-review";
+import { balanceAfter } from "../cash/drafts";
 import { FieldError } from "../cash/field-error";
 import { FormSection } from "../cash/form-section";
 import { type CursorPage, LoadMoreButton } from "../cash/load-more-button";
@@ -88,6 +89,14 @@ export function ExpenseEditorScreen({
               value: formatMoney(command.amountMinorUnits, command.currency),
             },
             { label: t("expenses.editor.account"), value: reviewAccount.name },
+            {
+              label: t("cash.balanceAfter", { account: reviewAccount.name }),
+              numeric: true,
+              value: formatMoney(
+                balanceAfter(reviewAccount, `-${command.amountMinorUnits}`),
+                command.currency,
+              ),
+            },
             {
               label: t("expenses.editor.category"),
               value: expenseCategoryLabels(t)[command.category],

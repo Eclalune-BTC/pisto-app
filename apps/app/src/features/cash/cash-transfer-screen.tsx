@@ -15,7 +15,7 @@ import { requireSupportedLocale } from "@/i18n/locale";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { AccountBalanceHint } from "./account-balance-hint";
 import { CashOperationReview } from "./cash-operation-review";
-import type { TransferDraftValues } from "./drafts";
+import { balanceAfter, type TransferDraftValues } from "./drafts";
 import { FieldError } from "./field-error";
 import { FormSection } from "./form-section";
 import { type CursorPage, LoadMoreButton } from "./load-more-button";
@@ -87,6 +87,19 @@ export function CashTransferScreen({
               label: t("cash.fields.amount"),
               numeric: true,
               value: formatMoney(command.amountMinorUnits, command.currency),
+            },
+            {
+              label: t("cash.balanceAfter", { account: from.name }),
+              numeric: true,
+              value: formatMoney(
+                balanceAfter(from, `-${command.amountMinorUnits}`),
+                command.currency,
+              ),
+            },
+            {
+              label: t("cash.balanceAfter", { account: to.name }),
+              numeric: true,
+              value: formatMoney(balanceAfter(to, command.amountMinorUnits), command.currency),
             },
             {
               label: t("cash.transfer.note"),

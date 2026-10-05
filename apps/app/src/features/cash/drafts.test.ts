@@ -5,6 +5,7 @@ import { ApiClientError } from "@/lib/api-error";
 import { formatMinorUnits } from "@/lib/money";
 import { isLockedPhase, mutationPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
 import {
+  balanceAfter,
   buildCashAccountCommand,
   buildCashAdjustmentCommand,
   buildCashReversalCommand,
@@ -167,6 +168,56 @@ describe("cash draft commands", () => {
       idempotencyKey: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
       toAccountId: to.id,
     });
+  });
+
+  test("stops an outflow that would overdraw a protected account before review", () => {
+    const from = account({ balanceMinorUnits: "6901" });
+    const to = account({ id: "22222222-2222-4222-8222-222222222222", name: "Banco" });
+    const transfer = (amount: string, source = from) =>
+      buildCashTransferCommand({
+        accounts: [source, to],
+        draft: {
+          amount,
+          fromAccountId: source.id,
+          localDate: "2026-08-22",
+          localTime: "11:00",
+          note: "",
+          toAccountId: to.id,
+        },
+        idempotencyKey: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      });
+    expect(transfer("100.00")).toEqual({
+      command: null,
+      issues: { amount: "insufficient-balance" },
+    });
+    expect(transfer("69.01").command?.amountMinorUnits).toBe("6901");
+    expect(
+      transfer("100.00", account({ balanceMinorUnits: "6901", allowNegativeBalance: true }))
+        .command,
+    ).not.toBeNull();
+
+    const adjustment = (direction: "in" | "out") =>
+      buildCashAdjustmentCommand({
+        account: from,
+        draft: {
+          accountId: from.id,
+          amount: "100.00",
+          direction,
+          localDate: "2026-08-22",
+          localTime: "11:00",
+          reason: "Conteo",
+        },
+        idempotencyKey: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      });
+    expect(adjustment("out").issues).toEqual({ amount: "insufficient-balance" });
+    expect(adjustment("in").command).not.toBeNull();
+  });
+
+  test("computes each reviewed balance exactly beyond the double range", () => {
+    expect(balanceAfter(account({ balanceMinorUnits: "9007199254740993" }), "-1")).toBe(
+      "9007199254740992",
+    );
+    expect(balanceAfter(account({ balanceMinorUnits: "-5" }), "10")).toBe("5");
   });
 
   test("builds a dated reversal and treats a network mutation result as uncertain", () => {

@@ -11,6 +11,7 @@ import type { CashDraftIssue } from "./drafts";
 const issueKeys = {
   "account-required": "cash.issues.accountRequired",
   "accounts-must-differ": "cash.issues.accountsMustDiffer",
+  "insufficient-balance": "cash.issues.insufficientBalance",
   "invalid-amount": "cash.issues.invalidAmount",
   "invalid-date": "cash.issues.invalidDate",
   "invalid-time": "cash.issues.invalidTime",
