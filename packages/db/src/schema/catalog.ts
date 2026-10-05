@@ -222,9 +222,10 @@ export const inventoryMovement = pgTable(
     uniqueIndex("inventory_movement_reverses_once_unique")
       .on(table.reversesMovementId)
       .where(sql`${table.reversesMovementId} is not null`),
-    index("inventory_movement_business_product_created_idx").on(
+    index("inventory_movement_business_product_occurred_created_idx").on(
       table.businessId,
       table.productId,
+      table.occurredAt,
       table.createdAt,
       table.id,
     ),

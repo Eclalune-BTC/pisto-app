@@ -148,7 +148,11 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
                 eq(receivablePayment.receivableId, receivableId),
               ),
             )
-            .orderBy(desc(receivablePayment.createdAt), desc(receivablePayment.id));
+            .orderBy(
+              desc(receivablePayment.occurredAt),
+              desc(receivablePayment.createdAt),
+              desc(receivablePayment.id),
+            );
           return {
             receivable: await currentReceivable(tx, access, record),
             payments: paymentRecords.map(toPayment),

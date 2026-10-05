@@ -22,7 +22,7 @@ The baseline surface is:
 | `GET` | `/v1/me` | Yes | Normalized user and session summary |
 | `GET` | `/v1/businesses` | Yes, fresh session | Explicit memberships and active business selector |
 | `POST` | `/v1/businesses` | Yes, fresh session | Create or replay the one owner business and settings |
-| `GET` | `/v1/sales` | `sales:read`, fresh session | List active-business sales newest first with a status filter |
+| `GET` | `/v1/sales` | `sales:read`, fresh session | List active-business sales by occurrence, newest first, with a status filter |
 | `POST` | `/v1/sales` | `sales:create`, fresh session | Confirm or replay one total-only sale |
 | `GET`, `POST` | `/v1/sales/review` | `sales:create`, fresh session | Read or prepare the current actor/business review without posting |
 | `POST` | `/v1/sales/review/:reviewId/confirm` | `sales:create`, fresh session | Explicitly confirm the stored review and retain its result |

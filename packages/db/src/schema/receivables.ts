@@ -243,9 +243,10 @@ export const receivablePayment = pgTable(
       foreignColumns: [cashAccount.businessId, cashAccount.id],
       name: "receivable_payment_business_cash_account_fk",
     }).onDelete("restrict"),
-    index("receivable_payment_business_receivable_created_idx").on(
+    index("receivable_payment_business_receivable_occurred_created_idx").on(
       table.businessId,
       table.receivableId,
+      table.occurredAt,
       table.createdAt,
       table.id,
     ),

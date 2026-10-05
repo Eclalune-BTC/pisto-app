@@ -102,10 +102,17 @@ export const expense = pgTable(
       ],
       name: "expense_business_currency_digits_fk",
     }).onDelete("restrict"),
-    index("expense_business_status_occurred_idx").on(
+    index("expense_business_occurred_created_idx").on(
+      table.businessId,
+      table.occurredAt,
+      table.createdAt,
+      table.id,
+    ),
+    index("expense_business_status_occurred_created_idx").on(
       table.businessId,
       table.status,
       table.occurredAt,
+      table.createdAt,
       table.id,
     ),
     index("expense_business_category_occurred_idx").on(
@@ -113,9 +120,10 @@ export const expense = pgTable(
       table.category,
       table.occurredAt,
     ),
-    index("expense_business_account_created_idx").on(
+    index("expense_business_account_occurred_created_idx").on(
       table.businessId,
       table.accountId,
+      table.occurredAt,
       table.createdAt,
       table.id,
     ),
@@ -337,13 +345,19 @@ export const cashMovement = pgTable(
       ],
       name: "cash_movement_business_currency_digits_fk",
     }).onDelete("restrict"),
-    index("cash_movement_business_account_created_idx").on(
+    index("cash_movement_business_account_occurred_created_idx").on(
       table.businessId,
       table.accountId,
+      table.occurredAt,
       table.createdAt,
       table.id,
     ),
-    index("cash_movement_business_occurred_idx").on(table.businessId, table.occurredAt, table.id),
+    index("cash_movement_business_occurred_created_idx").on(
+      table.businessId,
+      table.occurredAt,
+      table.createdAt,
+      table.id,
+    ),
   ],
 );
 

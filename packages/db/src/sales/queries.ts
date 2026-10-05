@@ -6,11 +6,11 @@ import { authorizeBusinessAction } from "../business-access.ts";
 import type { Database } from "../client.ts";
 import { ProductError, parseInput } from "../errors.ts";
 import {
-  decodeCursor,
+  decodeOccurrenceCursor,
   exactCursorTimestamp,
-  keysetBefore,
   listFilterFingerprint,
-  pageRows,
+  occurrenceKeysetBefore,
+  pageOccurrenceRows,
 } from "../pagination.ts";
 import { sale, saleCorrection } from "../schema/sales.ts";
 import { toCorrection, toSale } from "./records.ts";
@@ -23,13 +23,14 @@ export function createSaleQueries(db: Database): SaleQueries {
     async listSales(actor, rawQuery) {
       const query = parseInput(saleListQuerySchema, rawQuery, "Sale list filters are invalid");
       const filterFingerprint = await listFilterFingerprint("sales", { status: query.status });
-      const cursor = decodeCursor(query.cursor, filterFingerprint);
+      const cursor = decodeOccurrenceCursor(query.cursor, filterFingerprint);
 
       return db.transaction(async (tx) => {
         const access = await authorizeBusinessAction(tx, actor, ["sales:read"]);
         const rows = await tx
           .select({
             ...getTableColumns(sale),
+            occurredAtExact: exactCursorTimestamp(sale.occurredAt),
             createdAtExact: exactCursorTimestamp(sale.createdAt),
           })
           .from(sale)
@@ -37,12 +38,12 @@ export function createSaleQueries(db: Database): SaleQueries {
             and(
               eq(sale.businessId, access.businessId),
               query.status === "all" ? undefined : eq(sale.status, query.status),
-              keysetBefore(sale, cursor),
+              occurrenceKeysetBefore(sale, cursor),
             ),
           )
-          .orderBy(desc(sale.createdAt), desc(sale.id))
+          .orderBy(desc(sale.occurredAt), desc(sale.createdAt), desc(sale.id))
           .limit(query.limit + 1);
-        const page = pageRows(rows, query.limit, filterFingerprint);
+        const page = pageOccurrenceRows(rows, query.limit, filterFingerprint);
         const pageIds = page.rows.map(({ id }) => id);
         // A sale is never both an original and a replacement, but only the
         // application enforces that. Joining the correction table could still fan

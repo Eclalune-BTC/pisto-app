@@ -12,9 +12,12 @@ import type { Database } from "../client.ts";
 import { ProductError, parseInput } from "../errors.ts";
 import {
   decodeCursor,
+  decodeOccurrenceCursor,
   exactCursorTimestamp,
   keysetBefore,
   listFilterFingerprint,
+  occurrenceKeysetBefore,
+  pageOccurrenceRows,
   pageRows,
 } from "../pagination.ts";
 import { catalogCategory, catalogProduct, inventoryMovement } from "../schema/catalog.ts";
@@ -180,7 +183,7 @@ export function createCatalogQueries(db: Database): CatalogQueries {
         "Movement query is invalid",
       );
       const filterFingerprint = await listFilterFingerprint("inventory-movements", { productId });
-      const cursor = decodeCursor(query.cursor, filterFingerprint);
+      const cursor = decodeOccurrenceCursor(query.cursor, filterFingerprint);
       return db.transaction(async (tx) => {
         const access = await authorizeBusinessAction(tx, actor, ["inventory:read"]);
         const [product] = await tx
@@ -194,6 +197,7 @@ export function createCatalogQueries(db: Database): CatalogQueries {
         const rows = await tx
           .select({
             ...getTableColumns(inventoryMovement),
+            occurredAtExact: exactCursorTimestamp(inventoryMovement.occurredAt),
             createdAtExact: exactCursorTimestamp(inventoryMovement.createdAt),
             reversedByMovementId: reversedByMovementId(),
           })
@@ -202,12 +206,16 @@ export function createCatalogQueries(db: Database): CatalogQueries {
             and(
               eq(inventoryMovement.businessId, access.businessId),
               eq(inventoryMovement.productId, productId),
-              keysetBefore(inventoryMovement, cursor),
+              occurrenceKeysetBefore(inventoryMovement, cursor),
             ),
           )
-          .orderBy(desc(inventoryMovement.createdAt), desc(inventoryMovement.id))
+          .orderBy(
+            desc(inventoryMovement.occurredAt),
+            desc(inventoryMovement.createdAt),
+            desc(inventoryMovement.id),
+          )
           .limit(query.limit + 1);
-        const page = pageRows(rows, query.limit, filterFingerprint);
+        const page = pageOccurrenceRows(rows, query.limit, filterFingerprint);
         return {
           items: page.rows.map((record) => toMovement(record, record.reversedByMovementId)),
           nextCursor: page.nextCursor,

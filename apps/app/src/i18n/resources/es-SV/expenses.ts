@@ -42,7 +42,7 @@ export const expenses = {
     emptyTitle: "No hay gastos con estos filtros",
     emptyDescription: "Registra un gasto pagado o cambia los filtros del historial.",
     historyUnavailable: "No pudimos cargar el historial",
-    historyOrder: "Del registro más reciente al más antiguo.",
+    historyOrder: "Por fecha del gasto, del más reciente al más antiguo.",
     rowActions: "Acciones de {{name}}",
   },
   summary: {

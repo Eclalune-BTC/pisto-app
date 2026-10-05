@@ -155,9 +155,13 @@ the server's time-zone resolution or daylight-saving ambiguity checks.
 - Opaque timestamp cursors preserve PostgreSQL microseconds and encode UTC explicitly. Do not
   round a cursor through JavaScript `Date` milliseconds or rely on a connection's `TimeZone` setting.
 - `pagination.ts` owns every history cursor: a versioned base64url payload bound to a fingerprint of
-  the list kind and its filters, a `(created_at, id)` row-value keyset predicate that can seek the
-  tenant/creation indexes, and the `limit + 1` page split. A cursor replayed under other filters or
-  tampered with is `VALIDATION_ERROR`.
+  the list kind and its filters, a row-value keyset predicate, and the `limit + 1` page split. Record
+  lists (accounts, categories, products, customers, receivables) page by `(created_at, id)`. Ledger
+  lists of things that happened (sales, expenses, cash and inventory movements) page by
+  `(occurred_at, created_at, id)` with a version 2 cursor, so a backdated entry appears at its date;
+  receivable payments use the same order. Each order has a tenant index that serves it without a
+  sort, which an integration test checks through the query plan. A cursor of the other kind,
+  replayed under other filters or tampered with is `VALIDATION_ERROR`.
 - Repositories trust path identifiers the HTTP boundary already validated as UUIDs; a malformed
   identifier reaching PostgreSQL fails loudly instead of being reported as a missing record.
 - Idempotency keys are normalized to lower case before the advisory lock and every receipt lookup,

@@ -5,10 +5,14 @@ import { ProductError } from "../src/errors.ts";
 import { sha256Hex } from "../src/operation-log.ts";
 import {
   decodeCursor,
+  decodeOccurrenceCursor,
   encodeCursor,
+  encodeOccurrenceCursor,
   isCursorTimestamp,
   keysetBefore,
   listFilterFingerprint,
+  occurrenceKeysetBefore,
+  pageOccurrenceRows,
   pageRows,
 } from "../src/pagination.ts";
 import { sale } from "../src/schema/sales.ts";
@@ -135,5 +139,60 @@ describe("keyset page", () => {
     const query = new PgDialect().sqlToQuery(predicate);
     expect(query.sql).toBe('("sale"."created_at", "sale"."id") < ($1::timestamptz, $2::uuid)');
     expect(query.params).toEqual([createdAt, id]);
+  });
+});
+
+describe("occurrence keyset page", () => {
+  const occurredAt = "2026-08-21 15:00:00.000001+00";
+  const rows = [3, 2, 1].map((n) => ({
+    occurredAtExact: `2026-08-2${n} 10:00:00+00`,
+    createdAtExact: `2026-08-22 20:30:0${n}+00`,
+    id: `71402e0c-b17d-4d8c-83ae-8d163d10d51${n}`,
+  }));
+
+  test("round-trips the occurrence position and refuses the other cursor kind", () => {
+    const cursor = encodeOccurrenceCursor({ createdAt, id, occurredAt }, "filter");
+    expect(decodeOccurrenceCursor(cursor, "filter")).toEqual({ createdAt, id, occurredAt });
+    expect(decodeOccurrenceCursor(undefined, "filter")).toBeNull();
+    expect(() => decodeCursor(cursor, "filter")).toThrow(ProductError);
+    expect(() =>
+      decodeOccurrenceCursor(encodeCursor({ createdAt, id }, "filter"), "filter"),
+    ).toThrow(ProductError);
+    expect(() =>
+      decodeOccurrenceCursor(
+        encode({
+          createdAt,
+          filterFingerprint: "filter",
+          id,
+          occurredAt: "2026-02-30 00:00:00+00",
+          version: 2,
+        }),
+        "filter",
+      ),
+    ).toThrow(ProductError);
+  });
+
+  test("mints the next cursor from the last row's exact occurrence and creation", () => {
+    const full = pageOccurrenceRows(rows, 2, "f");
+    const boundary = rows[1];
+    if (!boundary) throw new Error("Missing fixture row");
+    expect(full.rows).toEqual(rows.slice(0, 2));
+    expect(decodeOccurrenceCursor(full.nextCursor ?? undefined, "f")).toEqual({
+      createdAt: boundary.createdAtExact,
+      id: boundary.id,
+      occurredAt: boundary.occurredAtExact,
+    });
+    expect(pageOccurrenceRows(rows, 3, "f").nextCursor).toBeNull();
+  });
+
+  test("compares occurrence, creation and id as one row value", () => {
+    expect(occurrenceKeysetBefore(sale, null)).toBeUndefined();
+    const predicate = occurrenceKeysetBefore(sale, { createdAt, id, occurredAt });
+    if (!predicate) throw new Error("Missing keyset predicate");
+    const query = new PgDialect().sqlToQuery(predicate);
+    expect(query.sql).toBe(
+      '("sale"."occurred_at", "sale"."created_at", "sale"."id") < ($1::timestamptz, $2::timestamptz, $3::uuid)',
+    );
+    expect(query.params).toEqual([occurredAt, createdAt, id]);
   });
 });

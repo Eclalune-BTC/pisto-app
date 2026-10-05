@@ -62,7 +62,7 @@ export const cash = {
     emptyTitle: "Sin movimientos",
     reason: "Motivo",
     rowLabel: "{{action}}, {{date}}",
-    order: "Del registro más reciente al más antiguo.",
+    order: "Por fecha del movimiento, del más reciente al más antiguo.",
   },
   overview: {
     title: "Caja y cuentas",
@@ -88,7 +88,7 @@ export const cash = {
     emptyArchivedDescription: "Las cuentas archivadas aparecerán aquí con todo su historial.",
     accountsUnavailable: "No pudimos cargar las cuentas",
     movementsTitle: "Movimientos recientes",
-    movementsDescription: "Todas las cuentas, del registro más reciente al más antiguo.",
+    movementsDescription: "Todas las cuentas, por fecha del movimiento.",
     movementsUnavailable: "No pudimos cargar los movimientos",
     noMovements: "Los gastos, ajustes, transferencias y cobros aparecerán aquí.",
   },

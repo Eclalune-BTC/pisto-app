@@ -13,9 +13,12 @@ import { ProductError, parseInput } from "../errors.ts";
 import { nextCalendarDate, resolveLocalDateTime } from "../local-time.ts";
 import {
   decodeCursor,
+  decodeOccurrenceCursor,
   exactCursorTimestamp,
   keysetBefore,
   listFilterFingerprint,
+  occurrenceKeysetBefore,
+  pageOccurrenceRows,
   pageRows,
 } from "../pagination.ts";
 import { cashAccount, cashMovement, expense } from "../schema/cash.ts";
@@ -108,12 +111,13 @@ export function createCashQueries(db: Database): CashQueries {
         category: query.category ?? null,
         status: query.status,
       });
-      const cursor = decodeCursor(query.cursor, filterFingerprint);
+      const cursor = decodeOccurrenceCursor(query.cursor, filterFingerprint);
       return db.transaction(async (tx) => {
         const access = await authorizeBusinessAction(tx, actor, ["expenses:read"]);
         const rows = await tx
           .select({
             ...getTableColumns(expense),
+            occurredAtExact: exactCursorTimestamp(expense.occurredAt),
             createdAtExact: exactCursorTimestamp(expense.createdAt),
           })
           .from(expense)
@@ -123,12 +127,12 @@ export function createCashQueries(db: Database): CashQueries {
               query.status === "all" ? undefined : eq(expense.status, query.status),
               query.category ? eq(expense.category, query.category) : undefined,
               query.accountId ? eq(expense.accountId, query.accountId) : undefined,
-              keysetBefore(expense, cursor),
+              occurrenceKeysetBefore(expense, cursor),
             ),
           )
-          .orderBy(desc(expense.createdAt), desc(expense.id))
+          .orderBy(desc(expense.occurredAt), desc(expense.createdAt), desc(expense.id))
           .limit(query.limit + 1);
-        const page = pageRows(rows, query.limit, filterFingerprint);
+        const page = pageOccurrenceRows(rows, query.limit, filterFingerprint);
         return {
           items: page.rows.map(toExpense),
           nextCursor: page.nextCursor,
@@ -208,12 +212,13 @@ export function createCashQueries(db: Database): CashQueries {
       const filterFingerprint = await listFilterFingerprint("cash-movements", {
         accountId: query.accountId ?? null,
       });
-      const cursor = decodeCursor(query.cursor, filterFingerprint);
+      const cursor = decodeOccurrenceCursor(query.cursor, filterFingerprint);
       return db.transaction(async (tx) => {
         const access = await authorizeBusinessAction(tx, actor, ["cash:read"]);
         const rows = await tx
           .select({
             ...getTableColumns(cashMovement),
+            occurredAtExact: exactCursorTimestamp(cashMovement.occurredAt),
             createdAtExact: exactCursorTimestamp(cashMovement.createdAt),
           })
           .from(cashMovement)
@@ -221,12 +226,16 @@ export function createCashQueries(db: Database): CashQueries {
             and(
               eq(cashMovement.businessId, access.businessId),
               query.accountId ? eq(cashMovement.accountId, query.accountId) : undefined,
-              keysetBefore(cashMovement, cursor),
+              occurrenceKeysetBefore(cashMovement, cursor),
             ),
           )
-          .orderBy(desc(cashMovement.createdAt), desc(cashMovement.id))
+          .orderBy(
+            desc(cashMovement.occurredAt),
+            desc(cashMovement.createdAt),
+            desc(cashMovement.id),
+          )
           .limit(query.limit + 1);
-        const page = pageRows(rows, query.limit, filterFingerprint);
+        const page = pageOccurrenceRows(rows, query.limit, filterFingerprint);
         return {
           items: page.rows.map(toCashMovement),
           nextCursor: page.nextCursor,

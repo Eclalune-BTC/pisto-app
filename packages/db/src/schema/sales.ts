@@ -60,15 +60,16 @@ export const sale = pgTable(
       ],
       name: "sale_business_currency_digits_fk",
     }).onDelete("restrict"),
-    index("sale_business_status_occurred_at_idx").on(
+    index("sale_business_occurred_created_idx").on(
+      table.businessId,
+      table.occurredAt,
+      table.createdAt,
+      table.id,
+    ),
+    index("sale_business_status_occurred_created_idx").on(
       table.businessId,
       table.status,
       table.occurredAt,
-    ),
-    index("sale_business_created_at_idx").on(table.businessId, table.createdAt, table.id),
-    index("sale_business_status_created_at_idx").on(
-      table.businessId,
-      table.status,
       table.createdAt,
       table.id,
     ),

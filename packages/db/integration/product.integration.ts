@@ -17,6 +17,8 @@ import {
   session,
   user,
 } from "../src/index.ts";
+import { cashMovement, expense } from "../src/schema/cash.ts";
+import { inventoryMovement } from "../src/schema/catalog.ts";
 
 const database = createDatabase({
   ...parseDatabaseConfig(process.env),
@@ -931,7 +933,7 @@ describe("sale history list on PostgreSQL 18", () => {
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
   });
 
-  test("answers each status filter from a business index without sorting rows", async () => {
+  test("answers each ledger list from an occurrence index without sorting rows", async () => {
     const plans = await database.db.transaction(async (tx) => {
       // Both settings only discourage their node; a plan that still contains a
       // Sort would mean the index cannot satisfy this ordering on its own.
@@ -941,25 +943,79 @@ describe("sale history list on PostgreSQL 18", () => {
         const rows = await tx.execute<{ "QUERY PLAN": string }>(statement);
         return rows.map((row) => row["QUERY PLAN"]).join("\n");
       };
+      const someId = crypto.randomUUID();
       return {
         all: await readPlan(sql`
           explain (costs off) select * from ${sale}
           where ${sale.businessId} = ${listBusinessId}
-          order by ${sale.createdAt} desc, ${sale.id} desc
+          order by ${sale.occurredAt} desc, ${sale.createdAt} desc, ${sale.id} desc
           limit 26
         `),
         voided: await readPlan(sql`
           explain (costs off) select * from ${sale}
           where ${sale.businessId} = ${listBusinessId} and ${sale.status} = 'voided'
-          order by ${sale.createdAt} desc, ${sale.id} desc
+          order by ${sale.occurredAt} desc, ${sale.createdAt} desc, ${sale.id} desc
+          limit 26
+        `),
+        expenses: await readPlan(sql`
+          explain (costs off) select * from ${expense}
+          where ${expense.businessId} = ${listBusinessId} and ${expense.status} = 'posted'
+          order by ${expense.occurredAt} desc, ${expense.createdAt} desc, ${expense.id} desc
+          limit 26
+        `),
+        accountMovements: await readPlan(sql`
+          explain (costs off) select * from ${cashMovement}
+          where ${cashMovement.businessId} = ${listBusinessId}
+            and ${cashMovement.accountId} = ${someId}
+          order by ${cashMovement.occurredAt} desc, ${cashMovement.createdAt} desc,
+            ${cashMovement.id} desc
+          limit 26
+        `),
+        movements: await readPlan(sql`
+          explain (costs off) select * from ${cashMovement}
+          where ${cashMovement.businessId} = ${listBusinessId}
+          order by ${cashMovement.occurredAt} desc, ${cashMovement.createdAt} desc,
+            ${cashMovement.id} desc
+          limit 26
+        `),
+        stock: await readPlan(sql`
+          explain (costs off) select * from ${inventoryMovement}
+          where ${inventoryMovement.businessId} = ${listBusinessId}
+            and ${inventoryMovement.productId} = ${someId}
+          order by ${inventoryMovement.occurredAt} desc, ${inventoryMovement.createdAt} desc,
+            ${inventoryMovement.id} desc
           limit 26
         `),
       };
     });
 
-    expect(plans.all).toContain("sale_business_created_at_idx");
-    expect(plans.all).not.toContain("Sort");
-    expect(plans.voided).toContain("sale_business_status_created_at_idx");
-    expect(plans.voided).not.toContain("Sort");
+    expect(plans.all).toContain("sale_business_occurred_created_idx");
+    expect(plans.voided).toContain("sale_business_status_occurred_created_idx");
+    // Empty tables leave the planner free to pick either occurrence index for a filtered list.
+    expect(plans.expenses).toMatch(/expense_business_(?:status_)?occurred_created_idx/);
+    expect(plans.accountMovements).toMatch(
+      /cash_movement_business_(?:account_)?occurred_created_idx/,
+    );
+    expect(plans.movements).toContain("cash_movement_business_occurred_created_idx");
+    expect(plans.stock).toContain("inventory_movement_business_product_occurred_created_idx");
+    for (const plan of Object.values(plans)) expect(plan).not.toContain("Sort");
+  });
+
+  test("lists a backdated sale at its date instead of at the top", async () => {
+    const backdated = await repository.createSale(ownerActor, {
+      idempotencyKey: crypto.randomUUID(),
+      grossMinorUnits: "700",
+      occurredLocalDate: "2026-08-21",
+      occurredLocalTime: "09:00",
+      description: "Backdated list sale",
+    });
+    const ids = (await repository.listSales(ownerActor, { limit: 50, status: "all" })).items.map(
+      ({ id }) => id,
+    );
+    const position = ids.indexOf(backdated.sale.id);
+
+    expect(position).toBeGreaterThan(ids.indexOf(postedIds[4] as string));
+    expect(position).toBeLessThan(ids.indexOf(microsecondIds[0] as string));
+    expect(await collectIds(ownerActor, "all", 2)).toEqual(ids);
   });
 });
