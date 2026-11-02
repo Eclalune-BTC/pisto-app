@@ -10,7 +10,6 @@ import { Check, Minus, TriangleAlert } from "lucide-react-native";
 import type { PropsWithChildren } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { DescriptionList } from "@/components/layout/description-list";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
@@ -114,16 +113,23 @@ export function BusinessFactsCard({
   const { t } = useTranslation();
   return (
     <Card description={t("settings.businessCardDescription")} title={t("settings.businessCard")}>
-      <View className="p-4 sm:p-5">
-        <DescriptionList
-          items={[
-            { label: t("settings.businessName"), value: business.name },
-            { label: t("common.currency"), value: currency },
-            { label: t("common.timeZone"), value: timeZone },
-            { label: t("settings.role"), value: roleLabel(t, business.access.role) },
-          ]}
-        />
-      </View>
+      {[
+        { label: t("settings.businessName"), value: business.name },
+        { label: t("common.currency"), value: currency },
+        { label: t("common.timeZone"), value: timeZone },
+        { label: t("settings.role"), value: roleLabel(t, business.access.role) },
+      ].map((fact, index) => (
+        <View
+          className={cn(
+            "flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 px-4 py-3 sm:px-5",
+            index > 0 && "border-t border-border",
+          )}
+          key={fact.label}
+        >
+          <Text className="text-[13px] leading-5 text-muted-foreground">{fact.label}</Text>
+          <Text className="min-w-0 shrink text-right text-[13px] leading-5">{fact.value}</Text>
+        </View>
+      ))}
     </Card>
   );
 }
