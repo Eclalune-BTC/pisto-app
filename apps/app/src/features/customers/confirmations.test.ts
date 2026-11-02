@@ -225,6 +225,7 @@ describe("money tones", () => {
       menuTriggerRef: { current: null },
       onArchive: vi.fn(),
       onLoadMoreReceivables: vi.fn(),
+      onRegisterPayment: vi.fn(),
       onRetry: vi.fn(),
       state: {
         kind: "ready",
@@ -253,7 +254,7 @@ describe("money tones", () => {
     captured.stats = [];
     renderToStaticMarkup(customerDetail("1"));
     expect(tone(i18n.t("customers.detail.overdue"))).toBe("destructive");
-    expect(tone(i18n.t("customers.detail.outstanding"))).toBeUndefined();
+    expect(tone(i18n.t("customers.detail.balance"))).toBeUndefined();
   });
 
   test("the business overdue position turns destructive only above zero", () => {

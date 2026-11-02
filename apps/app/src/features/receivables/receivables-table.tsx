@@ -12,6 +12,7 @@ import { MoneyText } from "@/features/customers/money-text";
 import { initialsOf } from "@/lib/initials";
 import { useMeasuredWidth } from "@/lib/use-measured-width";
 
+import { daysPastDue } from "./receivable-figures";
 import { ReceivableStateBadge } from "./receivable-state-badge";
 
 export type CustomerNameCell =
@@ -31,16 +32,6 @@ type ReceivablesTableProps = {
   /** Off when every row shares one state, such as a list filtered by state. */
   showState?: boolean;
 };
-
-const DAY_MS = 86_400_000;
-
-/** Whole days from a due date to the business date; positive once the due date has passed. */
-export function daysPastDue(dueDate: string, businessLocalDate: string): number {
-  return Math.round(
-    (Date.parse(`${businessLocalDate}T00:00:00.000Z`) - Date.parse(`${dueDate}T00:00:00.000Z`)) /
-      DAY_MS,
-  );
-}
 
 function CustomerCell({ customer }: { customer: CustomerNameCell | undefined }) {
   const { t } = useTranslation();

@@ -1,4 +1,4 @@
-import type { ReceivableAging, ReceivablesSummary } from "@pisto/contracts";
+import type { ReceivablesSummary } from "@pisto/contracts";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Stat } from "@/components/layout/stat-group";
@@ -7,10 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { isPositiveAmount, useRecordFormat } from "@/features/customers/format";
 import { cn } from "@/lib/cn";
-
-type AgingBucket = keyof ReceivableAging;
-
-const AGING_BUCKETS: readonly AgingBucket[] = ["current", "days1To30", "days31To60", "over60"];
+import { AGING_BUCKETS, type AgingBucket, agingShares } from "./receivable-figures";
 
 /** Chart marks only: a later bucket is a stronger warning, and red is the oldest debt. */
 const bucketColors: Record<AgingBucket, string> = {
@@ -19,20 +16,6 @@ const bucketColors: Record<AgingBucket, string> = {
   days31To60: "bg-chart-5",
   over60: "bg-destructive",
 };
-
-/** Each bucket's share of the open balance in hundredths of a percent, exact in BigInt. */
-export function agingShares(aging: ReceivableAging): Record<AgingBucket, number> {
-  const total = AGING_BUCKETS.reduce(
-    (sum, bucket) => sum + BigInt(aging[bucket].outstandingMinorUnits),
-    0n,
-  );
-  const shares = {} as Record<AgingBucket, number>;
-  for (const bucket of AGING_BUCKETS) {
-    shares[bucket] =
-      total === 0n ? 0 : Number((BigInt(aging[bucket].outstandingMinorUnits) * 10_000n) / total);
-  }
-  return shares;
-}
 
 function AgingBar({ summary }: { summary: ReceivablesSummary }) {
   const { t } = useTranslation();
@@ -96,22 +79,26 @@ export function ReceivablesPosition({ summary }: { summary: ReceivablesSummary }
   return (
     <View className="gap-2">
       <View className="min-w-0 flex-row flex-wrap overflow-hidden rounded-xl border border-border bg-card">
-        <View className="min-w-0 grow basis-[320px] flex-row flex-wrap gap-px border-border bg-border lg:max-w-[460px] lg:border-r">
-          <Stat
-            detail={t("receivables.summary.openCount", {
-              count: Number(summary.openReceivableCount),
-            })}
-            label={t("receivables.summary.outstanding")}
-            value={money(summary.outstandingMinorUnits)}
-          />
-          <Stat
-            detail={t("receivables.summary.overdueCount", {
-              count: Number(summary.overdueReceivableCount),
-            })}
-            label={t("receivables.summary.overdue")}
-            tone={isPositiveAmount(summary.overdueMinorUnits) ? "destructive" : "default"}
-            value={money(summary.overdueMinorUnits)}
-          />
+        <View className="min-w-0 grow basis-[320px] flex-row flex-wrap border-border lg:max-w-[460px] lg:border-r">
+          <View className="min-w-[150px] flex-1">
+            <Stat
+              detail={t("receivables.summary.openCount", {
+                count: Number(summary.openReceivableCount),
+              })}
+              label={t("receivables.summary.outstanding")}
+              value={money(summary.outstandingMinorUnits)}
+            />
+          </View>
+          <View className="min-w-[150px] flex-1 border-l border-border">
+            <Stat
+              detail={t("receivables.summary.overdueCount", {
+                count: Number(summary.overdueReceivableCount),
+              })}
+              label={t("receivables.summary.overdue")}
+              tone={isPositiveAmount(summary.overdueMinorUnits) ? "destructive" : "default"}
+              value={money(summary.overdueMinorUnits)}
+            />
+          </View>
         </View>
         <View className="min-w-0 grow basis-[360px] border-t border-border lg:border-t-0">
           <AgingBar summary={summary} />

@@ -48,6 +48,8 @@ export function ReceivablePaymentSheet({
       {open ? (
         <SheetContent
           onCloseAutoFocus={returnFocusOnClose(returnFocusRef)}
+          // Select menus render in their own portal; picking an option is not leaving the sheet.
+          onInteractOutside={(event) => event.preventDefault()}
           side="right"
           style={{ width: Math.min(SHEET_WIDTH, width) }}
         >

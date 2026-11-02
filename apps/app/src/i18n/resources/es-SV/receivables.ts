@@ -69,7 +69,7 @@ export const receivables = {
     filteredEmptyDescription: "Cambie el estado o el cliente para ver otros resultados.",
   },
   detail: {
-    applyPayment: "Registrar pago",
+    applyPayment: "Registrar abono",
     moreActions: "Más acciones",
     void: "Anular cuenta por cobrar",
     voidNeedsNoPayments: "Primero revierte sus pagos",
@@ -192,6 +192,7 @@ export const receivables = {
   },
   paymentForm: {
     title: "Registrar abono",
+    pageDescription: "El abono baja el saldo de la cuenta y entra a la caja o al banco que elija.",
     owes: "{{customer}} debe {{amount}} por {{charge}}.",
     receivable: "Cuenta a la que abona",
     chooseReceivable: "Elija una cuenta con saldo",

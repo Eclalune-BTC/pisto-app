@@ -17,10 +17,10 @@ import { ContentSkeleton } from "@/components/layout/skeletons";
 import { StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { FieldError } from "@/components/ui/field-error";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { type CursorPage, LoadMoreButton } from "@/components/ui/load-more-button";
 import { MomentFields } from "@/components/ui/moment-fields";
-import { SelectField } from "@/components/ui/select-field";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
@@ -35,12 +35,14 @@ import { currentLocalDateTime, parseAmountToMinorUnits, toDecimalString } from "
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { flattenPages } from "@/lib/pages";
+import { ChoiceList } from "../cash/choice-list";
 import { activeCashAccountsInfiniteOptions } from "../cash/queries";
 import { receivablesApi } from "./api";
 import { buildPaymentCommand, type PaymentDraft, type ReceivableDraftIssue } from "./draft";
 import { invalidateReceivableMutation } from "./mutation-state";
 import { amountInputPlaceholder } from "./presentation";
 import { receivableDetailQueryOptions, receivablesQueryOptions } from "./queries";
+import { accountsForMethod, type PaymentMethod, quickAmounts } from "./receivable-figures";
 import { acceptsPayment } from "./rules";
 
 export type ReceivablePaymentFormProps = {
@@ -60,25 +62,6 @@ export type ReceivablePaymentFormProps = {
   onPhaseChange?: (phase: MutationPhase) => void;
   onSaved: (paymentId: string) => void;
 };
-
-export type PaymentMethod = "cash" | "transfer";
-
-/** Cash goes into a cash box; a transfer lands in a bank or mobile-money account. */
-export function accountsForMethod(accounts: CashAccount[], method: PaymentMethod): CashAccount[] {
-  return accounts.filter(
-    (account) => account.status === "active" && (method === "cash") === (account.kind === "cash"),
-  );
-}
-
-/** Whole-currency shortcuts below the balance; the full balance has its own chip. */
-export function quickAmounts(outstandingMinorUnits: string, digits: number): string[] {
-  const unit = 10n ** BigInt(digits);
-  const outstanding = BigInt(outstandingMinorUnits);
-  return [10n, 20n]
-    .map((whole) => whole * unit)
-    .filter((amount) => amount < outstanding)
-    .map((amount) => amount.toString());
-}
 
 type PaymentErrors = Partial<Record<keyof PaymentDraft | "cashAccount", string>>;
 
@@ -237,7 +220,7 @@ function ReceivableChoice({
 }) {
   const { t } = useTranslation();
   const format = useRecordFormat();
-  const [selected, setSelected] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
   if (loading) return <ContentSkeleton variant="form" />;
   if (failed) {
     return (
@@ -263,12 +246,14 @@ function ReceivableChoice({
       </View>
     );
   }
+  const selected = choices.find(({ id }) => id === picked)?.id ?? choices[0]?.id;
+  if (!selected) throw new Error("A receivable choice needs at least one receivable");
   return (
     <View className="gap-4">
       <View className="gap-1.5">
-        <SelectField
+        <ChoiceList
           label={t("receivables.paymentForm.receivable")}
-          onChange={setSelected}
+          onChange={setPicked}
           options={choices.map((receivable) => ({
             label: t("receivables.paymentForm.receivableOption", {
               amount: format.money(
@@ -280,17 +265,13 @@ function ReceivableChoice({
             }),
             value: receivable.id,
           }))}
-          placeholder={t("receivables.paymentForm.chooseReceivable")}
           value={selected}
         />
         <LoadMoreButton className="self-start" page={page} />
       </View>
       <FormActions
-        disabled={!selected}
         onCancel={onCancel}
-        onSubmit={() => {
-          if (selected) onChoose(selected);
-        }}
+        onSubmit={() => onChoose(selected)}
         submitLabel={t("receivables.paymentForm.continue")}
       />
     </View>
@@ -509,7 +490,8 @@ function PaymentFields({
         ? "cash"
         : "transfer");
   const offered = accountsForMethod(accounts, activeMethod);
-  const selectedAccount = offered.find((account) => account.id === accountId);
+  // Like the expense form, the first account of the method is preselected; the review names it.
+  const selectedAccount = offered.find((account) => account.id === accountId) ?? offered[0];
   const parsed = parseAmountToMinorUnits(values.amount, receivable.currencyMinorUnitDigits);
   const amount =
     "value" in parsed && BigInt(parsed.value) <= BigInt(receivable.outstandingMinorUnits)
@@ -620,21 +602,28 @@ function PaymentFields({
         value={activeMethod}
       />
       <View className="gap-1.5">
-        <SelectField
-          error={errors.cashAccount}
-          label={t("receivables.paymentForm.account")}
-          onChange={(next) => {
-            setAccountId(next);
-            setErrors((current) => ({ ...current, cashAccount: undefined }));
-          }}
-          options={offered.map(({ id, name }) => ({ label: name, value: id }))}
-          placeholder={
-            offered.length === 0
-              ? t(`receivables.paymentForm.noAccounts.${activeMethod}`)
-              : t("receivables.payment.chooseAccount")
-          }
-          value={selectedAccount ? selectedAccount.id : null}
-        />
+        {selectedAccount ? (
+          <FilterBar
+            label={t("receivables.paymentForm.account")}
+            onChange={(next) => {
+              setAccountId(next);
+              setErrors((current) => ({ ...current, cashAccount: undefined }));
+            }}
+            options={offered.map(({ id, name }) => ({ label: name, value: id }))}
+            showLabel
+            value={selectedAccount.id}
+          />
+        ) : (
+          <View className="gap-1.5">
+            <Text className="font-ui text-xs text-muted-foreground">
+              {t("receivables.paymentForm.account")}
+            </Text>
+            <Text className="text-[13px] leading-5 text-muted-foreground">
+              {t(`receivables.paymentForm.noAccounts.${activeMethod}`)}
+            </Text>
+          </View>
+        )}
+        <FieldError message={errors.cashAccount} />
         <LoadMoreButton
           className="self-start"
           label={t("cash.fields.loadMoreAccounts")}

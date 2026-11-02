@@ -37,6 +37,10 @@ export const customers = {
   detail: {
     edit: "Editar",
     newCharge: "Nuevo cargo",
+    registerPayment: "Registrar abono",
+    since: "cliente desde {{month}}",
+    balance: "Saldo",
+    history: "Historial de la cuenta",
     moreActions: "Más acciones",
     archive: "Archivar cliente",
     archiveNeedsZeroBalance: "Requiere saldo pendiente en cero",
