@@ -34,8 +34,9 @@ saving goes through the existing reviewed, idempotent commands.
    and its Workers AI provider would add a dependency without removing any code we keep. Revisit
    when the conversational assistant of ADR 0009 (multi-step tools, streaming) is approved.
 3. **Model registry.** `packages/assistant/src/models.ts` is the only place that names models:
-   - `assistant.extract`: `@cf/zai-org/glm-4.7-flash`, JSON Schema response format (OpenAI shape),
-     reasoning off, temperature 0, 1 024 output tokens.
+   - `assistant.extract`: `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, raw JSON Schema response
+     format, temperature 0, 1 024 output tokens (the default 256 can truncate the JSON). The
+     adapter also supports the OpenAI-shaped schema newer models take.
    - `assistant.transcribe`: `@cf/openai/whisper-large-v3-turbo`, `language: "es"`,
      `vad_filter: true` (silence yields empty text instead of an invented phrase).
 4. **The model only extracts.** The versioned prompt (`extract-2026-11-02.1`) asks for the record
@@ -48,7 +49,8 @@ saving goes through the existing reviewed, idempotent commands.
    supplier directory, takes catalog prices, computes totals, received and credit in integer minor
    units, picks the account for the payment method, resolves dates in the business time zone within
    60 days, and reports notices (`missing`, `not_found`, `similar_match`, `exceeds_total`,
-   `insufficient_stock`, `not_permitted`).
+   `insufficient_stock`, `not_permitted`, and `total_mismatch` when the total or a unit price the
+   user said differs from the priced lines; the stated total then decides received and credit).
 6. **Audio.** The web client captures PCM with Web Audio and uploads 16 kHz mono 16-bit WAV, the one
    container verified end to end; Cloudflare documents no container list for Whisper and WebM/Opus is
    unverified. `POST /v1/assistant/transcriptions` alone accepts `audio/wav` (RIFF/WAVE checked),
@@ -76,8 +78,10 @@ saving goes through the existing reviewed, idempotent commands.
 
 - **AI SDK 7 with a Workers AI provider:** consistent with ADR 0009 but adds a dependency for one
   call whose output Pisto validates and post-processes anyway. Deferred, not rejected.
-- **Llama 3.3 70B (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`):** also scored 16/16, at about twice
-  the latency and five times the output price of GLM-4.7-Flash.
+- **GLM-4.7-Flash (`@cf/zai-org/glm-4.7-flash`, reasoning off):** about half the latency and a
+  fifth of the output price, but in three runs it scored 16, 13 and 14 of 16: some calls exceeded the
+  20-second bound and it repeatedly lost the supplier name in a supplier payment. Reconsider it
+  when its tail latency is stable.
 - **Sending Chrome's WebM/Opus:** about ten times smaller than WAV, but the accepted formats are
   undocumented; WAV removes the guess at the cost of upload size.
 - **Deepgram Nova-3 for Spanish speech:** ten times the per-minute price of Whisper turbo, and its
@@ -89,10 +93,10 @@ Evaluation set `2026-11-02.1` (16 sentences from the prototypes and the demo see
 unsupported question, two records in one sentence and a prompt injection), run end to end through
 `wrangler dev` with the remote AI binding and the local seeded database:
 
-| Model | Passed | p50 | p95 |
+| Model | Runs (passed of 16) | p50 | p95 |
 | --- | --- | --- | --- |
-| `@cf/zai-org/glm-4.7-flash` (selected) | 16/16 | 2.5 s | 6.9 s |
-| `@cf/meta/llama-3.3-70b-instruct-fp8-fast` | 16/16 | 5.3 s | 12.6 s |
+| `@cf/meta/llama-3.3-70b-instruct-fp8-fast` (selected) | 16, 16, 16 | 5.0 to 5.6 s | 8.5 to 12.6 s |
+| `@cf/zai-org/glm-4.7-flash` | 16, 13, 14 | 2.5 to 3.6 s | 6.9 to 20.1 s (timeouts) |
 
 Transcription through the same binding: a synthesized 16 kHz WAV of "Pagué sesenta y cuatro
 dólares de luz con transferencia" (English text-to-speech voice) returned "Pegues sesenta y cuatro

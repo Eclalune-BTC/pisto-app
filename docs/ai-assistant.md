@@ -9,7 +9,7 @@
 
 [ADR 0021](adrs/0021-workers-ai-registration-assistant.md) owns the decision and its evaluation.
 In short: `POST /v1/assistant/interpretations` sends one sentence to `assistant.extract`
-(GLM-4.7-Flash on Workers AI) through a small typed adapter in `packages/assistant`; the model only
+(Llama 3.3 70B on Workers AI) through a small typed adapter in `packages/assistant`; the model only
 extracts fields and quoted fragments, and deterministic code resolves names in the active business,
 computes money, dates, accounts and notices, and returns a draft. `POST /v1/assistant/transcriptions`
 turns a 16 kHz WAV into editable text with `assistant.transcribe` (Whisper large v3 turbo). The app

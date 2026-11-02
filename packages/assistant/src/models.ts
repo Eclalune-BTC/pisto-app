@@ -24,10 +24,10 @@ export const assistantModels: {
   readonly "assistant.transcribe": TranscriptionModel;
 } = {
   "assistant.extract": {
-    id: "@cf/zai-org/glm-4.7-flash",
-    responseFormat: "openai_schema",
+    id: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    responseFormat: "raw_schema",
     maxTokens: 1_024,
-    inputs: { temperature: 0, chat_template_kwargs: { enable_thinking: false } },
+    inputs: { temperature: 0 },
   },
   "assistant.transcribe": {
     id: "@cf/openai/whisper-large-v3-turbo",
