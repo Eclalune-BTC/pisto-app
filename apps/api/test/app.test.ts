@@ -1008,6 +1008,7 @@ describe("Pisto API", () => {
     ["POST", `/v1/receivables/${recordId}/payments`],
     ["POST", `/v1/receivable-payments/${recordId}/reverse`],
     ["GET", "/v1/reports/operating?startLocalDate=2026-08-01&endLocalDate=2026-08-22"],
+    ["GET", "/v1/reports/cash-flow?endMonth=2026-08"],
   ];
 
   test("resolves a session before every domain handler touches a repository", async () => {
