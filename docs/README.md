@@ -18,9 +18,10 @@ The current product is a manual operating application: sales/history/correction,
 expenses/cash, customers/receivables and exact operating reports. New-sale reviews have server-owned
 recovery. AI, voice and native purchases are not implemented. The matrix owns the detailed status.
 
-The runtime is local Expo, Bun/Elysia and PostgreSQL 18. GitHub source synchronization is authorized;
-cloud provisioning, hosted deployment and store submission require separate approval. See
-[ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
+Development runs locally on Expo, Bun/Elysia and PostgreSQL 18. The hosted demo runs on Cloudflare
+Workers with Neon ([ADR 0020](adrs/0020-cloudflare-workers-neon-hosting.md),
+[runbook](deployment-cloudflare.md)). GitHub source synchronization is authorized; store
+submission still requires separate approval.
 
 ## Read by task
 

@@ -5,9 +5,9 @@ means code/config exists in this repository. “Seam” means boundaries and doc
 where a capability belongs, but external configuration or implementation is still required.
 “Not chosen” means no provider/product is silently assumed.
 
-The active runtime is local Expo, Bun/Elysia and PostgreSQL 18, with billing disabled. GitHub source
-synchronization is authorized, not hosted deployment or store submission.
-[ADR 0017](adrs/0017-portable-postgres-and-hosting.md) owns that boundary;
+Development runs on local Expo, Bun/Elysia and PostgreSQL 18; the hosted demo runs on Cloudflare
+Workers with Neon under [ADR 0020](adrs/0020-cloudflare-workers-neon-hosting.md). Billing is
+disabled everywhere and store submission is not authorized.
 [release evidence](release-evidence.md) owns completed checks and their limitations.
 
 | Capability | Included now | Integration seam / release gate | Intentionally not chosen |
@@ -35,7 +35,10 @@ synchronization is authorized, not hosted deployment or store submission.
 | Distributed rate limiting and cache | Better Auth auth budgets plus atomic per-user product read/write budgets share PostgreSQL `rateLimit` with distinct key namespaces; default product counts are 300 reads/60 writes per 60 seconds; budget-store failure denies the product request | Verify the deployed auth client-IP/proxy contract, spoofing behavior, product concurrency, and returned `Retry-After`; retain the shared 60-second cleanup invariant documented below | No verified deployed client-IP contract, Redis/Memorystore dependency, or entitlement cache |
 | Feature flags | Auth/Polar/RevenueCat switches and `PRODUCT_WRITES_ENABLED`; false pauses business mutations while reads, auth, account, and billing/provider endpoints retain separate policy | Exercise pause/resume against the deployed artifact; add owned, expiring, audited flags only if experimentation or staged rollout needs them | No remote flag vendor; env switches are not a full experimentation platform |
 | Admin and support tooling | Stable opaque references, organization/auth schema, and a reserved `manual` entitlement source | Build least-privilege audited support actions, session revoke, entitlement reconciliation, and reasoned manual-grant creation/revocation before using that source | No Better Auth admin plugin/UI, impersonation, supported manual-grant command, or unrestricted database console for support |
-| Local runtime and portability | Local Expo and Bun/Elysia, Docker PostgreSQL 18, postgres-js/Drizzle migrations, portable API container, and Expo `web.output: single` export | Hosting requires a new explicit decision; any future deployment must validate origins, deep links, assets, pool limits, migration identity, TLS, rollback, and hosted behavior | No active cloud runtime/database dependency or provider-specific publishing adapter; no hosting provider is selected |
+| Local runtime and portability | Local Expo and Bun/Elysia, Docker PostgreSQL 18, postgres-js/Drizzle migrations, portable API container, and Expo `web.output: single` export | Keep the Bun server, Docker image and Worker entry on the same `createRuntime` | No second application implementation per host |
+| Hosted demo | One Cloudflare Worker serves the web export and an `ApiServer` Durable Object runs the API against Neon PostgreSQL 18 with a least-privilege runtime role; [ADR 0020](adrs/0020-cloudflare-workers-neon-hosting.md), [runbook](deployment-cloudflare.md) | Choose backup retention, monitoring and an owner before calling it production | No custom domain, staging copy, autoscaled multi-object API or production recovery objective |
+| Realtime updates | `GET /v1/realtime` WebSocket for signed-in members of the active business; committed writes send a change notice and the app refetches that business's queries; heartbeat ping/pong; same hub in Bun and the Durable Object | Physical-device socket behavior and reconnection after network changes remain unmeasured | Notices never carry record data; no presence, chat or collaborative editing |
+| Demo data | `bun run db:seed` creates owner, admin and member test accounts and a sample business through the repositories (re-runnable) | Rotate `SEED_PASSWORD` or delete the demo accounts before any real use | Not a fixture for automated tests |
 | Backups and disaster recovery | Local persistent volume, migration artifacts, normalized data model, and standard PostgreSQL export/restore proof recorded in release evidence | Keep private local backups and isolate restore tests; a future hosted environment needs its own verified retention, backups/PITR, RPO/RTO, and owner | No production recovery acceptance is claimed; a volume or prior provider configuration is not a backup/restore policy |
 
 Product middleware protects `/v1` by default, including payment reversals and future product routes.

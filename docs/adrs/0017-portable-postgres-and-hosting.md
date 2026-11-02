@@ -1,7 +1,8 @@
 # ADR 0017: Local operation and portable PostgreSQL
 
-- Status: Accepted
-- Scope: Current runtime, source publication and future hosting boundary
+- Status: Accepted; its "hosting remains undecided" clause is superseded by
+  [ADR 0020](0020-cloudflare-workers-neon-hosting.md) (Cloudflare Workers and Neon, 2026-11-01)
+- Scope: Local runtime, source publication and portable artifacts
 
 ## Decision
 
