@@ -72,6 +72,14 @@ export const operate = {
       label: "Cuentas por cobrar",
       description: "Controla saldos pendientes, pagos y vencimientos.",
     },
+    suppliers: {
+      label: "Proveedores",
+      description: "Datos de contacto, compras y saldo de cada proveedor.",
+    },
+    payables: {
+      label: "Por pagar",
+      description: "Lo que debe a sus proveedores y cuándo vence.",
+    },
     reports: {
       label: "Reportes",
       description: "Consulta cifras exactas de un período y la posición operativa actual.",

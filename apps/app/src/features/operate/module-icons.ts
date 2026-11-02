@@ -1,5 +1,6 @@
 import {
   Boxes,
+  CalendarClock,
   ChartColumn,
   CircleDollarSign,
   ContactRound,
@@ -7,6 +8,7 @@ import {
   type LucideIcon,
   PackageSearch,
   ReceiptText,
+  Store,
   WalletCards,
 } from "lucide-react-native";
 import type { OperateModuleId } from "./navigation";
@@ -19,5 +21,7 @@ export const operateModuleIcons: Record<OperateModuleId, LucideIcon> = {
   inventory: Boxes,
   customers: ContactRound,
   receivables: HandCoins,
+  suppliers: Store,
+  payables: CalendarClock,
   reports: ChartColumn,
 };
