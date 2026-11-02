@@ -15,6 +15,8 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*", "/v1", "/v1/*", "/health", "/ready"]
   },
+  // Workers AI for the registration assistant. AI always runs remotely, also under wrangler dev.
+  "ai": { "binding": "AI", "remote": true },
   "durable_objects": {
     "bindings": [{ "name": "API", "class_name": "ApiServer" }]
   },

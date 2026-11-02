@@ -10,6 +10,7 @@ pisto-stack/
 |   |-- app/                 # @pisto/app: Expo Router universal client
 |   `-- api/                 # @pisto/api: Elysia HTTP composition and Dockerfile
 |-- packages/
+|   |-- assistant/           # @pisto/assistant: extraction prompt, Workers AI adapters, draft post-processing
 |   |-- auth/                # @pisto/auth: Better Auth configuration and schema checks
 |   |-- billing/             # @pisto/billing: providers and entitlement decisions
 |   |-- config/              # @pisto/config: shared server environment parsing rules
@@ -49,7 +50,8 @@ The manifests currently encode this dependency graph:
 
 ```text
 apps/app --------> packages/contracts
-apps/api --------> packages/auth, packages/billing, packages/config, packages/contracts, packages/db
+apps/api --------> packages/assistant, packages/auth, packages/billing, packages/config, packages/contracts, packages/db
+packages/assistant -> packages/contracts
 packages/auth ---> packages/billing, packages/config, packages/db
 packages/billing -> packages/config, packages/contracts, packages/db
 packages/db ------> packages/contracts

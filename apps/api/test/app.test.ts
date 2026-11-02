@@ -20,6 +20,7 @@ import {
 import { createApp } from "../src/app.ts";
 import { sessionPolicyPaths } from "../src/middleware/product-access.ts";
 import { RealtimeHub } from "../src/realtime.ts";
+import { assistantTestConfig, disabledAssistant } from "./assistant-support.ts";
 import { testClient } from "./http-client.ts";
 
 function unavailableRepository<T extends object>(name: string, onCall?: () => void): T {
@@ -178,7 +179,9 @@ function testApp(
         productWritesEnabled: true,
         productReadLimit: 300,
         productWriteLimit: 60,
+        assistant: assistantTestConfig,
       },
+      assistant: disabledAssistant(),
       authBaseUrl: "https://api.example.test",
       auth,
       realtime: options.realtime ?? new RealtimeHub(),

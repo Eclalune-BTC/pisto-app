@@ -29,6 +29,7 @@ export const shell = {
   routes: {
     "/operate": "Inicio",
     "/operate/movements": "Movimientos",
+    "/operate/assistant/review": "Revisar registro",
     "/operate/sales": "Ventas",
     "/operate/sales/new": "Nueva venta",
     "/operate/sales/[saleId]": "Venta",

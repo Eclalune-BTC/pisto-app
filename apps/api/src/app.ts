@@ -21,8 +21,14 @@ import type { ApiConfig } from "./config.ts";
 import { ApiError, normalizeError } from "./errors.ts";
 import { productAccess, sessionPolicyPaths } from "./middleware/product-access.ts";
 import { requestContext } from "./middleware/request-context.ts";
-import { requestBodyLimit, requestPolicy } from "./middleware/request-policy.ts";
+import { type RawBodyRoute, requestBodyLimit, requestPolicy } from "./middleware/request-policy.ts";
 import { changedResource, type RealtimeHub } from "./realtime.ts";
+import {
+  type AssistantServices,
+  assistantRoutes,
+  transcriptionMediaTypes,
+  transcriptionPath,
+} from "./routes/assistant.ts";
 import { billingRoutes } from "./routes/billing.ts";
 import { businessRoutes } from "./routes/businesses.ts";
 import { cashRoutes } from "./routes/cash.ts";
@@ -59,6 +65,7 @@ export function createApp(input: {
   repositories: ProductRepositories;
   consumeProductRequest: ConsumeProductRequest;
   realtime: RealtimeHub;
+  assistant: AssistantServices;
   /** Cloudflare Workers pass their adapter so `compile()` can prepare every route at startup. */
   adapter?: ElysiaConfig<"">["adapter"];
 }) {
@@ -71,6 +78,13 @@ export function createApp(input: {
       billing: input.billing,
       db: input.database.db,
     }),
+  ];
+  const rawBodyRoutes: RawBodyRoute[] = [
+    {
+      path: transcriptionPath,
+      mediaTypes: transcriptionMediaTypes,
+      limitBytes: input.config.assistant.audioLimitBytes,
+    },
   ];
   const access = productAccess({
     auth: input.auth,
@@ -96,9 +110,9 @@ export function createApp(input: {
         exposeHeaders: ["X-Request-ID", "Retry-After"],
       }),
     )
-    .use(requestPolicy(input.config))
+    .use(requestPolicy(input.config, rawBodyRoutes))
     .use(access)
-    .use(requestBodyLimit(input.config.requestBodyLimitBytes))
+    .use(requestBodyLimit(input.config.requestBodyLimitBytes, rawBodyRoutes))
     // A handler only returns after its transaction committed; failures skip this hook.
     .onAfterHandle({ as: "global" }, ({ request, actor }) => {
       if (request.method !== "POST" && request.method !== "PATCH") return;
@@ -192,5 +206,6 @@ export function createApp(input: {
     .use(reportsRoutes({ access, reports }))
     .use(moneyTrendRoutes({ access, moneyTrend }))
     .use(movementsRoutes({ access, movements }))
-    .use(debtorsRoutes({ access, debtors }));
+    .use(debtorsRoutes({ access, debtors }))
+    .use(assistantRoutes({ access, assistant: input.assistant }));
 }

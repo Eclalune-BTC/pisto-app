@@ -81,6 +81,9 @@ The baseline surface is:
 | `POST` | `/v1/receivables/:receivableId/payments` | `receivables:manage` and `cash:manage`, fresh session | Record one payment and its linked cash movement |
 | `POST` | `/v1/receivables/:receivableId/void` | `receivables:manage`, fresh session | Void one receivable after its payments are reversed |
 | `POST` | `/v1/receivable-payments/:paymentId/reverse` | `receivables:manage` and `cash:manage`, fresh session | Reverse one payment exactly once |
+| `GET` | `/v1/assistant/status` | Yes, fresh session | Whether a model provider is composed (`enabled`, `transcription`) |
+| `POST` | `/v1/assistant/interpretations` | `assistant:use`, fresh session; assistant budgets | Turn one sentence into a reviewable draft; nothing is saved |
+| `POST` | `/v1/assistant/transcriptions` | `assistant:use`, fresh session, allowlisted Origin; assistant budgets | Transcribe a raw `audio/wav` body (own byte cap) to editable text |
 
 The implementation and `@pisto/contracts` are definitive. Update this table and the
 [Postman collection](postman/pisto.postman_collection.json) in the same change as a route addition

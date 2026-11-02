@@ -1,3 +1,15 @@
+export {
+  type AssistantBusinessContext,
+  type AssistantDirectoryAccount,
+  type AssistantDirectoryCustomer,
+  type AssistantDirectoryLookup,
+  type AssistantDirectoryProduct,
+  type AssistantDirectoryRepository,
+  type AssistantDirectorySupplier,
+  type AssistantSupplierDirectory,
+  createAssistantDirectory,
+  createAssistantSupplierDirectory,
+} from "./assistant-directory.ts";
 export type { ProductActor } from "./business-access.ts";
 export { type BusinessRepository, createBusinessRepository } from "./businesses.ts";
 export { type CashRepository, createCashRepository } from "./cash.ts";
@@ -20,7 +32,9 @@ export {
 } from "./movements.ts";
 export {
   type ConsumeProductRequest,
+  type ConsumeRateLimit,
   createProductRateLimiter,
+  createRateLimitConsumer,
   type ProductRateLimitPolicy,
 } from "./product-rate-limit.ts";
 export { createPurchasesRepository, type PurchasesRepository } from "./purchases.ts";

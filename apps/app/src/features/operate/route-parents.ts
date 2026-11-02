@@ -7,6 +7,7 @@ export const OPERATE_ROOT = "/operate";
  * `/operate/receivables/new` opens from both the receivable list and a customer.
  */
 export const OPERATE_ROUTE_PARENTS = {
+  "/operate/assistant/review": "/operate",
   "/operate/cash": "/operate",
   "/operate/cash/accounts/[accountId]": "/operate/cash",
   "/operate/cash/accounts/[accountId]/edit": "/operate/cash/accounts/[accountId]",

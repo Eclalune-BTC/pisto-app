@@ -16,7 +16,9 @@ planned feature is not evidence of the current implementation.
 
 The current product is a manual operating application: sales/history/correction, catalog/inventory,
 expenses/cash, customers/receivables and exact operating reports. New-sale reviews have server-owned
-recovery. AI, voice and native purchases are not implemented. The matrix owns the detailed status.
+recovery. The registration assistant drafts records from one dictated or typed sentence
+([ADR 0021](adrs/0021-workers-ai-registration-assistant.md)); conversational AI and native purchases
+are not implemented. The matrix owns the detailed status.
 
 Development runs locally on Expo, Bun/Elysia and PostgreSQL 18. The hosted demo runs on Cloudflare
 Workers with Neon ([ADR 0020](adrs/0020-cloudflare-workers-neon-hosting.md),

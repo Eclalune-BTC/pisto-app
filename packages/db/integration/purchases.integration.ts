@@ -3,6 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import {
   businessSettings,
+  createAssistantSupplierDirectory,
   createBusinessRepository,
   createCashRepository,
   createCatalogRepository,
@@ -36,6 +37,7 @@ const cash = createCashRepository(database.db);
 const catalog = createCatalogRepository(database.db);
 const repository = createPurchasesRepository(database.db);
 const ledger = createMovementsRepository(database.db);
+const supplierDirectory = createAssistantSupplierDirectory(database.db);
 const runId = crypto.randomUUID();
 const userIds = {
   admin: `purchases-admin-${runId}`,
@@ -338,6 +340,15 @@ describe("suppliers, purchases and payables on PostgreSQL 18", () => {
     const partialCommand = payment("2680");
     const partial = await repository.createSupplierPayment(actor("admin"), open.id, partialCommand);
     expect(partial.purchase).toMatchObject({ paidMinorUnits: "2680", balanceMinorUnits: "5000" });
+    expect(await supplierDirectory.lookup(actor("ownerA"), ["santa rita"])).toEqual([
+      {
+        id: vendor.id,
+        name: "Panificadora Santa Rita",
+        oldestOpenPurchase: { id: open.id, invoiceNumber: "F-1043", balanceMinorUnits: "5000" },
+      },
+    ]);
+    expect(await supplierDirectory.lookup(actor("member"), ["santa rita"])).toEqual([]);
+    expect(await supplierDirectory.lookup(actor("ownerB", businessB), ["santa rita"])).toEqual([]);
     expect(await repository.createSupplierPayment(actor("admin"), open.id, partialCommand)).toEqual(
       {
         ...partial,

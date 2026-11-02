@@ -68,11 +68,12 @@ Dependencies point inward toward contracts and domain packages. The API composes
 do not import the API. The app may import public contracts, but never server implementations.
 
 The implemented domain commands, queries, and audit live in `packages/db`, with public money and
-transport rules in `packages/contracts`. They do not depend on AI SDK, Elysia, or React. A future
-assistant boundary will own prompt versions, provider/model selection, narrow tools, and bounded
-orchestration without owning SQL or business rules. The API remains the composition root. See
-[AI assistant architecture](ai-assistant.md); no assistant package or capability exists today, and
-an additional sales package is not required merely to expose existing commands to a future tool.
+transport rules in `packages/contracts`. They do not depend on AI SDK, Elysia, or React.
+`packages/assistant` owns the registration assistant: the versioned extraction prompt, the Workers
+AI adapters and the deterministic post-processing that turns one sentence into a draft. It reads
+records only through ports the API composes (the database directory and a supplier directory) and
+owns no SQL or business rule; see [AI assistant architecture](ai-assistant.md) and
+[ADR 0021](adrs/0021-workers-ai-registration-assistant.md). The API remains the composition root.
 
 All later product domains follow the capability slice contract in
 [Product capability architecture](product-capability-architecture.md) and

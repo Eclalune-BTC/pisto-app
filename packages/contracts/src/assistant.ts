@@ -183,6 +183,8 @@ export const assistantNoticeSchema = z
       "exceeds_total",
       "insufficient_stock",
       "not_permitted",
+      /** The total the user said differs from the sum of the priced lines. */
+      "total_mismatch",
     ]),
     field: assistantFieldSchema,
     /** Index into `draft.lines` for product-line notices. */

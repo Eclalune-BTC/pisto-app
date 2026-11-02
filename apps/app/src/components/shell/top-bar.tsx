@@ -10,6 +10,7 @@ import { RealtimeNotice } from "@/components/shell/realtime-status";
 import { ShellBreadcrumbs } from "@/components/shell/shell-breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { DictateButton } from "@/features/assistant/dictate-button";
 import type { RealtimeStatus } from "@/lib/realtime";
 
 type TopBarProps = {
@@ -65,6 +66,7 @@ export function TopBar({
       </View>
       {realtime ? <RealtimeNotice compact={!wide} status={realtime} /> : null}
       {permissions ? <NewRecordMenu compact={!wide} permissions={permissions} /> : null}
+      <DictateButton />
       {action}
       {wide ? null : <NavUser user={user} variant="avatar" />}
     </View>

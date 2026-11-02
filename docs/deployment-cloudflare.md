@@ -73,9 +73,18 @@ npx newman run docs/postman/pisto.postman_collection.json \
 `/ready` must report `"database":"ok"`. A deployment restarts the Durable Object; for a minute after
 a deploy, a request can still reach the previous version.
 
+## Workers AI
+
+The registration assistant uses the `AI` binding declared in `wrangler.jsonc`; it needs no secret.
+Set `ASSISTANT_ENABLED=false` as a variable to turn the assistant off without a code change. Models
+are pinned in `packages/assistant/src/models.ts` ([ADR 0021](adrs/0021-workers-ai-registration-assistant.md)).
+
 ## Local Worker
 
 `npx wrangler dev` in `apps/api` runs the same Worker in workerd. Put local overrides in
 `apps/api/.dev.vars` (ignored by Git), for example `NODE_ENV=development`,
 `BETTER_AUTH_URL=http://localhost:8787`, `CORS_ORIGINS=http://localhost:8787`, a local
-`BETTER_AUTH_SECRET` and a `DATABASE_URL`.
+`BETTER_AUTH_SECRET` and a `DATABASE_URL` (use `127.0.0.1`, not `localhost`, for a local
+PostgreSQL). The AI binding is always remote: `wrangler dev` calls the real models and spends the
+account's Workers AI allocation. The pinned compatibility date needs a current wrangler (4.81 is
+too old).

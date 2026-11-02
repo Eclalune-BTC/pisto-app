@@ -1,8 +1,21 @@
 # AI assistant architecture
 
-- Status: **accepted target architecture; not implemented**
-- Research date: **2026-08-22**
+- Status: **accepted target architecture; the registration slice (one sentence to a reviewed
+  draft) is implemented on Workers AI by [ADR 0021](adrs/0021-workers-ai-registration-assistant.md)**
+- Research date: **2026-08-22**; provider and models **2026-11-02**
 - Recheck trigger: AI SDK, Expo, Bun, model provider, voice, retrieval, privacy, or deployment change
+
+## Implemented registration slice
+
+[ADR 0021](adrs/0021-workers-ai-registration-assistant.md) owns the decision and its evaluation.
+In short: `POST /v1/assistant/interpretations` sends one sentence to `assistant.extract`
+(Llama 3.3 70B on Workers AI) through a small typed adapter in `packages/assistant`; the model only
+extracts fields and quoted fragments, and deterministic code resolves names in the active business,
+computes money, dates, accounts and notices, and returns a draft. `POST /v1/assistant/transcriptions`
+turns a 16 kHz WAV into editable text with `assistant.transcribe` (Whisper large v3 turbo). The app
+reviews the draft at `/operate/assistant/review` and saves only through each record's own command.
+AI SDK is not installed for this slice; the target below still applies to the conversational
+assistant.
 
 ## Decision summary
 
@@ -247,15 +260,17 @@ account setting.
 | Capability | State |
 | --- | --- |
 | Product brief and target architecture | Approved and documented |
-| AI SDK or provider dependency | Not installed |
-| Assistant route, package, prompt, tools, UI, or schema | Not implemented |
+| AI SDK | Not installed; the registration slice uses a typed Workers AI adapter (ADR 0021) |
+| Provider | Workers AI: `AI` binding in the Worker, REST credentials for the local Bun API, `ASSISTANT_ENABLED` kill switch |
+| Registration routes, package, prompt, UI | Implemented: `/v1/assistant/status`, `/interpretations`, `/transcriptions`; `packages/assistant`; prompt `extract-2026-11-02.1`; dictation dialog, home composer and review route |
+| Conversational turns, tools, approvals, streaming | Not implemented |
 | Sales, catalog, inventory, expense, cash, customer, and receivable product data | Implemented; source synchronized. Validation and remaining platform/release limits are in [release evidence](release-evidence.md) |
 | Operating reports the assistant would read | Implemented PostgreSQL repository, `GET /v1/reports/operating`, and `/operate/reports`; no assistant tool yet |
 | Narrow read or mutation tools over that product data | Not implemented |
-| Voice recording or transcription | Not implemented |
+| Voice recording or transcription | Web push-to-talk to 16 kHz WAV and batch Whisper transcription; native builds are text-only |
 | Conversation persistence or long-term memory | Not implemented |
 | RAG, embeddings, pgvector, Neo4j, or GraphRAG | Intentionally not selected |
-| Provider sandbox/device/deployment evidence | None |
+| Provider sandbox/device/deployment evidence | 16/16 on evaluation set `2026-11-02.1` through `wrangler dev` with the remote binding; no deployment, physical device or real-speaker evidence |
 
 ## Primary sources
 
