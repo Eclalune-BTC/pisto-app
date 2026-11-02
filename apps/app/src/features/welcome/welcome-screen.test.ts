@@ -95,6 +95,9 @@ describe("public product page", () => {
 
   test("labels every illustration as an example and marks it as a figure", () => {
     const markup = render();
+    // One figure per illustration: a figure inside another would be announced twice.
+    expect(markup).toContain("<figure");
+    expect(markup).not.toMatch(/<figure[^>]*>(?:(?!<\/figure>).)*<figure/s);
     expect(text(markup)).toContain(i18n.t("welcome.preview.example"));
     expect(markup).toContain(`aria-label="${i18n.t("welcome.preview.label")}"`);
     for (const step of STEPS) {
@@ -110,7 +113,7 @@ describe("public product page", () => {
 
   test("labels the dictation example and marks every fragment it fills", () => {
     const markup = render();
-    expect(markup).toContain(`aria-label="${i18n.t("welcome.example.label")}"`);
+    expect(markup).toContain(`aria-label="${i18n.t("welcome.how.steps.review.figure")}"`);
     expect(markup).toContain(i18n.t("welcome.example.unsaved"));
     expect(text(markup)).toContain(i18n.t("welcome.example.rows.credit.value"));
     const said = i18n.t("welcome.example.said");

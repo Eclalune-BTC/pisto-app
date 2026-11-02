@@ -125,7 +125,16 @@ function Saved() {
   );
 }
 
-function Step({ children, step }: { children: ReactNode; step: (typeof STEPS)[number] }) {
+/** `figure` is false when the child already is a labelled figure, so they never nest. */
+function Step({
+  children,
+  figure = true,
+  step,
+}: {
+  children: ReactNode;
+  figure?: boolean;
+  step: (typeof STEPS)[number];
+}) {
   const { t } = useTranslation();
   return (
     <View
@@ -141,9 +150,9 @@ function Step({ children, step }: { children: ReactNode; step: (typeof STEPS)[nu
         </Text>
       </View>
       <View
-        accessibilityLabel={t(`welcome.how.steps.${step}.figure`)}
+        accessibilityLabel={figure ? t(`welcome.how.steps.${step}.figure`) : undefined}
         className="pointer-events-none min-w-0 justify-center rounded-xl bg-background p-2.5 sm:p-5 md:flex-1"
-        role="figure"
+        role={figure ? "figure" : undefined}
       >
         <View className="w-full min-w-0 max-w-[460px] self-center">{children}</View>
       </View>
@@ -153,13 +162,14 @@ function Step({ children, step }: { children: ReactNode; step: (typeof STEPS)[nu
 
 /** "Cómo funciona": one dictated sale from the sentence to the saved record. */
 export function HowItWorks() {
+  const { t } = useTranslation();
   return (
     <View className="min-w-0 gap-12 lg:flex-row lg:items-stretch lg:gap-8" role="list">
       <Step step="say">
         <Dictating />
       </Step>
-      <Step step="review">
-        <DictationExample tone="default" />
+      <Step figure={false} step="review">
+        <DictationExample label={t("welcome.how.steps.review.figure")} tone="default" />
       </Step>
       <Step step="save">
         <Saved />
