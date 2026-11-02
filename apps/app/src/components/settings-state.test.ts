@@ -17,7 +17,11 @@ vi.mock("@tanstack/react-query", async (importOriginal) => ({
   useQuery: (options: { queryKey: readonly unknown[] }) => {
     if (options.queryKey[0] === "businesses") return fixture.businesses;
     if (options.queryKey[0] === "business-members") {
-      return { data: [{ id: "m1", name: "Ana Owner", email: "ana@example.test", role: "owner" }] };
+      return {
+        data: {
+          members: [{ id: "m1", name: "Ana Owner", email: "ana@example.test", role: "owner" }],
+        },
+      };
     }
     if (options.queryKey[0] === "business-roles") {
       return {
@@ -75,7 +79,7 @@ const business = {
   currencyMinorUnitDigits: 2,
   timeZone: "America/El_Salvador",
   createdAt: "2026-09-01T12:00:00.000Z",
-  access: { role: "owner", permissions: [] },
+  access: { role: "owner", permissions: ["business:configure"] },
 };
 
 function render() {

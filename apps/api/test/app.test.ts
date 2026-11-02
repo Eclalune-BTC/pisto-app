@@ -122,6 +122,7 @@ function testApp(
           createBusiness: async () => {
             throw new ProductError("CONFLICT", "Not configured in this test");
           },
+          listMembers: async () => [],
         } satisfies BusinessRepository));
   const sales =
     options.sales ??
@@ -1020,6 +1021,7 @@ describe("Pisto API", () => {
     ["GET", "/v1/reports/operating?startLocalDate=2026-08-01&endLocalDate=2026-08-22"],
     ["GET", "/v1/reports/cash-flow?endMonth=2026-08"],
     ["GET", "/v1/businesses/roles"],
+    ["GET", "/v1/businesses/members"],
   ];
 
   test("resolves a session before every domain handler touches a repository", async () => {

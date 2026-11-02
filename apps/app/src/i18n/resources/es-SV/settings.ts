@@ -9,6 +9,7 @@ export const settings = {
   membersDescription: "Cada persona entra con su propio correo.",
   loadingMembers: "Cargando los usuarios del negocio…",
   membersUnavailable: "No pudimos consultar los usuarios del negocio.",
+  membersOwnerOnly: "Solo el propietario puede ver quién usa Pisto en este negocio.",
   roleNames: { owner: "Propietario", admin: "Encargado", member: "Vendedor", unknown: "Sin rol" },
   matrix: {
     title: "Qué puede hacer cada rol",

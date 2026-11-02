@@ -142,7 +142,7 @@ function BusinessTab({ locale }: { locale: string }) {
           />
         </View>
         <View className="min-w-0 shrink grow basis-[420px]">
-          <UsersCard businessId={business.id} />
+          <UsersCard business={business} />
         </View>
       </View>
       {businesses.data.items.length > 1 ? (

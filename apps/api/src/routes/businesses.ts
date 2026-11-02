@@ -11,6 +11,10 @@ export function businessRoutes(input: { access: ProductAccess; businesses: Busin
     return { data: await input.businesses.listBusinesses(actor) };
   });
 
+  routes.get("/businesses/members", async ({ actor }) => ({
+    data: { members: await input.businesses.listMembers(actor) },
+  }));
+
   // The role policy is the same for every business; members see what each role may do.
   routes.get("/businesses/roles", () => ({
     data: {

@@ -490,6 +490,23 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
     expect(BigInt(after.openReceivableCount) - BigInt(before.openReceivableCount)).toBe(7n);
   });
 
+  test("lists the people of the active business only to its owner", async () => {
+    const people = await businesses.listMembers(actor("ownerA", businessA));
+    expect(people.map(({ email, role }) => ({ email, role }))).toEqual(
+      expect.arrayContaining([
+        { email: `receivables-ownerA-${runId}@example.test`, role: "owner" },
+        { email: `receivables-admin-${runId}@example.test`, role: "admin" },
+        { email: `receivables-member-${runId}@example.test`, role: "member" },
+      ]),
+    );
+    expect(people.some(({ email }) => email.includes("ownerB"))).toBe(false);
+    for (const key of ["admin", "member"] as const) {
+      await expect(businesses.listMembers(actor(key, businessA))).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
+    }
+  });
+
   test("requires reversal before void and denies stale sessions", async () => {
     const createdCustomer = await repository.createCustomer(actor("ownerA", businessA), {
       idempotencyKey: crypto.randomUUID(),

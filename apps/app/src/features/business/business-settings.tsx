@@ -1,5 +1,9 @@
 import type { Business, BusinessAccess, BusinessPermission, BusinessRole } from "@pisto/contracts";
-import { businessRolePoliciesResponseSchema } from "@pisto/contracts";
+import {
+  type BusinessMembersResponse,
+  businessMembersResponseSchema,
+  businessRolePoliciesResponseSchema,
+} from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
 import { Check, Minus, TriangleAlert } from "lucide-react-native";
@@ -15,7 +19,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { apiRequest } from "@/lib/api-client";
-import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { initialsOf } from "@/lib/initials";
 
@@ -38,8 +41,6 @@ export function roleCan(
   return capability.permissions.every((permission) => policy.permissions.includes(permission));
 }
 
-type Member = { id: string; name: string; email: string; role: string };
-
 function rolePoliciesQueryOptions() {
   return {
     queryKey: ["business-roles"] as const,
@@ -56,18 +57,12 @@ function rolePoliciesQueryOptions() {
 function membersQueryOptions(businessId: string) {
   return {
     queryKey: ["business-members", businessId] as const,
-    queryFn: async (): Promise<Member[]> => {
-      const result = await authClient.organization.listMembers({
-        query: { organizationId: businessId },
-      });
-      if (result.error) throw new Error(result.error.message ?? "Members could not be listed");
-      return result.data.members.map((member) => ({
-        email: member.user.email,
-        id: member.id,
-        name: member.user.name || member.user.email,
-        role: member.role,
-      }));
-    },
+    queryFn: ({ signal }: { signal: AbortSignal }) =>
+      apiRequest<BusinessMembersResponse, BusinessMembersResponse["data"]>(
+        "/v1/businesses/members",
+        { authenticated: true, signal },
+        businessMembersResponseSchema,
+      ),
   };
 }
 
@@ -139,7 +134,7 @@ function MemberRows({ businessId }: { businessId: string }) {
   if (members.data) {
     return (
       <View>
-        {members.data.map((member, index) => (
+        {members.data.members.map((member, index) => (
           <View
             className={cn(
               "flex-row items-center gap-3 px-4 py-2.5 sm:px-5",
@@ -147,16 +142,16 @@ function MemberRows({ businessId }: { businessId: string }) {
             )}
             key={member.id}
           >
-            <Avatar alt={member.name} className="size-8">
+            <Avatar alt={member.name || member.email} className="size-8">
               <AvatarFallback className="bg-muted">
                 <Text className="font-ui text-[11px] text-muted-foreground">
-                  {initialsOf(member.name)}
+                  {initialsOf(member.name || member.email)}
                 </Text>
               </AvatarFallback>
             </Avatar>
             <View className="min-w-0 flex-1">
               <Text className="text-[13px] leading-5" numberOfLines={1}>
-                {member.name}
+                {member.name || member.email}
               </Text>
               <Text className="text-xs leading-4 text-muted-foreground" numberOfLines={1}>
                 {member.email}
@@ -285,11 +280,19 @@ function PermissionMatrix() {
 }
 
 /** Who uses Pisto in this business and what each role may do, as the server's policy says. */
-export function UsersCard({ businessId }: { businessId: string }) {
+export function UsersCard({ business }: { business: Business }) {
   const { t } = useTranslation();
+  // Only a role that configures the business may read who belongs to it.
+  const canListMembers = business.access.permissions.includes("business:configure");
   return (
     <Card description={t("settings.membersDescription")} title={t("settings.members")}>
-      <MemberRows businessId={businessId} />
+      {canListMembers ? (
+        <MemberRows businessId={business.id} />
+      ) : (
+        <Text className="px-4 py-3 text-[13px] leading-5 text-muted-foreground sm:px-5">
+          {t("settings.membersOwnerOnly")}
+        </Text>
+      )}
       <PermissionMatrix />
     </Card>
   );
