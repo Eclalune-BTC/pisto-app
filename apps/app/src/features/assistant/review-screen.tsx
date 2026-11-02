@@ -232,37 +232,41 @@ export function AssistantReviewScreen({ slots = previewDraftFormSlots }: ReviewS
   }
 
   const voice = availability.kind === "ready" && availability.transcription && canRecord();
+  // The dialog keeps one place in the tree, so the first draft arriving from the empty state
+  // does not remount (and reopen) it.
   const dialogElement = (
     <EntryDialog availability={availability} mode={dialog} onClose={() => setDialog(null)} />
   );
 
   if (!entry?.interpretation.draft) {
     return (
-      <Page width="form">
-        <StatePanel
-          action={
-            availability.kind === "disabled" ? undefined : (
-              <Button
-                label={t("assistant.review.start")}
-                onPress={() => setDialog(voice ? "voice" : "text")}
-              />
-            )
-          }
-          description={
-            availability.kind === "disabled"
-              ? t("assistant.problems.disabled")
-              : t("assistant.review.emptyDescription")
-          }
-          icon={availability.kind === "disabled" ? TriangleAlert : Mic}
-          level={1}
-          title={
-            availability.kind === "disabled"
-              ? t("assistant.problems.disabledTitle")
-              : t("assistant.review.emptyTitle")
-          }
-        />
+      <>
+        <Page width="form">
+          <StatePanel
+            action={
+              availability.kind === "disabled" ? undefined : (
+                <Button
+                  label={t("assistant.review.start")}
+                  onPress={() => setDialog(voice ? "voice" : "text")}
+                />
+              )
+            }
+            description={
+              availability.kind === "disabled"
+                ? t("assistant.problems.disabled")
+                : t("assistant.review.emptyDescription")
+            }
+            icon={availability.kind === "disabled" ? TriangleAlert : Mic}
+            level={1}
+            title={
+              availability.kind === "disabled"
+                ? t("assistant.problems.disabledTitle")
+                : t("assistant.review.emptyTitle")
+            }
+          />
+        </Page>
         {dialogElement}
-      </Page>
+      </>
     );
   }
 
@@ -274,45 +278,47 @@ export function AssistantReviewScreen({ slots = previewDraftFormSlots }: ReviewS
   };
 
   return (
-    <Page>
-      <PageHeader
-        description={t("assistant.review.description")}
-        title={t(`assistant.review.titles.${draft.kind}`)}
-      />
-      <View className="gap-6 lg:flex-row lg:items-start">
-        <View className="gap-4 lg:w-[380px] lg:shrink-0">
-          <TranscriptPanel
-            interpret={interpret}
-            interpretation={interpretation}
-            key={entry.revision}
-            onRedictate={availability.kind === "ready" ? () => setDialog("voice") : null}
-            pending={pending}
-            voice={voice}
-          />
+    <>
+      <Page>
+        <PageHeader
+          description={t("assistant.review.description")}
+          title={t(`assistant.review.titles.${draft.kind}`)}
+        />
+        <View className="gap-6 lg:flex-row lg:items-start">
+          <View className="gap-4 lg:w-[380px] lg:shrink-0">
+            <TranscriptPanel
+              interpret={interpret}
+              interpretation={interpretation}
+              key={entry.revision}
+              onRedictate={availability.kind === "ready" ? () => setDialog("voice") : null}
+              pending={pending}
+              voice={voice}
+            />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Section title={t("assistant.review.formTitle")}>
+              {pending ? (
+                <ReviewSkeleton />
+              ) : (
+                <>
+                  <Notices draft={draft} interpretation={interpretation} />
+                  <ReviewMarkersProvider spans={interpretation.spans}>
+                    <View key={entry.revision}>
+                      {renderDraftForm(slots, draft, {
+                        entrySource: interpretation.source,
+                        onCancel: leave,
+                        onSaved: leave,
+                      })}
+                    </View>
+                  </ReviewMarkersProvider>
+                </>
+              )}
+            </Section>
+          </View>
         </View>
-        <View className="min-w-0 flex-1">
-          <Section title={t("assistant.review.formTitle")}>
-            {pending ? (
-              <ReviewSkeleton />
-            ) : (
-              <>
-                <Notices draft={draft} interpretation={interpretation} />
-                <ReviewMarkersProvider spans={interpretation.spans}>
-                  <View key={entry.revision}>
-                    {renderDraftForm(slots, draft, {
-                      entrySource: interpretation.source,
-                      onCancel: leave,
-                      onSaved: leave,
-                    })}
-                  </View>
-                </ReviewMarkersProvider>
-              </>
-            )}
-          </Section>
-        </View>
-      </View>
+      </Page>
       {dialogElement}
-    </Page>
+    </>
   );
 }
 
