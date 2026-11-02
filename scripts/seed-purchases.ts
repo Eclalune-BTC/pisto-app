@@ -169,4 +169,5 @@ export async function seedPurchases(input: {
     paymentTerms: "credit",
     dueDate: day(-14),
   });
+  console.info("Added 3 suppliers, 5 purchases (cash and credit) and 2 supplier payments.");
 }

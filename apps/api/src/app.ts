@@ -2,6 +2,7 @@ import { cors } from "@elysiajs/cors";
 import type { Auth } from "@pisto/auth";
 import type { BillingRuntime } from "@pisto/billing";
 import type {
+  BusinessMembersRepository,
   BusinessRepository,
   CashRepository,
   CatalogRepository,
@@ -34,6 +35,7 @@ import { businessRoutes } from "./routes/businesses.ts";
 import { cashRoutes } from "./routes/cash.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
 import { debtorsRoutes } from "./routes/debtors.ts";
+import { memberRoutes } from "./routes/members.ts";
 import { moneyTrendRoutes } from "./routes/money-trend.ts";
 import { movementsRoutes } from "./routes/movements.ts";
 import { purchasesRoutes } from "./routes/purchases.ts";
@@ -47,6 +49,7 @@ export interface ProductRepositories {
   businesses: BusinessRepository;
   cash: CashRepository;
   catalog: CatalogRepository;
+  members: BusinessMembersRepository;
   purchases: PurchasesRepository;
   debtors: DebtorsRepository;
   moneyTrend: MoneyTrendRepository;
@@ -189,6 +192,7 @@ export function createApp(input: {
     cash,
     catalog,
     debtors,
+    members,
     moneyTrend,
     movements,
     purchases,
@@ -198,6 +202,7 @@ export function createApp(input: {
   } = input.repositories;
   return app
     .use(businessRoutes({ access, businesses }))
+    .use(memberRoutes({ access, members }))
     .use(salesRoutes({ access, sales }))
     .use(catalogRoutes({ access, catalog }))
     .use(cashRoutes({ access, cash }))

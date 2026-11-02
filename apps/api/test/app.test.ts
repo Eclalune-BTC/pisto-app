@@ -2,6 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
 import { BillingProviderError, type BillingRuntime, RevenueCatWebhookError } from "@pisto/billing";
 import type {
+  BusinessMembersRepository,
   CashRepository,
   CatalogRepository,
   DebtorsRepository,
@@ -198,6 +199,10 @@ function testApp(
         cash: unavailableRepository<CashRepository>("Cash repository", options.onRepositoryCall),
         catalog: unavailableRepository<CatalogRepository>(
           "Catalog repository",
+          options.onRepositoryCall,
+        ),
+        members: unavailableRepository<BusinessMembersRepository>(
+          "Business members repository",
           options.onRepositoryCall,
         ),
         purchases: unavailableRepository<PurchasesRepository>(
@@ -1051,6 +1056,9 @@ describe("Pisto API", () => {
     ["GET", "/v1/reports/cash-flow?endMonth=2026-08"],
     ["GET", "/v1/businesses/roles"],
     ["GET", "/v1/businesses/members"],
+    ["POST", "/v1/businesses/members"],
+    ["PATCH", `/v1/businesses/members/${recordId}`],
+    ["POST", `/v1/businesses/members/${recordId}/remove`],
   ];
 
   test("resolves a session before every domain handler touches a repository", async () => {

@@ -166,6 +166,7 @@ function setup(
       businesses: unavailable("Business repository"),
       cash: unavailable("Cash repository"),
       catalog: unavailable("Catalog repository"),
+      members: unavailable("Business members repository"),
       debtors: unavailable("Debtors repository"),
       moneyTrend: unavailable("Money trend repository"),
       movements: unavailable("Movements repository"),

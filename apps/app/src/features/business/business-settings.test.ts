@@ -9,8 +9,10 @@ vi.mock("uniwind", () => ({
 }));
 vi.mock("@/lib/auth-client", () => ({ authClient: {} }));
 vi.mock("@/lib/api-client", () => ({ apiRequest: vi.fn() }));
+vi.mock("./member-dialogs", () => ({}));
+vi.mock("@/components/ui/row-actions", () => ({ RowActions: "row-actions" }));
 
-import { ROLE_CAPABILITIES, roleCan } from "./business-settings";
+import { ROLE_CAPABILITIES, roleCan } from "./role-capabilities";
 
 const capability = (key: (typeof ROLE_CAPABILITIES)[number]["key"]) => {
   const found = ROLE_CAPABILITIES.find((entry) => entry.key === key);

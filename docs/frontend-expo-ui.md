@@ -209,14 +209,13 @@ not establish visual approval, native device behavior or accessibility conforman
 ### Public product page and appearance
 
 The public `/` route composes `features/welcome/welcome-screen.tsx` inside the same Expo application.
-It is not a second marketing deployment or an authenticated workspace. Its four tabbed product areas
-reuse the public module names from the Operate destination model; no account, permission or business
-data is read by the page. All public copy, document metadata and accessibility labels come from the
-typed `es-SV` catalog. Local static captures illustrate real empty forms and report date controls,
-not financial results. Their provenance and layout rules live in the design-system guide. The tabs
-and FAQ use adapted React Native Reusables Uniwind source with RN Primitives interactions.
-The FAQ states the current sales/cash/stock separation, accounting limits and unimplemented AI/voice
-and native-store release. It must change when the capability matrix changes, not before.
+It is not a second marketing deployment or an authenticated workspace, and it reads no account,
+permission or business data. It shows the product through its own components: the "Hoy" home of an
+example business (labelled once as example figures), the dictation flow in three steps with the
+numbered transcript, previews of Movimientos, Cuentas por cobrar, Cuentas por pagar and Reportes,
+and the role table that Configuración also uses (`features/business/role-capabilities.ts`). Tests
+check that the example figures add up and that the role table matches the server's role policy. All
+copy comes from the typed `es-SV` catalog.
 
 `AppearanceControl` is shared by the public page, authentication, workspace shell and Account. Uniwind owns effective
 light/dark/system state; `AppearanceProvider` restores and saves the preference through browser
@@ -225,7 +224,7 @@ stored. Absent storage means system appearance; corrupt or blocked storage produ
 localized error. A failed write does not change the selected theme. Restoration is asynchronous and
 does not block product access; an initial system-to-saved-theme transition may be visible on reload.
 The compact control switches to the named light/dark destination. Full light/dark/system choices
-remain in the public footer and Account. Its error state must not push the header outside the viewport.
+remain in Account; the public page uses the compact control in its header. Its error state must not push the header outside the viewport.
 
 The page remains a single-page web export, not an SEO-oriented static/SSR marketing site. Its localized
 title and description are set through the installed Expo Router Head API at runtime. A separate public

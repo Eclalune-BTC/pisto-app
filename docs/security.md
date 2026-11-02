@@ -66,8 +66,9 @@ secret.
   also check a live, unexpired database session rather than accepting cached session state alone.
 - Keep direct organization deletion blocked; no auth endpoint may
   cascade-delete canonical business history without an approved retention/export/audit policy.
-- Restrict organization creation to the approved onboarding rule, and deny invitation/member
-  operations until their verification, delivery, permission, rate-limit, and audit flows exist.
+- Restrict organization creation to the approved onboarding rule, and keep Better Auth
+  invitation/member operations denied. Staff changes use the owner-only `/v1/businesses/members`
+  commands, which keep receipts and never return or store an initial password.
 
 ## API controls
 
@@ -189,8 +190,9 @@ from the tables above:
   revocation are not recorded. The `session` table holds live sessions, not a history.
 - **Session and device activity.** No record of which device or address used a session, beyond what
   transient request logs happen to retain.
-- **Role and membership changes.** No role-change history exists — partly because no role-change path
-  exists. Business onboarding writes the only membership row and hardcodes `owner`.
+- **Role and membership changes.** `business_member_operation` keeps one receipt per owner command
+  (who added, re-roled or removed whom, and the resulting member). There is no history of changes
+  made outside those commands, such as the seed script.
 - **Business settings changes.** Currency, exponent, and time zone are create-once, so there is no
   change history to keep; a future mutable setting needs its own audit decision.
 - **Billing and entitlement decisions.** `billing_webhook_event` retains a provider payload keyed by

@@ -83,7 +83,9 @@ Server authorization and session expiry still apply.
 The server and Expo organization plugins plus organization/member/invitation schema are included.
 Business onboarding creates one server-owned organization and exact `owner` membership. Elysia blocks
 raw organization creation, deletion, invitations, member/role/team mutations, and reads; only the
-active-organization selector is exposed. Invitations and role administration are not implemented.
+active-organization selector is exposed. The owner adds, re-roles and removes staff through Pisto's
+own `/v1/businesses/members` commands ([API](api-elysia.md)); invitations and acceptance are not
+implemented.
 
 [ADR 0010](adrs/0010-organization-backed-business-tenancy.md) uses one organization identifier as
 Pisto's `businessId` to avoid a second membership system. Preserve these implemented boundaries:
@@ -94,8 +96,9 @@ Pisto's `businessId` to avoid a second membership system. Preserve these impleme
   every protected request;
 - store currency, time zone, and financial state in typed Pisto domain tables, never auth metadata;
 - keep direct organization deletion blocked to preserve canonical business data; and
-- deny invitation/member flows until verified email delivery, acceptance, role permissions, rate
-  limits, denial tests, and audit are approved and implemented.
+- keep Better Auth invitation/member endpoints denied; staff changes go through the owner-only
+  Pisto commands, which create a new account only through the sign-up endpoint and never change an
+  existing account's password.
 
 ADR 0014 recognizes exact `owner`, `admin`, and `member` membership values through one Pisto policy.
 All three can post and read sales; only `owner` and `admin` hold `sales:correct`, so a `member`
@@ -105,12 +108,11 @@ catalog, inventory, expense, cash, customer, and receivable manage permissions; 
 Unknown/composite roles fail closed. Better Auth role recognition does not itself authorize product
 data, and raw role strings must not be checked ad hoc across routes, tools, or UI.
 
-`admin` and `member` currently have no reachable actor. `packages/db/src/businesses.ts` is the only code
-path that writes a membership row and it hardcodes `role: "owner"`, and every Better Auth
-organization mutation route returns `404` at the Elysia edge except the active-organization selector.
-So the `admin` and `member` branches are defined, granted, and covered by tests, but no real user can
-occupy them until invitation delivery and role administration are implemented. Do not read a passing
-`admin` or `member` test as evidence that multi-user access works in the product.
+`admin` and `member` are reachable through the owner's staff commands in
+`packages/db/src/business-members.ts`; onboarding still writes only the `owner` row, and no route
+grants or removes `owner`. Adding an existing account needs no consent from its holder and reveals
+whether the email has an account, so verified invitations and a self-service leave remain required
+before this is production-ready.
 
 ## Database ownership
 

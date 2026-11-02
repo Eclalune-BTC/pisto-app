@@ -1,44 +1,28 @@
-import type { Business, BusinessAccess, BusinessPermission, BusinessRole } from "@pisto/contracts";
-import {
-  type BusinessMembersResponse,
-  businessMembersResponseSchema,
-  businessRolePoliciesResponseSchema,
-} from "@pisto/contracts";
+import type { Business, BusinessAccess, BusinessMember, BusinessRole } from "@pisto/contracts";
+import { businessRolePoliciesResponseSchema } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
-import { Check, Minus, TriangleAlert } from "lucide-react-native";
-import type { PropsWithChildren } from "react";
+import { Check, Minus, TriangleAlert, UserCog, UserMinus, UserPlus } from "lucide-react-native";
+import { type PropsWithChildren, type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
+import { RowActions } from "@/components/ui/row-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { apiRequest } from "@/lib/api-client";
 import { cn } from "@/lib/cn";
+import { focusReturnTarget } from "@/lib/focus-return";
 import { initialsOf } from "@/lib/initials";
+import { AddMemberDialog, ChangeRoleDialog, RemoveMemberDialog } from "./member-dialogs";
+import { membersApi, membersQueryKey } from "./members-api";
+import { ROLE_CAPABILITIES, roleCan } from "./role-capabilities";
 
 const ROLES: readonly BusinessRole[] = ["owner", "admin", "member"];
-
-/** Everyday jobs and the permissions the server requires for each of them. */
-export const ROLE_CAPABILITIES = [
-  { key: "sales", permissions: ["sales:create"] },
-  { key: "receivables", permissions: ["receivables:manage"] },
-  { key: "purchasesAndExpenses", permissions: ["purchases:manage", "expenses:manage"] },
-  { key: "reports", permissions: ["reports:read"] },
-  { key: "configure", permissions: ["business:configure"] },
-] as const satisfies readonly { key: string; permissions: readonly BusinessPermission[] }[];
-
-/** A role can do a job only when the policy grants every permission the job needs. */
-export function roleCan(
-  policy: BusinessAccess,
-  capability: (typeof ROLE_CAPABILITIES)[number],
-): boolean {
-  return capability.permissions.every((permission) => policy.permissions.includes(permission));
-}
 
 function rolePoliciesQueryOptions() {
   return {
@@ -55,32 +39,31 @@ function rolePoliciesQueryOptions() {
 
 function membersQueryOptions(businessId: string) {
   return {
-    queryKey: ["business-members", businessId] as const,
-    queryFn: ({ signal }: { signal: AbortSignal }) =>
-      apiRequest<BusinessMembersResponse, BusinessMembersResponse["data"]>(
-        "/v1/businesses/members",
-        { authenticated: true, signal },
-        businessMembersResponseSchema,
-      ),
+    queryKey: membersQueryKey(businessId),
+    queryFn: ({ signal }: { signal: AbortSignal }) => membersApi.list(signal),
   };
 }
 
 function Card({
+  action,
   children,
   description,
   title,
-}: PropsWithChildren<{ description: string; title: string }>) {
+}: PropsWithChildren<{ action?: ReactNode; description: string; title: string }>) {
   return (
     <View
       accessibilityLabel={title}
       className="min-w-0 overflow-hidden rounded-xl border border-border bg-card"
       role="region"
     >
-      <View className="gap-0.5 border-b border-border px-4 py-3.5 sm:px-5">
-        <Heading level={2} size="section">
-          {title}
-        </Heading>
-        <Text className="text-xs leading-4 text-muted-foreground">{description}</Text>
+      <View className="flex-row flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border px-4 py-3.5 sm:px-5">
+        <View className="min-w-0 shrink grow basis-[180px] gap-0.5">
+          <Heading level={2} size="section">
+            {title}
+          </Heading>
+          <Text className="text-xs leading-4 text-muted-foreground">{description}</Text>
+        </View>
+        {action}
       </View>
       {children}
     </View>
@@ -134,7 +117,16 @@ export function BusinessFactsCard({
   );
 }
 
-function MemberRows({ businessId }: { businessId: string }) {
+type MemberAction = (kind: "remove" | "role", member: BusinessMember) => void;
+
+function MemberRows({
+  businessId,
+  onAction,
+}: {
+  businessId: string;
+  /** Present for a role that manages staff; the owner row never offers an action. */
+  onAction?: MemberAction;
+}) {
   const { t } = useTranslation();
   const members = useQuery(membersQueryOptions(businessId));
   if (members.data) {
@@ -166,6 +158,29 @@ function MemberRows({ businessId }: { businessId: string }) {
             <Text className="font-ui text-[13px] text-muted-foreground">
               {roleLabel(t, member.role)}
             </Text>
+            {onAction ? (
+              member.role === "owner" ? (
+                // Rows without a menu keep its width, so every role shares one edge.
+                <View aria-hidden className="size-8 native:size-10" />
+              ) : (
+                <RowActions
+                  actions={[
+                    {
+                      icon: UserCog,
+                      label: t("settings.staff.changeRole"),
+                      onPress: () => onAction("role", member),
+                    },
+                    {
+                      destructive: true,
+                      icon: UserMinus,
+                      label: t("settings.staff.remove"),
+                      onPress: () => onAction("remove", member),
+                    },
+                  ]}
+                  label={t("settings.staff.rowActions", { name: member.name || member.email })}
+                />
+              )
+            ) : null}
           </View>
         ))}
       </View>
@@ -285,21 +300,66 @@ function PermissionMatrix() {
   );
 }
 
+type MemberDialog =
+  | { kind: "add"; opener: HTMLElement | null }
+  | { kind: "remove" | "role"; member: BusinessMember; opener: HTMLElement | null };
+
 /** Who uses Pisto in this business and what each role may do, as the server's policy says. */
 export function UsersCard({ business }: { business: Business }) {
   const { t } = useTranslation();
-  // Only a role that configures the business may read who belongs to it.
-  const canListMembers = business.access.permissions.includes("business:configure");
+  // Only a role that configures the business may read who belongs to it and change it.
+  const canManage = business.access.permissions.includes("business:configure");
+  const [dialog, setDialog] = useState<MemberDialog | null>(null);
+  const addButtonRef = useRef<View>(null);
+  const close = () => setDialog(null);
   return (
-    <Card description={t("settings.membersDescription")} title={t("settings.members")}>
-      {canListMembers ? (
-        <MemberRows businessId={business.id} />
+    <Card
+      action={
+        canManage ? (
+          <Button
+            onPress={() => setDialog({ kind: "add", opener: focusReturnTarget() })}
+            ref={addButtonRef}
+            size="sm"
+            variant="outline"
+          >
+            <Icon as={UserPlus} className="text-foreground" size={15} />
+            <Text>{t("settings.staff.add")}</Text>
+          </Button>
+        ) : undefined
+      }
+      description={t("settings.membersDescription")}
+      title={t("settings.members")}
+    >
+      {canManage ? (
+        <MemberRows
+          businessId={business.id}
+          onAction={(kind, member) => setDialog({ kind, member, opener: focusReturnTarget() })}
+        />
       ) : (
         <Text className="px-4 py-3 text-[13px] leading-5 text-muted-foreground sm:px-5">
           {t("settings.membersOwnerOnly")}
         </Text>
       )}
       <PermissionMatrix />
+      {dialog?.kind === "add" ? (
+        <AddMemberDialog businessId={business.id} onClose={close} returnFocus={dialog.opener} />
+      ) : dialog?.kind === "role" ? (
+        <ChangeRoleDialog
+          businessId={business.id}
+          member={dialog.member}
+          onClose={close}
+          returnFocus={dialog.opener}
+        />
+      ) : dialog?.kind === "remove" ? (
+        <RemoveMemberDialog
+          businessId={business.id}
+          businessName={business.name}
+          member={dialog.member}
+          onClose={close}
+          returnFocus={dialog.opener}
+          returnFocusAfterRemoval={addButtonRef}
+        />
+      ) : null}
     </Card>
   );
 }

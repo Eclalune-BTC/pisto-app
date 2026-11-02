@@ -95,7 +95,9 @@ export default function OperateHomeScreen() {
         meta: { primary: true },
         cell: ({ row: { original } }) => (
           <Text className="text-[13px]" numberOfLines={1}>
-            {original.description ?? t("common.noDescription")}
+            {original.entryMode === "itemized"
+              ? (original.customer?.name ?? t("sales.itemized.counterSale"))
+              : (original.description ?? t("common.noDescription"))}
           </Text>
         ),
       },
