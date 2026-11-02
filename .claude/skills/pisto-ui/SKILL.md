@@ -199,3 +199,34 @@ Append one line per lesson: `YYYY-MM-DD · screen · lesson · where it is now e
   totals truncated "+$185.50", so totals keep a 140 px basis and drop to two per row.
 - 2026-11-02 · tooling · Several worktrees on 127.0.0.1 share one cookie jar in the shared Chrome;
   capture with a headless Chrome profile of your own (CDP) instead of the shared window.
+- 2026-11-02 · landing · Product pictures are composed from the app's own pieces (`MoneyFigure`,
+  `MoneyTrendChart`, `CashFlowChart`, `TranscriptHighlight`, the Configuración role jobs) fed with
+  one example business whose figures add up, are labelled once as an example and are checked by a
+  test; never screenshots, stock art or invented statistics · `features/welcome/example-business.ts`.
+- 2026-11-02 · landing · Illustrated controls take `buttonVariants` on a plain View inside a
+  `pointer-events-none` figure, so the page never announces a button it cannot press; the test
+  counts `role="button"` · `features/welcome/fragments.tsx` `ButtonLook`.
+- 2026-11-02 · landing · A 248 px card truncated "Vencido desde el …"; balance rows put the amount
+  on the name line so the due date keeps the full width · `fragments.tsx` `BalanceLine`.
+- 2026-11-02 · landing · A three-column step grid misaligned when one description wrapped to three
+  lines; keep step copy under ~70 characters and let the figure panels stretch to one height.
+- 2026-11-02 · landing · `web:text-balance` on display headings removes the lone last word
+  ("cuaderno.") at every width.
+- 2026-11-02 · tooling · Capturing right after files change (e.g. `biome check --write`) can serve
+  CSS without newly used breakpoint classes and draw a broken layout; recapture before judging.
+  Git Bash rewrites a "/sign-in" argument into a Windows path (`MSYS_NO_PATHCONV=1`), and a full
+  capture of a ScrollView page needs the scroll content height plus the header.
+- 2026-11-02 · landing · `hidden sm:flex` on a web `Text` makes it a flex box and cancels
+  `text-right`; toggle visibility on a wrapper View. A `min-w-0 flex-1` label beside fixed figure
+  columns collapsed to nothing in a half-width card at 768 px: give it a minimum width and check
+  two-column grids at their narrowest · `features/welcome/module-previews.tsx`.
+- 2026-11-02 · landing · A bordered card inside a tinted frame read as a card inside a card, and
+  centred cards started at different heights; illustration cards sit directly on the page, top
+  aligned · `features/welcome/how-it-works.tsx`.
+- 2026-11-02 · landing · The same example card shown in the hero and again in a module section read
+  as padding; each example fact appears once (the hero owns the home, module previews show other
+  screens) and a month in progress is left out unless its figures follow the day of the month.
+- 2026-11-02 · landing · An example row reading "$0.00" (a sale on credit) looked like a bug on a
+  sales page, and one warning tone for "vencido" and "vence esta semana" hid a real difference;
+  pick example records whose amount reads right on its own, and give each preview the tones of
+  the screen it shows · `features/welcome/example-business.ts`, `module-previews.tsx`.
