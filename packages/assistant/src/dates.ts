@@ -52,20 +52,27 @@ function explicitDate(
   const now = new Date(today * dayMs);
   const thisYear = now.getUTCFullYear();
   const thisMonth = now.getUTCMonth() + 1;
-  const month = expression.month ?? thisMonth;
-  const year = expression.year ?? thisYear;
-  let candidate = calendarDate(year, month, expression.day);
-  if (candidate === null) return null;
-  const wrongSide = (value: number) => (direction === "past" ? value > today : value < today);
-  // "el 28" said on the 2nd means last month's 28th for a sale and next month's for a due date.
-  if (wrongSide(candidate) && expression.month === null) {
-    const shift = direction === "past" ? -1 : 1;
-    const shifted = new Date(Date.UTC(year, month - 1 + shift, 1));
-    candidate = calendarDate(shifted.getUTCFullYear(), shifted.getUTCMonth() + 1, expression.day);
-  } else if (wrongSide(candidate) && expression.year === null) {
-    candidate = calendarDate(year + (direction === "past" ? -1 : 1), month, expression.day);
+  const step = direction === "past" ? -1 : 1;
+  const rightSide = (value: number) => (direction === "past" ? value <= today : value >= today);
+  if (expression.month === null) {
+    // "el 28" said on the 2nd is last month's 28th for a sale and this month's for a due date;
+    // "el 31" skips the months without a 31st. The window check rejects anything farther.
+    const year = expression.year ?? thisYear;
+    for (let offset = 0; Math.abs(offset) <= 2; offset += step) {
+      const month = new Date(Date.UTC(year, thisMonth - 1 + offset, 1));
+      const candidate = calendarDate(
+        month.getUTCFullYear(),
+        month.getUTCMonth() + 1,
+        expression.day,
+      );
+      if (candidate !== null && rightSide(candidate)) return candidate;
+    }
+    return null;
   }
-  return candidate;
+  const candidate = calendarDate(expression.year ?? thisYear, expression.month, expression.day);
+  if (candidate === null || rightSide(candidate) || expression.year !== null) return candidate;
+  // "el 28 de diciembre" said in January is last December's.
+  return calendarDate(thisYear + step, expression.month, expression.day);
 }
 
 export type ResolvedDate =

@@ -43,6 +43,7 @@ describe("money", () => {
     expect(lineSubtotal(1_500n, 3, 233n)).toBe(350n);
     // 0.25 lb at 1.01 = 0.2525 -> 0.25
     expect(lineSubtotal(25n, 2, 101n)).toBe(25n);
+    expect(lineSubtotal(9_223_372_036_854_775_807n, 0, 2n)).toBeNull();
   });
 });
 
@@ -80,6 +81,26 @@ describe("dates in the business calendar", () => {
     expect(resolveDate({ ...none, day: 28, month: 12, year: null }, "2027-01-02", "past")).toEqual({
       kind: "resolved",
       date: "2026-12-28",
+    });
+  });
+
+  test("a day the current month lacks resolves in the nearest month that has it", () => {
+    // April has no 31st: a sale "el 31" is March 31, a due date "el 31" is May 31.
+    expect(resolveDate({ ...none, day: 31 }, "2026-04-05", "past")).toEqual({
+      kind: "resolved",
+      date: "2026-03-31",
+    });
+    expect(resolveDate({ ...none, day: 31 }, "2026-04-05", "future")).toEqual({
+      kind: "resolved",
+      date: "2026-05-31",
+    });
+    expect(resolveDate({ ...none, day: 30 }, "2026-03-02", "past")).toEqual({
+      kind: "resolved",
+      date: "2026-01-30",
+    });
+    expect(resolveDate({ ...none, day: 5 }, "2026-04-05", "future")).toEqual({
+      kind: "resolved",
+      date: "2026-04-05",
     });
   });
 

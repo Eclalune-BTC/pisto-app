@@ -1,5 +1,5 @@
 import type { BusinessPermission } from "@pisto/contracts";
-import { and, asc, eq, inArray, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, type SQL, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 import { authorizeBusinessAction, type ProductActor } from "./business-access.ts";
@@ -79,11 +79,19 @@ function folded(column: AnyPgColumn): SQL {
 }
 
 /** Terms are folded by the caller; LIKE wildcards in them are escaped here. */
+function containsTerm(column: AnyPgColumn, term: string): SQL {
+  return sql`${folded(column)} like ${`%${term.replace(/[\\%_]/g, "\\$&")}%`} escape '\\'`;
+}
+
 function containsAnyTerm(column: AnyPgColumn, terms: readonly string[]): SQL | undefined {
-  return or(
-    ...terms.map(
-      (term) => sql`${folded(column)} like ${`%${term.replace(/[\\%_]/g, "\\$&")}%`} escape '\\'`,
-    ),
+  return or(...terms.map((term) => containsTerm(column, term)));
+}
+
+/** How many of the terms a name contains; candidates naming more of what was heard come first. */
+function termHits(column: AnyPgColumn, terms: readonly string[]): SQL {
+  return sql.join(
+    terms.map((term) => sql`(${containsTerm(column, term)})::int`),
+    sql` + `,
   );
 }
 
@@ -144,7 +152,11 @@ export function createAssistantDirectory(db: Database): AssistantDirectoryReposi
                       containsAnyTerm(catalogProduct.name, productTerms),
                     ),
                   )
-                  .orderBy(asc(catalogProduct.name), asc(catalogProduct.id))
+                  .orderBy(
+                    desc(termHits(catalogProduct.name, productTerms)),
+                    asc(catalogProduct.name),
+                    asc(catalogProduct.id),
+                  )
                   .limit(maxCandidates)
               : [];
 
@@ -160,7 +172,11 @@ export function createAssistantDirectory(db: Database): AssistantDirectoryReposi
                       containsAnyTerm(customer.name, customerTerms),
                     ),
                   )
-                  .orderBy(asc(customer.name), asc(customer.id))
+                  .orderBy(
+                    desc(termHits(customer.name, customerTerms)),
+                    asc(customer.name),
+                    asc(customer.id),
+                  )
                   .limit(maxCandidates)
               : [];
 

@@ -31,8 +31,13 @@ export function lineSubtotal(
   quantityMinorUnits: bigint,
   quantityPrecision: number,
   unitAmountMinorUnits: bigint,
-): bigint {
+): bigint | null {
   const scale = 10n ** BigInt(quantityPrecision);
   const product = quantityMinorUnits * unitAmountMinorUnits;
-  return (product + scale / 2n) / scale;
+  return withinRange((product + scale / 2n) / scale);
+}
+
+/** Null for an amount no record can store (above the signed 64-bit range). */
+export function withinRange(value: bigint): bigint | null {
+  return value > maxMinorUnits ? null : value;
 }

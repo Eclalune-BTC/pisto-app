@@ -20,7 +20,9 @@ const ownerPermissions: BusinessPermission[] = [
   "sales:create",
   "expenses:manage",
   "cash:manage",
+  "receivables:read",
   "receivables:manage",
+  "purchases:read",
   "purchases:manage",
   "assistant:use",
 ];
@@ -591,6 +593,75 @@ describe("untrusted model and user input", () => {
       ["missing", "category"],
       ["missing", "description"],
       ["missing", "paymentMethod"],
+    ]);
+  });
+});
+
+describe("review findings", () => {
+  test("a stated total wins over catalog prices and is flagged when they differ", async () => {
+    const { interpretation } = await interpret("Vendí 2 cafés por 5 dólares, me dio 3", {
+      kind: "sale",
+      items: [{ name: "cafés", quantity: "2", unitPrice: null }],
+      amount: "5",
+      received: "3",
+      paymentMethod: "cash",
+    });
+    expect(interpretation.draft).toMatchObject({
+      lines: [{ subtotalMinorUnits: "650" }],
+      totalMinorUnits: "500",
+      receivedMinorUnits: "300",
+      creditMinorUnits: "200",
+    });
+    expect(interpretation.notices).toContainEqual({
+      code: "total_mismatch",
+      field: "amount",
+      lineIndex: null,
+    });
+  });
+
+  test("a unit price the user said that differs from the catalog is flagged on its line", async () => {
+    const { interpretation } = await interpret("Vendí 2 cafés a 3 dólares cada uno", {
+      kind: "sale",
+      items: [{ name: "cafés", quantity: "2", unitPrice: "3" }],
+      settlement: "paid",
+      paymentMethod: "cash",
+    });
+    expect(interpretation.notices).toEqual([
+      { code: "similar_match", field: "product", lineIndex: 0 },
+      { code: "total_mismatch", field: "amount", lineIndex: 0 },
+    ]);
+  });
+
+  test("an amount beyond the storable range is missing, not a server error", async () => {
+    const { interpretation } = await interpret("Compré muchísimas Coca-Cola carísimas", {
+      kind: "purchase",
+      party: "Distribuidora Centro",
+      items: [{ name: "Coca-Cola", quantity: "999999999999999", unitPrice: "999999999999999" }],
+      settlement: "credit",
+    });
+    expect(interpretation.draft).toMatchObject({
+      lines: [{ subtotalMinorUnits: null }],
+      totalMinorUnits: null,
+    });
+    expect(interpretation.notices).toContainEqual({
+      code: "missing",
+      field: "amount",
+      lineIndex: null,
+    });
+  });
+
+  test("a role that cannot read receivables is not told the customer owes nothing", async () => {
+    const { records } = directory({
+      customers: [carlosRivas],
+      context: { ...context, permissions: ["sales:create", "assistant:use", "customers:read"] },
+    });
+    const { interpretation } = await interpret(
+      "Carlos Rivas me pagó 5 dólares",
+      { kind: "receivable_payment", party: "Carlos Rivas", amount: "5", paymentMethod: "cash" },
+      { records },
+    );
+    expect(interpretation.notices).toEqual([
+      { code: "not_permitted", field: "kind", lineIndex: null },
     ]);
   });
 });

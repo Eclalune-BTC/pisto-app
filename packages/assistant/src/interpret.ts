@@ -10,7 +10,7 @@ import {
   type BusinessPermission,
 } from "@pisto/contracts";
 
-import { decimalToMinorUnits, lineSubtotal, positiveMinorUnits } from "./amounts.ts";
+import { decimalToMinorUnits, lineSubtotal, positiveMinorUnits, withinRange } from "./amounts.ts";
 import { type DateExpression, resolveDate } from "./dates.ts";
 import type {
   DirectoryAccount,
@@ -183,6 +183,16 @@ function buildLines(
         : decimalToMinorUnits(item.unitPrice, digits);
     if (product && quantity === null) notices.add("missing", "quantity", index);
     if (product && unitAmount === null) notices.add("missing", "amount", index);
+    // A sale charges the catalog price; a different price the user said must be set by hand.
+    const statedUnit = decimalToMinorUnits(item.unitPrice, digits);
+    if (
+      price === "catalog" &&
+      unitAmount !== null &&
+      statedUnit !== null &&
+      statedUnit !== unitAmount
+    ) {
+      notices.add("total_mismatch", "amount", index);
+    }
     if (
       price === "catalog" &&
       product?.onHandMinorUnits != null &&
@@ -206,15 +216,24 @@ function buildLines(
   });
 }
 
-/** Lines that all have a subtotal decide the total; otherwise the stated amount does. */
+/**
+ * What the user said the total was wins, because received and credit follow it; when the priced
+ * lines add up to something else the user is told to fix the prices. Without a stated total, lines
+ * that all have a subtotal decide it.
+ */
 function totalOf(
   lines: ReadonlyArray<{ subtotalMinorUnits: string | null }>,
   stated: bigint | null,
+  notices: Notices,
 ): bigint | null {
-  if (lines.length > 0 && lines.every((line) => line.subtotalMinorUnits !== null)) {
-    return lines.reduce((sum, line) => sum + BigInt(line.subtotalMinorUnits as string), 0n);
+  const priced = lines.length > 0 && lines.every((line) => line.subtotalMinorUnits !== null);
+  const computed = priced
+    ? withinRange(lines.reduce((sum, line) => sum + BigInt(line.subtotalMinorUnits as string), 0n))
+    : null;
+  if (stated !== null && computed !== null && stated !== computed) {
+    notices.add("total_mismatch", "amount");
   }
-  return stated;
+  return stated ?? computed;
 }
 
 interface DraftInput {
@@ -232,7 +251,7 @@ function saleDraft({ extraction, context, products, customers, accounts, notices
   const occurred = occurrence(context, extraction.date, notices);
   const customerMatch = matchName(extraction.party, customers);
   const lines = buildLines(extraction, products, digits, "catalog", notices);
-  const total = totalOf(lines, positiveMinorUnits(extraction.amount, digits));
+  const total = totalOf(lines, positiveMinorUnits(extraction.amount, digits), notices);
   if (total === null) notices.add("missing", "amount");
 
   let received = decimalToMinorUnits(extraction.received, digits);
@@ -302,7 +321,7 @@ function purchaseDraft(input: DraftInput) {
   if (extraction.party === null) notices.add("missing", "supplier");
   else notices.match("supplier", supplierMatch);
   const lines = buildLines(extraction, products, digits, "stated", notices);
-  const total = totalOf(lines, positiveMinorUnits(extraction.amount, digits));
+  const total = totalOf(lines, positiveMinorUnits(extraction.amount, digits), notices);
   if (total === null) notices.add("missing", "amount");
   const paymentTerms =
     extraction.settlement === null ? null : extraction.settlement === "paid" ? "cash" : "credit";
@@ -334,7 +353,10 @@ function receivablePaymentDraft({ extraction, context, customers, accounts, noti
   else notices.match("customer", match);
   const customer = matchedRecord(match);
   const receivable = customer?.oldestOpenReceivable ?? null;
-  if (customer && receivable === null) notices.add("not_found", "credit");
+  // Without receivables:read the directory cannot see balances, so "owes nothing" is unknown.
+  if (customer && receivable === null && context.permissions.includes("receivables:read")) {
+    notices.add("not_found", "credit");
+  }
   const amount = positiveMinorUnits(extraction.amount, context.currencyMinorUnitDigits);
   if (amount === null) notices.add("missing", "amount");
   else if (receivable && amount > BigInt(receivable.balanceMinorUnits)) {
@@ -360,7 +382,9 @@ function supplierPaymentDraft({ extraction, context, suppliers, accounts, notice
   else notices.match("supplier", match);
   const supplier = matchedRecord(match);
   const purchase = supplier?.oldestOpenPurchase ?? null;
-  if (supplier && purchase === null) notices.add("not_found", "credit");
+  if (supplier && purchase === null && context.permissions.includes("purchases:read")) {
+    notices.add("not_found", "credit");
+  }
   const amount = positiveMinorUnits(extraction.amount, context.currencyMinorUnitDigits);
   if (amount === null) notices.add("missing", "amount");
   else if (purchase && amount > BigInt(purchase.balanceMinorUnits)) {
