@@ -61,7 +61,13 @@ La frontera del proyecto dejaba fuera la gestión de inventarios; sin embargo, l
 
 El código fuente se encuentra en GitHub (Anexo 1). La rama main contiene las versiones entregadas y la rama develop integra el trabajo en curso. Cada funcionalidad se desarrolló en una rama propia con el prefijo feature/, por ejemplo feature/itemized-sales para las ventas con productos, feature/purchases para compras y proveedores, feature/ai-assistant para el asistente, feature/user-management para la gestión de usuarios y feature/landing-page para la página pública. Cada rama se integró a develop con un merge sin avance rápido, de modo que el historial conserva cada integración, y al cerrar la fase develop se integró a main.
 
-**Figura 27. Ramas del repositorio e historial de integración**
+**Figura 27. Ramas del repositorio en GitHub**
+
+![Ramas del repositorio en GitHub](fase3/gh-branches.jpg)
+
+*Página de ramas del repositorio público: main, develop y las ramas feature/ de cada funcionalidad.*
+
+**Figura 28. Ramas del repositorio e historial de integración**
 
 ![Ramas del repositorio e historial de integración](fase3/term-01-branches.jpg)
 
@@ -71,23 +77,23 @@ El código fuente se encuentra en GitHub (Anexo 1). La rama main contiene las ve
 
 El archivo README.md explica cómo ejecutar el sistema en una computadora nueva. Enumera los programas necesarios con sus versiones (Git, Bun 1.4 o superior, Node.js 24 y Docker Desktop), los comandos de instalación, la creación de los archivos de variables de entorno, la creación de la base de datos con las migraciones y la carga de los datos de prueba. Al inicio incluye el enlace a la demostración, las cuentas de prueba y la ubicación de la colección de peticiones.
 
-**Figura 28. Encabezado del README con enlaces y cuentas de prueba**
+**Figura 29. Archivo README.md en GitHub**
 
-![Encabezado del README con enlaces y cuentas de prueba](fase3/term-readme-top.jpg)
+![Archivo README.md en GitHub](fase3/gh-readme.jpg)
 
-*Primera sección del README.md del repositorio.*
+*Inicio del README.md con los enlaces de la entrega y las cuentas de prueba.*
 
-**Figura 29. Prerrequisitos e instalación en entorno local**
+**Figura 30. Prerrequisitos e instalación en el README.md**
 
-![Prerrequisitos e instalación en entorno local](fase3/term-readme-local.jpg)
+![Prerrequisitos e instalación en el README.md](fase3/gh-readme-local.jpg)
 
-*Sección del README.md con los requisitos y los comandos de instalación, migración y carga de datos.*
+*Sección del README.md con los programas requeridos y los comandos para instalar, crear la base de datos y cargar los datos de prueba.*
 
 ### Variables de entorno
 
 Los archivos .env.example del servidor y de la aplicación documentan cada variable con un valor de ejemplo. El comando bun run setup los copia a .env y apps/app/.env.local y genera un secreto aleatorio para la autenticación. Los valores reales de producción se guardan como secretos del servidor y nunca se suben al repositorio.
 
-**Figura 30. Estructura de variables de entorno**
+**Figura 31. Estructura de variables de entorno**
 
 ![Estructura de variables de entorno](fase3/term-02-env-example.jpg)
 
@@ -113,6 +119,14 @@ La implementación respeta las capas definidas en el mapeo de clases de la Fase 
 
 *Relación entre las capas del diseño y los módulos del repositorio.*
 
+Cada capa vive en su propio paquete del repositorio, de modo que la interfaz no puede consultar la base de datos directamente y las reglas de negocio quedan en un solo lugar.
+
+**Figura 32. Paquetes que implementan las capas del sistema**
+
+![Paquetes que implementan las capas del sistema](fase3/gh-packages.jpg)
+
+*Carpeta packages del repositorio: asistente de IA, autenticación, facturación, configuración, contratos y base de datos.*
+
 ### Endpoints del flujo núcleo
 
 **Tabla 11. Endpoints principales del API**
@@ -133,6 +147,14 @@ La implementación respeta las capas definidas en el mapeo de clases de la Fase 
 
 *La colección de Postman incluye una petición para cada endpoint.*
 
+Cada ruta declara el contrato que valida la petición antes de llegar al servicio; si los datos no cumplen el contrato, el API responde con un error de validación sin tocar la base de datos.
+
+**Figura 33. Definición de rutas del API (apps/api/src/routes/purchases.ts)**
+
+![Definición de rutas del API (apps/api/src/routes/purchases.ts)](fase3/gh-route.jpg)
+
+*Las líneas resaltadas declaran las rutas de proveedores; cada cuerpo se valida con su contrato antes de llegar al servicio.*
+
 ### Gestión de usuarios
 
 El dueño del negocio administra a su personal desde Configuración. Puede agregar un usuario nuevo, en cuyo caso el API crea la cuenta con el mismo cifrado del registro y una contraseña inicial, o agregar una cuenta que ya existe; también puede cambiar el rol entre encargado y vendedor y quitar a una persona del negocio. Solo el dueño puede hacerlo, nadie puede convertirse en dueño por esta vía y el dueño no puede quitarse a sí mismo. Un usuario quitado pierde el acceso en su siguiente petición.
@@ -144,6 +166,12 @@ El dueño del negocio administra a su personal desde Configuración. Puede agreg
 - **Control de acceso por roles:** cada petición se autoriza en el servidor según el rol del usuario en el negocio activo; el usuario no puede elegir otro negocio.
 - **Origen y límites:** solo los orígenes permitidos pueden escribir, el inicio de sesión admite tres intentos cada diez segundos y cada usuario tiene un máximo de 300 lecturas y 60 escrituras por minuto.
 - **Operaciones repetidas:** cada comando de dinero lleva una llave de idempotencia; si la misma petición se envía dos veces no se duplica el registro.
+
+**Figura 34. Configuración de la autenticación (packages/auth/src/create-auth.ts)**
+
+![Configuración de la autenticación (packages/auth/src/create-auth.ts)](fase3/gh-auth.jpg)
+
+*Inicio de sesión con correo y contraseña, límite de tres intentos de inicio de sesión cada diez segundos y sesión de siete días guardada en una cookie.*
 
 **Tabla 12. Permisos por rol**
 
@@ -162,11 +190,23 @@ El dueño del negocio administra a su personal desde Configuración. Puede agreg
 
 *Permisos que el servidor verifica en cada petición.*
 
+**Figura 35. Permisos de cada rol (packages/db/src/product-access.ts)**
+
+![Permisos de cada rol (packages/db/src/product-access.ts)](fase3/gh-roles.jpg)
+
+*Permisos del rol de dueño; cada rol tiene su lista y el servidor la consulta en cada petición antes de leer o escribir datos.*
+
 ### Manejo de errores
 
 Todas las respuestas de error tienen la misma forma, con un código, un mensaje y un identificador de la petición, y usan el código HTTP correspondiente: 400 cuando los datos no son válidos (con el detalle de cada campo), 401 sin sesión, 403 sin permiso o desde un origen no permitido, 404 cuando el registro no existe, 409 cuando la operación contradice una regla del negocio o reutiliza una llave de idempotencia con otros datos, 429 cuando se superan los límites y 503 cuando un servicio externo no está disponible. Los mensajes no incluyen detalles internos del servidor.
 
-**Figura 31. Respuestas del API ante errores y controles de seguridad**
+**Figura 36. Traducción de errores a códigos HTTP (apps/api/src/errors.ts)**
+
+![Traducción de errores a códigos HTTP (apps/api/src/errors.ts)](fase3/gh-errors.jpg)
+
+*Cada error del negocio se responde con un código HTTP fijo y un mensaje sin detalles internos.*
+
+**Figura 37. Respuestas del API ante errores y controles de seguridad**
 
 ![Respuestas del API ante errores y controles de seguridad](fase3/term-06-api-security.jpg)
 
@@ -176,23 +216,39 @@ Todas las respuestas de error tienen la misma forma, con un código, un mensaje 
 
 El WebSocket /v1/realtime admite solo a miembros del negocio activo que se conectan desde un origen permitido. Cuando una operación se guarda, el servidor envía a las demás sesiones del negocio el evento business.changed con el módulo afectado, y cada pantalla abierta vuelve a consultar sus datos sin que el usuario recargue la página.
 
-**Figura 32. Eventos del WebSocket**
+**Figura 38. Aviso en tiempo real después de guardar (apps/api/src/app.ts)**
+
+![Aviso en tiempo real después de guardar (apps/api/src/app.ts)](fase3/gh-realtime-server.jpg)
+
+*Cuando una operación termina de guardarse, el servidor publica business.changed a las sesiones abiertas del negocio.*
+
+**Figura 39. Eventos del WebSocket**
 
 ![Eventos del WebSocket](fase3/term-07-realtime.jpg)
 
 *La sesión del vendedor recibe el evento business.changed cuando el dueño registra una venta desde otra sesión.*
 
-**Figura 33. Pantalla Hoy del dueño antes de una venta registrada en otro equipo**
+**Figura 40. Pantalla Hoy del dueño antes de una venta registrada en otro equipo**
 
 ![Pantalla Hoy del dueño antes de una venta registrada en otro equipo](fase3/realtime-before-desktop.jpg)
 
 *Dinero disponible y movimientos de hoy antes de la venta.*
 
-**Figura 34. Pantalla Hoy del dueño actualizada en tiempo real**
+**Figura 41. Pantalla Hoy del dueño actualizada en tiempo real**
 
 ![Pantalla Hoy del dueño actualizada en tiempo real](fase3/realtime-after-desktop.jpg)
 
 *Sin recargar la página, aparecen la venta registrada por el vendedor y el nuevo saldo.*
+
+### Asistente de inteligencia artificial
+
+El caso de uso CU01, registrar una operación por voz o texto, se implementó en el paquete packages/assistant con Workers AI. El audio se transcribe con Whisper large v3 turbo y la frase se envía a Llama 3.3 70B para extraer el tipo de registro, el cliente o proveedor, los productos, las cantidades, los montos y la forma de pago. El servidor no confía en la respuesta del modelo: busca los clientes, proveedores y productos en la base de datos del negocio activo, calcula los montos en centavos con los precios del catálogo y avisa cuando algo no coincide con lo dicho. La respuesta es un borrador con los fragmentos de la frase numerados; el registro solo se guarda cuando el usuario lo confirma en el formulario, con los mismos permisos y validaciones de un registro manual.
+
+**Figura 42. Modelos del asistente de IA (packages/assistant/src/models.ts)**
+
+![Modelos del asistente de IA (packages/assistant/src/models.ts)](fase3/gh-assistant.jpg)
+
+*Modelos de Workers AI fijados para interpretar la frase y para transcribir el audio en español.*
 
 ## Base de datos y persistencia
 
@@ -200,13 +256,19 @@ El WebSocket /v1/realtime admite solo a miembros del negocio activo que se conec
 
 La base de datos se crea con doce migraciones SQL generadas con Drizzle a partir del modelo relacional. El comando bun run db:migrate las aplica en orden y deja creadas 38 tablas; el mismo procedimiento se usó para la base de datos en la nube.
 
-**Figura 35. Migraciones y carga de los datos de prueba**
+**Figura 43. Script de creación (DDL) de la tabla purchase**
+
+![Script de creación (DDL) de la tabla purchase](fase3/gh-ddl.jpg)
+
+*Fragmento de la migración 0010 con las columnas, llaves y restricciones CHECK de la tabla de compras.*
+
+**Figura 44. Migraciones y carga de los datos de prueba**
 
 ![Migraciones y carga de los datos de prueba](fase3/term-03-migrations.jpg)
 
 *Ejecución de las migraciones y del seed sobre una base de datos nueva; la segunda ejecución del seed no duplica información.*
 
-**Figura 36. Tablas creadas en PostgreSQL**
+**Figura 45. Tablas creadas en PostgreSQL**
 
 ![Tablas creadas en PostgreSQL](fase3/term-04-tables.jpg)
 
@@ -216,7 +278,7 @@ La base de datos se crea con doce migraciones SQL generadas con Drizzle a partir
 
 Las relaciones usan llaves foráneas que incluyen el negocio, de modo que ningún registro puede apuntar a datos de otro negocio. Las restricciones CHECK impiden montos negativos, estados no válidos o movimientos de caja sin su origen, y las restricciones únicas evitan registros duplicados, como dos productos con el mismo código en un negocio. Las cantidades de dinero se guardan como enteros en centavos para evitar errores de redondeo.
 
-**Figura 37. Restricciones de integridad y contraseñas cifradas**
+**Figura 46. Restricciones de integridad y contraseñas cifradas**
 
 ![Restricciones de integridad y contraseñas cifradas](fase3/term-05-integrity.jpg)
 
@@ -225,6 +287,12 @@ Las relaciones usan llaves foráneas que incluyen el negocio, de modo que ningú
 ### Datos de prueba
 
 El comando bun run db:seed crea los tres usuarios de prueba con sus roles y el negocio Abarrotes La Ceiba con seis semanas de historia. Cada registro se guarda con los mismos comandos que usa el API, por lo que las existencias, los saldos y las deudas quedan consistentes. Al terminar, el negocio tiene clientes con saldo pendiente, una deuda y una factura de proveedor vencidas, un producto con existencia baja y otro agotado, para que todas las pantallas muestren información.
+
+**Figura 47. Usuarios de prueba y negocio de ejemplo en el seed (scripts/seed.ts)**
+
+![Usuarios de prueba y negocio de ejemplo en el seed (scripts/seed.ts)](fase3/gh-seed.jpg)
+
+*El seed crea los tres usuarios con sus roles y el negocio Abarrotes La Ceiba antes de registrar su historia.*
 
 **Tabla 13. Datos cargados en la demostración**
 
@@ -249,141 +317,141 @@ Las pantallas se implementaron a partir de los prototipos de alta fidelidad de l
 
 | Prototipo (Fase 2) | Pantalla implementada | Figura |
 | --- | --- | --- |
-| Figura 9. Inicio de sesión | Iniciar sesión | 39 |
-| Figuras 10 y 11. Menú principal y menú de opciones | Hoy y menú ¿Qué quiere registrar? | 40, 41 |
-| Figura 12. Nuevo registro | Dictado por voz | 42 |
-| Figura 13. Revisar venta | Revisión del registro preparado por el asistente | 43 |
-| Figura 14. Movimientos | Movimientos | 44 |
-| Figura 15. Nueva venta | Nueva venta | 45 |
-| Figura 16. Nueva compra | Nueva compra | 46 |
-| Figura 17. Nuevo gasto | Nuevo gasto | 47 |
-| Figura 18. Cuentas por cobrar | Cuentas por cobrar | 48 |
-| Figura 19. Registrar abono | Registrar abono | 49 |
-| Figura 20. Cuentas por pagar | Cuentas por pagar | 50 |
-| Figura 21. Productos | Productos | 51 |
-| Figura 22. Proveedores | Proveedores | 52 |
-| Figura 23. Reportes | Reportes | 54 |
-| Figura 24. Configuración | Configuración y gestión de usuarios | 56 |
+| Figura 9. Inicio de sesión | Iniciar sesión | 49 |
+| Figuras 10 y 11. Menú principal y menú de opciones | Hoy y menú ¿Qué quiere registrar? | 50, 51 |
+| Figura 12. Nuevo registro | Dictado por voz | 52 |
+| Figura 13. Revisar venta | Revisión del registro preparado por el asistente | 53 |
+| Figura 14. Movimientos | Movimientos | 54 |
+| Figura 15. Nueva venta | Nueva venta | 55 |
+| Figura 16. Nueva compra | Nueva compra | 56 |
+| Figura 17. Nuevo gasto | Nuevo gasto | 57 |
+| Figura 18. Cuentas por cobrar | Cuentas por cobrar | 58 |
+| Figura 19. Registrar abono | Registrar abono | 59 |
+| Figura 20. Cuentas por pagar | Cuentas por pagar | 60 |
+| Figura 21. Productos | Productos | 61 |
+| Figura 22. Proveedores | Proveedores | 62 |
+| Figura 23. Reportes | Reportes | 64 |
+| Figura 24. Configuración | Configuración y gestión de usuarios | 66 |
 
 *Las figuras de la izquierda corresponden al documento de la Fase 2.*
 
 ### Pantallas implementadas
 
-**Figura 38. Página pública del sistema**
+**Figura 48. Página pública del sistema**
 
 ![Página pública del sistema](fase3/landing.jpg)
 
 *Página que ve una persona antes de iniciar sesión, con un negocio de ejemplo y el registro por voz.*
 
-**Figura 39. Pantalla Inicio de Sesión**
+**Figura 49. Pantalla Inicio de Sesión**
 
 ![Pantalla Inicio de Sesión](fase3/signin.jpg)
 
 *Interfaz de inicio de sesión del sistema implementado.*
 
-**Figura 40. Pantalla Hoy (menú principal)**
+**Figura 50. Pantalla Hoy (menú principal)**
 
 ![Pantalla Hoy (menú principal)](fase3/home.jpg)
 
 *Dinero disponible con su evolución de 30 días, registro por voz o texto, movimientos de hoy, cuentas por cobrar y próximo pago.*
 
-**Figura 41. Pantalla del menú de opciones**
+**Figura 51. Pantalla del menú de opciones**
 
 ![Pantalla del menú de opciones](fase3/new-menu.jpg)
 
 *Menú ¿Qué quiere registrar? con las cinco operaciones del prototipo.*
 
-**Figura 42. Pantalla del módulo Nuevo registro**
+**Figura 52. Pantalla del módulo Nuevo registro**
 
 ![Pantalla del módulo Nuevo registro](fase3/dictation.jpg)
 
 *Registro por voz: el sistema escucha la frase y, al detenerse, prepara el registro para revisarlo.*
 
-**Figura 43. Pantalla del módulo Revisar Venta**
+**Figura 53. Pantalla del módulo Revisar Venta**
 
 ![Pantalla del módulo Revisar Venta](fase3/assistant-review.jpg)
 
 *La frase dictada aparece con sus fragmentos numerados y el formulario de venta queda lleno con los mismos números; el usuario corrige lo necesario y confirma.*
 
-**Figura 44. Pantalla del módulo Movimientos**
+**Figura 54. Pantalla del módulo Movimientos**
 
 ![Pantalla del módulo Movimientos](fase3/movements.jpg)
 
 *Ventas, compras, gastos, abonos y pagos en un solo listado, con los totales del período.*
 
-**Figura 45. Pantalla del módulo Nueva Venta**
+**Figura 55. Pantalla del módulo Nueva Venta**
 
 ![Pantalla del módulo Nueva Venta](fase3/sale-new.jpg)
 
 *Venta con productos, forma de pago, cuenta que recibe y total.*
 
-**Figura 46. Pantalla del módulo Nueva Compra**
+**Figura 56. Pantalla del módulo Nueva Compra**
 
 ![Pantalla del módulo Nueva Compra](fase3/purchase-new.jpg)
 
 *Compra al crédito con sus productos, costos, fecha de vencimiento y total.*
 
-**Figura 47. Pantalla del módulo Nuevo Gasto**
+**Figura 57. Pantalla del módulo Nuevo Gasto**
 
 ![Pantalla del módulo Nuevo Gasto](fase3/expense-new.jpg)
 
 *Registro de un gasto con su categoría, monto y cuenta de la que sale el dinero.*
 
-**Figura 48. Pantalla del módulo Cuentas por cobrar**
+**Figura 58. Pantalla del módulo Cuentas por cobrar**
 
 ![Pantalla del módulo Cuentas por cobrar](fase3/receivables.jpg)
 
 *Saldos de los clientes, antigüedad de las deudas y estado de cada cuenta.*
 
-**Figura 49. Pantalla del módulo Registrar Abono**
+**Figura 59. Pantalla del módulo Registrar Abono**
 
 ![Pantalla del módulo Registrar Abono](fase3/payment.jpg)
 
 *Abono de un cliente con el saldo actual y el saldo después del abono.*
 
-**Figura 50. Pantalla del módulo Cuentas por Pagar**
+**Figura 60. Pantalla del módulo Cuentas por Pagar**
 
 ![Pantalla del módulo Cuentas por Pagar](fase3/payables.jpg)
 
 *Lo que el negocio debe a sus proveedores, lo vencido y el próximo pago.*
 
-**Figura 51. Pantalla del módulo Productos**
+**Figura 61. Pantalla del módulo Productos**
 
 ![Pantalla del módulo Productos](fase3/products.jpg)
 
 *Existencias contra el mínimo de cada producto, con existencia baja y agotado.*
 
-**Figura 52. Pantalla del módulo Proveedores**
+**Figura 62. Pantalla del módulo Proveedores**
 
 ![Pantalla del módulo Proveedores](fase3/suppliers.jpg)
 
 *Proveedores con su saldo pendiente y sus compras recientes.*
 
-**Figura 53. Pantalla del módulo Clientes**
+**Figura 63. Pantalla del módulo Clientes**
 
 ![Pantalla del módulo Clientes](fase3/customers.jpg)
 
 *Clientes del negocio con su teléfono y saldo.*
 
-**Figura 54. Pantalla del módulo Reportes**
+**Figura 64. Pantalla del módulo Reportes**
 
 ![Pantalla del módulo Reportes](fase3/reports.jpg)
 
 *Estado de resultados de octubre y flujo de caja de los últimos meses.*
 
-**Figura 55. Pantalla del módulo Caja y bancos**
+**Figura 65. Pantalla del módulo Caja y bancos**
 
 ![Pantalla del módulo Caja y bancos](fase3/cash.jpg)
 
 *Saldo de cada cuenta y sus movimientos recientes.*
 
-**Figura 56. Pantalla del módulo Configuración**
+**Figura 66. Pantalla del módulo Configuración**
 
 ![Pantalla del módulo Configuración](fase3/settings.jpg)
 
 *Datos del negocio, usuarios con su rol y matriz de permisos.*
 
-**Figura 57. Agregar un usuario al negocio**
+**Figura 67. Agregar un usuario al negocio**
 
 ![Agregar un usuario al negocio](fase3/settings-add-desktop.jpg)
 
@@ -393,47 +461,63 @@ Las pantallas se implementaron a partir de los prototipos de alta fidelidad de l
 
 Cada pantalla muestra el estado real de la información: una estructura de carga mientras llegan los datos, mensajes de validación junto al campo con error, una confirmación al guardar, el mensaje del servidor cuando una operación no se puede realizar y un aviso claro cuando el rol del usuario no tiene permiso.
 
-**Figura 58. Estado de carga**
+**Figura 68. Estado de carga**
 
 ![Estado de carga](fase3/state-loading-desktop.jpg)
 
 *La pantalla Reportes mientras llegan los datos.*
 
-**Figura 59. Validación de un formulario**
+**Figura 69. Validación de un formulario**
 
 ![Validación de un formulario](fase3/state-validation-desktop.jpg)
 
 *Al intentar revisar un gasto sin concepto ni monto, el formulario señala los campos obligatorios.*
 
-**Figura 60. Confirmación de una operación**
+**Figura 70. Confirmación de una operación**
 
 ![Confirmación de una operación](fase3/state-success-desktop.jpg)
 
 *Después de guardar, la venta abre su detalle y aparece la notificación Venta guardada.*
 
-**Figura 61. Visualización de errores**
+**Figura 71. Visualización de errores**
 
 ![Visualización de errores](fase3/state-error-desktop.jpg)
 
 *Mensaje al intentar iniciar sesión con una contraseña incorrecta.*
 
-**Figura 62. Pantalla Hoy del vendedor**
+**Figura 72. Pantalla Hoy del vendedor**
 
 ![Pantalla Hoy del vendedor](fase3/seller-home-desktop.jpg)
 
 *El vendedor solo ve los módulos que su rol permite.*
 
-**Figura 63. Acceso denegado por rol**
+**Figura 73. Acceso denegado por rol**
 
 ![Acceso denegado por rol](fase3/state-denied-desktop.jpg)
 
 *Si el vendedor abre Reportes, el sistema le indica que su rol no lo permite.*
 
+### Integración con el API y eventos en tiempo real
+
+Las pantallas obtienen los datos del API mediante consultas que se identifican por negocio, de modo que nunca se mezclan datos de dos negocios y no se envía ninguna consulta mientras no hay un negocio activo. La aplicación mantiene abierta la conexión del WebSocket; cuando recibe el evento business.changed vuelve a consultar los datos visibles.
+
+**Figura 74. Consultas de la aplicación al API (apps/app/src/features/purchases/queries.ts)**
+
+![Consultas de la aplicación al API (apps/app/src/features/purchases/queries.ts)](fase3/gh-frontend-api.jpg)
+
+*La pantalla de compras pide al API la lista paginada de compras y el detalle de cada compra; sin negocio activo no envía la consulta.*
+
+**Figura 75. Suscripción a los eventos en tiempo real (apps/app/src/lib/realtime.ts)**
+
+![Suscripción a los eventos en tiempo real (apps/app/src/lib/realtime.ts)](fase3/gh-realtime-client.jpg)
+
+*Al recibir business.changed, la aplicación vuelve a consultar los datos del negocio sin recargar la página.*
+
 ## Colección de pruebas del API
 
 En la carpeta docs/postman del repositorio se encuentran la colección exportada y dos entornos, uno local y otro para la demostración. La colección se importa en Postman o en Bruno y prueba de forma independiente cada endpoint: 147 peticiones organizadas en 16 carpetas que verifican el código de respuesta y el contenido. Para ejecutarla completa se usa una pausa de 1000 ms entre peticiones, porque el API limita la cantidad de escrituras por minuto.
 
-**Figura 64. Ejecución de la colección de pruebas**
+**Figura 76. Ejecución de la colección de pruebas**
 
 ![Ejecución de la colección de pruebas](fase3/term-08-newman.jpg)
 
@@ -468,7 +552,7 @@ Antes de la demostración el equipo verificó el sistema de forma manual, usando
 
 El MVP está desplegado en Cloudflare Workers. Un Worker entrega la aplicación web y dirige las peticiones del API a un Durable Object, que se conecta a PostgreSQL en Neon con un usuario de permisos mínimos y usa Workers AI para el asistente. Las migraciones se aplican a la base de datos en la nube con un usuario distinto, reservado para cambios de estructura.
 
-**Figura 65. Despliegue en Cloudflare Workers**
+**Figura 77. Despliegue en Cloudflare Workers**
 
 ![Despliegue en Cloudflare Workers](fase3/term-09-deploy.jpg)
 
@@ -490,19 +574,20 @@ El MVP está desplegado en Cloudflare Workers. Un Worker entrega la aplicación 
 
 | Requisito | Evidencia |
 | --- | --- |
-| Repositorio con historial de trabajo y estrategia de ramas | Repositorio en GitHub (Anexo 1) y Figura 27 |
-| README con prerrequisitos, instalación, variables de entorno, base de datos y seeds | Figuras 28, 29 y 30 |
-| Arquitectura del sistema | Tabla de capas y módulos |
-| Endpoints de autenticación, usuarios, recursos principales y soporte | Tabla de endpoints y colección de Postman |
-| Contraseñas cifradas, sesiones y control por roles | Figura 37, tabla de permisos y Figura 63 |
-| Manejo de errores del servidor | Figura 31 |
-| Comunicación en tiempo real | Figuras 32, 33 y 34 |
-| Migraciones e integridad de datos | Figuras 35, 36 y 37 |
-| Datos de prueba con usuarios y roles | Figura 35 y tablas de usuarios y datos cargados |
-| Pantallas basadas en los prototipos | Figuras 38 a 57 |
-| Estados de la interfaz | Figuras 58 a 63 |
-| Colección de pruebas del API | docs/postman y Figura 64 |
-| Demostración en vivo | Figura 65, Anexo 3 y guion de la demostración |
+| Repositorio con historial de trabajo y estrategia de ramas | Repositorio en GitHub (Anexo 1) y Figuras 27 y 28 |
+| README con prerrequisitos, instalación, variables de entorno, base de datos y seeds | Figuras 29, 30 y 31 |
+| Arquitectura del sistema | Tabla de capas y módulos y Figura 32 |
+| Endpoints de autenticación, usuarios, recursos principales y soporte | Tabla de endpoints, Figura 33 y colección de Postman |
+| Contraseñas cifradas, sesiones y control por roles | Figuras 34, 35, 46 y 73 |
+| Manejo de errores del servidor | Figuras 36 y 37 |
+| Comunicación en tiempo real | Figuras 38, 39, 40, 41 y 75 |
+| Migraciones e integridad de datos | Figuras 43, 44, 45 y 46 |
+| Datos de prueba con usuarios y roles | Figuras 44 y 47, tablas de usuarios y datos cargados |
+| Pantallas basadas en los prototipos | Figuras 48 a 67 |
+| Estados de la interfaz | Figuras 68 a 73 |
+| Integración con el API y suscripción a eventos | Figuras 74 y 75 |
+| Colección de pruebas del API | docs/postman y Figura 76 |
+| Demostración en vivo | Figura 77, Anexo 3 y guion de la demostración |
 
 *Relación entre cada requisito de la guía y la evidencia presentada en este documento.*
 
