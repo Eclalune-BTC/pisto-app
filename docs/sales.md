@@ -2,21 +2,34 @@
 
 ## Current scope
 
-The manual sales flow includes business onboarding, total-only entry, server-owned review recovery,
-explicit confirmation, canonical detail, bounded history, previous-month summary, and transactional
-void/replacement correction. It is implemented, not a future task. AI entry and itemized sales are
-separate, unimplemented capabilities; see [the capability matrix](production-capabilities.md).
+The manual sales flow includes business onboarding, itemized counter sales, total-only entry with
+server-owned review recovery, explicit confirmation, canonical detail, bounded history, previous-month
+summary, and transactional void/replacement correction. AI entry is a separate capability; see
+[the capability matrix](production-capabilities.md).
 
-A sale records revenue only. It does not deduct inventory, move cash, create a receivable, calculate
-tax, or establish profit. Product UI and future assistant tools must preserve that distinction.
+A sale has one of two entry modes. A **total-only** sale records revenue only: it does not deduct
+inventory, move cash or create a receivable. An **itemized** sale (user stories HU-07 to HU-09)
+records product lines and, in the same transaction, takes tracked stock out, records the amount
+received in one cash account and opens any balance as a receivable for the named customer. Neither
+mode calculates tax or profit.
 
 ## User flow
 
 1. Sign in and create or select a business with an explicit currency and IANA time zone.
-2. Open `/operate/sales/new`, enter the positive total, local date/minute and optional description.
-3. Review the interpreted values. Preparation stores a working review, not a posted sale.
-4. Explicitly confirm, then open the canonical server result at `/operate/sales/:saleId`.
+2. Open `/operate/sales/new`. "Con productos" (the default) takes an optional customer, the local
+   date/minute, product lines found by name or SKU with quantity and price, an optional note, the
+   amount received with its payment method and account, and for any balance the agreed payment date.
+   "Solo el total" keeps the total-only entry below.
+3. A total-only entry is reviewed first: preparation stores a working review, not a posted sale, and
+   only an explicit confirmation posts it. An itemized sale is posted by "Guardar venta" with its own
+   idempotency key; an unknown outcome keeps the form locked until the same command is resent.
+4. Open the canonical server result at `/operate/sales/:saleId`: product lines, settlement and a link
+   to the receivable of an itemized sale.
 5. Find older records in `/operate/sales`; open their detail for a permitted void or replacement.
+
+`ItemizedSaleForm` (`apps/app/src/features/sales/itemized/itemized-sale-form.tsx`) reads the active
+business itself and accepts an assistant sale draft, so the assistant review can render it: every
+field the draft resolved is pre-filled and unmatched products are named for the person to add.
 
 ## HTTP contract
 
@@ -29,11 +42,13 @@ request/response schemas live in `packages/contracts/src/index.ts`.
 | POST | `/businesses` | Create or safely replay the account's business onboarding |
 | GET | `/sales` | Status-filtered keyset history; cursor and limit, default 25 and maximum 50 |
 | POST | `/sales` | Direct total-only confirmation/replay; remains supported, not a recovery fallback |
+| POST | `/sales/itemized` | Post or replay one itemized sale with its stock, payment and receivable |
+| GET | `/sales/form-options` | Active payment accounts (id, name, kind) without balances, for sellers |
 | GET | `/sales/review` | Read the current actor/business's open review, or null |
 | POST | `/sales/review` | Prepare the strict command with its original UUID idempotency key |
 | POST | `/sales/review/:reviewId/confirm` | Confirm the stored review; body is a strict empty object |
 | POST | `/sales/review/:reviewId/dismiss` | Dismiss or acknowledge using `acknowledgedSaleId` |
-| GET | `/sales/:saleId` | Read the canonical sale and correction relationship |
+| GET | `/sales/:saleId` | Read the canonical sale, correction relationship and itemized `details` |
 | GET | `/sales/summary/previous-month` | Calculate the previous business-local calendar month |
 | POST | `/sales/:saleId/void` | Void a posted sale once with an explicit reason |
 | POST | `/sales/:saleId/replace` | Void the original and post its reviewed replacement atomically |
@@ -61,6 +76,38 @@ the affected records. Never restore the older key-before-authorization order. Po
 Permissions come from [ADR 0014](adrs/0014-static-current-operation-permissions.md). Owner, admin and
 member policies permit normal sales operations; correction requires `sales:correct`, granted only to
 owner/admin. Onboarding currently creates owners only; tested roles do not establish a team UI.
+
+## Itemized sales
+
+`POST /v1/sales/itemized` requires `sales:create`, so a seller (member) can sell on credit without
+cash or receivable permissions. The server validates that every product, the customer and the account
+belong to the active business and are active, and computes every amount in bigint: a line's unit
+price defaults to the product's selling price (a line with neither is refused), its subtotal is
+`quantityMinorUnits × unitPrice / 10^quantityPrecision` rounded half up, and the total is their sum.
+The app always sends the price the person saw. Each product appears on one line. The amount received
+cannot exceed the total; a balance requires the customer and a due date on or after the sale date, and
+a fully paid sale carries no due date.
+
+One transaction locks the customer (`FOR SHARE`), the products (`FOR UPDATE`, identifier order) and
+the account (`FOR NO KEY UPDATE`), then inserts the receivable, the `sale` row with its settlement
+columns, the `sale_line` rows, one `sale` inventory movement per tracked line (refused with
+`CONFLICT` when stock is short), one `sale_payment` cash movement for the amount received and the
+`sale_operation` receipt. Catalog, cash and receivables own those writes through internal ports
+(`catalog/sale-stock.ts`, `cash/sale-ledger.ts`, `receivables/sale-receivable.ts`) per
+[ADR 0016](adrs/0016-owner-ports-for-cross-capability-transactions.md). Replay shares the sales key
+space and returns the current sale, including a later void.
+
+The sale owns its receivable link: `sale.receivable_id` references
+`receivable(business_id, customer_id, id)`, so the debt always belongs to the customer the sale names,
+and a check requires the link exactly when there is a balance. A link on both tables would be a
+circular foreign key that PostgreSQL can only satisfy with deferred constraints.
+
+Voiding an itemized sale (`sales:correct`) voids its receivable, reverses each stock movement and
+reverses the payment in the same transaction, dated at the sale's occurrence so the period that
+showed the sale shows it undone. It refuses with `CONFLICT` when the receivable has net payments or
+the account cannot cover the reversal. Replacement stays total-only and refuses an itemized original.
+Sale stock movements and sale receivables can only be undone through the sale; the inventory reversal
+and receivable void commands refuse them.
 
 ## Review recovery
 
@@ -103,5 +150,5 @@ history pagination. Run database tests only against a verified isolated target.
 
 Use [testing and release](testing-release.md) for commands and [release evidence](release-evidence.md)
 for actual results. Passing unit tests or exporting Hermes bundles is not physical-device acceptance.
-Itemized sales, automatic stock/cash effects, AI/voice, invitations, email recovery delivery and native
-purchases remain separately scoped work; do not recreate the history, reports or review recovery.
+AI/voice, invitations, email recovery delivery and native purchases remain separately scoped work;
+do not recreate the history, reports or review recovery.
