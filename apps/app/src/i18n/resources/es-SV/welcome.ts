@@ -4,7 +4,7 @@ export const welcome = {
   pageTitle: "Pisto · Las cuentas de su negocio, sin cuaderno",
   title: "Las cuentas de su negocio, sin cuaderno.",
   description:
-    "Ventas, compras, gastos, caja, reportes y quién le debe o a quién le debe, en un solo lugar. Usted dice o escribe lo que pasó y Pisto deja el registro listo para revisar.",
+    "Ventas, compras, gastos, caja, cobros, pagos y reportes en un solo lugar. Usted dice o escribe lo que pasó y Pisto deja el registro listo para revisar.",
   availability: "Funciona en el navegador de su computadora o de su teléfono.",
   preview: {
     label: "Ejemplo de la pantalla Hoy de Pisto con un negocio ficticio y cifras inventadas",
@@ -112,11 +112,11 @@ export const welcome = {
         description:
           "Ventas, cuentas y reportes quedan en el negocio donde se registraron, con su fecha, la cuenta de caja o banco y quién lo registró.",
       },
-      scope: {
-        title: "Lo que Pisto no hace",
-        description:
-          "No emite factura electrónica (DTE), no calcula planillas ni se conecta con su banco. La contabilidad sigue a cargo de su contador.",
-      },
+    },
+    scope: {
+      title: "Lo que Pisto no hace",
+      description:
+        "No emite factura electrónica (DTE), no calcula planillas ni se conecta con su banco. La contabilidad sigue a cargo de su contador.",
     },
   },
   cta: {

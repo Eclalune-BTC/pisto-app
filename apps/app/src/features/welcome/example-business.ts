@@ -133,7 +133,7 @@ export const EXAMPLE_MOVEMENTS: readonly ExampleMovement[] = [
 
 /** Yesterday's movements, newest first: the Movimientos preview shows a day the home does not. */
 export const EXAMPLE_YESTERDAY: readonly ExampleMovement[] = [
-  { key: "creditSale", kind: "sale", source: "voice", time: "17:40", amountMinorUnits: "0" },
+  { key: "creditSale", kind: "sale", source: "voice", time: "17:40", amountMinorUnits: "1000" },
   {
     key: "dairyPayment",
     kind: "supplier_payment",
@@ -204,8 +204,8 @@ export const EXAMPLE_DEBTORS: readonly ExampleBalance[] = [
 /** Open supplier purchases, the next one due first; they add up to `EXAMPLE_PAYABLES.outstanding`. */
 export const EXAMPLE_CREDITORS: readonly (ExampleBalance & { invoice: string })[] = [
   { name: "elSol", minorUnits: "123900", dueInDays: 3, invoice: "F-1877" },
-  { name: "lacteos", minorUnits: "61000", dueInDays: 10, invoice: "F-0457" },
-  { name: "centro", minorUnits: "18600", dueInDays: 18, invoice: "F-004530" },
+  { name: "lacteos", minorUnits: "61000", dueInDays: 10, invoice: "F-1902" },
+  { name: "centro", minorUnits: "18600", dueInDays: 18, invoice: "F-1941" },
 ];
 
 /** Only the first purchase falls due within the week; nothing is overdue. */

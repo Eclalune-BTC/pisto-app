@@ -23,7 +23,7 @@ export const PUBLIC_ROLE_ACCESS: Record<(typeof ROLES)[number], readonly Capabil
   member: ["sales"],
 };
 
-export const TRUST_POINTS = ["confirmed", "business", "scope"] as const;
+export const TRUST_POINTS = ["confirmed", "business"] as const;
 
 /** "Qué puede hacer cada rol", drawn as Configuración draws it for a signed-in owner. */
 function RoleMatrix() {
@@ -93,29 +93,39 @@ function RoleMatrix() {
 export function RolesAndTrust() {
   const { t } = useTranslation();
   return (
-    <View className="min-w-0 gap-12 lg:flex-row lg:gap-16">
-      <View className="min-w-0 lg:flex-1">
-        <RoleMatrix />
+    <View className="min-w-0 gap-10">
+      <View className="min-w-0 gap-12 lg:flex-row lg:gap-16">
+        <View className="min-w-0 lg:flex-1">
+          <RoleMatrix />
+        </View>
+        <View className="min-w-0 lg:w-[440px]" role="list">
+          {TRUST_POINTS.map((point, index) => (
+            <View
+              className={cn(
+                "gap-1.5 py-5",
+                index > 0 && "border-t border-border",
+                index === 0 && "pt-0",
+              )}
+              key={point}
+              role="listitem"
+            >
+              <Heading className="text-base leading-6" level={3}>
+                {t(`welcome.roles.trust.${point}.title`)}
+              </Heading>
+              <Text className="text-[15px] leading-6 text-muted-foreground web:text-pretty">
+                {t(`welcome.roles.trust.${point}.description`)}
+              </Text>
+            </View>
+          ))}
+        </View>
       </View>
-      <View className="min-w-0 lg:w-[440px]" role="list">
-        {TRUST_POINTS.map((point, index) => (
-          <View
-            className={cn(
-              "gap-1.5 py-5",
-              index > 0 && "border-t border-border",
-              index === 0 && "pt-0",
-            )}
-            key={point}
-            role="listitem"
-          >
-            <Heading className="text-base leading-6" level={3}>
-              {t(`welcome.roles.trust.${point}.title`)}
-            </Heading>
-            <Text className="text-[15px] leading-6 text-muted-foreground web:text-pretty">
-              {t(`welcome.roles.trust.${point}.description`)}
-            </Text>
-          </View>
-        ))}
+      <View className="gap-1.5 border-t border-border pt-8">
+        <Heading className="text-base leading-6" level={3}>
+          {t("welcome.roles.scope.title")}
+        </Heading>
+        <Text className="max-w-[720px] text-[15px] leading-6 text-muted-foreground web:text-pretty">
+          {t("welcome.roles.scope.description")}
+        </Text>
       </View>
     </View>
   );

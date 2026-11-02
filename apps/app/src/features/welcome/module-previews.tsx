@@ -41,7 +41,8 @@ function Figure({
 }: {
   detail?: string;
   label: string;
-  tone?: "default" | "warning";
+  /** The screen's own tone: red for overdue, amber for due soon. */
+  tone?: "default" | "destructive" | "warning";
   value: string;
 }) {
   return (
@@ -50,6 +51,7 @@ function Figure({
       <Text
         className={cn(
           "font-heading text-xl leading-7 tracking-[-0.4px] tabular-nums",
+          tone === "destructive" && "text-destructive",
           tone === "warning" && "text-warning-foreground",
         )}
         numberOfLines={1}
@@ -126,7 +128,7 @@ function ReceivablesPreview() {
         <Figure
           detail={t("receivables.aging.count", { count: overdueAccounts })}
           label={t("receivables.summary.overdue")}
-          tone="warning"
+          tone="destructive"
           value={money(EXAMPLE_RECEIVABLES.overdue)}
         />
       </FigureStrip>

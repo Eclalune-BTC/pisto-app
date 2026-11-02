@@ -121,12 +121,12 @@ export function useMovementCopy() {
       case "creditSale":
         return {
           title: t("movements.titles.saleTo", { name: person("comedor") }),
-          detail: `${lines(5)} · ${t("movements.facts.onCredit", { total: money("4370") })}`,
+          detail: `${lines(5)} · ${t("movements.facts.paidOf", { paid: money("1000"), total: money("4370") })}`,
         };
       case "dairyPayment":
         return {
           title: t("movements.titles.paymentTo", { name: person("lacteos") }),
-          detail: t("purchases.payables.invoice", { number: "F-0391" }),
+          detail: t("purchases.payables.invoice", { number: "F-1836" }),
         };
       case "rent":
         return { title: t("welcome.sample.rent"), detail: t("expenses.categories.rent") };
