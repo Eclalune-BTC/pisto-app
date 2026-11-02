@@ -7,9 +7,12 @@ calm and precise. The owner's direction of 2026-11-01 brings the product back to
 prototypes and replaces the graphite-only palette of 2026-10-04:
 
 - One brand colour: a deep forest green (`--color-primary` `#1b3d2c` light, `#a7d8b9` dark) for
-  primary actions, focus, selection, links and the active navigation item. Neutrals are tinted
-  toward it; amber and red remain reserved for warnings, errors and destructive actions. No second
-  accent (the prototypes' lime is intentionally not used).
+  primary actions, focus, selection, links and dark brand panels. Neutrals are tinted toward it;
+  amber and red remain reserved for warnings, errors and destructive actions. The prototypes' lime
+  (`highlight`, `highlight-strong`, `chart-fill`) appears only where they use it: the phone
+  money hero card, chart fills, dictation accents and transcript highlights. `brand` and
+  `brand-foreground` keep the logo mark the same in both themes. The sidebar is white with a quiet
+  neutral active item; the page is warm off-white with white, hairline-bordered cards.
 - No blue anywhere in application-owned UI (test-enforced: hue 175–280° in
   `src/components/ui/no-blue.test.ts`). AA contrast pairs are enforced by `theme-contract.test.ts`.
 - Light first: an absent appearance preference renders the light theme; dark and system stay

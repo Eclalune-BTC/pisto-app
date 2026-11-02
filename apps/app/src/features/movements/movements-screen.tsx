@@ -80,7 +80,7 @@ function Totals({
           <Skeleton className="h-12 flex-1" />
         </View>
       ) : null}
-      <View className="min-w-[260px] flex-1 items-start justify-center bg-card px-4 py-3 lg:items-end">
+      <View className="shrink-0 grow basis-auto items-start justify-center bg-card px-4 py-3 lg:items-end">
         {range}
       </View>
     </View>
@@ -115,16 +115,15 @@ function TotalFigures({ format, list }: { format: MovementRowFormat; list: Movem
         },
       ].map((figure) => (
         <View
-          className="min-w-[110px] flex-1 basis-[110px] gap-1 bg-card px-4 py-3.5 sm:px-5 sm:py-4"
+          className="min-w-[140px] flex-1 basis-[140px] gap-1 bg-card px-4 py-3.5 sm:px-5 sm:py-4"
           key={figure.key}
         >
           <Text className="text-xs leading-4 text-muted-foreground">{figure.label}</Text>
           <Text
             className={cn(
-              "font-heading text-[19px] leading-7 tracking-[-0.4px] tabular-nums sm:text-[26px] sm:leading-8 sm:tracking-[-0.6px]",
+              "font-heading text-[20px] leading-7 tracking-[-0.4px] tabular-nums sm:text-[26px] sm:leading-8 sm:tracking-[-0.6px]",
               figure.className,
             )}
-            numberOfLines={1}
           >
             {figure.value}
           </Text>

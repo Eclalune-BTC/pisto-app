@@ -49,7 +49,6 @@ export function MoneyFigure({
     <Text
       accessibilityLabel={formatMinorUnits(minorUnits, currency, fractionDigits, locale)}
       className={cn("font-heading tabular-nums", className)}
-      numberOfLines={1}
     >
       {whole}
       {fraction ? (

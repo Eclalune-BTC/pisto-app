@@ -50,7 +50,6 @@ function Figures({ figures, tone }: { figures: Figure[]; tone: "card" | "highlig
               "font-heading text-[17px] leading-6 tabular-nums",
               tone === "highlight" && "text-highlight-foreground",
             )}
-            numberOfLines={1}
           >
             {figure.value}
           </Text>
