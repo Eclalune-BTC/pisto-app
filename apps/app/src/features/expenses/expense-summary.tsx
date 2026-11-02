@@ -16,7 +16,7 @@ import { expenseCategoryLabels } from "./copy";
 type CategoryTotal = ExpensePeriodSummary["categories"][number];
 
 /** The breakdown is complete for the period, so ordering it by exact amount hides nothing. */
-function byAmount(categories: CategoryTotal[]): CategoryTotal[] {
+export function byAmount(categories: CategoryTotal[]): CategoryTotal[] {
   return [...categories].sort((a, b) => {
     const left = BigInt(a.amountMinorUnits);
     const right = BigInt(b.amountMinorUnits);
