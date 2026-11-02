@@ -5,3 +5,4 @@ export {
   parseAuthConfig,
   type VersionedAuthSecret,
 } from "./env.ts";
+export { createStaffAccountProvisioner } from "./staff-accounts.ts";

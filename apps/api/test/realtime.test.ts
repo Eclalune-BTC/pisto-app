@@ -104,6 +104,8 @@ describe("realtime routing", () => {
     expect(changedResource("/v1/payables/summary")).toBe("purchases");
     expect(changedResource("/v1/purchasesx")).toBeNull();
     expect(changedResource("/v1/salesman")).toBeNull();
+    expect(changedResource("/v1/businesses/members")).toBe("members");
+    expect(changedResource("/v1/businesses/members/abc/remove")).toBe("members");
     expect(changedResource("/v1/businesses")).toBeNull();
     expect(changedResource("/api/auth/sign-in/email")).toBeNull();
   });
