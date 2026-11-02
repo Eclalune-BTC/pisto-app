@@ -28,8 +28,8 @@ export const assistant = {
   },
   composer: {
     title: "Registrar",
-    description: "Dígalo o escríbalo, lo reviso antes de guardar.",
-    placeholder: "Dígalo o escríbalo, lo reviso antes de guardar",
+    description: "Usted confirma antes de guardar.",
+    placeholder: "Diga o escriba lo que pasó",
     inputLabel: "Qué quiere registrar",
     submit: "Revisar",
     record: "Dictar con el micrófono",

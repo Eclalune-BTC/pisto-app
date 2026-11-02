@@ -52,6 +52,12 @@ describe("movement presentation", () => {
     );
     expect(movementTitle(t, credit)).toBe("Venta a Carlos Rivas");
     expect(movementSubtitle(t, credit, money)).toBe("1 producto · Pagó $5.00 de $9.75");
+    const unpaid = movement(
+      "purchase",
+      { amountMinorUnits: "0" },
+      { counterpartyName: "Distribuidora Centro", lineCount: "2", totalMinorUnits: "1920" },
+    );
+    expect(movementSubtitle(t, unpaid, money)).toBe("2 productos · $19.20 al crédito");
   });
 
   test("names the category and payee of an expense without repeating the title", () => {

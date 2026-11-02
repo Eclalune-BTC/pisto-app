@@ -79,10 +79,12 @@ export function movementSubtitle(
   if (lineCount !== null) parts.push(t("movements.facts.lines", { count: Number(lineCount) }));
   if (totalMinorUnits !== null) {
     parts.push(
-      t("movements.facts.paidOf", {
-        paid: money(movement.amountMinorUnits.replace("-", "")),
-        total: money(totalMinorUnits),
-      }),
+      movement.amountMinorUnits === "0"
+        ? t("movements.facts.onCredit", { total: money(totalMinorUnits) })
+        : t("movements.facts.paidOf", {
+            paid: money(movement.amountMinorUnits.replace("-", "")),
+            total: money(totalMinorUnits),
+          }),
     );
   }
   switch (movement.kind) {

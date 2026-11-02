@@ -134,9 +134,10 @@ function ComposerForm({ businessId, voice }: { businessId: string; voice: boolea
           onPress={() => void submit()}
         />
       </View>
-      <View className="flex-row flex-wrap gap-2">
+      <View className="flex-row flex-wrap gap-1.5">
         {starters.map((starter) => (
           <Button
+            className="h-7 px-2.5"
             key={starter}
             label={t(`assistant.composer.chips.${starter}`)}
             onPress={() => {

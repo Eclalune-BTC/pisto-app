@@ -13,7 +13,7 @@ export const movements = {
     purchase: "Compra",
     expense: "Gasto",
     receivable_payment: "Abono",
-    supplier_payment: "Pago a proveedor",
+    supplier_payment: "Pago",
   },
   tabs: {
     label: "Tipo de movimiento",
@@ -40,6 +40,7 @@ export const movements = {
     lines_one: "{{count}} producto",
     lines_other: "{{count}} productos",
     paidOf: "Pagó {{paid}} de {{total}}",
+    onCredit: "{{total}} al crédito",
     accountPayment: "Abono a su cuenta",
   },
   columns: {
