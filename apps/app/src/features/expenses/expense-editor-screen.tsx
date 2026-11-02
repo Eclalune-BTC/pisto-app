@@ -15,6 +15,7 @@ import { type CursorPage, LoadMoreButton } from "@/components/ui/load-more-butto
 import { MomentFields } from "@/components/ui/moment-fields";
 import { SelectField } from "@/components/ui/select-field";
 import { Text } from "@/components/ui/text";
+import { useFieldMarker } from "@/features/assistant/draft-slots";
 import { formatLocalMoment } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import type { MutationPhase } from "@/lib/mutation-phase";
@@ -89,6 +90,9 @@ export function ExpenseEditorScreen({
   reviewAccount,
 }: ExpenseEditorScreenProps) {
   const { i18n, t } = useTranslation();
+  const categoryMarker = useFieldMarker("category");
+  const amountMarker = useFieldMarker("amount");
+  const accountMarker = useFieldMarker("account");
 
   if (command) {
     if (!reviewAccount || reviewAccount.id !== command.accountId) {
@@ -185,6 +189,7 @@ export function ExpenseEditorScreen({
         <FieldCell>
           <SelectField<ExpenseCategory>
             label={t("expenses.editor.category")}
+            marker={categoryMarker}
             onChange={(category) => onDraftChange({ ...draft, category })}
             options={expenseCategoryOptions(t)}
             value={draft.category}
@@ -207,6 +212,7 @@ export function ExpenseEditorScreen({
             error={errors.amount}
             keyboardType="decimal-pad"
             label={t("expenses.editor.amount")}
+            marker={amountMarker}
             onChangeText={(amount) => onDraftChange({ ...draft, amount })}
             placeholder="0.00"
             trailing={
@@ -222,6 +228,7 @@ export function ExpenseEditorScreen({
             <SelectField
               error={errors.accountId}
               label={t("expenses.editor.account")}
+              marker={accountMarker}
               onChange={(accountId) => onDraftChange({ ...draft, accountId })}
               options={activeAccounts.map(({ id, name }) => ({ label: name, value: id }))}
               value={draft.accountId || null}

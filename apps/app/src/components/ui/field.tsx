@@ -1,6 +1,7 @@
 import { type ComponentProps, type ReactNode, useId } from "react";
 import { View } from "react-native";
 import { cn } from "@/lib/cn";
+import { FieldLabel } from "./field-label";
 import { Input } from "./input";
 import { Label } from "./label";
 import { Text } from "./text";
@@ -11,6 +12,8 @@ type FieldProps = ComponentProps<typeof Input> & {
   description?: string;
   error?: string;
   label: string;
+  /** The transcript number of the fragment that filled this field, during an assistant review. */
+  marker?: number | null;
   trailing?: ReactNode;
 };
 
@@ -21,6 +24,7 @@ export function Field({
   description,
   error,
   label,
+  marker,
   trailing,
   nativeID,
   multiline,
@@ -33,9 +37,11 @@ export function Field({
   const describedBy = error ? `${id}-error` : hint ? `${id}-description` : undefined;
   return (
     <View className="min-w-0 gap-1.5">
-      <Label className="text-[13px]" htmlFor={inputId}>
-        {label}
-      </Label>
+      <FieldLabel marker={marker}>
+        <Label className="text-[13px]" htmlFor={inputId}>
+          {label}
+        </Label>
+      </FieldLabel>
       <View className="relative min-w-0">
         <InputComponent
           {...props}

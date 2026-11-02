@@ -18,6 +18,7 @@ import { Field } from "@/components/ui/field";
 import { MomentFields } from "@/components/ui/moment-fields";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
+import { useFieldMarker } from "@/features/assistant/draft-slots";
 import { useCapabilityAccess } from "@/features/customers/access";
 import { useRecordFormat } from "@/features/customers/format";
 import { PickerField } from "@/features/customers/picker-field";
@@ -27,7 +28,6 @@ import { CashAccountPickerDialog } from "@/features/receivables/cash-account-pic
 import { cn } from "@/lib/cn";
 import { currentLocalDateTime, toDecimalString } from "@/lib/money";
 import { notify } from "@/lib/notify";
-
 import { purchasesApi } from "./api";
 import {
   balanceAfterPayment,
@@ -93,6 +93,8 @@ function PaymentFormBody({
   const { t } = useTranslation();
   const format = useRecordFormat();
   const queryClient = useQueryClient();
+  const amountMarker = useFieldMarker("amount");
+  const accountMarker = useFieldMarker("account");
   const [chosenPurchase, setChosenPurchase] = useState<Purchase | null>(null);
   const purchaseId = requestedPurchaseId ?? assistantDraft?.purchase?.id ?? chosenPurchase?.id;
   const detail = useQuery({
@@ -240,6 +242,7 @@ function PaymentFormBody({
               error={issueText(issues.amount)}
               keyboardType="decimal-pad"
               label={t("purchases.payment.amount")}
+              marker={amountMarker}
               onChangeText={(amount) => change({ amount })}
               placeholder={toDecimalString("0", digits)}
               trailing={<Text className="text-xs text-muted-foreground">{business.currency}</Text>}
@@ -259,6 +262,7 @@ function PaymentFormBody({
           <PickerField
             error={issueText(issues.account)}
             label={t("purchases.payment.account")}
+            marker={accountMarker}
             onPress={() => !busy && setAccountPickerOpen(true)}
             placeholder={t("purchases.payment.chooseAccount")}
             ref={accountRef}

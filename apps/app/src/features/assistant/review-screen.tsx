@@ -5,6 +5,7 @@ import { Mic, PencilLine, TriangleAlert } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { useUniwind } from "uniwind";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
@@ -19,6 +20,7 @@ import { Text } from "@/components/ui/text";
 import { Textarea } from "@/components/ui/textarea";
 import { TranscriptHighlight } from "@/components/ui/transcript-highlight";
 import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/cn";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead } from "@/lib/query-state";
 import { type DraftFormSlots, ReviewMarkersProvider, renderDraftForm } from "./draft-slots";
@@ -70,6 +72,8 @@ function TranscriptPanel({
   voice: boolean;
 }) {
   const { t } = useTranslation();
+  // The forest-green panel turns pale mint in the dark palette, so dark mode uses the card surface.
+  const inverse = useUniwind().theme !== "dark";
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(interpretation.text);
   const [outcome, setOutcome] = useState<InterpretOutcome | null>(null);
@@ -102,12 +106,24 @@ function TranscriptPanel({
         : null;
 
   return (
-    <View className="gap-4 rounded-lg bg-primary p-4 lg:p-5">
+    <View
+      className={cn(
+        "gap-4 rounded-lg p-4 lg:p-5",
+        inverse ? "bg-primary" : "border border-border bg-card",
+      )}
+    >
       <View className="flex-row items-center justify-between gap-3">
-        <Text className="font-ui text-sm text-primary-foreground">
+        <Text
+          className={cn("font-ui text-sm", inverse ? "text-primary-foreground" : "text-foreground")}
+        >
           {t("assistant.review.transcriptTitle")}
         </Text>
-        <Text className="text-xs text-primary-foreground/70">
+        <Text
+          className={cn(
+            "text-xs",
+            inverse ? "text-primary-foreground/70" : "text-muted-foreground",
+          )}
+        >
           {t(`assistant.review.sources.${interpretation.source}`)}
         </Text>
       </View>
@@ -149,7 +165,7 @@ function TranscriptPanel({
               }}
               size="sm"
               variant="ghost"
-              className="web:hover:bg-primary-foreground/10"
+              className={inverse ? "web:hover:bg-primary-foreground/10" : undefined}
             />
           </View>
         </View>
@@ -158,7 +174,7 @@ function TranscriptPanel({
           <TranscriptHighlight
             spans={interpretation.spans}
             text={interpretation.text}
-            tone="inverse"
+            tone={inverse ? "inverse" : "default"}
           />
           <View className="flex-row flex-wrap gap-2">
             <Button

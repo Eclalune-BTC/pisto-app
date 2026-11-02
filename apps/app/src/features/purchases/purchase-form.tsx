@@ -23,6 +23,7 @@ import { Icon } from "@/components/ui/icon";
 import { Label } from "@/components/ui/label";
 import { Text } from "@/components/ui/text";
 import { TimeField } from "@/components/ui/time-field";
+import { useFieldMarker } from "@/features/assistant/draft-slots";
 import { useCapabilityAccess } from "@/features/customers/access";
 import { useRecordFormat } from "@/features/customers/format";
 import { PickerField } from "@/features/customers/picker-field";
@@ -31,7 +32,6 @@ import { CashAccountPickerDialog } from "@/features/receivables/cash-account-pic
 import { cn } from "@/lib/cn";
 import { currentLocalDateTime, toDecimalString } from "@/lib/money";
 import { notify } from "@/lib/notify";
-
 import { purchasesApi } from "./api";
 import {
   buildPurchaseCommand,
@@ -123,6 +123,8 @@ function PurchaseFormBody({
   const { t } = useTranslation();
   const format = useRecordFormat();
   const queryClient = useQueryClient();
+  const supplierMarker = useFieldMarker("supplier");
+  const invoiceMarker = useFieldMarker("invoice");
   const digits = business.currencyMinorUnitDigits;
   const [draft, setDraft] = useState<PurchaseDraft>(() =>
     initialDraft(business, { draft: assistantDraft, initialSupplier }),
@@ -239,6 +241,7 @@ function PurchaseFormBody({
             }
             error={issueText(issues.supplier)}
             label={t("purchases.form.supplier")}
+            marker={supplierMarker}
             onPress={() => !locked && setSupplierPickerOpen(true)}
             placeholder={t("purchases.form.chooseSupplier")}
             ref={supplierRef}
@@ -275,6 +278,7 @@ function PurchaseFormBody({
                 editable={!locked}
                 error={issueText(issues.invoiceNumber)}
                 label={t("purchases.form.invoice")}
+                marker={invoiceMarker}
                 maxLength={40}
                 onChangeText={(invoiceNumber) => update({ invoiceNumber }, ["invoiceNumber"])}
                 placeholder="F-004512"

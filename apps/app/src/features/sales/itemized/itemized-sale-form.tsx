@@ -20,12 +20,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DateField } from "@/components/ui/date-field";
 import { Field } from "@/components/ui/field";
+import { FieldLabel } from "@/components/ui/field-label";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { Heading } from "@/components/ui/heading";
 import { MomentFields } from "@/components/ui/moment-fields";
 import { SelectField } from "@/components/ui/select-field";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
+import { useFieldMarker } from "@/features/assistant/draft-slots";
 import { productQueryOptions } from "@/features/catalog/queries";
 import { CustomerPickerDialog } from "@/features/customers/customer-picker";
 import { PickerField } from "@/features/customers/picker-field";
@@ -195,6 +197,12 @@ function ItemizedSaleEditor({
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const router = useRouter();
   const client = useQueryClient();
+  const customerMarker = useFieldMarker("customer");
+  const productMarker = useFieldMarker("product");
+  const receivedMarker = useFieldMarker("received");
+  const accountMarker = useFieldMarker("account");
+  const creditMarker = useFieldMarker("credit");
+  const dueDateMarker = useFieldMarker("dueDate");
   const { onLayout, width } = useMeasuredWidth();
   const wide = width >= SIDE_BY_SIDE_MIN_WIDTH;
   const [draft, setDraft] = useState(initial);
@@ -280,6 +288,7 @@ function ItemizedSaleEditor({
         <PickerField
           error={errors.customer}
           label={t("sales.itemized.customer")}
+          marker={customerMarker}
           onPress={() => {
             if (!locked) setPickerOpen(true);
           }}
@@ -318,9 +327,11 @@ function ItemizedSaleEditor({
   const productsBlock = (
     <View className="min-w-0 gap-3">
       <View className="flex-row items-baseline justify-between gap-3">
-        <Heading level={2} size="section">
-          {t("sales.itemized.productsTitle")}
-        </Heading>
+        <FieldLabel marker={productMarker}>
+          <Heading level={2} size="section">
+            {t("sales.itemized.productsTitle")}
+          </Heading>
+        </FieldLabel>
         {draft.lines.length > 0 ? (
           <Text className="text-xs text-muted-foreground tabular-nums">{productCount}</Text>
         ) : null}
@@ -383,6 +394,7 @@ function ItemizedSaleEditor({
         inputMode="decimal"
         keyboardType="decimal-pad"
         label={t("sales.itemized.received")}
+        marker={receivedMarker}
         onChangeText={(value) => update({ received: value, receivedEdited: true })}
         selectTextOnFocus
         value={draft.receivedEdited ? draft.received : toDecimalString(total, digits)}
@@ -411,6 +423,7 @@ function ItemizedSaleEditor({
               disabled={locked}
               error={errors.account}
               label={t("sales.itemized.account")}
+              marker={accountMarker}
               onChange={(accountId) => update({ accountId })}
               options={accounts.map((account) => ({ label: account.name, value: account.id }))}
               placeholder={t("sales.itemized.accountPlaceholder")}
@@ -422,7 +435,9 @@ function ItemizedSaleEditor({
       {owes ? (
         <View className="min-w-0 gap-3 rounded-md border border-border bg-background p-3">
           <View className="flex-row items-baseline justify-between gap-3">
-            <Text className="text-sm font-medium">{t("sales.itemized.balance")}</Text>
+            <FieldLabel marker={creditMarker ?? dueDateMarker}>
+              <Text className="text-sm font-medium">{t("sales.itemized.balance")}</Text>
+            </FieldLabel>
             <Text className="font-ui text-base font-semibold tabular-nums">{money(balance)}</Text>
           </View>
           <Text className="text-xs leading-4 text-muted-foreground">

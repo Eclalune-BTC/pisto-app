@@ -24,6 +24,7 @@ import { type CursorPage, LoadMoreButton } from "@/components/ui/load-more-butto
 import { MomentFields } from "@/components/ui/moment-fields";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
+import { useFieldMarker } from "@/features/assistant/draft-slots";
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { commandPhase } from "@/features/customers/command-state";
 import { useRecordFormat } from "@/features/customers/format";
@@ -300,6 +301,7 @@ function PaymentFields({
   const { t } = useTranslation();
   const format = useRecordFormat();
   const queryClient = useQueryClient();
+  const amountMarker = useFieldMarker("amount");
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
   const business = access.business;
   const businessId = business?.id;
@@ -557,6 +559,7 @@ function PaymentFields({
           error={errors.amount}
           keyboardType="decimal-pad"
           label={t("receivables.paymentForm.amount")}
+          marker={amountMarker}
           onChangeText={(amountText) => {
             setValues((current) => ({ ...current, amount: amountText }));
             setErrors((current) => ({ ...current, amount: undefined }));
