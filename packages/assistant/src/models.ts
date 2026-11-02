@@ -19,17 +19,20 @@ export interface TranscriptionModel {
   language: string;
 }
 
-export const assistantModels = {
+export const assistantModels: {
+  readonly "assistant.extract": ExtractionModel;
+  readonly "assistant.transcribe": TranscriptionModel;
+} = {
   "assistant.extract": {
-    id: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-    responseFormat: "raw_schema",
+    id: "@cf/zai-org/glm-4.7-flash",
+    responseFormat: "openai_schema",
     maxTokens: 1_024,
-    inputs: { temperature: 0 },
-  } satisfies ExtractionModel,
+    inputs: { temperature: 0, chat_template_kwargs: { enable_thinking: false } },
+  },
   "assistant.transcribe": {
     id: "@cf/openai/whisper-large-v3-turbo",
     language: "es",
-  } satisfies TranscriptionModel,
-} as const;
+  },
+};
 
 export type AssistantModelAlias = keyof typeof assistantModels;
