@@ -103,7 +103,7 @@ export function MovementTable({
             header: t("inventory.history.reason"),
             cell: ({ row: { original } }) => (
               <Text className="text-[13px]" numberOfLines={2}>
-                {original.reason}
+                {original.reason ?? t("inventory.systemReasons.sale")}
               </Text>
             ),
           },

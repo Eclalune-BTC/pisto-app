@@ -43,13 +43,14 @@ export function cashMovementActionLabels(t: TFunction): Record<CashMovementActio
     expense: t("cash.movementActions.expense"),
     opening: t("cash.movementActions.opening"),
     receivable_payment: t("cash.movementActions.receivable_payment"),
+    sale_payment: t("cash.movementActions.sale_payment"),
     reverse: t("cash.movementActions.reverse"),
     transfer_in: t("cash.movementActions.transfer_in"),
     transfer_out: t("cash.movementActions.transfer_out"),
   };
 }
 
-/** The typed reason, or the description of a movement the system wrote for a transfer or receivable. */
+/** The typed reason, or the description of a movement the system wrote for a transfer, receivable or sale. */
 export function cashMovementReason(t: TFunction, movement: CashMovement): string {
   if (movement.reason !== null) return movement.reason;
   switch (movement.action) {
@@ -58,6 +59,8 @@ export function cashMovementReason(t: TFunction, movement: CashMovement): string
       return t("cash.systemReasons.transfer");
     case "receivable_payment":
       return t("cash.systemReasons.receivablePayment");
+    case "sale_payment":
+      return t("cash.systemReasons.salePayment");
     case "reverse":
       return t("cash.systemReasons.receivablePaymentReversal");
     default:

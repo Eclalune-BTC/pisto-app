@@ -28,6 +28,7 @@ export const cashMovementActionSchema = z.enum([
   "transfer_in",
   "transfer_out",
   "receivable_payment",
+  "sale_payment",
   "reverse",
 ]);
 
@@ -61,11 +62,12 @@ const cashAccountSchema = z
   })
   .strict();
 
-/** Movements the system writes for transfers and receivables, which may carry no typed reason. */
+/** Movements the system writes for transfers, receivables and sales, which may carry no typed reason. */
 export const systemDescribedCashActions = [
   "transfer_in",
   "transfer_out",
   "receivable_payment",
+  "sale_payment",
   "reverse",
 ] as const;
 

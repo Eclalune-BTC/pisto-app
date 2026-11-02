@@ -44,6 +44,8 @@ const record = {
   deltaMinorUnits: 1n,
   unitKind: "unit",
   entryMode: "total_only",
+  entrySource: "manual",
+  customerId: null,
   direction: "in",
   action: "opening",
 };

@@ -149,6 +149,12 @@ function testApp(
           getSale: async () => {
             throw new ProductError("NOT_FOUND", "Sale was not found");
           },
+          createItemizedSale: async () => {
+            throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
+          },
+          getSaleFormOptions: async () => {
+            throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
+          },
           listSales: async () => {
             throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
           },

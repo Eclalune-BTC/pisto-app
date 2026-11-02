@@ -64,22 +64,46 @@ export function SalesHistory({
       },
       {
         id: "description",
-        header: t("dataTable.columns.description"),
-        // A two-line clamp lets a long note wrap; a single-line clamp would force the table
-        // wider than its container on tablets.
-        cell: ({ row: { original } }) =>
-          original.description ? (
-            <Text className="text-[13px]" numberOfLines={2}>
-              {original.description}
-            </Text>
-          ) : (
-            <Text className="text-[13px]">
-              <Text aria-hidden className="text-[13px] text-muted-foreground">
-                —
+        header: t("sales.list.detail"),
+        // An itemized sale is told apart by its customer, a total-only one by its note. A two-line
+        // clamp lets a long note wrap; a single-line clamp would force the table wider on tablets.
+        cell: ({ row: { original } }) => {
+          const primary =
+            original.entryMode === "itemized"
+              ? (original.customer?.name ?? t("sales.itemized.counterSale"))
+              : original.description;
+          if (!primary) {
+            return (
+              <Text className="text-[13px]">
+                <Text aria-hidden className="text-[13px] text-muted-foreground">
+                  —
+                </Text>
+                <Text className="sr-only">{t("common.noDescription")}</Text>
               </Text>
-              <Text className="sr-only">{t("common.noDescription")}</Text>
+            );
+          }
+          return (
+            <Text className="text-[13px]" numberOfLines={2}>
+              {primary}
+              {original.entryMode === "itemized" && original.description ? (
+                <Text className="text-[13px] text-muted-foreground">
+                  {" · "}
+                  {original.description}
+                </Text>
+              ) : null}
             </Text>
-          ),
+          );
+        },
+      },
+      {
+        id: "source",
+        header: t("sales.list.source"),
+        meta: { hideOnCompact: true },
+        cell: ({ row: { original } }) => (
+          <Text className="text-[13px] text-muted-foreground" numberOfLines={1}>
+            {t(`sales.sources.${original.entrySource}`)}
+          </Text>
+        ),
       },
       {
         id: "status",
@@ -203,7 +227,10 @@ export function SalesHistory({
                           actions={[
                             {
                               icon: Pencil,
-                              label: t("sales.correction.open"),
+                              label:
+                                sale.entryMode === "itemized"
+                                  ? t("sales.correction.voidItemized")
+                                  : t("sales.correction.open"),
                               onPress: () => onCorrect(sale.id),
                             },
                           ]}

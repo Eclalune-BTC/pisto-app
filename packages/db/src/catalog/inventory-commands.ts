@@ -167,6 +167,9 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         if (original.action === "reverse") {
           throw new ProductError("CONFLICT", "A reversal movement cannot itself be reversed");
         }
+        if (original.action === "sale") {
+          throw new ProductError("CONFLICT", "Void the sale to return its stock");
+        }
         const [existingReversal] = await tx
           .select({ id: inventoryMovement.id })
           .from(inventoryMovement)

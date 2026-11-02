@@ -21,6 +21,8 @@ export const saleQueryKeys = {
   lists: (businessId: string | undefined) => [...saleQueryKeys.all(businessId), "list"] as const,
   list: (businessId: string | undefined, status: SaleStatusFilter) =>
     [...saleQueryKeys.lists(businessId), status] as const,
+  formOptions: (businessId: string | undefined) =>
+    [...saleQueryKeys.all(businessId), "form-options"] as const,
   previousMonthSummary: (businessId: string | undefined) =>
     [...saleQueryKeys.all(businessId), "summary", "previous-month"] as const,
 } as const;
@@ -53,11 +55,27 @@ export function saleReviewQueryOptions(businessId: string | undefined) {
   });
 }
 
+/** Payment accounts a seller may choose, without balances. */
+export function saleFormOptionsQueryOptions(businessId: string | undefined) {
+  return queryOptions({
+    queryFn: businessId ? ({ signal }) => api.sales.formOptions(signal) : skipToken,
+    queryKey: saleQueryKeys.formOptions(businessId),
+  });
+}
+
 export function previousMonthSummaryQueryOptions(businessId: string | undefined) {
   return queryOptions({
     queryFn: businessId ? ({ signal }) => api.sales.previousMonthSummary(signal) : skipToken,
     queryKey: saleQueryKeys.previousMonthSummary(businessId),
   });
+}
+
+/**
+ * An itemized sale and its void also move stock, cash and debts, so every read of the business is
+ * refreshed, as a change notice from the server would.
+ */
+export function invalidateBusinessReads(client: QueryClient, businessId: string) {
+  return client.invalidateQueries({ predicate: (query) => query.queryKey[1] === businessId });
 }
 
 /**

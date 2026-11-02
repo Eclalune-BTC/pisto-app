@@ -17,6 +17,7 @@ import {
 
 import { user } from "./auth.ts";
 import { businessSettings } from "./business.ts";
+import { sale } from "./sales.ts";
 
 export const catalogCategory = pgTable(
   "catalog_category",
@@ -156,7 +157,8 @@ export const inventoryMovement = pgTable(
     quantityMinorUnits: bigint("quantity_minor_units", { mode: "bigint" }).notNull(),
     deltaMinorUnits: bigint("delta_minor_units", { mode: "bigint" }).notNull(),
     quantityPrecision: smallint("quantity_precision").notNull(),
-    reason: text("reason").notNull(),
+    /** Typed by a person; null only for the movement a sale writes. */
+    reason: text("reason"),
     occurredAt: timestamp("occurred_at", { withTimezone: true, mode: "date" }).notNull(),
     occurredLocalDate: text("occurred_local_date").notNull(),
     occurredLocalTime: text("occurred_local_time").notNull(),
@@ -165,12 +167,13 @@ export const inventoryMovement = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
     reversesMovementId: uuid("reverses_movement_id"),
+    saleId: uuid("sale_id"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
   },
   (table) => [
     check(
       "inventory_movement_action_check",
-      sql`${table.action} in ('receive', 'adjust_in', 'adjust_out', 'reverse')`,
+      sql`${table.action} in ('receive', 'adjust_in', 'adjust_out', 'sale', 'reverse')`,
     ),
     check("inventory_movement_quantity_positive_check", sql`${table.quantityMinorUnits} > 0`),
     check(
@@ -178,7 +181,7 @@ export const inventoryMovement = pgTable(
       sql`(
         ${table.action} in ('receive', 'adjust_in') and ${table.deltaMinorUnits} > 0
       ) or (
-        ${table.action} = 'adjust_out' and ${table.deltaMinorUnits} < 0
+        ${table.action} in ('adjust_out', 'sale') and ${table.deltaMinorUnits} < 0
       ) or (
         ${table.action} = 'reverse' and ${table.deltaMinorUnits} <> 0
       )`,
@@ -186,11 +189,19 @@ export const inventoryMovement = pgTable(
     check("inventory_movement_precision_check", sql`${table.quantityPrecision} between 0 and 3`),
     check(
       "inventory_movement_reason_check",
-      sql`char_length(${table.reason}) between 1 and 240 and btrim(${table.reason}) = ${table.reason}`,
+      sql`(
+        ${table.reason} is not null
+        and char_length(${table.reason}) between 1 and 240
+        and btrim(${table.reason}) = ${table.reason}
+      ) or (${table.reason} is null and ${table.action} = 'sale')`,
     ),
     check(
       "inventory_movement_reversal_link_check",
       sql`(${table.action} = 'reverse') = (${table.reversesMovementId} is not null)`,
+    ),
+    check(
+      "inventory_movement_sale_link_check",
+      sql`(${table.action} = 'sale') = (${table.saleId} is not null)`,
     ),
     check(
       "inventory_movement_local_date_check",
@@ -214,6 +225,14 @@ export const inventoryMovement = pgTable(
       foreignColumns: [table.businessId, table.productId, table.id],
       name: "inventory_movement_reversal_fk",
     }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.businessId, table.saleId],
+      foreignColumns: [sale.businessId, sale.id],
+      name: "inventory_movement_business_sale_fk",
+    }).onDelete("restrict"),
+    uniqueIndex("inventory_movement_sale_product_unique")
+      .on(table.businessId, table.saleId, table.productId)
+      .where(sql`${table.saleId} is not null`),
     unique("inventory_movement_business_product_id_unique").on(
       table.businessId,
       table.productId,

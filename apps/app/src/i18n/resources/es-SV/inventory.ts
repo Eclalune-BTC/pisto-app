@@ -3,7 +3,11 @@ export const inventory = {
     receive: "Recepción",
     adjust_in: "Ajuste de entrada",
     adjust_out: "Ajuste de salida",
+    sale: "Venta",
     reverse: "Reversión",
+  },
+  systemReasons: {
+    sale: "Salida por una venta",
   },
   list: {
     title: "Inventario",

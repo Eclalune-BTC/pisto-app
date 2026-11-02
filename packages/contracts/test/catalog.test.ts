@@ -116,6 +116,30 @@ describe("catalog and inventory contracts", () => {
     ).toBe(true);
   });
 
+  test("lets only a sale's movement omit its typed reason", () => {
+    const saleMovement = {
+      id: "afad662e-fe6d-4923-a6ef-4897bb8c4b87",
+      productId: product.id,
+      action: "sale",
+      quantityMinorUnits: "2",
+      deltaMinorUnits: "-2",
+      quantityPrecision: 0,
+      reason: null,
+      occurredAt: "2026-08-22T20:30:00.000Z",
+      occurredLocalDate: "2026-08-22",
+      occurredLocalTime: "14:30",
+      timeZone: "America/El_Salvador",
+      createdByUserId: "user-1",
+      reversesMovementId: null,
+      reversedByMovementId: null,
+      createdAt: "2026-08-22T20:31:00.000Z",
+    };
+    expect(inventoryMovementSchema.safeParse(saleMovement).success).toBe(true);
+    expect(
+      inventoryMovementSchema.safeParse({ ...saleMovement, action: "adjust_out" }).success,
+    ).toBe(false);
+  });
+
   test("bounds list limits and parses the explicit low-stock filter", () => {
     expect(stockListQuerySchema.parse({ limit: "50", lowStockOnly: "true" })).toEqual({
       limit: 50,

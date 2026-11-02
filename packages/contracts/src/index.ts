@@ -238,10 +238,18 @@ const saleCorrectionSchema = z.object({
   correctedAt: timestampSchema,
 });
 
+/** The customer an itemized sale names, read from the current customer record. */
+const saleCustomerSchema = z.object({
+  id: uuidSchema,
+  name: z.string().min(1).max(120),
+});
+
 const saleSchema = z.object({
   id: uuidSchema,
   status: saleStatusSchema,
   entryMode: saleEntryModeSchema,
+  entrySource: entrySourceSchema,
+  customer: saleCustomerSchema.nullable(),
   grossMinorUnits: positiveMinorUnitsSchema,
   currency: currencyCodeSchema,
   currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
@@ -400,6 +408,20 @@ export const itemizedSaleResponseSchema = z.object({
   }),
 });
 
+/** Product lines and settlement of an itemized sale; a total-only sale has none. */
+export const saleDetailsSchema = z.object({
+  lines: z.array(saleLineSchema).min(1),
+  settlement: saleSettlementSchema,
+});
+
+export const saleDetailResponseSchema = z.object({
+  data: z.object({
+    sale: saleSchema,
+    details: saleDetailsSchema.nullable(),
+    replayed: z.boolean(),
+  }),
+});
+
 /** Accounts a seller may choose for a payment, without balances. */
 export const saleFormOptionsResponseSchema = z
   .object({
@@ -486,10 +508,14 @@ export type ReplaceSaleRequest = z.infer<typeof replaceSaleRequestSchema>;
 export type SaleCorrectionResponse = z.infer<typeof saleCorrectionResponseSchema>;
 export type SaleEntryMode = z.infer<typeof saleEntryModeSchema>;
 export type SalePaymentMethod = z.infer<typeof salePaymentMethodSchema>;
+export type EntrySource = z.infer<typeof entrySourceSchema>;
 export type CreateItemizedSaleRequest = z.input<typeof createItemizedSaleRequestSchema>;
 export type SaleLine = z.infer<typeof saleLineSchema>;
 export type SaleSettlement = z.infer<typeof saleSettlementSchema>;
 export type ItemizedSaleResponse = z.infer<typeof itemizedSaleResponseSchema>;
+export type SaleCustomer = z.infer<typeof saleCustomerSchema>;
+export type SaleDetails = z.infer<typeof saleDetailsSchema>;
+export type SaleDetailResponse = z.infer<typeof saleDetailResponseSchema>;
 export type SaleFormOptionsResponse = z.infer<typeof saleFormOptionsResponseSchema>;
 export type SaleStatusFilter = z.infer<typeof saleStatusFilterSchema>;
 export type SaleListQuery = z.input<typeof saleListQuerySchema>;

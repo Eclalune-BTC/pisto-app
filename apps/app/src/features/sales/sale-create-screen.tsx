@@ -1,9 +1,9 @@
-import type { Business, SaleReview } from "@pisto/contracts";
+import type { Business, SaleEntryMode, SaleReview } from "@pisto/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
 import { CircleAlert, TriangleAlert } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TextInput, View } from "react-native";
 import { DescriptionList } from "@/components/layout/description-list";
@@ -14,6 +14,7 @@ import { StaleNotice } from "@/components/remote-state";
 import { RouteState } from "@/components/route-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { api, isAmbiguousMutationError } from "@/lib/api-client";
@@ -23,6 +24,7 @@ import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
 import { ActionBar } from "./action-bar";
+import { ItemizedSaleForm } from "./itemized/itemized-sale-form";
 import { invalidateSaleReads, saleQueryKeys, saleReviewQueryOptions } from "./queries";
 import {
   emptySaleDraft,
@@ -67,13 +69,61 @@ export default function NewSaleScreen() {
   }
   if (!business) return <Redirect href="/business" />;
   return (
-    <SaleReviewScreen
+    <NewSaleModes
       key={business.id}
       business={business}
       businessStale={queryHasStaleData(businesses)}
       businessFetching={businesses.isFetching}
       onRefreshBusiness={() => businesses.refetch()}
     />
+  );
+}
+
+/**
+ * A sale is entered with its products (the default) or as a total alone. An open total-only review
+ * found on arrival opens that mode, so a pending review is never hidden behind the other one.
+ */
+export function NewSaleModes(props: {
+  business: Business;
+  businessStale: boolean;
+  businessFetching: boolean;
+  onRefreshBusiness: () => unknown;
+}) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const recovery = useQuery(saleReviewQueryOptions(props.business.id));
+  const [chosen, setChosen] = useState<SaleEntryMode | null>(null);
+  if (chosen === null && recovery.isPending && recovery.fetchStatus === "fetching") {
+    return <RouteState kind="loading" label={t("sales.new.loading")} variant="form" width="form" />;
+  }
+  const mode = chosen ?? (recovery.data?.review ? "total_only" : "itemized");
+  const modeSwitch = (
+    <FilterBar
+      label={t("sales.mode.label")}
+      onChange={setChosen}
+      options={[
+        { label: t("sales.mode.itemized"), value: "itemized" },
+        { label: t("sales.mode.totalOnly"), value: "total_only" },
+      ]}
+      value={mode}
+    />
+  );
+  if (mode === "total_only") return <SaleReviewScreen {...props} modeSwitch={modeSwitch} />;
+  return (
+    <Page>
+      <PageHeader
+        actions={modeSwitch}
+        description={t("sales.itemized.description")}
+        title={t("sales.new.title")}
+      />
+      <ItemizedSaleForm
+        entrySource="manual"
+        onCancel={() => router.replace("/operate/sales")}
+        onSaved={(saleId) =>
+          router.replace({ pathname: "/operate/sales/[saleId]", params: { saleId } })
+        }
+      />
+    </Page>
   );
 }
 
@@ -86,11 +136,14 @@ export function SaleReviewScreen({
   business,
   businessStale,
   businessFetching,
+  modeSwitch,
   onRefreshBusiness,
 }: {
   business: Business;
   businessStale: boolean;
   businessFetching: boolean;
+  /** Offered while the person is still choosing how to enter the sale. */
+  modeSwitch?: ReactNode;
   onRefreshBusiness: () => unknown;
 }) {
   const { i18n, t } = useTranslation();
@@ -291,7 +344,11 @@ export function SaleReviewScreen({
 
   return (
     <Page width="form">
-      <PageHeader description={header.description} title={header.title} />
+      <PageHeader
+        actions={review ? undefined : modeSwitch}
+        description={header.description}
+        title={header.title}
+      />
       {contextChanged ? (
         <Alert
           action={
