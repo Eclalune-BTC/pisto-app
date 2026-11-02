@@ -3,6 +3,7 @@ import { saleListQuerySchema } from "@pisto/contracts";
 import { and, desc, eq, getTableColumns, inArray, or, sql } from "drizzle-orm";
 
 import { authorizeBusinessAction } from "../business-access.ts";
+import { listSalePaymentAccounts } from "../cash/sale-ledger.ts";
 import type { Database } from "../client.ts";
 import { ProductError, parseInput } from "../errors.ts";
 import {
@@ -12,11 +13,22 @@ import {
   occurrenceKeysetBefore,
   pageOccurrenceRows,
 } from "../pagination.ts";
+import { customer } from "../schema/receivables.ts";
 import { sale, saleCorrection } from "../schema/sales.ts";
+import { readSaleDetails } from "./itemized.ts";
 import { toCorrection, toSale } from "./records.ts";
 import type { SalesRepository } from "./types.ts";
 
-type SaleQueries = Pick<SalesRepository, "getPreviousMonthSummary" | "getSale" | "listSales">;
+type SaleQueries = Pick<
+  SalesRepository,
+  "getPreviousMonthSummary" | "getSale" | "getSaleFormOptions" | "listSales"
+>;
+
+/** The current name of the customer a sale names, joined on the same business. */
+const saleCustomerJoin = and(
+  eq(customer.businessId, sale.businessId),
+  eq(customer.id, sale.customerId),
+);
 
 export function createSaleQueries(db: Database): SaleQueries {
   return {
@@ -30,10 +42,12 @@ export function createSaleQueries(db: Database): SaleQueries {
         const rows = await tx
           .select({
             ...getTableColumns(sale),
+            customerName: customer.name,
             occurredAtExact: exactCursorTimestamp(sale.occurredAt),
             createdAtExact: exactCursorTimestamp(sale.createdAt),
           })
           .from(sale)
+          .leftJoin(customer, saleCustomerJoin)
           .where(
             and(
               eq(sale.businessId, access.businessId),
@@ -76,7 +90,7 @@ export function createSaleQueries(db: Database): SaleQueries {
           if (record.status === "voided" && correction === null) {
             throw new Error("A voided sale is missing its correction record");
           }
-          return toSale(record, correction);
+          return toSale(record, correction, record.customerName);
         });
         return {
           items,
@@ -92,8 +106,9 @@ export function createSaleQueries(db: Database): SaleQueries {
         // The sale and its correction link are read in one statement so a concurrent
         // correction cannot pair a posted status with a void record or the reverse.
         const [result] = await tx
-          .select({ record: sale, correction: saleCorrection })
+          .select({ record: sale, correction: saleCorrection, customerName: customer.name })
           .from(sale)
+          .leftJoin(customer, saleCustomerJoin)
           .leftJoin(
             saleCorrection,
             and(
@@ -107,7 +122,21 @@ export function createSaleQueries(db: Database): SaleQueries {
           .where(and(eq(sale.businessId, access.businessId), eq(sale.id, saleId)))
           .limit(1);
         if (!result) throw new ProductError("NOT_FOUND", "Sale was not found");
-        return toSale(result.record, result.correction ? toCorrection(result.correction) : null);
+        return {
+          sale: toSale(
+            result.record,
+            result.correction ? toCorrection(result.correction) : null,
+            result.customerName,
+          ),
+          details: await readSaleDetails(tx, result.record, result.customerName),
+        };
+      });
+    },
+
+    async getSaleFormOptions(actor) {
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["sales:create"]);
+        return { accounts: await listSalePaymentAccounts(tx, access.businessId) };
       });
     },
 

@@ -5,6 +5,7 @@ export * from "./cash.ts";
 export * from "./cash-account.ts";
 export * from "./catalog.ts";
 export * from "./receivables.ts";
+export * from "./sale-line.ts";
 export * from "./sales.ts";
 
 import * as auth from "./auth.ts";
@@ -13,6 +14,7 @@ import * as business from "./business.ts";
 import * as cash from "./cash.ts";
 import * as catalog from "./catalog.ts";
 import * as receivables from "./receivables.ts";
+import * as saleLines from "./sale-line.ts";
 import * as sales from "./sales.ts";
 
 export const schema = {
@@ -46,4 +48,5 @@ export const schema = {
   saleReview: sales.saleReview,
   saleOperation: sales.saleOperation,
   saleCorrection: sales.saleCorrection,
+  saleLine: saleLines.saleLine,
 };

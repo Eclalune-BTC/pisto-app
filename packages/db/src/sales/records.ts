@@ -6,7 +6,13 @@ import type {
   SaleReview,
   VoidSaleRequest,
 } from "@pisto/contracts";
-import { saleCorrectionKindSchema, saleReviewSchema, saleStatusSchema } from "@pisto/contracts";
+import {
+  entrySourceSchema,
+  saleCorrectionKindSchema,
+  saleEntryModeSchema,
+  saleReviewSchema,
+  saleStatusSchema,
+} from "@pisto/contracts";
 import { and, eq } from "drizzle-orm";
 
 import type { DatabaseTransaction } from "../business-access.ts";
@@ -78,12 +84,31 @@ export function toCorrection(record: SaleCorrectionRecord): SaleCorrection {
   };
 }
 
-export function toSale(record: SaleRecord, correction: SaleCorrection | null = null): Sale {
-  if (record.entryMode !== "total_only") throw new Error("Stored sale entry mode is invalid");
+/**
+ * `customerName` is the current name of the customer an itemized sale names; a sale that names one
+ * must be read with it.
+ */
+export function toSale(
+  record: SaleRecord,
+  correction: SaleCorrection | null = null,
+  customerName: string | null = null,
+): Sale {
+  const entryMode = saleEntryModeSchema.safeParse(record.entryMode);
+  if (!entryMode.success) throw new Error("Stored sale entry mode is invalid");
+  const entrySource = entrySourceSchema.safeParse(record.entrySource);
+  if (!entrySource.success) throw new Error("Stored sale entry source is invalid");
+  if (record.customerId !== null && customerName === null) {
+    throw new Error("The sale customer was not read with the sale");
+  }
   return {
     id: record.id,
     status: saleStatusSchema.parse(record.status),
-    entryMode: record.entryMode,
+    entryMode: entryMode.data,
+    entrySource: entrySource.data,
+    customer:
+      record.customerId === null || customerName === null
+        ? null
+        : { id: record.customerId, name: customerName },
     grossMinorUnits: record.grossMinorUnits.toString(),
     currency: record.currency,
     currencyMinorUnitDigits: record.currencyMinorUnitDigits,

@@ -218,29 +218,36 @@ export const inventoryMovementActionSchema = z.enum([
   "receive",
   "adjust_in",
   "adjust_out",
+  "sale",
   "reverse",
 ]);
 
-export const inventoryMovementSchema = z.object({
-  id: uuidSchema,
-  productId: uuidSchema,
-  action: inventoryMovementActionSchema,
-  quantityMinorUnits: positiveMinorUnitsSchema,
-  deltaMinorUnits: signedMinorUnitsSchema.refine(
-    (value) => value !== "0",
-    "Movement delta cannot be zero",
-  ),
-  quantityPrecision: quantityPrecisionSchema,
-  reason: shortRequestTextSchema,
-  occurredAt: timestampSchema,
-  occurredLocalDate: calendarLocalDateSchema,
-  occurredLocalTime: localTimeSchema,
-  timeZone: timeZoneSchema,
-  createdByUserId: z.string().min(1),
-  reversesMovementId: uuidSchema.nullable(),
-  reversedByMovementId: uuidSchema.nullable(),
-  createdAt: timestampSchema,
-});
+export const inventoryMovementSchema = z
+  .object({
+    id: uuidSchema,
+    productId: uuidSchema,
+    action: inventoryMovementActionSchema,
+    quantityMinorUnits: positiveMinorUnitsSchema,
+    deltaMinorUnits: signedMinorUnitsSchema.refine(
+      (value) => value !== "0",
+      "Movement delta cannot be zero",
+    ),
+    quantityPrecision: quantityPrecisionSchema,
+    /** Null only for a sale's movement, which clients describe from its action. */
+    reason: shortRequestTextSchema.nullable(),
+    occurredAt: timestampSchema,
+    occurredLocalDate: calendarLocalDateSchema,
+    occurredLocalTime: localTimeSchema,
+    timeZone: timeZoneSchema,
+    createdByUserId: z.string().min(1),
+    reversesMovementId: uuidSchema.nullable(),
+    reversedByMovementId: uuidSchema.nullable(),
+    createdAt: timestampSchema,
+  })
+  .refine((movement) => movement.reason !== null || movement.action === "sale", {
+    message: "Only a sale's movement may omit its reason",
+    path: ["reason"],
+  });
 
 export const recordInventoryMovementRequestSchema = z
   .object({

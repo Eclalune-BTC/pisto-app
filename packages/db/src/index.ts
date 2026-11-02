@@ -17,5 +17,10 @@ export {
 } from "./product-rate-limit.ts";
 export { createReceivablesRepository, type ReceivablesRepository } from "./receivables.ts";
 export { createReportsRepository, type ReportsRepository } from "./reports.ts";
-export { createSalesRepository, type SaleCorrectionResult, type SalesRepository } from "./sales.ts";
+export {
+  createSalesRepository,
+  type ItemizedSaleResult,
+  type SaleCorrectionResult,
+  type SalesRepository,
+} from "./sales.ts";
 export * from "./schema/index.ts";

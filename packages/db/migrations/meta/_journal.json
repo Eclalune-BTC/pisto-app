@@ -71,6 +71,13 @@
       "when": 1791161691908,
       "tag": "0009_ledger_occurrence_order",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793627349473,
+      "tag": "0010_powerful_vin_gonzales",
+      "breakpoints": true
     }
   ]
 }

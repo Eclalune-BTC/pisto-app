@@ -475,8 +475,12 @@ describe("product repository on PostgreSQL 18", () => {
       occurredLocalTime: "12:02",
       description: "Member integration sale",
     });
-    expect((await repository.getSale(adminActor, memberSale.sale.id)).id).toBe(memberSale.sale.id);
-    expect((await repository.getSale(memberActor, adminSale.sale.id)).id).toBe(adminSale.sale.id);
+    expect((await repository.getSale(adminActor, memberSale.sale.id)).sale.id).toBe(
+      memberSale.sale.id,
+    );
+    expect((await repository.getSale(memberActor, adminSale.sale.id)).sale.id).toBe(
+      adminSale.sale.id,
+    );
     expect((await repository.getPreviousMonthSummary(adminActor)).saleCount).toBe("5");
     expect((await repository.getPreviousMonthSummary(memberActor)).saleCount).toBe("5");
     await expect(
@@ -537,11 +541,11 @@ describe("product repository on PostgreSQL 18", () => {
         reason: "Attempt to correct a replacement",
       }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
-    expect((await repository.getSale(memberActor, memberSale.sale.id)).correction?.id).toBe(
+    expect((await repository.getSale(memberActor, memberSale.sale.id)).sale.correction?.id).toBe(
       replaced.correction.id,
     );
     expect(
-      (await repository.getSale(memberActor, replacementSaleId as string)).correction?.id,
+      (await repository.getSale(memberActor, replacementSaleId as string)).sale.correction?.id,
     ).toBe(replaced.correction.id);
     const correctedSummary = await repository.getPreviousMonthSummary(activeActor);
     expect(correctedSummary.saleCount).toBe("4");

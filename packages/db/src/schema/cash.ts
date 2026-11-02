@@ -18,6 +18,7 @@ import { user } from "./auth.ts";
 import { businessSettings } from "./business.ts";
 import { cashAccount } from "./cash-account.ts";
 import { receivablePayment } from "./receivables.ts";
+import { sale } from "./sales.ts";
 
 export { cashAccount } from "./cash-account.ts";
 
@@ -214,12 +215,13 @@ export const cashMovement = pgTable(
     occurredLocalDate: text("occurred_local_date").notNull(),
     occurredLocalTime: text("occurred_local_time").notNull(),
     timeZone: text("time_zone").notNull(),
-    /** Typed by a person; null only for movements the system writes for a transfer or receivable. */
+    /** Typed by a person; null only for system movements of transfers, receivables and sales. */
     reason: text("reason"),
     expenseId: uuid("expense_id"),
     transferId: uuid("transfer_id"),
     receivablePaymentId: uuid("receivable_payment_id"),
     reversalOfMovementId: uuid("reversal_of_movement_id"),
+    saleId: uuid("sale_id"),
     createdByUserId: text("created_by_user_id")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
@@ -229,7 +231,7 @@ export const cashMovement = pgTable(
     check("cash_movement_direction_check", sql`${table.direction} in ('in', 'out')`),
     check(
       "cash_movement_action_check",
-      sql`${table.action} in ('opening', 'expense', 'adjustment_in', 'adjustment_out', 'transfer_in', 'transfer_out', 'receivable_payment', 'reverse')`,
+      sql`${table.action} in ('opening', 'expense', 'adjustment_in', 'adjustment_out', 'transfer_in', 'transfer_out', 'receivable_payment', 'sale_payment', 'reverse')`,
     ),
     check("cash_movement_amount_positive_check", sql`${table.amountMinorUnits} > 0`),
     check(
@@ -258,7 +260,7 @@ export const cashMovement = pgTable(
       "cash_movement_reason_length_check",
       sql`(${table.reason} is not null and char_length(${table.reason}) between 1 and 240) or (
         ${table.reason} is null
-        and ${table.action} in ('transfer_in', 'transfer_out', 'receivable_payment', 'reverse')
+        and ${table.action} in ('transfer_in', 'transfer_out', 'receivable_payment', 'sale_payment', 'reverse')
       )`,
     ),
     check(
@@ -266,7 +268,8 @@ export const cashMovement = pgTable(
       sql`(
         ${table.action} in ('expense', 'adjustment_out', 'transfer_out') and ${table.direction} = 'out'
       ) or (
-        ${table.action} in ('adjustment_in', 'transfer_in', 'receivable_payment') and ${table.direction} = 'in'
+        ${table.action} in ('adjustment_in', 'transfer_in', 'receivable_payment', 'sale_payment')
+        and ${table.direction} = 'in'
       ) or ${table.action} in ('opening', 'reverse')`,
     ),
     check(
@@ -290,6 +293,12 @@ export const cashMovement = pgTable(
         and ${table.receivablePaymentId} is not null
         and ${table.reversalOfMovementId} is null
       ) or (
+        ${table.action} = 'sale_payment'
+        and ${table.expenseId} is null
+        and ${table.transferId} is null
+        and ${table.receivablePaymentId} is null
+        and ${table.reversalOfMovementId} is null
+      ) or (
         ${table.action} = 'reverse'
         and ${table.expenseId} is null
         and ${table.transferId} is null
@@ -303,6 +312,10 @@ export const cashMovement = pgTable(
         and ${table.reversalOfMovementId} is null
       )`,
     ),
+    check(
+      "cash_movement_sale_link_check",
+      sql`(${table.action} = 'sale_payment') = (${table.saleId} is not null)`,
+    ),
     unique("cash_movement_business_id_id_unique").on(table.businessId, table.id),
     uniqueIndex("cash_movement_expense_unique").on(table.businessId, table.expenseId),
     uniqueIndex("cash_movement_transfer_action_unique").on(
@@ -311,6 +324,7 @@ export const cashMovement = pgTable(
       table.action,
     ),
     uniqueIndex("cash_movement_reversal_unique").on(table.businessId, table.reversalOfMovementId),
+    uniqueIndex("cash_movement_sale_unique").on(table.businessId, table.saleId),
     foreignKey({
       columns: [table.businessId, table.accountId],
       foreignColumns: [cashAccount.businessId, cashAccount.id],
@@ -330,6 +344,11 @@ export const cashMovement = pgTable(
       columns: [table.businessId, table.receivablePaymentId],
       foreignColumns: [receivablePayment.businessId, receivablePayment.id],
       name: "cash_movement_business_receivable_payment_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.businessId, table.saleId],
+      foreignColumns: [sale.businessId, sale.id],
+      name: "cash_movement_business_sale_fk",
     }).onDelete("restrict"),
     foreignKey({
       columns: [table.businessId, table.reversalOfMovementId],

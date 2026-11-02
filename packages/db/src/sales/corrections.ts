@@ -1,15 +1,20 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 
 import {
+  type AuthorizedBusinessContext,
   authorizeBusinessAction,
   type DatabaseTransaction,
   type ProductActor,
 } from "../business-access.ts";
+import { reverseSalePaymentCashMovement } from "../cash/sale-ledger.ts";
+import { returnSaleStock } from "../catalog/sale-stock.ts";
 import { ProductError } from "../errors.ts";
 import { resolveLocalDateTime } from "../local-time.ts";
 import { parseMinorUnits } from "../money.ts";
 import { lockCommandKey, normalizeIdempotencyKey } from "../operation-log.ts";
+import { voidSaleReceivable } from "../receivables/sale-receivable.ts";
 import { sale, saleCorrection, saleOperation } from "../schema/sales.ts";
+import { readCustomerName } from "./itemized.ts";
 import {
   correctionFingerprint,
   requireKeyUnusedBy,
@@ -39,7 +44,11 @@ async function replayCorrection(
   const correction = toCorrection(existing);
   return {
     correction,
-    originalSale: toSale(originalRecord, correction),
+    originalSale: toSale(
+      originalRecord,
+      correction,
+      await readCustomerName(tx, existing.businessId, originalRecord.customerId),
+    ),
     replacementSale: replacementRecord ? toSale(replacementRecord, correction) : null,
     replayed: true,
   };
@@ -125,6 +134,9 @@ export async function correctSale(
   if (originalRecord.status !== "posted") {
     throw new ProductError("CONFLICT", "Only a posted sale can be corrected");
   }
+  if (input.kind === "replacement" && originalRecord.entryMode !== "total_only") {
+    throw new ProductError("CONFLICT", "An itemized sale can be voided but not replaced");
+  }
 
   let replacementRecord: SaleRecord | null = null;
   if (input.kind === "replacement" && replacementMinorUnits !== null) {
@@ -161,6 +173,9 @@ export async function correctSale(
   if (!voidedOriginal) {
     throw new ProductError("CONFLICT", "The sale was corrected by another operation");
   }
+  if (voidedOriginal.entryMode === "itemized") {
+    await undoItemizedSale(tx, access, actor.userId, voidedOriginal, reason);
+  }
 
   const [createdCorrection] = await tx
     .insert(saleCorrection)
@@ -178,8 +193,46 @@ export async function correctSale(
   const correction = toCorrection(createdCorrection);
   return {
     correction,
-    originalSale: toSale(voidedOriginal, correction),
+    originalSale: toSale(
+      voidedOriginal,
+      correction,
+      await readCustomerName(tx, businessId, voidedOriginal.customerId),
+    ),
     replacementSale: replacementRecord ? toSale(replacementRecord, correction) : null,
     replayed: false,
   };
+}
+
+/**
+ * Voiding an itemized sale undoes each of its effects in the same transaction: the debt is voided,
+ * the stock returns and the payment leaves its account. The reversals keep the sale's occurrence,
+ * so the period that showed the sale also shows it undone.
+ */
+async function undoItemizedSale(
+  tx: DatabaseTransaction,
+  access: AuthorizedBusinessContext,
+  actorUserId: string,
+  record: SaleRecord,
+  reason: string,
+): Promise<void> {
+  if (record.receivableId !== null) {
+    await voidSaleReceivable(tx, access, {
+      actorUserId,
+      reason,
+      receivableId: record.receivableId,
+    });
+  }
+  const occurrence = {
+    actorUserId,
+    saleId: record.id,
+    occurredAt: record.occurredAt,
+    occurredLocalDate: record.occurredLocalDate,
+    occurredLocalTime: record.occurredLocalTime,
+    timeZone: record.timeZone,
+    reason,
+  };
+  await returnSaleStock(tx, { ...occurrence, businessId: record.businessId });
+  if (record.receivedMinorUnits > 0n) {
+    await reverseSalePaymentCashMovement(tx, access, occurrence);
+  }
 }
