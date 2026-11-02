@@ -118,7 +118,8 @@ docker compose ps
 
 Compose publishes PostgreSQL on `127.0.0.1` only. Physical devices connect to the API's LAN
 address; they do not need direct database access. `POSTGRES_PORT` changes the local port while
-preserving the loopback binding.
+preserving the loopback binding. If another PostgreSQL already owns port 5432, set `POSTGRES_PORT`
+and the port in `DATABASE_URL` to the same free port before starting the container.
 
 Apply committed migrations after PostgreSQL becomes healthy:
 

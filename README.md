@@ -1,92 +1,179 @@
-# Pisto Stack
+# Pisto
 
-Pisto is a business operating application for Spanish-speaking entrepreneurs, built in TypeScript
-with an Expo Router client and a Bun/Elysia backend. The backend uses PostgreSQL 18 through Drizzle
-and postgres-js, Better Auth for authentication, and shared Zod request/response contracts.
-See [the backend composition](docs/architecture.md#backend-composition) for the source owners.
+Pisto is a business operating application for Spanish-speaking small businesses: sales, catalog and
+inventory, cash and expenses, customers and receivables, and exact operating reports. It is a
+TypeScript monorepo with an Expo Router client (web, iOS, Android) and a Bun/Elysia API backed by
+PostgreSQL 18 through Drizzle, Better Auth sessions and shared Zod request/response contracts.
 
-The configured application runs locally. Billing adapters exist but are disabled; native
-purchases still require their separately accepted integration and store checks.
+The product interface is Spanish (`es-SV`); code, commits and documentation are English.
 
-The active product direction is an AI-native operating assistant for Spanish-speaking entrepreneurs.
-What exists today is the structured manual path: sales with void/replacement correction, catalog,
-inventory movements, expenses, cash accounts and movements, and customers and receivables, all
-reachable from an `/operate` module hub, alongside sale history and exact operating reports.
-No AI dependency is installed in any manifest, so there is
-no conversational or voice sale path yet, and `/dashboard` is only a redirect into `/operate`. Start
-with [the documentation map](docs/README.md) and the
-[product capability architecture](docs/product-capability-architecture.md) before adding a module or
-changing navigation.
+## What the MVP does
 
-New total-only sales now use a server-owned review before confirmation. A reviewed sale can be
-reopened after navigation or reload without saving financial drafts in browser storage or replaying
-writes automatically. Apply migration `0006` before running this revision. See
-[the recovery contract](docs/adrs/0018-durable-sale-review.md); corrections and other financial
-editors are outside this first recovery slice.
+Every flow below works end to end, from the screen through the API to PostgreSQL. The
+[Postman collection](#api-collection-postman-or-bruno) exercises each endpoint.
 
-Current [product requirements](docs/product-requirements.md), [UX requirements](docs/ux-requirements.md)
-and [data model](docs/data-model.md) describe the implemented boundaries and remaining acceptance.
-Expo, Bun/Elysia and PostgreSQL 18 run locally. GitHub source synchronization is authorized; cloud
-provisioning, hosted deployment and store publication are separate decisions. The API container and
-Expo web artifact remain portable. See [ADR 0017](docs/adrs/0017-portable-postgres-and-hosting.md)
-and [release evidence](docs/release-evidence.md).
+| User story | Screens | API |
+| --- | --- | --- |
+| Create an account, sign in and sign out | `/sign-up`, `/sign-in`, user menu | `/api/auth/sign-up/email`, `/api/auth/sign-in/email`, `/api/auth/sign-out` |
+| Register my business with its currency and time zone | `/business`, `/settings` | `GET/POST /v1/businesses` |
+| Record a sale, review it before saving, see history, void or correct it | `/operate/sales`, `/operate/sales/new`, `/operate/sales/[saleId]`, `/operate/sales/correct/[saleId]` | `/v1/sales`, `/v1/sales/review`, `/v1/sales/:id/void`, `/v1/sales/:id/replace` |
+| Manage categories and products | `/operate/catalog`, `/operate/catalog/categories` | `/v1/catalog/categories`, `/v1/catalog/products` |
+| Receive and adjust stock, reverse a movement | `/operate/inventory` | `/v1/inventory/stock`, `/v1/inventory/products/:id/movements`, `/v1/inventory/movements/:id/reverse` |
+| Track cash accounts, adjustments and transfers | `/operate/cash` | `/v1/cash/accounts`, `/v1/cash/adjustments`, `/v1/cash/transfers`, `/v1/cash/movements` |
+| Record and void paid expenses | `/operate/expenses` | `/v1/expenses` |
+| Register customers, charge on credit, collect and reverse payments | `/operate/customers`, `/operate/receivables` | `/v1/customers`, `/v1/receivables`, `/v1/receivable-payments/:id/reverse` |
+| See the operating report for a period | `/operate/reports` | `GET /v1/reports/operating` |
 
-## Interface guidance
+Billing adapters (Polar, RevenueCat) exist but are disabled by default. AI and voice entry are
+planned, not implemented. [The capability matrix](docs/production-capabilities.md) owns the
+detailed status.
 
-[The design system](docs/design-system.md) owns the current neutral palette, React Native Reusables
-components, typography and spacing. Run the local app to inspect the current interface. Dated web
-checks and physical-device acceptance limits are recorded in [release evidence](docs/release-evidence.md).
+## Run it locally
 
-## Repository map
+### Requirements
 
-- apps/app: universal Expo application and platform-specific adapters
-- apps/api: Bun/Elysia HTTP service
-- packages/contracts: shared request, response, and error schemas
-- packages/db: PostgreSQL schema, migrations, and repositories
-- packages/auth: Better Auth server configuration
-- packages/billing: Polar adapter and canonical entitlements
-- scripts: safe setup and diagnostic CLI
-- docs: architecture, setup, operations, security, and source links
-- .agents/skills: repository-scoped Codex workflow for architecture-first product delivery
-- infra/gcp: inactive reference scripts retained for credential-free CI safeguards; not a deployment plan
+- [Git](https://git-scm.com/)
+- [Bun](https://bun.sh/) 1.4.0 or newer
+- [Node.js](https://nodejs.org/) 24.19 or newer within major 24
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/), running (on Windows, with its
+  default WSL 2 engine)
+- A recent browser
 
-## Quick start
+No cloud account or payment credential is needed.
 
-For the configured desktop checkout, follow
-[the existing Windows workspace](docs/getting-started.md#existing-windows-workspace): it uses
-`pisto-audit`, PostgreSQL port 55438, API port 3015 and Expo web port 8090, not the template defaults.
-For styling, shadcn-style component ownership and Expo Go limits, read
-[the frontend guide](docs/frontend-expo-ui.md#component-stack-and-cross-platform-rendering).
+### Steps
 
-Requirements: Bun 1.4+, Node.js 24.19 LTS, Docker Desktop, and the Expo prerequisites for
-the target platform. For a fresh checkout:
+From a terminal (on Windows, PowerShell or Git Bash):
 
-1. Run bun install --frozen-lockfile.
-2. Run bun run setup.
-3. Run docker compose up -d postgres.
-4. Run bun run db:migrate.
-5. Run bun run dev.
+```sh
+git clone https://github.com/Eclalune-BTC/pisto-app.git
+cd pisto-app
+bun install --frozen-lockfile
+bun run setup
+docker compose up -d --wait postgres
+bun run db:migrate
+```
 
-The setup command creates missing local environment files without overwriting existing
-ones. Run bun run doctor whenever a local tool or service appears misconfigured.
+`bun run setup` creates `.env` and `apps/app/.env.local` with a random local auth secret. It never
+overwrites existing files. `--wait` returns once PostgreSQL reports healthy, so the migration does
+not race the first database start. `bun run doctor` checks both files if something looks misconfigured.
+
+Then start the two processes in separate terminals:
+
+```sh
+# Terminal 1: API on http://localhost:3001
+bun run dev:api
+```
+
+```sh
+# Terminal 2: web app on http://localhost:8081
+bun run --cwd apps/app web
+```
+
+Open <http://localhost:8081>, choose **Crear cuenta** and register the business. The sidebar then
+lists every module (**Ventas**, **Gastos**, **Caja y cuentas**, **Catálogo**, ...).
+<http://localhost:3001/ready> returns `"status":"ready"` when the API reaches the database.
+
+To confirm the whole stack from the command line, run `bun run smoke:local` while both processes
+are up. It signs up a throwaway account, creates a business and a sale, checks the report, voids
+the sale and signs out.
+
+### Troubleshooting
+
+| Problem | Fix |
+| --- | --- |
+| `docker compose up` says port 5432 is not available, or migrations fail with a password error | Another PostgreSQL (often a native Windows install) owns port 5432. In `.env`, set `POSTGRES_PORT=55432` and change the port in `DATABASE_URL` to `55432`, then run `docker compose up -d --wait postgres` and `bun run db:migrate` again. |
+| PowerShell refuses to run `bun.ps1` or `npx.ps1` | Use `bun.cmd` and `npx.cmd` instead, or run the commands from Git Bash. |
+| `Cannot connect to the Docker daemon` | Start Docker Desktop and wait until it reports that the engine is running. |
+| The browser shows a network or origin error | Open the app exactly at `http://localhost:8081`. The API only accepts the origins listed in `CORS_ORIGINS` and `TRUSTED_ORIGINS` in `.env`; if Expo had to pick another port, add that origin to both. |
+| Sign-up or sign-in answers `429` | Better Auth allows three sign-up or sign-in attempts per 10 seconds on a local machine. Wait 10 seconds and retry. |
+| Expo asks to install updates | Not required. The lockfile pins the tested versions. |
+
+## API collection (Postman or Bruno)
+
+[`docs/postman`](docs/postman) contains a Postman v2.1 collection and a local environment. It calls
+every Pisto route plus every Better Auth endpoint the app uses:
+
+- `pisto.postman_collection.json`: 106 requests in 11 folders, from health checks and sign-up
+  through catalog, inventory, cash, expenses, sales, receivables, reports and billing. It also
+  includes negative checks for validation, authentication, foreign origins, unknown records,
+  idempotency conflicts and session revocation.
+- `pisto-local.postman_environment.json`: `baseUrl` (`http://localhost:3001`) and `webOrigin`
+  (`http://localhost:8081`).
+
+To use it:
+
+1. **Postman:** choose *Import*, select both files, choose the **Pisto local** environment, then
+   *Run collection* in its listed order. **Bruno:** choose *Import Collection*, then *Postman
+   Collection*.
+2. Each run signs up a new demo account and business, stores the ids it creates and checks every
+   response. The session is the HttpOnly `pisto.session_token` cookie, which the client keeps
+   automatically.
+3. From a terminal, with the API running:
+
+   ```sh
+   npx newman run docs/postman/pisto.postman_collection.json -e docs/postman/pisto-local.postman_environment.json
+   ```
+
+Run one collection at a time and leave 10 seconds between runs, because of the sign-up/sign-in
+limit above. One run uses about 50 of the 60 business writes per minute that each user may make.
+If the API runs on another port, change `baseUrl`. `webOrigin` must be one of the origins in
+`CORS_ORIGINS` and `TRUSTED_ORIGINS`. [The API guide](docs/api-elysia.md#public-surface) lists
+each route with its permission.
+
+## Security
+
+- Passwords are hashed by Better Auth (scrypt) and are never stored or returned in plain text.
+  Sessions use an HttpOnly cookie, and sign-out revokes the session on the server.
+- Every business-data route under `/v1` requires a fresh session, an active business and a role
+  permission checked on the server. A client can never choose its tenant.
+- Strict Zod contracts validate every request body, list query and record identifier. Unknown keys, malformed amounts,
+  impossible dates and wrong types return `400 VALIDATION_ERROR` with field details. Unknown or
+  malformed record ids return `404`.
+- Money is stored as exact integer minor units. Financial commands use idempotency keys, run in
+  database transactions, leave an operation receipt and are corrected by void or reversal entries
+  instead of being deleted.
+- The API also enforces rate limits, rejects writes from foreign browser origins, accepts only
+  JSON bodies within a size limit, and sends security headers on every response and
+  `Cache-Control: no-store` on `/v1`. Pisto errors share one `{ "error": { code, message,
+  requestId } }` envelope instead of crashing the process; Better Auth answers with its own
+  `{ code, message }`.
+
+[The security baseline](docs/security.md) has the full threat model and controls.
+
+## Architecture
+
+| Path | Responsibility |
+| --- | --- |
+| `apps/app` | Expo Router universal client and platform adapters |
+| `apps/api` | Bun/Elysia HTTP composition, middleware, health checks and the Docker image |
+| `packages/contracts` | Shared request, response and error schemas |
+| `packages/db` | PostgreSQL schema, migrations and repositories |
+| `packages/auth` | Better Auth server configuration |
+| `packages/billing` | Provider adapters and provider-neutral entitlements |
+| `packages/config` | Shared server environment parsing |
+| `scripts` | Safe setup, diagnostics and smoke-test CLI |
+| `docs` | Architecture, data model, API, security, decisions (ADRs) and the API collection |
+
+Start with [the documentation map](docs/README.md). [Architecture](docs/architecture.md),
+[the data model](docs/data-model.md) and [the API guide](docs/api-elysia.md) describe the
+implemented design, and [the ADRs](docs/adrs/README.md) record why it changed.
 
 ## Validation
 
-- bun run check validates formatting, lint rules, types, tests, and the Expo web export.
-- bun run build builds all packages and applications.
-- bun run verify adds environment diagnostics and real PostgreSQL integration tests; verify the test database target first.
-
-Start with docs/README.md for the active product goal, engineering workflow, complete guide, and
-primary-source references. Codex agents also load the root AGENTS.md and the repository-scoped skill
-under `.agents/skills`.
+- `bun run check` runs formatting and lint rules, documentation checks, type checks, every unit
+  test and the web export.
+- `bun run verify` adds environment diagnostics and the PostgreSQL integration suites. Point
+  `DATABASE_URL` at a disposable database first.
+- `bun run smoke:local` exercises the running API end to end.
 
 ## Billing boundary
 
-Polar is the default checkout and customer portal for browser purchases. Native apps must
-use Apple StoreKit or Google Play Billing for in-app digital goods where store rules apply.
-Both paths write into the same internal entitlement model, so product code never trusts a
-provider response directly.
+Polar is the browser checkout and customer portal. Native apps must use Apple StoreKit or Google
+Play Billing for in-app digital goods where store rules apply. Both paths write into the same
+internal entitlement model, so product code never trusts a provider response directly. Billing is
+disabled until a provider sandbox is configured.
 
 ## License
 
-No project license has been selected. Add one before distributing the project outside your team.
+No project license has been selected. Add one before distributing the project outside the team.

@@ -95,6 +95,29 @@ at their owning component/feature boundaries. No financial API, schema, permissi
   8.4 MB respectively). Export logs contained the CLI's NO_COLOR/FORCE_COLOR warning, with no unsupported
   style warning. Temporary exports were removed after validation; the local development app remains available.
 
+On 2026-11-01, after `2de11ef`, the README path ran on a new local clone of the working checkout
+with the template ports (API 3001, Expo web 8081) and a separate Compose project:
+
+- `bun install --frozen-lockfile` installed 834 packages, `setup` created both environment files,
+  `doctor` reported no failures or warnings and all ten migrations applied to a new PostgreSQL 18
+  container. That container used a non-default port because a native PostgreSQL owned 5432 on this
+  machine; the README now documents that override.
+- `smoke:local` passed. `/ready` and the Expo web HTML returned 200. In a browser, the clone's web
+  app signed up a new account, created a USD business, confirmed a reviewed $12.50 sale and showed
+  it in the operating report.
+- Newman 6.2.3 ran the new [Postman collection](postman/pisto.postman_collection.json) with its
+  unchanged local environment: 104 requests and 190 assertions passed. After an independent
+  read-only review, the final 106-request version (preflight, organization denial, server-side
+  revocation and stronger assertions) passed 206 assertions against the configured workspace
+  (3015/8090). Each run creates its own account and business. Concurrent runs, or two runs within
+  10 seconds, hit the shared local sign-up/sign-in limit; the README says so.
+- The configured workspace database had migrations `0008` and `0009` pending. They were applied
+  after a private `pg_dump` backup.
+- `bun run check` had failed on three app TS2590 errors after Expo regenerated its typed routes.
+  `2de11ef` narrows the record href helpers; the app typecheck and its 744 tests then passed.
+
+This is local evidence. No hosted deployment or store release took place.
+
 GitHub CI separately validates source/tests, migrations/integrations, the configured advisory
 exceptions, schema contracts, credential-free infrastructure tests and the portable API image.
 Inspect the run for the actual commit before asserting its result; old green runs do not validate
