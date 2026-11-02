@@ -1,353 +1,382 @@
-import type { OperatingReport } from "@pisto/contracts";
-import { type Href, Link } from "expo-router";
-import { CalendarX2 } from "lucide-react-native";
-import { useMemo } from "react";
+import type { CashFlowReport, OperatingReport } from "@pisto/contracts";
+import { TriangleAlert } from "lucide-react-native";
+import { type PropsWithChildren, type ReactNode, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
-import { Section } from "@/components/layout/section";
-import { ContentSkeleton } from "@/components/layout/skeletons";
-import { Stat, StatGroup } from "@/components/layout/stat-group";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useWindowDimensions, View } from "react-native";
 import { Button } from "@/components/ui/button";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { Heading } from "@/components/ui/heading";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
-import { formatLocalDate, formatLocalizedDateTime } from "@/i18n/format";
+import { formatLocalDate, formatLocalizedDateTime, formatMonthYear } from "@/i18n/format";
+import { cn } from "@/lib/cn";
 import { formatMinorUnits } from "@/lib/money";
-import { cashAccountKindLabels, cashAccountStatusLabels } from "../cash/copy";
 import { expenseCategoryLabels } from "../expenses/copy";
+import { CashFlowChart } from "./cash-flow-chart";
 import {
-  type ExpenseCategoryShare,
+  cashFlowMonthLabel,
   expenseCategoryShares,
   formatCount,
   formatShare,
+  formatTenthsPercent,
   hasPeriodActivity,
+  resultOfSales,
 } from "./report-figures";
 
-/** Modules the role can open from the report; a figure without access stays plain text. */
-export type ReportLinks = { cashAccounts: boolean; inventory: boolean; receivables: boolean };
+type Money = (minorUnits: string) => string;
 
-type ReportProps = { locale: string; report: OperatingReport };
-
-type CashAccountFacts = OperatingReport["cash"]["accounts"][number];
-
-function useReportFormat({ locale, report }: ReportProps) {
-  const { currency, currencyMinorUnitDigits } = report;
+function useMoney(currency: string, digits: number, locale: string): Money {
   return useMemo(
-    () => ({
-      /** Values for a plural key: `count` picks the form and `value` is the exact text. */
-      count: (value: string) => ({ count: Number(value), value: formatCount(value, locale) }),
-      money: (minorUnits: string) =>
-        formatMinorUnits(minorUnits, currency, currencyMinorUnitDigits, locale),
-    }),
-    [currency, currencyMinorUnitDigits, locale],
+    () => (minorUnits: string) => formatMinorUnits(minorUnits, currency, digits, locale),
+    [currency, digits, locale],
   );
 }
 
-function ModuleLink({ href, label }: { href: Href; label: string }) {
+/** A report region: one card with a titled header, like the prototype's report panels. */
+function ReportCard({
+  actions,
+  children,
+  description,
+  title,
+}: PropsWithChildren<{ actions?: ReactNode; description: string; title: string }>) {
   return (
-    <Link asChild href={href}>
-      <Button accessibilityRole="link" className="gap-1 px-1" size="sm" variant="ghost">
-        <Text className="text-[13px] text-link">{label}</Text>
-      </Button>
-    </Link>
+    <View
+      accessibilityLabel={title}
+      className="min-w-0 overflow-hidden rounded-xl border border-border bg-card"
+      role="region"
+    >
+      <View className="flex-row flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3.5 sm:px-5">
+        <View className="min-w-0 shrink gap-0.5">
+          <Heading level={2} size="section">
+            {title}
+          </Heading>
+          <Text className="text-xs leading-4 text-muted-foreground">{description}</Text>
+        </View>
+        {actions}
+      </View>
+      {children}
+    </View>
   );
 }
 
-function PeriodSummary({ locale, report }: ReportProps) {
+function StatementRow({
+  detail,
+  emphasis = false,
+  indent = false,
+  label,
+  value,
+}: {
+  detail?: string;
+  emphasis?: boolean;
+  indent?: boolean;
+  label: string;
+  value: string;
+}) {
+  return (
+    <View
+      className={cn(
+        "flex-row items-center justify-between gap-4 px-4 py-2.5 sm:px-5",
+        indent && "py-1.5 pl-7 sm:pl-8",
+      )}
+    >
+      <View className="min-w-0 shrink">
+        <Text
+          className={cn(
+            "text-[13px] leading-5",
+            emphasis ? "font-heading" : indent && "text-muted-foreground",
+          )}
+        >
+          {label}
+        </Text>
+        {detail ? (
+          <Text className="text-xs leading-4 text-muted-foreground tabular-nums">{detail}</Text>
+        ) : null}
+      </View>
+      <Text
+        className={cn("text-[13px] tabular-nums", emphasis && "font-heading")}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+/** What the month sold against what it spent. Pisto does not record the cost of each sale yet. */
+export function IncomeStatement({ locale, report }: { locale: string; report: OperatingReport }) {
   const { t } = useTranslation();
-  const format = useReportFormat({ locale, report });
+  const money = useMoney(report.currency, report.currencyMinorUnitDigits, locale);
+  const labels = expenseCategoryLabels(t);
+  const result = resultOfSales(report);
+  const negative = (minorUnits: string) =>
+    minorUnits === "0" ? money("0") : money(`-${minorUnits}`);
   return (
-    <Section
-      description={t("reports.period.description", {
+    <ReportCard
+      description={t("reports.statement.period", {
         end: formatLocalDate(report.period.endLocalDateInclusive, locale),
         start: formatLocalDate(report.period.startLocalDate, locale),
       })}
-      title={t("reports.period.title")}
+      title={t("reports.statement.title")}
     >
-      <StatGroup>
-        <Stat
-          detail={t("reports.period.saleCount", format.count(report.sales.saleCount))}
-          label={t("reports.period.sales")}
-          value={format.money(report.sales.grossMinorUnits)}
-        />
-        <Stat
-          detail={t("reports.period.expenseCount", format.count(report.expenses.expenseCount))}
-          label={t("reports.period.expenses")}
-          value={format.money(report.expenses.totalMinorUnits)}
-        />
-        <Stat
-          detail={t("reports.period.cashFlow", {
-            inflow: format.money(report.cash.inflowMinorUnits),
-            outflow: format.money(report.cash.outflowMinorUnits),
-          })}
-          label={t("reports.period.netCash")}
-          value={format.money(report.cash.netMovementMinorUnits)}
-        />
-      </StatGroup>
-      {/* Zeros from a successful read are real figures, not an achievement. */}
-      {hasPeriodActivity(report) ? null : (
-        <Alert icon={CalendarX2} role="note" variant="default">
-          <AlertDescription>{t("reports.period.noActivity")}</AlertDescription>
-        </Alert>
-      )}
-      {/* The three figures come from different records, so the page says why they do not add up. */}
-      <Text className="max-w-3xl text-xs leading-4 text-muted-foreground">
-        {t("reports.period.cashScope")}
-      </Text>
-    </Section>
-  );
-}
-
-function PositionSummary({ links, locale, report }: ReportProps & { links: ReportLinks }) {
-  const { t } = useTranslation();
-  const format = useReportFormat({ locale, report });
-  const { receivables, inventory } = report;
-  return (
-    <Section
-      actions={
-        links.receivables || links.inventory ? (
-          <>
-            {links.receivables ? (
-              <ModuleLink
-                href="/operate/receivables"
-                label={t("reports.position.viewReceivables")}
-              />
-            ) : null}
-            {links.inventory ? (
-              <ModuleLink href="/operate/inventory" label={t("reports.position.viewInventory")} />
-            ) : null}
-          </>
-        ) : undefined
-      }
-      description={t("reports.position.scope")}
-      title={t("reports.position.asOf", {
-        date: formatLocalDate(report.positionAsOfLocalDate, locale),
-      })}
-    >
-      <StatGroup>
-        <Stat
-          detail={t("reports.position.openCount", format.count(receivables.openReceivableCount))}
-          label={t("reports.position.receivables")}
-          value={format.money(receivables.outstandingMinorUnits)}
-        />
-        <Stat
-          detail={t(
-            "reports.position.overdueCount",
-            format.count(receivables.overdueReceivableCount),
-          )}
-          label={t("reports.position.overdue")}
-          tone={receivables.overdueMinorUnits === "0" ? "default" : "warning"}
-          value={format.money(receivables.overdueMinorUnits)}
-        />
-        <Stat
-          detail={t("reports.position.trackedCount", format.count(inventory.trackedProductCount))}
-          label={t("reports.position.lowStock")}
-          tone={inventory.lowStockProductCount === "0" ? "default" : "warning"}
-          value={formatCount(inventory.lowStockProductCount, locale)}
-        />
-      </StatGroup>
-    </Section>
-  );
-}
-
-function ShareBar({ category, locale }: { category: ExpenseCategoryShare; locale: string }) {
-  return (
-    <View className="min-w-36 flex-row items-center justify-end gap-2">
-      <View aria-hidden className="h-1.5 w-20 overflow-hidden rounded-xs bg-muted">
-        <View className="h-full bg-chart-1" style={{ width: `${category.shareTenths / 10}%` }} />
-      </View>
-      {/* A fixed width keeps the decimal points of every row in one column; "100.0%" fits it. */}
-      <Text
-        className="w-14 shrink-0 text-right text-[13px] text-muted-foreground tabular-nums"
-        numberOfLines={1}
-      >
-        {formatShare(category, locale)}
-      </Text>
-    </View>
-  );
-}
-
-function ExpenseBreakdown({ locale, report }: ReportProps) {
-  const { t } = useTranslation();
-  const format = useReportFormat({ locale, report });
-  const columns = useMemo<DataTableColumn<ExpenseCategoryShare>[]>(() => {
-    const labels = expenseCategoryLabels(t);
-    return [
-      {
-        id: "category",
-        header: t("dataTable.columns.category"),
-        meta: { primary: true },
-        cell: ({ row: { original } }) => (
-          <Text className="text-[13px]">{labels[original.category]}</Text>
-        ),
-      },
-      {
-        id: "count",
-        header: t("reports.expenses.count"),
-        meta: { align: "end", width: 104 },
-        cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground tabular-nums">
-            {formatCount(original.expenseCount, locale)}
-          </Text>
-        ),
-      },
-      {
-        id: "share",
-        header: t("reports.expenses.share"),
-        meta: { align: "end", width: 184 },
-        cell: ({ row: { original } }) => <ShareBar category={original} locale={locale} />,
-      },
-      {
-        id: "amount",
-        header: t("dataTable.columns.amount"),
-        meta: { align: "end", figure: true, width: 152 },
-        cell: ({ row: { original } }) => (
-          <Text className="font-ui text-[13px] tabular-nums">
-            {format.money(original.totalMinorUnits)}
-          </Text>
-        ),
-      },
-    ];
-  }, [format, locale, t]);
-  return (
-    <Section description={t("reports.expenses.description")} title={t("reports.expenses.title")}>
-      <DataTable
-        caption={t("reports.expenses.title")}
-        columns={columns}
-        data={expenseCategoryShares(report.expenses)}
-        empty={
-          <Text className="text-[13px] text-muted-foreground">{t("reports.expenses.empty")}</Text>
-        }
-        getRowId={(category) => category.category}
-      />
-    </Section>
-  );
-}
-
-function CashBreakdown({ links, locale, report }: ReportProps & { links: ReportLinks }) {
-  const { t } = useTranslation();
-  const format = useReportFormat({ locale, report });
-  const columns = useMemo<DataTableColumn<CashAccountFacts>[]>(() => {
-    const kinds = cashAccountKindLabels(t);
-    const statuses = cashAccountStatusLabels(t);
-    const amount = (value: string, emphasis = false) => (
-      <Text className={emphasis ? "font-ui text-[13px] tabular-nums" : "text-[13px] tabular-nums"}>
-        {format.money(value)}
-      </Text>
-    );
-    return [
-      {
-        id: "account",
-        header: t("dataTable.columns.account"),
-        meta: { primary: true },
-        cell: ({ row: { original } }) => (
-          <View className="min-w-0 flex-row flex-wrap items-center gap-x-2 gap-y-1">
-            <Text className="text-[13px]">{original.accountName}</Text>
-            {original.accountStatus === "archived" ? (
-              <StatusBadge label={statuses.archived} tone="exception" />
-            ) : null}
-          </View>
-        ),
-      },
-      {
-        id: "kind",
-        header: t("reports.cash.kind"),
-        // On a phone the account name is enough to tell the rows apart.
-        meta: { hideOnCompact: true, width: 140 },
-        cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground">{kinds[original.accountKind]}</Text>
-        ),
-      },
-      {
-        id: "inflow",
-        header: t("reports.cash.inflow"),
-        meta: { align: "end", width: 136 },
-        cell: ({ row: { original } }) => amount(original.inflowMinorUnits),
-      },
-      {
-        id: "outflow",
-        header: t("reports.cash.outflow"),
-        meta: { align: "end", width: 136 },
-        cell: ({ row: { original } }) => amount(original.outflowMinorUnits),
-      },
-      {
-        id: "net",
-        header: t("reports.cash.net"),
-        meta: { align: "end", figure: true, width: 136 },
-        cell: ({ row: { original } }) => amount(original.netMovementMinorUnits, true),
-      },
-    ];
-  }, [format, t]);
-  return (
-    <Section description={t("reports.cash.description")} title={t("reports.cash.title")}>
-      <DataTable
-        caption={t("reports.cash.title")}
-        columns={columns}
-        data={report.cash.accounts}
-        empty={<Text className="text-[13px] text-muted-foreground">{t("reports.cash.empty")}</Text>}
-        getRowHref={
-          links.cashAccounts
-            ? (account): Href => ({
-                pathname: "/operate/cash/accounts/[accountId]",
-                params: { accountId: account.accountId },
-              })
-            : undefined
-        }
-        getRowId={(account) => account.accountId}
-      />
-    </Section>
-  );
-}
-
-export function ReportSections({ links, locale, report }: ReportProps & { links: ReportLinks }) {
-  const { t } = useTranslation();
-  return (
-    <View className="min-w-0 gap-8">
-      <PeriodSummary locale={locale} report={report} />
-      <PositionSummary links={links} locale={locale} report={report} />
-      <ExpenseBreakdown locale={locale} report={report} />
-      <CashBreakdown links={links} locale={locale} report={report} />
-      <Text className="text-xs leading-4 text-muted-foreground tabular-nums">
-        {t("reports.queriedAt", {
-          date: formatLocalizedDateTime(report.queriedAt, locale, report.period.timeZone),
+      <StatementRow
+        detail={t("reports.period.saleCount", {
+          count: Number(report.sales.saleCount),
+          value: formatCount(report.sales.saleCount, locale),
         })}
-      </Text>
+        emphasis
+        label={t("reports.statement.sales")}
+        value={money(report.sales.grossMinorUnits)}
+      />
+      <View className="border-t border-border pt-1.5 pb-1">
+        <Text className="px-4 pb-1 text-xs leading-4 text-muted-foreground sm:px-5">
+          {t("reports.statement.operatingExpenses")}
+        </Text>
+        {report.expenses.categories.length === 0 ? (
+          <Text className="px-4 py-1.5 pl-7 text-[13px] text-muted-foreground sm:pl-8">
+            {t("reports.expenses.empty")}
+          </Text>
+        ) : (
+          expenseCategoryShares(report.expenses).map((category) => (
+            <StatementRow
+              indent
+              key={category.category}
+              label={`${labels[category.category]} · ${formatShare(category, locale)}`}
+              value={negative(category.totalMinorUnits)}
+            />
+          ))
+        )}
+      </View>
+      <View className="border-t border-border">
+        <StatementRow
+          emphasis
+          label={t("reports.statement.totalExpenses")}
+          value={negative(report.expenses.totalMinorUnits)}
+        />
+      </View>
+      <View className="flex-row items-center justify-between gap-4 border-t-2 border-foreground px-4 py-3.5 sm:px-5">
+        <View className="min-w-0 shrink gap-0.5">
+          <Text className="font-heading text-sm leading-5">{t("reports.statement.result")}</Text>
+          {result.shareTenths !== null ? (
+            <Text className="text-xs leading-4 text-muted-foreground tabular-nums">
+              {t("reports.statement.resultShare", {
+                share: formatTenthsPercent(result.shareTenths, locale),
+              })}
+            </Text>
+          ) : null}
+        </View>
+        <Text
+          className={cn(
+            "font-heading text-2xl leading-8 tracking-[-0.5px] tabular-nums",
+            result.sign > 0 && "text-positive",
+            result.sign < 0 && "text-destructive",
+          )}
+          numberOfLines={1}
+        >
+          {money(result.minorUnits)}
+        </Text>
+      </View>
+      <View className="gap-1 border-t border-border px-4 py-3 sm:px-5">
+        {/* Zeros from a successful read are real figures, not an achievement. */}
+        {hasPeriodActivity(report) ? null : (
+          <Text className="text-xs leading-4 text-foreground" role="note">
+            {t("reports.statement.noActivity")}
+          </Text>
+        )}
+        <Text className="text-xs leading-4 text-muted-foreground">
+          {t("reports.statement.scope")}
+        </Text>
+      </View>
+    </ReportCard>
+  );
+}
+
+type CashFlowQuery = {
+  data: { report: CashFlowReport } | undefined;
+  isError: boolean;
+  isFetching: boolean;
+  refetch: () => unknown;
+};
+
+function Legend() {
+  const { t } = useTranslation();
+  return (
+    <View aria-hidden className="flex-row items-center gap-3">
+      <View className="flex-row items-center gap-1.5">
+        <View className="size-2 rounded-xs bg-primary" />
+        <Text className="text-xs text-muted-foreground">{t("reports.cashFlow.inflow")}</Text>
+      </View>
+      <View className="flex-row items-center gap-1.5">
+        <View className="size-2 rounded-xs bg-muted-foreground/35" />
+        <Text className="text-xs text-muted-foreground">{t("reports.cashFlow.outflow")}</Text>
+      </View>
     </View>
   );
 }
 
-function StatGroupSkeleton() {
+/** Money in and out by month, as bars and as the exact table the bars are drawn from. */
+export function CashFlow({ locale, query }: { locale: string; query: CashFlowQuery }) {
+  const { t } = useTranslation();
+  const report = query.data?.report;
+  if (!report) {
+    return (
+      <ReportCard
+        description={t("reports.cashFlow.loadingDescription")}
+        title={t("reports.cashFlow.title")}
+      >
+        {query.isError ? (
+          <View className="p-4">
+            <StatePanel
+              action={
+                <Button
+                  label={t("common.retry")}
+                  loading={query.isFetching}
+                  onPress={() => void query.refetch()}
+                  size="sm"
+                  variant="outline"
+                />
+              }
+              description={t("reports.cashFlow.unavailableDescription")}
+              icon={TriangleAlert}
+              level={3}
+              title={t("reports.cashFlow.unavailableTitle")}
+              tone="destructive"
+            />
+          </View>
+        ) : (
+          <View accessibilityLabel={t("reports.loading")} aria-busy className="gap-3 p-4 sm:p-5">
+            <Skeleton className="h-36 w-full" />
+            {[0, 1, 2].map((index) => (
+              <Skeleton className="h-3 w-full" key={index} />
+            ))}
+          </View>
+        )}
+      </ReportCard>
+    );
+  }
+  return <CashFlowContent locale={locale} report={report} />;
+}
+
+function CashFlowContent({ locale, report }: { locale: string; report: CashFlowReport }) {
+  const { t } = useTranslation();
+  const money = useMoney(report.currency, report.currencyMinorUnitDigits, locale);
+  // Phones keep the month, what came in and the closing balance; the rest is in the chart.
+  const wide = useWindowDimensions().width >= 640;
+  const first = report.months[0];
+  const last = report.months.at(-1);
+  if (!first || !last) throw new Error("A cash flow report has at least one month");
+  const columns = wide
+    ? (["month", "inflow", "outflow", "net", "closing"] as const)
+    : (["month", "inflow", "closing"] as const);
+  const signed = (minorUnits: string) =>
+    minorUnits.startsWith("-") || minorUnits === "0" ? money(minorUnits) : `+${money(minorUnits)}`;
   return (
-    <View className="gap-3">
-      <View className="gap-1.5">
-        <Skeleton className="h-4 w-40" />
-        <Skeleton className="h-3 w-72 max-w-full" />
+    <ReportCard
+      actions={<Legend />}
+      description={t("reports.cashFlow.range", {
+        end: formatMonthYear(`${last.month}-01`, locale),
+        start: formatMonthYear(`${first.month}-01`, locale),
+      })}
+      title={t("reports.cashFlow.title")}
+    >
+      <View className="px-4 pt-4 sm:px-5">
+        <CashFlowChart locale={locale} months={report.months} />
       </View>
-      <StatGroup>
-        {[0, 1, 2].map((index) => (
-          <View className="min-w-[140px] flex-1 basis-[140px] gap-2 bg-card px-4 py-3" key={index}>
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-6 w-28" />
-            <Skeleton className="h-3 w-24" />
+      <View accessibilityLabel={t("reports.cashFlow.tableLabel")} className="mt-2" role="table">
+        <View
+          className="flex-row gap-3 border-y border-border bg-muted/60 px-4 py-2 sm:px-5"
+          role="row"
+        >
+          {columns.map((column) => (
+            <Text
+              className={cn(
+                "text-xs leading-4 text-muted-foreground",
+                column === "month" ? "flex-[1.3]" : "flex-1 text-right",
+              )}
+              key={column}
+              role="columnheader"
+            >
+              {t(`reports.cashFlow.columns.${column}`)}
+            </Text>
+          ))}
+        </View>
+        {report.months.map((month, index) => (
+          <View
+            className={cn(
+              "flex-row items-center gap-3 px-4 py-2.5 sm:px-5",
+              index > 0 && "border-t border-border",
+            )}
+            key={month.month}
+            role="row"
+          >
+            <Text className="flex-[1.3] text-[13px]" role="cell">
+              {cashFlowMonthLabel(month.month, report.asOfLocalDate, locale, t)}
+            </Text>
+            <Text className="flex-1 text-right text-[13px] tabular-nums" role="cell">
+              {money(month.inflowMinorUnits)}
+            </Text>
+            {wide ? (
+              <>
+                <Text
+                  className="flex-1 text-right text-[13px] text-muted-foreground tabular-nums"
+                  role="cell"
+                >
+                  {month.outflowMinorUnits === "0"
+                    ? money("0")
+                    : money(`-${month.outflowMinorUnits}`)}
+                </Text>
+                <Text className="flex-1 text-right text-[13px] tabular-nums" role="cell">
+                  {signed(month.netMinorUnits)}
+                </Text>
+              </>
+            ) : null}
+            <Text className="flex-1 text-right font-ui text-[13px] tabular-nums" role="cell">
+              {money(month.closingBalanceMinorUnits)}
+            </Text>
           </View>
         ))}
-      </StatGroup>
-    </View>
+      </View>
+      <Text className="border-t border-border px-4 py-3 text-xs leading-4 text-muted-foreground sm:px-5">
+        {t("reports.cashFlow.scope")}
+      </Text>
+    </ReportCard>
   );
 }
 
-/** Shaped like the report so the page does not jump when the figures arrive. */
+export function ReportFootnote({ report, locale }: { locale: string; report: OperatingReport }) {
+  const { t } = useTranslation();
+  return (
+    <Text className="text-xs leading-4 text-muted-foreground tabular-nums">
+      {t("reports.queriedAt", {
+        date: formatLocalizedDateTime(report.queriedAt, locale, report.period.timeZone),
+      })}
+    </Text>
+  );
+}
+
+/** Shaped like the two report cards so the page does not jump when the figures arrive. */
 export function ReportSkeleton() {
   const { t } = useTranslation();
   return (
-    <View className="min-w-0 gap-8">
-      <View aria-hidden className="gap-8">
-        <StatGroupSkeleton />
-        <StatGroupSkeleton />
-      </View>
-      <ContentSkeleton label={t("reports.loading")} variant="section" />
+    <View
+      accessibilityLabel={t("reports.loading")}
+      aria-busy
+      className="min-w-0 flex-row flex-wrap items-start gap-4"
+    >
+      {[0, 1].map((card) => (
+        <View
+          className="min-w-0 grow basis-[340px] gap-3 rounded-xl border border-border bg-card p-5"
+          key={card}
+        >
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-3 w-28" />
+          {[0, 1, 2, 3, 4].map((row) => (
+            <View className="flex-row justify-between" key={row}>
+              <Skeleton className="h-3 w-32" />
+              <Skeleton className="h-3 w-16" />
+            </View>
+          ))}
+        </View>
+      ))}
     </View>
   );
 }

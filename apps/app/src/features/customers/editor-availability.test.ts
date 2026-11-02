@@ -1,6 +1,4 @@
-import type { Business, Receivable } from "@pisto/contracts";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { type ComponentProps, createElement } from "react";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 
@@ -24,7 +22,6 @@ vi.mock("@/lib/api-client", () => ({
 import { CommandReview } from "@/components/command-review";
 import type { DataTableColumn } from "@/components/ui/data-table";
 import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
-import { PaymentEditor } from "@/features/receivables/payment-editor";
 import { i18n } from "@/i18n/config";
 import { type CommandState, commandInFlight, commandPhase } from "./command-state";
 
@@ -99,61 +96,5 @@ describe("reviews on stale reads", () => {
     const uncertain = review({ phase: "uncertain", message: "Lost" }, true);
     expect(uncertain).toContain(i18n.t("common.retrySameConfirmation"));
     expect(uncertain).not.toContain('aria-disabled="true"');
-  });
-});
-
-describe("payment editor availability", () => {
-  const business = {
-    id: "business-a",
-    currency: "USD",
-    currencyMinorUnitDigits: 2,
-    timeZone: "America/El_Salvador",
-  } as Business;
-  const receivable: Receivable = {
-    id: "60000000-0000-4000-8000-000000000001",
-    customerId: "60000000-0000-4000-8000-000000000002",
-    state: "open",
-    originalMinorUnits: "2500",
-    paidMinorUnits: "0",
-    outstandingMinorUnits: "2500",
-    currency: "USD",
-    currencyMinorUnitDigits: 2,
-    description: "Pedido de septiembre",
-    postedDate: "2026-09-01",
-    dueDate: null,
-    voidedAt: null,
-    voidReason: null,
-    createdAt: "2026-09-27T18:00:00.000Z",
-    updatedAt: "2026-09-27T18:00:00.000Z",
-  };
-  const editor = (availability: ComponentProps<typeof PaymentEditor>["availability"]) =>
-    renderToStaticMarkup(
-      createElement(
-        QueryClientProvider,
-        { client: new QueryClient() },
-        createElement(PaymentEditor, {
-          availability,
-          business,
-          cancelHref: "/operate/receivables",
-          customerName: "Ana",
-          onConfirmed: noop,
-          onRetryRead: noop,
-          receivable,
-        }),
-      ),
-    );
-
-  test("closes when the receivable no longer accepts a payment", () => {
-    const markup = editor("unavailable");
-    expect(markup).toContain(i18n.t("routeState.unavailableTitle"));
-    expect(markup).not.toContain(i18n.t("receivables.payment.review"));
-  });
-
-  test("keeps the form on stale reads but waits for a fresh read to review", () => {
-    const stale = editor("stale");
-    expect(stale).toContain(i18n.t("remote.stale"));
-    expect(stale).toContain(i18n.t("receivables.payment.review"));
-    expect(stale).toContain('aria-disabled="true"');
-    expect(editor("available")).not.toContain('aria-disabled="true"');
   });
 });

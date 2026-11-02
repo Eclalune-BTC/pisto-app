@@ -43,9 +43,11 @@ describe("stable query controls rendered through result transitions", () => {
         onRetryCategories: noop,
         onSearchChange: noop,
         onStatusChange: noop,
+        onStockChange: noop,
         search: "Private search",
         state: { status: "denied" },
         status: "active",
+        stock: null,
       }),
     );
     expect(markup).toContain(i18n.t("catalog.list.deniedTitle"));
@@ -61,10 +63,12 @@ describe("stable query controls rendered through result transitions", () => {
     onRetry: noop,
     onSearchChange: noop,
     onStatusChange: noop,
+    onStockChange: noop,
     query: "Mar",
     search: "Mar",
     searching: false,
     status: "active",
+    stock: null,
   } as const;
 
   test.each(["loading", "error", "offline"] as const)(
@@ -96,6 +100,7 @@ describe("stable query controls rendered through result transitions", () => {
         onClearCustomer: noop,
         onClearFilters: noop,
         onLoadMore: noop,
+        onRegisterPayment: noop,
         onRetry: noop,
         onStateChange: noop,
         state: { kind: "error" },

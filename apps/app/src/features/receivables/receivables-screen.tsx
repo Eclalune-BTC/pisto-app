@@ -1,8 +1,8 @@
-import type { ReceivablesSummary } from "@pisto/contracts";
 import { type Href, Link } from "expo-router";
 import {
   ChevronDown,
   FilterX,
+  HandCoins,
   Lock,
   Plus,
   ReceiptText,
@@ -14,9 +14,9 @@ import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { useWindowDimensions, View } from "react-native";
 
+import { HeaderActions } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { ContentSkeleton } from "@/components/layout/skeletons";
-import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
@@ -24,12 +24,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { Icon } from "@/components/ui/icon";
 import { SelectField } from "@/components/ui/select-field";
-import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
-import { isPositiveAmount, useRecordFormat } from "@/features/customers/format";
 
 import type { ReceivableListParams, ReceivableStateFilter } from "./list-params";
+import { ReceivablesPosition, ReceivablesPositionSkeleton } from "./receivables-position";
 import { type CustomerNameCell, ReceivablesTable } from "./receivables-table";
 import type { ReceivablesLoadState } from "./types";
 
@@ -46,6 +45,8 @@ type ReceivablesScreenProps = {
   onClearCustomer: () => void;
   onClearFilters: () => void;
   onLoadMore: () => void;
+  /** Starts "Registrar abono": the customer comes first, then the payment sheet. */
+  onRegisterPayment: () => void;
   onRetry: () => void;
   onStateChange: (state: ReceivableStateFilter) => void;
   state: ReceivablesLoadState;
@@ -53,53 +54,8 @@ type ReceivablesScreenProps = {
 
 const NEW_RECEIVABLE: Href = "/operate/receivables/new";
 
-/** Below this window width the five state options no longer fit on one segmented row. */
-const SEGMENTED_FILTER_MIN_WIDTH = 520;
-
-function PositionStats({ summary }: { summary: ReceivablesSummary }) {
-  const { t } = useTranslation();
-  const format = useRecordFormat();
-  const money = (minorUnits: string) =>
-    format.money(minorUnits, summary.currency, summary.currencyMinorUnitDigits);
-  return (
-    <View className="gap-2">
-      <StatGroup>
-        <Stat
-          detail={t("receivables.summary.openCount", {
-            count: Number(summary.openReceivableCount),
-          })}
-          label={t("receivables.summary.outstanding")}
-          value={money(summary.outstandingMinorUnits)}
-        />
-        <Stat
-          detail={t("receivables.summary.overdueCount", {
-            count: Number(summary.overdueReceivableCount),
-          })}
-          label={t("receivables.summary.overdue")}
-          tone={isPositiveAmount(summary.overdueMinorUnits) ? "destructive" : "default"}
-          value={money(summary.overdueMinorUnits)}
-        />
-      </StatGroup>
-      <Text className="text-xs text-muted-foreground">
-        {t("receivables.summary.position", { date: format.date(summary.businessLocalDate) })}
-      </Text>
-    </View>
-  );
-}
-
-function PositionSkeleton() {
-  return (
-    <View className="flex-row flex-wrap gap-px overflow-hidden rounded-lg border border-border bg-border">
-      {[0, 1].map((index) => (
-        <View className="min-w-[150px] flex-1 basis-[180px] gap-2 bg-card px-4 py-3" key={index}>
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-6 w-28" />
-          <Skeleton className="h-3 w-24" />
-        </View>
-      ))}
-    </View>
-  );
-}
+/** Below this window width the state options no longer fit on one segmented row. */
+const SEGMENTED_FILTER_MIN_WIDTH = 420;
 
 function CustomerFilter({
   customer,
@@ -182,6 +138,7 @@ export function ReceivablesScreen({
   onClearCustomer,
   onClearFilters,
   onLoadMore,
+  onRegisterPayment,
   onRetry,
   onStateChange,
   state,
@@ -192,16 +149,33 @@ export function ReceivablesScreen({
   const filtered = filters.state !== "all" || filters.customerId !== undefined;
   const stateOptions = [
     { value: "all", label: t("receivables.list.filterAll") },
-    { value: "open", label: t("receivables.list.filterOpen") },
     { value: "overdue", label: t("receivables.list.filterOverdue") },
+    { value: "open", label: t("receivables.list.filterOpen") },
     { value: "paid", label: t("receivables.list.filterPaid") },
-    { value: "voided", label: t("receivables.list.filterVoided") },
+    // Voided receivables stay in "Todas"; a link that filters them still shows its filter.
+    ...(filters.state === "voided"
+      ? [{ value: "voided", label: t("receivables.list.filterVoided") } as const]
+      : []),
   ] as const;
 
   return (
     <Page>
       <PageHeader
-        actions={canCreate && state.kind !== "denied" ? <NewReceivableLink /> : undefined}
+        actions={
+          canCreate && state.kind !== "denied" ? (
+            <HeaderActions
+              menuLabel={t("receivables.list.moreActions")}
+              primary={{
+                icon: HandCoins,
+                label: t("receivables.list.registerPayment"),
+                onPress: onRegisterPayment,
+              }}
+              secondary={[
+                { href: NEW_RECEIVABLE, icon: Plus, label: t("receivables.list.create") },
+              ]}
+            />
+          ) : undefined
+        }
         description={t("receivables.list.description")}
         title={t("receivables.list.title")}
       />
@@ -215,9 +189,9 @@ export function ReceivablesScreen({
       ) : (
         <>
           {read ? (
-            <PositionStats summary={state.summary} />
+            <ReceivablesPosition summary={state.summary} />
           ) : state.kind === "loading" ? (
-            <PositionSkeleton />
+            <ReceivablesPositionSkeleton />
           ) : null}
           <View
             accessibilityLabel={t("receivables.list.filters")}
@@ -292,6 +266,7 @@ export function ReceivablesScreen({
           ) : (
             <View className="gap-3">
               <ReceivablesTable
+                businessLocalDate={state.summary.businessLocalDate}
                 caption={t("receivables.list.title")}
                 // A list of one customer's receivables does not repeat the customer on every row.
                 customerNameFor={filters.customerId ? undefined : customerNameFor}

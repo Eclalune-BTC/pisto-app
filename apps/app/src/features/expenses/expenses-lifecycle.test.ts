@@ -104,7 +104,7 @@ vi.mock("./expense-void-dialog", () => ({ ExpenseVoidDialog: "void-dialog" }));
 
 import { FeatureBoundary } from "@/components/feature-boundary";
 import { ExpenseDetailController } from "./expense-detail-controller";
-import { ExpenseEditorController } from "./expense-editor-controller";
+import { ExpenseForm } from "./expense-form";
 import { ExpensesController } from "./expenses-controller";
 
 type Rendered = ReactElement<Record<string, unknown>>;
@@ -377,8 +377,11 @@ describe("expense detail", () => {
   });
 });
 
+const formCallbacks = { onCancel: vi.fn(), onSaved: vi.fn() };
+const ExpenseEditorController = () => ExpenseForm({ entrySource: "manual", ...formCallbacks });
+
 describe("expense registration", () => {
-  test("reviews once, confirms the reviewed command and opens the new record", async () => {
+  test("reviews once, confirms the reviewed command and reports the new record", async () => {
     render(ExpenseEditorController);
     let screen = render(ExpenseEditorController);
     expect((screen.props.draft as { accountId: string }).accountId).toBe(account.id);
@@ -400,10 +403,46 @@ describe("expense registration", () => {
       { idempotencyKey: "sent-key" },
     );
     expect(fixture.notify).toHaveBeenCalledWith("expenses.editor.success");
-    expect(fixture.router.replace).toHaveBeenCalledWith({
-      pathname: "/operate/expenses/[expenseId]",
-      params: { expenseId: "expense-new" },
+    expect(formCallbacks.onSaved).toHaveBeenCalledWith("expense-new");
+  });
+
+  test("pre-fills what the assistant resolved, including the amount in business digits", () => {
+    const draft = {
+      kind: "expense" as const,
+      occurredLocalDate: "2026-10-07",
+      occurredLocalTime: "09:30",
+      category: "transport" as const,
+      amountMinorUnits: "2500",
+      description: "Flete de mercadería",
+      payee: null,
+      account: { id: account.id, name: account.name },
+    };
+    const Form = () => ExpenseForm({ draft, entrySource: "voice", ...formCallbacks });
+    render(Form);
+    const screen = render(Form);
+    expect(screen.props.draft).toEqual({
+      accountId: account.id,
+      amount: "25.00",
+      category: "transport",
+      description: "Flete de mercadería",
+      localDate: "2026-10-07",
+      localTime: "09:30",
+      payee: "",
     });
+  });
+
+  test("an empty amount asks for the amount of the expense", () => {
+    render(ExpenseEditorController);
+    let screen = render(ExpenseEditorController);
+    (screen.props.onDraftChange as (draft: unknown) => void)({
+      ...(screen.props.draft as object),
+      description: "Energía eléctrica",
+    });
+    screen = render(ExpenseEditorController);
+    (screen.props.onPrepareReview as () => void)();
+    screen = render(ExpenseEditorController);
+    expect(screen.props.command).toBeNull();
+    expect(screen.props.errors).toEqual({ amount: "expenses.editor.amountRequired" });
   });
 
   test("registering needs expense and cash management", () => {
@@ -413,13 +452,13 @@ describe("expense registration", () => {
     expect(element.props.state).toEqual({ kind: "denied" });
   });
 
-  test("cancelling returns to the expense list unless a confirmation is unresolved", () => {
+  test("cancelling leaves the form unless a confirmation is unresolved", () => {
     render(ExpenseEditorController);
     (render(ExpenseEditorController).props.onCancel as () => void)();
-    expect(fixture.router.replace).toHaveBeenCalledWith("/operate/expenses");
-    fixture.router.replace.mockClear();
+    expect(formCallbacks.onCancel).toHaveBeenCalledTimes(1);
+    formCallbacks.onCancel.mockClear();
     Object.assign(fixture.mutation, { error: new ApiClientError("lost", 0), isError: true });
     (render(ExpenseEditorController).props.onCancel as () => void)();
-    expect(fixture.router.replace).not.toHaveBeenCalled();
+    expect(formCallbacks.onCancel).not.toHaveBeenCalled();
   });
 });

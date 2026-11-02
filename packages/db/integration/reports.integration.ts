@@ -559,6 +559,63 @@ describe("operating reports repository on PostgreSQL 18", () => {
     });
   });
 
+  test("reports monthly cash in, out and the closing balance of every account", async () => {
+    const report = await repository.getCashFlowReport(actor("ownerA", businessA), {
+      endMonth: "2026-05",
+      months: 4,
+    });
+    expect(report.currency).toBe("USD");
+    expect(report.months).toEqual([
+      {
+        month: "2026-02",
+        inflowMinorUnits: "0",
+        outflowMinorUnits: "0",
+        netMinorUnits: "0",
+        closingBalanceMinorUnits: "0",
+      },
+      {
+        month: "2026-03",
+        inflowMinorUnits: "5400",
+        outflowMinorUnits: "2600",
+        netMinorUnits: "2800",
+        closingBalanceMinorUnits: "2800",
+      },
+      {
+        month: "2026-04",
+        inflowMinorUnits: "9999",
+        outflowMinorUnits: "0",
+        netMinorUnits: "9999",
+        closingBalanceMinorUnits: "12799",
+      },
+      {
+        month: "2026-05",
+        inflowMinorUnits: "4000",
+        outflowMinorUnits: "0",
+        netMinorUnits: "4000",
+        closingBalanceMinorUnits: "16799",
+      },
+    ]);
+    const foreign = await repository.getCashFlowReport(actor("ownerB", businessB), {
+      endMonth: "2026-03",
+      months: 1,
+    });
+    expect(foreign.months).toEqual([
+      {
+        month: "2026-03",
+        inflowMinorUnits: "888888",
+        outflowMinorUnits: "0",
+        netMinorUnits: "888888",
+        closingBalanceMinorUnits: "888888",
+      },
+    ]);
+    await expect(
+      repository.getCashFlowReport(actor("member", businessA), { endMonth: "2026-03" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      repository.getCashFlowReport(actor("ownerA", businessA), { endMonth: "2026-13" }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+
   test("resolves period boundaries in the business time zone, not in UTC", async () => {
     const april = await repository.getOperatingReport(actor("ownerA", businessA), {
       startLocalDate: "2026-04-01",

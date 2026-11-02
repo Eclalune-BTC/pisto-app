@@ -9,6 +9,8 @@ export const reportsQueryKeys = {
     [...reportsQueryKeys.all(businessId), "operating"] as const,
   operatingRange: (businessId: string | undefined, range: OperatingReportQuery) =>
     [...reportsQueryKeys.operating(businessId), range.startLocalDate, range.endLocalDate] as const,
+  cashFlow: (businessId: string | undefined, endMonth: string, months: number) =>
+    [...reportsQueryKeys.all(businessId), "cash-flow", endMonth, months] as const,
 } as const;
 
 export function operatingReportQueryOptions(
@@ -21,5 +23,19 @@ export function operatingReportQueryOptions(
         ? ({ signal }) => reportsApi.operating(range, signal)
         : skipToken,
     queryKey: reportsQueryKeys.operatingRange(businessId, range),
+  });
+}
+
+export function cashFlowReportQueryOptions(
+  businessId: string | undefined,
+  endMonth: string,
+  months: number,
+) {
+  return queryOptions({
+    queryFn:
+      businessId && endMonth
+        ? ({ signal }) => reportsApi.cashFlow({ endMonth, months }, signal)
+        : skipToken,
+    queryKey: reportsQueryKeys.cashFlow(businessId, endMonth, months),
   });
 }

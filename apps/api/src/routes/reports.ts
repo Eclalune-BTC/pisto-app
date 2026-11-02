@@ -1,4 +1,4 @@
-import { operatingReportQuerySchema } from "@pisto/contracts";
+import { cashFlowReportQuerySchema, operatingReportQuerySchema } from "@pisto/contracts";
 import type { ReportsRepository } from "@pisto/db";
 
 import type { ProductAccess } from "../middleware/product-access.ts";
@@ -14,6 +14,16 @@ export function reportsRoutes(input: { access: ProductAccess; reports: ReportsRe
     },
     {
       ...queryContract(operatingReportQuerySchema, "Operating report range is invalid"),
+    },
+  );
+  routes.get(
+    "/reports/cash-flow",
+    async ({ actor, query }) => {
+      const report = await input.reports.getCashFlowReport(actor, query);
+      return { data: { report } };
+    },
+    {
+      ...queryContract(cashFlowReportQuerySchema, "Cash flow months are invalid"),
     },
   );
   return routes;

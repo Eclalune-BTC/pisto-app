@@ -30,6 +30,7 @@ export {
   type MovementsRepository,
   movementSources,
 } from "./movements.ts";
+export { businessRoles, resolveBusinessAccess } from "./product-access.ts";
 export {
   type ConsumeProductRequest,
   type ConsumeRateLimit,

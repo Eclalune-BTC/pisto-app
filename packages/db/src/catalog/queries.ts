@@ -90,6 +90,7 @@ export function createCatalogQueries(db: Database): CatalogQueries {
         categoryId: query.categoryId ?? null,
         search: query.search ?? null,
         status: query.status,
+        stock: query.stock ?? null,
       });
       const cursor = decodeCursor(query.cursor, filterFingerprint);
       return db.transaction(async (tx) => {
@@ -104,6 +105,15 @@ export function createCatalogQueries(db: Database): CatalogQueries {
               query.categoryId ? eq(catalogProduct.categoryId, query.categoryId) : undefined,
               query.search
                 ? containsText([catalogProduct.name, catalogProduct.sku], query.search)
+                : undefined,
+              query.stock === "low"
+                ? sql`${catalogProduct.tracked} = true
+                    and ${catalogProduct.lowStockThresholdMinorUnits} is not null
+                    and ${onHandQuantity()} > 0
+                    and ${onHandQuantity()} <= ${catalogProduct.lowStockThresholdMinorUnits}`
+                : undefined,
+              query.stock === "out"
+                ? sql`${catalogProduct.tracked} = true and ${onHandQuantity()} <= 0`
                 : undefined,
               keysetBefore(catalogProduct, cursor),
             ),

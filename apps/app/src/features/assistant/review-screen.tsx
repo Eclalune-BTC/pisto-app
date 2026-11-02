@@ -21,7 +21,6 @@ import { TranscriptHighlight } from "@/components/ui/transcript-highlight";
 import { authClient } from "@/lib/auth-client";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead } from "@/lib/query-state";
-import { previewDraftFormSlots } from "./draft-preview";
 import { type DraftFormSlots, ReviewMarkersProvider, renderDraftForm } from "./draft-slots";
 import { type EntryMode, NewEntryDialog } from "./new-entry-dialog";
 import { noticeMessage } from "./notices";
@@ -197,11 +196,11 @@ function ReviewSkeleton() {
 
 type ReviewScreenProps = {
   /** The record forms, one per draft kind; the application composes them. */
-  slots?: DraftFormSlots;
+  slots: DraftFormSlots;
 };
 
 /** Figure 13: what the user said beside how the record would look, before anything is saved. */
-export function AssistantReviewScreen({ slots = previewDraftFormSlots }: ReviewScreenProps) {
+export function AssistantReviewScreen({ slots }: ReviewScreenProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const businesses = useQuery(businessesQueryOptions);

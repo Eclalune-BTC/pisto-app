@@ -208,6 +208,23 @@ export const businessesResponseSchema = z.object({
   }),
 });
 
+/** What every business role may do, straight from the server's role policy. */
+export const businessRolePoliciesResponseSchema = z.object({
+  data: z.object({ roles: z.array(businessAccessSchema) }),
+});
+
+/** A person who can sign in to the business. An unrecognized stored role is passed through as is. */
+export const businessMemberSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  email: z.string().email(),
+  role: z.string().min(1),
+});
+
+export const businessMembersResponseSchema = z.object({
+  data: z.object({ members: z.array(businessMemberSchema) }),
+});
+
 export const createBusinessRequestSchema = z
   .object({
     name: z.string().trim().min(2).max(80),
@@ -497,6 +514,9 @@ export type BusinessPermission = z.infer<typeof businessPermissionSchema>;
 export type BusinessAccess = z.infer<typeof businessAccessSchema>;
 export type Business = z.infer<typeof businessSchema>;
 export type BusinessesResponse = z.infer<typeof businessesResponseSchema>;
+export type BusinessRolePoliciesResponse = z.infer<typeof businessRolePoliciesResponseSchema>;
+export type BusinessMember = z.infer<typeof businessMemberSchema>;
+export type BusinessMembersResponse = z.infer<typeof businessMembersResponseSchema>;
 export type CreateBusinessRequest = z.infer<typeof createBusinessRequestSchema>;
 export type CreateBusinessResponse = z.infer<typeof createBusinessResponseSchema>;
 export type Sale = z.infer<typeof saleSchema>;

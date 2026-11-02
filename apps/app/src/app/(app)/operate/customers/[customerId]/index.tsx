@@ -1,7 +1,7 @@
 import type { ArchiveCustomerRequest } from "@pisto/contracts";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams } from "expo-router";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MenuTrigger } from "@/components/layout/header-actions";
 import { RouteState } from "@/components/route-state";
@@ -20,6 +20,7 @@ import type { CustomerDetailLoadState, CustomerReceivablesState } from "@/featur
 import { UncertainCommandNotice } from "@/features/customers/uncertain-command-notice";
 import { useConfirmableCommand } from "@/features/customers/use-confirmable-command";
 import { receivablesQueryOptions } from "@/features/receivables/queries";
+import { ReceivablePaymentSheet } from "@/features/receivables/receivable-payment-sheet";
 import { notify } from "@/lib/notify";
 import { hasDeniedRead } from "@/lib/query-state";
 import { firstParam } from "@/lib/route-params";
@@ -32,6 +33,7 @@ export default function CustomerDetailRoute() {
   );
   const access = useCapabilityAccess("customers:read", "customers:manage");
   const menuTriggerRef = useRef<MenuTrigger>(null);
+  const [paying, setPaying] = useState(false);
   const businessId = access.business?.id;
   const enabled = Boolean(access.business && access.canRead && customerId);
   const customer = useQuery({ ...customerDetailQueryOptions(businessId, customerId), enabled });
@@ -123,9 +125,13 @@ export default function CustomerDetailRoute() {
         }
         onArchive={() => archive.onOpenChange(true)}
         onLoadMoreReceivables={() => void receivables.fetchNextPage()}
+        onRegisterPayment={() => setPaying(true)}
         onRetry={retry}
         state={state}
       />
+      {state.kind === "ready" && customerId ? (
+        <ReceivablePaymentSheet customerId={customerId} onOpenChange={setPaying} open={paying} />
+      ) : null}
       {state.kind === "ready" ? (
         <CustomerArchiveDialog
           action={archive}

@@ -17,12 +17,14 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
+import { AssistantComposer } from "@/features/assistant/assistant-composer";
 import { MovementRow, movementFormat } from "@/features/movements/movement-row";
 import {
   debtorsQueryOptions,
   moneyTrendQueryOptions,
   movementsInfiniteOptions,
 } from "@/features/movements/queries";
+import { payablesSummaryQueryOptions } from "@/features/purchases/queries";
 import { receivablesSummaryQueryOptions } from "@/features/receivables/queries";
 import { salesInfiniteOptions } from "@/features/sales/queries";
 import { SaleStatusBadge, saleAmount } from "@/features/sales/sale-facts";
@@ -35,6 +37,7 @@ import { hasDeniedRead, queryHasStaleData } from "@/lib/query-state";
 import { useMeasuredWidth } from "@/lib/use-measured-width";
 import { DebtorsCard } from "./debtors-card";
 import { MONEY_TREND_RANGES, MoneyCard } from "./money-card";
+import { PayablesCard } from "./payables-card";
 
 const RECENT_SALES = 6;
 const TODAY_MOVEMENTS = 6;
@@ -78,6 +81,8 @@ export default function OperateHomeScreen() {
     select: (data) => data.summary,
   });
   const debtors = useQuery(debtorsQueryOptions(receivablesId));
+  const payablesId = can("purchases:read") ? active?.id : undefined;
+  const payables = useQuery(payablesSummaryQueryOptions(payablesId));
   const sales = useInfiniteQuery(
     salesInfiniteOptions(can("sales:read") && !can("cash:read") ? active?.id : undefined, "all"),
   );
@@ -250,6 +255,8 @@ export default function OperateHomeScreen() {
     />
   ) : null;
 
+  const payablesCard = payablesId ? <PayablesCard locale={locale} summary={payables} /> : null;
+
   // Sellers cannot read cash, so their home lists the sales they can see instead.
   const salesSection =
     can("sales:read") && !can("cash:read") ? (
@@ -337,13 +344,18 @@ export default function OperateHomeScreen() {
       >
         <View className="min-w-0 flex-1 gap-4">
           {moneyCard}
+          {twoColumns ? null : <AssistantComposer />}
           {twoColumns ? null : debtorsCard}
+          {twoColumns ? null : payablesCard}
           {todayCard}
           {salesSection}
         </View>
-        {twoColumns && debtorsCard ? (
-          // The assistant composer and the next supplier payment join this column at integration.
-          <View className="w-[320px] shrink-0 gap-4">{debtorsCard}</View>
+        {twoColumns ? (
+          <View className="w-[320px] shrink-0 gap-4">
+            <AssistantComposer />
+            {debtorsCard}
+            {payablesCard}
+          </View>
         ) : null}
       </View>
     </Page>

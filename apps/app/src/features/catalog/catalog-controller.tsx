@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RouteState } from "@/components/route-state";
 import { flattenPages } from "@/lib/pages";
@@ -13,16 +14,23 @@ import {
   productsInfiniteOptions,
   useCategoryChoices,
 } from "./queries";
+import { ReceiveStockPicker } from "./receive-stock-picker";
 import {
   parseCategoryParam,
   parseSearchParam,
   parseStatusParam,
+  parseStockParam,
   statusParam,
   useSearchInput,
 } from "./search-params";
 import { hasStaleRead, readState } from "./state";
 
-type CatalogSearchParams = { category?: RouteParam; q?: RouteParam; status?: RouteParam };
+type CatalogSearchParams = {
+  category?: RouteParam;
+  q?: RouteParam;
+  status?: RouteParam;
+  stock?: RouteParam;
+};
 
 export default function CatalogController() {
   const { t } = useTranslation();
@@ -33,7 +41,9 @@ export default function CatalogController() {
     categoryId: parseCategoryParam(params.category),
     search: parseSearchParam(params.q),
     status: parseStatusParam(params.status),
+    stock: parseStockParam(params.stock),
   };
+  const [receiving, setReceiving] = useState(false);
   const [search, setSearch] = useSearchInput(filters.search, (q) => router.setParams({ q }));
   const businesses = useQuery(businessesQueryOptions);
   const access = readState([businesses]);
@@ -91,26 +101,41 @@ export default function CatalogController() {
   };
 
   return (
-    <CatalogScreen
-      canManage={permissions.includes("catalog:manage")}
-      categories={choices.items}
-      categoriesError={categories.isError}
-      categoriesLoading={!choices.complete && !categories.isError}
-      categoryId={filters.categoryId}
-      onCategoryChange={(categoryId) => router.setParams({ category: categoryId ?? undefined })}
-      onClearFilters={() => {
-        setSearch("");
-        router.replace("/operate/catalog");
-      }}
-      onLoadMore={() => void products.fetchNextPage()}
-      onRetry={refresh}
-      onRetryCategories={() => void categories.refetch()}
-      onSearchChange={setSearch}
-      onStatusChange={(status) => router.setParams({ status: statusParam(status) })}
-      search={search}
-      searching={search.trim() !== filters.search || products.isPlaceholderData}
-      state={state}
-      status={filters.status}
-    />
+    <>
+      <CatalogScreen
+        canManage={permissions.includes("catalog:manage")}
+        categories={choices.items}
+        categoriesError={categories.isError}
+        categoriesLoading={!choices.complete && !categories.isError}
+        categoryId={filters.categoryId}
+        onCategoryChange={(categoryId) => router.setParams({ category: categoryId ?? undefined })}
+        onClearFilters={() => {
+          setSearch("");
+          router.replace("/operate/catalog");
+        }}
+        onLoadMore={() => void products.fetchNextPage()}
+        onRetry={refresh}
+        onRetryCategories={() => void categories.refetch()}
+        onSearchChange={setSearch}
+        onReceiveStock={
+          permissions.includes("inventory:manage") ? () => setReceiving(true) : undefined
+        }
+        onStatusChange={(status) => router.setParams({ status: statusParam(status) })}
+        onStockChange={(stock) => router.setParams({ stock: stock ?? undefined })}
+        search={search}
+        searching={search.trim() !== filters.search || products.isPlaceholderData}
+        state={state}
+        status={filters.status}
+        stock={filters.stock ?? null}
+      />
+      <ReceiveStockPicker
+        businessId={business.id}
+        onOpenChange={setReceiving}
+        onSelect={(productId) =>
+          router.push({ pathname: "/operate/inventory/[productId]/new", params: { productId } })
+        }
+        open={receiving}
+      />
+    </>
   );
 }

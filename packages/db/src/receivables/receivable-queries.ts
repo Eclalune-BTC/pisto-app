@@ -167,8 +167,16 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
         const access = await authorizeBusinessAction(tx, actor, ["receivables:read"]);
         type SummaryRow = {
           business_local_date: string;
+          current_count: string;
+          current_outstanding: string;
+          days_1_30_count: string;
+          days_1_30_outstanding: string;
+          days_31_60_count: string;
+          days_31_60_outstanding: string;
           open_count: string;
           outstanding: string;
+          over_60_count: string;
+          over_60_outstanding: string;
           overdue: string;
           overdue_count: string;
         };
@@ -178,7 +186,8 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
           balances as (
             select
               (${receivable.originalMinorUnits} - coalesce(payment_totals.paid, 0::numeric)) as outstanding,
-              ${receivable.dueDate} < ${localDate} as overdue
+              ${receivable.dueDate} < ${localDate} as overdue,
+              coalesce((${localDate})::date - ${receivable.dueDate}::date, 0) as days_overdue
             from ${receivable}
             left join payment_totals on payment_totals.receivable_id = ${receivable.id}
             where ${receivable.businessId} = ${access.businessId}
@@ -189,6 +198,14 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
             coalesce(sum(case when overdue and outstanding > 0 then outstanding else 0 end), 0::numeric)::text as overdue,
             count(*) filter (where outstanding > 0)::text as open_count,
             count(*) filter (where overdue and outstanding > 0)::text as overdue_count,
+            coalesce(sum(outstanding) filter (where outstanding > 0 and days_overdue <= 0), 0::numeric)::text as current_outstanding,
+            count(*) filter (where outstanding > 0 and days_overdue <= 0)::text as current_count,
+            coalesce(sum(outstanding) filter (where outstanding > 0 and days_overdue between 1 and 30), 0::numeric)::text as days_1_30_outstanding,
+            count(*) filter (where outstanding > 0 and days_overdue between 1 and 30)::text as days_1_30_count,
+            coalesce(sum(outstanding) filter (where outstanding > 0 and days_overdue between 31 and 60), 0::numeric)::text as days_31_60_outstanding,
+            count(*) filter (where outstanding > 0 and days_overdue between 31 and 60)::text as days_31_60_count,
+            coalesce(sum(outstanding) filter (where outstanding > 0 and days_overdue > 60), 0::numeric)::text as over_60_outstanding,
+            count(*) filter (where outstanding > 0 and days_overdue > 60)::text as over_60_count,
             ${localDate} as business_local_date
           from balances
         `);
@@ -200,6 +217,24 @@ export function createReceivableQueries(db: Database): ReceivableQueries {
           overdueMinorUnits: row.overdue,
           openReceivableCount: row.open_count,
           overdueReceivableCount: row.overdue_count,
+          aging: {
+            current: {
+              outstandingMinorUnits: row.current_outstanding,
+              receivableCount: row.current_count,
+            },
+            days1To30: {
+              outstandingMinorUnits: row.days_1_30_outstanding,
+              receivableCount: row.days_1_30_count,
+            },
+            days31To60: {
+              outstandingMinorUnits: row.days_31_60_outstanding,
+              receivableCount: row.days_31_60_count,
+            },
+            over60: {
+              outstandingMinorUnits: row.over_60_outstanding,
+              receivableCount: row.over_60_count,
+            },
+          },
           businessLocalDate: row.business_local_date,
           timeZone: access.timeZone,
           queriedAt: access.queriedAt.toISOString(),
