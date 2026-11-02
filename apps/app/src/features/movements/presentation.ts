@@ -102,8 +102,8 @@ export function movementSubtitle(
   return parts.length ? parts.join(" · ") : null;
 }
 
-/** The record the row opens, or null for a kind whose detail screen this build does not have. */
-export function movementHref(movement: Movement): Href | null {
+/** The record the row opens. */
+export function movementHref(movement: Movement): Href {
   switch (movement.kind) {
     case "sale":
       return { pathname: "/operate/sales/[saleId]", params: { saleId: movement.recordId } };
@@ -121,8 +121,18 @@ export function movementHref(movement: Movement): Href | null {
         params: { receivableId: movement.parentRecordId },
       };
     case "purchase":
+      return {
+        pathname: "/operate/purchases/[purchaseId]",
+        params: { purchaseId: movement.recordId },
+      };
     case "supplier_payment":
-      return null;
+      if (!movement.parentRecordId) {
+        throw new Error("A supplier payment movement must name its purchase.");
+      }
+      return {
+        pathname: "/operate/purchases/[purchaseId]",
+        params: { purchaseId: movement.parentRecordId },
+      };
   }
 }
 

@@ -25,8 +25,9 @@ describe("movement list parameters", () => {
     });
   });
 
-  test("keeps kinds this build cannot list out of the request", () => {
-    expect(parseMovementParams({ kind: "purchase" }).kind).toBe("all");
+  test("keeps an unknown kind out of the request", () => {
+    expect(parseMovementParams({ kind: "purchase" }).kind).toBe("purchase");
+    expect(parseMovementParams({ kind: "transfer" }).kind).toBe("all");
   });
 
   test("omits defaults from the URL", () => {

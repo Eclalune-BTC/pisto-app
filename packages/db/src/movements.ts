@@ -21,7 +21,9 @@ import { hasBusinessPermission } from "./product-access.ts";
 import { REPORT_TRANSACTION_CONFIG } from "./reports.ts";
 import { expense } from "./schema/cash.ts";
 import { cashAccount } from "./schema/cash-account.ts";
+import { purchase, purchaseLine, supplier, supplierPayment } from "./schema/purchases.ts";
 import { customer, receivable, receivablePayment } from "./schema/receivables.ts";
+import { saleLine } from "./schema/sale-line.ts";
 import { sale } from "./schema/sales.ts";
 
 export interface MovementsRepository {
@@ -33,8 +35,9 @@ export interface MovementsRepository {
  * occurred_at, created_at, occurred_local_date, occurred_local_time, amount (signed: money in is
  * positive), account_id, account_name, entry_source, description, counterparty_name,
  * expense_category, reference, line_count, total_minor_units, each aliased because any source can
- * open the union. Only posted records that still stand belong in the ledger, so totals equal the
- * money the business actually moved.
+ * open the union. Only posted records that still stand belong in the ledger, and each row carries
+ * the money that actually moved: a sale on credit counts what was received and a purchase on credit
+ * counts nothing until its supplier payments.
  */
 export type MovementSource = {
   kind: MovementKind;
@@ -55,17 +58,28 @@ export const movementSources: readonly MovementSource[] = [
         ${sale.createdAt} as created_at,
         ${sale.occurredLocalDate} as occurred_local_date,
         ${sale.occurredLocalTime} as occurred_local_time,
-        ${sale.grossMinorUnits}::numeric as amount,
-        null::uuid as account_id,
-        null::text as account_name,
-        'manual'::text as entry_source,
+        (case when ${sale.entryMode} = 'itemized'
+          then ${sale.receivedMinorUnits} else ${sale.grossMinorUnits} end)::numeric as amount,
+        ${sale.cashAccountId} as account_id,
+        ${cashAccount.name} as account_name,
+        ${sale.entrySource} as entry_source,
         ${sale.description} as description,
-        null::text as counterparty_name,
+        ${customer.name} as counterparty_name,
         null::text as expense_category,
         null::text as reference,
-        null::bigint as line_count,
-        null::numeric as total_minor_units
+        (case when ${sale.entryMode} = 'itemized' then (
+          select count(*) from ${saleLine}
+          where ${saleLine.businessId} = ${sale.businessId} and ${saleLine.saleId} = ${sale.id}
+        ) end) as line_count,
+        (case when ${sale.creditMinorUnits} > 0
+          then ${sale.grossMinorUnits} end)::numeric as total_minor_units
       from ${sale}
+      left join ${cashAccount}
+        on ${cashAccount.businessId} = ${sale.businessId}
+        and ${cashAccount.id} = ${sale.cashAccountId}
+      left join ${customer}
+        on ${customer.businessId} = ${sale.businessId}
+        and ${customer.id} = ${sale.customerId}
       where ${sale.businessId} = ${businessId}
         and ${sale.status} = 'posted'`,
   },
@@ -137,6 +151,79 @@ export const movementSources: readonly MovementSource[] = [
           where reversal.business_id = ${receivablePayment.businessId}
             and reversal.reverses_payment_id = ${receivablePayment.id}
         )`,
+  },
+  {
+    kind: "purchase",
+    permission: "purchases:read",
+    select: (businessId) => sql`
+      select
+        'purchase'::text as kind,
+        ${purchase.id} as record_id,
+        null::uuid as parent_record_id,
+        ${purchase.occurredAt} as occurred_at,
+        ${purchase.createdAt} as created_at,
+        ${purchase.occurredLocalDate} as occurred_local_date,
+        ${purchase.occurredLocalTime} as occurred_local_time,
+        (case when ${purchase.paymentTerms} = 'cash'
+          then -${purchase.totalMinorUnits} else 0 end)::numeric as amount,
+        ${purchase.cashAccountId} as account_id,
+        ${cashAccount.name} as account_name,
+        ${purchase.entrySource} as entry_source,
+        ${purchase.note} as description,
+        ${supplier.name} as counterparty_name,
+        null::text as expense_category,
+        ${purchase.invoiceNumber} as reference,
+        (
+          select count(*) from ${purchaseLine}
+          where ${purchaseLine.businessId} = ${purchase.businessId}
+            and ${purchaseLine.purchaseId} = ${purchase.id}
+        ) as line_count,
+        (case when ${purchase.paymentTerms} = 'credit'
+          then ${purchase.totalMinorUnits} end)::numeric as total_minor_units
+      from ${purchase}
+      join ${supplier}
+        on ${supplier.businessId} = ${purchase.businessId}
+        and ${supplier.id} = ${purchase.supplierId}
+      left join ${cashAccount}
+        on ${cashAccount.businessId} = ${purchase.businessId}
+        and ${cashAccount.id} = ${purchase.cashAccountId}
+      where ${purchase.businessId} = ${businessId}
+        and ${purchase.status} = 'posted'`,
+  },
+  {
+    kind: "supplier_payment",
+    permission: "purchases:read",
+    select: (businessId) => sql`
+      select
+        'supplier_payment'::text as kind,
+        ${supplierPayment.id} as record_id,
+        ${supplierPayment.purchaseId} as parent_record_id,
+        ${supplierPayment.occurredAt} as occurred_at,
+        ${supplierPayment.createdAt} as created_at,
+        ${supplierPayment.occurredLocalDate} as occurred_local_date,
+        ${supplierPayment.occurredLocalTime} as occurred_local_time,
+        -${supplierPayment.amountMinorUnits}::numeric as amount,
+        ${supplierPayment.cashAccountId} as account_id,
+        ${cashAccount.name} as account_name,
+        ${supplierPayment.entrySource} as entry_source,
+        null::text as description,
+        ${supplier.name} as counterparty_name,
+        null::text as expense_category,
+        coalesce(${supplierPayment.reference}, ${purchase.invoiceNumber}) as reference,
+        null::bigint as line_count,
+        null::numeric as total_minor_units
+      from ${supplierPayment}
+      join ${purchase}
+        on ${purchase.businessId} = ${supplierPayment.businessId}
+        and ${purchase.id} = ${supplierPayment.purchaseId}
+      join ${supplier}
+        on ${supplier.businessId} = ${supplierPayment.businessId}
+        and ${supplier.id} = ${supplierPayment.supplierId}
+      join ${cashAccount}
+        on ${cashAccount.businessId} = ${supplierPayment.businessId}
+        and ${cashAccount.id} = ${supplierPayment.cashAccountId}
+      where ${supplierPayment.businessId} = ${businessId}
+        and ${purchase.status} = 'posted'`,
   },
 ];
 

@@ -7,6 +7,7 @@ import {
   createCashRepository,
   createCatalogRepository,
   createDatabase,
+  createMovementsRepository,
   member,
   organization,
   parseDatabaseConfig,
@@ -34,6 +35,7 @@ const businesses = createBusinessRepository(database.db);
 const cash = createCashRepository(database.db);
 const catalog = createCatalogRepository(database.db);
 const repository = createPurchasesRepository(database.db);
+const ledger = createMovementsRepository(database.db);
 const runId = crypto.randomUUID();
 const userIds = {
   admin: `purchases-admin-${runId}`,
@@ -361,6 +363,43 @@ describe("suppliers, purchases and payables on PostgreSQL 18", () => {
       .innerJoin(supplierPayment, eq(supplierPayment.id, cashMovement.supplierPaymentId))
       .where(eq(supplierPayment.purchaseId, open.id));
     expect(movements.map(({ action }) => action)).toEqual(["supplier_payment", "supplier_payment"]);
+
+    // The credit purchase moved no money itself; only its two payments did.
+    const listed = await ledger.listMovements(actor("ownerA"), {
+      startLocalDate: shiftDate(today, -1),
+      endLocalDate: at.occurredLocalDate,
+      query: "Panificadora Santa Rita",
+    });
+    expect(
+      listed.items.map(({ kind, amountMinorUnits, parentRecordId, facts }) => ({
+        kind,
+        amountMinorUnits,
+        parentRecordId,
+        totalMinorUnits: facts.totalMinorUnits,
+      })),
+    ).toEqual(
+      expect.arrayContaining([
+        { kind: "purchase", amountMinorUnits: "0", parentRecordId: null, totalMinorUnits: "7680" },
+        {
+          kind: "supplier_payment",
+          amountMinorUnits: "-2680",
+          parentRecordId: open.id,
+          totalMinorUnits: null,
+        },
+        {
+          kind: "supplier_payment",
+          amountMinorUnits: "-5000",
+          parentRecordId: open.id,
+          totalMinorUnits: null,
+        },
+      ]),
+    );
+    expect(listed.items).toHaveLength(3);
+    expect(listed.totals).toEqual({
+      inflowMinorUnits: "0",
+      outflowMinorUnits: "7680",
+      netMinorUnits: "-7680",
+    });
     await expect(
       repository.voidPurchase(actor("ownerA"), open.id, { idempotencyKey: key(), reason: "Error" }),
     ).rejects.toMatchObject({ code: "CONFLICT" });

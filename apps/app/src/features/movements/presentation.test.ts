@@ -83,6 +83,10 @@ describe("movement presentation", () => {
       params: { receivableId: "95f7e68f-adde-44d8-836c-38488ec66a1d" },
     });
     expect(() => movementHref(movement("receivable_payment"))).toThrow();
-    expect(movementHref(movement("purchase"))).toBeNull();
+    expect(movementHref(movement("purchase"))).toEqual({
+      pathname: "/operate/purchases/[purchaseId]",
+      params: { purchaseId: "5f307872-b71d-41ed-887f-ee872bcc6a44" },
+    });
+    expect(() => movementHref(movement("supplier_payment"))).toThrow();
   });
 });

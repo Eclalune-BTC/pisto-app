@@ -3,12 +3,13 @@ import { type MovementKindFilter, movementKindFilterSchema, uuidSchema } from "@
 import { firstParam, type RouteParam } from "@/lib/route-params";
 import type { MovementFilters } from "./queries";
 
-/** Kinds this build can list; purchases and supplier payments join when their ledgers do. */
 export const MOVEMENT_TABS = [
   "all",
   "sale",
+  "purchase",
   "expense",
   "receivable_payment",
+  "supplier_payment",
 ] as const satisfies readonly MovementKindFilter[];
 
 export type MovementTab = (typeof MOVEMENT_TABS)[number];

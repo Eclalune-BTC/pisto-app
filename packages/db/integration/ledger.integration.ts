@@ -404,9 +404,8 @@ describe("movements ledger on PostgreSQL 18", () => {
     expect(search.items.map((item) => item.facts.description)).toEqual(["Recibo de luz"]);
     const wildcard = await movements.listMovements(owner, { ...period, query: "%" });
     expect(wildcard.items).toEqual([]);
-    await expect(
-      movements.listMovements(owner, { ...period, kind: "purchase" }),
-    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    const purchases = await movements.listMovements(owner, { ...period, kind: "purchase" });
+    expect(purchases.items).toEqual([]);
   });
 
   test("keeps tenants apart and denies a seller", async () => {

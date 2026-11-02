@@ -122,16 +122,8 @@ export function MovementLink({
   label: string;
   movement: Movement;
 }) {
-  const href = movementHref(movement);
-  if (!href) {
-    return (
-      <View accessibilityLabel={label} accessible>
-        {children}
-      </View>
-    );
-  }
   return (
-    <Link asChild href={href}>
+    <Link asChild href={movementHref(movement)}>
       <PressableSurface accessibilityLabel={label} accessibilityRole="link">
         {children}
       </PressableSurface>
