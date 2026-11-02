@@ -290,7 +290,8 @@
                   "const json = pm.response.json();",
                   "pm.test(\"account email is normalized\", () => pm.expect(json.user.email).to.eql(pm.collectionVariables.get(\"email\")));",
                   "pm.test(\"password is never returned\", () => pm.expect(JSON.stringify(json)).not.to.include(pm.collectionVariables.get(\"password\")));",
-                  "pm.test(\"session cookie is set\", () => pm.expect(pm.cookies.has(\"pisto.session_token\")).to.be.true);"
+                  "// HTTPS deployments prefix the cookie name with __Secure-.",
+                  "pm.test(\"session cookie is set\", () => pm.expect(pm.cookies.has(\"pisto.session_token\") || pm.cookies.has(\"__Secure-pisto.session_token\")).to.be.true);"
                 ]
               }
             }
@@ -4646,8 +4647,9 @@
                   "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Cache-Control is no-store\", () => pm.expect(pm.response.headers.get(\"Cache-Control\")).to.include(\"no-store\"));",
                   "// Kept to prove below that sign-out revokes the session on the server, not only in the cookie jar.",
-                  "pm.collectionVariables.set(\"signedOutSessionToken\", pm.cookies.get(\"pisto.session_token\"));",
-                  "pm.test(\"session token is captured\", () => pm.expect(pm.collectionVariables.get(\"signedOutSessionToken\")).to.be.a(\"string\").that.is.not.empty);"
+                  "const sessionCookie = [\"__Secure-pisto.session_token\", \"pisto.session_token\"].find((name) => pm.cookies.has(name));",
+                  "pm.test(\"session token is captured\", () => pm.expect(sessionCookie).to.be.a(\"string\"));",
+                  "pm.collectionVariables.set(\"signedOutSessionCookie\", `${sessionCookie}=${pm.cookies.get(sessionCookie)}`);"
                 ]
               }
             }
@@ -4742,7 +4744,7 @@
               },
               {
                 "key": "Cookie",
-                "value": "pisto.session_token={{signedOutSessionToken}}"
+                "value": "{{signedOutSessionCookie}}"
               }
             ],
             "url": {

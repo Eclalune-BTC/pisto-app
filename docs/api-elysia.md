@@ -20,6 +20,7 @@ The baseline surface is:
 | `GET`, `POST` | `/api/auth`, `/api/auth/*` | Route-specific | Better Auth identity/session handler; provider billing guards run first |
 | `GET` | `/v1` | No | API version marker |
 | `GET` | `/v1/me` | Yes | Normalized user and session summary |
+| `GET` (WebSocket) | `/v1/realtime` | Yes, member of the active business; allowed Origin | Change notices for the active business (`ready`, `business.changed`, `pong`); see [realtime](#realtime) |
 | `GET` | `/v1/businesses` | Yes, fresh session | Explicit memberships and active business selector |
 | `POST` | `/v1/businesses` | Yes, fresh session | Create or replay the one owner business and settings |
 | `GET` | `/v1/sales` | `sales:read`, fresh session | List active-business sales by occurrence, newest first, with a status filter |
@@ -228,6 +229,17 @@ the exact installed source and the API regression tests when applying version-se
   required dependency that is temporarily unavailable.
 - Treat client cancellation and provider failure as expected outcomes, not internal exceptions.
 - Add a request ID to logs and responses; do not use provider event IDs as general request IDs.
+
+## Realtime
+
+`apps/api/src/realtime.ts` owns the WebSocket channel. The handshake happens outside Elysia (Bun's
+`server.upgrade` locally, a `WebSocketPair` in the Durable Object) after `authorizeRealtime` checks
+the Origin against `CORS_ORIGINS`, a fresh session, an active business and a membership row. After
+any successful `POST`/`PATCH` to a business area, an `onAfterHandle` hook publishes
+`{ type: "business.changed", businessId, resource, at }` to that business's sockets; a failed
+command publishes nothing. Clients send `{ type: "ping" }` and receive `{ type: "pong" }`. Notices
+never contain record data, so a client always refetches through the authorized REST endpoints.
+Message schemas live in `packages/contracts/src/realtime.ts`.
 
 ## Health and shutdown
 

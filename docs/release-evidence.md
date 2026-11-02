@@ -118,6 +118,28 @@ with the template ports (API 3001, Expo web 8081) and a separate Compose project
 
 This is local evidence. No hosted deployment or store release took place.
 
+On 2026-11-02 the hosted demo went live under [ADR 0020](adrs/0020-cloudflare-workers-neon-hosting.md):
+
+- The Neon database held an older, empty Pisto schema (0 users, businesses and sales). Its schema was
+  dumped privately, dropped and rebuilt by the ten committed migrations as `pisto_migrator`. The
+  runtime role `pisto_app` can read, insert and update, delete only Better Auth rows, and cannot run
+  DDL or delete sales (checked with `has_table_privilege`). Test rows were truncated before
+  `db:seed` loaded the demo business with the runtime role.
+- The Worker ran first in local workerd: Temporal was missing (replaced with Intl, same DST tests)
+  and runtime code generation was refused (Elysia now compiles every route at module start, Zod
+  runs jitless). The collection then passed 106 requests and 206 assertions locally and against
+  `https://pisto.contact-862.workers.dev`, where real sign-up and sign-in completed in 0.5–0.8 s.
+- A realtime probe received `ready`, `pong` and a `business.changed` notice for a sale recorded by
+  another request, both on Bun and on the Worker; a foreign-origin handshake was refused. The seeded
+  member account read sales (200) and was refused cash and reports (403) in production.
+- A full reload used to leave screens loading forever because the query client was replaced when
+  the stored session resolved; the client now changes only on a direct account switch.
+- The first production web export reused Metro's cache and embedded the local API origin for about
+  three minutes; it was rebuilt with `--clear` and redeployed, and the runbook now requires it.
+- `bun run check` passed (19 workspace tasks plus the web export), including 106 API tests.
+  Rendered review of the redesign covered the sign-in and home screens on the web; Chrome captures
+  of other screens timed out, so their visual acceptance and physical-device behavior remain open.
+
 GitHub CI separately validates source/tests, migrations/integrations, the configured advisory
 exceptions, schema contracts, credential-free infrastructure tests and the portable API image.
 Inspect the run for the actual commit before asserting its result; old green runs do not validate
