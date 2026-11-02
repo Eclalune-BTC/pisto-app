@@ -438,6 +438,67 @@ describe("suppliers, purchases and payables on PostgreSQL 18", () => {
     expect(await onHand(product.id)).toBe("6");
   });
 
+  test("keeps received stock owned by its purchase, even after the product is archived", async () => {
+    const owner = actor("ownerA");
+    const vendor = await newSupplier("Propietario del inventario");
+    const { product } = await catalog.createProduct(owner, {
+      idempotencyKey: key(),
+      name: `Archivable ${runId.slice(0, 8)}`,
+      unitKind: "unit",
+      quantityPrecision: 0,
+      tracked: true,
+      categoryId: null,
+      sku: null,
+      sellingPriceMinorUnits: null,
+      lowStockThresholdMinorUnits: null,
+    });
+    const { purchase: created } = await repository.createPurchase(
+      owner,
+      creditPurchase(vendor.id, {
+        lines: [{ productId: product.id, quantityMinorUnits: "5", unitCostMinorUnits: "100" }],
+      }),
+    );
+    const [line] = await database.db
+      .select({ movementId: purchaseLine.inventoryMovementId })
+      .from(purchaseLine)
+      .where(eq(purchaseLine.purchaseId, created.id));
+    if (!line?.movementId) throw new Error("Expected a receipt movement");
+
+    await expect(
+      catalog.reverseMovement(owner, line.movementId, {
+        idempotencyKey: key(),
+        reason: "Error",
+        ...at,
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await catalog.archiveProduct(owner, product.id, { idempotencyKey: key() });
+    const voided = await repository.voidPurchase(owner, created.id, {
+      idempotencyKey: key(),
+      reason: "Proveedor equivocado",
+    });
+    expect(voided.purchase.status).toBe("voided");
+    expect(await onHand(product.id)).toBe("0");
+  });
+
+  test("refuses a total beyond the 64-bit ledger range as invalid input", async () => {
+    const vendor = await newSupplier("Monto imposible");
+    await expect(
+      repository.createPurchase(
+        actor("ownerA"),
+        creditPurchase(vendor.id, {
+          received: false,
+          lines: [
+            {
+              productId: serviceId,
+              quantityMinorUnits: "9000000000",
+              unitCostMinorUnits: "9000000000",
+            },
+          ],
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+
   test("receives an unreceived purchase once, later", async () => {
     const vendor = await newSupplier("Recepción tardía");
     const before = await onHand(trackedId);

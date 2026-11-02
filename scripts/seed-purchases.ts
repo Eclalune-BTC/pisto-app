@@ -106,7 +106,7 @@ export async function seedPurchases(input: {
     idempotencyKey: key(),
     accountId: till,
     amountMinorUnits: "4000",
-    occurredLocalDate: day(10),
+    occurredLocalDate: day(6),
     occurredLocalTime: "16:30",
     reference: "Abono en efectivo",
   });

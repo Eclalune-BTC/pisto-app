@@ -3,6 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { AuthorizedBusinessContext, DatabaseTransaction } from "../business-access.ts";
 import { ProductError } from "../errors.ts";
 import { catalogProduct, inventoryMovement } from "../schema/catalog.ts";
+import { purchaseLine } from "../schema/purchases.ts";
 import { currentBalance } from "./records.ts";
 import type { ProductRecord } from "./types.ts";
 
@@ -16,11 +17,34 @@ interface StockOccurrence {
   reason: string;
 }
 
-/** Locks the products in identifier order, so concurrent stock commands cannot deadlock. */
+/** A purchase owns its receipt movements: only voiding the purchase may take that stock back. */
+export async function isPurchaseReceipt(
+  tx: DatabaseTransaction,
+  businessId: string,
+  movementId: string,
+): Promise<boolean> {
+  const [line] = await tx
+    .select({ id: purchaseLine.id })
+    .from(purchaseLine)
+    .where(
+      and(
+        eq(purchaseLine.businessId, businessId),
+        eq(purchaseLine.inventoryMovementId, movementId),
+      ),
+    )
+    .limit(1);
+  return line !== undefined;
+}
+
+/**
+ * Locks the products in identifier order, so concurrent stock commands cannot deadlock. A void
+ * repairs recorded history, so it may still take stock back from a product archived since.
+ */
 async function lockProducts(
   tx: DatabaseTransaction,
   businessId: string,
   productIds: readonly string[],
+  { allowArchived }: { allowArchived: boolean },
 ): Promise<Map<string, ProductRecord>> {
   const unique = [...new Set(productIds)];
   const records = await tx
@@ -33,7 +57,7 @@ async function lockProducts(
   for (const productId of unique) {
     const product = products.get(productId);
     if (!product) throw new ProductError("NOT_FOUND", "Product was not found");
-    if (product.status === "archived") {
+    if (product.status === "archived" && product.tracked && !allowArchived) {
       throw new ProductError("CONFLICT", "Inventory cannot change for an archived product");
     }
   }
@@ -54,6 +78,7 @@ export async function receivePurchaseStock(
     tx,
     input.access.businessId,
     input.lines.map(({ productId }) => productId),
+    { allowArchived: false },
   );
   const movementIds: (string | null)[] = [];
   for (const line of input.lines) {
@@ -114,6 +139,7 @@ export async function reversePurchaseStock(
     tx,
     input.access.businessId,
     originals.map(({ productId }) => productId),
+    { allowArchived: true },
   );
   const reversed = await tx
     .select({ id: inventoryMovement.id })

@@ -34,6 +34,8 @@ import {
 } from "./records.ts";
 import type { PurchaseRecord, PurchasesRepository } from "./types.ts";
 
+const MAX_MINOR_UNITS = 9_223_372_036_854_775_807n;
+
 type PurchaseCommands = Pick<
   PurchasesRepository,
   "createPurchase" | "createSupplierPayment" | "receivePurchase" | "voidPurchase"
@@ -70,7 +72,11 @@ export function createPurchaseCommands(db: Database): PurchaseCommands {
         });
         if (replay) return { purchase: replay, replayed: true };
 
-        if (command.dueDate !== undefined && command.dueDate < command.occurredLocalDate) {
+        if (
+          command.paymentTerms === "credit" &&
+          command.dueDate !== undefined &&
+          command.dueDate < command.occurredLocalDate
+        ) {
           throw new ProductError("VALIDATION_ERROR", "The due date cannot precede the purchase");
         }
         const supplierRecord = await lockSupplier(
@@ -127,6 +133,9 @@ export function createPurchaseCommands(db: Database): PurchaseCommands {
           };
         });
         const totalMinorUnits = lines.reduce((sum, line) => sum + line.subtotalMinorUnits, 0n);
+        if (totalMinorUnits > MAX_MINOR_UNITS) {
+          throw new ProductError("VALIDATION_ERROR", "The purchase total is too large");
+        }
         if (totalMinorUnits <= 0n) {
           throw new ProductError("VALIDATION_ERROR", "A purchase total must be greater than zero");
         }

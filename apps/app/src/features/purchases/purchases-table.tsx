@@ -135,11 +135,14 @@ export function PurchasesTable({
                 purchase.status === "posted" && BigInt(purchase.balanceMinorUnits) > 0n ? (
                   <Button
                     accessibilityLabel={`${t("purchases.payables.registerPayment")}: ${purchase.supplierName}`}
-                    label={t("purchases.payables.registerPayment")}
                     onPress={() => onRegisterPayment(purchase)}
                     size="sm"
                     variant="ghost"
-                  />
+                  >
+                    <Text className="web:whitespace-nowrap">
+                      {t("purchases.payables.registerPayment")}
+                    </Text>
+                  </Button>
                 ) : null
             : undefined
         }

@@ -62,16 +62,6 @@ export function dueSoonLimitSql(timeZone: string): SQL<string> {
   return businessLocalDateSql(timeZone, DUE_SOON_DAYS);
 }
 
-/** The payable state of a joined `purchase` row, mirroring `derivePayable`. */
-export function payableStateSql(timeZone: string): SQL<string> {
-  return sql<string>`case
-    when ${purchaseBalance()} = 0 then 'paid'
-    when ${purchase.dueDate} < ${businessLocalDateSql(timeZone)} then 'overdue'
-    when ${purchase.dueDate} <= ${dueSoonLimitSql(timeZone)} then 'due_soon'
-    else 'open'
-  end`;
-}
-
 export function getSupplierPaymentsMinorUnits(
   executor: BusinessDatabaseExecutor,
   businessId: string,
