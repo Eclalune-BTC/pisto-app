@@ -28,13 +28,37 @@ vi.mock("@/providers/appearance-provider", () => ({
   useAppearance: () => ({ choice: "system", pending: false, issue: null, select: vi.fn() }),
 }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
+// The role matrix shares its jobs with Configuración, whose module also reads the API.
+vi.mock("@/lib/auth-client", () => ({ authClient: {} }));
+vi.mock("@/lib/api-client", () => ({ apiRequest: vi.fn() }));
 
+import { ROLE_CAPABILITIES, roleCan } from "@/features/business/business-settings";
 import { i18n } from "@/i18n/config";
+import { resolveBusinessAccess } from "../../../../../packages/db/src/product-access";
 import { exampleSpans } from "./dictation-example";
-import WelcomeScreen, { RECORD_ITEMS } from "./welcome-screen";
+import {
+  BEFORE_DICTATED_SALE,
+  EXAMPLE_ACCOUNTS,
+  EXAMPLE_AGING,
+  EXAMPLE_CREDITORS,
+  EXAMPLE_DEBTORS,
+  EXAMPLE_MOVEMENTS,
+  EXAMPLE_PAYABLES,
+  EXAMPLE_RECEIVABLES,
+  exampleCashFlow,
+  exampleMoneyTrend,
+  shiftLocalDate,
+  shiftLocalMonth,
+} from "./example-business";
+import { STEPS } from "./how-it-works";
+import { MODULES } from "./module-previews";
+import { PUBLIC_ROLE_ACCESS, ROLES, TRUST_POINTS } from "./roles-section";
+import WelcomeScreen from "./welcome-screen";
 
 const render = () => renderToStaticMarkup(createElement(WelcomeScreen));
 const text = (markup: string) => markup.replace(/<[^>]+>/g, "");
+const sum = (values: readonly string[]) =>
+  values.reduce((total, value) => total + BigInt(value), 0n);
 
 describe("public product page", () => {
   test("states the job once and keeps the real account destinations", () => {
@@ -48,13 +72,40 @@ describe("public product page", () => {
     expect(markup).toContain(i18n.t("welcome.pageTitle"));
   });
 
-  test("describes every record it keeps and the scope it leaves out", () => {
-    const markup = render();
-    for (const item of RECORD_ITEMS) {
-      expect(markup).toContain(i18n.t(`welcome.records.items.${item}.title`));
+  test("keeps a heading outline that never skips a level", () => {
+    const levels = [...render().matchAll(/aria-level="(\d)"/g)].map(([, level]) => Number(level));
+    expect(levels[0]).toBe(1);
+    for (const [index, level] of levels.entries()) {
+      if (index > 0) expect(level - (levels[index - 1] ?? 0)).toBeLessThanOrEqual(1);
     }
-    expect(text(markup)).toContain(i18n.t("welcome.scope.description"));
-    expect(markup).not.toMatch(/role="tablist"|01<|02<|03</);
+  });
+
+  test("walks through every step, module, role and guarantee it promises", () => {
+    const markup = text(render());
+    for (const step of STEPS) expect(markup).toContain(i18n.t(`welcome.how.steps.${step}.title`));
+    for (const module of MODULES) {
+      expect(markup).toContain(i18n.t(`welcome.modules.items.${module}.title`));
+    }
+    for (const role of ROLES) expect(markup).toContain(i18n.t(`settings.roleNames.${role}`));
+    for (const point of TRUST_POINTS) {
+      expect(markup).toContain(i18n.t(`welcome.roles.trust.${point}.description`));
+    }
+    expect(markup).not.toMatch(/Universidad|Francisco Gavidia|UFG|Proyecto de Aplicación/);
+  });
+
+  test("labels every illustration as an example and marks it as a figure", () => {
+    const markup = render();
+    expect(text(markup)).toContain(i18n.t("welcome.preview.example"));
+    expect(markup).toContain(`aria-label="${i18n.t("welcome.preview.label")}"`);
+    for (const step of STEPS) {
+      expect(markup).toContain(`aria-label="${i18n.t(`welcome.how.steps.${step}.figure`)}"`);
+    }
+    for (const module of MODULES) {
+      expect(markup).toContain(`aria-label="${i18n.t(`welcome.modules.items.${module}.figure`)}"`);
+    }
+    // Illustrated controls look like buttons but are not announced as ones: the only button on
+    // the page is the appearance switch; every other action is a link.
+    expect(markup.match(/role="button"/g)).toHaveLength(1);
   });
 
   test("labels the dictation example and marks every fragment it fills", () => {
@@ -80,11 +131,93 @@ describe("public product page", () => {
     expect(() => exampleSpans(said, ["café", "vendí"])).toThrow();
   });
 
-  test("exposes translated light, dark and system controls before signing in", () => {
-    const markup = render();
-    for (const choice of ["light", "dark", "system"] as const) {
-      expect(markup).toContain(`aria-label="${i18n.t(`settings.themes.${choice}`)}"`);
+  test("lets a visitor switch to the dark appearance before signing in", () => {
+    expect(render()).toContain(`aria-label="${i18n.t("appearance.switchTo.dark")}"`);
+  });
+});
+
+describe("role summary for visitors", () => {
+  test("matches the server's role policy job by job", () => {
+    for (const role of ROLES) {
+      const policy = resolveBusinessAccess(role);
+      if (!policy) throw new Error(`No policy for ${role}`);
+      for (const capability of ROLE_CAPABILITIES) {
+        expect([role, capability.key, PUBLIC_ROLE_ACCESS[role].includes(capability.key)]).toEqual([
+          role,
+          capability.key,
+          roleCan(policy, capability),
+        ]);
+      }
     }
-    expect(markup).toContain('aria-pressed="true"');
+  });
+});
+
+describe("example business", () => {
+  const today = "2026-11-03";
+
+  test("counts dates and months across month and year ends", () => {
+    expect(shiftLocalDate("2026-11-03", -30)).toBe("2026-10-04");
+    expect(shiftLocalDate("2026-12-30", 3)).toBe("2027-01-02");
+    expect(shiftLocalMonth("2026-03-31", -5)).toBe("2025-10");
+    expect(() => shiftLocalDate("today", 1)).toThrow();
+  });
+
+  test("draws a money trend that ends today on the accounts it lists", () => {
+    const trend = exampleMoneyTrend(today);
+    expect(trend.points.at(-1)).toEqual({
+      localDate: today,
+      closingMinorUnits: trend.closingMinorUnits,
+    });
+    expect(trend.startLocalDate).toBe(trend.points[0]?.localDate);
+    expect(sum(Object.values(EXAMPLE_ACCOUNTS))).toBe(BigInt(trend.closingMinorUnits));
+    expect(BigInt(trend.openingMinorUnits) + BigInt(trend.changeMinorUnits)).toBe(
+      BigInt(trend.closingMinorUnits),
+    );
+  });
+
+  test("adds up every balance it shows", () => {
+    const buckets = Object.values(EXAMPLE_AGING).map((bucket) => bucket.minorUnits);
+    expect(sum(buckets)).toBe(BigInt(EXAMPLE_RECEIVABLES.outstanding));
+    const { current: _current, ...late } = EXAMPLE_AGING;
+    expect(sum(Object.values(late).map((bucket) => bucket.minorUnits))).toBe(
+      BigInt(EXAMPLE_RECEIVABLES.overdue),
+    );
+    expect(sum(EXAMPLE_CREDITORS.map((creditor) => creditor.minorUnits))).toBe(
+      BigInt(EXAMPLE_PAYABLES.outstanding),
+    );
+    expect(EXAMPLE_CREDITORS).toHaveLength(EXAMPLE_PAYABLES.purchases);
+  });
+
+  test("lists the largest overdue customers first, as the home does", () => {
+    expect(EXAMPLE_DEBTORS.every((debtor) => debtor.dueInDays < 0)).toBe(true);
+    const amounts = EXAMPLE_DEBTORS.map((debtor) => Number(debtor.minorUnits));
+    expect(amounts).toEqual([...amounts].sort((left, right) => right - left));
+  });
+
+  test("moves the balances by exactly what the dictated sale says", () => {
+    const sale = EXAMPLE_MOVEMENTS.find((movement) => movement.key === "dictatedSale");
+    // "me dio cinco dólares y el resto me lo quedó debiendo" on a $9.75 sale.
+    expect(sale?.amountMinorUnits).toBe("500");
+    expect(BigInt(EXAMPLE_ACCOUNTS.cash) - BigInt(BEFORE_DICTATED_SALE.cash)).toBe(500n);
+    expect(BigInt(EXAMPLE_RECEIVABLES.outstanding) - BigInt(BEFORE_DICTATED_SALE.receivables)).toBe(
+      475n,
+    );
+  });
+
+  test("reports six months that end with the current one", () => {
+    const months = exampleCashFlow(today);
+    expect(months.map((month) => month.month)).toEqual([
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09",
+      "2026-10",
+      "2026-11",
+    ]);
+    for (const month of months) {
+      expect(BigInt(month.inflowMinorUnits) - BigInt(month.outflowMinorUnits)).toBe(
+        BigInt(month.netMinorUnits),
+      );
+    }
   });
 });

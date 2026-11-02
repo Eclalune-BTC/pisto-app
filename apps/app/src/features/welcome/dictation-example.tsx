@@ -87,7 +87,7 @@ export function DictationExample({ tone }: { tone: "inverse" | "default" }) {
             key={key}
           >
             <TranscriptMarker marker={index + 1} />
-            <Text className="w-24 text-[13px] text-muted-foreground sm:w-28">
+            <Text className="w-28 text-[13px] text-muted-foreground">
               {t(`welcome.example.rows.${key}.label`)}
             </Text>
             <Text className="min-w-0 flex-1 font-ui text-[13px] text-card-foreground">

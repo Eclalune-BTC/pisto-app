@@ -4,8 +4,27 @@ export const welcome = {
   pageTitle: "Pisto · Las cuentas de su negocio, sin cuaderno",
   title: "Las cuentas de su negocio, sin cuaderno.",
   description:
-    "Diga o escriba lo que vendió, compró o cobró. Pisto llena el registro y usted lo revisa antes de guardar.",
+    "Ventas, compras, gastos, caja, cuentas por cobrar y por pagar, y reportes en un solo lugar: usted dice o escribe lo que pasó y Pisto deja el registro listo para revisar.",
   availability: "Funciona en el navegador de su computadora o de su teléfono.",
+  preview: {
+    label: "Ejemplo de la pantalla Hoy de Pisto con un negocio ficticio y cifras inventadas",
+    example: "Negocio y cifras de ejemplo",
+  },
+  sample: {
+    business: "Abarrotes La Ceiba",
+    counterSale: "Venta de mostrador",
+    electricity: "Factura de luz",
+    people: {
+      carlos: "Carlos Rivas",
+      rosa: "Rosa Ayala",
+      comedor: "Comedor El Pilar",
+      pedro: "Pedro Alvarado",
+      santaRita: "Panificadora Santa Rita",
+      elSol: "Abarrotes Mayoreo El Sol",
+      lacteos: "Lácteos San Julián",
+      centro: "Distribuidora Centro",
+    },
+  },
   example: {
     label: "Ejemplo de una venta dictada",
     youSaid: "Usted dijo",
@@ -27,47 +46,82 @@ export const welcome = {
       credit: { label: "Queda debiendo", value: "$4.75" },
     },
   },
-  records: {
-    title: "Lo que lleva Pisto",
-    description: "Cada registro queda con su fecha, su cuenta y quién lo hizo.",
-    items: {
-      sales: {
-        title: "Ventas",
-        description:
-          "Con productos, forma de pago y crédito. Lo que le quedan debiendo pasa a cuentas por cobrar.",
+  how: {
+    title: "Cómo funciona",
+    description:
+      "Una venta, una compra o un gasto se registran con una frase. Nada se guarda hasta que usted lo confirma.",
+    steps: {
+      say: {
+        title: "Dígalo o escríbalo",
+        description: "Cuente qué pasó, con quién y cuánto. Si prefiere, escriba la frase.",
+        figure: "Ejemplo: Pisto escucha la venta que usted dicta",
       },
-      purchases: {
-        title: "Compras y proveedores",
-        description: "La mercadería que le venden, al contado o al crédito, con su proveedor.",
+      review: {
+        title: "Revise lo que entendió",
+        description: "Cada dato lleva el número de la parte de la frase de donde salió.",
+        figure: "Ejemplo: la venta dictada, lista para revisar",
       },
-      expenses: {
-        title: "Gastos",
-        description:
-          "Luz, alquiler, transporte y otros pagos, con la cuenta de la que salió el dinero.",
-      },
-      cash: {
-        title: "Caja y bancos",
-        description: "El saldo de cada cuenta y sus entradas, salidas, ajustes y transferencias.",
-      },
-      accounts: {
-        title: "Cuentas por cobrar y por pagar",
-        description: "Quién le debe, a quién le debe, cuánto y desde cuándo.",
-      },
-      inventory: {
-        title: "Inventario",
-        description: "Las existencias de cada producto y cuáles se están terminando.",
-      },
-      reports: {
-        title: "Reportes",
-        description:
-          "Ventas, gastos y movimiento de caja del período que elija, con cifras exactas.",
+      save: {
+        title: "Guárdelo y véalo al instante",
+        description: "La venta aparece en Movimientos y los saldos de caja y de cobros cambian.",
+        figure: "Ejemplo: la venta guardada y los saldos que cambió",
       },
     },
   },
-  scope: {
-    title: "Lo que Pisto no hace",
+  modules: {
+    title: "Lo que lleva Pisto",
     description:
-      "No emite factura electrónica (DTE), no calcula planillas y no se conecta con su banco. Sirve para llevar la operación del día; la contabilidad sigue a cargo de su contador.",
+      "Cada pantalla responde una pregunta del día con cifras exactas. También lleva productos, inventario, clientes, proveedores y gastos.",
+    items: {
+      movements: {
+        title: "Movimientos",
+        description: "Todo el dinero que entra y sale, con la hora, el tipo y cómo se registró.",
+        figure: "Ejemplo de los movimientos de un día",
+      },
+      receivables: {
+        title: "Cuentas por cobrar",
+        description: "Quién le debe, cuánto y desde cuándo, con la antigüedad de cada saldo.",
+        figure: "Ejemplo de las cuentas por cobrar y su antigüedad",
+      },
+      payables: {
+        title: "Cuentas por pagar",
+        description: "Lo que debe a sus proveedores y cuándo vence cada pago.",
+        figure: "Ejemplo de las cuentas por pagar y el próximo pago",
+      },
+      reports: {
+        title: "Reportes",
+        description: "Cuánto entró y salió cada mes, con las cifras detrás de cada barra.",
+        figure: "Ejemplo del flujo de caja de seis meses",
+      },
+    },
   },
-  footer: "Sistema financiero para micro y pequeñas empresas de El Salvador.",
+  roles: {
+    title: "Usted decide qué se guarda y quién lo ve",
+    description:
+      "Cada persona entra con su propio usuario y un rol: propietario, encargado o vendedor. Pisto revisa ese rol antes de mostrar o guardar cualquier dato.",
+    trust: {
+      confirmed: {
+        title: "Usted confirma cada registro",
+        description:
+          "Lo que Pisto entiende de una frase es solo un borrador. Nada se guarda hasta que una persona lo revisa y lo confirma.",
+      },
+      business: {
+        title: "Cada dato es de un solo negocio",
+        description:
+          "Ventas, cuentas y reportes quedan en el negocio donde se registraron, con su fecha, su cuenta y quién lo hizo.",
+      },
+      scope: {
+        title: "Lo que Pisto no hace",
+        description:
+          "No emite factura electrónica (DTE), no calcula planillas y no se conecta con su banco. Sirve para llevar la operación del día; la contabilidad sigue a cargo de su contador.",
+      },
+    },
+  },
+  cta: {
+    title: "Lleve sus cuentas desde hoy.",
+    description: "Cree su cuenta, registre su negocio y anote su primera venta.",
+  },
+  footer: {
+    links: "Acceso a Pisto",
+  },
 } as const;
