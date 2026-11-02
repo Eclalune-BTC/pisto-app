@@ -1,27 +1,47 @@
 import { focusManager, onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import * as Network from "expo-network";
-import { type PropsWithChildren, useEffect, useMemo } from "react";
+import { type PropsWithChildren, useEffect, useRef, useState } from "react";
 import { AppState, Platform } from "react-native";
 
 import { authClient } from "@/lib/auth-client";
 import { createSessionQueryClient } from "@/lib/session-query-client";
 
+type Identity = string | null | undefined;
+
+function sessionScope(identity: Identity, refetchSession: () => Promise<unknown>) {
+  return { identity, ...createSessionQueryClient(refetchSession) };
+}
+
 export function QueryProvider({ children }: PropsWithChildren) {
-  const { data: session, refetch } = authClient.useSession();
-  const identity = session?.user.id;
-  // Each identity owns a fresh cache; AuthenticatedLayout keys the account
-  // subtree too, while the root navigator remains mounted.
-  const scope = useMemo(
-    () => ({
-      identity,
-      ...createSessionQueryClient(() => refetch({ query: { disableCookieCache: true } })),
-    }),
-    [identity, refetch],
-  );
+  const { data: session, isPending, refetch } = authClient.useSession();
+  const refetchSession = useRef(refetch);
   useEffect(() => {
-    scope.activate();
-    return scope.dispose;
-  }, [scope]);
+    refetchSession.current = refetch;
+  }, [refetch]);
+  const refetchFresh = () => refetchSession.current({ query: { disableCookieCache: true } });
+  // `undefined` means the stored session is still being restored.
+  const [scope, setScope] = useState(() => sessionScope(undefined, refetchFresh));
+  const settled: Identity = isPending ? undefined : (session?.user.id ?? null);
+
+  // A mounted useQuery keeps the client it was created with, so replacing the client strands
+  // every screen already on view. Restoring a session, signing in and signing out keep it: the
+  // last two clear it explicitly. Only a direct switch to another account gets a fresh client.
+  useEffect(() => {
+    if (settled === undefined) return;
+    setScope((current) => {
+      if (current.identity === settled) return current;
+      if (!current.identity || !settled) return { ...current, identity: settled };
+      return sessionScope(settled, () =>
+        refetchSession.current({ query: { disableCookieCache: true } }),
+      );
+    });
+  }, [settled]);
+
+  const { client, activate, dispose } = scope;
+  useEffect(() => {
+    activate();
+    return dispose;
+  }, [activate, dispose]);
 
   useEffect(
     () =>
@@ -61,5 +81,5 @@ export function QueryProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  return <QueryClientProvider client={scope.client}>{children}</QueryClientProvider>;
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
