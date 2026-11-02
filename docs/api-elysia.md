@@ -103,12 +103,16 @@ organization, invitation, member, role, or team mutations; the owner changes sta
 
 Adding a member whose email has no account calls Better Auth `signUpEmail` from the server, so
 normalization, the password policy and hashing are the sign-up ones, and deletes the session sign-up
-opens. The account is created between two transactions, never inside one; an intent row written
-before it keeps a retried or duplicated command reporting `account: "created"`. The initial password
-enters the command fingerprint only as an HMAC under the auth secret, so a changed password under the
-same key is `IDEMPOTENCY_CONFLICT` and the receipt cannot be brute-forced back into it. Owner and
-self targets are refused (`409`) before the target row is locked, and the role enum is
-`admin | member` only.
+opens. The account is created between two transactions, never inside one; an intent row with the
+command fingerprint, written before it, keeps a retried or duplicated command reporting
+`account: "created"`. The initial password enters that fingerprint only as an HMAC under the auth
+secret, so once an account or receipt exists a changed password or email under the same key is
+`IDEMPOTENCY_CONFLICT`, and nothing stored can be brute-forced back into the password. Rotating the
+auth secret turns a pending retry into that conflict. "Created" means no account had the email when
+the command first looked: an account someone else registers in that window, or a sign-up that
+failed between Better Auth's non-transactional user and credential inserts, is still labelled
+created. Owner and self targets are refused (`409`) before the target row is locked, and the role
+enum is `admin | member` only.
 
 ## Request pipeline
 

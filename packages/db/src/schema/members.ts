@@ -58,7 +58,8 @@ export const businessMemberOperation = pgTable(
 /**
  * Written when an add-member command finds no account for its email, before the account is
  * created outside the transaction. A retry after a partial failure, or a concurrent duplicate of
- * the same command, then still reports the account as created by this command.
+ * the same command, then still reports the account as created by this command, and a retry whose
+ * fingerprint differs (another password or email under the key) is refused.
  */
 export const businessMemberAccountIntent = pgTable(
   "business_member_account_intent",
@@ -69,9 +70,14 @@ export const businessMemberAccountIntent = pgTable(
       .references(() => user.id, { onDelete: "restrict" }),
     idempotencyKey: uuid("idempotency_key").notNull(),
     email: text("email").notNull(),
+    commandFingerprint: text("command_fingerprint").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
   },
   (table) => [
+    check(
+      "business_member_account_intent_fingerprint_check",
+      sql`${table.commandFingerprint} ~ '^[a-f0-9]{64}$'`,
+    ),
     primaryKey({
       columns: [table.businessId, table.actorUserId, table.idempotencyKey],
       name: "business_member_account_intent_pk",

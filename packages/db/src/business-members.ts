@@ -134,14 +134,16 @@ async function enroll(
   return result;
 }
 
-/** Whether this command found no account for the email before an account was created. */
-async function hasAccountIntent(
+/**
+ * Whether an earlier attempt of this key found no account and went on to create one. The attempt
+ * must be this exact command: its account was created with that attempt's password and email.
+ */
+async function createdByThisCommand(
   tx: DatabaseTransaction,
   identity: OperationCommandIdentity,
-  email: string,
 ): Promise<boolean> {
   const [intent] = await tx
-    .select({ email: businessMemberAccountIntent.email })
+    .select({ commandFingerprint: businessMemberAccountIntent.commandFingerprint })
     .from(businessMemberAccountIntent)
     .where(
       and(
@@ -151,7 +153,11 @@ async function hasAccountIntent(
       ),
     )
     .limit(1);
-  return intent?.email === email;
+  if (!intent) return false;
+  if (intent.commandFingerprint !== identity.commandFingerprint) {
+    throw new ProductError("IDEMPOTENCY_CONFLICT", memberOperationLog.conflictMessage);
+  }
+  return true;
 }
 
 /**
@@ -234,7 +240,7 @@ export function createBusinessMembersRepository(
         await lockSemanticKey(tx, "business-member", access.businessId, payload.email);
         const account = await findAccount(tx, payload.email);
         if (!account) return { missing: identity };
-        const created = await hasAccountIntent(tx, identity, account.email);
+        const created = await createdByThisCommand(tx, identity);
         const result = await enroll(tx, {
           access,
           account,
@@ -248,16 +254,25 @@ export function createBusinessMembersRepository(
       const first = await db.transaction(async (tx) => {
         const outcome = await enrollExisting(tx);
         if (!("missing" in outcome)) return outcome;
-        const { actorUserId, businessId } = outcome.missing;
+        const { actorUserId, businessId, idempotencyKey: key } = outcome.missing;
+        // No account has this email yet, so the intent follows the latest body sent under the key.
         await tx
           .insert(businessMemberAccountIntent)
           .values({
             actorUserId,
             businessId,
+            commandFingerprint,
             email: payload.email,
-            idempotencyKey: outcome.missing.idempotencyKey,
+            idempotencyKey: key,
           })
-          .onConflictDoNothing();
+          .onConflictDoUpdate({
+            target: [
+              businessMemberAccountIntent.businessId,
+              businessMemberAccountIntent.actorUserId,
+              businessMemberAccountIntent.idempotencyKey,
+            ],
+            set: { commandFingerprint, email: payload.email },
+          });
         return null;
       });
       if (first) return first;

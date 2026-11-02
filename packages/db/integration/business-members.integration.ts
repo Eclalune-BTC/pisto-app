@@ -454,6 +454,10 @@ describe("business staff management on PostgreSQL 18", () => {
     } finally {
       provisionFailure = null;
     }
+    // The account exists with the first password, so another password under the key is refused.
+    await expect(
+      members.addMember(owner, { ...command, initialPassword: "OtraClave2026" }),
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
     const before = provisioned.length;
     const retried = await members.addMember(owner, command);
     expect(retried).toMatchObject({ account: "created", replayed: false, member: { email } });

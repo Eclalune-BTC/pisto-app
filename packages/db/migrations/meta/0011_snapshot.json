@@ -1,5 +1,5 @@
 {
-  "id": "eed5e163-0150-42a6-8090-8d2046c686bf",
+  "id": "0dc5b8b8-e509-45ba-998d-a9b25c2d0c57",
   "prevId": "3128d1cd-edc1-4961-97ed-d9110c035b78",
   "version": "7",
   "dialect": "postgresql",
@@ -4162,6 +4162,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "command_fingerprint": {
+          "name": "command_fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -4211,7 +4217,12 @@
       },
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "business_member_account_intent_fingerprint_check": {
+          "name": "business_member_account_intent_fingerprint_check",
+          "value": "\"business_member_account_intent\".\"command_fingerprint\" ~ '^[a-f0-9]{64}$'"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.business_member_operation": {

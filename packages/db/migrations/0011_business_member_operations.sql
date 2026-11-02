@@ -3,8 +3,10 @@ CREATE TABLE "business_member_account_intent" (
 	"actor_user_id" text NOT NULL,
 	"idempotency_key" uuid NOT NULL,
 	"email" text NOT NULL,
+	"command_fingerprint" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "business_member_account_intent_pk" PRIMARY KEY("business_id","actor_user_id","idempotency_key")
+	CONSTRAINT "business_member_account_intent_pk" PRIMARY KEY("business_id","actor_user_id","idempotency_key"),
+	CONSTRAINT "business_member_account_intent_fingerprint_check" CHECK ("business_member_account_intent"."command_fingerprint" ~ '^[a-f0-9]{64}$')
 );
 --> statement-breakpoint
 CREATE TABLE "business_member_operation" (
