@@ -2,8 +2,9 @@
 /**
  * Loads demo users with preconfigured roles and a realistic business into the configured
  * database. Data goes through the same repositories as the API, so every record keeps its
- * operation receipt. Re-running is safe: users and memberships are reused, and business data is
- * only written the first time the demo business is created.
+ * operation receipt. Re-running is safe: users and memberships are reused, business data is only
+ * written the first time the demo business is created, and a demo business seeded before
+ * purchases existed gets its suppliers, purchases and itemized sales once.
  */
 import {
   createBusinessRepository,
@@ -14,6 +15,7 @@ import {
   member,
   type ProductActor,
   session,
+  supplier,
   user,
 } from "@pisto/db";
 import { eq } from "drizzle-orm";
@@ -95,8 +97,28 @@ async function main() {
         .onConflictDoNothing({ target: [member.organizationId, member.userId] });
     }
 
+    const at = (daysAgo: number, time: string) => ({
+      occurredLocalDate: localDate(now, daysAgo),
+      occurredLocalTime: time,
+    });
+
     if (replayed) {
-      console.info("Demo business already existed; users and roles were verified, no data added.");
+      const [anySupplier] = await db
+        .select({ id: supplier.id })
+        .from(supplier)
+        .where(eq(supplier.businessId, business.id))
+        .limit(1);
+      if (anySupplier) {
+        console.info(
+          "Demo business already existed; users and roles were verified, no data added.",
+        );
+        return;
+      }
+      await seedItemizedSales(db, owner, at);
+      await seedPurchases({ db, owner, now });
+      console.info(
+        "Demo business already existed; added its suppliers, purchases and itemized sales.",
+      );
       return;
     }
 
@@ -104,10 +126,6 @@ async function main() {
     const cash = createCashRepository(db);
     const receivables = createReceivablesRepository(db);
     const sales = createSalesRepository(db);
-    const at = (daysAgo: number, time: string) => ({
-      occurredLocalDate: localDate(now, daysAgo),
-      occurredLocalTime: time,
-    });
 
     const categories = new Map<string, string>();
     for (const name of ["Bebidas", "Abarrotes", "Limpieza"]) {
