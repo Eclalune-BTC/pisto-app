@@ -17,7 +17,10 @@ import {
 } from "./primitives";
 import { maximumInclusiveDays } from "./reports";
 
-/** Every record that moves the business's money, in one ledger. */
+/**
+ * Sales, purchases, expenses and payments in one ledger. Cash openings, adjustments and transfers
+ * stay in the cash account ledger, so an account filter here lists records, not its balance.
+ */
 export const movementKindSchema = z.enum([
   "sale",
   "purchase",

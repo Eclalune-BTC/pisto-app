@@ -10,8 +10,7 @@ import { type SQL, sql } from "drizzle-orm";
 
 import { authorizeBusinessAction, type ProductActor } from "./business-access.ts";
 import type { Database } from "./client.ts";
-import { parseInput } from "./errors.ts";
-import { nextCalendarDate, resolveLocalDateTime } from "./local-time.ts";
+import { ProductError, parseInput } from "./errors.ts";
 import {
   decodeOccurrenceCursor,
   listFilterFingerprint,
@@ -196,16 +195,25 @@ export function createMovementsRepository(
 
       return db.transaction(async (tx) => {
         const access = await authorizeBusinessAction(tx, actor, ["cash:read"], "none");
-        const startUtc = resolveLocalDateTime({
-          date: query.startLocalDate,
-          time: "00:00",
-          timeZone: access.timeZone,
-        }).toISOString();
-        const endUtcExclusive = resolveLocalDateTime({
-          date: nextCalendarDate(query.endLocalDate),
-          time: "00:00",
-          timeZone: access.timeZone,
-        }).toISOString();
+        // A local midnight can fall in a daylight-saving gap, which only the zone's own rules resolve.
+        type BoundsRow = { end_utc_exclusive: Date | string; start_utc: Date | string };
+        const [bounds] = await tx.execute<BoundsRow>(sql`
+          select
+            (${query.startLocalDate}::date::timestamp at time zone ${access.timeZone}) as start_utc,
+            ((${query.endLocalDate}::date + 1)::timestamp at time zone ${access.timeZone}) as end_utc_exclusive
+        `);
+        if (!bounds) throw new Error("Movement period bounds query returned no row");
+        const startUtc = new Date(bounds.start_utc).toISOString();
+        const endUtcExclusive = new Date(bounds.end_utc_exclusive).toISOString();
+        if (query.kind !== "all") {
+          const requested = sources.find((source) => source.kind === query.kind);
+          if (!requested) {
+            throw new ProductError("VALIDATION_ERROR", "This movement kind is not available");
+          }
+          if (!hasBusinessPermission(access.role, requested.permission)) {
+            throw new ProductError("FORBIDDEN", "This movement kind cannot be read");
+          }
+        }
         const readable = sources.filter(
           (source) =>
             (query.kind === "all" || query.kind === source.kind) &&

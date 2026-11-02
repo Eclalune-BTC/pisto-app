@@ -90,8 +90,8 @@ export function createMoneyTrendRepository(db: Database): MoneyTrendRepository {
           ),
           days as (
             select generate_series(
-              ${period.start_date}::date,
-              ${period.today}::date,
+              ${period.start_date}::date::timestamp,
+              ${period.today}::date::timestamp,
               interval '1 day'
             )::date as local_date
           )
