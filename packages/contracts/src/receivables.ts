@@ -6,6 +6,7 @@ import {
   calendarLocalDateSchema,
   currencyCodeSchema,
   currencyMinorUnitDigitsSchema,
+  entrySourceSchema,
   localTimeSchema,
   opaqueCursorSchema,
   positiveMinorUnitsSchema,
@@ -164,6 +165,7 @@ export const applyReceivablePaymentRequestSchema = z
     occurredLocalTime: localTimeSchema,
     cashAccountId: uuidSchema,
     reference: z.string().trim().min(1).max(120).optional(),
+    entrySource: entrySourceSchema.default("manual"),
   })
   .strict();
 
@@ -240,7 +242,7 @@ export type Receivable = z.infer<typeof receivableSchema>;
 export type ReceivablePayment = z.infer<typeof receivablePaymentSchema>;
 export type PostReceivableRequest = z.infer<typeof postReceivableRequestSchema>;
 export type VoidReceivableRequest = z.infer<typeof voidReceivableRequestSchema>;
-export type ApplyReceivablePaymentRequest = z.infer<typeof applyReceivablePaymentRequestSchema>;
+export type ApplyReceivablePaymentRequest = z.input<typeof applyReceivablePaymentRequestSchema>;
 export type ReverseReceivablePaymentRequest = z.infer<typeof reverseReceivablePaymentRequestSchema>;
 export type ListReceivablesQuery = z.infer<typeof listReceivablesQuerySchema>;
 export type ReceivableResponse = z.infer<typeof receivableResponseSchema>;

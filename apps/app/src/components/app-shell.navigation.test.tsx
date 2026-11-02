@@ -271,6 +271,45 @@ describe("application shell", () => {
     expect(markup.match(/aria-hidden="true"/g)?.length ?? 0).toBeGreaterThan(1);
   });
 
+  test("offers only the new records the membership may write, without a live label", () => {
+    fixture.query.data = {
+      activeBusinessId: "business-a",
+      items: [
+        business("business-a", "Owner business", [
+          "sales:create",
+          "expenses:manage",
+          "receivables:manage",
+        ]),
+      ],
+    };
+    const markup = renderShell();
+    expect(markup).toContain("shell.newRecord.title");
+    for (const entry of ["sale", "expense", "receivablePayment"]) {
+      expect(markup).toContain(`shell.newRecord.${entry}.title`);
+    }
+    expect(markup).not.toContain("En vivo");
+    expect(markup).not.toContain("shell.realtimeInterrupted");
+    fixture.query.data = {
+      activeBusinessId: "business-a",
+      items: [business("business-a", "Seller business", ["sales:read", "sales:create"])],
+    };
+    const seller = renderShell();
+    expect(seller).toContain("shell.newRecord.sale.title");
+    expect(seller).not.toContain("shell.newRecord.expense.title");
+    expect(seller).not.toContain("shell.newRecord.receivablePayment.title");
+  });
+
+  test("keeps settings in the sidebar footer and groups modules like the prototype", () => {
+    const markup = renderShell();
+    expect(markup).toContain('href="/settings"');
+    for (const group of ["money", "accounts", "catalog", "insight"]) {
+      expect(markup).toContain(`operate.groups.${group}`);
+    }
+    expect(markup.indexOf('href="/operate/movements"')).toBeLessThan(
+      markup.indexOf("operate.groups.money"),
+    );
+  });
+
   test.each([390, 1440])("keeps busy and failed sign-out visible at width %s", (width) => {
     fixture.width = width;
     fixture.pending = true;

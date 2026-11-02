@@ -19,8 +19,8 @@ import {
 import { eq } from "drizzle-orm";
 
 import { createRuntime } from "../apps/api/src/runtime.ts";
-import { seedItemizedSales } from "./seed-sales.ts";
 import { seedPurchases } from "./seed-purchases.ts";
+import { seedItemizedSales } from "./seed-sales.ts";
 
 export const demoUsers = [
   { role: "owner", name: "Marta López", email: "dueno@pisto.test" },

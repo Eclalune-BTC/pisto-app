@@ -175,6 +175,7 @@ export const receivablePayment = pgTable(
     cashAccountId: uuid("cash_account_id").notNull(),
     reference: text("reference"),
     reversesPaymentId: uuid("reverses_payment_id"),
+    entrySource: text("entry_source").default("manual").notNull(),
     createdByUserId: text("created_by_user_id")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
@@ -183,6 +184,10 @@ export const receivablePayment = pgTable(
   (table) => [
     check("receivable_payment_kind_check", sql`${table.kind} in ('payment', 'reversal')`),
     check("receivable_payment_amount_positive_check", sql`${table.amountMinorUnits} > 0`),
+    check(
+      "receivable_payment_entry_source_check",
+      sql`${table.entrySource} in ('manual', 'voice', 'text')`,
+    ),
     check("receivable_payment_currency_check", sql`${table.currency} ~ '^[A-Z]{3}$'`),
     check(
       "receivable_payment_currency_digits_check",

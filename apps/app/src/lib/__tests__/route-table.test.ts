@@ -39,6 +39,7 @@ describe("route table", () => {
       "/operate/inventory",
       "/operate/inventory/[productId]",
       "/operate/inventory/[productId]/new",
+      "/operate/movements",
       "/operate/payables",
       "/operate/purchases/[purchaseId]",
       "/operate/purchases/new",

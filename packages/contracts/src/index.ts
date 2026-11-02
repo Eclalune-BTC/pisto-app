@@ -20,6 +20,9 @@ import {
 export * from "./assistant";
 export * from "./cash";
 export * from "./catalog";
+export * from "./debtors";
+export * from "./money-trend";
+export * from "./movements";
 export * from "./primitives";
 export * from "./purchases";
 export * from "./realtime";

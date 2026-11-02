@@ -1,51 +1,32 @@
 import { Link } from "expo-router";
 import Head from "expo-router/head";
-import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { type LayoutChangeEvent, Platform, ScrollView, View } from "react-native";
+import { Platform, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useUniwind } from "uniwind";
 import { AppearanceControl } from "@/components/appearance-control";
 import { Brand } from "@/components/brand";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Text } from "@/components/ui/text";
-import { ProductShowcase } from "./product-showcase";
+import { cn } from "@/lib/cn";
+import { DictationExample } from "./dictation-example";
 
-type Section = "product" | "workflow" | "questions";
-const sections: readonly Section[] = ["product", "workflow", "questions"];
-const steps = ["setup", "record", "understand"] as const;
-const questions = ["sales", "accounting", "assistant", "devices"] as const;
+/** What the product records, in the order a shop owner meets it during the day. */
+export const RECORD_ITEMS = [
+  "sales",
+  "purchases",
+  "expenses",
+  "cash",
+  "accounts",
+  "inventory",
+  "reports",
+] as const;
 
 export default function WelcomeScreen() {
   const { t } = useTranslation();
-  const scroll = useRef<ScrollView>(null);
-  const sectionViews = useRef<Partial<Record<Section, View | null>>>({});
-  const [offsets, setOffsets] = useState<Partial<Record<Section, number>>>({});
-  const openSection = (section: Section) => {
-    const y = offsets[section];
-    const target = sectionViews.current[section];
-    if (!scroll.current || y === undefined || !target) return;
-    scroll.current.scrollTo({ y, animated: false });
-    if (Platform.OS === "web") target.focus();
-  };
-  const sectionProps = (id: Section) => ({
-    nativeID: id,
-    accessibilityLabel: t(`welcome.sectionLinks.${id}`),
-    tabIndex: -1 as const,
-    ref: (node: View | null) => {
-      sectionViews.current[id] = node;
-    },
-    onLayout: ({ nativeEvent }: LayoutChangeEvent) => {
-      const y = nativeEvent.layout.y;
-      setOffsets((current) => (current[id] === y ? current : { ...current, [id]: y }));
-    },
-  });
+  // The brand panel turns pale green in the dark palette, so dark mode uses a card surface.
+  const { theme } = useUniwind();
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
@@ -56,123 +37,79 @@ export default function WelcomeScreen() {
         </Head>
       ) : null}
       <View
-        className="z-10 border-b border-border bg-background web:bg-background/85 web:backdrop-blur-md"
+        className="z-10 border-b border-border bg-background web:bg-background/90 web:backdrop-blur-md"
         role="banner"
       >
-        <View className="mx-auto h-14 w-full max-w-[1200px] flex-row items-center justify-between gap-3 px-5 sm:px-8">
+        <View className="mx-auto h-14 w-full max-w-[1120px] flex-row items-center justify-between gap-3 px-4 sm:px-8">
           <Brand />
-          <View
-            accessibilityLabel={t("welcome.navigation")}
-            className="hidden flex-row gap-2 lg:flex"
-            role="navigation"
-          >
-            {sections.map((section) => (
-              <Button
-                disabled={offsets[section] === undefined}
-                key={section}
-                label={t(`welcome.sectionLinks.${section}`)}
-                onPress={() => openSection(section)}
-                size="sm"
-                variant="ghost"
-              />
-            ))}
-          </View>
-          <View className="min-w-0 flex-row items-center gap-1 sm:gap-3">
+          <View className="min-w-0 flex-row items-center gap-1 sm:gap-2">
             <Link href="/sign-in" asChild>
-              <Button
-                className="px-2 sm:px-4"
-                label={t("welcome.signIn")}
-                size="sm"
-                variant="ghost"
-              />
+              <Button className="px-2.5" label={t("welcome.signIn")} size="sm" variant="ghost" />
             </Link>
-            <Link href="/sign-up" className="hidden sm:flex" asChild>
-              <Button label={t("welcome.createAccount")} size="sm" variant="default" />
+            <Link href="/sign-up" asChild>
+              <Button className="hidden sm:flex" label={t("welcome.createAccount")} size="sm" />
             </Link>
-            <AppearanceControl compact />
           </View>
         </View>
       </View>
 
-      <ScrollView
-        ref={scroll}
-        contentContainerClassName="flex-grow"
-        keyboardShouldPersistTaps="handled"
-      >
-        <View role="main">
-          <View className="bg-background">
-            <View className="mx-auto w-full max-w-[1200px] gap-8 px-5 pb-14 pt-14 sm:px-8 sm:pb-20 sm:pt-24 lg:flex-row lg:items-end lg:gap-16">
-              <View className="min-w-0 gap-5 lg:flex-1">
-                <Heading className="max-w-[640px] font-heading text-[38px] leading-[44px] tracking-[-1.2px] text-foreground sm:text-[52px] sm:leading-[58px]">
-                  {t("welcome.title")}
-                </Heading>
-              </View>
-              <View className="min-w-0 gap-5 lg:w-[40%]">
-                <Text className="max-w-[560px] text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-                  {t("welcome.description")}
-                </Text>
-                <View className="flex-row flex-wrap gap-2 pt-1">
-                  <Link href="/sign-up" asChild>
-                    <Button label={t("welcome.createAccount")} size="lg" variant="default" />
-                  </Link>
+      <ScrollView contentContainerClassName="flex-grow" keyboardShouldPersistTaps="handled">
+        <View className="flex-1" role="main">
+          <View className="mx-auto w-full max-w-[1120px] gap-10 px-4 pb-14 pt-10 sm:px-8 sm:pt-16 lg:flex-row lg:items-center lg:gap-14 lg:pb-20">
+            <View className="min-w-0 gap-5 lg:flex-1">
+              <Heading className="max-w-[560px] text-[34px] leading-[40px] tracking-[-1px] sm:text-[44px] sm:leading-[50px] sm:tracking-[-1.4px]">
+                {t("welcome.title")}
+              </Heading>
+              <Text className="max-w-[500px] text-base leading-7 text-muted-foreground sm:text-[17px]">
+                {t("welcome.description")}
+              </Text>
+              <View className="flex-row flex-wrap gap-2 pt-1">
+                <Link href="/sign-up" asChild>
+                  <Button className="rounded-lg" label={t("welcome.createAccount")} size="lg" />
+                </Link>
+                <Link href="/sign-in" asChild>
                   <Button
-                    label={t("welcome.explore")}
-                    disabled={offsets.product === undefined}
-                    onPress={() => openSection("product")}
+                    className="rounded-lg"
+                    label={t("welcome.signIn")}
                     size="lg"
                     variant="outline"
                   />
-                </View>
-                <Text className="max-w-[500px] text-[13px] leading-5 text-muted-foreground">
-                  {t("welcome.availability")}
-                </Text>
+                </Link>
               </View>
+              <Text className="text-[13px] leading-5 text-muted-foreground">
+                {t("welcome.availability")}
+              </Text>
+            </View>
+            <View className="min-w-0 rounded-2xl bg-primary p-4 dark:border dark:border-border dark:bg-card sm:p-7 lg:w-[500px]">
+              <DictationExample tone={theme === "dark" ? "default" : "inverse"} />
             </View>
           </View>
 
-          <View {...sectionProps("product")} className="border-t border-border bg-background">
-            <View className="mx-auto w-full max-w-[1200px] gap-8 px-5 py-14 sm:px-8 sm:py-20">
-              <View className="items-center gap-3">
-                <Heading
-                  className="max-w-[760px] text-center text-foreground"
-                  level={2}
-                  size="marketing"
-                >
-                  {t("welcome.product.title")}
+          <View className="border-t border-border bg-card">
+            <View className="mx-auto w-full max-w-[1120px] gap-8 px-4 py-12 sm:px-8 sm:py-16 lg:flex-row lg:gap-14">
+              <View className="gap-2 lg:w-[300px]">
+                <Heading level={2} className="text-[22px] leading-8 tracking-[-0.4px]">
+                  {t("welcome.records.title")}
                 </Heading>
-                <Text className="max-w-[660px] text-center text-base leading-7 text-muted-foreground">
-                  {t("welcome.product.description")}
+                <Text className="text-sm leading-6 text-muted-foreground">
+                  {t("welcome.records.description")}
                 </Text>
               </View>
-              <ProductShowcase />
-            </View>
-          </View>
-
-          <View {...sectionProps("workflow")} className="border-y border-border bg-sidebar">
-            <View className="mx-auto w-full max-w-[1200px] gap-10 px-5 py-14 sm:px-8 sm:py-20">
-              <View className="gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-10">
-                <Heading className="max-w-[520px] text-foreground" level={2} size="marketing">
-                  {t("welcome.workflow.title")}
-                </Heading>
-                <Text className="max-w-[390px] text-base leading-7 text-muted-foreground">
-                  {t("welcome.workflow.description")}
-                </Text>
-              </View>
-              <View className="gap-px overflow-hidden rounded-lg border border-border bg-border md:flex-row">
-                {steps.map((step, index) => (
-                  <View key={step} className="min-w-0 gap-3 bg-card p-6 md:flex-1">
-                    <Text className="font-ui text-[13px] text-muted-foreground tabular-nums">
-                      {String(index + 1).padStart(2, "0")}
+              <View className="min-w-0 flex-1 flex-row flex-wrap" role="list">
+                {RECORD_ITEMS.map((item, index) => (
+                  <View
+                    className={cn(
+                      "w-full gap-1 border-t border-border py-4 sm:w-1/2 sm:pr-8",
+                      index === 0 && "border-t-0 sm:border-t",
+                    )}
+                    key={item}
+                    role="listitem"
+                  >
+                    <Text className="font-ui text-[15px] leading-6">
+                      {t(`welcome.records.items.${item}.title`)}
                     </Text>
-                    <Heading
-                      className="text-base leading-6 text-foreground"
-                      level={3}
-                      size="section"
-                    >
-                      {t(`welcome.workflow.${step}.title`)}
-                    </Heading>
                     <Text className="text-sm leading-6 text-muted-foreground">
-                      {t(`welcome.workflow.${step}.description`)}
+                      {t(`welcome.records.items.${item}.description`)}
                     </Text>
                   </View>
                 ))}
@@ -180,68 +117,28 @@ export default function WelcomeScreen() {
             </View>
           </View>
 
-          <View {...sectionProps("questions")} className="bg-background">
-            <View className="mx-auto w-full max-w-[1200px] gap-8 px-5 py-14 sm:px-8 sm:py-20 lg:flex-row lg:gap-16">
-              <View className="gap-3 lg:w-[32%]">
-                <Heading className="text-foreground" level={2} size="marketing">
-                  {t("welcome.questions.title")}
-                </Heading>
-                <Text className="text-base leading-7 text-muted-foreground">
-                  {t("welcome.questions.description")}
-                </Text>
-              </View>
-              <Accordion className="min-w-0 lg:flex-1" type="single" collapsible>
-                {questions.map((question) => (
-                  <AccordionItem key={question} value={question} className="border-border">
-                    <AccordionTrigger>
-                      <Text className="min-w-0 flex-1 font-ui text-base leading-6 text-foreground">
-                        {t(`welcome.questions.${question}.question`)}
-                      </Text>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <Text className="text-base leading-7 text-muted-foreground">
-                        {t(`welcome.questions.${question}.answer`)}
-                      </Text>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            </View>
-          </View>
-
-          <View className="bg-background px-5 pb-14 sm:px-8 sm:pb-20">
-            <View className="mx-auto w-full max-w-[1200px] gap-6 rounded-lg bg-primary px-6 py-10 sm:flex-row sm:items-center sm:justify-between sm:gap-12 sm:p-12">
-              <View className="min-w-0 gap-3 sm:flex-1">
-                <Heading className="text-primary-foreground" level={2} size="marketing">
-                  {t("welcome.closing.title")}
-                </Heading>
-                <Text className="max-w-[540px] text-base leading-7 text-primary-foreground">
-                  {t("welcome.closing.description")}
-                </Text>
-              </View>
-              <Link href="/sign-up" asChild>
-                <Button
-                  className="self-start bg-background sm:self-center"
-                  size="lg"
-                  variant="ghost"
-                >
-                  <Text className="font-ui text-base text-foreground">
-                    {t("welcome.createAccount")}
-                  </Text>
-                </Button>
-              </Link>
+          <View className="border-t border-border">
+            <View className="mx-auto w-full max-w-[1120px] gap-2 px-4 py-10 sm:px-8 lg:flex-row lg:gap-14">
+              <Heading level={2} className="text-base leading-6 lg:w-[300px]">
+                {t("welcome.scope.title")}
+              </Heading>
+              <Text className="max-w-[640px] flex-1 text-sm leading-6 text-muted-foreground">
+                {t("welcome.scope.description")}
+              </Text>
             </View>
           </View>
         </View>
 
-        <SafeAreaView className="border-t border-border bg-background" edges={["bottom"]}>
+        <SafeAreaView className="border-t border-border" edges={["bottom"]}>
           <View
-            className="mx-auto w-full max-w-[1200px] gap-6 px-5 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8"
+            className="mx-auto w-full max-w-[1120px] flex-row flex-wrap items-center justify-between gap-4 px-4 py-6 sm:px-8"
             role="contentinfo"
           >
-            <View className="gap-3">
+            <View className="min-w-0 gap-2 sm:flex-row sm:items-center sm:gap-3">
               <Brand />
-              <Text className="text-sm leading-6 text-muted-foreground">{t("welcome.footer")}</Text>
+              <Text className="min-w-0 shrink text-[13px] leading-5 text-muted-foreground">
+                {t("welcome.footer")}
+              </Text>
             </View>
             <AppearanceControl />
           </View>

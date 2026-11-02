@@ -1,16 +1,18 @@
 import type { BusinessPermission } from "@pisto/contracts";
 import type { Href } from "expo-router";
 
-export type OperateGroupId = "money" | "stock" | "relationships" | "insight";
+/** `overview` sits under Inicio without a heading, like the prototype's Movimientos entry. */
+export type OperateGroupId = "overview" | "money" | "accounts" | "catalog" | "insight";
 
 export type OperateModuleId =
+  | "movements"
   | "sales"
   | "expenses"
   | "cash"
+  | "receivables"
   | "catalog"
   | "inventory"
   | "customers"
-  | "receivables"
   | "suppliers"
   | "payables"
   | "reports";
@@ -26,15 +28,24 @@ export type OperateModule = {
 
 export const OPERATE_GROUPS: ReadonlyArray<{
   id: OperateGroupId;
-  labelKey: `operate.groups.${OperateGroupId}`;
+  labelKey: `operate.groups.${Exclude<OperateGroupId, "overview">}` | null;
 }> = [
+  { id: "overview", labelKey: null },
   { id: "money", labelKey: "operate.groups.money" },
-  { id: "stock", labelKey: "operate.groups.stock" },
-  { id: "relationships", labelKey: "operate.groups.relationships" },
+  { id: "accounts", labelKey: "operate.groups.accounts" },
+  { id: "catalog", labelKey: "operate.groups.catalog" },
   { id: "insight", labelKey: "operate.groups.insight" },
 ];
 
 export const OPERATE_MODULES: readonly OperateModule[] = [
+  {
+    id: "movements",
+    href: "/operate/movements",
+    labelKey: "operate.modules.movements.label",
+    descriptionKey: "operate.modules.movements.description",
+    group: "overview",
+    permission: "cash:read",
+  },
   {
     id: "sales",
     href: "/operate/sales",
@@ -60,11 +71,27 @@ export const OPERATE_MODULES: readonly OperateModule[] = [
     permission: "cash:read",
   },
   {
+    id: "receivables",
+    href: "/operate/receivables",
+    labelKey: "operate.modules.receivables.label",
+    descriptionKey: "operate.modules.receivables.description",
+    group: "accounts",
+    permission: "receivables:read",
+  },
+  {
+    id: "payables",
+    href: "/operate/payables",
+    labelKey: "operate.modules.payables.label",
+    descriptionKey: "operate.modules.payables.description",
+    group: "accounts",
+    permission: "purchases:read",
+  },
+  {
     id: "catalog",
     href: "/operate/catalog",
     labelKey: "operate.modules.catalog.label",
     descriptionKey: "operate.modules.catalog.description",
-    group: "stock",
+    group: "catalog",
     permission: "catalog:read",
   },
   {
@@ -72,7 +99,7 @@ export const OPERATE_MODULES: readonly OperateModule[] = [
     href: "/operate/inventory",
     labelKey: "operate.modules.inventory.label",
     descriptionKey: "operate.modules.inventory.description",
-    group: "stock",
+    group: "catalog",
     permission: "inventory:read",
   },
   {
@@ -80,31 +107,15 @@ export const OPERATE_MODULES: readonly OperateModule[] = [
     href: "/operate/customers",
     labelKey: "operate.modules.customers.label",
     descriptionKey: "operate.modules.customers.description",
-    group: "relationships",
+    group: "catalog",
     permission: "customers:read",
-  },
-  {
-    id: "receivables",
-    href: "/operate/receivables",
-    labelKey: "operate.modules.receivables.label",
-    descriptionKey: "operate.modules.receivables.description",
-    group: "relationships",
-    permission: "receivables:read",
   },
   {
     id: "suppliers",
     href: "/operate/suppliers",
     labelKey: "operate.modules.suppliers.label",
     descriptionKey: "operate.modules.suppliers.description",
-    group: "relationships",
-    permission: "purchases:read",
-  },
-  {
-    id: "payables",
-    href: "/operate/payables",
-    labelKey: "operate.modules.payables.label",
-    descriptionKey: "operate.modules.payables.description",
-    group: "relationships",
+    group: "catalog",
     permission: "purchases:read",
   },
   {

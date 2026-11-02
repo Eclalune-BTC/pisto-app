@@ -7,6 +7,9 @@ import type {
   CatalogRepository,
   ConsumeProductRequest,
   DatabaseHandle,
+  DebtorsRepository,
+  MoneyTrendRepository,
+  MovementsRepository,
   PurchasesRepository,
   ReceivablesRepository,
   ReportsRepository,
@@ -24,6 +27,9 @@ import { billingRoutes } from "./routes/billing.ts";
 import { businessRoutes } from "./routes/businesses.ts";
 import { cashRoutes } from "./routes/cash.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
+import { debtorsRoutes } from "./routes/debtors.ts";
+import { moneyTrendRoutes } from "./routes/money-trend.ts";
+import { movementsRoutes } from "./routes/movements.ts";
 import { purchasesRoutes } from "./routes/purchases.ts";
 import { receivablesRoutes } from "./routes/receivables.ts";
 import { reportsRoutes } from "./routes/reports.ts";
@@ -36,6 +42,9 @@ export interface ProductRepositories {
   cash: CashRepository;
   catalog: CatalogRepository;
   purchases: PurchasesRepository;
+  debtors: DebtorsRepository;
+  moneyTrend: MoneyTrendRepository;
+  movements: MovementsRepository;
   receivables: ReceivablesRepository;
   reports: ReportsRepository;
   sales: SalesRepository;
@@ -161,7 +170,18 @@ export function createApp(input: {
   }
   app.use(systemRoutes({ database: input.database, billing: input.billing }));
   for (const group of sessionPolicyGroups) app.use(group);
-  const { businesses, cash, catalog, purchases, receivables, reports, sales } = input.repositories;
+  const {
+    businesses,
+    cash,
+    catalog,
+    debtors,
+    moneyTrend,
+    movements,
+    purchases,
+    receivables,
+    reports,
+    sales,
+  } = input.repositories;
   return app
     .use(businessRoutes({ access, businesses }))
     .use(salesRoutes({ access, sales }))
@@ -169,5 +189,8 @@ export function createApp(input: {
     .use(cashRoutes({ access, cash }))
     .use(receivablesRoutes({ access, receivables }))
     .use(purchasesRoutes({ access, purchases }))
-    .use(reportsRoutes({ access, reports }));
+    .use(reportsRoutes({ access, reports }))
+    .use(moneyTrendRoutes({ access, moneyTrend }))
+    .use(movementsRoutes({ access, movements }))
+    .use(debtorsRoutes({ access, debtors }));
 }

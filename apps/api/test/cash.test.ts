@@ -163,6 +163,7 @@ describe("cash and expense API routes", () => {
         description: "Alquiler",
         occurredLocalDate: "2026-08-22",
         occurredLocalTime: "10:00",
+        entrySource: "manual",
       },
     });
   });

@@ -4,6 +4,9 @@ import { BillingProviderError, type BillingRuntime, RevenueCatWebhookError } fro
 import type {
   CashRepository,
   CatalogRepository,
+  DebtorsRepository,
+  MoneyTrendRepository,
+  MovementsRepository,
   PurchasesRepository,
   ReceivablesRepository,
   ReportsRepository,
@@ -194,6 +197,18 @@ function testApp(
         ),
         purchases: unavailableRepository<PurchasesRepository>(
           "Purchases repository",
+          options.onRepositoryCall,
+        ),
+        debtors: unavailableRepository<DebtorsRepository>(
+          "Debtors repository",
+          options.onRepositoryCall,
+        ),
+        moneyTrend: unavailableRepository<MoneyTrendRepository>(
+          "Money trend repository",
+          options.onRepositoryCall,
+        ),
+        movements: unavailableRepository<MovementsRepository>(
+          "Movements repository",
           options.onRepositoryCall,
         ),
         receivables: unavailableRepository<ReceivablesRepository>(

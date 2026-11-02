@@ -10,6 +10,7 @@ import { dataTable } from "./es-SV/data-table";
 import { expenses } from "./es-SV/expenses";
 import { filters } from "./es-SV/filters";
 import { inventory } from "./es-SV/inventory";
+import { movements } from "./es-SV/movements";
 import { notFound } from "./es-SV/not-found";
 import { operate } from "./es-SV/operate";
 import { productErrors } from "./es-SV/product-errors";
@@ -52,6 +53,7 @@ export const esSV = {
   receivables,
   purchases,
   reports,
+  movements,
   notFound,
   productErrors,
 } as const;

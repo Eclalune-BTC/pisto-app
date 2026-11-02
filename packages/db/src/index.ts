@@ -8,8 +8,16 @@ export {
   type DatabaseConfig,
   type DatabaseHandle,
 } from "./client.ts";
+export { createDebtorsRepository, type DebtorsRepository } from "./debtors.ts";
 export { parseDatabaseConfig } from "./env.ts";
 export { ProductError, type ProductErrorCode } from "./errors.ts";
+export { createMoneyTrendRepository, type MoneyTrendRepository } from "./money-trend.ts";
+export {
+  createMovementsRepository,
+  type MovementSource,
+  type MovementsRepository,
+  movementSources,
+} from "./movements.ts";
 export {
   type ConsumeProductRequest,
   createProductRateLimiter,
