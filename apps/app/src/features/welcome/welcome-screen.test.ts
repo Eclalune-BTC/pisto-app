@@ -32,7 +32,7 @@ vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" 
 vi.mock("@/lib/auth-client", () => ({ authClient: {} }));
 vi.mock("@/lib/api-client", () => ({ apiRequest: vi.fn() }));
 
-import { ROLE_CAPABILITIES, roleCan } from "@/features/business/business-settings";
+import { ROLE_CAPABILITIES, roleCan } from "@/features/business/role-capabilities";
 import { i18n } from "@/i18n/config";
 import { resolveBusinessAccess } from "../../../../../packages/db/src/product-access";
 import { exampleSpans } from "./dictation-example";

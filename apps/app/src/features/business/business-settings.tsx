@@ -1,10 +1,4 @@
-import type {
-  Business,
-  BusinessAccess,
-  BusinessMember,
-  BusinessPermission,
-  BusinessRole,
-} from "@pisto/contracts";
+import type { Business, BusinessAccess, BusinessMember, BusinessRole } from "@pisto/contracts";
 import { businessRolePoliciesResponseSchema } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
@@ -26,25 +20,9 @@ import { focusReturnTarget } from "@/lib/focus-return";
 import { initialsOf } from "@/lib/initials";
 import { AddMemberDialog, ChangeRoleDialog, RemoveMemberDialog } from "./member-dialogs";
 import { membersApi, membersQueryKey } from "./members-api";
+import { ROLE_CAPABILITIES, roleCan } from "./role-capabilities";
 
 const ROLES: readonly BusinessRole[] = ["owner", "admin", "member"];
-
-/** Everyday jobs and the permissions the server requires for each of them. */
-export const ROLE_CAPABILITIES = [
-  { key: "sales", permissions: ["sales:create"] },
-  { key: "receivables", permissions: ["receivables:manage"] },
-  { key: "purchasesAndExpenses", permissions: ["purchases:manage", "expenses:manage"] },
-  { key: "reports", permissions: ["reports:read"] },
-  { key: "configure", permissions: ["business:configure"] },
-] as const satisfies readonly { key: string; permissions: readonly BusinessPermission[] }[];
-
-/** A role can do a job only when the policy grants every permission the job needs. */
-export function roleCan(
-  policy: BusinessAccess,
-  capability: (typeof ROLE_CAPABILITIES)[number],
-): boolean {
-  return capability.permissions.every((permission) => policy.permissions.includes(permission));
-}
 
 function rolePoliciesQueryOptions() {
   return {

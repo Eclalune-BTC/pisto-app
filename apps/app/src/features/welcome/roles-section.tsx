@@ -5,7 +5,7 @@ import { View } from "react-native";
 import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { ROLE_CAPABILITIES } from "@/features/business/business-settings";
+import { ROLE_CAPABILITIES } from "@/features/business/role-capabilities";
 import { cn } from "@/lib/cn";
 import { Surface } from "./fragments";
 
