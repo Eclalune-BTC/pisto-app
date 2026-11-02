@@ -46,7 +46,6 @@ export const customers = {
     archiveNeedsZeroBalance: "Requiere saldo pendiente en cero",
     archivedDescription:
       "Su historial sigue disponible, pero ya no admite cambios ni cargos nuevos.",
-    outstanding: "Saldo pendiente",
     overdue: "Vencido",
     openCount_zero: "Sin saldos pendientes",
     openCount_one: "{{count}} cuenta por cobrar con saldo",
@@ -56,7 +55,6 @@ export const customers = {
     overdueCount_other: "{{count}} cuentas por cobrar vencidas",
     contact: "Contacto",
     noContact: "Sin datos de contacto.",
-    receivables: "Cuentas por cobrar",
     receivablesDenied:
       "Tu acceso actual no permite consultar las cuentas por cobrar de este cliente.",
     receivablesUnavailable: "No pudimos cargar sus cuentas por cobrar",
