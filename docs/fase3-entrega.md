@@ -102,6 +102,10 @@ El sistema respeta la arquitectura por capas de la Fase 2. La capa de controlado
 | Asistente de IA (módulo de soporte) | GET /v1/assistant/status, POST /v1/assistant/interpretations, POST /v1/assistant/transcriptions |
 | Tiempo real | GET /v1/realtime (WebSocket) |
 
+### Gestión de usuarios
+
+El dueño del negocio administra a su personal desde Configuración: agrega un usuario nuevo (el API crea la cuenta con el mismo cifrado del registro) o una cuenta existente, le asigna el rol de encargado o vendedor, cambia su rol y lo quita del negocio. Solo el dueño puede hacerlo, nadie puede volverse dueño por esta vía, el dueño no puede quitarse a sí mismo y un usuario quitado pierde el acceso en su siguiente petición. Cada comando usa una llave de idempotencia y avisa por tiempo real a las demás sesiones.
+
 ### Mecanismos de seguridad
 
 - Contraseñas cifradas con hash scrypt (Better Auth); nunca se guardan ni se devuelven en texto plano (figura de integridad).
@@ -204,103 +208,127 @@ Las pantallas se implementaron a partir de los prototipos de alta fidelidad de l
 | Figura 23. Reportes | Reportes | /operate/reports |
 | Figura 24. Configuración | Configuración y usuarios | /settings |
 
-**Figura 38. Pantalla Inicio de sesión implementada**
+**Figura 38. Página de inicio pública**
+
+![Página de inicio pública](fase3/landing-1280.png)
+
+*Página que ve un visitante antes de iniciar sesión: la pantalla Hoy de un negocio de ejemplo, el registro por voz paso a paso, los módulos y los roles.*
+
+**Figura 39. Página de inicio pública en teléfono**
+
+![Página de inicio pública en teléfono](fase3/landing-390.png)
+
+*La misma página en un teléfono.*
+
+**Figura 40. Pantalla Inicio de sesión implementada**
 
 ![Pantalla Inicio de sesión implementada](fase3/signin-1280.png)
 
 *Implementación del prototipo de la figura 9.*
 
-**Figura 39. Pantalla Hoy implementada**
+**Figura 41. Pantalla Hoy implementada**
 
 ![Pantalla Hoy implementada](fase3/home-1280.png)
 
 *Dinero disponible con su gráfico, el registro por voz o texto, movimientos de hoy, por cobrar y por pagar (figuras 10 y 12).*
 
-**Figura 40. Pantalla Hoy en teléfono**
+**Figura 42. Pantalla Hoy en teléfono**
 
 ![Pantalla Hoy en teléfono](fase3/home-390.png)
 
 *La misma pantalla en un teléfono, con la tarjeta de dinero en lima como en la figura 11.*
 
-**Figura 41. Menú ¿Qué quiere registrar?**
+**Figura 43. Menú ¿Qué quiere registrar?**
 
 ![Menú ¿Qué quiere registrar?](fase3/new-menu-1280.png)
 
 *Las cinco opciones de registro del prototipo de la figura 11.*
 
-**Figura 42. Nuevo registro por voz**
+**Figura 44. Nuevo registro por voz**
 
 ![Nuevo registro por voz](fase3/dictation-1280.png)
 
 *Diálogo de dictado escuchando el micrófono (figura 12).*
 
-**Figura 43. Revisión del registro creado por el asistente de IA**
+**Figura 45. Revisión del registro creado por el asistente de IA**
 
 ![Revisión del registro creado por el asistente de IA](fase3/assistant-review-1280.png)
 
 *La frase dictada con sus fragmentos numerados y el formulario de venta lleno con los mismos números (figura 13); el usuario confirma antes de guardar.*
 
-**Figura 44. Pantalla Movimientos implementada**
+**Figura 46. Pantalla Movimientos implementada**
 
 ![Pantalla Movimientos implementada](fase3/movements-1280.png)
 
 *Ventas, compras, gastos, abonos y pagos en un solo libro con totales del período (figura 14).*
 
-**Figura 45. Pantalla Nueva venta implementada**
+**Figura 47. Pantalla Nueva venta implementada**
 
 ![Pantalla Nueva venta implementada](fase3/sale-new-1280.png)
 
 *Venta con productos, forma de pago y crédito (figura 15).*
 
-**Figura 46. Pantalla Nueva compra implementada**
+**Figura 48. Pantalla Nueva compra implementada**
 
 ![Pantalla Nueva compra implementada](fase3/purchase-new-1280.png)
 
 *Compra al contado o al crédito con productos que entran al inventario.*
 
-**Figura 47. Pantalla Nuevo gasto con validación**
+**Figura 49. Pantalla Nuevo gasto con validación**
 
 ![Pantalla Nuevo gasto con validación](fase3/state-validation-expense-1280.png)
 
 *Los campos obligatorios vacíos se señalan antes de enviar (figura 17).*
 
-**Figura 48. Pantalla Cuentas por cobrar implementada**
+**Figura 50. Pantalla Cuentas por cobrar implementada**
 
 ![Pantalla Cuentas por cobrar implementada](fase3/receivables-1280.png)
 
 *Saldos, antigüedad de las deudas y filtros (figura 18).*
 
-**Figura 49. Registrar abono**
+**Figura 51. Registrar abono**
 
 ![Registrar abono](fase3/payment-sheet-1280.png)
 
 *Panel para registrar el abono de un cliente (figura 19).*
 
-**Figura 50. Pantalla Cuentas por pagar implementada**
+**Figura 52. Pantalla Cuentas por pagar implementada**
 
 ![Pantalla Cuentas por pagar implementada](fase3/payables-1280.png)
 
 *Lo que se debe a proveedores, lo vencido y el próximo pago (figura 20).*
 
-**Figura 51. Pantalla Productos implementada**
+**Figura 53. Pantalla Productos implementada**
 
 ![Pantalla Productos implementada](fase3/products-1280.png)
 
 *Existencias contra el mínimo y filtros de existencia baja y agotados (figura 21).*
 
-**Figura 52. Pantalla Proveedores implementada**
+**Figura 54. Pantalla Proveedores implementada**
 
 ![Pantalla Proveedores implementada](fase3/suppliers-1280.png)
 
 *Proveedores con su saldo y compras recientes (figura 22).*
 
-**Figura 53. Pantalla Reportes implementada**
+**Figura 55. Pantalla Reportes implementada**
 
 ![Pantalla Reportes implementada](fase3/reports-1280.png)
 
 *Estado de resultados y flujo de caja mensual (figura 23).*
 
-**Figura 54. Pantalla Caja y bancos**
+**Figura 56. Pantalla Configuración y gestión de usuarios**
+
+![Pantalla Configuración y gestión de usuarios](fase3/settings-1280.png)
+
+*Usuarios del negocio con su rol y acciones para cambiarlo o quitarlo, y la matriz de permisos (figura 24).*
+
+**Figura 57. Agregar un usuario al negocio**
+
+![Agregar un usuario al negocio](fase3/settings-add-user-1280.png)
+
+*El dueño crea la cuenta de un empleado con su rol y una contraseña inicial que se guarda cifrada.*
+
+**Figura 58. Pantalla Caja y bancos**
 
 ![Pantalla Caja y bancos](fase3/cash-1280.png)
 
@@ -310,31 +338,31 @@ Las pantallas se implementaron a partir de los prototipos de alta fidelidad de l
 
 Cada pantalla muestra estados reales: esqueletos mientras carga, mensajes de validación en el campo, confirmación al guardar, errores del servidor con opción de reintentar y un aviso claro cuando el rol no tiene permiso.
 
-**Figura 55. Estado cargando**
+**Figura 59. Estado cargando**
 
 ![Estado cargando](fase3/state-loading-1280.png)
 
 *Esqueleto de la pantalla mientras llegan los datos.*
 
-**Figura 56. Estado de éxito**
+**Figura 60. Estado de éxito**
 
 ![Estado de éxito](fase3/state-success-sale-1280.png)
 
 *La venta guardada abre su detalle y muestra la notificación Venta guardada.*
 
-**Figura 57. Visualización de errores**
+**Figura 61. Visualización de errores**
 
 ![Visualización de errores](fase3/state-error-signin-1280.png)
 
 *Mensaje al intentar iniciar sesión con una contraseña incorrecta.*
 
-**Figura 58. Vista del vendedor**
+**Figura 62. Vista del vendedor**
 
 ![Vista del vendedor](fase3/seller-home-1280.png)
 
 *El vendedor solo ve los módulos que su rol permite.*
 
-**Figura 59. Acceso denegado por rol**
+**Figura 63. Acceso denegado por rol**
 
 ![Acceso denegado por rol](fase3/state-denied-seller-1280.png)
 
@@ -342,9 +370,9 @@ Cada pantalla muestra estados reales: esqueletos mientras carga, mensajes de val
 
 ## 5. Colección de pruebas manuales del API
 
-La carpeta docs/postman del repositorio contiene la colección exportada (pisto.postman_collection.json) y dos entornos (local y producción). Se importa en Postman o Bruno y prueba de forma independiente cada endpoint: 138 peticiones en 15 carpetas con 266 verificaciones del código y del contenido de cada respuesta. Se ejecuta en orden con una pausa de 1000 ms entre peticiones.
+La carpeta docs/postman del repositorio contiene la colección exportada (pisto.postman_collection.json) y dos entornos (local y producción). Se importa en Postman o Bruno y prueba de forma independiente cada endpoint: 147 peticiones en 16 carpetas que verifican el código y el contenido de cada respuesta. Se ejecuta en orden con una pausa de 1000 ms entre peticiones.
 
-**Figura 60. Ejecución de la colección con Newman**
+**Figura 64. Ejecución de la colección con Newman**
 
 ![Ejecución de la colección con Newman](fase3/term-08-newman.png)
 
@@ -353,6 +381,12 @@ La carpeta docs/postman del repositorio contiene la colección exportada (pisto.
 ## 6. Demostración y despliegue
 
 El MVP está desplegado en Cloudflare Workers: un Worker sirve la aplicación web y reenvía el API a un Durable Object que se conecta a PostgreSQL en Neon con un rol de permisos mínimos; la IA usa el enlace de Workers AI. La dirección pública es https://pisto.contact-862.workers.dev.
+
+**Figura 65. Despliegue en Cloudflare Workers**
+
+![Despliegue en Cloudflare Workers](fase3/term-09-deploy.png)
+
+*Salida del despliegue con sus enlaces (base de datos, IA, archivos estáticos) y la verificación /ready.*
 
 ### Guion de la demostración en vivo
 

@@ -28,7 +28,9 @@ and the module screens) were merged into `develop` with one combined migration,
 - The Postman collection passed 138 requests and 266 assertions against the local Worker
   (`wrangler dev` with the remote Workers AI binding) and against the hosted Worker, with
   `--delay-request 1000`. After business user management was added it passed 147 requests and
-  285 assertions locally.
+  285 assertions locally. Against the hosted Worker, a run started within a minute of the deploy got
+  404 from the previous Durable Object version for the new user routes only; repeating folders 02
+  and 15 a few minutes later passed 26 requests and 53 assertions.
 - Migration 0010 was applied to Neon with `pisto_migrator`; `db:seed` added the demo
   suppliers, purchases and itemized sales to the existing demo business. The Worker was deployed as
   version `b1c3d2a4-24cf-4d8c-acde-c2a31e4df81d` (after migration 0011 on Neon); `/ready` reported the database as ok and a
