@@ -5771,7 +5771,431 @@
       ]
     },
     {
-      "name": "15 Security and error handling",
+      "name": "15 Business users",
+      "description": "The owner adds staff (creating the account, or adding an existing one), changes their role and removes them. Passwords are hashed by Better Auth and never returned.",
+      "item": [
+        {
+          "name": "Add a seller (creates the account)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"memberKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"memberId\", json.data.member.id);",
+                  "pm.test(\"a new account was created\", () => pm.expect(json.data.account).to.eql(\"created\"));",
+                  "pm.test(\"role is seller\", () => pm.expect(json.data.member.role).to.eql(\"member\"));",
+                  "pm.test(\"the password is never returned\", () => pm.expect(pm.response.text()).to.not.include(\"Temporal2026\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{memberKey}}\",\n  \"name\": \"Daniela Cruz\",\n  \"email\": \"daniela.{{runId}}@pisto.test\",\n  \"role\": \"member\",\n  \"initialPassword\": \"Temporal2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses", "members"]
+            }
+          }
+        },
+        {
+          "name": "Add again with the same key (replays)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"replay is reported\", () => pm.expect(json.data.replayed).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{memberKey}}\",\n  \"name\": \"Daniela Cruz\",\n  \"email\": \"daniela.{{runId}}@pisto.test\",\n  \"role\": \"member\",\n  \"initialPassword\": \"Temporal2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses", "members"]
+            }
+          }
+        },
+        {
+          "name": "Same key with another password is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is IDEMPOTENCY_CONFLICT\", () => pm.expect(json.error.code).to.eql(\"IDEMPOTENCY_CONFLICT\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{memberKey}}\",\n  \"name\": \"Daniela Cruz\",\n  \"email\": \"daniela.{{runId}}@pisto.test\",\n  \"role\": \"member\",\n  \"initialPassword\": \"OtraClave2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses", "members"]
+            }
+          }
+        },
+        {
+          "name": "An existing member cannot be added twice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is CONFLICT\", () => pm.expect(json.error.code).to.eql(\"CONFLICT\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Daniela Cruz\",\n  \"email\": \"daniela.{{runId}}@pisto.test\",\n  \"role\": \"member\",\n  \"initialPassword\": \"Temporal2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses", "members"]
+            }
+          }
+        },
+        {
+          "name": "Ownership cannot be granted",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is VALIDATION_ERROR\", () => pm.expect(json.error.code).to.eql(\"VALIDATION_ERROR\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Otro Dueño\",\n  \"email\": \"otro.{{runId}}@pisto.test\",\n  \"role\": \"owner\",\n  \"initialPassword\": \"Temporal2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses", "members"]
+            }
+          }
+        },
+        {
+          "name": "List business users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"lists the new seller\", () => pm.expect(json.data.members.map((m) => m.id)).to.include(pm.collectionVariables.get(\"memberId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses", "members"]
+            }
+          }
+        },
+        {
+          "name": "Change the seller to admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"role changed\", () => pm.expect(json.data.member.role).to.eql(\"admin\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"role\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses/members/{{memberId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses", "members", "{{memberId}}"]
+            }
+          }
+        },
+        {
+          "name": "Remove the user from the business",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 200\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses/members/{{memberId}}/remove",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses", "members", "{{memberId}}", "remove"]
+            }
+          }
+        },
+        {
+          "name": "A removed user is no longer a member",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is NOT_FOUND\", () => pm.expect(json.error.code).to.eql(\"NOT_FOUND\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses/members/{{memberId}}/remove",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses", "members", "{{memberId}}", "remove"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "16 Security and error handling",
       "description": "Negative checks: strict queries, hidden identifiers, origin policy, content type and session revocation.",
       "item": [
         {
