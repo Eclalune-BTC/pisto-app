@@ -13,6 +13,7 @@ export interface AuthConfig {
   emailAndPasswordEnabled: boolean;
   production: boolean;
   trustedProxyHeaders: boolean;
+  ipAddressHeader?: string;
 }
 
 export class AuthConfigurationError extends Error {
@@ -73,6 +74,10 @@ export function parseAuthConfig(env: Environment): AuthConfig {
     }
   });
   if (expoScheme) trustedOrigins.push(`${expoScheme}://`, `${expoScheme}://*`);
+  const ipAddressHeader = read.optional("AUTH_IP_ADDRESS_HEADER")?.toLowerCase();
+  if (ipAddressHeader && !/^[a-z0-9-]+$/.test(ipAddressHeader)) {
+    throw new AuthConfigurationError("AUTH_IP_ADDRESS_HEADER must be one HTTP header name");
+  }
 
   return {
     baseUrl,
@@ -82,5 +87,6 @@ export function parseAuthConfig(env: Environment): AuthConfig {
     emailAndPasswordEnabled: read.boolean("AUTH_EMAIL_PASSWORD_ENABLED", true),
     production: read.production,
     trustedProxyHeaders: read.boolean("AUTH_TRUSTED_PROXY_HEADERS", false),
+    ...(ipAddressHeader ? { ipAddressHeader } : {}),
   };
 }
