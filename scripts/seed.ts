@@ -20,6 +20,7 @@ import { eq } from "drizzle-orm";
 
 import { createRuntime } from "../apps/api/src/runtime.ts";
 import { seedItemizedSales } from "./seed-sales.ts";
+import { seedPurchases } from "./seed-purchases.ts";
 
 export const demoUsers = [
   { role: "owner", name: "Marta López", email: "dueno@pisto.test" },
@@ -293,6 +294,8 @@ async function main() {
     }
 
     await seedItemizedSales(db, owner, at);
+    await seedPurchases({ db, owner, now });
+
     console.info(
       `Seeded ${demoBusiness.name}: ${demoUsers.length} users, ${products.length} products, 7 sales, 3 expenses, ${customers.length} receivables.`,
     );

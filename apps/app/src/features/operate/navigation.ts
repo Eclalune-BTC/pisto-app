@@ -11,6 +11,8 @@ export type OperateModuleId =
   | "inventory"
   | "customers"
   | "receivables"
+  | "suppliers"
+  | "payables"
   | "reports";
 
 export type OperateModule = {
@@ -88,6 +90,22 @@ export const OPERATE_MODULES: readonly OperateModule[] = [
     descriptionKey: "operate.modules.receivables.description",
     group: "relationships",
     permission: "receivables:read",
+  },
+  {
+    id: "suppliers",
+    href: "/operate/suppliers",
+    labelKey: "operate.modules.suppliers.label",
+    descriptionKey: "operate.modules.suppliers.description",
+    group: "relationships",
+    permission: "purchases:read",
+  },
+  {
+    id: "payables",
+    href: "/operate/payables",
+    labelKey: "operate.modules.payables.label",
+    descriptionKey: "operate.modules.payables.description",
+    group: "relationships",
+    permission: "purchases:read",
   },
   {
     id: "reports",

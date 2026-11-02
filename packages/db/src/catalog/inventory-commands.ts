@@ -12,6 +12,7 @@ import { parseMinorUnits } from "../money.ts";
 import { beginOperation, fingerprintCommand, saveOperation } from "../operation-log.ts";
 import { catalogProduct, inventoryMovement } from "../schema/catalog.ts";
 import { toMovement, trackedStockFor } from "./mappers.ts";
+import { isPurchaseReceipt } from "./purchase-stock.ts";
 import { catalogOperationLog, currentBalance } from "./records.ts";
 import type { InventoryCommands } from "./types.ts";
 
@@ -169,6 +170,9 @@ export function createInventoryCommands(db: Database): InventoryCommands {
         }
         if (original.action === "sale") {
           throw new ProductError("CONFLICT", "Void the sale to return its stock");
+        }
+        if (await isPurchaseReceipt(tx, access.businessId, original.id)) {
+          throw new ProductError("CONFLICT", "Void the purchase to take its received stock back");
         }
         const [existingReversal] = await tx
           .select({ id: inventoryMovement.id })

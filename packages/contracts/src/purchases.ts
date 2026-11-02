@@ -82,6 +82,8 @@ export const listSuppliersQuerySchema = z
     limit: boundedListLimitSchema,
     query: z.string().trim().min(1).max(80).optional(),
     status: z.enum(["active", "archived", "all"]).default("active"),
+    /** `outstanding` keeps the suppliers the business still owes. */
+    balance: z.enum(["all", "outstanding"]).default("all"),
   })
   .strict();
 

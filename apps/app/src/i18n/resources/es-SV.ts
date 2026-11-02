@@ -13,6 +13,7 @@ import { inventory } from "./es-SV/inventory";
 import { notFound } from "./es-SV/not-found";
 import { operate } from "./es-SV/operate";
 import { productErrors } from "./es-SV/product-errors";
+import { purchases } from "./es-SV/purchases";
 import { receivables } from "./es-SV/receivables";
 import { relationships } from "./es-SV/relationships";
 import { remote } from "./es-SV/remote";
@@ -49,6 +50,7 @@ export const esSV = {
   relationships,
   customers,
   receivables,
+  purchases,
   reports,
   notFound,
   productErrors,

@@ -98,6 +98,11 @@ describe("realtime routing", () => {
     expect(changedResource("/v1/sales/abc/void")).toBe("sales");
     expect(changedResource("/v1/receivable-payments/abc/reverse")).toBe("receivables");
     expect(changedResource("/v1/inventory/products/abc/movements")).toBe("inventory");
+    expect(changedResource("/v1/suppliers/abc/archive")).toBe("purchases");
+    expect(changedResource("/v1/purchases")).toBe("purchases");
+    expect(changedResource("/v1/purchases/abc/payments")).toBe("purchases");
+    expect(changedResource("/v1/payables/summary")).toBe("purchases");
+    expect(changedResource("/v1/purchasesx")).toBeNull();
     expect(changedResource("/v1/salesman")).toBeNull();
     expect(changedResource("/v1/businesses")).toBeNull();
     expect(changedResource("/api/auth/sign-in/email")).toBeNull();

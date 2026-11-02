@@ -4,6 +4,7 @@ export * from "./business.ts";
 export * from "./cash.ts";
 export * from "./cash-account.ts";
 export * from "./catalog.ts";
+export * from "./purchases.ts";
 export * from "./receivables.ts";
 export * from "./sale-line.ts";
 export * from "./sales.ts";
@@ -13,6 +14,7 @@ import * as billing from "./billing.ts";
 import * as business from "./business.ts";
 import * as cash from "./cash.ts";
 import * as catalog from "./catalog.ts";
+import * as purchases from "./purchases.ts";
 import * as receivables from "./receivables.ts";
 import * as saleLines from "./sale-line.ts";
 import * as sales from "./sales.ts";
@@ -44,6 +46,11 @@ export const schema = {
   receivable: receivables.receivable,
   receivablePayment: receivables.receivablePayment,
   receivableOperation: receivables.receivableOperation,
+  supplier: purchases.supplier,
+  purchase: purchases.purchase,
+  purchaseLine: purchases.purchaseLine,
+  supplierPayment: purchases.supplierPayment,
+  purchaseOperation: purchases.purchaseOperation,
   sale: sales.sale,
   saleReview: sales.saleReview,
   saleOperation: sales.saleOperation,
