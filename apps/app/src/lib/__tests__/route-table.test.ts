@@ -18,6 +18,7 @@ describe("route table", () => {
       "/business",
       "/dashboard",
       "/operate",
+      "/operate/assistant/review",
       "/operate/cash",
       "/operate/cash/accounts/[accountId]",
       "/operate/cash/accounts/[accountId]/edit",

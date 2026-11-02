@@ -1,4 +1,5 @@
 import { appearance } from "./es-SV/appearance";
+import { assistant } from "./es-SV/assistant";
 import { auth } from "./es-SV/auth";
 import { billing } from "./es-SV/billing";
 import { business } from "./es-SV/business";
@@ -50,6 +51,7 @@ export const esSV = {
   customers,
   receivables,
   reports,
+  assistant,
   notFound,
   productErrors,
 } as const;

@@ -6,6 +6,7 @@ import { NavUser } from "@/components/shell/nav-user";
 import { ShellBreadcrumbs } from "@/components/shell/shell-breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { DictateButton } from "@/features/assistant/dictate-button";
 
 type TopBarProps = {
   collapsed: boolean;
@@ -46,6 +47,7 @@ export function TopBar({ collapsed, user, onOpenNavigation, onToggleSidebar, wid
       <View className="min-w-0 flex-1 px-1">
         <ShellBreadcrumbs compact={!wide} />
       </View>
+      <DictateButton />
       {wide ? null : <NavUser user={user} variant="avatar" />}
     </View>
   );
