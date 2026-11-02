@@ -5,7 +5,7 @@ import { View } from "react-native";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
+import { type FittedColumn, fitColumns, rendersCompactRecords } from "@/components/ui/fit-columns";
 import { Text } from "@/components/ui/text";
 import { useRecordFormat } from "@/features/customers/format";
 import { MoneyText } from "@/features/customers/money-text";
@@ -140,7 +140,9 @@ export function PurchasesTable({
                     variant="ghost"
                   >
                     <Text className="web:whitespace-nowrap">
-                      {t("purchases.payables.registerPayment")}
+                      {rendersCompactRecords(width)
+                        ? t("purchases.payables.pay")
+                        : t("purchases.payables.registerPayment")}
                     </Text>
                   </Button>
                 ) : null

@@ -261,7 +261,7 @@ function PurchaseFormBody({
                 value={draft.date}
               />
             </View>
-            <View className="min-w-0 sm:w-28">
+            <View className="min-w-0 sm:w-36">
               <TimeField
                 disabled={locked}
                 error={issueText(issues.time)}
@@ -272,7 +272,6 @@ function PurchaseFormBody({
             </View>
             <View className="min-w-0 flex-1">
               <Field
-                description={t("purchases.form.invoiceHint")}
                 editable={!locked}
                 error={issueText(issues.invoiceNumber)}
                 label={t("purchases.form.invoice")}
