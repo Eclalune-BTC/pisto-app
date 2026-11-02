@@ -27,12 +27,16 @@ and the module screens) were merged into `develop` with one combined migration,
   itemized sales, purchases, ledger and assistant directory suites.
 - The Postman collection passed 138 requests and 266 assertions against the local Worker
   (`wrangler dev` with the remote Workers AI binding) and against the hosted Worker, with
-  `--delay-request 1000`.
+  `--delay-request 1000`. After business user management was added it passed 147 requests and
+  285 assertions locally.
 - Migration 0010 was applied to Neon with `pisto_migrator`; `db:seed` added the demo
   suppliers, purchases and itemized sales to the existing demo business. The Worker was deployed as
-  version `07c7930b-b12c-4e7f-8815-7247a15ef219`; `/ready` reported the database as ok and a
+  version `b1c3d2a4-24cf-4d8c-acde-c2a31e4df81d` (after migration 0011 on Neon); `/ready` reported the database as ok and a
   hosted interpretation of "Pagué 18 dólares de luz con la caja" returned an $18.00 utilities
   expense draft from Caja principal.
+- Owners add, re-role and remove staff (`feature/user-management`, 10 PostgreSQL tests); the public
+  page was rebuilt from the product's own screens (`feature/landing-page`). The evidence for each
+  Fase 3 requirement is in [the Phase 3 delivery page](fase3-entrega.md).
 - Rendered and compared with prototype figures 11-15 at 1280 px (light) and 390 px (light): home,
   movements, new sale, accounts payable, the assistant review with a live interpretation, and the
   landing page.
