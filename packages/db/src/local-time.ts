@@ -1,5 +1,3 @@
-/// <reference types="temporal-spec/global" />
-
 import { ProductError } from "./errors.ts";
 
 const supportedCurrencies = new Set(Intl.supportedValuesOf("currency"));
@@ -52,6 +50,20 @@ export function nextCalendarDate(localDate: string): string {
   return date.toISOString().slice(0, 10);
 }
 
+const minuteMs = 60_000;
+const dayMs = 86_400_000;
+
+/** The zone's UTC offset at an instant, at the minute precision of the shared formatter. */
+function zoneOffsetMs(epochMs: number, timeZone: string): number {
+  const parts = getFormatter(timeZone).formatToParts(new Date(epochMs));
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((entry) => entry.type === type)?.value);
+  const wall = new Date(0);
+  wall.setUTCFullYear(part("year"), part("month") - 1, part("day"));
+  wall.setUTCHours(part("hour"), part("minute"), 0, 0);
+  return wall.getTime() - Math.floor(epochMs / minuteMs) * minuteMs;
+}
+
 export function resolveLocalDateTime(input: {
   date: string;
   time: string;
@@ -71,28 +83,41 @@ export function resolveLocalDateTime(input: {
     number,
     number,
   ];
-  let plain: Temporal.PlainDateTime;
-  try {
-    plain = Temporal.PlainDateTime.from({ year, month, day, hour, minute }, { overflow: "reject" });
-  } catch (error) {
-    if (!(error instanceof RangeError)) throw error;
+  // The wall-clock fields read as if they were UTC; a calendar overflow (Feb 30) is rejected.
+  const wall = new Date(0);
+  wall.setUTCFullYear(year, month - 1, day);
+  wall.setUTCHours(hour, minute, 0, 0);
+  if (
+    wall.getUTCFullYear() !== year ||
+    wall.getUTCMonth() !== month - 1 ||
+    wall.getUTCDate() !== day ||
+    wall.getUTCHours() !== hour ||
+    wall.getUTCMinutes() !== minute
+  ) {
     throw new ProductError("VALIDATION_ERROR", "The sale date and time are invalid");
   }
 
-  // A wall-clock minute maps to exactly one instant unless a daylight-saving
-  // transition removes it (a gap) or repeats it (an overlap). Resolving the same
-  // minute with both disambiguation policies detects either case in constant time:
-  // the two results diverge only across a transition, and the requested local time
-  // survives the round trip only when it genuinely exists twice.
-  const earliest = plain.toZonedDateTime(input.timeZone, { disambiguation: "earlier" });
-  const latest = plain.toZonedDateTime(input.timeZone, { disambiguation: "later" });
-  if (earliest.epochMilliseconds !== latest.epochMilliseconds) {
+  // A wall-clock minute maps to exactly one instant unless a daylight-saving transition removes
+  // it (a gap) or repeats it (an overlap). The offsets a day before and after bracket any
+  // transition near this minute; each offset whose instant reads back as the same wall time is a
+  // real occurrence. None means a gap and two mean an overlap.
+  const local = wall.getTime();
+  const occurrences = new Set<number>();
+  for (const offset of [
+    zoneOffsetMs(local - dayMs, input.timeZone),
+    zoneOffsetMs(local + dayMs, input.timeZone),
+  ]) {
+    const instant = local - offset;
+    if (zoneOffsetMs(instant, input.timeZone) === offset) occurrences.add(instant);
+  }
+  const [instant, repeated] = occurrences;
+  if (instant === undefined || repeated !== undefined) {
     throw new ProductError(
       "VALIDATION_ERROR",
-      latest.toPlainDateTime().equals(plain)
+      repeated !== undefined
         ? "That local time is ambiguous in the business time zone"
         : "That local time does not exist in the business time zone",
     );
   }
-  return new Date(earliest.epochMilliseconds);
+  return new Date(instant);
 }

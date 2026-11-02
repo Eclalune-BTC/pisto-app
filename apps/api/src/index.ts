@@ -1,13 +1,47 @@
+import type { RealtimeServerMessage } from "@pisto/contracts";
+
+import { isRealtimeUpgrade } from "./realtime.ts";
 import { createRuntime } from "./runtime.ts";
 
 const runtime = createRuntime(process.env);
 const shutdownTimeoutMs = 9_000;
 const gracefulHttpTimeoutMs = 6_000;
 
-export const server = Bun.serve({
+interface SocketData {
+  businessId: string;
+  unsubscribe?: () => void;
+}
+
+export const server = Bun.serve<SocketData>({
   hostname: runtime.config.host,
   port: runtime.config.port,
-  fetch: runtime.app.fetch,
+  async fetch(request, bunServer) {
+    if (!isRealtimeUpgrade(request)) return runtime.app.fetch(request);
+    const admission = await runtime.authorizeSocket(request);
+    if (admission instanceof Response) return admission;
+    if (bunServer.upgrade(request, { data: { businessId: admission.businessId } })) return;
+    return Response.json(
+      { error: { code: "BAD_REQUEST", message: "A WebSocket upgrade is required" } },
+      { status: 400 },
+    );
+  },
+  websocket: {
+    open(socket) {
+      socket.data.unsubscribe = runtime.realtime.subscribe(socket.data.businessId, socket);
+      socket.send(
+        JSON.stringify({
+          type: "ready",
+          businessId: socket.data.businessId,
+        } satisfies RealtimeServerMessage),
+      );
+    },
+    message(socket, message) {
+      runtime.realtime.receive(socket, typeof message === "string" ? message : null);
+    },
+    close(socket) {
+      socket.data.unsubscribe?.();
+    },
+  },
 });
 
 console.info(

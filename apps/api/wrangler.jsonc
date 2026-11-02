@@ -1,0 +1,39 @@
+// Cloudflare Workers deployment: one Worker serves the Expo web export and forwards API paths to
+// the ApiServer Durable Object. Secrets (DATABASE_URL, BETTER_AUTH_SECRET) are set with
+// `wrangler secret put`; see docs/deployment-cloudflare.md.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "pisto",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "../app/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/v1", "/v1/*", "/health", "/ready"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "API", "class_name": "ApiServer" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ApiServer"] }],
+  "observability": { "enabled": true },
+  "vars": {
+    "NODE_ENV": "production",
+    "BETTER_AUTH_URL": "https://pisto.contact-862.workers.dev",
+    "CORS_ORIGINS": "https://pisto.contact-862.workers.dev",
+    "TRUSTED_ORIGINS": "https://pisto.contact-862.workers.dev,pisto://",
+    "EXPO_SCHEME": "pisto",
+    "AUTH_EMAIL_PASSWORD_ENABLED": "true",
+    "AUTH_IP_ADDRESS_HEADER": "cf-connecting-ip",
+    "DATABASE_SSL": "require",
+    "DATABASE_MAX_CONNECTIONS": "5",
+    "DATABASE_CONNECT_TIMEOUT_SECONDS": "10",
+    "DATABASE_IDLE_TIMEOUT_SECONDS": "60",
+    "BILLING_ENABLED": "false",
+    "REVENUECAT_ENABLED": "false",
+    "PRODUCT_WRITES_ENABLED": "true"
+  }
+}
