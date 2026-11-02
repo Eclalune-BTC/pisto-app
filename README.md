@@ -20,9 +20,13 @@ The product interface is Spanish (`es-SV`); code, commits and documentation are 
 
 ## Demo accounts and roles
 
-`bun run db:seed` creates these accounts in the business *Abarrotes La Ceiba*, with products,
-stock, cash accounts, expenses, sales and receivables. The hosted demo is already seeded. The
-password for all three is `PistoDemo2026` unless `SEED_PASSWORD` was set when seeding.
+`bun run db:seed` creates these accounts in the business *Abarrotes La Ceiba* with six weeks of
+history: 13 products with stock, 4 suppliers and 5 customers, daily sales (some dictated or typed to
+the assistant), weekly purchases on cash and credit with their supplier payments, monthly expenses,
+credit sales with their payments and weekly cash deposits. It ends with customers who owe, one debt
+and one supplier invoice overdue, a product running low and one sold out. The hosted demo already
+has this data. The password for all three is `PistoDemo2026` unless `SEED_PASSWORD` was set when
+seeding.
 
 | Role | Email | Can do |
 | --- | --- | --- |
