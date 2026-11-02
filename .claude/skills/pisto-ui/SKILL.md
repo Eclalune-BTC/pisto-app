@@ -185,4 +185,6 @@ Append one line per lesson: `YYYY-MM-DD · screen · lesson · where it is now e
 - 2026-11-01 · session restore · Replacing the QueryClient when the restored session resolves left
   every mounted query loading forever after a reload; the client changes only on a direct account
   switch · `providers/query-provider.tsx`.
-
+- 2026-11-02 · new sale · Field labels and ghost actions on a lime `bg-highlight` panel lose contrast
+  in dark mode; keep the highlight to the figure block (the total) and the fields on the card
+  surface · `features/sales/itemized/itemized-sale-form.tsx`.
