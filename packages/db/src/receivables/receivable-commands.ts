@@ -169,6 +169,7 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
         occurredLocalTime: command.occurredLocalTime,
         receivableId,
         reference: command.reference ?? null,
+        entrySource: command.entrySource,
       });
       const amountMinorUnits = parseMinorUnits(command.amountMinorUnits, "The amount", {
         allowZero: false,
@@ -229,6 +230,7 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
             timeZone: access.timeZone,
             cashAccountId: command.cashAccountId,
             reference: command.reference ?? null,
+            entrySource: command.entrySource,
             createdByUserId: actor.userId,
           })
           .returning();

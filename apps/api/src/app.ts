@@ -7,6 +7,9 @@ import type {
   CatalogRepository,
   ConsumeProductRequest,
   DatabaseHandle,
+  DebtorsRepository,
+  MoneyTrendRepository,
+  MovementsRepository,
   ReceivablesRepository,
   ReportsRepository,
   SalesRepository,
@@ -23,6 +26,9 @@ import { billingRoutes } from "./routes/billing.ts";
 import { businessRoutes } from "./routes/businesses.ts";
 import { cashRoutes } from "./routes/cash.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
+import { debtorsRoutes } from "./routes/debtors.ts";
+import { moneyTrendRoutes } from "./routes/money-trend.ts";
+import { movementsRoutes } from "./routes/movements.ts";
 import { receivablesRoutes } from "./routes/receivables.ts";
 import { reportsRoutes } from "./routes/reports.ts";
 import { salesRoutes } from "./routes/sales.ts";
@@ -33,6 +39,9 @@ export interface ProductRepositories {
   businesses: BusinessRepository;
   cash: CashRepository;
   catalog: CatalogRepository;
+  debtors: DebtorsRepository;
+  moneyTrend: MoneyTrendRepository;
+  movements: MovementsRepository;
   receivables: ReceivablesRepository;
   reports: ReportsRepository;
   sales: SalesRepository;
@@ -158,12 +167,16 @@ export function createApp(input: {
   }
   app.use(systemRoutes({ database: input.database, billing: input.billing }));
   for (const group of sessionPolicyGroups) app.use(group);
-  const { businesses, cash, catalog, receivables, reports, sales } = input.repositories;
+  const { businesses, cash, catalog, debtors, moneyTrend, movements, receivables, reports, sales } =
+    input.repositories;
   return app
     .use(businessRoutes({ access, businesses }))
     .use(salesRoutes({ access, sales }))
     .use(catalogRoutes({ access, catalog }))
     .use(cashRoutes({ access, cash }))
     .use(receivablesRoutes({ access, receivables }))
-    .use(reportsRoutes({ access, reports }));
+    .use(reportsRoutes({ access, reports }))
+    .use(moneyTrendRoutes({ access, moneyTrend }))
+    .use(movementsRoutes({ access, movements }))
+    .use(debtorsRoutes({ access, debtors }));
 }

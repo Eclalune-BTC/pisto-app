@@ -4,6 +4,9 @@ import { BillingProviderError, type BillingRuntime, RevenueCatWebhookError } fro
 import type {
   CashRepository,
   CatalogRepository,
+  DebtorsRepository,
+  MoneyTrendRepository,
+  MovementsRepository,
   ReceivablesRepository,
   ReportsRepository,
 } from "@pisto/db";
@@ -183,6 +186,18 @@ function testApp(
         cash: unavailableRepository<CashRepository>("Cash repository", options.onRepositoryCall),
         catalog: unavailableRepository<CatalogRepository>(
           "Catalog repository",
+          options.onRepositoryCall,
+        ),
+        debtors: unavailableRepository<DebtorsRepository>(
+          "Debtors repository",
+          options.onRepositoryCall,
+        ),
+        moneyTrend: unavailableRepository<MoneyTrendRepository>(
+          "Money trend repository",
+          options.onRepositoryCall,
+        ),
+        movements: unavailableRepository<MovementsRepository>(
+          "Movements repository",
           options.onRepositoryCall,
         ),
         receivables: unavailableRepository<ReceivablesRepository>(

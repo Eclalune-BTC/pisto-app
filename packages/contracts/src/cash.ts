@@ -6,6 +6,7 @@ import {
   calendarLocalDateSchema,
   currencyCodeSchema,
   currencyMinorUnitDigitsSchema,
+  entrySourceSchema,
   localTimeSchema,
   opaqueCursorSchema,
   positiveMinorUnitsSchema,
@@ -223,6 +224,7 @@ export const postExpenseRequestSchema = z
     payee: optionalPayeeSchema,
     occurredLocalDate: calendarLocalDateSchema,
     occurredLocalTime: localTimeSchema,
+    entrySource: entrySourceSchema.default("manual"),
   })
   .strict();
 
@@ -397,7 +399,7 @@ export type ArchiveCashAccountRequest = z.infer<typeof archiveCashAccountRequest
 export type CashAccountCommandResult = z.infer<typeof cashAccountCommandResultSchema>;
 export type CashAccountListQuery = z.input<typeof cashAccountListQuerySchema>;
 export type CashAccountList = z.infer<typeof cashAccountListSchema>;
-export type PostExpenseRequest = z.infer<typeof postExpenseRequestSchema>;
+export type PostExpenseRequest = z.input<typeof postExpenseRequestSchema>;
 export type VoidExpenseRequest = z.infer<typeof voidExpenseRequestSchema>;
 export type ExpenseCommandResult = z.infer<typeof expenseCommandResultSchema>;
 export type ExpenseListQuery = z.input<typeof expenseListQuerySchema>;

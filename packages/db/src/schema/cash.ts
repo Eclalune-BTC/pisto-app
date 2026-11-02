@@ -34,6 +34,7 @@ export const expense = pgTable(
     currencyMinorUnitDigits: smallint("currency_minor_unit_digits").notNull(),
     description: text("description").notNull(),
     payee: text("payee"),
+    entrySource: text("entry_source").default("manual").notNull(),
     occurredAt: timestamp("occurred_at", { withTimezone: true, mode: "date" }).notNull(),
     occurredLocalDate: text("occurred_local_date").notNull(),
     occurredLocalTime: text("occurred_local_time").notNull(),
@@ -59,6 +60,7 @@ export const expense = pgTable(
       sql`${table.category} in ('inventory', 'rent', 'utilities', 'payroll', 'transport', 'marketing', 'tax', 'other')`,
     ),
     check("expense_amount_positive_check", sql`${table.amountMinorUnits} > 0`),
+    check("expense_entry_source_check", sql`${table.entrySource} in ('manual', 'voice', 'text')`),
     check("expense_currency_check", sql`${table.currency} ~ '^[A-Z]{3}$'`),
     check("expense_currency_digits_check", sql`${table.currencyMinorUnitDigits} between 0 and 4`),
     check(
