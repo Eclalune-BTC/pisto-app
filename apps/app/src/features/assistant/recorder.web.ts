@@ -39,6 +39,8 @@ export async function startRecording(onLevel: (level: number) => void): Promise<
   }
 
   const context = new AudioContext();
+  // Safari can create the context suspended after the awaited permission prompt.
+  if (context.state === "suspended") await context.resume();
   const source = context.createMediaStreamSource(stream);
   // ScriptProcessorNode is deprecated but needs no separately served worklet module; a short
   // dictation does not need the worklet's off-main-thread timing.

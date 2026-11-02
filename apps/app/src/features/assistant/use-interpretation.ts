@@ -2,6 +2,8 @@ import type { AssistantInterpretRequest } from "@pisto/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "expo-router";
 
+import { authClient } from "@/lib/auth-client";
+
 import { assistantApi } from "./api";
 import { type AssistantProblem, assistantProblem } from "./problems";
 import { assistantQueryKeys } from "./queries";
@@ -25,6 +27,7 @@ export function useInterpretation(businessId: string | undefined) {
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
+  const userId = authClient.useSession().data?.user.id;
   const mutation = useMutation({
     mutationFn: (request: AssistantInterpretRequest) => assistantApi.interpret(request),
   });
@@ -34,7 +37,7 @@ export function useInterpretation(businessId: string | undefined) {
     abandoned: () => boolean = () => false,
   ): Promise<InterpretOutcome> {
     // Callers render only for a loaded business; without one there is nowhere to keep a draft.
-    if (!businessId) return { kind: "failed", problem: "unexpected" };
+    if (!businessId || !userId) return { kind: "failed", problem: "unexpected" };
     try {
       const interpretation = await mutation.mutateAsync(request);
       if (abandoned()) return { kind: "abandoned" };
@@ -43,7 +46,7 @@ export function useInterpretation(businessId: string | undefined) {
           ? { kind: "unsupported", reason: interpretation.unsupported }
           : { kind: "failed", problem: "unexpected" };
       }
-      reviewStore.set({ businessId, interpretation });
+      reviewStore.set({ userId, businessId, interpretation });
       if (pathname !== REVIEW_ROUTE) router.push(REVIEW_ROUTE);
       return { kind: "review" };
     } catch (error) {

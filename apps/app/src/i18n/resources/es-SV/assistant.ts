@@ -60,6 +60,7 @@ export const assistant = {
     offline: "Sin conexión. Conéctese a internet para usar el asistente.",
     rateLimited: "Hizo muchas solicitudes seguidas. Espere un momento e intente de nuevo.",
     denied: "Su rol no permite usar el asistente en este negocio.",
+    paused: "Los cambios del negocio están pausados; intente más tarde.",
     unexpected: "No pudimos completar la solicitud. Intente de nuevo.",
     notARecord:
       "No encontré un registro en lo que dijo. Diga qué vendió, compró o pagó, a quién y cuánto.",
@@ -177,5 +178,9 @@ export const assistant = {
     },
     insufficientStock: "No hay suficientes existencias de {{name}}.",
     notPermitted: "Su rol no permite registrar este tipo de movimiento.",
+    totalMismatch:
+      "El total que dijo no coincide con la suma de los productos; revise los precios antes de guardar.",
+    priceMismatch:
+      "El precio que dijo para «{{item}}» no es el del catálogo; ajústelo si corresponde.",
   },
 } as const;

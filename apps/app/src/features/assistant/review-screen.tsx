@@ -2,7 +2,7 @@ import type { AssistantDraft, AssistantInterpretation } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
 import { Mic, PencilLine, TriangleAlert } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
@@ -18,6 +18,7 @@ import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { Textarea } from "@/components/ui/textarea";
 import { TranscriptHighlight } from "@/components/ui/transcript-highlight";
+import { authClient } from "@/lib/auth-client";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead } from "@/lib/query-state";
 import { previewDraftFormSlots } from "./draft-preview";
@@ -73,11 +74,23 @@ function TranscriptPanel({
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(interpretation.text);
   const [outcome, setOutcome] = useState<InterpretOutcome | null>(null);
+  const mounted = useRef(true);
   const sentence = text.trim();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   async function reinterpret() {
     setOutcome(null);
-    const result = await interpret({ text: sentence, source: interpretation.source });
+    // Leaving the review while this runs must not bring the draft back.
+    const result = await interpret(
+      { text: sentence, source: interpretation.source },
+      () => !mounted.current,
+    );
     if (result.kind === "review") setEditing(false);
     else if (result.kind !== "abandoned") setOutcome(result);
   }
@@ -194,7 +207,8 @@ export function AssistantReviewScreen({ slots = previewDraftFormSlots }: ReviewS
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
   const availability = useAssistantAvailability();
-  const entry = useReviewEntry(business?.id);
+  const userId = authClient.useSession().data?.user.id;
+  const entry = useReviewEntry(userId, business?.id);
   const [dialog, setDialog] = useState<EntryMode | null>(null);
   const { interpret, pending } = useInterpretation(business?.id);
 

@@ -22,8 +22,19 @@ import { formatMinorUnits } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { type DraftFormProps, type DraftFormSlots, useFieldMarker } from "./draft-slots";
 
-function Marked({ field, children }: { field: AssistantField; children: string }) {
-  const marker = useFieldMarker(field);
+function Marked({
+  children,
+  field,
+  orField,
+}: {
+  children: string;
+  field: AssistantField;
+  /** A field with no row of its own whose marker this row carries, such as the payment method. */
+  orField?: AssistantField;
+}) {
+  const own = useFieldMarker(field);
+  const other = useFieldMarker(orField ?? field);
+  const marker = own ?? other;
   return (
     <View className="min-w-0 flex-row items-center gap-2">
       {marker === null ? null : <TranscriptMarker marker={marker} />}
@@ -81,7 +92,11 @@ function lineItems(
         : f.t("assistant.values.lineNoPrice", { product, quantity });
     return {
       label: f.t("assistant.fields.product", { position: index + 1 }),
-      value: <Marked field="product">{text}</Marked>,
+      value: (
+        <Marked field="product" orField="quantity">
+          {text}
+        </Marked>
+      ),
     };
   });
 }
@@ -104,10 +119,18 @@ function common(f: Formatters, draft: AssistantDraft): DescriptionItem[] {
   ];
 }
 
-function account(f: Formatters, value: { name: string } | null): DescriptionItem {
+function account(
+  f: Formatters,
+  value: { name: string } | null,
+  methodRow: "own" | "folded",
+): DescriptionItem {
   return {
     label: f.t("assistant.fields.account"),
-    value: <Marked field="account">{value?.name ?? f.t("assistant.values.notStated")}</Marked>,
+    value: (
+      <Marked field="account" orField={methodRow === "folded" ? "paymentMethod" : undefined}>
+        {value?.name ?? f.t("assistant.values.notStated")}
+      </Marked>
+    ),
   };
 }
 
@@ -151,7 +174,7 @@ function items(f: Formatters, draft: AssistantDraft): DescriptionItem[] {
         money(f, "amount", f.t("assistant.fields.total"), draft.totalMinorUnits),
         money(f, "received", f.t("assistant.fields.received"), draft.receivedMinorUnits),
         method(f, draft.paymentMethod),
-        account(f, draft.account),
+        account(f, draft.account, "own"),
         money(f, "credit", f.t("assistant.fields.credit"), draft.creditMinorUnits),
         ...dueDate(f, draft.dueDate),
         ...(draft.description
@@ -191,7 +214,7 @@ function items(f: Formatters, draft: AssistantDraft): DescriptionItem[] {
             <Marked field="supplier">{draft.payee ?? f.t("assistant.values.notStated")}</Marked>
           ),
         },
-        account(f, draft.account),
+        account(f, draft.account, "folded"),
       ];
     case "purchase":
       return [
@@ -220,7 +243,7 @@ function items(f: Formatters, draft: AssistantDraft): DescriptionItem[] {
             </Marked>
           ),
         },
-        account(f, draft.account),
+        account(f, draft.account, "folded"),
         ...dueDate(f, draft.dueDate),
         {
           label: f.t("assistant.fields.goodsReceived"),
@@ -249,7 +272,7 @@ function items(f: Formatters, draft: AssistantDraft): DescriptionItem[] {
             : f.t("assistant.values.notStated"),
         },
         money(f, "amount", f.t("assistant.fields.amount"), draft.amountMinorUnits),
-        account(f, draft.account),
+        account(f, draft.account, "folded"),
       ];
     case "supplier_payment":
       return [
@@ -272,7 +295,7 @@ function items(f: Formatters, draft: AssistantDraft): DescriptionItem[] {
             : f.t("assistant.values.notStated"),
         },
         money(f, "amount", f.t("assistant.fields.amount"), draft.amountMinorUnits),
-        account(f, draft.account),
+        account(f, draft.account, "folded"),
       ];
   }
 }

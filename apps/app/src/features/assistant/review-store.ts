@@ -6,6 +6,8 @@ import { useSyncExternalStore } from "react";
  * written to the URL or to storage, and a reload starts over.
  */
 export type ReviewEntry = {
+  /** The signed-in user and business the draft was made for; nobody else ever sees it. */
+  userId: string;
   businessId: string;
   interpretation: AssistantInterpretation;
   /** Increases with every new interpretation, so editors seeded from the last one start over. */
@@ -39,8 +41,19 @@ export const reviewStore = {
   },
 };
 
-/** The entry of this business only; another business's draft is never shown. */
-export function useReviewEntry(businessId: string | undefined): ReviewEntry | null {
+/** The entry of this user and business only; a shared device never shows another's draft. */
+export function visibleEntry(
+  entry: ReviewEntry | null,
+  userId: string | undefined,
+  businessId: string | undefined,
+): ReviewEntry | null {
+  return entry && entry.userId === userId && entry.businessId === businessId ? entry : null;
+}
+
+export function useReviewEntry(
+  userId: string | undefined,
+  businessId: string | undefined,
+): ReviewEntry | null {
   const entry = useSyncExternalStore(reviewStore.subscribe, reviewStore.get, reviewStore.get);
-  return entry && entry.businessId === businessId ? entry : null;
+  return visibleEntry(entry, userId, businessId);
 }

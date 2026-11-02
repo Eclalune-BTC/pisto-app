@@ -248,6 +248,11 @@ function EntryFlow({
   }
 
   async function transcribe(audio: Blob) {
+    // A stop before the first audio callback leaves only the 44-byte header.
+    if (audio.size <= 44) {
+      setPhase({ kind: "voiceProblem", problem: "silence", audio: null });
+      return;
+    }
     setPhase({ kind: "transcribing" });
     const controller = new AbortController();
     transcription.current = controller;
@@ -267,7 +272,9 @@ function EntryFlow({
       if (problem === "provider") {
         void queryClient.invalidateQueries({ queryKey: assistantQueryKeys.status(businessId) });
       }
-      setPhase({ kind: "voiceProblem", problem, audio });
+      // Only an outage or a lost connection is worth resending the same audio for.
+      const retryable = problem === "provider" || problem === "offline";
+      setPhase({ kind: "voiceProblem", problem, audio: retryable ? audio : null });
     }
   }
 

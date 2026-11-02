@@ -7,7 +7,7 @@ import { esSV } from "@/i18n/resources/es-SV";
 import { ApiClientError } from "@/lib/api-error";
 import { noticeMessage } from "./notices";
 import { assistantProblem } from "./problems";
-import { reviewStore } from "./review-store";
+import { reviewStore, visibleEntry } from "./review-store";
 import { downsample, encodeWav, levelOf } from "./wav";
 
 const translator = createInstance();
@@ -73,6 +73,7 @@ describe("notice sentences", () => {
       "exceeds_total",
       "insufficient_stock",
       "not_permitted",
+      "total_mismatch",
     ] as const;
     const fields = [
       "kind",
@@ -117,10 +118,14 @@ describe("review store", () => {
 
   beforeEach(() => reviewStore.clear());
 
-  test("keeps one draft per business and counts revisions", () => {
-    reviewStore.set({ businessId: "business_a", interpretation });
+  test("shows a draft only to the user and business it was made for", () => {
+    reviewStore.set({ userId: "owner", businessId: "business_a", interpretation });
     const first = reviewStore.get();
-    reviewStore.set({ businessId: "business_a", interpretation });
+    expect(visibleEntry(first, "owner", "business_a")).toBe(first);
+    expect(visibleEntry(first, "seller", "business_a")).toBeNull();
+    expect(visibleEntry(first, "owner", "business_b")).toBeNull();
+    expect(visibleEntry(first, undefined, "business_a")).toBeNull();
+    reviewStore.set({ userId: "owner", businessId: "business_a", interpretation });
     expect(reviewStore.get()?.revision).toBe((first?.revision ?? 0) + 1);
     reviewStore.clear();
     expect(reviewStore.get()).toBeNull();

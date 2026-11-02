@@ -39,6 +39,10 @@ export function noticeMessage(
   switch (notice.code) {
     case "not_permitted":
       return t("assistant.notices.notPermitted");
+    case "total_mismatch":
+      return line
+        ? t("assistant.notices.priceMismatch", { item })
+        : t("assistant.notices.totalMismatch");
     case "insufficient_stock":
       return t("assistant.notices.insufficientStock", { name: line?.product?.name ?? item });
     case "exceeds_total":
