@@ -55,9 +55,8 @@ export const sales = {
     unavailableTitle: "No pudimos cargar el historial",
     unavailableDescription: "La consulta no terminó. Vuelve a intentarlo.",
     queriedAt: "Consultado el {{date}}",
-    customer: "Cliente",
+    detail: "Cliente o descripción",
     source: "Registro",
-    noCustomer: "Sin cliente",
   },
   mode: {
     label: "Forma de registrar la venta",

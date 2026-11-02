@@ -289,7 +289,7 @@ function ItemizedSaleEditor({
         />
         {draft.customer && !locked ? (
           <Button
-            className="self-start"
+            className="min-h-0 self-start px-0 py-0"
             label={t("sales.itemized.clearCustomer")}
             onPress={() => update({ customer: null })}
             size="sm"
@@ -420,7 +420,7 @@ function ItemizedSaleEditor({
         </>
       ) : null}
       {owes ? (
-        <View className="min-w-0 gap-3 rounded-md border border-border bg-card p-3">
+        <View className="min-w-0 gap-3 rounded-md border border-border bg-background p-3">
           <View className="flex-row items-baseline justify-between gap-3">
             <Text className="text-sm font-medium">{t("sales.itemized.balance")}</Text>
             <Text className="font-ui text-base font-semibold tabular-nums">{money(balance)}</Text>
@@ -530,10 +530,12 @@ function ItemizedSaleEditor({
             {productsBlock}
             {note}
           </View>
-          <View className="w-[320px] shrink-0 gap-4 rounded-lg bg-highlight p-4">
-            {totalBlock}
-            {payment}
-            {actions}
+          <View className="w-[320px] shrink-0 overflow-hidden rounded-lg border border-border bg-card">
+            <View className="bg-highlight px-4 py-3">{totalBlock}</View>
+            <View className="gap-4 p-4">
+              {payment}
+              {actions}
+            </View>
           </View>
         </View>
       ) : (

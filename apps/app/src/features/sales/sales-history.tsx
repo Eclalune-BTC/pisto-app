@@ -63,42 +63,37 @@ export function SalesHistory({
         ),
       },
       {
-        id: "customer",
-        header: t("sales.list.customer"),
-        meta: { hideOnCompact: true },
-        // A total-only sale names nobody; an itemized one without a customer is a counter sale.
-        cell: ({ row: { original } }) =>
-          original.entryMode === "itemized" ? (
-            <Text className="text-[13px]" numberOfLines={1}>
-              {original.customer?.name ?? t("sales.itemized.counterSale")}
-            </Text>
-          ) : (
-            <Text className="text-[13px]">
-              <Text aria-hidden className="text-[13px] text-muted-foreground">
-                —
-              </Text>
-              <Text className="sr-only">{t("sales.list.noCustomer")}</Text>
-            </Text>
-          ),
-      },
-      {
         id: "description",
-        header: t("dataTable.columns.description"),
-        // A two-line clamp lets a long note wrap; a single-line clamp would force the table
-        // wider than its container on tablets.
-        cell: ({ row: { original } }) =>
-          original.description ? (
-            <Text className="text-[13px]" numberOfLines={2}>
-              {original.description}
-            </Text>
-          ) : (
-            <Text className="text-[13px]">
-              <Text aria-hidden className="text-[13px] text-muted-foreground">
-                —
+        header: t("sales.list.detail"),
+        // An itemized sale is told apart by its customer, a total-only one by its note. A two-line
+        // clamp lets a long note wrap; a single-line clamp would force the table wider on tablets.
+        cell: ({ row: { original } }) => {
+          const primary =
+            original.entryMode === "itemized"
+              ? (original.customer?.name ?? t("sales.itemized.counterSale"))
+              : original.description;
+          if (!primary) {
+            return (
+              <Text className="text-[13px]">
+                <Text aria-hidden className="text-[13px] text-muted-foreground">
+                  —
+                </Text>
+                <Text className="sr-only">{t("common.noDescription")}</Text>
               </Text>
-              <Text className="sr-only">{t("common.noDescription")}</Text>
+            );
+          }
+          return (
+            <Text className="text-[13px]" numberOfLines={2}>
+              {primary}
+              {original.entryMode === "itemized" && original.description ? (
+                <Text className="text-[13px] text-muted-foreground">
+                  {" · "}
+                  {original.description}
+                </Text>
+              ) : null}
             </Text>
-          ),
+          );
+        },
       },
       {
         id: "source",
