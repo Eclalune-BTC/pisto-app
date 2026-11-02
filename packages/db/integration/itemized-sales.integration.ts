@@ -18,6 +18,7 @@ import {
   saleCorrection,
   saleLine,
   saleOperation,
+  saleReview,
   session,
   user,
 } from "../src/index.ts";
@@ -262,6 +263,7 @@ afterAll(async () => {
       inArray(table.businessId as typeof sale.businessId, businessIds);
     await database.db.delete(saleCorrection).where(scoped(saleCorrection));
     await database.db.delete(saleOperation).where(scoped(saleOperation));
+    await database.db.delete(saleReview).where(scoped(saleReview));
     await database.db.delete(saleLine).where(scoped(saleLine));
     await database.db.delete(catalogOperation).where(scoped(catalogOperation));
     await database.db.delete(inventoryMovement).where(scoped(inventoryMovement));
@@ -386,6 +388,18 @@ describe("itemized sales on PostgreSQL 18", () => {
         }),
       ),
     ).toBe("IDEMPOTENCY_CONFLICT");
+    const review = await sales.prepareSaleReview(actor("admin"), {
+      idempotencyKey: crypto.randomUUID(),
+      grossMinorUnits: "650",
+      occurredLocalDate: "2026-11-02",
+      occurredLocalTime: "10:15",
+    });
+    expect(
+      await rejection(
+        sales.createItemizedSale(actor("admin"), command({ idempotencyKey: review.id })),
+      ),
+    ).toBe("IDEMPOTENCY_CONFLICT");
+    await sales.dismissSaleReview(actor("admin"), review.id, null);
     expect(
       await rejection(
         sales.createSale(actor("member"), {

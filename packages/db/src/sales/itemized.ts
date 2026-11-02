@@ -24,7 +24,7 @@ import { fingerprintValue, lockCommandKey, normalizeIdempotencyKey } from "../op
 import { postSaleReceivable, requireSaleCustomer } from "../receivables/sale-receivable.ts";
 import { customer } from "../schema/receivables.ts";
 import { saleLine } from "../schema/sale-line.ts";
-import { sale, saleCorrection, saleOperation } from "../schema/sales.ts";
+import { sale, saleCorrection, saleOperation, saleReview } from "../schema/sales.ts";
 import { lineSubtotalMinorUnits, saleTotalMinorUnits } from "./line-amounts.ts";
 import { requireKeyUnusedBy, type SaleRecord, toCorrection, toSale } from "./records.ts";
 
@@ -147,7 +147,9 @@ async function readItemizedResult(
 /** Bounded text for the receivable a credit sale opens: the sale note, else what was sold. */
 function receivableDescription(description: string | undefined, productNames: string[]): string {
   const text = description ?? productNames.join(", ");
-  return text.length <= 240 ? text : `${text.slice(0, 239).trimEnd()}…`;
+  // Cut on code points so a name never ends in half of a surrogate pair.
+  const characters = Array.from(text);
+  return characters.length <= 240 ? text : `${characters.slice(0, 239).join("").trimEnd()}…`;
 }
 
 /**
@@ -224,6 +226,24 @@ export async function postItemizedSale(
       );
     }
     return readItemizedResult(tx, existing.record, existing.correction, true);
+  }
+  // A total-only review reserves its key for the reviewed sale, open or dismissed.
+  const [review] = await tx
+    .select({ id: saleReview.id })
+    .from(saleReview)
+    .where(
+      and(
+        eq(saleReview.id, key.idempotencyKey),
+        eq(saleReview.businessId, key.businessId),
+        eq(saleReview.actorUserId, key.actorUserId),
+      ),
+    )
+    .limit(1);
+  if (review) {
+    throw new ProductError(
+      "IDEMPOTENCY_CONFLICT",
+      "That confirmation key belongs to a total-only sale review",
+    );
   }
 
   const occurredAt = resolveLocalDateTime({
