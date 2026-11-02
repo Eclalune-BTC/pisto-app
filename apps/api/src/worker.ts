@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import type { WorkersAiBinding } from "@pisto/assistant";
 import type { RealtimeServerMessage } from "@pisto/contracts";
 import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 import { z } from "zod";
@@ -34,7 +35,12 @@ z.config({ jitless: true });
 const configuration = Object.fromEntries(
   Object.entries(env).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
 );
-const runtime = createRuntime(configuration, { adapter: CloudflareAdapter });
+const ai = env.AI as Partial<WorkersAiBinding> | undefined;
+const runtime = createRuntime(configuration, {
+  adapter: CloudflareAdapter,
+  // The Workers AI binding declared in wrangler.jsonc; without it the assistant reports itself off.
+  ...(typeof ai?.run === "function" ? { ai: ai as WorkersAiBinding } : {}),
+});
 runtime.app.compile();
 
 async function acceptRealtime(request: Request): Promise<Response> {

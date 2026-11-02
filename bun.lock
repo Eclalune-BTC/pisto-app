@@ -15,6 +15,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@elysiajs/cors": "1.4.2",
+        "@pisto/assistant": "workspace:*",
         "@pisto/auth": "workspace:*",
         "@pisto/billing": "workspace:*",
         "@pisto/config": "workspace:*",
