@@ -315,6 +315,8 @@ describe("product repository on PostgreSQL 18", () => {
         "receivables:read",
         "receivables:manage",
         "reports:read",
+        "purchases:read",
+        "purchases:manage",
         "assistant:use",
       ],
     });
@@ -434,6 +436,8 @@ describe("product repository on PostgreSQL 18", () => {
         "receivables:read",
         "receivables:manage",
         "reports:read",
+        "purchases:read",
+        "purchases:manage",
         "assistant:use",
       ],
     });
@@ -446,6 +450,7 @@ describe("product repository on PostgreSQL 18", () => {
         "sales:summary:read",
         "catalog:read",
         "inventory:read",
+        "customers:read",
         "assistant:use",
       ],
     });

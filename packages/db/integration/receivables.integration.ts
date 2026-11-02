@@ -186,9 +186,11 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
     await expect(
       repository.getCustomer(actor("ownerB", businessB), created.customer.id),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
-    await expect(
-      repository.listCustomers(actor("member", businessA), { limit: 25, status: "active" }),
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    const sellerView = await repository.listCustomers(actor("member", businessA), {
+      limit: 25,
+      status: "active",
+    });
+    expect(sellerView.items.map(({ id }) => id)).toContain(created.customer.id);
     await expect(
       repository.listCustomers(actor("unknown", businessA), { limit: 25, status: "active" }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
