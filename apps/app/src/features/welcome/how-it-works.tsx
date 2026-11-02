@@ -110,7 +110,7 @@ function Saved() {
         <SurfaceHeader action={t("operate.home.today.all")} title={t("operate.home.today.title")} />
       </View>
       <MovementLine className="bg-chart-fill" movement={sale} />
-      {earlier.slice(0, 2).map((movement) => (
+      {earlier.slice(0, 1).map((movement) => (
         <MovementLine className="border-t border-border" key={movement.key} movement={movement} />
       ))}
       <View className="gap-2 border-t border-border px-4 py-3">
@@ -145,16 +145,16 @@ function Step({
         <Heading className="text-base leading-6" level={3}>
           {t(`welcome.how.steps.${step}.title`)}
         </Heading>
-        <Text className="text-[15px] leading-6 text-muted-foreground">
+        <Text className="text-[15px] leading-6 text-muted-foreground web:text-pretty">
           {t(`welcome.how.steps.${step}.description`)}
         </Text>
       </View>
       <View
         accessibilityLabel={figure ? t(`welcome.how.steps.${step}.figure`) : undefined}
-        className="pointer-events-none min-w-0 justify-center rounded-xl bg-background p-2.5 sm:p-5 md:flex-1"
+        className="pointer-events-none min-w-0 max-w-[520px] md:flex-1 lg:max-w-none"
         role={figure ? "figure" : undefined}
       >
-        <View className="w-full min-w-0 max-w-[460px] self-center">{children}</View>
+        {children}
       </View>
     </View>
   );
@@ -164,7 +164,7 @@ function Step({
 export function HowItWorks() {
   const { t } = useTranslation();
   return (
-    <View className="min-w-0 gap-12 lg:flex-row lg:items-stretch lg:gap-8" role="list">
+    <View className="min-w-0 gap-12 lg:flex-row lg:items-start lg:gap-8" role="list">
       <Step step="say">
         <Dictating />
       </Step>

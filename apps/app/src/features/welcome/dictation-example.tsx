@@ -78,10 +78,7 @@ export function DictationExample({
         />
       </View>
       <View
-        className={cn(
-          "gap-0.5 rounded-xl bg-card px-4 py-3",
-          inverse ? "ml-0 sm:ml-8" : "border border-border",
-        )}
+        className={cn("gap-0.5 rounded-xl bg-card px-4 py-3", !inverse && "border border-border")}
       >
         <View className="flex-row items-center justify-between gap-2 pb-1.5">
           <Text className="font-ui text-[13px] text-card-foreground">

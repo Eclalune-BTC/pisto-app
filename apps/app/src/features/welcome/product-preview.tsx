@@ -199,7 +199,7 @@ export function ProductPreview() {
   return (
     <View
       accessibilityLabel={t("welcome.preview.label")}
-      className="min-w-0 gap-2.5 rounded-xl bg-primary p-2 dark:border dark:border-border dark:bg-card sm:p-3"
+      className="min-w-0 gap-2.5 rounded-xl bg-primary p-2 dark:border dark:border-border dark:bg-card sm:p-3 xl:p-2.5"
       role="figure"
     >
       <View className="flex-row flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-1.5 pt-0.5">
@@ -210,7 +210,7 @@ export function ProductPreview() {
           {t("welcome.preview.example")}
         </Text>
       </View>
-      <View className="pointer-events-none min-w-0 gap-4 rounded-lg bg-background p-3 sm:p-4">
+      <View className="pointer-events-none min-w-0 gap-4 rounded-lg bg-background p-3 sm:p-4 xl:p-3.5">
         <View className="flex-row items-center justify-between gap-3">
           <View className="min-w-0 flex-1">
             <Text className="font-heading text-xl leading-7 tracking-[-0.3px]">
@@ -232,7 +232,7 @@ export function ProductPreview() {
             <MoneyPanel />
             <TodayPanel />
           </View>
-          <View className="hidden w-[248px] shrink-0 gap-3 sm:flex">
+          <View className="hidden w-[260px] shrink-0 gap-3 sm:flex">
             <DebtorsPanel />
             <PayablesPanel />
           </View>

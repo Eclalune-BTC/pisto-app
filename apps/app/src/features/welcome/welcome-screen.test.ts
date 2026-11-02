@@ -189,6 +189,11 @@ describe("example business", () => {
       BigInt(EXAMPLE_PAYABLES.outstanding),
     );
     expect(EXAMPLE_CREDITORS).toHaveLength(EXAMPLE_PAYABLES.purchases);
+    const dueThisWeek = EXAMPLE_CREDITORS.filter((creditor) => creditor.dueInDays <= 7);
+    expect(sum(dueThisWeek.map((creditor) => creditor.minorUnits))).toBe(
+      BigInt(EXAMPLE_PAYABLES.dueThisWeek),
+    );
+    expect(EXAMPLE_CREDITORS.every((creditor) => creditor.dueInDays >= 0)).toBe(true);
   });
 
   test("lists the largest overdue customers first, as the home does", () => {
@@ -207,15 +212,15 @@ describe("example business", () => {
     );
   });
 
-  test("reports six months that end with the current one", () => {
+  test("reports the six complete months before the current one", () => {
     const months = exampleCashFlow(today);
     expect(months.map((month) => month.month)).toEqual([
+      "2026-05",
       "2026-06",
       "2026-07",
       "2026-08",
       "2026-09",
       "2026-10",
-      "2026-11",
     ]);
     for (const month of months) {
       expect(BigInt(month.inflowMinorUnits) - BigInt(month.outflowMinorUnits)).toBe(

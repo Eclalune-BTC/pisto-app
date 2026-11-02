@@ -92,30 +92,67 @@ export function exampleMoneyTrend(today: string): MoneyTrend {
 }
 
 export type ExampleMovement = {
-  /** Key of its wording under `welcome.sample.movements`. */
-  key: "dictatedSale" | "payment" | "purchase" | "expense" | "counterSale";
+  /** Which wording `useMovementCopy` gives the row. */
+  key:
+    | "dictatedSale"
+    | "rosaPayment"
+    | "electricity"
+    | "bakeryPurchase"
+    | "counterSale"
+    | "creditSale"
+    | "dairyPayment"
+    | "rent"
+    | "pedroPayment"
+    | "morningSale";
   kind: MovementKind;
   source: EntrySource;
   time: string;
   amountMinorUnits: string;
 };
 
-/** Today's movements, newest first; the dictated sale is the one the "Cómo funciona" steps save. */
+/** Today's movements, newest first; the dictated sale is the one "Cómo funciona" saves. */
 export const EXAMPLE_MOVEMENTS: readonly ExampleMovement[] = [
   { key: "dictatedSale", kind: "sale", source: "voice", time: "10:12", amountMinorUnits: "500" },
   {
-    key: "payment",
+    key: "rosaPayment",
     kind: "receivable_payment",
     source: "voice",
     time: "10:05",
     amountMinorUnits: "2000",
   },
-  { key: "purchase", kind: "purchase", source: "manual", time: "09:45", amountMinorUnits: "-4200" },
-  { key: "expense", kind: "expense", source: "text", time: "09:20", amountMinorUnits: "-6420" },
+  { key: "electricity", kind: "expense", source: "text", time: "09:45", amountMinorUnits: "-6420" },
+  {
+    key: "bakeryPurchase",
+    kind: "purchase",
+    source: "manual",
+    time: "09:20",
+    amountMinorUnits: "-4200",
+  },
   { key: "counterSale", kind: "sale", source: "manual", time: "08:45", amountMinorUnits: "2340" },
 ];
 
-/** Money in and out across `EXAMPLE_MOVEMENTS`. */
+/** Yesterday's movements, newest first: the Movimientos preview shows a day the home does not. */
+export const EXAMPLE_YESTERDAY: readonly ExampleMovement[] = [
+  { key: "creditSale", kind: "sale", source: "voice", time: "17:40", amountMinorUnits: "0" },
+  {
+    key: "dairyPayment",
+    kind: "supplier_payment",
+    source: "manual",
+    time: "16:15",
+    amountMinorUnits: "-12000",
+  },
+  { key: "rent", kind: "expense", source: "text", time: "11:30", amountMinorUnits: "-25000" },
+  {
+    key: "pedroPayment",
+    kind: "receivable_payment",
+    source: "voice",
+    time: "10:50",
+    amountMinorUnits: "1500",
+  },
+  { key: "morningSale", kind: "sale", source: "manual", time: "07:55", amountMinorUnits: "6125" },
+];
+
+/** Money in and out across a list of movements. */
 export function movementTotals(movements: readonly ExampleMovement[]) {
   let inflow = 0n;
   let outflow = 0n;
@@ -165,22 +202,30 @@ export const EXAMPLE_DEBTORS: readonly ExampleBalance[] = [
 ];
 
 /** Open supplier purchases, the next one due first; they add up to `EXAMPLE_PAYABLES.outstanding`. */
-export const EXAMPLE_CREDITORS: readonly ExampleBalance[] = [
-  { name: "elSol", minorUnits: "123900", dueInDays: 3 },
-  { name: "lacteos", minorUnits: "61000", dueInDays: 10 },
-  { name: "centro", minorUnits: "18600", dueInDays: 18 },
+export const EXAMPLE_CREDITORS: readonly (ExampleBalance & { invoice: string })[] = [
+  { name: "elSol", minorUnits: "123900", dueInDays: 3, invoice: "F-1877" },
+  { name: "lacteos", minorUnits: "61000", dueInDays: 10, invoice: "F-0457" },
+  { name: "centro", minorUnits: "18600", dueInDays: 18, invoice: "F-004530" },
 ];
 
-export const EXAMPLE_PAYABLES = { outstanding: "203500", purchases: 3 } as const;
+/** Only the first purchase falls due within the week; nothing is overdue. */
+export const EXAMPLE_PAYABLES = {
+  outstanding: "203500",
+  purchases: 3,
+  dueThisWeek: "123900",
+} as const;
 
-/** Six months of money in and out; the current month runs to today. */
+/**
+ * The six complete months before the current one. A month in progress would need figures that
+ * follow the day of the month to stay believable next to today's movements.
+ */
 const CASH_FLOW = [
   { inflow: "1048000", outflow: "962000" },
   { inflow: "1123000", outflow: "1018000" },
   { inflow: "1086000", outflow: "1041000" },
   { inflow: "1194000", outflow: "1063000" },
   { inflow: "1252000", outflow: "1096000" },
-  { inflow: "314875", outflow: "221640" },
+  { inflow: "1218500", outflow: "1143250" },
 ] as const;
 
 export function exampleCashFlow(today: string): CashFlowReport["months"] {
@@ -189,7 +234,7 @@ export function exampleCashFlow(today: string): CashFlowReport["months"] {
     const net = BigInt(month.inflow) - BigInt(month.outflow);
     closing += net;
     return {
-      month: shiftLocalMonth(today, index - (CASH_FLOW.length - 1)),
+      month: shiftLocalMonth(today, index - CASH_FLOW.length),
       inflowMinorUnits: month.inflow,
       outflowMinorUnits: month.outflow,
       netMinorUnits: String(net),

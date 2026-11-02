@@ -4,7 +4,7 @@ export const welcome = {
   pageTitle: "Pisto · Las cuentas de su negocio, sin cuaderno",
   title: "Las cuentas de su negocio, sin cuaderno.",
   description:
-    "Ventas, compras, gastos, caja, cuentas por cobrar y por pagar, y reportes en un solo lugar: usted dice o escribe lo que pasó y Pisto deja el registro listo para revisar.",
+    "Ventas, compras, gastos, caja, reportes y quién le debe o a quién le debe, en un solo lugar. Usted dice o escribe lo que pasó y Pisto deja el registro listo para revisar.",
   availability: "Funciona en el navegador de su computadora o de su teléfono.",
   preview: {
     label: "Ejemplo de la pantalla Hoy de Pisto con un negocio ficticio y cifras inventadas",
@@ -14,13 +14,14 @@ export const welcome = {
     business: "Abarrotes La Ceiba",
     counterSale: "Venta de mostrador",
     electricity: "Factura de luz",
+    rent: "Alquiler del local",
     people: {
       carlos: "Carlos Rivas",
       rosa: "Rosa Ayala",
       comedor: "Comedor El Pilar",
       pedro: "Pedro Alvarado",
-      santaRita: "Panificadora Santa Rita",
-      elSol: "Abarrotes Mayoreo El Sol",
+      santaRita: "Panadería Santa Rita",
+      elSol: "Mayoreo El Sol",
       lacteos: "Lácteos San Julián",
       centro: "Distribuidora Centro",
     },
@@ -41,7 +42,7 @@ export const welcome = {
     rows: {
       kind: { label: "Tipo", value: "Venta" },
       customer: { label: "Cliente", value: "Carlos Rivas" },
-      product: { label: "Producto", value: "Café molido 1 lb, 3 a $3.25" },
+      product: { label: "Producto", value: "Café molido 1 lb × 3 · $9.75" },
       received: { label: "Recibido", value: "$5.00 en efectivo" },
       credit: { label: "Queda debiendo", value: "$4.75" },
     },
@@ -49,7 +50,7 @@ export const welcome = {
   how: {
     title: "Cómo funciona",
     description:
-      "Una venta, una compra o un gasto se registran con una frase. Nada se guarda hasta que usted lo confirma.",
+      "Una venta, una compra o un gasto se registran con una sola frase, dicha o escrita.",
     steps: {
       say: {
         title: "Dígalo o escríbalo",
@@ -57,13 +58,13 @@ export const welcome = {
         figure: "Ejemplo: Pisto escucha la venta que usted dicta",
       },
       review: {
-        title: "Revise lo que entendió",
-        description: "Cada dato lleva el número de la parte de la frase de donde salió.",
+        title: "Revise lo que Pisto entendió",
+        description: "Cada dato muestra, con un número, de qué parte de su frase salió.",
         figure: "Ejemplo: la venta dictada, lista para revisar",
       },
       save: {
         title: "Guárdelo y véalo al instante",
-        description: "La venta aparece en Movimientos y los saldos de caja y de cobros cambian.",
+        description: "La venta aparece en Movimientos y la caja y lo que le deben se actualizan.",
         figure: "Ejemplo: la venta guardada y los saldos que cambió",
       },
     },
@@ -71,22 +72,23 @@ export const welcome = {
   modules: {
     title: "Lo que lleva Pisto",
     description:
-      "Cada pantalla responde una pregunta del día con cifras exactas. También lleva productos, inventario, clientes, proveedores y gastos.",
+      "Movimientos, cobros, pagos y reportes con cifras exactas. Pisto también lleva productos, inventario, clientes, proveedores y gastos.",
     items: {
       movements: {
         title: "Movimientos",
-        description: "Todo el dinero que entra y sale, con la hora, el tipo y cómo se registró.",
+        description:
+          "Todo el dinero que entra y sale, día por día, con la hora y cómo se registró.",
         figure: "Ejemplo de los movimientos de un día",
       },
       receivables: {
         title: "Cuentas por cobrar",
-        description: "Quién le debe, cuánto y desde cuándo, con la antigüedad de cada saldo.",
-        figure: "Ejemplo de las cuentas por cobrar y su antigüedad",
+        description: "Cuánto le deben, cuánto está vencido y desde hace cuánto.",
+        figure: "Ejemplo del resumen de las cuentas por cobrar y su antigüedad",
       },
       payables: {
         title: "Cuentas por pagar",
-        description: "Lo que debe a sus proveedores y cuándo vence cada pago.",
-        figure: "Ejemplo de las cuentas por pagar y el próximo pago",
+        description: "Lo que debe a sus proveedores, factura por factura, y cuándo vence.",
+        figure: "Ejemplo de las cuentas por pagar por factura",
       },
       reports: {
         title: "Reportes",
@@ -108,12 +110,12 @@ export const welcome = {
       business: {
         title: "Cada dato es de un solo negocio",
         description:
-          "Ventas, cuentas y reportes quedan en el negocio donde se registraron, con su fecha, su cuenta y quién lo hizo.",
+          "Ventas, cuentas y reportes quedan en el negocio donde se registraron, con su fecha, la cuenta de caja o banco y quién lo registró.",
       },
       scope: {
         title: "Lo que Pisto no hace",
         description:
-          "No emite factura electrónica (DTE), no calcula planillas y no se conecta con su banco. Sirve para llevar la operación del día; la contabilidad sigue a cargo de su contador.",
+          "No emite factura electrónica (DTE), no calcula planillas ni se conecta con su banco. La contabilidad sigue a cargo de su contador.",
       },
     },
   },

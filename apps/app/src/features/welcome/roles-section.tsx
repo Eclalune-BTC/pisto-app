@@ -35,7 +35,10 @@ function RoleMatrix() {
           className="flex-row items-center gap-2 border-b border-border bg-muted/60 px-4 py-2"
           role="row"
         >
-          <Text className="flex-[2] text-xs leading-4 text-muted-foreground" role="columnheader">
+          <Text
+            className="flex-[2] text-xs leading-4 text-muted-foreground sm:flex-[3]"
+            role="columnheader"
+          >
             {t("settings.matrix.title")}
           </Text>
           {ROLES.map((role) => (
@@ -57,7 +60,7 @@ function RoleMatrix() {
             key={capability.key}
             role="row"
           >
-            <Text className="flex-[2] text-[13px] leading-5" role="rowheader">
+            <Text className="flex-[2] text-[13px] leading-5 sm:flex-[3]" role="rowheader">
               {t(`settings.matrix.${capability.key}`)}
             </Text>
             {ROLES.map((role) => {
@@ -94,7 +97,7 @@ export function RolesAndTrust() {
       <View className="min-w-0 lg:flex-1">
         <RoleMatrix />
       </View>
-      <View className="min-w-0 lg:w-[400px]" role="list">
+      <View className="min-w-0 lg:w-[440px]" role="list">
         {TRUST_POINTS.map((point, index) => (
           <View
             className={cn(
@@ -108,7 +111,7 @@ export function RolesAndTrust() {
             <Heading className="text-base leading-6" level={3}>
               {t(`welcome.roles.trust.${point}.title`)}
             </Heading>
-            <Text className="text-[15px] leading-6 text-muted-foreground">
+            <Text className="text-[15px] leading-6 text-muted-foreground web:text-pretty">
               {t(`welcome.roles.trust.${point}.description`)}
             </Text>
           </View>

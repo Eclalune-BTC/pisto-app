@@ -18,28 +18,24 @@ import { RolesAndTrust } from "./roles-section";
 /** The one content width every band of the page shares, with the shell's gutters. */
 const CONTAINER = "mx-auto w-full max-w-[1200px] px-4 sm:px-8";
 
-const SECTION_TITLE =
-  "text-[26px] leading-8 tracking-[-0.6px] sm:text-[32px] sm:leading-10 sm:tracking-[-0.9px]";
-
+/** A page section: one H2 and its sentence over the content, separated by a hairline. */
 function Band({
   children,
   description,
-  surface = "page",
   title,
 }: {
   children: ReactNode;
   description: string;
-  surface?: "page" | "card";
   title: string;
 }) {
   return (
-    <View className={cn("border-t border-border", surface === "card" && "bg-card")}>
+    <View className="border-t border-border">
       <View className={cn(CONTAINER, "gap-10 py-16 sm:gap-14 sm:py-24")}>
         <View className="max-w-[620px] gap-3">
-          <Heading className={SECTION_TITLE} level={2}>
+          <Heading level={2} size="marketing">
             {title}
           </Heading>
-          <Text className="text-base leading-7 text-muted-foreground sm:text-[17px]">
+          <Text className="text-base leading-7 text-muted-foreground web:text-pretty sm:text-[17px]">
             {description}
           </Text>
         </View>
@@ -86,11 +82,11 @@ export default function WelcomeScreen() {
               "gap-12 pb-16 pt-12 sm:gap-14 sm:pb-24 sm:pt-20 xl:flex-row xl:items-center xl:gap-14",
             )}
           >
-            <View className="min-w-0 gap-6 xl:w-[420px]">
-              <Heading className="max-w-[620px] text-[36px] leading-[42px] tracking-[-1.2px] web:text-balance sm:text-[50px] sm:leading-[56px] sm:tracking-[-1.8px] xl:text-[46px] xl:leading-[52px]">
+            <View className="min-w-0 gap-6 xl:w-[400px]">
+              <Heading className="max-w-[620px] text-[36px] leading-[42px] tracking-[-1.2px] web:text-balance sm:text-[46px] sm:leading-[52px] sm:tracking-[-1.6px]">
                 {t("welcome.title")}
               </Heading>
-              <Text className="max-w-[560px] text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+              <Text className="max-w-[560px] text-base leading-7 text-muted-foreground web:text-pretty sm:text-lg sm:leading-8">
                 {t("welcome.description")}
               </Text>
               <View className="flex-row flex-wrap gap-2">
@@ -110,11 +106,7 @@ export default function WelcomeScreen() {
             </View>
           </View>
 
-          <Band
-            description={t("welcome.how.description")}
-            surface="card"
-            title={t("welcome.how.title")}
-          >
+          <Band description={t("welcome.how.description")} title={t("welcome.how.title")}>
             <HowItWorks />
           </Band>
 
@@ -122,15 +114,11 @@ export default function WelcomeScreen() {
             <ModulePreviews />
           </Band>
 
-          <Band
-            description={t("welcome.roles.description")}
-            surface="card"
-            title={t("welcome.roles.title")}
-          >
+          <Band description={t("welcome.roles.description")} title={t("welcome.roles.title")}>
             <RolesAndTrust />
           </Band>
 
-          <View className="bg-primary dark:border-t dark:border-border dark:bg-background">
+          <View className="bg-primary dark:border-t dark:border-border dark:bg-card">
             <View
               className={cn(
                 CONTAINER,
@@ -139,8 +127,9 @@ export default function WelcomeScreen() {
             >
               <View className="min-w-0 max-w-[620px] gap-3">
                 <Heading
-                  className={cn(SECTION_TITLE, "text-primary-foreground dark:text-foreground")}
+                  className="text-primary-foreground dark:text-foreground"
                   level={2}
+                  size="marketing"
                 >
                   {t("welcome.cta.title")}
                 </Heading>
@@ -148,29 +137,17 @@ export default function WelcomeScreen() {
                   {t("welcome.cta.description")}
                 </Text>
               </View>
-              <View className="flex-row flex-wrap gap-2">
-                <Link href="/sign-up" asChild>
-                  <Button
-                    className="bg-highlight web:hover:bg-highlight-strong dark:bg-primary dark:web:hover:bg-primary/85"
-                    size="lg"
-                  >
-                    <Text className="text-highlight-foreground dark:text-primary-foreground">
-                      {t("welcome.createAccount")}
-                    </Text>
-                  </Button>
-                </Link>
-                <Link href="/sign-in" asChild>
-                  <Button
-                    className="border-primary-foreground/30 bg-transparent web:hover:bg-primary-foreground/10 dark:border-border dark:bg-card dark:web:hover:bg-accent"
-                    size="lg"
-                    variant="outline"
-                  >
-                    <Text className="text-primary-foreground dark:text-foreground">
-                      {t("welcome.signIn")}
-                    </Text>
-                  </Button>
-                </Link>
-              </View>
+              {/* On the forest-green band the primary action inverts: white with green text. */}
+              <Link href="/sign-up" asChild>
+                <Button
+                  className="self-start bg-primary-foreground web:hover:bg-primary-foreground/90 dark:bg-primary dark:web:hover:bg-primary/85 lg:self-auto"
+                  size="lg"
+                >
+                  <Text className="text-primary dark:text-primary-foreground">
+                    {t("welcome.createAccount")}
+                  </Text>
+                </Button>
+              </Link>
             </View>
           </View>
         </View>

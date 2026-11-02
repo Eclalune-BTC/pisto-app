@@ -7,7 +7,7 @@ import { buttonTextVariants, buttonVariants } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { movementFormat } from "@/features/movements/movement-row";
-import { entrySourceIcons, movementKindIcons } from "@/features/movements/presentation";
+import { entrySourceIcons, isIncoming, movementKindIcons } from "@/features/movements/presentation";
 import { formatLocalDayMonth } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
@@ -88,10 +88,12 @@ export function ButtonLook({
   );
 }
 
+/** Each example movement worded with the Movimientos screen's own phrases. */
 export function useMovementCopy() {
   const { t } = useTranslation();
   const { money } = useExample();
   const person = (name: ExampleBalance["name"] | "santaRita") => t(`welcome.sample.people.${name}`);
+  const lines = (count: number) => t("movements.facts.lines", { count });
   return (movement: ExampleMovement): { title: string; detail: string } => {
     switch (movement.key) {
       case "dictatedSale":
@@ -99,26 +101,42 @@ export function useMovementCopy() {
           title: t("movements.titles.saleTo", { name: person("carlos") }),
           detail: t("movements.facts.paidOf", { paid: money("500"), total: money("975") }),
         };
-      case "payment":
+      case "rosaPayment":
         return {
           title: t("movements.titles.paymentFrom", { name: person("rosa") }),
           detail: t("movements.facts.accountPayment"),
         };
-      case "purchase":
-        return {
-          title: t("movements.titles.purchaseFrom", { name: person("santaRita") }),
-          detail: t("movements.facts.lines", { count: 4 }),
-        };
-      case "expense":
+      case "electricity":
         return {
           title: t("welcome.sample.electricity"),
           detail: t("expenses.categories.utilities"),
         };
-      case "counterSale":
+      case "bakeryPurchase":
         return {
-          title: t("welcome.sample.counterSale"),
-          detail: t("movements.facts.lines", { count: 3 }),
+          title: t("movements.titles.purchaseFrom", { name: person("santaRita") }),
+          detail: lines(4),
         };
+      case "counterSale":
+        return { title: t("welcome.sample.counterSale"), detail: lines(3) };
+      case "creditSale":
+        return {
+          title: t("movements.titles.saleTo", { name: person("comedor") }),
+          detail: `${lines(5)} · ${t("movements.facts.onCredit", { total: money("4370") })}`,
+        };
+      case "dairyPayment":
+        return {
+          title: t("movements.titles.paymentTo", { name: person("lacteos") }),
+          detail: t("purchases.payables.invoice", { number: "F-0391" }),
+        };
+      case "rent":
+        return { title: t("welcome.sample.rent"), detail: t("expenses.categories.rent") };
+      case "pedroPayment":
+        return {
+          title: t("movements.titles.paymentFrom", { name: person("pedro") }),
+          detail: t("movements.facts.accountPayment"),
+        };
+      case "morningSale":
+        return { title: t("welcome.sample.counterSale"), detail: lines(6) };
     }
   };
 }
@@ -136,7 +154,7 @@ export function MovementLine({
   const { t } = useTranslation();
   const { signedMoney } = useExample();
   const copy = useMovementCopy()(movement);
-  const incoming = !movement.amountMinorUnits.startsWith("-");
+  const incoming = isIncoming(movement);
   return (
     <View className={cn("min-h-14 flex-row items-center gap-3 px-4 py-2.5", className)}>
       <View className="size-8 items-center justify-center rounded-full bg-muted">

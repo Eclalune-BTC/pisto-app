@@ -11,14 +11,14 @@ import {
   type AgingBucket,
   EXAMPLE_AGING,
   EXAMPLE_CREDITORS,
-  EXAMPLE_DEBTORS,
-  EXAMPLE_MOVEMENTS,
   EXAMPLE_PAYABLES,
   EXAMPLE_RECEIVABLES,
+  EXAMPLE_YESTERDAY,
   exampleCashFlow,
   movementTotals,
+  shiftLocalDate,
 } from "./example-business";
-import { BalanceList, MovementLine, Surface, SurfaceHeader, useExample } from "./fragments";
+import { MovementLine, Surface, useExample } from "./fragments";
 
 export const MODULES = ["movements", "receivables", "payables", "reports"] as const;
 
@@ -32,15 +32,16 @@ const bucketColors: Record<AgingBucket, string> = {
   over60: "bg-destructive",
 };
 
+/** A labelled figure of a summary strip, like the screens' own. */
 function Figure({
   detail,
   label,
   tone = "default",
   value,
 }: {
-  detail: string;
+  detail?: string;
   label: string;
-  tone?: "default" | "destructive";
+  tone?: "default" | "warning";
   value: string;
 }) {
   return (
@@ -49,29 +50,43 @@ function Figure({
       <Text
         className={cn(
           "font-heading text-xl leading-7 tracking-[-0.4px] tabular-nums",
-          tone === "destructive" && "text-destructive",
+          tone === "warning" && "text-warning-foreground",
         )}
         numberOfLines={1}
       >
         {value}
       </Text>
-      <Text className="text-xs leading-4 text-muted-foreground" numberOfLines={1}>
-        {detail}
-      </Text>
+      {detail ? (
+        <Text className="text-xs leading-4 text-muted-foreground" numberOfLines={1}>
+          {detail}
+        </Text>
+      ) : null}
     </View>
   );
+}
+
+function FigureStrip({ children }: { children: ReactNode }) {
+  return <View className="flex-row border-b border-border">{children}</View>;
+}
+
+function Divider() {
+  return <View className="w-px bg-border" />;
+}
+
+/** Column headings on the muted strip the app's tables use. */
+function TableHead({ children }: { children: ReactNode }) {
+  return <View className="flex-row gap-3 bg-muted/60 px-4 py-2">{children}</View>;
 }
 
 function MovementsPreview() {
   const { t } = useTranslation();
   const { locale, money, signedMoney, today } = useExample();
-  const totals = movementTotals(EXAMPLE_MOVEMENTS);
+  const totals = movementTotals(EXAMPLE_YESTERDAY);
+  const day = formatLocalDateFull(shiftLocalDate(today, -1), locale, { year: false });
   return (
     <Surface>
       <View className="min-h-9 flex-row flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border bg-muted/60 px-4 py-2">
-        <Text className="font-ui text-xs text-foreground">
-          {t("movements.today", { date: formatLocalDateFull(today, locale, { year: false }) })}
-        </Text>
+        <Text className="font-ui text-xs text-foreground">{capitalizeFirst(day, locale)}</Text>
         <Text className="text-xs text-muted-foreground tabular-nums">
           {t("movements.totals.day", {
             inflow: signedMoney(totals.inflow),
@@ -79,7 +94,7 @@ function MovementsPreview() {
           })}
         </Text>
       </View>
-      {EXAMPLE_MOVEMENTS.map((movement, index) => (
+      {EXAMPLE_YESTERDAY.map((movement, index) => (
         <MovementLine
           className={cn(index > 0 && "border-t border-border")}
           key={movement.key}
@@ -101,22 +116,27 @@ function ReceivablesPreview() {
   const total = Number(EXAMPLE_RECEIVABLES.outstanding);
   return (
     <Surface>
-      <View className="flex-row border-b border-border">
+      <FigureStrip>
         <Figure
           detail={t("operate.home.debtors.customers", { count: EXAMPLE_RECEIVABLES.customers })}
           label={t("receivables.summary.outstanding")}
           value={money(EXAMPLE_RECEIVABLES.outstanding)}
         />
-        <View className="w-px bg-border" />
+        <Divider />
         <Figure
           detail={t("receivables.aging.count", { count: overdueAccounts })}
           label={t("receivables.summary.overdue")}
-          tone="destructive"
+          tone="warning"
           value={money(EXAMPLE_RECEIVABLES.overdue)}
         />
-      </View>
-      <View className="gap-3 px-4 pt-3.5">
-        <Text className="font-heading text-[13px] leading-5">{t("receivables.aging.title")}</Text>
+      </FigureStrip>
+      <View className="gap-3 px-4 py-3.5">
+        <View className="flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+          <Text className="font-heading text-[13px] leading-5">{t("receivables.aging.title")}</Text>
+          <Text className="text-xs leading-4 text-muted-foreground">
+            {t("receivables.aging.scope")}
+          </Text>
+        </View>
         <View aria-hidden className="h-2 flex-row gap-0.5 overflow-hidden rounded-xs bg-muted">
           {AGING_BUCKETS.map((bucket) => (
             <View
@@ -126,9 +146,9 @@ function ReceivablesPreview() {
             />
           ))}
         </View>
-        <View className="flex-row flex-wrap gap-x-4 gap-y-2">
+        <View className="flex-row flex-wrap gap-x-4 gap-y-3">
           {AGING_BUCKETS.map((bucket) => (
-            <View className="min-w-[96px] flex-1 gap-0.5" key={bucket}>
+            <View className="min-w-[96px] grow basis-[40%] gap-0.5 lg:basis-0" key={bucket}>
               <View className="flex-row items-center gap-1.5">
                 <View aria-hidden className={cn("size-2 rounded-xs", bucketColors[bucket])} />
                 <Text className="text-xs leading-4 text-muted-foreground" numberOfLines={1}>
@@ -138,10 +158,12 @@ function ReceivablesPreview() {
               <Text className="font-ui text-[13px] leading-5 tabular-nums">
                 {money(EXAMPLE_AGING[bucket].minorUnits)}
               </Text>
+              <Text className="text-xs leading-4 text-muted-foreground">
+                {t("receivables.aging.count", { count: EXAMPLE_AGING[bucket].accounts })}
+              </Text>
             </View>
           ))}
         </View>
-        <BalanceList balances={EXAMPLE_DEBTORS.slice(0, 2)} />
       </View>
     </Surface>
   );
@@ -149,21 +171,55 @@ function ReceivablesPreview() {
 
 function PayablesPreview() {
   const { t } = useTranslation();
-  const { money } = useExample();
+  const { dayMonth, money } = useExample();
   return (
-    <Surface className="gap-3 p-4">
-      <SurfaceHeader title={t("operate.home.payables.title")} />
-      <View className="gap-0.5">
-        <Text className="font-heading text-2xl leading-8 tracking-[-0.5px] tabular-nums">
-          {money(EXAMPLE_PAYABLES.outstanding)}
+    <Surface>
+      <FigureStrip>
+        <Figure
+          detail={t("purchases.payables.openCount", { count: EXAMPLE_PAYABLES.purchases })}
+          label={t("purchases.payables.owed")}
+          value={money(EXAMPLE_PAYABLES.outstanding)}
+        />
+        <Divider />
+        <Figure
+          detail={t("operate.home.debtors.nothingOverdue")}
+          label={t("purchases.payables.dueSoon")}
+          tone="warning"
+          value={money(EXAMPLE_PAYABLES.dueThisWeek)}
+        />
+      </FigureStrip>
+      <TableHead>
+        <Text className="min-w-0 flex-1 text-xs text-muted-foreground">
+          {t("purchases.payables.columns.supplier")}
         </Text>
-        <Text className="text-xs leading-4 text-muted-foreground">
-          {t("operate.home.debtors.nothingOverdue")}
-          {" · "}
-          {t("operate.home.payables.purchases", { count: EXAMPLE_PAYABLES.purchases })}
+        <Text className="w-16 text-xs text-muted-foreground">
+          {t("purchases.payables.columns.due")}
         </Text>
-      </View>
-      <BalanceList balances={EXAMPLE_CREDITORS} initials={false} />
+        <Text className="w-20 text-right text-xs text-muted-foreground">
+          {t("purchases.payables.columns.balance")}
+        </Text>
+      </TableHead>
+      {EXAMPLE_CREDITORS.map((creditor) => (
+        <View
+          className="min-h-12 flex-row items-center gap-3 border-t border-border px-4 py-2"
+          key={creditor.name}
+        >
+          <View className="min-w-0 flex-1">
+            <Text className="text-[13px] leading-5" numberOfLines={1}>
+              {t(`welcome.sample.people.${creditor.name}`)}
+            </Text>
+            <Text className="text-xs leading-4 text-muted-foreground" numberOfLines={1}>
+              {t("purchases.payables.invoice", { number: creditor.invoice })}
+            </Text>
+          </View>
+          <Text className="w-16 text-[13px] text-muted-foreground tabular-nums">
+            {dayMonth(creditor.dueInDays)}
+          </Text>
+          <Text className="w-20 text-right font-ui text-[13px] tabular-nums">
+            {money(creditor.minorUnits)}
+          </Text>
+        </View>
+      ))}
     </Surface>
   );
 }
@@ -173,12 +229,6 @@ function ReportsPreview() {
   const { locale, money, signedMoney, today } = useExample();
   const months = exampleCashFlow(today);
   const recent = months.slice(-3);
-  const monthLabel = (month: string, index: number) => {
-    const name = capitalizeFirst(formatMonthName(`${month}-01`, locale, "long"), locale);
-    return index === recent.length - 1
-      ? t("reports.cashFlow.monthToDate", { month: name, day: Number(today.slice(8)) })
-      : name;
-  };
   return (
     <Surface>
       <View className="gap-3 px-4 pt-3.5">
@@ -198,33 +248,36 @@ function ReportsPreview() {
         <CashFlowChart locale={locale} months={months} />
       </View>
       <View className="mt-3 border-t border-border">
-        <View className="flex-row gap-3 bg-muted/60 px-4 py-2">
-          <Text className="flex-1 text-xs text-muted-foreground">
+        <TableHead>
+          <Text className="min-w-24 flex-1 text-xs text-muted-foreground">
             {t("reports.cashFlow.columns.month")}
           </Text>
-          {(["inflow", "outflow", "net"] as const).map((column) => (
-            <Text
-              className={cn(
-                "w-24 text-right text-xs text-muted-foreground",
-                column === "outflow" && "hidden sm:flex",
-              )}
-              key={column}
-            >
-              {t(`reports.cashFlow.columns.${column}`)}
+          <Text className="w-24 text-right text-xs text-muted-foreground">
+            {t("reports.cashFlow.columns.inflow")}
+          </Text>
+          {/* Visibility sits on a wrapper: a flex Text on the web ignores text-right. */}
+          <View className="hidden w-24 xl:flex">
+            <Text className="text-right text-xs text-muted-foreground">
+              {t("reports.cashFlow.columns.outflow")}
             </Text>
-          ))}
-        </View>
-        {recent.map((month, index) => (
+          </View>
+          <Text className="w-24 text-right text-xs text-muted-foreground">
+            {t("reports.cashFlow.columns.net")}
+          </Text>
+        </TableHead>
+        {recent.map((month) => (
           <View className="flex-row gap-3 border-t border-border px-4 py-2" key={month.month}>
-            <Text className="min-w-0 flex-1 text-[13px]" numberOfLines={1}>
-              {monthLabel(month.month, index)}
+            <Text className="min-w-24 flex-1 text-[13px]" numberOfLines={1}>
+              {capitalizeFirst(formatMonthName(`${month.month}-01`, locale, "long"), locale)}
             </Text>
             <Text className="w-24 text-right text-[13px] tabular-nums">
               {money(month.inflowMinorUnits)}
             </Text>
-            <Text className="hidden w-24 text-right text-[13px] tabular-nums text-muted-foreground sm:flex">
-              {money(`-${month.outflowMinorUnits}`)}
-            </Text>
+            <View className="hidden w-24 xl:flex">
+              <Text className="text-right text-[13px] text-muted-foreground tabular-nums">
+                {money(`-${month.outflowMinorUnits}`)}
+              </Text>
+            </View>
             <Text className="w-24 text-right font-ui text-[13px] tabular-nums">
               {signedMoney(month.netMinorUnits)}
             </Text>
@@ -253,7 +306,7 @@ export function ModulePreviews() {
             <Heading className="text-base leading-6" level={3}>
               {t(`welcome.modules.items.${module}.title`)}
             </Heading>
-            <Text className="text-[15px] leading-6 text-muted-foreground">
+            <Text className="text-[15px] leading-6 text-muted-foreground web:text-pretty">
               {t(`welcome.modules.items.${module}.description`)}
             </Text>
           </View>
