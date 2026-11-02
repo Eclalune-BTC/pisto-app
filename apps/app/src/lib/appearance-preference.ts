@@ -5,8 +5,9 @@ export type AppearanceChoice = "light" | "dark" | "system";
 
 const storageKey = "pisto.appearance";
 
+// The product is designed light first; dark and system remain explicit choices.
 export function parseAppearanceChoice(value: string | null): AppearanceChoice {
-  if (value === null) return "system";
+  if (value === null) return "light";
   if (value === "light" || value === "dark" || value === "system") return value;
   throw new Error("Stored appearance preference is invalid");
 }

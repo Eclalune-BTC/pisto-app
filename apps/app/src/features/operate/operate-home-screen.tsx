@@ -1,7 +1,7 @@
 import type { BusinessPermission, OperatingReport, Sale } from "@pisto/contracts";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { type Href, Link, Redirect } from "expo-router";
-import { ArrowRight, Plus, ReceiptText, TriangleAlert } from "lucide-react-native";
+import { Plus, ReceiptText, TriangleAlert } from "lucide-react-native";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
@@ -269,8 +269,7 @@ export default function OperateHomeScreen() {
               </Text>
               <Link asChild href="/operate/reports">
                 <Button accessibilityRole="link" className="gap-1 px-1" size="sm" variant="ghost">
-                  <Text className="text-[13px]">{t("operate.home.fullReport")}</Text>
-                  <Icon as={ArrowRight} className="text-foreground" size={14} />
+                  <Text className="text-[13px] text-link">{t("operate.home.fullReport")}</Text>
                 </Button>
               </Link>
             </View>
@@ -301,8 +300,7 @@ export default function OperateHomeScreen() {
             recentSales.length ? (
               <Link asChild href="/operate/sales">
                 <Button accessibilityRole="link" className="gap-1 px-1" size="sm" variant="ghost">
-                  <Text className="text-[13px]">{t("operate.home.allSales")}</Text>
-                  <Icon as={ArrowRight} className="text-foreground" size={14} />
+                  <Text className="text-[13px] text-link">{t("operate.home.allSales")}</Text>
                 </Button>
               </Link>
             ) : undefined

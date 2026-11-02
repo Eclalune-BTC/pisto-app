@@ -34,7 +34,7 @@ export function Stat({
       <Text className="text-xs leading-4 text-muted-foreground">{label}</Text>
       <Text
         className={cn(
-          "font-heading text-xl leading-7 tracking-[-0.3px] tabular-nums",
+          "font-heading text-2xl leading-8 tracking-[-0.5px] tabular-nums",
           tone === "destructive" && "text-destructive",
           tone === "warning" && "text-warning-foreground",
         )}

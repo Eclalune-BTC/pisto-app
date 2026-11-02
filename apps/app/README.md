@@ -8,7 +8,7 @@ source-owned React Native components, free Uniwind, Tailwind CSS 4, Better Auth,
 `src/components/ui` contains the shared controls installed from the React Native Reusables Uniwind
 registry and adapted for Pisto. The [design system](../../docs/design-system.md#installation-and-source-ownership)
 owns the installed families, source license and local adaptations; the entire registry is not installed.
-`src/global.css` owns the shared forest/sage theme tokens, and `metro.config.js` connects Tailwind to Uniwind.
+`src/global.css` owns the forest-green theme tokens, and `metro.config.js` connects Tailwind to Uniwind.
 
 Free Uniwind supports Expo Go; Tailwind 4 alone does not require a native build. A matching SDK,
 reachable API, authentication and device behavior still need verification. The full explanation,

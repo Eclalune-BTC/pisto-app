@@ -34,10 +34,10 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("appearance persistence", () => {
   test.each(["web", "ios", "android"])(
-    "uses the system only for an absent %s preference",
+    "starts light for an absent %s preference",
     async (platform) => {
       fixture.platform.OS = platform;
-      expect(await readAppearancePreference()).toBe("system");
+      expect(await readAppearancePreference()).toBe("light");
       fixture.webRead.mockReturnValue("invalid");
       fixture.nativeRead.mockResolvedValue("invalid");
       await expect(readAppearancePreference()).rejects.toThrow(

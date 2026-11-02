@@ -22,8 +22,7 @@ export const operate = {
     overdue: "{{amount}} vencido",
     openReceivables_one: "{{count}} cuenta abierta",
     openReceivables_other: "{{count}} cuentas abiertas",
-    period:
-      "Del {{start}} al {{end}}. Saldo por cobrar al {{position}}. Las ventas no se registran como movimientos de caja.",
+    period: "Del {{start}} al {{end}} · saldos al {{position}}",
     fullReport: "Ver reporte",
     reportUnavailableTitle: "No pudimos cargar el resumen del mes",
     reportUnavailable:
