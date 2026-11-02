@@ -25,7 +25,7 @@ const outcomeKeys = {
 } as const;
 
 function outcomeMessageKey(outcome: InterpretOutcome | null): ParseKeys | null {
-  if (!outcome || outcome.kind === "review") return null;
+  if (!outcome || outcome.kind === "review" || outcome.kind === "abandoned") return null;
   if (outcome.kind === "unsupported") return outcomeKeys[outcome.reason];
   return problemMessageKeys[outcome.problem];
 }

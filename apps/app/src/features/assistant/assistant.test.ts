@@ -26,7 +26,11 @@ const sale: AssistantSaleDraft = {
   lines: [
     {
       heard: "café",
-      product: { id: "00000000-0000-4000-8000-000000000001", name: "Café molido 1 lb", exact: false },
+      product: {
+        id: "00000000-0000-4000-8000-000000000001",
+        name: "Café molido 1 lb",
+        exact: false,
+      },
       quantityMinorUnits: "3",
       quantityPrecision: 0,
       unitAmountMinorUnits: "325",
@@ -56,9 +60,9 @@ describe("notice sentences", () => {
     expect(noticeMessage(t, { code: "missing", field: "account", lineIndex: null }, sale)).toBe(
       "No hay una cuenta para esa forma de pago; elija una.",
     );
-    expect(noticeMessage(t, { code: "exceeds_total", field: "received", lineIndex: null }, sale)).toBe(
-      "Lo recibido es mayor que el total de la venta.",
-    );
+    expect(
+      noticeMessage(t, { code: "exceeds_total", field: "received", lineIndex: null }, sale),
+    ).toBe("Lo recibido es mayor que el total de la venta.");
   });
 
   test("never render an untranslated key for any code and field", () => {
@@ -70,7 +74,15 @@ describe("notice sentences", () => {
       "insufficient_stock",
       "not_permitted",
     ] as const;
-    const fields = ["kind", "customer", "product", "quantity", "amount", "credit", "invoice"] as const;
+    const fields = [
+      "kind",
+      "customer",
+      "product",
+      "quantity",
+      "amount",
+      "credit",
+      "invoice",
+    ] as const;
     for (const code of codes) {
       for (const field of fields) {
         for (const lineIndex of [null, 0]) {

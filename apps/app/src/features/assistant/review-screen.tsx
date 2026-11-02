@@ -79,7 +79,7 @@ function TranscriptPanel({
     setOutcome(null);
     const result = await interpret({ text: sentence, source: interpretation.source });
     if (result.kind === "review") setEditing(false);
-    else setOutcome(result);
+    else if (result.kind !== "abandoned") setOutcome(result);
   }
 
   const messageKey =

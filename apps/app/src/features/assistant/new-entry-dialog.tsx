@@ -43,7 +43,7 @@ type Phase =
   | { kind: "requesting" }
   | { kind: "recording" }
   | { kind: "transcribing" }
-  | { kind: "interpreting" }
+  | { kind: "interpreting"; from: "voice" | "text" }
   | { kind: "voiceProblem"; problem: VoiceProblem | AssistantProblem; audio: Blob | null };
 
 /** Text shown next to the editable sentence after an attempt that produced no draft. */
@@ -216,6 +216,8 @@ function EntryFlow({
   const recording = useRef<Recording | null>(null);
   const transcription = useRef<AbortController | null>(null);
   const alive = useRef(true);
+  /** Bumped when the user leaves the microphone, so a late permission grant cannot resume it. */
+  const attempt = useRef(0);
 
   useEffect(() => {
     alive.current = true;
@@ -228,9 +230,9 @@ function EntryFlow({
   }, []);
 
   async function review(sentence: string, from: "voice" | "text") {
-    setPhase({ kind: "interpreting" });
-    const outcome = await interpret({ text: sentence, source: from });
-    if (!alive.current) return;
+    setPhase({ kind: "interpreting", from });
+    const outcome = await interpret({ text: sentence, source: from }, () => !alive.current);
+    if (!alive.current || outcome.kind === "abandoned") return;
     if (outcome.kind === "review") {
       onClose();
       return;
@@ -281,6 +283,8 @@ function EntryFlow({
   }
 
   async function listen() {
+    attempt.current += 1;
+    const current = attempt.current;
     setNotice(null);
     setElapsed(0);
     setLevels(Array(BARS).fill(0));
@@ -289,14 +293,14 @@ function EntryFlow({
       const started = await startRecording((level) => {
         if (alive.current) setLevels((previous) => [...previous.slice(1), level]);
       });
-      if (!alive.current) {
+      if (!alive.current || attempt.current !== current) {
         started.cancel();
         return;
       }
       recording.current = started;
       setPhase({ kind: "recording" });
     } catch (error) {
-      if (!alive.current) return;
+      if (!alive.current || attempt.current !== current) return;
       setPhase({
         kind: "voiceProblem",
         problem: error instanceof RecorderError ? error.reason : "failed",
@@ -306,6 +310,7 @@ function EntryFlow({
   }
 
   function writeInstead() {
+    attempt.current += 1;
     recording.current?.cancel();
     recording.current = null;
     transcription.current?.abort();
@@ -341,13 +346,15 @@ function EntryFlow({
     void review(sentence.slice(0, MAX_TEXT), source);
   }
 
-  if (phase.kind === "text") {
+  if (phase.kind === "text" || (phase.kind === "interpreting" && phase.from === "text")) {
+    const interpreting = phase.kind === "interpreting";
     const noticeKey = notice && notice !== "tooShort" ? textNoticeKeys[notice] : null;
     return (
       <View className="gap-4">
         <DialogDescription>{t("assistant.dialog.textDescription")}</DialogDescription>
         <Field
           autoFocus
+          editable={!interpreting}
           error={notice === "tooShort" ? t("assistant.dialog.textTooShort") : undefined}
           label={t("assistant.dialog.textLabel")}
           maxLength={MAX_TEXT}
@@ -374,7 +381,7 @@ function EntryFlow({
         />
         <View className="flex-row flex-wrap items-center justify-between gap-2">
           {voiceAvailable ? (
-            <Button onPress={() => void listen()} size="sm" variant="ghost">
+            <Button disabled={interpreting} onPress={() => void listen()} size="sm" variant="ghost">
               <Icon as={Mic} className="text-foreground" size={16} />
               <Text>{t("assistant.dialog.dictateInstead")}</Text>
             </Button>
@@ -383,7 +390,11 @@ function EntryFlow({
           )}
           <View className="flex-row gap-2">
             <Button label={t("common.cancel")} onPress={onClose} variant="outline" />
-            <Button label={t("assistant.dialog.review")} onPress={submitText} />
+            <Button
+              label={t("assistant.dialog.review")}
+              loading={interpreting}
+              onPress={submitText}
+            />
           </View>
         </View>
       </View>

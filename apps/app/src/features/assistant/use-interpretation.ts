@@ -12,7 +12,9 @@ export const REVIEW_ROUTE = "/operate/assistant/review";
 export type InterpretOutcome =
   | { kind: "review" }
   | { kind: "unsupported"; reason: "not_a_record" | "several_records" }
-  | { kind: "failed"; problem: AssistantProblem };
+  | { kind: "failed"; problem: AssistantProblem }
+  /** The caller went away (a closed dialog) before the answer arrived; nothing was shown. */
+  | { kind: "abandoned" };
 
 /**
  * Sends one sentence for interpretation. A draft goes to the review route through the in-memory
@@ -27,11 +29,15 @@ export function useInterpretation(businessId: string | undefined) {
     mutationFn: (request: AssistantInterpretRequest) => assistantApi.interpret(request),
   });
 
-  async function interpret(request: AssistantInterpretRequest): Promise<InterpretOutcome> {
+  async function interpret(
+    request: AssistantInterpretRequest,
+    abandoned: () => boolean = () => false,
+  ): Promise<InterpretOutcome> {
     // Callers render only for a loaded business; without one there is nowhere to keep a draft.
     if (!businessId) return { kind: "failed", problem: "unexpected" };
     try {
       const interpretation = await mutation.mutateAsync(request);
+      if (abandoned()) return { kind: "abandoned" };
       if (!interpretation.draft) {
         return interpretation.unsupported
           ? { kind: "unsupported", reason: interpretation.unsupported }
