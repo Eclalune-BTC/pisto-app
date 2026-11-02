@@ -30,7 +30,7 @@ and the module screens) were merged into `develop` with one combined migration,
   `--delay-request 1000`.
 - Migration 0010 was applied to Neon with `pisto_migrator`; `db:seed` added the demo
   suppliers, purchases and itemized sales to the existing demo business. The Worker was deployed as
-  version `bd93dcda-1902-46e5-a77d-bfd128bbc3f6`; `/ready` reported the database as ok and a
+  version `07c7930b-b12c-4e7f-8815-7247a15ef219`; `/ready` reported the database as ok and a
   hosted interpretation of "Pagué 18 dólares de luz con la caja" returned an $18.00 utilities
   expense draft from Caja principal.
 - Rendered and compared with prototype figures 11-15 at 1280 px (light) and 390 px (light): home,
