@@ -116,7 +116,7 @@ export function ExpenseEditorScreen({
               value: expenseCategoryLabels(t)[command.category],
             },
             {
-              label: t("cash.fields.amount"),
+              label: t("expenses.editor.amount"),
               numeric: true,
               value: formatMoney(command.amountMinorUnits, command.currency),
             },
