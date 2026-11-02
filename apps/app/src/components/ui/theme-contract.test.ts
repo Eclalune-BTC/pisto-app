@@ -41,6 +41,8 @@ describe("semantic normal-text color pairs", () => {
         ["sidebar-foreground", "sidebar"],
         ["sidebar-accent-foreground", "sidebar-accent"],
         ["popover-foreground", "popover"],
+        ["highlight-foreground", "highlight"],
+        ["highlight-foreground", "highlight-strong"],
       ] as const) {
         const front = tokens[foreground];
         const back = tokens[background];
