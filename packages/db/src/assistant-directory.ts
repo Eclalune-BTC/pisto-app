@@ -1,0 +1,236 @@
+import type { BusinessPermission } from "@pisto/contracts";
+import { and, asc, eq, inArray, or, type SQL, sql } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
+
+import { authorizeBusinessAction, type ProductActor } from "./business-access.ts";
+import { onHandQuantity } from "./catalog/records.ts";
+import type { Database } from "./client.ts";
+import { resolveBusinessAccess } from "./product-access.ts";
+import { paymentTotals } from "./receivables/records.ts";
+import { cashAccount } from "./schema/cash-account.ts";
+import { catalogProduct } from "./schema/catalog.ts";
+import { customer, receivable } from "./schema/receivables.ts";
+
+export interface AssistantBusinessContext {
+  businessId: string;
+  currency: string;
+  currencyMinorUnitDigits: number;
+  timeZone: string;
+  /** Business-local calendar date and minute when the lookup ran, from the database clock. */
+  localDate: string;
+  localTime: string;
+  permissions: readonly BusinessPermission[];
+}
+
+export interface AssistantDirectoryProduct {
+  id: string;
+  name: string;
+  sellingPriceMinorUnits: string | null;
+  quantityPrecision: number;
+  tracked: boolean;
+  /** Null when the member cannot read inventory or the product is not tracked. */
+  onHandMinorUnits: string | null;
+}
+
+export interface AssistantDirectoryCustomer {
+  id: string;
+  name: string;
+  /** Null when nothing is owed or the member cannot read receivables. */
+  oldestOpenReceivable: { id: string; description: string; balanceMinorUnits: string } | null;
+}
+
+export interface AssistantDirectoryAccount {
+  id: string;
+  name: string;
+  kind: "cash" | "bank" | "mobile_money" | "other";
+}
+
+export interface AssistantDirectoryLookup {
+  context: AssistantBusinessContext;
+  products: AssistantDirectoryProduct[];
+  customers: AssistantDirectoryCustomer[];
+  accounts: AssistantDirectoryAccount[];
+}
+
+export interface AssistantDirectoryRepository {
+  /**
+   * Authorizes `assistant:use` and reads, from the active business only, the records whose folded
+   * name contains one of the search terms. Each record family is returned only when the member's
+   * role can read it.
+   */
+  lookup(
+    actor: ProductActor,
+    terms: { products: readonly string[]; customers: readonly string[] },
+  ): Promise<AssistantDirectoryLookup>;
+}
+
+const maxTerms = 24;
+const maxCandidates = 50;
+
+// Lowercase, then strip the Spanish diacritics so "cafe" finds "Café"; kept in sync with the
+// assistant's own folding of what was heard.
+const accented = "áàäâãéèëêíìïîóòöôõúùüûñç";
+const plain = "aaaaaeeeeiiiiooooouuuunc";
+
+function folded(column: AnyPgColumn): SQL {
+  return sql`translate(lower(${column}), ${accented}, ${plain})`;
+}
+
+/** Terms are folded by the caller; LIKE wildcards in them are escaped here. */
+function containsAnyTerm(column: AnyPgColumn, terms: readonly string[]): SQL | undefined {
+  return or(
+    ...terms.map(
+      (term) => sql`${folded(column)} like ${`%${term.replace(/[\\%_]/g, "\\$&")}%`} escape '\\'`,
+    ),
+  );
+}
+
+function boundedTerms(terms: readonly string[]): string[] {
+  return [...new Set(terms.map((term) => term.trim()).filter((term) => term.length >= 2))].slice(
+    0,
+    maxTerms,
+  );
+}
+
+export function createAssistantDirectory(db: Database): AssistantDirectoryRepository {
+  return {
+    async lookup(actor, terms) {
+      return db.transaction(
+        async (tx) => {
+          const access = await authorizeBusinessAction(tx, actor, ["assistant:use"], "none");
+          const permissions = resolveBusinessAccess(access.role)?.permissions ?? [];
+          const can = (permission: BusinessPermission) => permissions.includes(permission);
+          const [clock] = await tx.execute<{ local_date: string; local_time: string }>(sql`
+            select
+              to_char(transaction_timestamp() at time zone ${access.timeZone}, 'YYYY-MM-DD') as local_date,
+              to_char(transaction_timestamp() at time zone ${access.timeZone}, 'HH24:MI') as local_time
+          `);
+          if (!clock) throw new Error("Database clock returned no row");
+
+          const productTerms = boundedTerms(terms.products);
+          const customerTerms = boundedTerms(terms.customers);
+          const readStock = can("inventory:read");
+
+          const products =
+            can("catalog:read") && productTerms.length > 0
+              ? await tx
+                  .select({
+                    id: catalogProduct.id,
+                    name: catalogProduct.name,
+                    sellingPriceMinorUnits: sql<
+                      string | null
+                    >`${catalogProduct.sellingPriceMinorUnits}::text`,
+                    quantityPrecision: catalogProduct.quantityPrecision,
+                    tracked: catalogProduct.tracked,
+                    onHandMinorUnits: sql<string>`${onHandQuantity()}::text`,
+                  })
+                  .from(catalogProduct)
+                  .where(
+                    and(
+                      eq(catalogProduct.businessId, access.businessId),
+                      eq(catalogProduct.status, "active"),
+                      containsAnyTerm(catalogProduct.name, productTerms),
+                    ),
+                  )
+                  .orderBy(asc(catalogProduct.name), asc(catalogProduct.id))
+                  .limit(maxCandidates)
+              : [];
+
+          const customerRows =
+            can("customers:read") && customerTerms.length > 0
+              ? await tx
+                  .select({ id: customer.id, name: customer.name })
+                  .from(customer)
+                  .where(
+                    and(
+                      eq(customer.businessId, access.businessId),
+                      eq(customer.status, "active"),
+                      containsAnyTerm(customer.name, customerTerms),
+                    ),
+                  )
+                  .orderBy(asc(customer.name), asc(customer.id))
+                  .limit(maxCandidates)
+              : [];
+
+          const openReceivables = new Map<
+            string,
+            { id: string; description: string; balanceMinorUnits: string }
+          >();
+          if (can("receivables:read") && customerRows.length > 0) {
+            const rows = await tx.execute<{
+              customer_id: string;
+              id: string;
+              description: string;
+              balance: string;
+            }>(sql`
+              with payment_totals as (${paymentTotals(access.businessId)})
+              select distinct on (${receivable.customerId})
+                ${receivable.customerId} as customer_id,
+                ${receivable.id} as id,
+                ${receivable.description} as description,
+                (${receivable.originalMinorUnits} - coalesce(payment_totals.paid, 0::numeric))::text as balance
+              from ${receivable}
+              left join payment_totals on payment_totals.receivable_id = ${receivable.id}
+              where ${receivable.businessId} = ${access.businessId}
+                and ${receivable.status} = 'posted'
+                and ${inArray(
+                  receivable.customerId,
+                  customerRows.map((row) => row.id),
+                )}
+                and ${receivable.originalMinorUnits} - coalesce(payment_totals.paid, 0::numeric) > 0
+              order by ${receivable.customerId}, ${receivable.postedDate}, ${receivable.createdAt}, ${receivable.id}
+            `);
+            for (const row of rows) {
+              openReceivables.set(row.customer_id, {
+                id: row.id,
+                description: row.description,
+                balanceMinorUnits: row.balance,
+              });
+            }
+          }
+
+          // A sale needs the account the money enters, so sellers see account names too.
+          const accounts =
+            can("cash:read") || can("sales:create")
+              ? await tx
+                  .select({ id: cashAccount.id, name: cashAccount.name, kind: cashAccount.kind })
+                  .from(cashAccount)
+                  .where(
+                    and(
+                      eq(cashAccount.businessId, access.businessId),
+                      eq(cashAccount.status, "active"),
+                      eq(cashAccount.currency, access.currency),
+                    ),
+                  )
+                  .orderBy(asc(cashAccount.createdAt), asc(cashAccount.id))
+              : [];
+
+          return {
+            context: {
+              businessId: access.businessId,
+              currency: access.currency,
+              currencyMinorUnitDigits: access.currencyMinorUnitDigits,
+              timeZone: access.timeZone,
+              localDate: clock.local_date,
+              localTime: clock.local_time,
+              permissions,
+            },
+            products: products.map((product) => ({
+              ...product,
+              onHandMinorUnits: readStock && product.tracked ? product.onHandMinorUnits : null,
+            })),
+            customers: customerRows.map((row) => ({
+              ...row,
+              oldestOpenReceivable: openReceivables.get(row.id) ?? null,
+            })),
+            accounts: accounts.map((account) => ({
+              ...account,
+              kind: account.kind as AssistantDirectoryAccount["kind"],
+            })),
+          };
+        },
+        { isolationLevel: "repeatable read", accessMode: "read only" },
+      );
+    },
+  };
+}
