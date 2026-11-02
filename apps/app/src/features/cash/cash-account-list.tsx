@@ -16,8 +16,10 @@ type CashAccountListProps = {
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
 };
 
-export function accountHref(accountId: string): Href {
-  return { pathname: "/operate/cash/accounts/[accountId]", params: { accountId } };
+// `satisfies` keeps this exact route type; a wide `Href` return makes a ternary with another
+// route exceed the TypeScript union limit (TS2590).
+export function accountHref(accountId: string) {
+  return { pathname: "/operate/cash/accounts/[accountId]", params: { accountId } } satisfies Href;
 }
 
 export function CashAccountList({ accounts, empty, formatMoney }: CashAccountListProps) {

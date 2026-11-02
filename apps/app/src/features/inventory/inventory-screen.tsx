@@ -71,8 +71,10 @@ type InventoryScreenProps = {
 /** A stock line with the category name its row shows, so the row redraws when that name arrives. */
 type StockRow = { category: CategoryCell | null; item: StockItem };
 
-export function stockHref(productId: string): Href {
-  return { pathname: "/operate/inventory/[productId]", params: { productId } };
+// `satisfies` keeps this exact route type; a wide `Href` return makes a ternary with another
+// route exceed the TypeScript union limit (TS2590).
+export function stockHref(productId: string) {
+  return { pathname: "/operate/inventory/[productId]", params: { productId } } satisfies Href;
 }
 
 export function newMovementHref(productId: string): Href {

@@ -82,8 +82,10 @@ const ALL_CATEGORIES = "all";
 /** A product with the category name its row shows, so the row redraws when that name arrives. */
 type CatalogRow = { category: CategoryCell; detail: ProductDetail };
 
-export function productHref(productId: string): Href {
-  return { pathname: "/operate/catalog/[productId]", params: { productId } };
+// `satisfies` keeps this exact route type; a wide `Href` return makes a ternary with another
+// route exceed the TypeScript union limit (TS2590).
+export function productHref(productId: string) {
+  return { pathname: "/operate/catalog/[productId]", params: { productId } } satisfies Href;
 }
 
 export function CatalogScreen({
