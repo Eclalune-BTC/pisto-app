@@ -4,7 +4,10 @@ import { APIError } from "better-auth/api";
 import type { Auth } from "./create-auth.ts";
 
 type SignUpAuth = {
-  $context: Promise<{ internalAdapter: { deleteSession(token: string): Promise<void> } }>;
+  $context: Promise<{
+    internalAdapter: { deleteSession(token: string): Promise<void> };
+    secret: string;
+  }>;
   api: { signUpEmail: Auth["api"]["signUpEmail"] };
 };
 
@@ -12,6 +15,11 @@ const invalidPasswordCodes = new Set([
   "INVALID_PASSWORD",
   "PASSWORD_TOO_LONG",
   "PASSWORD_TOO_SHORT",
+]);
+// Sign-up reports a concurrent insert of the same email, caught by the unique index, this way.
+const concurrentCreationCodes = new Set([
+  "FAILED_TO_CREATE_USER",
+  "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL",
 ]);
 
 /**
@@ -28,7 +36,8 @@ export function createStaffAccountProvisioner(auth: SignUpAuth): StaffAccountPro
       } catch (error) {
         if (!(error instanceof APIError)) throw error;
         const code = (error.body as { code?: unknown } | undefined)?.code;
-        if (code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") return { created: false };
+        // The caller reads the account back by its email and fails if it does not exist.
+        if (typeof code === "string" && concurrentCreationCodes.has(code)) return;
         if (typeof code === "string" && invalidPasswordCodes.has(code)) {
           throw new ProductError(
             "VALIDATION_ERROR",
@@ -50,7 +59,27 @@ export function createStaffAccountProvisioner(auth: SignUpAuth): StaffAccountPro
         const context = await auth.$context;
         await context.internalAdapter.deleteSession(result.token);
       }
-      return { created: true, userId: result.user.id };
+    },
+
+    /** HMAC-SHA256 under the auth secret; rotating the secret turns an old replay into a conflict. */
+    async fingerprintPassword(password) {
+      const { secret } = await auth.$context;
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode(secret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const signature = await crypto.subtle.sign(
+        "HMAC",
+        key,
+        encoder.encode(`pisto:staff-initial-password:${password}`),
+      );
+      return Array.from(new Uint8Array(signature), (byte) =>
+        byte.toString(16).padStart(2, "0"),
+      ).join("");
     },
   };
 }

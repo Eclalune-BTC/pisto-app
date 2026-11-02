@@ -4,6 +4,7 @@ import {
   foreignKey,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -50,6 +51,35 @@ export const businessMemberOperation = pgTable(
       columns: [table.businessId],
       foreignColumns: [businessSettings.businessId],
       name: "business_member_operation_business_fk",
+    }).onDelete("restrict"),
+  ],
+);
+
+/**
+ * Written when an add-member command finds no account for its email, before the account is
+ * created outside the transaction. A retry after a partial failure, or a concurrent duplicate of
+ * the same command, then still reports the account as created by this command.
+ */
+export const businessMemberAccountIntent = pgTable(
+  "business_member_account_intent",
+  {
+    businessId: text("business_id").notNull(),
+    actorUserId: text("actor_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    idempotencyKey: uuid("idempotency_key").notNull(),
+    email: text("email").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.businessId, table.actorUserId, table.idempotencyKey],
+      name: "business_member_account_intent_pk",
+    }),
+    foreignKey({
+      columns: [table.businessId],
+      foreignColumns: [businessSettings.businessId],
+      name: "business_member_account_intent_business_fk",
     }).onDelete("restrict"),
   ],
 );

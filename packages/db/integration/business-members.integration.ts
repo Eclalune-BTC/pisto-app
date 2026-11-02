@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { and, eq, inArray, like } from "drizzle-orm";
 
 import {
+  businessMemberAccountIntent,
   businessMemberOperation,
   businessSettings,
   catalogCategory,
@@ -46,22 +47,33 @@ const actor = (key: keyof typeof userIds, businessId: string): ProductActor => (
 });
 
 /**
- * Stands in for Better Auth's sign-up: it creates the user row, and like sign-up it refuses an
- * email that already has an account.
+ * Stands in for Better Auth's sign-up: it creates the user row and, like the real adapter, treats
+ * an email another request registered first as done. A failure can strike before the account is
+ * created (a refused password) or after it (a lost session cleanup).
  */
 const provisioned: { email: string; name: string; password: string }[] = [];
-let provisionFailure: Error | null = null;
+let provisionFailure: { error: Error; when: "after" | "before" } | null = null;
 const accounts: StaffAccountProvisioner = {
   async createPasswordAccount(input) {
     provisioned.push(input);
-    if (provisionFailure) throw provisionFailure;
-    const id = `members-provisioned-${runId}-${crypto.randomUUID()}`;
-    const [created] = await database.db
+    if (provisionFailure?.when === "before") throw provisionFailure.error;
+    await database.db
       .insert(user)
-      .values({ id, name: input.name, email: input.email, emailVerified: false })
-      .onConflictDoNothing({ target: user.email })
-      .returning({ id: user.id });
-    return created ? { created: true, userId: created.id } : { created: false };
+      .values({
+        id: `members-provisioned-${runId}-${crypto.randomUUID()}`,
+        name: input.name,
+        email: input.email,
+        emailVerified: false,
+      })
+      .onConflictDoNothing({ target: user.email });
+    if (provisionFailure?.when === "after") throw provisionFailure.error;
+  },
+  async fingerprintPassword(password) {
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(`test-key:${password}`),
+    );
+    return Buffer.from(digest).toString("hex");
   },
 };
 const members = createBusinessMembersRepository(database.db, accounts);
@@ -162,6 +174,9 @@ afterAll(async () => {
       .delete(businessMemberOperation)
       .where(inArray(businessMemberOperation.businessId, businessIds));
     await database.db
+      .delete(businessMemberAccountIntent)
+      .where(inArray(businessMemberAccountIntent.businessId, businessIds));
+    await database.db
       .delete(catalogOperation)
       .where(inArray(catalogOperation.businessId, businessIds));
     await database.db
@@ -230,13 +245,11 @@ describe("business staff management on PostgreSQL 18", () => {
 
     const replay = await members.addMember(owner, command);
     expect(replay).toEqual({ ...added, replayed: true });
-    // The password is not part of the command identity, so it is never stored in any form.
-    const otherPassword = await members.addMember(owner, {
-      ...command,
-      initialPassword: "OtraClave2026",
-    });
-    expect(otherPassword).toEqual({ ...added, replayed: true });
     expect(provisioned.length).toBe(before + 1);
+    // Another password under the same key is another command, though only its keyed digest is kept.
+    await expect(
+      members.addMember(owner, { ...command, initialPassword: "OtraClave2026" }),
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
     const [receipt] = await database.db
       .select({ snapshot: businessMemberOperation.resultSnapshot })
       .from(businessMemberOperation)
@@ -375,7 +388,8 @@ describe("business staff management on PostgreSQL 18", () => {
     const owner = actor("ownerA", businessA);
     const target = await add(owner, { role: "member" });
     const command = { idempotencyKey: crypto.randomUUID(), role: "admin" as const };
-    const changed = await members.changeMemberRole(owner, target.member.id, command);
+    // Any spelling of the member UUID names the same membership.
+    const changed = await members.changeMemberRole(owner, target.member.id.toUpperCase(), command);
     expect(await members.changeMemberRole(owner, target.member.id, command)).toEqual({
       ...changed,
       replayed: true,
@@ -401,7 +415,10 @@ describe("business staff management on PostgreSQL 18", () => {
       role: "member" as const,
       initialPassword: "Temporal2026",
     };
-    provisionFailure = new ProductError("VALIDATION_ERROR", "Password policy");
+    provisionFailure = {
+      error: new ProductError("VALIDATION_ERROR", "Password policy"),
+      when: "before",
+    };
     try {
       await expect(members.addMember(owner, command)).rejects.toMatchObject({
         code: "VALIDATION_ERROR",
@@ -421,6 +438,35 @@ describe("business staff management on PostgreSQL 18", () => {
     });
   });
 
+  test("a retry after the account was created still reports it as created", async () => {
+    const owner = actor("ownerA", businessA);
+    const email = emailOf("new-partial");
+    const command = {
+      idempotencyKey: crypto.randomUUID(),
+      name: "Mario Ayala",
+      email,
+      role: "admin" as const,
+      initialPassword: "Temporal2026",
+    };
+    provisionFailure = { error: new Error("session cleanup failed"), when: "after" };
+    try {
+      await expect(members.addMember(owner, command)).rejects.toThrow("session cleanup failed");
+    } finally {
+      provisionFailure = null;
+    }
+    const before = provisioned.length;
+    const retried = await members.addMember(owner, command);
+    expect(retried).toMatchObject({ account: "created", replayed: false, member: { email } });
+    // The account already exists, so the retry adds it without creating another one.
+    expect(provisioned.length).toBe(before);
+    // Another command for the same person, made after it was added, does not claim the account.
+    const removal = await members.removeMember(owner, retried.member.id, {
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(removal.replayed).toBe(false);
+    expect(await add(owner, { email })).toMatchObject({ account: "existing" });
+  });
+
   test("concurrent adds of one email create one membership", async () => {
     const owner = actor("ownerA", businessA);
     const email = emailOf("new-concurrent");
@@ -428,6 +474,7 @@ describe("business staff management on PostgreSQL 18", () => {
     const retried = await Promise.all([add(owner, sameKey), add(owner, sameKey)]);
     expect(new Set(retried.map(({ member: { id } }) => id)).size).toBe(1);
     expect(retried.map(({ replayed }) => replayed).sort()).toEqual([false, true]);
+    expect(retried.map(({ account }) => account)).toEqual(["created", "created"]);
 
     const otherEmail = emailOf("new-concurrent-two");
     const outcomes = await Promise.allSettled([

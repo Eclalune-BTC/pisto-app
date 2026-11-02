@@ -1,5 +1,5 @@
 {
-  "id": "01a4902b-ffb1-436b-a253-db41e01b3193",
+  "id": "eed5e163-0150-42a6-8090-8d2046c686bf",
   "prevId": "3128d1cd-edc1-4961-97ed-d9110c035b78",
   "version": "7",
   "dialect": "postgresql",
@@ -4132,6 +4132,86 @@
           "value": "char_length(\"inventory_movement\".\"time_zone\") between 1 and 64"
         }
       },
+      "isRLSEnabled": false
+    },
+    "public.business_member_account_intent": {
+      "name": "business_member_account_intent",
+      "schema": "",
+      "columns": {
+        "business_id": {
+          "name": "business_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "business_member_account_intent_actor_user_id_user_id_fk": {
+          "name": "business_member_account_intent_actor_user_id_user_id_fk",
+          "tableFrom": "business_member_account_intent",
+          "tableTo": "user",
+          "columnsFrom": [
+            "actor_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "business_member_account_intent_business_fk": {
+          "name": "business_member_account_intent_business_fk",
+          "tableFrom": "business_member_account_intent",
+          "tableTo": "business_settings",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "business_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "business_member_account_intent_pk": {
+          "name": "business_member_account_intent_pk",
+          "columns": [
+            "business_id",
+            "actor_user_id",
+            "idempotency_key"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.business_member_operation": {

@@ -36,6 +36,7 @@ export const schema = {
   entitlement: billing.entitlement,
   businessSettings: business.businessSettings,
   businessMemberOperation: members.businessMemberOperation,
+  businessMemberAccountIntent: members.businessMemberAccountIntent,
   catalogCategory: catalog.catalogCategory,
   catalogProduct: catalog.catalogProduct,
   inventoryMovement: catalog.inventoryMovement,

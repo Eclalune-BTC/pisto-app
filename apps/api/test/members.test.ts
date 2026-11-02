@@ -106,7 +106,8 @@ describe("business staff routes", () => {
   test("rejects an invalid staff command before the repository without echoing the password", async () => {
     const app = createTestApp({ addMember: unexpected });
     for (const change of [
-      { initialPassword: "short" },
+      { initialPassword: "Sh0rt!x" },
+      { initialPassword: `${password}${"x".repeat(120)}` },
       { initialPassword: undefined },
       { role: "owner" },
       { email: "not-an-email" },
@@ -123,6 +124,9 @@ describe("business staff routes", () => {
       expect(response.status).toBe(400);
       expect(JSON.parse(body)).toMatchObject({ error: { code: "VALIDATION_ERROR" } });
       expect(body).not.toContain(password);
+      if (typeof change.initialPassword === "string") {
+        expect(body).not.toContain(change.initialPassword);
+      }
     }
   });
 

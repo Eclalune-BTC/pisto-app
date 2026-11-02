@@ -37,7 +37,7 @@ does move cash; a receivable payment does move cash. These differences must rema
 | FR-13 | Refresh relevant lists and reports after canonical mutations and when native returns to the foreground. No automatic retry of a financial write. | Implemented; TanStack Query / domain invalidators. |
 | FR-14 | Pause all business writes while preserving queries/authentication; enforce a shared per-user read/write request budget across replicas. | Implemented; API middleware / PostgreSQL operational limiter. |
 | FR-15 | Deliver verification and password recovery using a selected email provider; include expiry, enumeration resistance and session revocation tests. | Release gap; no email provider or delivery flow is configured. |
-| FR-16 | Invite a teammate and administer least-privilege access with verified acceptance and revocation. | Future slice; tested role matrices alone do not make invitations usable. |
+| FR-16 | Invite a teammate and administer least-privilege access with verified acceptance and revocation. | Partly implemented: the owner adds an admin or seller directly, changes the role and revokes access; invitation delivery and acceptance remain a future slice. |
 | FR-17 | Accept Spanish text, return an editable typed sale draft or clarification, and commit only after explicit approval through the same command. | Future slice; AI is not installed or presented as working. |
 | FR-18 | Capture bounded push-to-talk audio, show an editable transcript, and use the same confirmation path. | Future slice after FR-17; physical-device, privacy and provider gates. |
 | FR-19 | Paid access uses verified provider-neutral entitlements and tested store flows. | Billing adapters exist but are disabled; native purchases and entitlement migration need evidence. |
