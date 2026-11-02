@@ -1,6 +1,14 @@
 import type { BusinessPermission } from "@pisto/contracts";
 import { type Href, useRouter } from "expo-router";
-import { HandCoins, type LucideIcon, Plus, ReceiptText, ShoppingBag } from "lucide-react-native";
+import {
+  HandCoins,
+  type LucideIcon,
+  Package,
+  Plus,
+  ReceiptText,
+  ShoppingBag,
+  Truck,
+} from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Button } from "@/components/ui/button";
@@ -14,9 +22,9 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 
-type NewRecordId = "sale" | "expense" | "receivablePayment";
+type NewRecordId = "sale" | "purchase" | "expense" | "receivablePayment" | "supplierPayment";
 
-/** What the prototype's "¿Qué quiere registrar?" offers today, each behind its write permission. */
+/** The prototype's "¿Qué quiere registrar?" (figure 11), each behind its write permission. */
 export const NEW_RECORD_ENTRIES: readonly {
   href: Href;
   icon: LucideIcon;
@@ -24,6 +32,12 @@ export const NEW_RECORD_ENTRIES: readonly {
   permission: BusinessPermission;
 }[] = [
   { id: "sale", href: "/operate/sales/new", icon: ShoppingBag, permission: "sales:create" },
+  {
+    id: "purchase",
+    href: "/operate/purchases/new",
+    icon: Package,
+    permission: "purchases:manage",
+  },
   {
     id: "expense",
     href: "/operate/expenses/new",
@@ -36,6 +50,13 @@ export const NEW_RECORD_ENTRIES: readonly {
     href: { pathname: "/operate/receivables", params: { state: "open" } },
     icon: HandCoins,
     permission: "receivables:manage",
+  },
+  // Likewise, a supplier payment settles one purchase, chosen from what is owed.
+  {
+    id: "supplierPayment",
+    href: "/operate/payables",
+    icon: Truck,
+    permission: "purchases:manage",
   },
 ];
 

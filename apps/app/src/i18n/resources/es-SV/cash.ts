@@ -63,7 +63,7 @@ export const cash = {
     order: "Por fecha del movimiento, del más reciente al más antiguo.",
   },
   overview: {
-    title: "Caja y cuentas",
+    title: "Caja y bancos",
     description: "Saldos calculados a partir de los movimientos registrados.",
     moreActions: "Más acciones",
     newAccount: "Nueva cuenta",
