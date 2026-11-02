@@ -3,12 +3,20 @@
 ## Owner requirements
 
 Pisto looks like a modern fintech operations product that a business owner can trust: clean, dense,
-calm and precise. The owner's direction (2026-10-04) replaces the earlier forest/sage proposal:
+calm and precise. The owner's direction of 2026-11-01 brings the product back to the Phase 2
+prototypes and replaces the graphite-only palette of 2026-10-04:
 
-- No green brand colour and no blue anywhere in application-owned UI (blue is test-enforced:
-  hue 175–280° in `src/components/ui/no-blue.test.ts`). Colour expresses state and data, not decoration.
-- Nearly square geometry, compact density and little padding, while still composing the installed
-  React Native Reusables (RNR) components.
+- One brand colour: a deep forest green (`--color-primary` `#1b3d2c` light, `#a7d8b9` dark) for
+  primary actions, focus, selection, links and the active navigation item. Neutrals are tinted
+  toward it; amber and red remain reserved for warnings, errors and destructive actions. No second
+  accent (the prototypes' lime is intentionally not used).
+- No blue anywhere in application-owned UI (test-enforced: hue 175–280° in
+  `src/components/ui/no-blue.test.ts`). AA contrast pairs are enforced by `theme-contract.test.ts`.
+- Light first: an absent appearance preference renders the light theme; dark and system stay
+  available from the user menu.
+- Crisp geometry (6 px controls, 8 px cards), compact density and little padding, while still
+  composing the installed React Native Reusables (RNR) components.
+- The expected record state (posted, active, open) is plain muted text; only exceptions carry a chip.
 - No gradients, glows, decorative shadows, eyebrow labels above titles, accent left-border lines,
   ornamental dividers, oversized headings or marketing copy inside the product. Subtle translucent
   surfaces ("glass") are allowed only for the top bar and overlays on the web.

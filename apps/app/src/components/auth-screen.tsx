@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useRouter } from "expo-router";
-import { Check, Eye, EyeOff, TriangleAlert } from "lucide-react-native";
+import { Eye, EyeOff, TriangleAlert } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -23,8 +23,6 @@ import { Text } from "@/components/ui/text";
 import { authClient } from "@/lib/auth-client";
 
 type AuthMode = "sign-in" | "sign-up";
-
-const asideFacts = ["money", "stock", "relationships", "insight"] as const;
 
 type FormErrors = {
   email?: string;
@@ -271,24 +269,15 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
           </ScrollView>
 
           {wide ? (
-            <View className="w-[44%] max-w-[640px] justify-center gap-8 border-l border-border bg-sidebar px-14 py-12">
+            <View className="w-[44%] max-w-[640px] justify-between bg-primary px-14 py-12">
+              <Brand inverse />
               <View className="gap-3">
-                <Text className="font-heading text-[32px] leading-10 tracking-[-0.6px]">
+                <Text className="font-heading text-[28px] leading-9 tracking-[-0.6px] text-primary-foreground">
                   {t("welcome.title")}
                 </Text>
-                <Text className="max-w-[440px] text-base leading-6 text-muted-foreground">
+                <Text className="max-w-[420px] text-base leading-6 text-primary-foreground/75">
                   {t("welcome.description")}
                 </Text>
-              </View>
-              <View className="gap-3">
-                {asideFacts.map((key) => (
-                  <View className="flex-row items-start gap-2.5" key={key}>
-                    <Icon as={Check} className="mt-0.5 text-foreground" size={16} />
-                    <Text className="flex-1 text-sm leading-5">
-                      {t(`welcome.product.${key}.title`)}
-                    </Text>
-                  </View>
-                ))}
               </View>
             </View>
           ) : null}
