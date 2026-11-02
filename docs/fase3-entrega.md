@@ -1,425 +1,537 @@
 # Fase 3: implementación y despliegue del MVP
 
-Evidencia de la entrega de la Fase 3 (Sprint 1) del proyecto *Sistema Financiero para PYMES* (Universidad Francisco Gavidia, Aplicación de Técnicas de Ingeniería de Software, 2026). Continúa el documento acumulado del equipo; las figuras siguen su numeración. El documento Word equivalente se genera para anexarlo al documento del curso.
+Evidencia de la Fase 3 (Sprint 1) del proyecto *Sistema Financiero para PYMES*. Es el mismo
+contenido del documento de la entrega; las figuras y tablas continúan la numeración del documento
+de la Fase 2.
 
-En esta fase el equipo tradujo la especificación técnica, la arquitectura y los prototipos de la Fase 2 en un incremento de software funcional y ejecutable. El MVP está publicado en internet, usa la base de datos PostgreSQL en la nube y cubre el flujo núcleo del sistema: autenticación, gestión de usuarios y roles, ventas, compras, gastos, caja, cuentas por cobrar y por pagar, inventario, reportes, el asistente de inteligencia artificial para registrar por voz o texto y la actualización en tiempo real. Este capítulo presenta la evidencia de cada requisito de la guía de la Fase 3.
+## Implementación y despliegue del MVP (Sprint 1)
 
-## Enlaces de la entrega
+En esta fase el equipo construyó el producto mínimo viable a partir de la especificación técnica, la arquitectura y los prototipos aprobados en la Fase 2. El sistema está publicado en internet, guarda la información en PostgreSQL y permite registrar ventas, compras, gastos, cobros y pagos, consultar los saldos y reportes del negocio, administrar a los usuarios con sus roles y registrar una operación dictándola o escribiéndola para que el asistente de inteligencia artificial prepare el registro que el usuario revisa antes de guardar. En los apartados siguientes se presenta la evidencia de cada requisito de la guía de la Fase 3.
 
-**Tabla 7 – Enlaces de la entrega de la Fase 3**
+### Acceso al sistema y usuarios de prueba
+
+El sistema se revisa desde cualquier navegador en la dirección de la demostración. La base de datos de la demostración ya contiene seis semanas de operaciones del negocio de ejemplo Abarrotes La Ceiba, por lo que al iniciar sesión se ven ventas, compras, gastos, deudas de clientes, facturas de proveedores y reportes con información. Para recorrer todas las funciones se recomienda ingresar con la cuenta del dueño; las otras dos cuentas sirven para comprobar lo que cada rol puede hacer.
+
+**Tabla 7. Enlaces de la entrega**
 
 | Recurso | Enlace |
 | --- | --- |
-| Demostración en vivo (MVP desplegado) | https://pisto.contact-862.workers.dev |
-| Verificación de salud del servicio | https://pisto.contact-862.workers.dev/ready |
+| Demostración en vivo | https://pisto.contact-862.workers.dev |
+| Estado del servicio | https://pisto.contact-862.workers.dev/ready |
 | Repositorio de código fuente | https://github.com/Eclalune-BTC/pisto-app |
-| Colección de pruebas del API (Postman / Bruno) | https://github.com/Eclalune-BTC/pisto-app/tree/main/docs/postman |
-| Evidencia de la entrega en el repositorio | https://github.com/Eclalune-BTC/pisto-app/blob/main/docs/fase3-entrega.md |
-| Tablero ágil (Trello) | https://trello.com/b/PoTcegqU/sistema-financiero-mypes-product-backlog-y-sprint-1 |
+| Colección de pruebas del API | https://github.com/Eclalune-BTC/pisto-app/tree/main/docs/postman |
+| Tablero ágil | https://trello.com/b/PoTcegqU/sistema-financiero-mypes-product-backlog-y-sprint-1 |
 
-**Tabla 8 – Cuentas de prueba precargadas**
+*Direcciones del sistema desplegado y de los recursos del proyecto.*
 
-| Rol | Correo | Contraseña | Qué puede hacer |
+**Tabla 8. Usuarios de prueba**
+
+| Rol | Correo | Contraseña | Puede revisar |
 | --- | --- | --- | --- |
-| Dueño (owner) | dueno@pisto.test | PistoDemo2026 | Todo, incluida la configuración del negocio y la gestión de usuarios |
-| Encargado (admin) | encargado@pisto.test | PistoDemo2026 | Todas las operaciones excepto la configuración del negocio y sus usuarios |
-| Vendedor (member) | vendedor@pisto.test | PistoDemo2026 | Registrar y ver ventas, ver productos, existencias y clientes, usar el asistente |
+| Dueño (Marta López) | dueno@pisto.test | PistoDemo2026 | Todos los módulos, la configuración del negocio y la gestión de usuarios |
+| Encargado (Carlos Rivas) | encargado@pisto.test | PistoDemo2026 | Ventas, compras, gastos, caja, cobros, pagos y reportes |
+| Vendedor (Ana Guzmán) | vendedor@pisto.test | PistoDemo2026 | Registrar y consultar ventas, ver productos, existencias y clientes, usar el asistente |
 
-## Actualización del stack tecnológico
+*Las tres cuentas pertenecen al negocio Abarrotes La Ceiba, que ya tiene datos cargados.*
 
-Durante la implementación el equipo ajustó algunas tecnologías definidas en la Fase 2. La arquitectura por capas, el modelo de datos y los casos de uso se mantienen; los cambios responden a que el sistema debía funcionar en web y en teléfono con un solo código, desplegarse sin costo para la revisión y procesar la voz sin enviar datos a servicios adicionales.
+### Actualización del stack tecnológico
 
-**Tabla 9 – Stack definido en la Fase 2 y stack implementado**
+Durante la implementación se mantuvieron la arquitectura por capas, el modelo de datos y los casos de uso definidos en la Fase 2. Algunas tecnologías cambiaron por razones prácticas: el equipo necesitaba una sola base de código para la versión web y la de teléfono, un servidor que pudiera publicarse sin costo para la revisión y un servicio de inteligencia artificial disponible en la misma plataforma del despliegue.
+
+**Tabla 9. Stack definido en la Fase 2 y stack implementado**
 
 | Capa | Fase 2 | Implementado | Motivo |
 | --- | --- | --- | --- |
-| Frontend | React.js + Tailwind CSS | Expo Router (React Native Web) + Uniwind (Tailwind) + React Native Reusables | Una sola base de código para web, Android e iOS con el mismo sistema de diseño |
-| Backend | Node.js + NestJS | Bun + Elysia (API REST por capas) con contratos Zod compartidos | Arranque rápido, tipado de extremo a extremo y ejecución en Cloudflare Workers |
-| Base de datos | PostgreSQL / MySQL | PostgreSQL 18 con Drizzle ORM y migraciones SQL (Neon en la nube) | Integridad referencial y transacciones para el dinero |
-| Autenticación | Tokens o sesiones | Better Auth: sesiones en cookie HttpOnly, contraseñas con hash scrypt, roles por negocio | Seguridad probada sin implementar criptografía propia |
-| Inteligencia artificial | OpenAI (Whisper / GPT) + n8n | Cloudflare Workers AI: Llama 3.3 70B para extraer el registro y Whisper large v3 turbo para transcribir | Corre en la misma plataforma del despliegue, sin flujos externos |
-| Tiempo real | WebSockets | WebSocket /v1/realtime con un Durable Object en Cloudflare | Cada pantalla se actualiza cuando otra sesión registra algo |
-| Despliegue | No definido | Cloudflare Workers (web + API) y Neon PostgreSQL | Demostración en vivo accesible desde cualquier navegador |
-| Pruebas manuales del API | Postman | Colección Postman/Bruno de 138 peticiones ejecutada con Newman | Prueba independiente de cada endpoint |
+| Frontend | React.js con Tailwind CSS | Expo Router (React Native para web y teléfono), Uniwind (Tailwind) y componentes React Native Reusables | Una sola base de código para la versión web, Android e iOS con el mismo diseño |
+| Backend | Node.js con NestJS | Bun con Elysia: API REST organizada por capas y validación con Zod | Validación compartida entre aplicación y servidor, y ejecución en Cloudflare Workers |
+| Base de datos | PostgreSQL o MySQL | PostgreSQL 18 con Drizzle ORM y migraciones SQL; Neon en la nube | Integridad referencial y transacciones para las operaciones con dinero |
+| Autenticación | Tokens o sesiones | Better Auth: sesiones en cookie HttpOnly, contraseñas con hash scrypt y roles por negocio | Mecanismo probado, sin implementar criptografía propia |
+| Inteligencia artificial | OpenAI (Whisper y GPT) con n8n | Cloudflare Workers AI: Whisper large v3 turbo para transcribir y Llama 3.3 70B para interpretar la frase | Funciona en la misma plataforma del despliegue, sin flujos externos |
+| Tiempo real | WebSockets | WebSocket /v1/realtime atendido por un Durable Object de Cloudflare | Las pantallas abiertas se actualizan cuando otra sesión registra algo |
+| Despliegue | No definido | Cloudflare Workers para la aplicación web y el API; Neon para PostgreSQL | Demostración accesible desde cualquier navegador |
+| Pruebas del API | Postman | Colección de Postman compatible con Bruno, ejecutada también con Newman | Prueba independiente de cada endpoint |
 
-La frontera del proyecto de la Fase 2 dejaba fuera el inventario, pero los prototipos aprobados (Nueva venta con productos, Nueva compra y Productos) requieren existencias. Por eso el MVP incluye un inventario básico ligado a las ventas y compras; no incluye facturación electrónica (DTE), integraciones bancarias ni planillas.
+*Comparación entre las tecnologías previstas en la Fase 2 y las utilizadas en la implementación.*
 
-## 1. Repositorio de código fuente
+La frontera del proyecto dejaba fuera la gestión de inventarios; sin embargo, los prototipos aprobados de Nueva venta, Nueva compra y Productos trabajan con existencias. Por esa razón el MVP incluye un inventario básico que se actualiza con cada venta y cada compra. Siguen fuera del alcance la facturación electrónica (DTE), las integraciones bancarias y las planillas.
 
-### Estrategia de ramas
+## Repositorio de código fuente
 
-El repositorio usa main para las versiones entregadas, develop para la integración y ramas feature/ por funcionalidad (por ejemplo feature/itemized-sales, feature/purchases, feature/ai-assistant, feature/realtime-client y feature/seed-data). Cada rama se integra a develop con un merge --no-ff y develop se integra a main para cada entrega.
+### Estrategia de ramas e historial
+
+El código fuente se encuentra en GitHub (Anexo 1). La rama main contiene las versiones entregadas y la rama develop integra el trabajo en curso. Cada funcionalidad se desarrolló en una rama propia con el prefijo feature/, por ejemplo feature/itemized-sales para las ventas con productos, feature/purchases para compras y proveedores, feature/ai-assistant para el asistente, feature/user-management para la gestión de usuarios y feature/landing-page para la página pública. Cada rama se integró a develop con un merge sin avance rápido, de modo que el historial conserva cada integración, y al cerrar la fase develop se integró a main.
 
 **Figura 27. Ramas del repositorio e historial de integración**
 
-![Ramas del repositorio e historial de integración](fase3/term-01-branches.png)
+![Ramas del repositorio e historial de integración](fase3/term-01-branches.jpg)
 
-*Ramas remotas y grafo de commits de main con las integraciones de cada rama de funcionalidad.*
+*Ramas publicadas en GitHub y grafo de commits de la rama develop con la integración de cada rama de funcionalidad.*
 
-[Completar por el equipo: captura de GitHub > Insights > Contributors cuando cada integrante haya subido sus commits con su propio usuario. La guía exige commits regulares de todos los integrantes.]
+### Archivo README.md
 
-### README.md
+El archivo README.md explica cómo ejecutar el sistema en una computadora nueva. Enumera los programas necesarios con sus versiones (Git, Bun 1.4 o superior, Node.js 24 y Docker Desktop), los comandos de instalación, la creación de los archivos de variables de entorno, la creación de la base de datos con las migraciones y la carga de los datos de prueba. Al inicio incluye el enlace a la demostración, las cuentas de prueba y la ubicación de la colección de peticiones.
 
-El README incluye el enlace a la demostración, las cuentas de prueba, los prerrequisitos con sus versiones (Git, Bun 1.4, Node.js 24, Docker Desktop), los pasos de instalación y ejecución local, la estructura de variables de entorno y los comandos para crear la base de datos y cargar los datos de prueba.
+**Figura 28. Encabezado del README con enlaces y cuentas de prueba**
 
-**Figura 28. README: enlaces de la entrega y cuentas de prueba**
+![Encabezado del README con enlaces y cuentas de prueba](fase3/term-readme-top.jpg)
 
-![README: enlaces de la entrega y cuentas de prueba](fase3/term-readme-top.png)
+*Primera sección del README.md del repositorio.*
 
-*Encabezado del README.md del repositorio.*
+**Figura 29. Prerrequisitos e instalación en entorno local**
 
-**Figura 29. README: prerrequisitos e instalación local**
+![Prerrequisitos e instalación en entorno local](fase3/term-readme-local.jpg)
 
-![README: prerrequisitos e instalación local](fase3/term-readme-local.png)
+*Sección del README.md con los requisitos y los comandos de instalación, migración y carga de datos.*
 
-*Sección Run it locally del README.md con los comandos de instalación, migración y carga de datos.*
+### Variables de entorno
+
+Los archivos .env.example del servidor y de la aplicación documentan cada variable con un valor de ejemplo. El comando bun run setup los copia a .env y apps/app/.env.local y genera un secreto aleatorio para la autenticación. Los valores reales de producción se guardan como secretos del servidor y nunca se suben al repositorio.
 
 **Figura 30. Estructura de variables de entorno**
 
-![Estructura de variables de entorno](fase3/term-02-env-example.png)
+![Estructura de variables de entorno](fase3/term-02-env-example.jpg)
 
-*Archivos .env.example del servidor y de la aplicación; los valores reales nunca se guardan en el repositorio.*
+*Contenido de los archivos .env.example del servidor y de la aplicación.*
 
-## 2. Backend: API y comunicación en tiempo real
+## Backend: API y comunicación en tiempo real
 
 ### Arquitectura implementada
 
-El sistema respeta la arquitectura por capas de la Fase 2. La capa de controladores son las rutas del API en apps/api (Elysia); valida cada petición con los contratos Zod de packages/contracts. La capa de servicios y repositorios está en packages/db: cada comando autoriza al usuario en el negocio activo, aplica las reglas de negocio dentro de una transacción y escribe en PostgreSQL con Drizzle. packages/auth configura la autenticación y packages/assistant contiene el procesador de IA. La aplicación (apps/app) solo conversa con el API.
+La implementación respeta las capas definidas en el mapeo de clases de la Fase 2. Las rutas del API reciben cada petición y la validan con los contratos compartidos; los servicios aplican las reglas de negocio dentro de una transacción después de verificar que el usuario pertenece al negocio activo y que su rol tiene el permiso necesario; los repositorios leen y escriben en PostgreSQL con consultas parametrizadas. La aplicación del usuario solo se comunica con el API.
 
-**Tabla 10 – Endpoints del flujo núcleo**
+**Tabla 10. Capas de la arquitectura y módulos que las implementan**
 
-| Grupo | Endpoints principales |
+| Capa (Fase 2) | Módulo implementado | Responsabilidad |
+| --- | --- | --- |
+| Controladores (Boundary) | apps/api/src/routes | Rutas REST, autenticación de la petición y respuesta con el formato común de errores |
+| Contratos y DTO | packages/contracts | Esquemas Zod de cada petición y respuesta, compartidos por la aplicación y el API |
+| Servicios | packages/db (comandos por módulo) | Reglas de negocio: existencias, saldos, crédito, idempotencia y permisos por rol |
+| Repositorios | packages/db con Drizzle ORM | Acceso a PostgreSQL con consultas parametrizadas y transacciones |
+| Entidades | packages/db/src/schema | Tablas, llaves foráneas y restricciones del modelo relacional |
+| Procesador de IA | packages/assistant | Transcripción del audio y extracción de los datos de la frase |
+| Interfaz | apps/app (Expo Router) | Pantallas, formularios, estados y suscripción a eventos en tiempo real |
+
+*Relación entre las capas del diseño y los módulos del repositorio.*
+
+### Endpoints del flujo núcleo
+
+**Tabla 11. Endpoints principales del API**
+
+| Grupo | Endpoints |
 | --- | --- |
 | Autenticación | POST /api/auth/sign-up/email, POST /api/auth/sign-in/email, POST /api/auth/sign-out, GET /v1/me |
-| Gestión de usuarios y roles | GET /v1/businesses/members, POST /v1/businesses/members, PATCH /v1/businesses/members/:id, POST /v1/businesses/members/:id/remove, GET /v1/businesses/roles |
+| Gestión de usuarios | GET /v1/businesses/members, POST /v1/businesses/members, PATCH /v1/businesses/members/:id, POST /v1/businesses/members/:id/remove, GET /v1/businesses/roles |
 | Negocio | GET /v1/businesses, POST /v1/businesses |
-| Ventas | POST /v1/sales/itemized, GET /v1/sales/form-options, POST /v1/sales, GET /v1/sales/:id, POST /v1/sales/:id/void, POST /v1/sales/:id/replace |
+| Ventas | POST /v1/sales/itemized, GET /v1/sales/form-options, GET /v1/sales, GET /v1/sales/:id, POST /v1/sales/:id/void |
 | Compras y proveedores | /v1/suppliers, POST /v1/purchases, GET /v1/purchases/:id, POST /v1/purchases/:id/payments, POST /v1/purchases/:id/void, GET /v1/payables/summary |
 | Gastos y caja | /v1/expenses, /v1/cash/accounts, /v1/cash/adjustments, /v1/cash/transfers |
 | Clientes y cuentas por cobrar | /v1/customers, /v1/receivables, /v1/receivables/:id/payments, GET /v1/receivables/debtors |
 | Productos e inventario | /v1/catalog/categories, /v1/catalog/products, /v1/inventory/products/:id/movements |
 | Reportes y movimientos | GET /v1/reports/operating, GET /v1/reports/cash-flow, GET /v1/reports/money-trend, GET /v1/movements |
-| Asistente de IA (módulo de soporte) | GET /v1/assistant/status, POST /v1/assistant/interpretations, POST /v1/assistant/transcriptions |
+| Asistente de IA | GET /v1/assistant/status, POST /v1/assistant/interpretations, POST /v1/assistant/transcriptions |
 | Tiempo real | GET /v1/realtime (WebSocket) |
+
+*La colección de Postman incluye una petición para cada endpoint.*
 
 ### Gestión de usuarios
 
-El dueño del negocio administra a su personal desde Configuración: agrega un usuario nuevo (el API crea la cuenta con el mismo cifrado del registro) o una cuenta existente, le asigna el rol de encargado o vendedor, cambia su rol y lo quita del negocio. Solo el dueño puede hacerlo, nadie puede volverse dueño por esta vía, el dueño no puede quitarse a sí mismo y un usuario quitado pierde el acceso en su siguiente petición. Cada comando usa una llave de idempotencia y avisa por tiempo real a las demás sesiones.
+El dueño del negocio administra a su personal desde Configuración. Puede agregar un usuario nuevo, en cuyo caso el API crea la cuenta con el mismo cifrado del registro y una contraseña inicial, o agregar una cuenta que ya existe; también puede cambiar el rol entre encargado y vendedor y quitar a una persona del negocio. Solo el dueño puede hacerlo, nadie puede convertirse en dueño por esta vía y el dueño no puede quitarse a sí mismo. Un usuario quitado pierde el acceso en su siguiente petición.
 
 ### Mecanismos de seguridad
 
-- Contraseñas cifradas con hash scrypt (Better Auth); nunca se guardan ni se devuelven en texto plano (figura de integridad).
-- Autenticación basada en sesiones: cookie HttpOnly pisto.session_token; cerrar sesión la revoca en el servidor.
-- Control de acceso por roles (dueño, encargado, vendedor) verificado en el servidor en cada petición; el usuario no puede elegir otro negocio.
-- Solo los orígenes permitidos pueden escribir; límites de intentos de inicio de sesión (3 cada 10 s) y de peticiones por usuario (300 lecturas y 60 escrituras por minuto).
-- Cada comando de dinero usa una llave de idempotencia: repetir la petición no duplica el registro y reutilizarla con otros datos se rechaza.
+- **Contraseñas cifradas:** se guardan con hash scrypt y nunca se devuelven en las respuestas del API.
+- **Sesiones:** la sesión viaja en una cookie HttpOnly; al cerrar sesión se revoca en el servidor.
+- **Control de acceso por roles:** cada petición se autoriza en el servidor según el rol del usuario en el negocio activo; el usuario no puede elegir otro negocio.
+- **Origen y límites:** solo los orígenes permitidos pueden escribir, el inicio de sesión admite tres intentos cada diez segundos y cada usuario tiene un máximo de 300 lecturas y 60 escrituras por minuto.
+- **Operaciones repetidas:** cada comando de dinero lleva una llave de idempotencia; si la misma petición se envía dos veces no se duplica el registro.
 
-**Tabla 11 – Matriz de permisos por rol**
+**Tabla 12. Permisos por rol**
 
-| Permiso | Dueño | Encargado | Vendedor |
+| Acción | Dueño | Encargado | Vendedor |
 | --- | --- | --- | --- |
 | Configurar el negocio y gestionar sus usuarios | Sí | No | No |
-| Registrar y ver ventas | Sí | Sí | Sí |
+| Registrar y consultar ventas | Sí | Sí | Sí |
 | Anular o corregir ventas | Sí | Sí | No |
-| Ver productos y existencias | Sí | Sí | Sí |
+| Ver productos, existencias y clientes | Sí | Sí | Sí |
 | Administrar productos e inventario | Sí | Sí | No |
-| Ver clientes | Sí | Sí | Sí |
-| Administrar clientes y cuentas por cobrar | Sí | Sí | No |
+| Cuentas por cobrar y abonos | Sí | Sí | No |
 | Compras, proveedores y cuentas por pagar | Sí | Sí | No |
 | Gastos, caja y bancos | Sí | Sí | No |
 | Reportes | Sí | Sí | No |
 | Usar el asistente de IA | Sí | Sí | Sí |
 
+*Permisos que el servidor verifica en cada petición.*
+
 ### Manejo de errores
 
-Todas las respuestas de error tienen la misma forma {error: {code, message, requestId}} con el código HTTP correspondiente: 400 datos inválidos (con el detalle por campo), 401 sin sesión, 403 sin permiso u origen no permitido, 404 registro inexistente, 409 conflicto de negocio o de idempotencia, 429 demasiadas peticiones y 503 servicio no disponible. Los mensajes nunca incluyen trazas internas.
+Todas las respuestas de error tienen la misma forma, con un código, un mensaje y un identificador de la petición, y usan el código HTTP correspondiente: 400 cuando los datos no son válidos (con el detalle de cada campo), 401 sin sesión, 403 sin permiso o desde un origen no permitido, 404 cuando el registro no existe, 409 cuando la operación contradice una regla del negocio o reutiliza una llave de idempotencia con otros datos, 429 cuando se superan los límites y 503 cuando un servicio externo no está disponible. Los mensajes no incluyen detalles internos del servidor.
 
 **Figura 31. Respuestas del API ante errores y controles de seguridad**
 
-![Respuestas del API ante errores y controles de seguridad](fase3/term-06-api-security.png)
+![Respuestas del API ante errores y controles de seguridad](fase3/term-06-api-security.jpg)
 
-*Peticiones reales al API local: sin sesión, sin permiso, datos inválidos, idempotencia, origen no permitido y registro inexistente.*
+*Peticiones reales al API: sin sesión, sin permiso, con datos inválidos, repetida con la misma llave, desde un origen no permitido y a un registro inexistente.*
 
-### Comunicación bidireccional en tiempo real
+### Comunicación en tiempo real
 
-El WebSocket /v1/realtime admite solo a miembros del negocio activo desde un origen permitido. Cuando un comando se confirma, el servidor envía business.changed con el recurso afectado y cada pantalla abierta vuelve a consultar sus datos; el cliente también envía ping y recibe pong para mantener la conexión.
+El WebSocket /v1/realtime admite solo a miembros del negocio activo que se conectan desde un origen permitido. Cuando una operación se guarda, el servidor envía a las demás sesiones del negocio el evento business.changed con el módulo afectado, y cada pantalla abierta vuelve a consultar sus datos sin que el usuario recargue la página.
 
 **Figura 32. Eventos del WebSocket**
 
-![Eventos del WebSocket](fase3/term-07-realtime.png)
+![Eventos del WebSocket](fase3/term-07-realtime.jpg)
 
 *La sesión del vendedor recibe el evento business.changed cuando el dueño registra una venta desde otra sesión.*
 
-**Figura 33. Tiempo real en la interfaz: antes**
+**Figura 33. Pantalla Hoy del dueño antes de una venta registrada en otro equipo**
 
-![Tiempo real en la interfaz: antes](fase3/realtime-before-1280.png)
+![Pantalla Hoy del dueño antes de una venta registrada en otro equipo](fase3/realtime-before-desktop.jpg)
 
-*Pantalla Hoy del dueño antes de que el vendedor registre una venta en otro equipo.*
+*Dinero disponible y movimientos de hoy antes de la venta.*
 
-**Figura 34. Tiempo real en la interfaz: después**
+**Figura 34. Pantalla Hoy del dueño actualizada en tiempo real**
 
-![Tiempo real en la interfaz: después](fase3/realtime-after-1280.png)
+![Pantalla Hoy del dueño actualizada en tiempo real](fase3/realtime-after-desktop.jpg)
 
-*La misma pantalla, sin recargar, muestra la venta registrada desde otro equipo en Movimientos de hoy.*
+*Sin recargar la página, aparecen la venta registrada por el vendedor y el nuevo saldo.*
 
-## 3. Base de datos y persistencia
+## Base de datos y persistencia
 
-La base de datos se crea con migraciones SQL generadas por Drizzle (0000 a 0010) y ejecutadas con bun run db:migrate; crean 36 tablas. Las relaciones usan llaves foráneas compuestas por negocio para que ningún registro apunte a datos de otro negocio, y las restricciones CHECK impiden montos negativos, estados inválidos o movimientos de caja sin su origen. bun run db:seed carga el negocio de ejemplo Abarrotes La Ceiba con usuarios y roles preconfigurados, productos, cuentas, ventas, compras, gastos y deudas; puede ejecutarse varias veces sin duplicar datos.
+### Migraciones
 
-**Figura 35. Migraciones y carga de datos de prueba**
+La base de datos se crea con doce migraciones SQL generadas con Drizzle a partir del modelo relacional. El comando bun run db:migrate las aplica en orden y deja creadas 38 tablas; el mismo procedimiento se usó para la base de datos en la nube.
 
-![Migraciones y carga de datos de prueba](fase3/term-03-migrations.png)
+**Figura 35. Migraciones y carga de los datos de prueba**
 
-*Ejecución de las migraciones y del seed sobre una base de datos nueva; la segunda ejecución no duplica datos.*
+![Migraciones y carga de los datos de prueba](fase3/term-03-migrations.jpg)
+
+*Ejecución de las migraciones y del seed sobre una base de datos nueva; la segunda ejecución del seed no duplica información.*
 
 **Figura 36. Tablas creadas en PostgreSQL**
 
-![Tablas creadas en PostgreSQL](fase3/term-04-tables.png)
+![Tablas creadas en PostgreSQL](fase3/term-04-tables.jpg)
 
-*Listado de tablas después de ejecutar las migraciones.*
+*Listado de las tablas después de aplicar las migraciones.*
 
-**Figura 37. Integridad de datos y contraseñas cifradas**
+### Integridad de los datos
 
-![Integridad de datos y contraseñas cifradas](fase3/term-05-integrity.png)
+Las relaciones usan llaves foráneas que incluyen el negocio, de modo que ningún registro puede apuntar a datos de otro negocio. Las restricciones CHECK impiden montos negativos, estados no válidos o movimientos de caja sin su origen, y las restricciones únicas evitan registros duplicados, como dos productos con el mismo código en un negocio. Las cantidades de dinero se guardan como enteros en centavos para evitar errores de redondeo.
 
-*Llaves foráneas, restricciones CHECK y únicas por tabla, y las contraseñas de los usuarios de prueba guardadas como hash.*
+**Figura 37. Restricciones de integridad y contraseñas cifradas**
 
-## 4. Frontend: interfaz de usuario
+![Restricciones de integridad y contraseñas cifradas](fase3/term-05-integrity.jpg)
 
-Las pantallas se implementaron a partir de los prototipos de alta fidelidad de la Fase 2 (figuras 9 a 25), con la misma paleta verde bosque y acento lima, la misma navegación lateral y los mismos flujos. Todas consumen el API real y se suscriben a los eventos en tiempo real.
+*Llaves foráneas, restricciones CHECK y restricciones únicas por tabla, y las contraseñas de los usuarios de prueba guardadas como hash.*
 
-**Tabla 12 – Correspondencia entre prototipos y pantallas implementadas**
+### Datos de prueba
 
-| Prototipo (Fase 2) | Pantalla implementada | Ruta |
+El comando bun run db:seed crea los tres usuarios de prueba con sus roles y el negocio Abarrotes La Ceiba con seis semanas de historia. Cada registro se guarda con los mismos comandos que usa el API, por lo que las existencias, los saldos y las deudas quedan consistentes. Al terminar, el negocio tiene clientes con saldo pendiente, una deuda y una factura de proveedor vencidas, un producto con existencia baja y otro agotado, para que todas las pantallas muestren información.
+
+**Tabla 13. Datos cargados en la demostración**
+
+| Elemento | Cantidad | Detalle |
 | --- | --- | --- |
-| Figura 9. Inicio de sesión | Iniciar sesión | /sign-in |
-| Figuras 10 y 11. Menú principal y de opciones | Hoy y menú ¿Qué quiere registrar? | /operate |
-| Figura 12. Nuevo registro | Dictado por voz o texto | Botón Dictar |
-| Figura 13. Revisar venta | Revisión del registro del asistente | /operate/assistant/review |
-| Figura 14. Movimientos | Movimientos | /operate/movements |
-| Figura 15. Nueva venta | Nueva venta con productos | /operate/sales/new |
-| Figura 16. Nueva compra | Nueva compra | /operate/purchases/new |
-| Figura 17. Nuevo gasto | Nuevo gasto | /operate/expenses/new |
-| Figura 18. Cuentas por cobrar | Cuentas por cobrar | /operate/receivables |
-| Figura 19. Registrar abono | Registrar abono | /operate/receivables |
-| Figura 20. Cuentas por pagar | Cuentas por pagar | /operate/payables |
-| Figura 21. Productos | Productos | /operate/catalog |
-| Figura 22. Proveedores | Proveedores | /operate/suppliers |
-| Figura 23. Reportes | Reportes | /operate/reports |
-| Figura 24. Configuración | Configuración y usuarios | /settings |
+| Usuarios | 3 | Dueño, encargado y vendedor |
+| Productos | 13 | En cuatro categorías, con existencias y mínimo de alerta |
+| Proveedores y clientes | 4 y 5 | Con contacto y condiciones de crédito |
+| Ventas | 381 | Ventas diarias con productos, algunas dictadas o escritas al asistente |
+| Compras | 22 | Compras semanales al contado y al crédito |
+| Gastos | 19 | Alquiler, luz, agua, internet, fletes y pago al ayudante |
+| Pagos y abonos | 22 | Pagos a proveedores y abonos de clientes |
+| Depósitos | 6 | Traslados semanales de la caja al banco |
 
-**Figura 38. Página de inicio pública**
+*Registros del negocio Abarrotes La Ceiba en la base de datos de la demostración.*
 
-![Página de inicio pública](fase3/landing-1280.png)
+## Frontend: interfaz de usuario
 
-*Página que ve un visitante antes de iniciar sesión: la pantalla Hoy de un negocio de ejemplo, el registro por voz paso a paso, los módulos y los roles.*
+Las pantallas se implementaron a partir de los prototipos de alta fidelidad de la Fase 2, con la misma paleta verde bosque y acento lima, la misma navegación y los mismos flujos. Todas consumen el API real y se actualizan con los eventos en tiempo real. En cada figura se muestra la versión de escritorio y la de teléfono, igual que en los prototipos.
 
-**Figura 39. Página de inicio pública en teléfono**
+**Tabla 14. Correspondencia entre los prototipos y las pantallas implementadas**
 
-![Página de inicio pública en teléfono](fase3/landing-390.png)
+| Prototipo (Fase 2) | Pantalla implementada | Figura |
+| --- | --- | --- |
+| Figura 9. Inicio de sesión | Iniciar sesión | 39 |
+| Figuras 10 y 11. Menú principal y menú de opciones | Hoy y menú ¿Qué quiere registrar? | 40, 41 |
+| Figura 12. Nuevo registro | Dictado por voz | 42 |
+| Figura 13. Revisar venta | Revisión del registro preparado por el asistente | 43 |
+| Figura 14. Movimientos | Movimientos | 44 |
+| Figura 15. Nueva venta | Nueva venta | 45 |
+| Figura 16. Nueva compra | Nueva compra | 46 |
+| Figura 17. Nuevo gasto | Nuevo gasto | 47 |
+| Figura 18. Cuentas por cobrar | Cuentas por cobrar | 48 |
+| Figura 19. Registrar abono | Registrar abono | 49 |
+| Figura 20. Cuentas por pagar | Cuentas por pagar | 50 |
+| Figura 21. Productos | Productos | 51 |
+| Figura 22. Proveedores | Proveedores | 52 |
+| Figura 23. Reportes | Reportes | 54 |
+| Figura 24. Configuración | Configuración y gestión de usuarios | 56 |
 
-*La misma página en un teléfono.*
+*Las figuras de la izquierda corresponden al documento de la Fase 2.*
 
-**Figura 40. Pantalla Inicio de sesión implementada**
+### Pantallas implementadas
 
-![Pantalla Inicio de sesión implementada](fase3/signin-1280.png)
+**Figura 38. Página pública del sistema**
 
-*Implementación del prototipo de la figura 9.*
+![Página pública del sistema](fase3/landing.jpg)
 
-**Figura 41. Pantalla Hoy implementada**
+*Página que ve una persona antes de iniciar sesión, con un negocio de ejemplo y el registro por voz.*
 
-![Pantalla Hoy implementada](fase3/home-1280.png)
+**Figura 39. Pantalla Inicio de Sesión**
 
-*Dinero disponible con su gráfico, el registro por voz o texto, movimientos de hoy, por cobrar y por pagar (figuras 10 y 12).*
+![Pantalla Inicio de Sesión](fase3/signin.jpg)
 
-**Figura 42. Pantalla Hoy en teléfono**
+*Interfaz de inicio de sesión del sistema implementado.*
 
-![Pantalla Hoy en teléfono](fase3/home-390.png)
+**Figura 40. Pantalla Hoy (menú principal)**
 
-*La misma pantalla en un teléfono, con la tarjeta de dinero en lima como en la figura 11.*
+![Pantalla Hoy (menú principal)](fase3/home.jpg)
 
-**Figura 43. Menú ¿Qué quiere registrar?**
+*Dinero disponible con su evolución de 30 días, registro por voz o texto, movimientos de hoy, cuentas por cobrar y próximo pago.*
 
-![Menú ¿Qué quiere registrar?](fase3/new-menu-1280.png)
+**Figura 41. Pantalla del menú de opciones**
 
-*Las cinco opciones de registro del prototipo de la figura 11.*
+![Pantalla del menú de opciones](fase3/new-menu.jpg)
 
-**Figura 44. Nuevo registro por voz**
+*Menú ¿Qué quiere registrar? con las cinco operaciones del prototipo.*
 
-![Nuevo registro por voz](fase3/dictation-1280.png)
+**Figura 42. Pantalla del módulo Nuevo registro**
 
-*Diálogo de dictado escuchando el micrófono (figura 12).*
+![Pantalla del módulo Nuevo registro](fase3/dictation.jpg)
 
-**Figura 45. Revisión del registro creado por el asistente de IA**
+*Registro por voz: el sistema escucha la frase y, al detenerse, prepara el registro para revisarlo.*
 
-![Revisión del registro creado por el asistente de IA](fase3/assistant-review-1280.png)
+**Figura 43. Pantalla del módulo Revisar Venta**
 
-*La frase dictada con sus fragmentos numerados y el formulario de venta lleno con los mismos números (figura 13); el usuario confirma antes de guardar.*
+![Pantalla del módulo Revisar Venta](fase3/assistant-review.jpg)
 
-**Figura 46. Pantalla Movimientos implementada**
+*La frase dictada aparece con sus fragmentos numerados y el formulario de venta queda lleno con los mismos números; el usuario corrige lo necesario y confirma.*
 
-![Pantalla Movimientos implementada](fase3/movements-1280.png)
+**Figura 44. Pantalla del módulo Movimientos**
 
-*Ventas, compras, gastos, abonos y pagos en un solo libro con totales del período (figura 14).*
+![Pantalla del módulo Movimientos](fase3/movements.jpg)
 
-**Figura 47. Pantalla Nueva venta implementada**
+*Ventas, compras, gastos, abonos y pagos en un solo listado, con los totales del período.*
 
-![Pantalla Nueva venta implementada](fase3/sale-new-1280.png)
+**Figura 45. Pantalla del módulo Nueva Venta**
 
-*Venta con productos, forma de pago y crédito (figura 15).*
+![Pantalla del módulo Nueva Venta](fase3/sale-new.jpg)
 
-**Figura 48. Pantalla Nueva compra implementada**
+*Venta con productos, forma de pago, cuenta que recibe y total.*
 
-![Pantalla Nueva compra implementada](fase3/purchase-new-1280.png)
+**Figura 46. Pantalla del módulo Nueva Compra**
 
-*Compra al contado o al crédito con productos que entran al inventario.*
+![Pantalla del módulo Nueva Compra](fase3/purchase-new.jpg)
 
-**Figura 49. Pantalla Nuevo gasto con validación**
+*Compra al crédito con sus productos, costos, fecha de vencimiento y total.*
 
-![Pantalla Nuevo gasto con validación](fase3/state-validation-expense-1280.png)
+**Figura 47. Pantalla del módulo Nuevo Gasto**
 
-*Los campos obligatorios vacíos se señalan antes de enviar (figura 17).*
+![Pantalla del módulo Nuevo Gasto](fase3/expense-new.jpg)
 
-**Figura 50. Pantalla Cuentas por cobrar implementada**
+*Registro de un gasto con su categoría, monto y cuenta de la que sale el dinero.*
 
-![Pantalla Cuentas por cobrar implementada](fase3/receivables-1280.png)
+**Figura 48. Pantalla del módulo Cuentas por cobrar**
 
-*Saldos, antigüedad de las deudas y filtros (figura 18).*
+![Pantalla del módulo Cuentas por cobrar](fase3/receivables.jpg)
 
-**Figura 51. Registrar abono**
+*Saldos de los clientes, antigüedad de las deudas y estado de cada cuenta.*
 
-![Registrar abono](fase3/payment-sheet-1280.png)
+**Figura 49. Pantalla del módulo Registrar Abono**
 
-*Panel para registrar el abono de un cliente (figura 19).*
+![Pantalla del módulo Registrar Abono](fase3/payment.jpg)
 
-**Figura 52. Pantalla Cuentas por pagar implementada**
+*Abono de un cliente con el saldo actual y el saldo después del abono.*
 
-![Pantalla Cuentas por pagar implementada](fase3/payables-1280.png)
+**Figura 50. Pantalla del módulo Cuentas por Pagar**
 
-*Lo que se debe a proveedores, lo vencido y el próximo pago (figura 20).*
+![Pantalla del módulo Cuentas por Pagar](fase3/payables.jpg)
 
-**Figura 53. Pantalla Productos implementada**
+*Lo que el negocio debe a sus proveedores, lo vencido y el próximo pago.*
 
-![Pantalla Productos implementada](fase3/products-1280.png)
+**Figura 51. Pantalla del módulo Productos**
 
-*Existencias contra el mínimo y filtros de existencia baja y agotados (figura 21).*
+![Pantalla del módulo Productos](fase3/products.jpg)
 
-**Figura 54. Pantalla Proveedores implementada**
+*Existencias contra el mínimo de cada producto, con existencia baja y agotado.*
 
-![Pantalla Proveedores implementada](fase3/suppliers-1280.png)
+**Figura 52. Pantalla del módulo Proveedores**
 
-*Proveedores con su saldo y compras recientes (figura 22).*
+![Pantalla del módulo Proveedores](fase3/suppliers.jpg)
 
-**Figura 55. Pantalla Reportes implementada**
+*Proveedores con su saldo pendiente y sus compras recientes.*
 
-![Pantalla Reportes implementada](fase3/reports-1280.png)
+**Figura 53. Pantalla del módulo Clientes**
 
-*Estado de resultados y flujo de caja mensual (figura 23).*
+![Pantalla del módulo Clientes](fase3/customers.jpg)
 
-**Figura 56. Pantalla Configuración y gestión de usuarios**
+*Clientes del negocio con su teléfono y saldo.*
 
-![Pantalla Configuración y gestión de usuarios](fase3/settings-1280.png)
+**Figura 54. Pantalla del módulo Reportes**
 
-*Usuarios del negocio con su rol y acciones para cambiarlo o quitarlo, y la matriz de permisos (figura 24).*
+![Pantalla del módulo Reportes](fase3/reports.jpg)
+
+*Estado de resultados de octubre y flujo de caja de los últimos meses.*
+
+**Figura 55. Pantalla del módulo Caja y bancos**
+
+![Pantalla del módulo Caja y bancos](fase3/cash.jpg)
+
+*Saldo de cada cuenta y sus movimientos recientes.*
+
+**Figura 56. Pantalla del módulo Configuración**
+
+![Pantalla del módulo Configuración](fase3/settings.jpg)
+
+*Datos del negocio, usuarios con su rol y matriz de permisos.*
 
 **Figura 57. Agregar un usuario al negocio**
 
-![Agregar un usuario al negocio](fase3/settings-add-user-1280.png)
+![Agregar un usuario al negocio](fase3/settings-add-desktop.jpg)
 
-*El dueño crea la cuenta de un empleado con su rol y una contraseña inicial que se guarda cifrada.*
-
-**Figura 58. Pantalla Caja y bancos**
-
-![Pantalla Caja y bancos](fase3/cash-1280.png)
-
-*Saldos de cada cuenta y movimientos recientes.*
+*El dueño crea la cuenta de un empleado con su rol y una contraseña inicial.*
 
 ### Estados de la interfaz
 
-Cada pantalla muestra estados reales: esqueletos mientras carga, mensajes de validación en el campo, confirmación al guardar, errores del servidor con opción de reintentar y un aviso claro cuando el rol no tiene permiso.
+Cada pantalla muestra el estado real de la información: una estructura de carga mientras llegan los datos, mensajes de validación junto al campo con error, una confirmación al guardar, el mensaje del servidor cuando una operación no se puede realizar y un aviso claro cuando el rol del usuario no tiene permiso.
 
-**Figura 59. Estado cargando**
+**Figura 58. Estado de carga**
 
-![Estado cargando](fase3/state-loading-1280.png)
+![Estado de carga](fase3/state-loading-desktop.jpg)
 
-*Esqueleto de la pantalla mientras llegan los datos.*
+*La pantalla Reportes mientras llegan los datos.*
 
-**Figura 60. Estado de éxito**
+**Figura 59. Validación de un formulario**
 
-![Estado de éxito](fase3/state-success-sale-1280.png)
+![Validación de un formulario](fase3/state-validation-desktop.jpg)
 
-*La venta guardada abre su detalle y muestra la notificación Venta guardada.*
+*Al intentar revisar un gasto sin concepto ni monto, el formulario señala los campos obligatorios.*
+
+**Figura 60. Confirmación de una operación**
+
+![Confirmación de una operación](fase3/state-success-desktop.jpg)
+
+*Después de guardar, la venta abre su detalle y aparece la notificación Venta guardada.*
 
 **Figura 61. Visualización de errores**
 
-![Visualización de errores](fase3/state-error-signin-1280.png)
+![Visualización de errores](fase3/state-error-desktop.jpg)
 
 *Mensaje al intentar iniciar sesión con una contraseña incorrecta.*
 
-**Figura 62. Vista del vendedor**
+**Figura 62. Pantalla Hoy del vendedor**
 
-![Vista del vendedor](fase3/seller-home-1280.png)
+![Pantalla Hoy del vendedor](fase3/seller-home-desktop.jpg)
 
 *El vendedor solo ve los módulos que su rol permite.*
 
 **Figura 63. Acceso denegado por rol**
 
-![Acceso denegado por rol](fase3/state-denied-seller-1280.png)
+![Acceso denegado por rol](fase3/state-denied-desktop.jpg)
 
-*El vendedor que abre Reportes recibe un aviso de que su rol no lo permite.*
+*Si el vendedor abre Reportes, el sistema le indica que su rol no lo permite.*
 
-## 5. Colección de pruebas manuales del API
+## Colección de pruebas del API
 
-La carpeta docs/postman del repositorio contiene la colección exportada (pisto.postman_collection.json) y dos entornos (local y producción). Se importa en Postman o Bruno y prueba de forma independiente cada endpoint: 147 peticiones en 16 carpetas que verifican el código y el contenido de cada respuesta. Se ejecuta en orden con una pausa de 1000 ms entre peticiones.
+En la carpeta docs/postman del repositorio se encuentran la colección exportada y dos entornos, uno local y otro para la demostración. La colección se importa en Postman o en Bruno y prueba de forma independiente cada endpoint: 147 peticiones organizadas en 16 carpetas que verifican el código de respuesta y el contenido. Para ejecutarla completa se usa una pausa de 1000 ms entre peticiones, porque el API limita la cantidad de escrituras por minuto.
 
-**Figura 64. Ejecución de la colección con Newman**
+**Figura 64. Ejecución de la colección de pruebas**
 
-![Ejecución de la colección con Newman](fase3/term-08-newman.png)
+![Ejecución de la colección de pruebas](fase3/term-08-newman.jpg)
 
-*Resumen de la corrida de la colección contra el API: todas las peticiones y verificaciones pasan.*
+*Resultado de la colección ejecutada con Newman: las 147 peticiones y las 285 verificaciones terminan sin fallos.*
 
-## 6. Demostración y despliegue
+## Pruebas manuales realizadas
 
-El MVP está desplegado en Cloudflare Workers: un Worker sirve la aplicación web y reenvía el API a un Durable Object que se conecta a PostgreSQL en Neon con un rol de permisos mínimos; la IA usa el enlace de Workers AI. La dirección pública es https://pisto.contact-862.workers.dev.
+Antes de la demostración el equipo verificó el sistema de forma manual, usando la interfaz y la colección de peticiones. La tabla resume los casos principales y su resultado.
+
+**Tabla 15. Casos de prueba manual**
+
+| Caso | Pasos | Resultado esperado | Resultado |
+| --- | --- | --- | --- |
+| Inicio de sesión | Ingresar con dueno@pisto.test y su contraseña | Se abre la pantalla Hoy del negocio | Correcto |
+| Contraseña incorrecta | Ingresar con una contraseña equivocada | Mensaje de error sin entrar al sistema | Correcto |
+| Venta con productos y crédito | Agregar productos, cobrar una parte y elegir cliente y fecha de pago | Bajan las existencias y el saldo queda por cobrar | Correcto |
+| Registro con el asistente | Escribir o dictar una venta y pulsar Revisar | El formulario aparece lleno para confirmar | Correcto |
+| Compra al crédito | Elegir proveedor, productos y condición al crédito | Suben las existencias y la deuda aparece en Por pagar | Correcto |
+| Pago mayor al saldo | Registrar un pago a proveedor mayor a lo que se debe | El sistema rechaza el pago | Correcto |
+| Validación de gasto | Pulsar Revisar gasto sin concepto ni monto | Se señalan los campos obligatorios | Correcto |
+| Permisos por rol | Ingresar como vendedor y abrir Reportes | Aviso de que el rol no lo permite | Correcto |
+| Gestión de usuarios | Agregar un vendedor, cambiar su rol y quitarlo | Cada cambio se guarda y el usuario quitado pierde el acceso | Correcto |
+| Tiempo real | Registrar una venta como vendedor mientras el dueño ve la pantalla Hoy | La venta aparece al dueño sin recargar | Correcto |
+| API sin sesión | Enviar una petición a /v1/sales sin iniciar sesión | Respuesta 401 | Correcto |
+| Colección completa | Ejecutar la colección con Newman | 147 peticiones y 285 verificaciones sin fallos | Correcto |
+
+*Pruebas manuales y exploratorias realizadas sobre el sistema local y la demostración en vivo.*
+
+## Demostración y despliegue
+
+### Despliegue en la nube
+
+El MVP está desplegado en Cloudflare Workers. Un Worker entrega la aplicación web y dirige las peticiones del API a un Durable Object, que se conecta a PostgreSQL en Neon con un usuario de permisos mínimos y usa Workers AI para el asistente. Las migraciones se aplican a la base de datos en la nube con un usuario distinto, reservado para cambios de estructura.
 
 **Figura 65. Despliegue en Cloudflare Workers**
 
-![Despliegue en Cloudflare Workers](fase3/term-09-deploy.png)
+![Despliegue en Cloudflare Workers](fase3/term-09-deploy.jpg)
 
-*Salida del despliegue con sus enlaces (base de datos, IA, archivos estáticos) y la verificación /ready.*
+*Salida del despliegue con los servicios enlazados y la verificación del estado del servicio en la dirección pública.*
 
 ### Guion de la demostración en vivo
 
-- Abrir https://pisto.contact-862.workers.dev y mostrar la página pública; iniciar sesión como dueno@pisto.test.
-- En Hoy, explicar Dinero disponible, Por cobrar y Por pagar. Pulsar Dictar (o escribir en Registrar): "Le vendí a Rosa Ayala dos libras de arroz y una Coca-Cola, me pagó un dólar en efectivo y el resto me lo queda debiendo".
-- Revisar el registro: los números de la frase coinciden con los campos; guardar la venta y verla en Movimientos y en Cuentas por cobrar.
-- Registrar una compra al crédito, ver la deuda en Por pagar y registrar un pago al proveedor.
-- Abrir una segunda ventana como vendedor@pisto.test: registrar una venta y mostrar que la pantalla del dueño se actualiza sola; mostrar que el vendedor no puede abrir Reportes.
-- En Configuración, agregar un usuario con rol Vendedor y cambiar su rol.
-- Mostrar la colección de Postman y una petición rechazada (sin sesión o con datos inválidos).
-
-## Nota sobre el alcance de las pruebas
-
-Las pruebas de esta entrega son manuales y exploratorias: el equipo recorrió cada pantalla llenando formularios y probó cada endpoint con la colección de Postman. El repositorio ya contiene pruebas automatizadas usadas durante el desarrollo, que se documentarán formalmente en la Fase 4 de Calidad de Software.
+- Abrir https://pisto.contact-862.workers.dev, mostrar la página pública e iniciar sesión como dueno@pisto.test.
+- En la pantalla Hoy, explicar el dinero disponible, las cuentas por cobrar y el próximo pago.
+- Pulsar Dictar, o escribir en Registrar: «Le vendí a Rosa Ayala dos libras de arroz y una Coca-Cola, me pagó un dólar en efectivo y el resto me lo queda debiendo». Revisar el formulario, guardar la venta y mostrarla en Movimientos y en Cuentas por cobrar.
+- Registrar una compra al crédito, revisar la deuda en Cuentas por pagar y registrar el pago al proveedor.
+- Abrir otra ventana como vendedor@pisto.test, registrar una venta y mostrar que la pantalla del dueño se actualiza sola; mostrar que el vendedor no puede abrir Reportes.
+- En Configuración, agregar un usuario con rol de vendedor y cambiar su rol.
+- Mostrar la colección de Postman y una petición rechazada por falta de sesión o por datos inválidos.
 
 ## Matriz de cumplimiento de la Fase 3
 
-**Tabla 13 – Requisitos de la guía y su evidencia**
+**Tabla 16. Requisitos de la guía de la Fase 3 y su evidencia**
 
-| Requisito de la guía | Evidencia |
+| Requisito | Evidencia |
 | --- | --- |
-| Repositorio con historial distribuido | GitHub Eclalune-BTC/pisto-app (pendiente: commits de cada integrante) |
-| Estrategia de ramas main / develop / feature | Figura de ramas e historial |
-| README: prerrequisitos, instalación, .env.example, base de datos y seeds | Figuras del README y de .env.example |
-| Arquitectura del sistema | Sección Arquitectura implementada |
-| Endpoints: autenticación, usuarios, recursos y soporte | Tabla de endpoints y colección Postman |
-| Seguridad: hash, sesiones y roles | Figura de integridad, matriz de permisos, respuestas 401/403 |
-| Manejo de errores | Figura de respuestas del API |
-| WebSockets | Figuras de eventos y de la interfaz antes y después |
-| Migraciones e integridad de datos | Figuras de migraciones, tablas e integridad |
-| Datos de prueba con usuarios y roles | Figura del seed y tabla de cuentas |
-| Pantallas basadas en los prototipos | Tabla de correspondencia y figuras de pantallas |
-| Estados de la interfaz | Figuras de cargando, éxito, validación, error y acceso denegado |
-| Integración con el API y tiempo real | Todas las pantallas usan el API; figuras de tiempo real |
-| Colección de pruebas del API | docs/postman y figura de Newman |
-| Demostración en vivo | https://pisto.contact-862.workers.dev y guion de la demostración |
+| Repositorio con historial de trabajo y estrategia de ramas | Repositorio en GitHub (Anexo 1) y Figura 27 |
+| README con prerrequisitos, instalación, variables de entorno, base de datos y seeds | Figuras 28, 29 y 30 |
+| Arquitectura del sistema | Tabla de capas y módulos |
+| Endpoints de autenticación, usuarios, recursos principales y soporte | Tabla de endpoints y colección de Postman |
+| Contraseñas cifradas, sesiones y control por roles | Figura 37, tabla de permisos y Figura 63 |
+| Manejo de errores del servidor | Figura 31 |
+| Comunicación en tiempo real | Figuras 32, 33 y 34 |
+| Migraciones e integridad de datos | Figuras 35, 36 y 37 |
+| Datos de prueba con usuarios y roles | Figura 35 y tablas de usuarios y datos cargados |
+| Pantallas basadas en los prototipos | Figuras 38 a 57 |
+| Estados de la interfaz | Figuras 58 a 63 |
+| Colección de pruebas del API | docs/postman y Figura 64 |
+| Demostración en vivo | Figura 65, Anexo 3 y guion de la demostración |
+
+*Relación entre cada requisito de la guía y la evidencia presentada en este documento.*
+
+## Referencias Bibliográficas
+
+- Better Auth. (s.f.). Better Auth documentation. https://www.better-auth.com/docs
+- Cloudflare. (s.f.). Durable Objects. Cloudflare Docs. https://developers.cloudflare.com/durable-objects/
+- Cloudflare. (s.f.). Workers AI. Cloudflare Docs. https://developers.cloudflare.com/workers-ai/
+- Drizzle Team. (s.f.). Drizzle ORM documentation. https://orm.drizzle.team/docs/overview
+- Elysia. (s.f.). Elysia documentation. https://elysiajs.com/
+- Expo. (s.f.). Introduction to Expo Router. Expo Documentation. https://docs.expo.dev/router/introduction/
+- Neon. (s.f.). Neon documentation. https://neon.com/docs
+- Postman. (s.f.). Run collections using Newman CLI. Postman Docs. https://learning.postman.com/docs/collections/using-newman-cli/command-line-integration-with-newman/
+- The PostgreSQL Global Development Group. (s.f.). PostgreSQL 18 documentation. https://www.postgresql.org/docs/18/
+
+## Anexos
+
+### Anexo 1. Repositorio de GitHub
+
+https://github.com/Eclalune-BTC/pisto-app
+
+### Anexo 2. Tablero ágil de gestión en Trello
+
+https://trello.com/b/PoTcegqU/sistema-financiero-mypes-product-backlog-y-sprint-1
+
+### Anexo 3. Demostración en vivo
+
+https://pisto.contact-862.workers.dev
+
+### Anexo 4. Colección de pruebas del API
+
+https://github.com/Eclalune-BTC/pisto-app/tree/main/docs/postman

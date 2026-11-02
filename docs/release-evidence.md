@@ -36,6 +36,10 @@ and the module screens) were merged into `develop` with one combined migration,
   version `b1c3d2a4-24cf-4d8c-acde-c2a31e4df81d` (after migration 0011 on Neon); `/ready` reported the database as ok and a
   hosted interpretation of "Pagué 18 dólares de luz con la caja" returned an $18.00 utilities
   expense draft from Caja principal.
+- The hosted demo business was rebuilt from the six-week seed story (`scripts/seed-story.ts`): the
+  story was posted locally through the repositories with the hosted demo users' ids, then copied
+  into Neon in one transaction after a full `pg_dump` backup; the API then served 381 sales, 22
+  purchases and the expected payables and debtors.
 - Owners add, re-role and remove staff (`feature/user-management`, 10 PostgreSQL tests); the public
   page was rebuilt from the product's own screens (`feature/landing-page`). The evidence for each
   Fase 3 requirement is in [the Phase 3 delivery page](fase3-entrega.md).
