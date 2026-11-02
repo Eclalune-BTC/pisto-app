@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Brand } from "@/components/brand";
 import { BusinessMenu } from "@/components/shell/business-menu";
 import { NavUser } from "@/components/shell/nav-user";
+import { RealtimeStatus } from "@/components/shell/realtime-status";
 import { ShellProvider } from "@/components/shell/shell-context";
 import { TopBar } from "@/components/shell/top-bar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -25,6 +26,7 @@ import { getVisibleOperateModules, OPERATE_GROUPS } from "@/features/operate/nav
 import { cn } from "@/lib/cn";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead } from "@/lib/query-state";
+import { useBusinessChanges } from "@/lib/realtime";
 
 /** Sidebar layouts start at tablet-landscape widths on every platform. */
 const WIDE_LAYOUT_MIN_WIDTH = 1024;
@@ -52,6 +54,7 @@ export function AppShell({ children, user }: AppShellProps) {
     ? undefined
     : getActiveBusiness(businesses.data);
   const modules = getVisibleOperateModules(activeBusiness?.access.permissions);
+  const realtime = useBusinessChanges(activeBusiness?.id);
   const rail = wide && collapsed;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Route and breakpoint changes must dismiss the navigation sheet.
@@ -120,6 +123,7 @@ export function AppShell({ children, user }: AppShellProps) {
         })}
       </SidebarContent>
       <SidebarFooter>
+        <RealtimeStatus collapsed={rail} status={realtime} />
         <NavUser collapsed={rail} user={user} variant="sidebar" />
       </SidebarFooter>
     </Sidebar>
