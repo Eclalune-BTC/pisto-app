@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { ChevronsUpDown } from "lucide-react-native";
+import { ChevronsUpDown, Store } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -17,7 +17,6 @@ import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
-import { initialsOf } from "@/lib/initials";
 import { notify } from "@/lib/notify";
 import {
   businessesQueryKey,
@@ -38,14 +37,14 @@ function BusinessIdentity({
 }) {
   return (
     <>
-      <Avatar alt={name} className="size-7">
-        <AvatarFallback className="bg-foreground">
-          <Text className="font-heading text-[11px] text-background">{initialsOf(name)}</Text>
+      <Avatar alt={name} className="size-8 rounded-md">
+        <AvatarFallback className="rounded-md bg-brand">
+          <Icon as={Store} className="text-brand-foreground" size={16} />
         </AvatarFallback>
       </Avatar>
       {collapsed ? null : (
         <View className="min-w-0 flex-1">
-          <Text className="font-heading text-left text-[13px] leading-4" numberOfLines={1}>
+          <Text className="font-ui text-left text-[13px] leading-4" numberOfLines={1}>
             {name}
           </Text>
           <Text className="text-left text-xs leading-4 text-muted-foreground" numberOfLines={1}>
@@ -88,7 +87,10 @@ export function BusinessMenu({ collapsed }: { collapsed: boolean }) {
     return (
       <View
         accessibilityLabel={t("shell.activeBusiness", { name: active.name })}
-        className={cn("flex-row items-center gap-2.5 px-2 py-1.5", collapsed && "justify-center")}
+        className={cn(
+          "flex-row items-center gap-2.5 rounded-lg bg-muted px-2 py-2",
+          collapsed && "justify-center bg-transparent px-0",
+        )}
       >
         <BusinessIdentity
           collapsed={collapsed}
@@ -104,7 +106,10 @@ export function BusinessMenu({ collapsed }: { collapsed: boolean }) {
       <DropdownMenuTrigger asChild>
         <Button
           accessibilityLabel={t("shell.switchBusiness", { name: active.name })}
-          className={cn("h-auto w-full justify-start gap-2.5 px-2 py-1.5", collapsed && "px-0")}
+          className={cn(
+            "h-auto w-full justify-start gap-2.5 rounded-lg bg-muted px-2 py-2 web:hover:bg-accent",
+            collapsed && "bg-transparent px-0",
+          )}
           disabled={selection.isPending}
           variant="ghost"
         >

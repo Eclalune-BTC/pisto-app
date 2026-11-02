@@ -1,27 +1,28 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
 
 import { Text } from "@/components/ui/text";
-import { cn } from "@/lib/cn";
-import type { RealtimeStatus as Status } from "@/lib/realtime";
+import type { RealtimeStatus } from "@/lib/realtime";
+import { nextInterrupted } from "./realtime-interruption";
 
-/** Whether changes from other devices are arriving live; the dot alone stays when collapsed. */
-export function RealtimeStatus({ collapsed, status }: { collapsed: boolean; status: Status }) {
+export function useRealtimeInterrupted(status: RealtimeStatus): boolean {
+  const [previous, setPrevious] = useState(status);
+  const [interrupted, setInterrupted] = useState(false);
+  if (status !== previous) {
+    setPrevious(status);
+    setInterrupted(nextInterrupted(previous, status, interrupted));
+  }
+  return interrupted;
+}
+
+/** Nothing while updates arrive; one quiet line after a real disconnect while it reconnects. */
+export function RealtimeNotice({ compact, status }: { compact: boolean; status: RealtimeStatus }) {
   const { t } = useTranslation();
-  const label = t(`shell.realtime.${status}`);
+  const interrupted = useRealtimeInterrupted(status);
+  if (!interrupted) return null;
   return (
-    <View
-      accessibilityLabel={label}
-      className={cn("h-7 flex-row items-center gap-2 px-2", collapsed && "justify-center")}
-      role="status"
-    >
-      <View
-        className={cn(
-          "size-1.5 rounded-full",
-          status === "live" ? "bg-primary" : "bg-muted-foreground/60",
-        )}
-      />
-      {collapsed ? null : <Text className="text-xs text-muted-foreground">{label}</Text>}
-    </View>
+    <Text className="min-w-0 shrink text-xs text-muted-foreground" numberOfLines={1} role="status">
+      {compact ? t("shell.realtimeInterruptedShort") : t("shell.realtimeInterrupted")}
+    </Text>
   );
 }

@@ -16,15 +16,15 @@
 @layer theme {
   :root {
     @variant light {
-      --color-background: #f3f4f0;
+      --color-background: #f2f3ee;
       --color-foreground: #111a15;
       --color-card: #ffffff;
       --color-card-foreground: #111a15;
       --color-popover: #ffffff;
       --color-popover-foreground: #111a15;
-      --color-muted: #ebeee8;
+      --color-muted: #eef0ea;
       --color-muted-foreground: #58635c;
-      --color-border: #dfe3dc;
+      --color-border: #e2e5de;
       --color-input: #78827b;
       --color-ring: #1d4a33;
       --color-primary: #1b3d2c;
@@ -35,11 +35,11 @@
       --color-accent-foreground: #111a15;
       --color-link: #1b5236;
       --color-selection: #d5e6d9;
-      --color-sidebar: #fbfbf8;
-      --color-sidebar-foreground: #38443d;
-      --color-sidebar-accent: #e3ece4;
-      --color-sidebar-accent-foreground: #1b3d2c;
-      --color-sidebar-border: #e2e6df;
+      --color-sidebar: #ffffff;
+      --color-sidebar-foreground: #2f3933;
+      --color-sidebar-accent: #f0f1ed;
+      --color-sidebar-accent-foreground: #111a15;
+      --color-sidebar-border: #e8eae5;
       --color-destructive: #b42318;
       --color-destructive-action: #b42318;
       --color-destructive-action-foreground: #ffffff;
@@ -50,10 +50,12 @@
       --color-positive: #1d6a43;
       --color-positive-foreground: #1d6a43;
       --color-positive-surface: #e5f1e8;
-      --color-highlight: #d9f27f;
+      --color-highlight: #d9f86c;
       --color-highlight-foreground: #14301f;
       --color-highlight-strong: #c6ea52;
-      --color-chart-fill: #dff5a0;
+      --color-chart-fill: #e5f9a8;
+      --color-brand: #1b3d2c;
+      --color-brand-foreground: #d9f86c;
       --color-chart-1: #1b3d2c;
       --color-chart-2: #4f8a68;
       --color-chart-3: #9cc3aa;
@@ -102,6 +104,8 @@
       --color-highlight-foreground: #0c1a12;
       --color-highlight-strong: #d4f26a;
       --color-chart-fill: #2c3d1a;
+      --color-brand: #1b3d2c;
+      --color-brand-foreground: #d4f26a;
       --color-chart-1: #a7d8b9;
       --color-chart-2: #5f9b78;
       --color-chart-3: #2f5a42;

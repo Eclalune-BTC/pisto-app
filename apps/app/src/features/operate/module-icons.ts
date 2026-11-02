@@ -1,23 +1,25 @@
 import {
-  Boxes,
+  ArrowLeftRight,
   ChartColumn,
-  CircleDollarSign,
-  ContactRound,
   HandCoins,
+  Landmark,
   type LucideIcon,
-  PackageSearch,
+  Package,
   ReceiptText,
-  WalletCards,
+  ShoppingBag,
+  UsersRound,
+  Warehouse,
 } from "lucide-react-native";
 import type { OperateModuleId } from "./navigation";
 
 export const operateModuleIcons: Record<OperateModuleId, LucideIcon> = {
-  sales: ReceiptText,
-  expenses: CircleDollarSign,
-  cash: WalletCards,
-  catalog: PackageSearch,
-  inventory: Boxes,
-  customers: ContactRound,
+  movements: ArrowLeftRight,
+  sales: ShoppingBag,
+  expenses: ReceiptText,
+  cash: Landmark,
   receivables: HandCoins,
+  catalog: Package,
+  inventory: Warehouse,
+  customers: UsersRound,
   reports: ChartColumn,
 };
