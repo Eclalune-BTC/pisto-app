@@ -1,9 +1,10 @@
-import type { Business, Sale } from "@pisto/contracts";
+import type { Business, Sale, SaleDetails } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { type Href, Link, Redirect, useLocalSearchParams } from "expo-router";
 import type { TFunction } from "i18next";
 import { Info, Pencil } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
 import { HeaderActions } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
@@ -16,11 +17,13 @@ import { useRouteLabel } from "@/components/shell/shell-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { formatLocalizedDateTime } from "@/i18n/format";
+import { formatLocalDate, formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { formatMinorUnits } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead, queryHasStaleData, readFailureKind } from "@/lib/query-state";
-import { saleQueryOptions } from "./queries";
+import { SaleLinesTable } from "./itemized/sale-lines-table";
+import { saleFormOptionsQueryOptions, saleQueryOptions } from "./queries";
 import { SaleStatusBadge, saleAmount, saleMoment } from "./sale-facts";
 import { canCorrectSale, readState } from "./state";
 
@@ -78,6 +81,67 @@ function settingItems(sale: Sale, business: Business, t: TFunction): Description
   ];
 }
 
+/** Who bought, what was paid into which account and what is still owed. */
+function settlementItems(
+  sale: Sale,
+  details: SaleDetails,
+  accountName: string | null,
+  locale: string,
+  t: TFunction,
+): DescriptionItem[] {
+  const { settlement } = details;
+  const money = (value: string) =>
+    formatMinorUnits(value, sale.currency, sale.currencyMinorUnitDigits, locale);
+  const items: DescriptionItem[] = [
+    {
+      label: t("sales.detail.customer"),
+      value: settlement.customerName ?? t("sales.itemized.counterSale"),
+    },
+    { label: t("sales.detail.paid"), numeric: true, value: money(settlement.receivedMinorUnits) },
+  ];
+  if (settlement.paymentMethod !== null) {
+    items.push(
+      {
+        label: t("sales.detail.method"),
+        value: t(`sales.itemized.methods.${settlement.paymentMethod}`),
+      },
+      { label: t("sales.detail.account"), value: accountName ?? t("sales.detail.accountUnknown") },
+    );
+  }
+  if (settlement.creditMinorUnits !== "0") {
+    items.push({
+      label: t("sales.detail.owes"),
+      numeric: true,
+      value: settlement.receivableId ? (
+        <View className="flex-row flex-wrap items-baseline gap-x-3">
+          <Text className="font-ui text-sm tabular-nums">{money(settlement.creditMinorUnits)}</Text>
+          <Link
+            asChild
+            href={{
+              pathname: "/operate/receivables/[receivableId]",
+              params: { receivableId: settlement.receivableId },
+            }}
+          >
+            <Text className="text-sm leading-5 text-link underline web:underline-offset-4">
+              {t("sales.detail.viewReceivable")}
+            </Text>
+          </Link>
+        </View>
+      ) : (
+        money(settlement.creditMinorUnits)
+      ),
+    });
+    if (settlement.dueDate) {
+      items.push({
+        label: t("sales.detail.dueDate"),
+        numeric: true,
+        value: formatLocalDate(settlement.dueDate, locale),
+      });
+    }
+  }
+  return items;
+}
+
 export default function SaleDetailScreen() {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
@@ -89,6 +153,17 @@ export default function SaleDetailScreen() {
   const canRead = permissions.includes("sales:read");
   const result = useQuery(saleQueryOptions(canRead ? business?.id : undefined, saleId));
   const sale = result.data?.sale;
+  const details = result.data?.details ?? null;
+  // Sellers cannot read cash accounts; the sale form's account names cover every role that sells.
+  const accountId = details?.settlement.accountId ?? null;
+  const accountOptions = useQuery(
+    saleFormOptionsQueryOptions(
+      accountId && permissions.includes("sales:create") ? business?.id : undefined,
+    ),
+  );
+  const accountName = accountId
+    ? (accountOptions.data?.accounts.find(({ id }) => id === accountId)?.name ?? null)
+    : null;
   const title = sale
     ? (sale.description ?? t("sales.detail.title", { moment: saleMoment(sale, locale) }))
     : undefined;
@@ -167,7 +242,10 @@ export default function SaleDetailScreen() {
                 disabled: stale,
                 href: { pathname: "/operate/sales/correct/[saleId]", params: { saleId: sale.id } },
                 icon: Pencil,
-                label: t("sales.correction.open"),
+                label:
+                  sale.entryMode === "itemized"
+                    ? t("sales.correction.voidItemized")
+                    : t("sales.correction.open"),
               }}
             />
           ) : undefined
@@ -192,10 +270,25 @@ export default function SaleDetailScreen() {
           value={saleAmount(sale, locale)}
         />
       </StatGroup>
+      {details ? (
+        <Section title={t("sales.detail.productsTitle")}>
+          <SaleLinesTable
+            currency={sale.currency}
+            currencyDigits={sale.currencyMinorUnitDigits}
+            lines={details.lines}
+          />
+        </Section>
+      ) : null}
+      {details ? (
+        <Section title={t("sales.detail.settlementTitle")}>
+          <DescriptionList items={settlementItems(sale, details, accountName, locale, t)} />
+        </Section>
+      ) : null}
       <Section title={t("sales.detail.detailsTitle")}>
         <DescriptionList
           items={[
             { label: t("sales.fields.moment"), numeric: true, value: saleMoment(sale, locale) },
+            { label: t("sales.detail.source"), value: t(`sales.sources.${sale.entrySource}`) },
             {
               label: t("sales.fields.recordedAt"),
               numeric: true,

@@ -1,8 +1,9 @@
-import type { ReplaceSaleRequest, VoidSaleRequest } from "@pisto/contracts";
+import type { ReplaceSaleRequest, Sale, SaleDetails, VoidSaleRequest } from "@pisto/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Link, Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { CircleAlert, TriangleAlert } from "lucide-react-native";
+import type { TFunction } from "i18next";
+import { CircleAlert, Info, TriangleAlert } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type TextInput, View } from "react-native";
@@ -21,14 +22,14 @@ import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { api } from "@/lib/api-client";
 import { useKeyedCommand } from "@/lib/keyed-command";
-import { toDecimalString } from "@/lib/money";
+import { formatMinorUnits, toDecimalString } from "@/lib/money";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead, queryHasStaleData, readFailureKind } from "@/lib/query-state";
 import { ActionBar } from "./action-bar";
 import { type CorrectionMode, CorrectionModeField } from "./correction-mode-field";
-import { invalidateSaleReads, saleQueryOptions } from "./queries";
+import { invalidateBusinessReads, saleFormOptionsQueryOptions, saleQueryOptions } from "./queries";
 import {
   emptySaleDraft,
   type SaleDraftErrors,
@@ -39,6 +40,52 @@ import {
 import { firstInvalidField, type SaleDraftFieldRefs, SaleDraftFields } from "./sale-draft-fields";
 import { saleAmount, saleDescriptionItem, saleFactItems, saleMoment } from "./sale-facts";
 import { canCorrectSale, readState } from "./state";
+
+/** What voiding an itemized sale undoes, stated before the person confirms it. */
+function VoidEffects({
+  accountName,
+  details,
+  locale,
+  sale,
+  t,
+}: {
+  accountName: string | null;
+  details: SaleDetails;
+  locale: string;
+  sale: Sale;
+  t: TFunction;
+}) {
+  const money = (value: string) =>
+    formatMinorUnits(value, sale.currency, sale.currencyMinorUnitDigits, locale);
+  const { settlement } = details;
+  const effects: string[] = [t("sales.correction.effectStock")];
+  if (settlement.receivedMinorUnits !== "0") {
+    effects.push(
+      accountName
+        ? t("sales.correction.effectCash", {
+            account: accountName,
+            amount: money(settlement.receivedMinorUnits),
+          })
+        : t("sales.correction.effectCashAccountUnknown", {
+            amount: money(settlement.receivedMinorUnits),
+          }),
+    );
+  }
+  if (settlement.creditMinorUnits !== "0") {
+    effects.push(
+      t("sales.correction.effectDebt", {
+        amount: money(settlement.creditMinorUnits),
+        customer: settlement.customerName ?? "",
+      }),
+      t("sales.correction.effectDebtPaid"),
+    );
+  }
+  return (
+    <Alert icon={Info} role="note">
+      <AlertDescription>{`${t("sales.correction.effectsTitle")}: ${effects.join(" ")}`}</AlertDescription>
+    </Alert>
+  );
+}
 
 /** A prepared correction: its key is minted once and reused by every retry of this review. */
 type CorrectionReview = { businessId: string; saleId: string } & (
@@ -58,6 +105,16 @@ export default function SaleCorrectionScreen() {
   const canCorrect = business?.access.permissions.includes("sales:correct") ?? false;
   const saleResult = useQuery(saleQueryOptions(canCorrect ? business?.id : undefined, saleId));
   const sale = saleResult.data?.sale;
+  const details = saleResult.data?.details ?? null;
+  const accountId = details?.settlement.accountId ?? null;
+  const accountOptions = useQuery(
+    saleFormOptionsQueryOptions(
+      accountId && business?.access.permissions.includes("sales:create") ? business.id : undefined,
+    ),
+  );
+  const accountName = accountId
+    ? (accountOptions.data?.accounts.find(({ id }) => id === accountId)?.name ?? null)
+    : null;
   useRouteLabel("/operate/sales/[saleId]", sale ? saleAmount(sale, locale) : undefined);
   const [mode, setMode] = useState<CorrectionMode>("void");
   const [reason, setReason] = useState("");
@@ -103,7 +160,8 @@ export default function SaleCorrectionScreen() {
         ? api.sales.void(input.saleId, input.command)
         : api.sales.replace(input.saleId, input.command),
     onConfirmed: async (result, input) => {
-      await invalidateSaleReads(queryClient, input.businessId);
+      // Voiding an itemized sale also returns stock, cash and debts.
+      await invalidateBusinessReads(queryClient, input.businessId);
       const replacement = result.replacementSale;
       notify.success(
         replacement ? t("sales.correction.replaced") : t("sales.correction.voided"),
@@ -280,9 +338,24 @@ export default function SaleCorrectionScreen() {
 
   const original = (
     <Section title={t("sales.correction.original")}>
-      <DescriptionList items={saleFactItems(sale, locale, t)} />
+      <DescriptionList
+        items={[
+          ...saleFactItems(sale, locale, t),
+          ...(details
+            ? [
+                {
+                  label: t("sales.detail.customer"),
+                  value: details.settlement.customerName ?? t("sales.itemized.counterSale"),
+                },
+              ]
+            : []),
+        ]}
+      />
     </Section>
   );
+  const effects = details ? (
+    <VoidEffects accountName={accountName} details={details} locale={locale} sale={sale} t={t} />
+  ) : null;
   const staleNotice = isStale ? (
     <StaleNotice
       loading={businesses.isFetching || saleResult.isFetching}
@@ -352,6 +425,7 @@ export default function SaleCorrectionScreen() {
               : [saleDescriptionItem(sale.description, t)]),
           ]}
         />
+        {effects}
         {correction.error ? (
           <Alert
             icon={ambiguousFailure ? TriangleAlert : CircleAlert}
@@ -409,14 +483,17 @@ export default function SaleCorrectionScreen() {
   return (
     <Page width="form">
       <PageHeader
-        description={t("sales.correction.description")}
-        title={t("sales.correction.title")}
+        description={
+          details ? t("sales.correction.itemizedDescription") : t("sales.correction.description")
+        }
+        title={details ? t("sales.correction.voidItemized") : t("sales.correction.title")}
       />
       {staleNotice}
       {original}
+      {effects}
       <Section title={t("sales.correction.details")}>
         <View className="gap-5">
-          <CorrectionModeField onChange={chooseMode} value={mode} />
+          {details ? null : <CorrectionModeField onChange={chooseMode} value={mode} />}
           <Field
             error={reasonError}
             label={t("sales.correction.reason")}

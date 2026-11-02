@@ -63,6 +63,25 @@ export function SalesHistory({
         ),
       },
       {
+        id: "customer",
+        header: t("sales.list.customer"),
+        meta: { hideOnCompact: true },
+        // A total-only sale names nobody; an itemized one without a customer is a counter sale.
+        cell: ({ row: { original } }) =>
+          original.entryMode === "itemized" ? (
+            <Text className="text-[13px]" numberOfLines={1}>
+              {original.customer?.name ?? t("sales.itemized.counterSale")}
+            </Text>
+          ) : (
+            <Text className="text-[13px]">
+              <Text aria-hidden className="text-[13px] text-muted-foreground">
+                —
+              </Text>
+              <Text className="sr-only">{t("sales.list.noCustomer")}</Text>
+            </Text>
+          ),
+      },
+      {
         id: "description",
         header: t("dataTable.columns.description"),
         // A two-line clamp lets a long note wrap; a single-line clamp would force the table
@@ -80,6 +99,16 @@ export function SalesHistory({
               <Text className="sr-only">{t("common.noDescription")}</Text>
             </Text>
           ),
+      },
+      {
+        id: "source",
+        header: t("sales.list.source"),
+        meta: { hideOnCompact: true },
+        cell: ({ row: { original } }) => (
+          <Text className="text-[13px] text-muted-foreground" numberOfLines={1}>
+            {t(`sales.sources.${original.entrySource}`)}
+          </Text>
+        ),
       },
       {
         id: "status",
@@ -203,7 +232,10 @@ export function SalesHistory({
                           actions={[
                             {
                               icon: Pencil,
-                              label: t("sales.correction.open"),
+                              label:
+                                sale.entryMode === "itemized"
+                                  ? t("sales.correction.voidItemized")
+                                  : t("sales.correction.open"),
                               onPress: () => onCorrect(sale.id),
                             },
                           ]}

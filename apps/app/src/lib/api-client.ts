@@ -12,14 +12,18 @@ import {
   businessesResponseSchema,
   type CreateBusinessRequest,
   type CreateBusinessResponse,
+  type CreateItemizedSaleRequest,
   type CreateSaleRequest,
   createBusinessRequestSchema,
   createBusinessResponseSchema,
+  createItemizedSaleRequestSchema,
   createSaleRequestSchema,
   type EntitlementsResponse,
   entitlementsResponseSchema,
   type HealthResponse,
   healthResponseSchema,
+  type ItemizedSaleResponse,
+  itemizedSaleResponseSchema,
   type MeResponse,
   meResponseSchema,
   type PreviousMonthSummaryResponse,
@@ -27,12 +31,16 @@ import {
   type ReplaceSaleRequest,
   replaceSaleRequestSchema,
   type SaleCorrectionResponse,
+  type SaleDetailResponse,
+  type SaleFormOptionsResponse,
   type SaleListQuery,
   type SaleListResponse,
   type SaleResponse,
   type SaleReviewDismissResponse,
   type SaleReviewResponse,
   saleCorrectionResponseSchema,
+  saleDetailResponseSchema,
+  saleFormOptionsResponseSchema,
   saleListResponseSchema,
   saleResponseSchema,
   saleReviewActionRequestSchema,
@@ -211,10 +219,26 @@ export const api = {
         ),
     },
     get: (saleId: string, signal?: AbortSignal) =>
-      apiRequest<SaleResponse, SaleResponse["data"]>(
+      apiRequest<SaleDetailResponse, SaleDetailResponse["data"]>(
         `/v1/sales/${encodeURIComponent(saleId)}`,
         { authenticated: true, signal },
-        saleResponseSchema,
+        saleDetailResponseSchema,
+      ),
+    createItemized: (command: CreateItemizedSaleRequest) =>
+      apiRequest<ItemizedSaleResponse, ItemizedSaleResponse["data"]>(
+        "/v1/sales/itemized",
+        {
+          authenticated: true,
+          body: parseRequestPayload(createItemizedSaleRequestSchema, command),
+          method: "POST",
+        },
+        itemizedSaleResponseSchema,
+      ),
+    formOptions: (signal?: AbortSignal) =>
+      apiRequest<SaleFormOptionsResponse, SaleFormOptionsResponse["data"]>(
+        "/v1/sales/form-options",
+        { authenticated: true, signal },
+        saleFormOptionsResponseSchema,
       ),
     list: (query: SaleListQuery = {}, signal?: AbortSignal) =>
       apiRequest<SaleListResponse, SaleListResponse["data"]>(
