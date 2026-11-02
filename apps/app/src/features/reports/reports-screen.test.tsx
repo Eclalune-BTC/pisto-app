@@ -1,4 +1,4 @@
-import type { OperatingReport } from "@pisto/contracts";
+import type { CashFlowReport, OperatingReport } from "@pisto/contracts";
 import { type ComponentProps, createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
@@ -12,6 +12,7 @@ vi.mock("uniwind", () => ({
 }));
 vi.mock("@rn-primitives/slot", () => ({ Slot: () => null }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
+vi.mock("./cash-flow-chart", () => ({ CashFlowChart: () => null }));
 // Tone and variant are styling decisions; expose them as attributes so the markup can be read.
 vi.mock("@/components/layout/stat-group", () => ({
   StatGroup: ({ children }: { children: ReactNode }) => createElement("dl", {}, children),
@@ -103,23 +104,44 @@ const quiet: OperatingReport = {
   inventory: { trackedProductCount: "14", lowStockProductCount: "0" },
 };
 
-function render(overrides: Partial<ComponentProps<typeof ReportsScreen>> = {}) {
-  const onApply = vi.fn();
-  const props: ComponentProps<typeof ReportsScreen> = {
-    links: { cashAccounts: true, inventory: true, receivables: true },
-    locale: "es-SV",
-    onRetry: vi.fn(),
-    range: {
-      dirty: false,
-      endLocalDate: "2026-09-30",
-      issue: null,
-      onApply,
-      onEndLocalDateChange: vi.fn(),
-      onPresetChange: vi.fn(),
-      onStartLocalDateChange: vi.fn(),
-      preset: "lastMonth",
-      startLocalDate: "2026-09-01",
+const cashFlow: CashFlowReport = {
+  timeZone: "America/El_Salvador",
+  currency: "USD",
+  currencyMinorUnitDigits: 2,
+  asOfLocalDate: "2026-10-04",
+  months: [
+    {
+      month: "2026-09",
+      inflowMinorUnits: "900000",
+      outflowMinorUnits: "40000",
+      netMinorUnits: "860000",
+      closingBalanceMinorUnits: "1000000",
     },
+    {
+      month: "2026-10",
+      inflowMinorUnits: "0",
+      outflowMinorUnits: "25000",
+      netMinorUnits: "-25000",
+      closingBalanceMinorUnits: "975000",
+    },
+  ],
+  queriedAt: "2026-10-04T18:00:00.000Z",
+};
+
+type CashFlowQuery = ComponentProps<typeof ReportsScreen>["cashFlow"];
+const cashFlowReady: CashFlowQuery = {
+  data: { report: cashFlow },
+  isError: false,
+  isFetching: false,
+  refetch: vi.fn(),
+};
+
+function render(overrides: Partial<ComponentProps<typeof ReportsScreen>> = {}) {
+  const props: ComponentProps<typeof ReportsScreen> = {
+    cashFlow: cashFlowReady,
+    locale: "es-SV",
+    month: { month: "2026-09", onNext: vi.fn(), onPrevious: vi.fn() },
+    onRetry: vi.fn(),
     retrying: false,
     state: { isStale: false, kind: "ready", report },
     ...overrides,
@@ -127,97 +149,77 @@ function render(overrides: Partial<ComponentProps<typeof ReportsScreen>> = {}) {
   return renderToStaticMarkup(createElement(ReportsScreen, props));
 }
 
-describe("operating report screen", () => {
+describe("monthly report screen", () => {
   test.each(["loading", "error", "offline"] as const)(
-    "keeps report dates editable during %s without manufacturing report data",
+    "keeps the month navigator during %s without manufacturing report data",
     (kind) => {
       const markup = render({
         state: kind === "loading" ? { kind } : { kind, message: "The query is unavailable." },
       });
-      expect(markup).toContain('value="2026-09-01"');
-      expect(markup).toContain('value="2026-09-30"');
-      expect(markup).not.toContain(`data-stat="${t("reports.period.sales")}"`);
+      expect(markup).toContain("Septiembre de 2026");
+      expect(markup).toContain(`aria-label="${t("reports.month.previous")}"`);
       expect(markup).not.toContain("$12,345.50");
+      expect(markup).not.toContain(t("reports.statement.title"));
     },
   );
 
-  test("hides the range and every figure when report access is denied", () => {
+  test("hides the navigator and every figure when report access is denied", () => {
     const markup = render({ state: { kind: "denied" } });
     expect(markup).toContain(t("reports.deniedTitle"));
-    expect(markup).not.toContain('value="2026-09-01"');
-    expect(markup).not.toContain("data-stat");
+    expect(markup).not.toContain("Septiembre de 2026");
+    expect(markup).not.toContain("$12,345.50");
+    expect(markup).not.toContain("$10,000.00");
   });
 
-  test("shows the exact period figures apart from the dated current position", () => {
+  test("states sales, each expense category and sales less expenses exactly", () => {
     const markup = render();
-    expect(markup).toContain(`data-stat="${t("reports.period.sales")}"`);
-    expect(markup).toContain("$12,345.50 | 18 ventas");
-    expect(markup).toContain("$400.00 | 3 gastos");
-    expect(markup).toContain("$8,600.00 | Entradas $9,000.00 · Salidas $400.00");
-    expect(markup).toContain(t("reports.position.asOf", { date: "4 oct 2026" }));
-    expect(markup).toContain("$700.00 | 3 cuentas abiertas");
-    // Largest category first, with its share of the period total.
-    expect(markup.indexOf("Inventario")).toBeLessThan(markup.indexOf("Alquiler"));
-    expect(markup).toContain("75.0%");
-    expect(markup).toContain("Cuenta cerrada");
-    expect(markup).toContain(t("cash.accountStatus.archived"));
-    // The cash figures say what they include, since they cannot reconcile with sales.
-    expect(markup).toContain(t("reports.period.cashScope"));
+    expect(markup).toContain("$12,345.50");
+    expect(markup).toContain("18 ventas");
+    expect(markup).toContain(`${t("expenses.categories.inventory")} · 75.0`);
+    expect(markup).toContain("−$300.00");
+    expect(markup).toContain("−$100.00");
+    expect(markup).toContain("−$400.00");
+    expect(markup).toContain(t("reports.statement.result"));
+    expect(markup).toContain("$11,945.50");
+    expect(markup).toContain("96.8");
   });
 
-  test("links accounts and positions only to modules the role can open", () => {
-    const linked = render();
-    expect(linked).toContain('href="/operate/receivables"');
-    expect(linked).toContain('href="/operate/inventory"');
-    expect(linked).toContain("/operate/cash/accounts/[accountId]");
-    const plain = render({ links: { cashAccounts: false, inventory: false, receivables: false } });
-    expect(plain).not.toContain('href="/operate/receivables"');
-    expect(plain).not.toContain('href="/operate/inventory"');
-    expect(plain).not.toContain("/operate/cash/accounts/");
-    expect(plain).toContain("Caja principal");
+  test("lists every cash flow month with its closing balance and the month in progress", () => {
+    const markup = render();
+    expect(markup).toContain("Septiembre");
+    expect(markup).toContain(t("reports.cashFlow.monthToDate", { day: 4, month: "Octubre" }));
+    expect(markup).toContain("$9,000.00");
+    expect(markup).toContain("$10,000.00");
+    expect(markup).toContain("$9,750.00");
   });
 
-  test("colors an overdue amount and low stock only when they are above zero", () => {
-    const tone = (markup: string, label: string) =>
-      markup.match(new RegExp(`data-stat="${label}" data-tone="([a-z]+)"`))?.[1];
-    const busy = render();
-    expect(tone(busy, t("reports.position.overdue"))).toBe("warning");
-    expect(tone(busy, t("reports.position.lowStock"))).toBe("warning");
-    const calm = render({ state: { isStale: false, kind: "ready", report: quiet } });
-    expect(tone(calm, t("reports.position.overdue"))).toBe("default");
-    expect(tone(calm, t("reports.position.lowStock"))).toBe("default");
-    expect(tone(calm, t("reports.period.netCash"))).toBe("default");
+  test("keeps the statement when only the cash flow read fails", () => {
+    const markup = render({
+      cashFlow: { data: undefined, isError: true, isFetching: false, refetch: vi.fn() },
+    });
+    expect(markup).toContain("$12,345.50");
+    expect(markup).toContain(t("reports.cashFlow.unavailableTitle"));
+    expect(markup).not.toContain("$9,750.00");
   });
 
-  test("states a period without activity as a neutral note, not a success", () => {
+  test("states a month without activity as a neutral note, not a success", () => {
     const markup = render({ state: { isStale: false, kind: "ready", report: quiet } });
-    expect(markup).toContain(
-      `<div data-variant="default" role="note"><p>${t("reports.period.noActivity")}</p></div>`,
+    expect(markup).toContain(t("reports.statement.noActivity"));
+    expect(render()).not.toContain(t("reports.statement.noActivity"));
+  });
+
+  test("disables the next month while the current month is shown", () => {
+    const markup = render({ month: { month: "2026-10", onPrevious: vi.fn() } });
+    expect(markup).toMatch(
+      new RegExp(
+        `aria-disabled="true"[^>]*aria-label="${t("reports.month.next")}"|aria-label="${t("reports.month.next")}"[^>]*aria-disabled="true"`,
+      ),
     );
-    expect(markup).not.toContain('data-variant="positive"');
-    expect(render()).not.toContain(t("reports.period.noActivity"));
   });
 
   test("keeps cached figures visible but labelled when they could not be refreshed", () => {
     const markup = render({ state: { isStale: true, kind: "ready", report } });
     expect(markup).toContain(t("remote.stale"));
     expect(markup).toContain("$12,345.50");
-  });
-
-  test("names the field problem once for the pair of dates", () => {
-    const markup = render({
-      range: {
-        dirty: true,
-        endLocalDate: "2026-09-01",
-        issue: "reversed",
-        onApply: vi.fn(),
-        onEndLocalDateChange: vi.fn(),
-        onPresetChange: vi.fn(),
-        onStartLocalDateChange: vi.fn(),
-        preset: "custom",
-        startLocalDate: "2026-09-30",
-      },
-    });
-    expect(markup.split(t("reports.range.reversed"))).toHaveLength(2);
   });
 });

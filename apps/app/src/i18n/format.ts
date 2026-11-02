@@ -51,3 +51,15 @@ export function formatLocalDate(localDate: string, locale: string): string {
     new Date(`${date}T00:00:00.000Z`),
   );
 }
+
+/** The name of a business-local date's month, "septiembre" or "sept", for charts and tables. */
+export function formatMonthName(
+  localDate: string,
+  locale: string,
+  month: "long" | "short",
+): string {
+  const date = calendarLocalDateSchema.parse(localDate);
+  return new Intl.DateTimeFormat(locale, { month, timeZone: "UTC" }).format(
+    new Date(`${date}T00:00:00.000Z`),
+  );
+}

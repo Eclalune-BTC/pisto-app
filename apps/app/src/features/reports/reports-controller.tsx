@@ -1,32 +1,28 @@
-import type { BusinessPermission, OperatingReportQuery } from "@pisto/contracts";
+import type { BusinessPermission } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { requireSupportedLocale } from "@/i18n/locale";
+import { currentLocalDateTime } from "@/lib/money";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { refetchEnabled } from "../cash/remote-state";
 import {
-  businessPresetRanges,
-  matchingPreset,
-  parseReportRangeParams,
-  type ReportRangeIssue,
-  type ReportRangeSearchParams,
-  reportRangeParams,
-  sameRange,
-  validateReportRange,
+  monthRange,
+  parseMonthParam,
+  type ReportMonthSearchParams,
+  shiftMonth,
 } from "./date-range";
-import { operatingReportQueryOptions } from "./queries";
-import type { ReportRangeToolbarProps } from "./range-toolbar";
-import { ReportsScreen } from "./reports-screen";
+import { cashFlowReportQueryOptions, operatingReportQueryOptions } from "./queries";
+import { type ReportMonthNavigation, ReportsScreen } from "./reports-screen";
 import { reportsScreenState } from "./state";
 
-const unseededRange: OperatingReportQuery = { endLocalDate: "", startLocalDate: "" };
+/** Six months of cash flow fit the chart and the table on one screen. */
+const CASH_FLOW_MONTHS = 6;
 
 export function ReportsController() {
   const router = useRouter();
-  const params = useLocalSearchParams<ReportRangeSearchParams>();
+  const params = useLocalSearchParams<ReportMonthSearchParams>();
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const businesses = useQuery(businessesQueryOptions);
@@ -34,15 +30,17 @@ export function ReportsController() {
   const can = (permission: BusinessPermission) =>
     business?.access.permissions.includes(permission) ?? false;
   const canRead = can("reports:read");
-  // The default range and the presets are dates in the business time zone, unknown until it loads.
-  const presets = business ? businessPresetRanges(business.timeZone) : undefined;
-  const appliedRange = parseReportRangeParams(params) ?? presets?.thisMonth ?? unseededRange;
-  const report = useQuery(
-    operatingReportQueryOptions(canRead ? business?.id : undefined, appliedRange),
+  // Months are business-local, unknown until the business and its time zone load.
+  const today = business ? currentLocalDateTime(business.timeZone).date : undefined;
+  const currentMonth = today?.slice(0, 7);
+  const month = currentMonth ? parseMonthParam(params.month, currentMonth) : undefined;
+  const range =
+    month && today ? monthRange(month, today) : { endLocalDate: "", startLocalDate: "" };
+  const readableBusinessId = canRead ? business?.id : undefined;
+  const report = useQuery(operatingReportQueryOptions(readableBusinessId, range));
+  const cashFlow = useQuery(
+    cashFlowReportQueryOptions(readableBusinessId, month ?? "", CASH_FLOW_MONTHS),
   );
-  // Typed dates stay a draft of the business they were typed for until they are applied.
-  const [draft, setDraft] = useState<{ businessId: string; range: OperatingReportQuery }>();
-  const [issue, setIssue] = useState<ReportRangeIssue | null>(null);
 
   if (businesses.data && !business) return <Redirect href="/business" />;
 
@@ -54,45 +52,24 @@ export function ReportsController() {
     unavailableMessage: t("reports.unavailable"),
   });
 
-  let range: ReportRangeToolbarProps | undefined;
-  if (business && presets) {
-    const shown = draft?.businessId === business.id ? draft.range : appliedRange;
-    const edit = (change: Partial<OperatingReportQuery>) => {
-      setIssue(null);
-      setDraft({ businessId: business.id, range: { ...shown, ...change } });
-    };
-    const apply = (next: OperatingReportQuery) => {
-      setIssue(null);
-      setDraft(undefined);
-      router.setParams(reportRangeParams(next, presets.thisMonth));
-    };
-    range = {
-      dirty: !sameRange(shown, appliedRange),
-      endLocalDate: shown.endLocalDate,
-      issue,
-      onApply: () => {
-        const validation = validateReportRange(shown);
-        if (validation.valid) apply(validation.value);
-        else setIssue(validation.issue);
-      },
-      onEndLocalDateChange: (endLocalDate) => edit({ endLocalDate }),
-      onPresetChange: (preset) => apply(presets[preset]),
-      onStartLocalDateChange: (startLocalDate) => edit({ startLocalDate }),
-      preset: matchingPreset(shown, presets),
-      startLocalDate: shown.startLocalDate,
+  let navigation: ReportMonthNavigation | undefined;
+  if (month && currentMonth) {
+    // The current month keeps a clean URL.
+    const show = (next: string) =>
+      router.setParams({ month: next === currentMonth ? undefined : next });
+    navigation = {
+      month,
+      onNext: month < currentMonth ? () => show(shiftMonth(month, 1)) : undefined,
+      onPrevious: () => show(shiftMonth(month, -1)),
     };
   }
 
   return (
     <ReportsScreen
-      links={{
-        cashAccounts: can("cash:read"),
-        inventory: can("inventory:read"),
-        receivables: can("receivables:read"),
-      }}
+      cashFlow={cashFlow}
       locale={locale}
-      onRetry={() => void refetchEnabled([businesses, report])}
-      range={range}
+      month={navigation}
+      onRetry={() => void refetchEnabled([businesses, report, cashFlow])}
       retrying={businesses.isFetching || report.isFetching}
       state={state}
     />

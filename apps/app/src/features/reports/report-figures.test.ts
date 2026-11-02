@@ -2,10 +2,12 @@ import type { OperatingReport } from "@pisto/contracts";
 import { describe, expect, test } from "vitest";
 
 import {
+  barHeights,
   expenseCategoryShares,
   formatCount,
   formatShare,
   hasPeriodActivity,
+  resultOfSales,
 } from "./report-figures";
 
 const account = {
@@ -135,5 +137,58 @@ describe("counts", () => {
   test("format beyond the safe integer range without rounding", () => {
     expect(formatCount("9007199254740993", "es-SV")).toBe("9,007,199,254,740,993");
     expect(formatCount("0", "es-SV")).toBe("0");
+  });
+});
+
+describe("sales less expenses", () => {
+  const withFigures = (sales: string, expenses: string) => ({
+    ...quietReport,
+    sales: { grossMinorUnits: sales, saleCount: "1" },
+    expenses: { totalMinorUnits: expenses, expenseCount: "1", categories: [] },
+  });
+
+  test("subtracts exactly and rounds the share of sales half away from zero", () => {
+    expect(resultOfSales(withFigures("1394000", "104520"))).toEqual({
+      minorUnits: "1289480",
+      shareTenths: 925,
+      sign: 1,
+    });
+    expect(resultOfSales(withFigures("2000", "2001"))).toEqual({
+      minorUnits: "-1",
+      shareTenths: -1,
+      sign: -1,
+    });
+  });
+
+  test("has no share of sales without sales", () => {
+    expect(resultOfSales(withFigures("0", "500"))).toEqual({
+      minorUnits: "-500",
+      shareTenths: null,
+      sign: -1,
+    });
+    expect(resultOfSales(quietReport).sign).toBe(0);
+  });
+});
+
+describe("cash flow bars", () => {
+  test("scale against the largest movement and keep small movements visible", () => {
+    expect(
+      barHeights(
+        [
+          { inflowMinorUnits: "100000", outflowMinorUnits: "50000" },
+          { inflowMinorUnits: "1", outflowMinorUnits: "0" },
+        ],
+        144,
+      ),
+    ).toEqual([
+      { inflow: 144, outflow: 72 },
+      { inflow: 2, outflow: 0 },
+    ]);
+  });
+
+  test("draw nothing for months without movements", () => {
+    expect(barHeights([{ inflowMinorUnits: "0", outflowMinorUnits: "0" }], 144)).toEqual([
+      { inflow: 0, outflow: 0 },
+    ]);
   });
 });
