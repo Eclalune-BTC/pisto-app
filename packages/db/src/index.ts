@@ -15,6 +15,7 @@ export {
   createProductRateLimiter,
   type ProductRateLimitPolicy,
 } from "./product-rate-limit.ts";
+export { createPurchasesRepository, type PurchasesRepository } from "./purchases.ts";
 export { createReceivablesRepository, type ReceivablesRepository } from "./receivables.ts";
 export { createReportsRepository, type ReportsRepository } from "./reports.ts";
 export { createSalesRepository, type SaleCorrectionResult, type SalesRepository } from "./sales.ts";
