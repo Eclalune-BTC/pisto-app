@@ -91,7 +91,11 @@ bun run --cwd apps/app web
 
 Open <http://localhost:8081> and sign in with a demo account, or choose **Crear cuenta** and
 register your own business. The sidebar then
-lists every module (**Ventas**, **Gastos**, **Caja y cuentas**, **Catálogo**, ...).
+lists every module (**Movimientos**, **Ventas**, **Gastos**, **Caja y bancos**, **Por cobrar**,
+**Por pagar**, **Productos**, **Proveedores**, ...). The **Dictar** button and the **Registrar** card
+on the home need the AI assistant: run the API as the Worker (`npx wrangler dev` in `apps/api`, see
+[the deployment runbook](docs/deployment-cloudflare.md#local-worker)) or set `CLOUDFLARE_ACCOUNT_ID`
+and `CLOUDFLARE_AI_API_TOKEN` in `.env`; without them the assistant reports itself as off.
 <http://localhost:3001/ready> returns `"status":"ready"` when the API reaches the database.
 
 To see realtime updates, open the app in two browsers (or a normal and a private window), sign in
