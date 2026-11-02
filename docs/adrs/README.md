@@ -17,7 +17,7 @@ should update the affected guide and references. Accepted target architecture is
 | [0005](0005-better-auth.md) | Accepted; HTTP adapter updated by 0019 | Centralized Better Auth with API and Expo adapters |
 | [0006](0006-split-billing-channels.md) | Accepted | Polar web billing and RevenueCat/native store billing |
 | [0007](0007-provider-neutral-entitlements.md) | Accepted | Provider-neutral paid-access model; product routes are not yet entitlement-gated |
-| [0009](0009-provider-neutral-ai-assistant.md) | Accepted target; not implemented | Provider-neutral AI orchestration with deterministic business tools |
+| [0009](0009-provider-neutral-ai-assistant.md) | Accepted target; registration slice implemented by 0021 | Provider-neutral AI orchestration with deterministic business tools |
 | [0010](0010-organization-backed-business-tenancy.md) | Accepted | Better Auth organization IDs back Pisto business tenant boundaries |
 | [0011](0011-modular-capabilities-and-app-owned-composition.md) | Accepted | Product capabilities compose explicitly inside a modular monolith |
 | [0012](0012-total-only-sales-increment.md) | Accepted | Total-only manual sales are the first persisted product increment |
@@ -29,6 +29,7 @@ should update the affected guide and references. Accepted target architecture is
 | [0018](0018-durable-sale-review.md) | Accepted | Server-owned recovery for reviewed new sales without client-side financial storage |
 | [0019](0019-elysia-http-composition.md) | Accepted | Elysia HTTP composition with existing REST and Zod contracts |
 | [0020](0020-cloudflare-workers-neon-hosting.md) | Accepted | Hosted demo on Cloudflare Workers (one Durable Object) with Neon PostgreSQL |
+| [0021](0021-workers-ai-registration-assistant.md) | Accepted; amends 0009 | Registration assistant on Workers AI behind a small typed adapter |
 
 ## Status values
 

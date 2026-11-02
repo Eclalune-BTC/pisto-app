@@ -1,6 +1,7 @@
 # ADR 0009: Provider-neutral AI assistant with deterministic business tools
 
-- Status: Accepted target; not implemented
+- Status: Accepted target; the registration slice is implemented without AI SDK by
+  [ADR 0021](0021-workers-ai-registration-assistant.md)
 - Date: 2026-08-22
 - Owners: `@pisto/app`, `@pisto/api`, future product and assistant packages
 - Supersedes: none

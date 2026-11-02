@@ -1,6 +1,8 @@
 # Voice architecture and ElevenLabs evaluation
 
-- Status: **researched direction; no provider selected and no voice implementation approved**
+- Status: **web push-to-talk implemented with Workers AI Whisper by
+  [ADR 0021](adrs/0021-workers-ai-registration-assistant.md); native recording, ElevenLabs and later
+  stages remain unselected**
 - Research date: **2026-08-22**
 - Recheck: before a voice brief, provider/account selection, dependency install, privacy approval, or
   mobile release
