@@ -10,6 +10,7 @@ export {
 } from "./client.ts";
 export { parseDatabaseConfig } from "./env.ts";
 export { ProductError, type ProductErrorCode } from "./errors.ts";
+export { businessRoles, resolveBusinessAccess } from "./product-access.ts";
 export {
   type ConsumeProductRequest,
   createProductRateLimiter,

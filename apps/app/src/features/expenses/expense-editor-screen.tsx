@@ -63,7 +63,9 @@ function FieldRow({ children }: PropsWithChildren) {
 
 function FieldCell({ children, wide = false }: PropsWithChildren<{ wide?: boolean }>) {
   return (
-    <View className={wide ? "min-w-0 grow basis-[300px]" : "min-w-0 grow basis-[200px]"}>
+    <View
+      className={wide ? "min-w-0 shrink grow basis-[300px]" : "min-w-0 shrink grow basis-[200px]"}
+    >
       {children}
     </View>
   );

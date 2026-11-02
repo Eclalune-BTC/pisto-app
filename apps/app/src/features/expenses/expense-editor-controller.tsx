@@ -30,7 +30,7 @@ export function ExpenseEditorController() {
         title={t("expenses.editor.title")}
       />
       <View className="min-w-0 flex-row flex-wrap items-start gap-4">
-        <View className="min-w-0 max-w-[640px] grow basis-[420px]">
+        <View className="min-w-0 max-w-[640px] shrink grow basis-[420px]">
           <ExpenseForm
             entrySource="manual"
             onCancel={() => router.replace("/operate/expenses")}

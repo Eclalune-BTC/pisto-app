@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "expo-router";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { LogOut, TriangleAlert } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,7 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
+import { BusinessFactsCard, UsersCard } from "@/features/business/business-settings";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { formatLocalizedDate } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
@@ -22,6 +24,10 @@ import { api } from "@/lib/api-client";
 import { cn } from "@/lib/cn";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { hasDeniedRead } from "@/lib/query-state";
+import { firstParam } from "@/lib/route-params";
+
+const TABS = ["business", "appearance", "account"] as const;
+type SettingsTab = (typeof TABS)[number];
 
 /**
  * Label and description on the left, the controls on the right; stacked on narrow screens. The
@@ -97,7 +103,7 @@ function timeZoneLabel(timeZone: string, locale: string): string {
   return offset ? `${place} (${offset})` : place;
 }
 
-function BusinessFacts({ locale }: { locale: string }) {
+function BusinessTab({ locale }: { locale: string }) {
   const { t } = useTranslation();
   const businesses = useQuery(businessesQueryOptions);
   // A rejected read hides the cached business as well.
@@ -126,26 +132,33 @@ function BusinessFacts({ locale }: { locale: string }) {
     );
   }
   return (
-    <>
-      <DescriptionList
-        items={[
-          { label: t("settings.name"), value: business.name },
-          { label: t("common.currency"), value: currencyLabel(business.currency, locale) },
-          { label: t("common.timeZone"), value: timeZoneLabel(business.timeZone, locale) },
-          { label: t("settings.role"), value: t(`settings.roles.${business.access.role}`) },
-        ]}
-      />
+    <View className="min-w-0 gap-3">
+      <View className="min-w-0 flex-row flex-wrap items-start gap-4">
+        <View className="min-w-0 shrink grow basis-[320px] lg:max-w-[440px]">
+          <BusinessFactsCard
+            business={business}
+            currency={currencyLabel(business.currency, locale)}
+            timeZone={timeZoneLabel(business.timeZone, locale)}
+          />
+        </View>
+        <View className="min-w-0 shrink grow basis-[420px]">
+          <UsersCard businessId={business.id} />
+        </View>
+      </View>
       {businesses.data.items.length > 1 ? (
         <Text className="text-[13px] leading-5 text-muted-foreground">
           {t("settings.businessSwitchHint")}
         </Text>
       ) : null}
-    </>
+    </View>
   );
 }
 
 export default function SettingsScreen() {
   const { i18n, t } = useTranslation();
+  const router = useRouter();
+  const requested = firstParam(useLocalSearchParams<{ tab?: string | string[] }>().tab);
+  const tab: SettingsTab = TABS.find((candidate) => candidate === requested) ?? "business";
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
   const profile = useQuery({ queryFn: api.me, queryKey: ["account", "me"] });
   const signOut = useSignOut();
@@ -200,74 +213,83 @@ export default function SettingsScreen() {
     <Page>
       <PageHeader description={t("settings.description")} title={t("settings.title")} />
 
-      <View className="min-w-0 gap-8">
-        <SettingsSection
-          description={t("settings.profileDescription")}
-          title={t("settings.profile")}
-        >
-          {profileFacts}
-        </SettingsSection>
+      <Tabs
+        onValueChange={(next) => router.setParams({ tab: next === "business" ? undefined : next })}
+        value={tab}
+      >
+        <TabsList>
+          {TABS.map((value) => (
+            <TabsTrigger key={value} value={value}>
+              <Text>{t(`settings.tabs.${value}`)}</Text>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent className="pt-3" value="business">
+          <BusinessTab locale={locale} />
+        </TabsContent>
+        <TabsContent className="pt-3" value="appearance">
+          <SettingsSection
+            description={t("settings.appearanceDescription")}
+            title={t("settings.appearance")}
+          >
+            <AppearanceControl />
+          </SettingsSection>
+        </TabsContent>
+        <TabsContent className="gap-8 pt-3" value="account">
+          <SettingsSection
+            description={t("settings.profileDescription")}
+            title={t("settings.profile")}
+          >
+            {profileFacts}
+          </SettingsSection>
 
-        <SettingsSection
-          description={t("settings.appearanceDescription")}
-          title={t("settings.appearance")}
-        >
-          <AppearanceControl />
-        </SettingsSection>
-
-        <SettingsSection
-          description={t("settings.businessDescription")}
-          title={t("settings.business")}
-        >
-          <BusinessFacts locale={locale} />
-        </SettingsSection>
-
-        <SettingsSection
-          description={t("settings.sessionDescription")}
-          title={t("settings.session")}
-        >
-          <DescriptionList
-            items={[
-              {
-                label: t("common.status"),
-                value: current ? (
-                  <StatusBadge label={t("settings.active")} tone="normal" />
-                ) : checking ? (
-                  <StatusBadge label={t("settings.checking")} tone="normal" />
-                ) : (
-                  <StatusBadge label={t("settings.unconfirmed")} tone="attention" />
-                ),
-              },
-              ...(current
-                ? [
-                    {
-                      label: t("settings.expires"),
-                      numeric: true,
-                      value: formatLocalizedDate(current.session.expiresAt, locale),
-                    },
-                  ]
-                : []),
-            ]}
-          />
-          {/* The user menu holds the everyday sign-out; here it is a deliberate, secondary action. */}
-          <View className="items-start gap-2">
-            <Button
-              className="border-destructive/40 active:bg-destructive-surface web:hover:bg-destructive-surface"
-              loading={signOut.isPending}
-              onPress={() => void signOut.signOut()}
-              variant="outline"
-            >
-              <Icon as={LogOut} className="text-destructive" size={16} />
-              <Text className="text-destructive">{t("common.signOut")}</Text>
-            </Button>
-            {signOut.error ? (
-              <Text accessibilityRole="alert" className="text-sm leading-5 text-destructive">
-                {signOut.error}
-              </Text>
-            ) : null}
-          </View>
-        </SettingsSection>
-      </View>
+          <SettingsSection
+            description={t("settings.sessionDescription")}
+            title={t("settings.session")}
+          >
+            <DescriptionList
+              items={[
+                {
+                  label: t("common.status"),
+                  value: current ? (
+                    <StatusBadge label={t("settings.active")} tone="normal" />
+                  ) : checking ? (
+                    <StatusBadge label={t("settings.checking")} tone="normal" />
+                  ) : (
+                    <StatusBadge label={t("settings.unconfirmed")} tone="attention" />
+                  ),
+                },
+                ...(current
+                  ? [
+                      {
+                        label: t("settings.expires"),
+                        numeric: true,
+                        value: formatLocalizedDate(current.session.expiresAt, locale),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+            {/* The user menu holds the everyday sign-out; here it is a deliberate, secondary action. */}
+            <View className="items-start gap-2">
+              <Button
+                className="border-destructive/40 active:bg-destructive-surface web:hover:bg-destructive-surface"
+                loading={signOut.isPending}
+                onPress={() => void signOut.signOut()}
+                variant="outline"
+              >
+                <Icon as={LogOut} className="text-destructive" size={16} />
+                <Text className="text-destructive">{t("common.signOut")}</Text>
+              </Button>
+              {signOut.error ? (
+                <Text accessibilityRole="alert" className="text-sm leading-5 text-destructive">
+                  {signOut.error}
+                </Text>
+              ) : null}
+            </View>
+          </SettingsSection>
+        </TabsContent>
+      </Tabs>
     </Page>
   );
 }

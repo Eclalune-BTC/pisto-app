@@ -8,15 +8,34 @@ type Read = Record<string, unknown>;
 const fixture = vi.hoisted(() => ({
   businesses: {} as Record<string, unknown>,
   profile: {} as Record<string, unknown>,
+  tab: undefined as string | undefined,
   signOut: { error: undefined as string | undefined, isPending: false, signOut: () => undefined },
 }));
 vi.mock("@/components/appearance-control", () => ({ AppearanceControl: () => null }));
 vi.mock("@tanstack/react-query", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-query")>()),
-  useQuery: (options: { queryKey: readonly unknown[] }) =>
-    options.queryKey[0] === "businesses" ? fixture.businesses : fixture.profile,
+  useQuery: (options: { queryKey: readonly unknown[] }) => {
+    if (options.queryKey[0] === "businesses") return fixture.businesses;
+    if (options.queryKey[0] === "business-members") {
+      return { data: [{ id: "m1", name: "Ana Owner", email: "ana@example.test", role: "owner" }] };
+    }
+    if (options.queryKey[0] === "business-roles") {
+      return {
+        data: {
+          roles: [
+            { role: "owner", permissions: ["sales:create", "business:configure"] },
+            { role: "admin", permissions: ["sales:create"] },
+            { role: "member", permissions: [] },
+          ],
+        },
+      };
+    }
+    return fixture.profile;
+  },
 }));
 vi.mock("expo-router", () => ({
+  useLocalSearchParams: () => ({ tab: fixture.tab }),
+  useRouter: () => ({ setParams: vi.fn() }),
   Link: ({ children, href }: { children: ReactElement<Record<string, unknown>>; href: string }) =>
     cloneElement(children, { href }),
 }));
@@ -70,6 +89,7 @@ beforeEach(() => {
   });
   fixture.businesses = settled({ activeBusinessId: business.id, items: [business] });
   fixture.signOut = { error: undefined, isPending: false, signOut: () => undefined };
+  fixture.tab = "account";
 });
 
 describe("profile read truth", () => {
@@ -106,13 +126,18 @@ describe("profile read truth", () => {
 });
 
 describe("active business facts", () => {
+  beforeEach(() => {
+    fixture.tab = undefined;
+  });
+
   test("states the business the account works in without raw identifiers", () => {
     const markup = render();
     expect(markup).toContain("Tienda Luna");
     expect(markup).toContain("Dólar estadounidense (USD)");
     expect(markup).toContain("El Salvador (GMT-6)");
     expect(markup).not.toContain("America/El_Salvador");
-    expect(markup).toContain(i18n.t("settings.roles.owner"));
+    expect(markup).toContain(i18n.t("settings.roleNames.owner"));
+    expect(markup).toContain("ana@example.test");
     expect(markup).not.toContain("business-a");
     expect(markup).not.toContain(i18n.t("settings.businessSwitchHint"));
   });

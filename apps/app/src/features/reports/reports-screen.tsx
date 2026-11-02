@@ -115,10 +115,10 @@ export function ReportsScreen({
           {state.kind === "ready" ? (
             <View className="min-w-0 gap-4">
               <View className="min-w-0 flex-row flex-wrap items-start gap-4">
-                <View className="min-w-0 grow basis-[340px] lg:max-w-[440px]">
+                <View className="min-w-0 shrink grow basis-[340px] lg:max-w-[440px]">
                   <IncomeStatement locale={locale} report={state.report} />
                 </View>
-                <View className="min-w-0 grow basis-[420px]">
+                <View className="min-w-0 shrink grow basis-[420px]">
                   <CashFlow locale={locale} query={cashFlow} />
                 </View>
               </View>

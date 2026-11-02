@@ -149,7 +149,7 @@ export const receivables = {
     confirm: "Registrar pago",
     conflict:
       "No se pudo registrar el pago: el saldo pendiente cambió, el cliente fue archivado o la cuenta de efectivo ya no está activa.",
-    done: "Pago registrado",
+    done: "Abono registrado",
     doneDescription: "{{amount}} en {{account}}",
   },
   reversal: {

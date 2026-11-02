@@ -11,6 +11,7 @@ import {
   type BusinessRepository,
   type DatabaseHandle,
   ProductError,
+  resolveBusinessAccess,
   type SalesRepository,
 } from "@pisto/db";
 import { createApp } from "../src/app.ts";
@@ -417,6 +418,15 @@ describe("Pisto API", () => {
 
     expect(response.status).toBe(404);
     expect(response.headers.get("x-request-id")).not.toBe("invalid id with spaces");
+  });
+
+  test("states every role's permissions exactly as the server policy grants them", async () => {
+    const response = await testApp({ authenticated: true }).request("/v1/businesses/roles");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { data: { roles: unknown[] } };
+    expect(body.data.roles).toEqual(
+      ["owner", "admin", "member"].map((role) => resolveBusinessAccess(role)),
+    );
   });
 
   test("does not write unexpected error messages into request logs", async () => {
@@ -1009,6 +1019,7 @@ describe("Pisto API", () => {
     ["POST", `/v1/receivable-payments/${recordId}/reverse`],
     ["GET", "/v1/reports/operating?startLocalDate=2026-08-01&endLocalDate=2026-08-22"],
     ["GET", "/v1/reports/cash-flow?endMonth=2026-08"],
+    ["GET", "/v1/businesses/roles"],
   ];
 
   test("resolves a session before every domain handler touches a repository", async () => {

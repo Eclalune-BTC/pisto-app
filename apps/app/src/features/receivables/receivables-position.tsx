@@ -79,7 +79,7 @@ export function ReceivablesPosition({ summary }: { summary: ReceivablesSummary }
   return (
     <View className="gap-2">
       <View className="min-w-0 flex-row flex-wrap overflow-hidden rounded-xl border border-border bg-card">
-        <View className="min-w-0 grow basis-[320px] flex-row flex-wrap border-border lg:max-w-[460px] lg:border-r">
+        <View className="min-w-0 shrink grow basis-[320px] flex-row flex-wrap border-border lg:max-w-[460px] lg:border-r">
           <View className="min-w-[150px] flex-1">
             <Stat
               detail={t("receivables.summary.openCount", {
@@ -100,7 +100,7 @@ export function ReceivablesPosition({ summary }: { summary: ReceivablesSummary }
             />
           </View>
         </View>
-        <View className="min-w-0 grow basis-[360px] border-t border-border lg:border-t-0">
+        <View className="min-w-0 shrink grow basis-[360px] border-t border-border lg:border-t-0">
           <AgingBar summary={summary} />
         </View>
       </View>
