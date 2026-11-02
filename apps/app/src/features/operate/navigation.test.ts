@@ -47,10 +47,38 @@ describe("operate navigation", () => {
 
     expect(OPERATE_MODULES.filter(({ group }) => !groupIds.has(group))).toEqual([]);
     expect(OPERATE_GROUPS.map(({ id }) => id)).toEqual([
+      "overview",
       "money",
-      "stock",
-      "relationships",
+      "accounts",
+      "catalog",
       "insight",
+    ]);
+  });
+
+  test("lists modules in the order of their sidebar groups, as the prototype does", () => {
+    const groupOrder = OPERATE_GROUPS.map(({ id }) => id);
+    const positions = OPERATE_MODULES.map(({ group }) => groupOrder.indexOf(group));
+    expect(positions).toEqual([...positions].sort((left, right) => left - right));
+    expect(OPERATE_MODULES.map(({ id }) => id)).toEqual([
+      "movements",
+      "sales",
+      "expenses",
+      "cash",
+      "receivables",
+      "payables",
+      "catalog",
+      "inventory",
+      "customers",
+      "suppliers",
+      "reports",
+    ]);
+  });
+
+  test("puts the unified ledger behind cash access", () => {
+    expect(getVisibleOperateModules(["sales:read"]).map(({ id }) => id)).not.toContain("movements");
+    expect(getVisibleOperateModules(["cash:read"]).map(({ id }) => id)).toEqual([
+      "movements",
+      "cash",
     ]);
   });
 });

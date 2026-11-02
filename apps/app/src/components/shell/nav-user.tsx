@@ -72,15 +72,17 @@ function NavUserMenu({
           <Button
             accessibilityLabel={t("shell.userMenu", { name: displayName })}
             className={cn(
-              compactTrigger ? "px-0" : "h-auto w-full justify-start gap-2.5 px-2 py-1.5",
+              compactTrigger
+                ? "px-0"
+                : "h-auto w-full justify-start gap-2.5 rounded-lg bg-muted px-2 py-2 web:hover:bg-accent",
               collapsed && "self-center",
             )}
             size={compactTrigger ? "icon" : "default"}
             variant="ghost"
           >
-            <Avatar alt={displayName} className="size-7">
-              <AvatarFallback className="bg-primary">
-                <Text className="font-ui text-[11px] text-primary-foreground">{initials}</Text>
+            <Avatar alt={displayName} className="size-8 rounded-full">
+              <AvatarFallback className="rounded-full bg-brand">
+                <Text className="font-ui text-[11px] text-brand-foreground">{initials}</Text>
               </AvatarFallback>
             </Avatar>
             {compactTrigger ? null : (

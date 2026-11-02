@@ -361,10 +361,10 @@ describe("data integrity regressions on PostgreSQL", () => {
         });
       }),
     );
-    const before = await reading.getSale(actor, created.sale.id);
+    const { sale: before } = await reading.getSale(actor, created.sale.id);
     expect(before.status).toBe("posted");
     expect(before.correction).toBeNull();
-    const after = await sales.getSale(actor, created.sale.id);
+    const { sale: after } = await sales.getSale(actor, created.sale.id);
     expect(after.status).toBe("voided");
     expect(after.correction?.kind).toBe("void");
     const replay = await sales.createSale(actor, command);

@@ -1,9 +1,12 @@
 import type {
+  CreateItemizedSaleRequest,
   CreateSaleRequest,
   PreviousMonthSummary,
   ReplaceSaleRequest,
   Sale,
   SaleCorrection,
+  SaleDetails,
+  SaleFormOptionsResponse,
   SaleList,
   SaleListQuery,
   SaleReview,
@@ -11,6 +14,9 @@ import type {
 } from "@pisto/contracts";
 
 import type { ProductActor } from "../business-access.ts";
+import type { ItemizedSaleResult } from "./itemized.ts";
+
+export type { ItemizedSaleResult } from "./itemized.ts";
 
 export interface SaleCorrectionResult {
   correction: SaleCorrection;
@@ -35,6 +41,11 @@ export interface SalesRepository {
     actor: ProductActor,
     command: CreateSaleRequest,
   ): Promise<{ sale: Sale; replayed: boolean }>;
+  createItemizedSale(
+    actor: ProductActor,
+    command: CreateItemizedSaleRequest,
+  ): Promise<ItemizedSaleResult>;
+  getSaleFormOptions(actor: ProductActor): Promise<SaleFormOptionsResponse["data"]>;
   voidSale(
     actor: ProductActor,
     saleId: string,
@@ -45,7 +56,10 @@ export interface SalesRepository {
     saleId: string,
     command: ReplaceSaleRequest,
   ): Promise<SaleCorrectionResult>;
-  getSale(actor: ProductActor, saleId: string): Promise<Sale>;
+  getSale(
+    actor: ProductActor,
+    saleId: string,
+  ): Promise<{ sale: Sale; details: SaleDetails | null }>;
   listSales(actor: ProductActor, query: SaleListQuery): Promise<SaleList>;
   getPreviousMonthSummary(actor: ProductActor): Promise<PreviousMonthSummary>;
 }

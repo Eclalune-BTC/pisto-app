@@ -40,9 +40,11 @@ const props: ComponentProps<typeof CatalogScreen> = {
   onRetryCategories: noop,
   onSearchChange: noop,
   onStatusChange: noop,
+  onStockChange: noop,
   search: "Coffee",
   state: { status: "ready", items: [], hasNextPage: false, loadingMore: false },
   status: "active",
+  stock: null,
 };
 
 const item: ProductDetail = {
@@ -110,15 +112,19 @@ describe("catalog list", () => {
     expect(markup).toContain(i18n.t("catalog.status.archived"));
     expect(markup).toContain(i18n.t("remote.stale"));
     expect(markup).toContain(i18n.t("common.loadMore"));
-    // An archived product is out of operation, so its low balance asks for no attention.
-    const lowStock = `>${i18n.t("catalog.list.lowStockShort")}<`;
-    expect(markup).not.toContain(lowStock);
+    // An archived product is out of operation, so its low balance asks for no attention; the
+    // stock filter carries the same words once.
+    const lowStock = `>${i18n.t("catalog.list.stockStates.low")}<`;
+    const mentions = (html: string) => html.split(lowStock).length - 1;
+    expect(mentions(markup)).toBe(1);
     const active = { ...item, product: { ...item.product, status: "active" as const } };
     expect(
-      render({
-        state: { status: "ready", items: [active], hasNextPage: false, loadingMore: false },
-      }),
-    ).toContain(lowStock);
+      mentions(
+        render({
+          state: { status: "ready", items: [active], hasNextPage: false, loadingMore: false },
+        }),
+      ),
+    ).toBe(2);
   });
 
   test("states an absent price and untracked stock without manufacturing values", () => {

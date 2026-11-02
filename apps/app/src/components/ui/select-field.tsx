@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, useWindowDimensions, View } from "react-native";
 import { cn } from "@/lib/cn";
+import { FieldLabel } from "./field-label";
 import { Label } from "./label";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "./select";
 import { Text } from "./text";
@@ -13,6 +14,8 @@ export type SelectFieldProps<T extends string> = {
   label: string;
   /** Toolbar filters show their value only; the label still names the control for readers. */
   labelHidden?: boolean;
+  /** The transcript number of the fragment that filled this field, during an assistant review. */
+  marker?: number | null;
   onChange: (value: T) => void;
   options: readonly { label: string; value: T }[];
   placeholder?: string;
@@ -24,6 +27,7 @@ export function SelectField<T extends string>({
   error,
   label,
   labelHidden = false,
+  marker,
   onChange,
   options,
   placeholder,
@@ -44,9 +48,11 @@ export function SelectField<T extends string>({
       : (placeholder ?? t("filters.selectOption"));
   return (
     <View className="min-w-0 gap-1.5">
-      <Label className={cn("text-[13px]", labelHidden && "sr-only")} htmlFor={id}>
-        {label}
-      </Label>
+      <FieldLabel marker={labelHidden ? null : marker}>
+        <Label className={cn("text-[13px]", labelHidden && "sr-only")} htmlFor={id}>
+          {label}
+        </Label>
+      </FieldLabel>
       <Select
         value={primitiveValue}
         onValueChange={(option) => {

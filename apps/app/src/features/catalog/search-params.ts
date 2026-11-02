@@ -1,4 +1,4 @@
-import { uuidSchema } from "@pisto/contracts";
+import { type ProductStockFilter, productStockFilterSchema, uuidSchema } from "@pisto/contracts";
 import { useEffect, useRef, useState } from "react";
 import { firstParam, type RouteParam } from "@/lib/route-params";
 import type { CatalogStatusFilter } from "./queries";
@@ -30,6 +30,12 @@ export function searchParam(search: string): string | undefined {
 /** A category filter that is not a record identifier is dropped instead of sent to the server. */
 export function parseCategoryParam(value: RouteParam): string | null {
   const parsed = uuidSchema.safeParse(firstParam(value));
+  return parsed.success ? parsed.data : null;
+}
+
+/** An absent or unknown value lists every product. */
+export function parseStockParam(value: RouteParam): ProductStockFilter | null {
+  const parsed = productStockFilterSchema.safeParse(firstParam(value));
   return parsed.success ? parsed.data : null;
 }
 

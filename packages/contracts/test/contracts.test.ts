@@ -7,11 +7,13 @@ import {
   businessAccessSchema,
   businessSchema,
   createBusinessRequestSchema,
+  createItemizedSaleRequestSchema,
   createSaleRequestSchema,
   positiveMinorUnitsSchema,
   previousMonthSummarySchema,
   replaceSaleRequestSchema,
   saleCorrectionResponseSchema,
+  saleDetailResponseSchema,
   saleListQuerySchema,
   saleListResponseSchema,
   saleListSchema,
@@ -182,6 +184,8 @@ describe("API contracts", () => {
       id: originalSaleId,
       status: "voided",
       entryMode: "total_only",
+      entrySource: "manual",
+      customer: null,
       grossMinorUnits: "1250",
       currency: "USD",
       currencyMinorUnitDigits: 2,
@@ -240,6 +244,8 @@ describe("API contracts", () => {
       id: originalSaleId,
       status: "voided",
       entryMode: "total_only",
+      entrySource: "manual",
+      customer: null,
       grossMinorUnits: "1250",
       currency: "USD",
       currencyMinorUnitDigits: 2,
@@ -260,5 +266,87 @@ describe("API contracts", () => {
     expect(saleListResponseSchema.safeParse({ data: page }).success).toBe(true);
     expect(saleListSchema.safeParse({ ...page, total: 2 }).success).toBe(false);
     expect(saleListSchema.safeParse({ items: [], nextCursor: null }).success).toBe(false);
+  });
+});
+
+describe("itemized sale contracts", () => {
+  const sale = {
+    id: "5312a3e6-7c91-486a-9233-0cf4d9d3dcc7",
+    status: "posted",
+    entryMode: "itemized",
+    entrySource: "voice",
+    customer: { id: "0c0f4c55-3a52-4a39-9d0a-4cf1f3e2b9a1", name: "Carlos Rivas" },
+    grossMinorUnits: "975",
+    currency: "USD",
+    currencyMinorUnitDigits: 2,
+    occurredAt: "2026-11-02T16:15:00.000Z",
+    occurredLocalDate: "2026-11-02",
+    occurredLocalTime: "10:15",
+    timeZone: "America/El_Salvador",
+    description: null,
+    correction: null,
+    createdAt: "2026-11-02T16:15:01.000Z",
+  };
+  const details = {
+    lines: [
+      {
+        id: "3ce0fe40-da34-4fc4-b8a6-0b9b3df52136",
+        productId: "a8d0b1a6-5f1c-4c55-9a39-2f8d4bd7f6a2",
+        productName: "Café molido 1 lb",
+        quantityMinorUnits: "3",
+        quantityPrecision: 0,
+        unitPriceMinorUnits: "325",
+        subtotalMinorUnits: "975",
+      },
+    ],
+    settlement: {
+      customerId: sale.customer.id,
+      customerName: sale.customer.name,
+      paymentMethod: "cash",
+      accountId: "b9c1d2e3-4f50-4a6b-8c7d-9e0f1a2b3c4d",
+      receivedMinorUnits: "500",
+      creditMinorUnits: "475",
+      receivableId: "c0d1e2f3-0a1b-4c2d-8e3f-4a5b6c7d8e9f",
+      dueDate: "2026-11-30",
+    },
+  };
+
+  test("reads an itemized detail and a total-only detail without lines", () => {
+    expect(
+      saleDetailResponseSchema.safeParse({ data: { sale, details, replayed: false } }).success,
+    ).toBe(true);
+    expect(
+      saleDetailResponseSchema.safeParse({
+        data: {
+          sale: { ...sale, entryMode: "total_only", entrySource: "manual", customer: null },
+          details: null,
+          replayed: false,
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      saleDetailResponseSchema.safeParse({
+        data: { sale, details: { ...details, lines: [] }, replayed: false },
+      }).success,
+    ).toBe(false);
+  });
+
+  test("defaults the entry source and refuses client-computed totals", () => {
+    const command = {
+      idempotencyKey: "11111111-1111-4111-8111-111111111111",
+      occurredLocalDate: "2026-11-02",
+      occurredLocalTime: "10:15",
+      lines: [{ productId: details.lines[0]?.productId, quantityMinorUnits: "3" }],
+    };
+    expect(createItemizedSaleRequestSchema.parse(command).entrySource).toBe("manual");
+    expect(
+      createItemizedSaleRequestSchema.safeParse({ ...command, grossMinorUnits: "975" }).success,
+    ).toBe(false);
+    expect(
+      createItemizedSaleRequestSchema.safeParse({
+        ...command,
+        lines: [{ ...command.lines[0], subtotalMinorUnits: "975" }],
+      }).success,
+    ).toBe(false);
   });
 });

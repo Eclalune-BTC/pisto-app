@@ -6,6 +6,7 @@ import {
   calendarLocalDateSchema,
   currencyCodeSchema,
   currencyMinorUnitDigitsSchema,
+  entrySourceSchema,
   localTimeSchema,
   opaqueCursorSchema,
   positiveMinorUnitsSchema,
@@ -28,6 +29,9 @@ export const cashMovementActionSchema = z.enum([
   "transfer_in",
   "transfer_out",
   "receivable_payment",
+  "sale_payment",
+  "purchase_payment",
+  "supplier_payment",
   "reverse",
 ]);
 
@@ -61,11 +65,14 @@ const cashAccountSchema = z
   })
   .strict();
 
-/** Movements the system writes for transfers and receivables, which may carry no typed reason. */
+/** Movements the system writes for transfers, receivables, sales and purchases, which may carry no typed reason. */
 export const systemDescribedCashActions = [
   "transfer_in",
   "transfer_out",
   "receivable_payment",
+  "sale_payment",
+  "purchase_payment",
+  "supplier_payment",
   "reverse",
 ] as const;
 
@@ -223,6 +230,7 @@ export const postExpenseRequestSchema = z
     payee: optionalPayeeSchema,
     occurredLocalDate: calendarLocalDateSchema,
     occurredLocalTime: localTimeSchema,
+    entrySource: entrySourceSchema.default("manual"),
   })
   .strict();
 
@@ -397,7 +405,7 @@ export type ArchiveCashAccountRequest = z.infer<typeof archiveCashAccountRequest
 export type CashAccountCommandResult = z.infer<typeof cashAccountCommandResultSchema>;
 export type CashAccountListQuery = z.input<typeof cashAccountListQuerySchema>;
 export type CashAccountList = z.infer<typeof cashAccountListSchema>;
-export type PostExpenseRequest = z.infer<typeof postExpenseRequestSchema>;
+export type PostExpenseRequest = z.input<typeof postExpenseRequestSchema>;
 export type VoidExpenseRequest = z.infer<typeof voidExpenseRequestSchema>;
 export type ExpenseCommandResult = z.infer<typeof expenseCommandResultSchema>;
 export type ExpenseListQuery = z.input<typeof expenseListQuerySchema>;

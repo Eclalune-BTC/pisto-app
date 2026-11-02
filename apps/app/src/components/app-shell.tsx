@@ -1,14 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePathname } from "expo-router";
-import { LayoutDashboard } from "lucide-react-native";
-import { type PropsWithChildren, useEffect, useState } from "react";
+import { House, Settings } from "lucide-react-native";
+import { type PropsWithChildren, type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Brand } from "@/components/brand";
 import { BusinessMenu } from "@/components/shell/business-menu";
 import { NavUser } from "@/components/shell/nav-user";
-import { RealtimeStatus } from "@/components/shell/realtime-status";
 import { ShellProvider } from "@/components/shell/shell-context";
 import { TopBar } from "@/components/shell/top-bar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -40,9 +39,11 @@ export type ShellUser = { email: string; name: string };
 type AppShellProps = PropsWithChildren<{
   /** Null while the session is being restored; the frame renders before it is known. */
   user: ShellUser | null;
+  /** The top bar's trailing primary action (dictation), mounted by the layout that owns it. */
+  topBarAction?: ReactNode;
 }>;
 
-export function AppShell({ children, user }: AppShellProps) {
+export function AppShell({ children, topBarAction, user }: AppShellProps) {
   const { t } = useTranslation();
   const pathname = usePathname();
   const { width } = useWindowDimensions();
@@ -88,25 +89,31 @@ export function AppShell({ children, user }: AppShellProps) {
   const navigation = (
     <Sidebar label={t("shell.primaryNavigation")}>
       <SidebarHeader>
+        <View className={cn("h-8 justify-center px-1", rail && "items-center px-0")}>
+          <Brand compact={rail} />
+        </View>
         <BusinessMenu collapsed={rail} />
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarLink
-            active={pathname === "/operate"}
-            collapsed={rail}
-            href="/operate"
-            icon={LayoutDashboard}
-            label={t("shell.home")}
-            onNavigate={closeNavigation}
-          />
-        </SidebarGroup>
-        {businesses.isPending ? <SidebarSkeleton collapsed={rail} /> : null}
         {OPERATE_GROUPS.map((group) => {
           const groupModules = modules.filter((module) => module.group === group.id);
-          if (!groupModules.length) return null;
+          if (group.id !== "overview" && !groupModules.length) return null;
           return (
-            <SidebarGroup collapsed={rail} key={group.id} label={t(group.labelKey)}>
+            <SidebarGroup
+              collapsed={rail}
+              key={group.id}
+              label={group.labelKey ? t(group.labelKey) : undefined}
+            >
+              {group.id === "overview" ? (
+                <SidebarLink
+                  active={pathname === "/operate"}
+                  collapsed={rail}
+                  href="/operate"
+                  icon={House}
+                  label={t("shell.home")}
+                  onNavigate={closeNavigation}
+                />
+              ) : null}
               {groupModules.map((module) => (
                 <SidebarLink
                   active={matchesRoute(pathname, String(module.href))}
@@ -121,9 +128,17 @@ export function AppShell({ children, user }: AppShellProps) {
             </SidebarGroup>
           );
         })}
+        {businesses.isPending ? <SidebarSkeleton collapsed={rail} /> : null}
       </SidebarContent>
       <SidebarFooter>
-        <RealtimeStatus collapsed={rail} status={realtime} />
+        <SidebarLink
+          active={matchesRoute(pathname, "/settings")}
+          collapsed={rail}
+          href="/settings"
+          icon={Settings}
+          label={t("shell.settings")}
+          onNavigate={closeNavigation}
+        />
         <NavUser collapsed={rail} user={user} variant="sidebar" />
       </SidebarFooter>
     </Sidebar>
@@ -134,7 +149,7 @@ export function AppShell({ children, user }: AppShellProps) {
       <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
         <View className="min-h-0 flex-1 flex-row">
           {wide ? (
-            <View className={cn("shrink-0 border-r border-sidebar-border", rail ? "w-14" : "w-60")}>
+            <View className={cn("shrink-0 border-r border-sidebar-border", rail ? "w-16" : "w-60")}>
               {navigation}
             </View>
           ) : null}
@@ -143,7 +158,10 @@ export function AppShell({ children, user }: AppShellProps) {
               {children}
             </View>
             <TopBar
+              action={topBarAction}
               collapsed={collapsed}
+              permissions={activeBusiness?.access.permissions}
+              realtime={activeBusiness ? realtime : undefined}
               user={user}
               onOpenNavigation={() => setNavigationOpen(true)}
               onToggleSidebar={() => setCollapsed((value) => !value)}

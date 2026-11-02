@@ -12,20 +12,21 @@ export type ConsumeProductRequest = (input: {
   write: boolean;
 }) => Promise<{ allowed: boolean; retryAfterSeconds: number }>;
 
-/** Reuse the operational limiter table with a namespace separate from auth keys. */
-export function createProductRateLimiter(
-  db: Database,
-  policy: ProductRateLimitPolicy,
-): ConsumeProductRequest {
-  // Better Auth prunes this shared table after its longest (60-second) window.
-  // A longer product window would be silently reset by that independent cleanup.
-  if (policy.windowSeconds !== 60) {
-    throw new Error("The shared product rate limit window must be 60 seconds");
-  }
-  return async ({ userId, write }) => {
-    const key = `pisto:product:${write ? "write" : "read"}:${userId}`;
-    const limit = write ? policy.writeLimit : policy.readLimit;
-    const windowMs = policy.windowSeconds * 1_000;
+/** Consumes one request from a caller-named budget in the shared limiter table. */
+export type ConsumeRateLimit = (input: {
+  key: string;
+  limit: number;
+}) => Promise<{ allowed: boolean; retryAfterSeconds: number }>;
+
+// Better Auth prunes the shared table after its longest (60-second) window. A longer window would
+// be silently reset by that independent cleanup.
+const sharedWindowSeconds = 60;
+
+/** Fixed 60-second windows over the operational limiter table; keys must be namespaced. */
+export function createRateLimitConsumer(db: Database): ConsumeRateLimit {
+  const windowMs = sharedWindowSeconds * 1_000;
+  return async ({ key, limit }) => {
+    if (!key.startsWith("pisto:")) throw new Error("Rate limit keys must use the pisto namespace");
     // A single atomic upsert shares the budget across replicas. PostgreSQL's
     // clock owns the window; denied traffic cannot overflow the counter.
     const rows = await db.execute<{
@@ -54,7 +55,23 @@ export function createProductRateLimiter(
       from consumed
     `);
     const row = rows[0];
-    if (!row) throw new Error("Product rate limit result is missing");
+    if (!row) throw new Error("Rate limit result is missing");
     return { allowed: row.count <= limit, retryAfterSeconds: Number(row.retry_after) };
   };
+}
+
+/** Reuse the operational limiter table with a namespace separate from auth keys. */
+export function createProductRateLimiter(
+  db: Database,
+  policy: ProductRateLimitPolicy,
+): ConsumeProductRequest {
+  if (policy.windowSeconds !== sharedWindowSeconds) {
+    throw new Error("The shared product rate limit window must be 60 seconds");
+  }
+  const consume = createRateLimitConsumer(db);
+  return ({ userId, write }) =>
+    consume({
+      key: `pisto:product:${write ? "write" : "read"}:${userId}`,
+      limit: write ? policy.writeLimit : policy.readLimit,
+    });
 }

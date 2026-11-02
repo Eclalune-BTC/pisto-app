@@ -1,4 +1,6 @@
-import type { OperatingReport } from "@pisto/contracts";
+import type { CashFlowReport, OperatingReport } from "@pisto/contracts";
+import type { TFunction } from "i18next";
+import { formatMonthName } from "@/i18n/format";
 
 type ExpenseCategoryFacts = OperatingReport["expenses"]["categories"][number];
 
@@ -64,4 +66,84 @@ export function formatShare(category: ExpenseCategoryShare, locale: string): str
     return `<${percent.format(0.001)}`;
   }
   return percent.format(category.shareTenths / 1000);
+}
+
+/** A share in tenths of a percent, "20.5 %", with one decimal like the expense shares. */
+export function formatTenthsPercent(shareTenths: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+    style: "percent",
+  }).format(shareTenths / 1000);
+}
+
+/**
+ * Sales minus the expenses posted in the period, and its share of sales in tenths of a percent
+ * rounded half away from zero. Without sales the share is undefined, not zero.
+ */
+export function resultOfSales(report: OperatingReport): {
+  minorUnits: string;
+  shareTenths: number | null;
+  sign: -1 | 0 | 1;
+} {
+  const sales = BigInt(report.sales.grossMinorUnits);
+  const result = sales - BigInt(report.expenses.totalMinorUnits);
+  const sign = result === 0n ? 0 : result > 0n ? 1 : -1;
+  if (sales === 0n) return { minorUnits: result.toString(), shareTenths: null, sign };
+  const magnitude = (result < 0n ? -result : result) * 2000n;
+  const tenths = (magnitude + sales) / (2n * sales);
+  return {
+    minorUnits: result.toString(),
+    shareTenths: Number(result < 0n ? -tenths : tenths),
+    sign,
+  };
+}
+
+/** "Mayo", or "Noviembre, al 2" for the month still in progress on the report date. */
+export function cashFlowMonthLabel(
+  month: string,
+  asOfLocalDate: string,
+  locale: string,
+  t: TFunction,
+): string {
+  const capitalized = capitalizeFirst(formatMonthName(`${month}-01`, locale, "long"), locale);
+  return asOfLocalDate.slice(0, 7) === month
+    ? t("reports.cashFlow.monthToDate", {
+        day: Number(asOfLocalDate.slice(8, 10)),
+        month: capitalized,
+      })
+    : capitalized;
+}
+
+/**
+ * Bar heights in pixels against the largest inflow or outflow of the shown months. Any movement
+ * keeps a visible sliver so a small month is not drawn as an empty one.
+ */
+export function barHeights(
+  months: readonly Pick<
+    CashFlowReport["months"][number],
+    "inflowMinorUnits" | "outflowMinorUnits"
+  >[],
+  height: number,
+): { inflow: number; outflow: number }[] {
+  let largest = 0n;
+  for (const month of months) {
+    for (const value of [month.inflowMinorUnits, month.outflowMinorUnits]) {
+      if (BigInt(value) > largest) largest = BigInt(value);
+    }
+  }
+  const scale = (value: string) => {
+    const amount = BigInt(value);
+    if (amount === 0n || largest === 0n) return 0;
+    return Math.max(2, Number((amount * BigInt(height) * 100n) / largest) / 100);
+  };
+  return months.map((month) => ({
+    inflow: scale(month.inflowMinorUnits),
+    outflow: scale(month.outflowMinorUnits),
+  }));
+}
+
+/** Spanish month names are lower case; a label that starts a line takes a capital. */
+export function capitalizeFirst(text: string, locale: string): string {
+  return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
 }

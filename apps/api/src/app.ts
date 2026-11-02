@@ -7,6 +7,10 @@ import type {
   CatalogRepository,
   ConsumeProductRequest,
   DatabaseHandle,
+  DebtorsRepository,
+  MoneyTrendRepository,
+  MovementsRepository,
+  PurchasesRepository,
   ReceivablesRepository,
   ReportsRepository,
   SalesRepository,
@@ -17,12 +21,22 @@ import type { ApiConfig } from "./config.ts";
 import { ApiError, normalizeError } from "./errors.ts";
 import { productAccess, sessionPolicyPaths } from "./middleware/product-access.ts";
 import { requestContext } from "./middleware/request-context.ts";
-import { requestBodyLimit, requestPolicy } from "./middleware/request-policy.ts";
+import { type RawBodyRoute, requestBodyLimit, requestPolicy } from "./middleware/request-policy.ts";
 import { changedResource, type RealtimeHub } from "./realtime.ts";
+import {
+  type AssistantServices,
+  assistantRoutes,
+  transcriptionMediaTypes,
+  transcriptionPath,
+} from "./routes/assistant.ts";
 import { billingRoutes } from "./routes/billing.ts";
 import { businessRoutes } from "./routes/businesses.ts";
 import { cashRoutes } from "./routes/cash.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
+import { debtorsRoutes } from "./routes/debtors.ts";
+import { moneyTrendRoutes } from "./routes/money-trend.ts";
+import { movementsRoutes } from "./routes/movements.ts";
+import { purchasesRoutes } from "./routes/purchases.ts";
 import { receivablesRoutes } from "./routes/receivables.ts";
 import { reportsRoutes } from "./routes/reports.ts";
 import { salesRoutes } from "./routes/sales.ts";
@@ -33,6 +47,10 @@ export interface ProductRepositories {
   businesses: BusinessRepository;
   cash: CashRepository;
   catalog: CatalogRepository;
+  purchases: PurchasesRepository;
+  debtors: DebtorsRepository;
+  moneyTrend: MoneyTrendRepository;
+  movements: MovementsRepository;
   receivables: ReceivablesRepository;
   reports: ReportsRepository;
   sales: SalesRepository;
@@ -47,6 +65,7 @@ export function createApp(input: {
   repositories: ProductRepositories;
   consumeProductRequest: ConsumeProductRequest;
   realtime: RealtimeHub;
+  assistant: AssistantServices;
   /** Cloudflare Workers pass their adapter so `compile()` can prepare every route at startup. */
   adapter?: ElysiaConfig<"">["adapter"];
 }) {
@@ -59,6 +78,13 @@ export function createApp(input: {
       billing: input.billing,
       db: input.database.db,
     }),
+  ];
+  const rawBodyRoutes: RawBodyRoute[] = [
+    {
+      path: transcriptionPath,
+      mediaTypes: transcriptionMediaTypes,
+      limitBytes: input.config.assistant.audioLimitBytes,
+    },
   ];
   const access = productAccess({
     auth: input.auth,
@@ -84,9 +110,9 @@ export function createApp(input: {
         exposeHeaders: ["X-Request-ID", "Retry-After"],
       }),
     )
-    .use(requestPolicy(input.config))
+    .use(requestPolicy(input.config, rawBodyRoutes))
     .use(access)
-    .use(requestBodyLimit(input.config.requestBodyLimitBytes))
+    .use(requestBodyLimit(input.config.requestBodyLimitBytes, rawBodyRoutes))
     // A handler only returns after its transaction committed; failures skip this hook.
     .onAfterHandle({ as: "global" }, ({ request, actor }) => {
       if (request.method !== "POST" && request.method !== "PATCH") return;
@@ -158,12 +184,28 @@ export function createApp(input: {
   }
   app.use(systemRoutes({ database: input.database, billing: input.billing }));
   for (const group of sessionPolicyGroups) app.use(group);
-  const { businesses, cash, catalog, receivables, reports, sales } = input.repositories;
+  const {
+    businesses,
+    cash,
+    catalog,
+    debtors,
+    moneyTrend,
+    movements,
+    purchases,
+    receivables,
+    reports,
+    sales,
+  } = input.repositories;
   return app
     .use(businessRoutes({ access, businesses }))
     .use(salesRoutes({ access, sales }))
     .use(catalogRoutes({ access, catalog }))
     .use(cashRoutes({ access, cash }))
     .use(receivablesRoutes({ access, receivables }))
-    .use(reportsRoutes({ access, reports }));
+    .use(purchasesRoutes({ access, purchases }))
+    .use(reportsRoutes({ access, reports }))
+    .use(moneyTrendRoutes({ access, moneyTrend }))
+    .use(movementsRoutes({ access, movements }))
+    .use(debtorsRoutes({ access, debtors }))
+    .use(assistantRoutes({ access, assistant: input.assistant }));
 }

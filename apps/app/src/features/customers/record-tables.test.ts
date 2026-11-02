@@ -263,14 +263,15 @@ describe("record table presentation", () => {
     const markup = renderToStaticMarkup(
       createElement(ReceivablesScreen, {
         canCreate: false,
-        customerFilter: { kind: "ready", name: customer.name } as const,
+        customerFilter: { kind: "ready", name: customer.name, phone: null } as const,
         customerFilterRef: { current: null },
-        customerNameFor: () => ({ kind: "ready", name: customer.name }) as const,
+        customerNameFor: () => ({ kind: "ready", name: customer.name, phone: null }) as const,
         filters: { customerId: customer.id, state: "open" },
         onChooseCustomer: noop,
         onClearCustomer: noop,
         onClearFilters: noop,
         onLoadMore: noop,
+        onRegisterPayment: noop,
         onRetry: noop,
         onStateChange: noop,
         state: {
@@ -286,6 +287,12 @@ describe("record table presentation", () => {
             overdueMinorUnits: "5000",
             openReceivableCount: "4",
             overdueReceivableCount: "2",
+            aging: {
+              current: { outstandingMinorUnits: "0", receivableCount: "0" },
+              days1To30: { outstandingMinorUnits: "0", receivableCount: "0" },
+              days31To60: { outstandingMinorUnits: "0", receivableCount: "0" },
+              over60: { outstandingMinorUnits: "0", receivableCount: "0" },
+            },
             businessLocalDate: date,
             timeZone: "America/El_Salvador",
             queriedAt: timestamp,
@@ -303,7 +310,7 @@ describe("record table presentation", () => {
     );
     // Filtered to one customer and one state, rows name the charge and repeat neither.
     expect(markup).toContain(receivable.description);
-    expect(markup).not.toContain(`>${i18n.t("receivables.states.open")}<`);
+    expect(markup).not.toContain(`>${i18n.t("dataTable.columns.status")}<`);
     expect(markup).toContain(`aria-label="${i18n.t("receivables.list.clearCustomer")}"`);
     expect(markup).toContain(i18n.t("common.loadMore"));
     expect(markup).not.toContain(`>${i18n.t("receivables.list.create")}<`);
@@ -321,6 +328,7 @@ describe("record table presentation", () => {
         onClearCustomer: noop,
         onClearFilters: noop,
         onLoadMore: noop,
+        onRegisterPayment: noop,
         onRetry: noop,
         onStateChange: noop,
         state: {
@@ -333,6 +341,12 @@ describe("record table presentation", () => {
             overdueMinorUnits: "0",
             openReceivableCount: "0",
             overdueReceivableCount: "0",
+            aging: {
+              current: { outstandingMinorUnits: "0", receivableCount: "0" },
+              days1To30: { outstandingMinorUnits: "0", receivableCount: "0" },
+              days31To60: { outstandingMinorUnits: "0", receivableCount: "0" },
+              over60: { outstandingMinorUnits: "0", receivableCount: "0" },
+            },
             businessLocalDate: date,
             timeZone: "America/El_Salvador",
             queriedAt: timestamp,

@@ -53,3 +53,7 @@ export const calendarLocalDateSchema = z.iso
   .refine((value) => !value.startsWith("0000"), "Year zero is not supported");
 
 export const shortRequestTextSchema = z.string().trim().min(1).max(240);
+
+/** How a record was captured: a form, a dictated transcript or a typed natural-language message. */
+export const entrySourceSchema = z.enum(["manual", "voice", "text"]);
+export type EntrySource = z.infer<typeof entrySourceSchema>;

@@ -2,6 +2,7 @@ import { ChevronsUpDown } from "lucide-react-native";
 import type { Ref } from "react";
 import { View } from "react-native";
 
+import { FieldLabel } from "@/components/ui/field-label";
 import { Icon } from "@/components/ui/icon";
 import { PressableSurface } from "@/components/ui/pressable-surface";
 import { Text } from "@/components/ui/text";
@@ -11,6 +12,8 @@ type PickerFieldProps = {
   detail?: string;
   error?: string;
   label: string;
+  /** The transcript number of the fragment that filled this field, during an assistant review. */
+  marker?: number | null;
   onPress: () => void;
   placeholder: string;
   /** The control itself, so the picker it opens can return focus to it. */
@@ -23,6 +26,7 @@ export function PickerField({
   detail,
   error,
   label,
+  marker,
   onPress,
   placeholder,
   ref,
@@ -30,7 +34,9 @@ export function PickerField({
 }: PickerFieldProps) {
   return (
     <View className="min-w-0 gap-2">
-      <Text className="font-ui text-sm leading-none text-foreground">{label}</Text>
+      <FieldLabel marker={marker}>
+        <Text className="font-ui text-sm leading-none text-foreground">{label}</Text>
+      </FieldLabel>
       <PressableSurface
         accessibilityHint={error}
         accessibilityLabel={`${label}: ${value ?? placeholder}`}

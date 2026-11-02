@@ -1,11 +1,24 @@
+import {
+  type AssistantProvider,
+  createWorkersAiBindingProvider,
+  createWorkersAiRestProvider,
+  type WorkersAiBinding,
+} from "@pisto/assistant";
 import { createAuth, parseAuthConfig } from "@pisto/auth";
 import { createBillingRuntime, parseBillingConfig } from "@pisto/billing";
 import {
+  createAssistantDirectory,
+  createAssistantSupplierDirectory,
   createBusinessRepository,
   createCashRepository,
   createCatalogRepository,
   createDatabase,
+  createDebtorsRepository,
+  createMoneyTrendRepository,
+  createMovementsRepository,
   createProductRateLimiter,
+  createPurchasesRepository,
+  createRateLimitConsumer,
   createReceivablesRepository,
   createReportsRepository,
   createSalesRepository,
@@ -13,12 +26,34 @@ import {
 } from "@pisto/db";
 
 import { createApp } from "./app.ts";
-import { parseApiConfig } from "./config.ts";
+import { type ApiConfig, ApiConfigurationError, parseApiConfig } from "./config.ts";
 import { authorizeRealtime, RealtimeHub } from "./realtime.ts";
+
+/**
+ * The Worker passes its AI binding; the Bun API uses REST credentials when present. With neither,
+ * or with ASSISTANT_ENABLED=false, the assistant reports itself as off; there is no fallback.
+ */
+export function assistantProvider(
+  config: ApiConfig["assistant"],
+  ai: WorkersAiBinding | undefined,
+): AssistantProvider | null {
+  if (config.enabled === false) return null;
+  const provider = ai
+    ? createWorkersAiBindingProvider(ai)
+    : config.rest
+      ? createWorkersAiRestProvider(config.rest)
+      : null;
+  if (config.enabled === true && !provider) {
+    throw new ApiConfigurationError(
+      "ASSISTANT_ENABLED=true requires the AI binding or CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_AI_API_TOKEN",
+    );
+  }
+  return provider;
+}
 
 export function createRuntime(
   env: Record<string, string | undefined>,
-  options: Pick<Parameters<typeof createApp>[0], "adapter"> = {},
+  options: Pick<Parameters<typeof createApp>[0], "adapter"> & { ai?: WorkersAiBinding } = {},
 ) {
   const config = parseApiConfig(env);
   const authConfig = parseAuthConfig(env);
@@ -28,7 +63,7 @@ export function createRuntime(
   const auth = createAuth({ config: authConfig, db: database.db, billing });
   const realtime = new RealtimeHub();
   const app = createApp({
-    ...options,
+    adapter: options.adapter,
     realtime,
     config,
     authBaseUrl: authConfig.baseUrl,
@@ -39,9 +74,26 @@ export function createRuntime(
       businesses: createBusinessRepository(database.db),
       cash: createCashRepository(database.db),
       catalog: createCatalogRepository(database.db),
+      purchases: createPurchasesRepository(database.db),
+      debtors: createDebtorsRepository(database.db),
+      moneyTrend: createMoneyTrendRepository(database.db),
+      movements: createMovementsRepository(database.db),
       receivables: createReceivablesRepository(database.db),
       reports: createReportsRepository(database.db),
       sales: createSalesRepository(database.db),
+    },
+    assistant: {
+      provider: assistantProvider(config.assistant, options.ai),
+      records: createAssistantDirectory(database.db),
+      // The purchases module supplies the real supplier directory when it is composed.
+      suppliers: createAssistantSupplierDirectory(database.db),
+      consume: createRateLimitConsumer(database.db),
+      limits: {
+        interpretPerMinute: config.assistant.interpretLimit,
+        transcribePerMinute: config.assistant.transcribeLimit,
+        businessPerMinute: config.assistant.businessLimit,
+      },
+      timeouts: { extractMs: 20_000, transcribeMs: 30_000 },
     },
     consumeProductRequest: createProductRateLimiter(database.db, {
       readLimit: config.productReadLimit,

@@ -1,4 +1,5 @@
 import { appearance } from "./es-SV/appearance";
+import { assistant } from "./es-SV/assistant";
 import { auth } from "./es-SV/auth";
 import { billing } from "./es-SV/billing";
 import { business } from "./es-SV/business";
@@ -10,9 +11,11 @@ import { dataTable } from "./es-SV/data-table";
 import { expenses } from "./es-SV/expenses";
 import { filters } from "./es-SV/filters";
 import { inventory } from "./es-SV/inventory";
+import { movements } from "./es-SV/movements";
 import { notFound } from "./es-SV/not-found";
 import { operate } from "./es-SV/operate";
 import { productErrors } from "./es-SV/product-errors";
+import { purchases } from "./es-SV/purchases";
 import { receivables } from "./es-SV/receivables";
 import { relationships } from "./es-SV/relationships";
 import { remote } from "./es-SV/remote";
@@ -49,7 +52,10 @@ export const esSV = {
   relationships,
   customers,
   receivables,
+  purchases,
   reports,
+  movements,
+  assistant,
   notFound,
   productErrors,
 } as const;

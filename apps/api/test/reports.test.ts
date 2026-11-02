@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Auth } from "@pisto/auth";
-import type { OperatingReport } from "@pisto/contracts";
+import type { CashFlowReport, OperatingReport } from "@pisto/contracts";
 import type { ReportsRepository } from "@pisto/db";
 import { ProductError } from "@pisto/db";
 import { reportsRoutes } from "../src/routes/reports.ts";
@@ -37,9 +37,31 @@ const report: OperatingReport = {
 
 const validRange = "startLocalDate=2026-08-01&endLocalDate=2026-08-22";
 
+const cashFlow: CashFlowReport = {
+  timeZone: "America/El_Salvador",
+  currency: "USD",
+  currencyMinorUnitDigits: 2,
+  asOfLocalDate: "2026-08-22",
+  months: [
+    {
+      month: "2026-08",
+      inflowMinorUnits: "1500",
+      outflowMinorUnits: "500",
+      netMinorUnits: "1000",
+      closingBalanceMinorUnits: "4000",
+    },
+  ],
+  queriedAt: "2026-08-22T18:00:00.000Z",
+};
+
+const unusedCashFlow: ReportsRepository["getCashFlowReport"] = async () => {
+  throw new Error("The cash flow report was not expected in this test");
+};
+
 function createTestApp(
   getOperatingReport: ReportsRepository["getOperatingReport"],
   authenticated = true,
+  getCashFlowReport: ReportsRepository["getCashFlowReport"] = unusedCashFlow,
 ) {
   const auth = {
     api: {
@@ -58,7 +80,10 @@ function createTestApp(
   } as unknown as Auth;
   return testClient(
     testErrorBoundary().use(
-      reportsRoutes({ access: testAccess(auth), reports: { getOperatingReport } }),
+      reportsRoutes({
+        access: testAccess(auth),
+        reports: { getCashFlowReport, getOperatingReport },
+      }),
     ),
   );
 }
@@ -150,5 +175,51 @@ describe("operating report route", () => {
         requestId: "request_test",
       },
     });
+  });
+});
+
+describe("cash flow report route", () => {
+  const unusedOperating: ReportsRepository["getOperatingReport"] = async () => report;
+
+  test("passes the requested months and a server-derived actor", async () => {
+    let received: unknown;
+    const response = await createTestApp(unusedOperating, true, async (actor, query) => {
+      received = { actor, query };
+      return cashFlow;
+    }).request("/v1/reports/cash-flow?endMonth=2026-08&months=6");
+
+    expect(response.status).toBe(200);
+    expect(received).toEqual({
+      actor: {
+        userId: "user_test",
+        sessionId: "session_test",
+        activeBusinessId: "business_test",
+      },
+      query: { endMonth: "2026-08", months: 6 },
+    });
+    expect(await response.json()).toEqual({ data: { report: cashFlow } });
+  });
+
+  test.each(["", "endMonth=2026-13", "endMonth=2026-08&months=13", "endMonth=2026-08&months=0"])(
+    "rejects months the contract does not accept: %s",
+    async (query) => {
+      let called = false;
+      const response = await createTestApp(unusedOperating, true, async () => {
+        called = true;
+        return cashFlow;
+      }).request(`/v1/reports/cash-flow?${query}`);
+      expect(response.status).toBe(400);
+      expect(called).toBe(false);
+    },
+  );
+
+  test("requires authentication before the repository is called", async () => {
+    let called = false;
+    const response = await createTestApp(unusedOperating, false, async () => {
+      called = true;
+      return cashFlow;
+    }).request("/v1/reports/cash-flow?endMonth=2026-08");
+    expect(response.status).toBe(401);
+    expect(called).toBe(false);
   });
 });

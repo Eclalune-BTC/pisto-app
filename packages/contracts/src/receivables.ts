@@ -6,6 +6,7 @@ import {
   calendarLocalDateSchema,
   currencyCodeSchema,
   currencyMinorUnitDigitsSchema,
+  entrySourceSchema,
   localTimeSchema,
   opaqueCursorSchema,
   positiveMinorUnitsSchema,
@@ -164,6 +165,7 @@ export const applyReceivablePaymentRequestSchema = z
     occurredLocalTime: localTimeSchema,
     cashAccountId: uuidSchema,
     reference: z.string().trim().min(1).max(120).optional(),
+    entrySource: entrySourceSchema.default("manual"),
   })
   .strict();
 
@@ -211,6 +213,22 @@ export const receivablesResponseSchema = z.object({
   }),
 });
 
+const receivableAgingBucketSchema = z.object({
+  outstandingMinorUnits: aggregateIntegerSchema,
+  receivableCount: aggregateIntegerSchema,
+});
+
+/**
+ * Open balances by days past their due date on the business-local date. A receivable without a
+ * due date, or due today or later, is current.
+ */
+const receivableAgingSchema = z.object({
+  current: receivableAgingBucketSchema,
+  days1To30: receivableAgingBucketSchema,
+  days31To60: receivableAgingBucketSchema,
+  over60: receivableAgingBucketSchema,
+});
+
 const receivablesSummarySchema = z.object({
   currency: currencyCodeSchema,
   currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
@@ -218,6 +236,7 @@ const receivablesSummarySchema = z.object({
   overdueMinorUnits: aggregateIntegerSchema,
   openReceivableCount: aggregateIntegerSchema,
   overdueReceivableCount: aggregateIntegerSchema,
+  aging: receivableAgingSchema,
   businessLocalDate: calendarLocalDateSchema,
   timeZone: timeZoneSchema,
   queriedAt: timestampSchema,
@@ -240,7 +259,7 @@ export type Receivable = z.infer<typeof receivableSchema>;
 export type ReceivablePayment = z.infer<typeof receivablePaymentSchema>;
 export type PostReceivableRequest = z.infer<typeof postReceivableRequestSchema>;
 export type VoidReceivableRequest = z.infer<typeof voidReceivableRequestSchema>;
-export type ApplyReceivablePaymentRequest = z.infer<typeof applyReceivablePaymentRequestSchema>;
+export type ApplyReceivablePaymentRequest = z.input<typeof applyReceivablePaymentRequestSchema>;
 export type ReverseReceivablePaymentRequest = z.infer<typeof reverseReceivablePaymentRequestSchema>;
 export type ListReceivablesQuery = z.infer<typeof listReceivablesQuerySchema>;
 export type ReceivableResponse = z.infer<typeof receivableResponseSchema>;
@@ -248,4 +267,5 @@ export type ReceivablePaymentResponse = z.infer<typeof receivablePaymentResponse
 export type ReceivableDetailResponse = z.infer<typeof receivableDetailResponseSchema>;
 export type ReceivablesResponse = z.infer<typeof receivablesResponseSchema>;
 export type ReceivablesSummary = z.infer<typeof receivablesSummarySchema>;
+export type ReceivableAging = z.infer<typeof receivableAgingSchema>;
 export type ReceivablesSummaryResponse = z.infer<typeof receivablesSummaryResponseSchema>;

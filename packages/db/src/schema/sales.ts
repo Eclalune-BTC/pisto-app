@@ -16,6 +16,8 @@ import {
 
 import { user } from "./auth.ts";
 import { businessSettings } from "./business.ts";
+import { cashAccount } from "./cash-account.ts";
+import { customer, receivable } from "./receivables.ts";
 
 export const sale = pgTable(
   "sale",
@@ -32,6 +34,16 @@ export const sale = pgTable(
     occurredLocalTime: text("occurred_local_time").notNull(),
     timeZone: text("time_zone").notNull(),
     description: text("description"),
+    entrySource: text("entry_source").default("manual").notNull(),
+    customerId: uuid("customer_id"),
+    paymentMethod: text("payment_method"),
+    cashAccountId: uuid("cash_account_id"),
+    receivedMinorUnits: bigint("received_minor_units", { mode: "bigint" })
+      .default(sql`0`)
+      .notNull(),
+    creditMinorUnits: bigint("credit_minor_units", { mode: "bigint" }).default(sql`0`).notNull(),
+    receivableId: uuid("receivable_id"),
+    dueDate: text("due_date"),
     createdByUserId: text("created_by_user_id")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
@@ -39,7 +51,61 @@ export const sale = pgTable(
   },
   (table) => [
     check("sale_status_check", sql`${table.status} in ('posted', 'voided')`),
-    check("sale_entry_mode_check", sql`${table.entryMode} = 'total_only'`),
+    check("sale_entry_mode_check", sql`${table.entryMode} in ('total_only', 'itemized')`),
+    check("sale_entry_source_check", sql`${table.entrySource} in ('manual', 'voice', 'text')`),
+    check(
+      "sale_payment_method_check",
+      sql`${table.paymentMethod} is null or ${table.paymentMethod} in ('cash', 'transfer', 'card')`,
+    ),
+    check(
+      "sale_due_date_check",
+      sql`${table.dueDate} is null or (
+        ${table.dueDate} ~ '^\\d{4}-\\d{2}-\\d{2}$' and ${table.dueDate} >= ${table.occurredLocalDate}
+      )`,
+    ),
+    // A total-only sale records revenue alone. An itemized sale splits its total into what was
+    // received into one account and what the named customer owes on a receivable.
+    check(
+      "sale_settlement_shape_check",
+      sql`(
+        ${table.entryMode} = 'total_only'
+        and ${table.customerId} is null
+        and ${table.paymentMethod} is null
+        and ${table.cashAccountId} is null
+        and ${table.receivedMinorUnits} = 0
+        and ${table.creditMinorUnits} = 0
+        and ${table.receivableId} is null
+        and ${table.dueDate} is null
+      ) or (
+        ${table.entryMode} = 'itemized'
+        and ${table.receivedMinorUnits} >= 0
+        and ${table.creditMinorUnits} >= 0
+        and ${table.receivedMinorUnits} + ${table.creditMinorUnits} = ${table.grossMinorUnits}
+        and (
+          (
+            ${table.receivedMinorUnits} > 0
+            and ${table.paymentMethod} is not null
+            and ${table.cashAccountId} is not null
+          ) or (
+            ${table.receivedMinorUnits} = 0
+            and ${table.paymentMethod} is null
+            and ${table.cashAccountId} is null
+          )
+        )
+        and (
+          (
+            ${table.creditMinorUnits} > 0
+            and ${table.customerId} is not null
+            and ${table.receivableId} is not null
+            and ${table.dueDate} is not null
+          ) or (
+            ${table.creditMinorUnits} = 0
+            and ${table.receivableId} is null
+            and ${table.dueDate} is null
+          )
+        )
+      )`,
+    ),
     check("sale_gross_minor_units_positive_check", sql`${table.grossMinorUnits} > 0`),
     check("sale_currency_check", sql`${table.currency} ~ '^[A-Z]{3}$'`),
     check("sale_currency_digits_check", sql`${table.currencyMinorUnitDigits} between 0 and 4`),
@@ -60,6 +126,26 @@ export const sale = pgTable(
       ],
       name: "sale_business_currency_digits_fk",
     }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.businessId, table.customerId],
+      foreignColumns: [customer.businessId, customer.id],
+      name: "sale_business_customer_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.businessId, table.cashAccountId],
+      foreignColumns: [cashAccount.businessId, cashAccount.id],
+      name: "sale_business_cash_account_fk",
+    }).onDelete("restrict"),
+    // The sale owns this link so the row check can require it with the balance; including the
+    // customer binds the receivable to the customer the sale names.
+    foreignKey({
+      columns: [table.businessId, table.customerId, table.receivableId],
+      foreignColumns: [receivable.businessId, receivable.customerId, receivable.id],
+      name: "sale_business_customer_receivable_fk",
+    }).onDelete("restrict"),
+    uniqueIndex("sale_business_receivable_unique")
+      .on(table.businessId, table.receivableId)
+      .where(sql`${table.receivableId} is not null`),
     index("sale_business_occurred_created_idx").on(
       table.businessId,
       table.occurredAt,

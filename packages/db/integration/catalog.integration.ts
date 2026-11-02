@@ -420,6 +420,57 @@ describe("catalog and inventory repository on PostgreSQL 18", () => {
     expect(history.items).toHaveLength(2);
   });
 
+  test("filters products running low apart from products out of stock", async () => {
+    const create = (name: string, threshold: string | null, tracked = true) =>
+      repository.createProduct(actor("owner"), {
+        idempotencyKey: crypto.randomUUID(),
+        name,
+        unitKind: "unit",
+        quantityPrecision: 0,
+        tracked,
+        ...(threshold ? { lowStockThresholdMinorUnits: threshold } : {}),
+      });
+    const receive = (productId: string, quantityMinorUnits: string) =>
+      repository.recordMovement(actor("owner"), productId, {
+        idempotencyKey: crypto.randomUUID(),
+        action: "receive",
+        quantityMinorUnits,
+        reason: "Stock filter fixture",
+        occurredLocalDate: "2026-08-24",
+        occurredLocalTime: "09:00",
+      });
+    const low = await create("Stock filter low", "5");
+    await receive(low.product.id, "3");
+    const atMinimum = await create("Stock filter at minimum", "5");
+    await receive(atMinimum.product.id, "5");
+    const plenty = await create("Stock filter plenty", "5");
+    await receive(plenty.product.id, "40");
+    const empty = await create("Stock filter empty", "5");
+    const emptyWithoutMinimum = await create("Stock filter empty without minimum", null);
+    const untracked = await create("Stock filter untracked", null, false);
+
+    const ids = async (stock: "low" | "out") =>
+      (
+        await repository.listProducts(actor("member"), {
+          limit: 50,
+          search: "Stock filter",
+          status: "active",
+          stock,
+        })
+      ).items.map((item) => item.product.id);
+    expect(new Set(await ids("low"))).toEqual(new Set([low.product.id, atMinimum.product.id]));
+    expect(new Set(await ids("out"))).toEqual(
+      new Set([empty.product.id, emptyWithoutMinimum.product.id]),
+    );
+    const all = await repository.listProducts(actor("member"), {
+      limit: 50,
+      search: "Stock filter",
+      status: "active",
+    });
+    expect(all.items.map((item) => item.product.id)).toContain(plenty.product.id);
+    expect(all.items.map((item) => item.product.id)).toContain(untracked.product.id);
+  });
+
   test("archives references without deleting history or permitting later movements", async () => {
     const category = await repository.createCategory(actor("owner"), {
       idempotencyKey: crypto.randomUUID(),

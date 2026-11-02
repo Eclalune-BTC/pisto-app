@@ -71,6 +71,13 @@
       "when": 1791161691908,
       "tag": "0009_ledger_occurrence_order",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793632985094,
+      "tag": "0010_purchases_itemized_sales_ledger",
+      "breakpoints": true
     }
   ]
 }

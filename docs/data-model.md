@@ -74,7 +74,7 @@ membership authorization.
 | `organization`, `member`, `session` | Workspace identity, exact membership role, session expiry and selected workspace | Effective Pisto permissions come from the static server policy |
 | `business_settings` | One confirmed currency/exponent and business IANA zone | Device locale is display only |
 | `sale_review` | One open reviewed command per actor/business and its confirmed sale reference | Working snapshot, not a ledger; closing clears the payload and retains the key |
-| `sale`, `sale_correction`, `sale_operation` | Posted total-only sale, correction relationship/reason, actor and command identity | Monthly gross/count/average are queries; currency/local wall time are immutable evidence |
+| `sale`, `sale_line`, `sale_correction`, `sale_operation` | Posted total-only or itemized sale, its settlement (customer, method, account, received, credit, receivable, due date), product line snapshots, correction relationship/reason, actor and command identity | Monthly gross/count/average are queries; currency/local wall time, product names and prices are immutable evidence |
 | `catalog_category`, `catalog_product` | Current names, SKU, unit, precision, tracking/archival policy, optional selling price | Stock is never a writable product column |
 | `inventory_movement` | Signed exact quantity delta and one reversal link | On-hand quantity is the sum of deltas; low stock compares that sum with the product threshold |
 | `cash_account`, `expense`, `cash_transfer` | Account policy, paid expense, transfer identity and selected endpoints | Account balance is never stored on the account |
@@ -187,7 +187,6 @@ then removal of superseded fields.
 
 | Trigger | Smallest next decision or migration |
 | --- | --- |
-| Itemized sale and automatic inventory deduction approved | Add sale lines with confirmed quantity/price snapshots and an optional same-business catalog reference; use a cash/inventory owner port where one command must commit effects atomically; retain total-only history |
 | Date fields gain further direct SQL consumers | Evaluate a forward conversion of date-only text columns to native `date` with an invalid-value preflight; do not guess invalid historical dates |
 | Currency transition approved | Add effective-dated settings and explicit reporting boundaries before loosening current composite currency constraints |
 | Team administration approved | Reuse organization memberships; specify invitation delivery, role transitions, and last-owner protection before exposing provider management endpoints |

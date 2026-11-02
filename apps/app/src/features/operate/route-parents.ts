@@ -7,6 +7,7 @@ export const OPERATE_ROOT = "/operate";
  * `/operate/receivables/new` opens from both the receivable list and a customer.
  */
 export const OPERATE_ROUTE_PARENTS = {
+  "/operate/assistant/review": "/operate",
   "/operate/cash": "/operate",
   "/operate/cash/accounts/[accountId]": "/operate/cash",
   "/operate/cash/accounts/[accountId]/edit": "/operate/cash/accounts/[accountId]",
@@ -28,17 +29,23 @@ export const OPERATE_ROUTE_PARENTS = {
   "/operate/inventory": "/operate",
   "/operate/inventory/[productId]": "/operate/inventory",
   "/operate/inventory/[productId]/new": "/operate/inventory/[productId]",
+  "/operate/movements": "/operate",
   "/operate/receivables": "/operate",
   "/operate/receivables/[receivableId]": "/operate/receivables",
   "/operate/receivables/[receivableId]/payment": "/operate/receivables/[receivableId]",
   "/operate/receivables/[receivableId]/payments/[paymentId]/reverse":
     "/operate/receivables/[receivableId]",
   "/operate/receivables/new": "/operate/receivables",
+  "/operate/payables": "/operate",
+  "/operate/purchases/[purchaseId]": "/operate/payables",
+  "/operate/purchases/new": "/operate/payables",
   "/operate/reports": "/operate",
   "/operate/sales": "/operate",
   "/operate/sales/[saleId]": "/operate/sales",
   "/operate/sales/correct/[saleId]": "/operate/sales/[saleId]",
   "/operate/sales/new": "/operate/sales",
+  "/operate/suppliers": "/operate",
+  "/operate/suppliers/[supplierId]": "/operate/suppliers",
 } as const satisfies Readonly<Record<string, string>>;
 
 export type OperateRoute = typeof OPERATE_ROOT | keyof typeof OPERATE_ROUTE_PARENTS;

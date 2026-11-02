@@ -1,4 +1,5 @@
 import {
+  createItemizedSaleRequestSchema,
   createSaleRequestSchema,
   replaceSaleRequestSchema,
   saleListQuerySchema,
@@ -36,6 +37,21 @@ export function salesRoutes(input: { access: ProductAccess; sales: SalesReposito
       body: contract(createSaleRequestSchema, "Sale confirmation is invalid"),
     },
   );
+
+  routes.post(
+    "/sales/itemized",
+    async ({ actor, body }) => {
+      return commandResponse(await input.sales.createItemizedSale(actor, body));
+    },
+    {
+      parse: "json",
+      body: contract(createItemizedSaleRequestSchema, "Itemized sale is invalid"),
+    },
+  );
+
+  routes.get("/sales/form-options", async ({ actor }) => {
+    return { data: await input.sales.getSaleFormOptions(actor) };
+  });
 
   routes.get("/sales/review", async ({ actor }) => {
     return { data: { review: await input.sales.getSaleReview(actor) } };
@@ -108,8 +124,8 @@ export function salesRoutes(input: { access: ProductAccess; sales: SalesReposito
   routes.get(
     "/sales/:saleId",
     async ({ actor, params }) => {
-      const sale = await input.sales.getSale(actor, params.saleId);
-      return { data: { sale, replayed: false as const } };
+      const { sale, details } = await input.sales.getSale(actor, params.saleId);
+      return { data: { sale, details, replayed: false as const } };
     },
     {
       record: { saleId: saleNotFound },

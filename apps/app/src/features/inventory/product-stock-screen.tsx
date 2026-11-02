@@ -37,9 +37,16 @@ type ProductStockScreenProps = {
   stock: ProductStock;
 };
 
-/** A movement can be reversed once; a reversal itself cannot be reversed. */
+/**
+ * A movement can be reversed once; a reversal itself cannot be reversed, and a sale's movement
+ * returns only when the sale is voided.
+ */
 export function canReverse(movement: InventoryMovement): boolean {
-  return movement.action !== "reverse" && movement.reversedByMovementId === null;
+  return (
+    movement.action !== "reverse" &&
+    movement.action !== "sale" &&
+    movement.reversedByMovementId === null
+  );
 }
 
 export function ProductStockScreen({

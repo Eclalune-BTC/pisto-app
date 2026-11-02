@@ -167,7 +167,7 @@ vi.mock("@/lib/api-client", async () => ({
 import { AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { elements } from "../../../test-support/element-tree";
-import NewSaleScreen, { SaleReviewScreen } from "./sale-create-screen";
+import NewSaleScreen, { NewSaleModes, SaleReviewScreen } from "./sale-create-screen";
 import { SaleDraftFields } from "./sale-draft-fields";
 
 function review(): SaleReview {
@@ -272,7 +272,7 @@ describe("new sale durable recovery screen", () => {
   test("keys the editor by business so a business change discards only local component state", () => {
     const tree = NewSaleScreen();
     expect(tree.key).toBe("business");
-    expect(tree.type).toBe(SaleReviewScreen);
+    expect(tree.type).toBe(NewSaleModes);
   });
   test("restores the exact review on remount and never submits on render", () => {
     restore(review());

@@ -27,6 +27,9 @@ const resourcePrefixes: ReadonlyArray<readonly [string, BusinessChangeResource]>
   ["/v1/customers", "customers"],
   ["/v1/receivables", "receivables"],
   ["/v1/receivable-payments", "receivables"],
+  ["/v1/suppliers", "purchases"],
+  ["/v1/purchases", "purchases"],
+  ["/v1/payables", "purchases"],
 ];
 
 /** The business area a successful write to this path changed, if it changes business data. */

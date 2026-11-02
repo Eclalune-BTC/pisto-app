@@ -46,6 +46,8 @@ vi.mock("react-native", () => ({
 }));
 vi.mock("react-native-safe-area-context", () => ({ SafeAreaView: "div" }));
 vi.mock("@/components/brand", () => ({ Brand: "span" }));
+vi.mock("uniwind", () => ({ useUniwind: () => ({ theme: "light" }) }));
+vi.mock("@/features/welcome/dictation-example", () => ({ DictationExample: "figure" }));
 vi.mock("@/components/appearance-control", () => ({ AppearanceControl: "div" }));
 vi.mock("@/components/ui/alert", () => ({ Alert: "div", AlertDescription: "span" }));
 vi.mock("@/components/ui/text", () => ({ Text: "span" }));

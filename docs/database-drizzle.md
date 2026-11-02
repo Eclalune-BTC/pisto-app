@@ -56,9 +56,13 @@ Never edit an already-applied migration. Add a forward migration.
   authorization queries.
 - `business_settings` binds create-once ISO currency, server-resolved minor-unit exponent, and an IANA
   time zone accepted by both Bun/ICU and PostgreSQL to one organization-backed business.
-- `sale` stores total-only minor units as positive `bigint` plus occurrence instant, confirmed local
-  date/minute, time-zone, currency/exponent snapshots, status, actor, and optional description. A
-  composite foreign key prevents the sale currency/exponent from diverging from its business.
+- `sale` stores positive gross minor units as `bigint` plus occurrence instant, confirmed local
+  date/minute, time-zone, currency/exponent snapshots, status, actor, entry mode/source and optional
+  description. A composite foreign key prevents the sale currency/exponent from diverging from its
+  business. An itemized sale also stores its settlement (customer, payment method, account, received
+  and credit minor units, receivable, due date); a check keeps total-only rows free of it and requires
+  received plus credit to equal the total. `sale_line` holds its product, name, quantity and price
+  snapshots.
 - `sale_operation` binds an actor/business UUID idempotency key and command fingerprint to the
   canonical sale. Its composite foreign key prevents cross-business audit links.
 - `sale_correction` records one void or replacement per posted sale: kind, reason, actor, both sale
@@ -70,7 +74,8 @@ Never edit an already-applied migration. Add a forward migration.
   optional price snapshot, and archived rather than deleted state.
 - `inventory_movement` is append-only. Quantity on hand is the exact sum of its signed deltas; there
   is no quantity-on-hand column. A reverse row links to the movement it negates and a uniqueness
-  constraint permits that once.
+  constraint permits that once. A `sale` row references the itemized sale that took the stock and
+  carries no typed reason.
 - `catalog_operation` is the catalog/inventory idempotency receipt.
 - `cash_account` has a name, kind, active/archived status, an explicit `allow_negative_balance`
   policy, and a currency snapshot. It deliberately has no balance column.
@@ -79,7 +84,8 @@ Never edit an already-applied migration. Add a forward migration.
 - `cash_movement` is the append-only cash ledger. A check constraint requires the signed
   `delta_minor_units` to agree with the `in`/`out` direction, and the action vocabulary is
   constrained to `opening`, `expense`, `adjustment_in`, `adjustment_out`, `transfer_in`,
-  `transfer_out`, `receivable_payment`, and `reverse`. Account balance is the exact sum of deltas.
+  `transfer_out`, `receivable_payment`, `sale_payment` (referencing its sale), and `reverse`. Account
+  balance is the exact sum of deltas.
 - `cash_transfer` owns one transfer paired with exactly one `transfer_out` and one `transfer_in`
   movement in the same transaction.
 - `cash_operation_receipt` is the cash/expense idempotency receipt.
@@ -228,9 +234,9 @@ Shared primitives are `errors.ts`, `business-access.ts`, `local-time.ts`, `money
 `pagination.ts`, `operation-log.ts` and `text-search.ts`. The package index exports only what other
 packages use.
 
-### Why the two sales paths do not use `beginOperation`
+### Why the sales paths do not use `beginOperation`
 
-`packages/db/src/sales/posting.ts` and `packages/db/src/sales/corrections.ts` deliberately do
+`packages/db/src/sales/posting.ts`, `sales/itemized.ts` and `sales/corrections.ts` deliberately do
 **not** call `beginOperation`. They use `authorizeBusinessAction` and `lockCommandKey` with the same
 global lock order as other commands: live session, membership, then command-key advisory lock.
 Taking the command key first in either sales path would reintroduce the cross-capability deadlock
@@ -240,8 +246,11 @@ committed review as `CONFLICT` instead of failing on the unique index.
 
 The separate replay code remains necessary because sales share one `(business_id, actor_user_id,
 idempotency_key)` space across `sale_operation` and `sale_correction`. A key used to post a sale must
-conflict when reused for a correction, and the reverse. Each path therefore reads both tables;
-the single-table replay in `beginOperation` cannot express that contract.
+conflict when reused for a correction, and the reverse. Each path therefore reads both tables, and
+an itemized sale also refuses a key a total-only review reserved; the single-table replay in
+`beginOperation` cannot express that contract. An itemized sale then locks its customer, products
+and account in that order, and its void locks the sale, receivable, products and account; a new
+command that touches products and accounts keeps products first.
 
 ### Shared request-budget storage
 

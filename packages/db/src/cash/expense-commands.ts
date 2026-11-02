@@ -70,6 +70,7 @@ export function createExpenseCommands(db: Database): ExpenseCommands {
             currencyMinorUnitDigits: access.currencyMinorUnitDigits,
             description: command.description,
             payee: command.payee ?? null,
+            entrySource: command.entrySource,
             occurredAt,
             occurredLocalDate: command.occurredLocalDate,
             occurredLocalTime: command.occurredLocalTime,

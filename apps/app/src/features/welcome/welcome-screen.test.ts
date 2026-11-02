@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
-vi.mock("@/components/ui/accordion", () => import("@/components/ui/accordion.web"));
 vi.mock("react-native-safe-area-context", async () => ({
   SafeAreaView: (
     await vi.importActual<{ View: typeof import("react-native").View }>("react-native-web")
@@ -30,50 +29,62 @@ vi.mock("@/providers/appearance-provider", () => ({
 }));
 vi.mock("expo-localization", () => ({ getLocales: () => [{ languageTag: "es-SV" }] }));
 
-import { OPERATE_GROUPS, OPERATE_MODULES } from "@/features/operate/navigation";
 import { i18n } from "@/i18n/config";
-import WelcomeScreen from "./welcome-screen";
+import { exampleSpans } from "./dictation-example";
+import WelcomeScreen, { RECORD_ITEMS } from "./welcome-screen";
+
+const render = () => renderToStaticMarkup(createElement(WelcomeScreen));
+const text = (markup: string) => markup.replace(/<[^>]+>/g, "");
 
 describe("public product page", () => {
-  test("exposes every product area and preserves real account destinations", () => {
-    const markup = renderToStaticMarkup(createElement(WelcomeScreen));
-    for (const group of OPERATE_GROUPS)
-      expect(markup).toContain(i18n.t(`welcome.product.${group.id}.tab`));
-    for (const module of OPERATE_MODULES.filter((module) => module.group === "money"))
-      expect(markup).toContain(i18n.t(module.labelKey));
-    expect(markup).toContain('role="tablist"');
-    expect(markup).toContain('role="tabpanel"');
+  test("states the job once and keeps the real account destinations", () => {
+    const markup = render();
+    expect(markup.match(/aria-level="1"/g)).toHaveLength(1);
+    expect(markup).toContain(i18n.t("welcome.title"));
     expect(markup).toContain('href="/sign-in"');
     expect(markup).toContain('href="/sign-up"');
     expect(markup).not.toContain('href="/operate');
-    expect(markup.match(/<h1\b/g)).toHaveLength(1);
     expect(markup).toContain('role="main"');
     expect(markup).toContain(i18n.t("welcome.pageTitle"));
   });
 
-  test("does not simulate financial data and exposes the current-limit questions", () => {
-    const markup = renderToStaticMarkup(createElement(WelcomeScreen));
-    expect(markup).not.toMatch(/\$\d|Ejemplo ilustrativo|Venta de mostrador|No solo tus ventas/);
-    expect(i18n.t("welcome.title")).not.toContain("\n");
-    for (const question of ["sales", "accounting", "assistant", "devices"] as const) {
-      expect(markup).toContain(i18n.t(`welcome.questions.${question}.question`));
-      expect(markup).not.toContain(i18n.t(`welcome.questions.${question}.answer`));
+  test("describes every record it keeps and the scope it leaves out", () => {
+    const markup = render();
+    for (const item of RECORD_ITEMS) {
+      expect(markup).toContain(i18n.t(`welcome.records.items.${item}.title`));
     }
+    expect(text(markup)).toContain(i18n.t("welcome.scope.description"));
+    expect(markup).not.toMatch(/role="tablist"|01<|02<|03</);
   });
 
-  test("labels product captures instead of representing them as live account data", () => {
-    const markup = renderToStaticMarkup(createElement(WelcomeScreen));
-    expect(markup).toContain(i18n.t("welcome.product.captureNote"));
-    expect(markup).toContain(i18n.t("welcome.product.money.imageAlt"));
-    expect(markup).not.toContain("review@example.com");
+  test("labels the dictation example and marks every fragment it fills", () => {
+    const markup = render();
+    expect(markup).toContain(`aria-label="${i18n.t("welcome.example.label")}"`);
+    expect(markup).toContain(i18n.t("welcome.example.unsaved"));
+    expect(text(markup)).toContain(i18n.t("welcome.example.rows.credit.value"));
+    const said = i18n.t("welcome.example.said");
+    const spans = exampleSpans(said, [
+      i18n.t("welcome.example.fragments.kind"),
+      i18n.t("welcome.example.fragments.customer"),
+      i18n.t("welcome.example.fragments.product"),
+      i18n.t("welcome.example.fragments.received"),
+      i18n.t("welcome.example.fragments.credit"),
+    ]);
+    expect(spans.map((span) => said.slice(span.start, span.end))).toEqual([
+      "vendí",
+      "don Carlos",
+      "tres libras de café",
+      "cinco dólares",
+      "el resto me lo quedó debiendo",
+    ]);
+    expect(() => exampleSpans(said, ["café", "vendí"])).toThrow();
   });
 
   test("exposes translated light, dark and system controls before signing in", () => {
-    const markup = renderToStaticMarkup(createElement(WelcomeScreen));
+    const markup = render();
     for (const choice of ["light", "dark", "system"] as const) {
       expect(markup).toContain(`aria-label="${i18n.t(`settings.themes.${choice}`)}"`);
     }
     expect(markup).toContain('aria-pressed="true"');
-    expect(markup).toContain(i18n.t("appearance.switchTo.dark"));
   });
 });

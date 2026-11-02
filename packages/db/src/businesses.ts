@@ -1,7 +1,13 @@
-import type { Business, BusinessAccess, CreateBusinessRequest } from "@pisto/contracts";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import type {
+  Business,
+  BusinessAccess,
+  BusinessMember,
+  CreateBusinessRequest,
+} from "@pisto/contracts";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
 import {
+  authorizeBusinessAction,
   authorizeSession,
   type DatabaseTransaction,
   type ProductActor,
@@ -11,7 +17,7 @@ import type { Database } from "./client.ts";
 import { ProductError } from "./errors.ts";
 import { getCurrencyMinorUnitDigits, isSupportedTimeZone } from "./local-time.ts";
 import { resolveBusinessAccess, rolesWithBusinessPermission } from "./product-access.ts";
-import { member, organization, session } from "./schema/auth.ts";
+import { member, organization, session, user } from "./schema/auth.ts";
 import { businessSettings } from "./schema/business.ts";
 
 export interface BusinessRepository {
@@ -23,6 +29,8 @@ export interface BusinessRepository {
     actor: ProductActor,
     command: CreateBusinessRequest,
   ): Promise<{ business: Business; replayed: boolean }>;
+  /** The people of the active business; only a role that configures the business may read it. */
+  listMembers(actor: ProductActor): Promise<BusinessMember[]>;
 }
 
 function toBusiness(record: {
@@ -73,6 +81,18 @@ async function activateBusiness(
 
 export function createBusinessRepository(db: Database): BusinessRepository {
   return {
+    listMembers(actor) {
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["business:configure"]);
+        return tx
+          .select({ email: user.email, id: member.id, name: user.name, role: member.role })
+          .from(member)
+          .innerJoin(user, eq(user.id, member.userId))
+          .where(eq(member.organizationId, access.businessId))
+          .orderBy(asc(member.createdAt), asc(member.id));
+      });
+    },
+
     listBusinesses(actor) {
       return db.transaction(async (tx) => {
         await authorizeSession(tx, actor, "share");

@@ -225,6 +225,7 @@ describe("money tones", () => {
       menuTriggerRef: { current: null },
       onArchive: vi.fn(),
       onLoadMoreReceivables: vi.fn(),
+      onRegisterPayment: vi.fn(),
       onRetry: vi.fn(),
       state: {
         kind: "ready",
@@ -253,12 +254,18 @@ describe("money tones", () => {
     captured.stats = [];
     renderToStaticMarkup(customerDetail("1"));
     expect(tone(i18n.t("customers.detail.overdue"))).toBe("destructive");
-    expect(tone(i18n.t("customers.detail.outstanding"))).toBeUndefined();
+    expect(tone(i18n.t("customers.detail.balance"))).toBeUndefined();
   });
 
   test("the business overdue position turns destructive only above zero", () => {
     const summary: ReceivablesSummary = {
       ...balance,
+      aging: {
+        current: { outstandingMinorUnits: "0", receivableCount: "0" },
+        days1To30: { outstandingMinorUnits: "0", receivableCount: "0" },
+        days31To60: { outstandingMinorUnits: "0", receivableCount: "0" },
+        over60: { outstandingMinorUnits: "0", receivableCount: "0" },
+      },
       businessLocalDate: "2026-09-27",
       timeZone: "America/El_Salvador",
     };
@@ -267,12 +274,13 @@ describe("money tones", () => {
         canCreate: true,
         customerFilter: null,
         customerFilterRef: { current: null },
-        customerNameFor: () => ({ kind: "ready", name: "Ana" }) as const,
+        customerNameFor: () => ({ kind: "ready", name: "Ana", phone: null }) as const,
         filters: { state: "all" },
         onChooseCustomer: vi.fn(),
         onClearCustomer: vi.fn(),
         onClearFilters: vi.fn(),
         onLoadMore: vi.fn(),
+        onRegisterPayment: vi.fn(),
         onRetry: vi.fn(),
         onStateChange: vi.fn(),
         state: { kind: "empty", stale: false, summary: { ...summary, overdueMinorUnits } },

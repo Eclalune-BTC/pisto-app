@@ -6,7 +6,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { cn } from "@/lib/cn";
 import { quantityText } from "./format";
+import { stockLevel, stockState } from "./stock-level";
 
 /** Stands in for an absent value; the label or detail next to it says what is missing. */
 export const EMPTY_VALUE = "—";
@@ -103,5 +105,74 @@ export function StockValue({ product, stock }: { product: Product; stock: Produc
         })}
       </Text>
     </View>
+  );
+}
+
+/** The quantity on hand above a bar whose tick marks the product's minimum. */
+export function StockLevelCell({
+  product,
+  stock,
+}: {
+  product: Product;
+  stock: ProductStock | null;
+}) {
+  const { i18n, t } = useTranslation();
+  if (!stock) {
+    return (
+      <Text className="text-[13px] text-muted-foreground">{t("catalog.list.notTracked")}</Text>
+    );
+  }
+  const state = stockState(stock);
+  const level = stockLevel(stock);
+  const attention = product.status === "active" && (state === "out" || state === "low");
+  return (
+    <View className="min-w-0 flex-row items-center justify-end gap-2.5">
+      <Text
+        className={cn(
+          "font-ui text-[13px] tabular-nums",
+          attention && state === "out" && "text-destructive",
+        )}
+        numberOfLines={1}
+      >
+        {quantityText(t, requireSupportedLocale(i18n.resolvedLanguage), {
+          minorUnits: stock.onHandMinorUnits,
+          precision: stock.quantityPrecision,
+          unitKind: product.unitKind,
+        })}
+      </Text>
+      {level ? (
+        <View aria-hidden className="relative h-1.5 w-16 shrink-0 rounded-xs bg-muted">
+          <View
+            className={cn("h-full rounded-xs", attention ? "bg-warning" : "bg-primary")}
+            style={{ width: `${level.fill / 10}%` }}
+          />
+          <View
+            className="absolute -top-0.5 h-2.5 w-px bg-muted-foreground"
+            style={{ left: `${level.minimum / 10}%` }}
+          />
+        </View>
+      ) : (
+        <View aria-hidden className="w-16 shrink-0" />
+      )}
+    </View>
+  );
+}
+
+/** Out of stock and low stock need attention; an available product is plain muted text. */
+export function ProductStateCell({
+  product,
+  stock,
+}: {
+  product: Product;
+  stock: ProductStock | null;
+}) {
+  const { t } = useTranslation();
+  if (product.status === "archived") return <ProductStatusBadge status="archived" />;
+  const state = stockState(stock);
+  return (
+    <StatusBadge
+      label={t(`catalog.list.stockStates.${state}`)}
+      tone={state === "out" || state === "low" ? "attention" : "normal"}
+    />
   );
 }

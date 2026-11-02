@@ -20,6 +20,8 @@ const sale: Sale = {
   id: "sale-a",
   status: "posted",
   entryMode: "total_only",
+  entrySource: "manual",
+  customer: null,
   grossMinorUnits: "1250",
   currency: "USD",
   currencyMinorUnitDigits: 2,

@@ -51,3 +51,47 @@ export function formatLocalDate(localDate: string, locale: string): string {
     new Date(`${date}T00:00:00.000Z`),
   );
 }
+
+/**
+ * A business-local date with its weekday, written the way it is said: "lunes 2 de noviembre de
+ * 2026", or without the year for a day of the current list.
+ */
+export function formatLocalDateFull(
+  localDate: string,
+  locale: string,
+  { year = true }: { year?: boolean } = {},
+): string {
+  const date = calendarLocalDateSchema.parse(localDate);
+  const parts = new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    ...(year ? { year: "numeric" } : {}),
+    timeZone: "UTC",
+  }).formatToParts(new Date(`${date}T00:00:00.000Z`));
+  return parts
+    .map((part, index) =>
+      part.type === "literal" && parts[index - 1]?.type === "weekday" ? " " : part.value,
+    )
+    .join("");
+}
+
+/** A compact business-local day for chart axes and short notes, such as "2 nov". */
+export function formatLocalDayMonth(localDate: string, locale: string): string {
+  const date = calendarLocalDateSchema.parse(localDate);
+  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" })
+    .format(new Date(`${date}T00:00:00.000Z`))
+    .replace(".", "");
+}
+
+/** The name of a business-local date's month, "septiembre" or "sept", for charts and tables. */
+export function formatMonthName(
+  localDate: string,
+  locale: string,
+  month: "long" | "short",
+): string {
+  const date = calendarLocalDateSchema.parse(localDate);
+  return new Intl.DateTimeFormat(locale, { month, timeZone: "UTC" }).format(
+    new Date(`${date}T00:00:00.000Z`),
+  );
+}

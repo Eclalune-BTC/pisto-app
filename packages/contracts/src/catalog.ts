@@ -171,6 +171,9 @@ export const updateProductRequestSchema = z
 
 export const archiveProductRequestSchema = archiveCategoryRequestSchema;
 
+/** Tracked products running low (above zero, at or under their minimum) or out of stock. */
+export const productStockFilterSchema = z.enum(["low", "out"]);
+
 export const productListQuerySchema = z
   .object({
     categoryId: uuidSchema.optional(),
@@ -178,6 +181,7 @@ export const productListQuerySchema = z
     limit: boundedListLimitSchema,
     search: z.string().trim().min(1).max(120).optional(),
     status: z.enum(["active", "archived", "all"]).default("active"),
+    stock: productStockFilterSchema.optional(),
   })
   .strict();
 
@@ -218,29 +222,36 @@ export const inventoryMovementActionSchema = z.enum([
   "receive",
   "adjust_in",
   "adjust_out",
+  "sale",
   "reverse",
 ]);
 
-export const inventoryMovementSchema = z.object({
-  id: uuidSchema,
-  productId: uuidSchema,
-  action: inventoryMovementActionSchema,
-  quantityMinorUnits: positiveMinorUnitsSchema,
-  deltaMinorUnits: signedMinorUnitsSchema.refine(
-    (value) => value !== "0",
-    "Movement delta cannot be zero",
-  ),
-  quantityPrecision: quantityPrecisionSchema,
-  reason: shortRequestTextSchema,
-  occurredAt: timestampSchema,
-  occurredLocalDate: calendarLocalDateSchema,
-  occurredLocalTime: localTimeSchema,
-  timeZone: timeZoneSchema,
-  createdByUserId: z.string().min(1),
-  reversesMovementId: uuidSchema.nullable(),
-  reversedByMovementId: uuidSchema.nullable(),
-  createdAt: timestampSchema,
-});
+export const inventoryMovementSchema = z
+  .object({
+    id: uuidSchema,
+    productId: uuidSchema,
+    action: inventoryMovementActionSchema,
+    quantityMinorUnits: positiveMinorUnitsSchema,
+    deltaMinorUnits: signedMinorUnitsSchema.refine(
+      (value) => value !== "0",
+      "Movement delta cannot be zero",
+    ),
+    quantityPrecision: quantityPrecisionSchema,
+    /** Null only for a sale's movement, which clients describe from its action. */
+    reason: shortRequestTextSchema.nullable(),
+    occurredAt: timestampSchema,
+    occurredLocalDate: calendarLocalDateSchema,
+    occurredLocalTime: localTimeSchema,
+    timeZone: timeZoneSchema,
+    createdByUserId: z.string().min(1),
+    reversesMovementId: uuidSchema.nullable(),
+    reversedByMovementId: uuidSchema.nullable(),
+    createdAt: timestampSchema,
+  })
+  .refine((movement) => movement.reason !== null || movement.action === "sale", {
+    message: "Only a sale's movement may omit its reason",
+    path: ["reason"],
+  });
 
 export const recordInventoryMovementRequestSchema = z
   .object({
@@ -320,6 +331,7 @@ export type CreateProductRequest = z.infer<typeof createProductRequestSchema>;
 export type UpdateProductRequest = z.infer<typeof updateProductRequestSchema>;
 export type ArchiveProductRequest = z.infer<typeof archiveProductRequestSchema>;
 export type ProductListQuery = z.infer<typeof productListQuerySchema>;
+export type ProductStockFilter = z.infer<typeof productStockFilterSchema>;
 export type ProductStock = z.infer<typeof productStockSchema>;
 export type ProductDetail = z.infer<typeof productDetailSchema>;
 export type ProductMutationResponse = z.infer<typeof productMutationResponseSchema>;

@@ -15,6 +15,8 @@ const sale: Sale = {
   id: "5312a3e6-7c91-486a-9233-0cf4d9d3dcc7",
   status: "posted",
   entryMode: "total_only",
+  entrySource: "manual",
+  customer: null,
   grossMinorUnits: "1250",
   currency: "USD",
   currencyMinorUnitDigits: 2,

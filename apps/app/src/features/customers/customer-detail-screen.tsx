@@ -1,7 +1,15 @@
 import type { Customer } from "@pisto/contracts";
 import { type Href, Link } from "expo-router";
 import type { TFunction } from "i18next";
-import { Archive, Lock, Pencil, Plus, ReceiptText, TriangleAlert } from "lucide-react-native";
+import {
+  Archive,
+  HandCoins,
+  Lock,
+  Pencil,
+  Plus,
+  ReceiptText,
+  TriangleAlert,
+} from "lucide-react-native";
 import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
@@ -20,6 +28,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { ReceivablesTable } from "@/features/receivables/receivables-table";
+import { formatMonthYear } from "@/i18n/format";
 import { CustomerStatusBadge } from "./customer-status-badge";
 import { isPositiveAmount, useRecordFormat } from "./format";
 import type { CustomerDetailLoadState, CustomerReceivablesState } from "./types";
@@ -34,6 +43,8 @@ type CustomerDetailScreenProps = {
   notice?: ReactNode;
   onArchive: () => void;
   onLoadMoreReceivables: () => void;
+  /** Opens "Registrar abono" for this customer. */
+  onRegisterPayment: () => void;
   onRetry: () => void;
   state: CustomerDetailLoadState;
 };
@@ -56,7 +67,7 @@ function ReceivablesSection({
   receivables: CustomerReceivablesState;
 }) {
   const { t } = useTranslation();
-  const title = t("customers.detail.receivables");
+  const title = t("customers.detail.history");
   const active = customer.status === "active";
   return (
     <Section title={title}>
@@ -137,6 +148,7 @@ export function CustomerDetailScreen({
   notice,
   onArchive,
   onLoadMoreReceivables,
+  onRegisterPayment,
   onRetry,
   state,
 }: CustomerDetailScreenProps) {
@@ -156,6 +168,10 @@ export function CustomerDetailScreen({
     params: { customerId: customer.id },
   };
   const contact = contactItems(t, customer);
+  const owes = isPositiveAmount(balance.outstandingMinorUnits);
+  const since = t("customers.detail.since", {
+    month: formatMonthYear(customer.createdAt.slice(0, 10), format.locale),
+  });
 
   return (
     <Page>
@@ -182,23 +198,42 @@ export function CustomerDetailScreen({
               }
               primary={
                 canCharge
-                  ? {
-                      href: newChargeHref(customer.id),
-                      icon: Plus,
-                      label: t("customers.detail.newCharge"),
-                    }
+                  ? owes
+                    ? {
+                        icon: HandCoins,
+                        label: t("customers.detail.registerPayment"),
+                        onPress: onRegisterPayment,
+                      }
+                    : {
+                        href: newChargeHref(customer.id),
+                        icon: Plus,
+                        label: t("customers.detail.newCharge"),
+                      }
                   : undefined
               }
-              secondary={
-                canManage
+              secondary={[
+                ...(canCharge && owes
+                  ? [
+                      {
+                        href: newChargeHref(customer.id),
+                        icon: Plus,
+                        label: t("customers.detail.newCharge"),
+                      },
+                    ]
+                  : []),
+                ...(canManage
                   ? [{ href: editHref, icon: Pencil, label: t("customers.detail.edit") }]
-                  : []
-              }
+                  : []),
+              ]}
             />
           ) : undefined
         }
         adornment={<CustomerStatusBadge status={customer.status} />}
-        description={active ? undefined : t("customers.detail.archivedDescription")}
+        description={
+          active
+            ? [customer.phone, since].filter(Boolean).join(" · ")
+            : t("customers.detail.archivedDescription")
+        }
         title={customer.name}
       />
       {state.stale ? <StaleNotice onRetry={onRetry} /> : null}
@@ -206,7 +241,7 @@ export function CustomerDetailScreen({
       <StatGroup>
         <Stat
           detail={t("customers.detail.openCount", { count: Number(balance.openReceivableCount) })}
-          label={t("customers.detail.outstanding")}
+          label={t("customers.detail.balance")}
           value={money(balance.outstandingMinorUnits)}
         />
         <Stat

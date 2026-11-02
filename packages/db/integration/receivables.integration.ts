@@ -186,9 +186,11 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
     await expect(
       repository.getCustomer(actor("ownerB", businessB), created.customer.id),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
-    await expect(
-      repository.listCustomers(actor("member", businessA), { limit: 25, status: "active" }),
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    const sellerView = await repository.listCustomers(actor("member", businessA), {
+      limit: 25,
+      status: "active",
+    });
+    expect(sellerView.items.map(({ id }) => id)).toContain(created.customer.id);
     await expect(
       repository.listCustomers(actor("unknown", businessA), { limit: 25, status: "active" }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -429,6 +431,82 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
     expect(summary.periodStartUtc).toMatch(/^0099-/);
     expect(summary.periodEndUtcExclusive).toMatch(/^0100-/);
     expect(summary.totalMinorUnits).toBe("0");
+  });
+
+  test("ages open balances by days past due on the business-local date", async () => {
+    const owner = actor("ownerB", businessB);
+    const before = await repository.getSummary(owner);
+    const today = before.businessLocalDate;
+    const shift = (days: number) => {
+      const date = new Date(`${today}T00:00:00.000Z`);
+      date.setUTCDate(date.getUTCDate() + days);
+      return date.toISOString().slice(0, 10);
+    };
+    const created = await repository.createCustomer(owner, {
+      idempotencyKey: crypto.randomUUID(),
+      name: "Aging fixture",
+    });
+    const post = (originalMinorUnits: string, postedDate: string, dueDate?: string) =>
+      repository.postReceivable(owner, {
+        idempotencyKey: crypto.randomUUID(),
+        customerId: created.customer.id,
+        originalMinorUnits,
+        description: "Aging",
+        postedDate,
+        ...(dueDate ? { dueDate } : {}),
+      });
+    await post("100", shift(-5));
+    await post("200", shift(0), shift(0));
+    await post("300", shift(-10), shift(-1));
+    await post("400", shift(-40), shift(-30));
+    await post("500", shift(-40), shift(-31));
+    await post("600", shift(-90), shift(-60));
+    await post("700", shift(-90), shift(-61));
+    const voided = await post("800", shift(-90), shift(-70));
+    await repository.voidReceivable(owner, voided.receivable.id, {
+      idempotencyKey: crypto.randomUUID(),
+      reason: "Duplicate",
+    });
+
+    const after = await repository.getSummary(owner);
+    const delta = (bucket: keyof typeof after.aging) => ({
+      outstandingMinorUnits: (
+        BigInt(after.aging[bucket].outstandingMinorUnits) -
+        BigInt(before.aging[bucket].outstandingMinorUnits)
+      ).toString(),
+      receivableCount: (
+        BigInt(after.aging[bucket].receivableCount) - BigInt(before.aging[bucket].receivableCount)
+      ).toString(),
+    });
+    expect(delta("current")).toEqual({ outstandingMinorUnits: "300", receivableCount: "2" });
+    expect(delta("days1To30")).toEqual({ outstandingMinorUnits: "700", receivableCount: "2" });
+    expect(delta("days31To60")).toEqual({ outstandingMinorUnits: "1100", receivableCount: "2" });
+    expect(delta("over60")).toEqual({ outstandingMinorUnits: "700", receivableCount: "1" });
+    const buckets = Object.values(after.aging);
+    expect(
+      buckets.reduce((total, bucket) => total + BigInt(bucket.outstandingMinorUnits), 0n),
+    ).toBe(BigInt(after.outstandingMinorUnits));
+    expect(
+      buckets.slice(1).reduce((total, bucket) => total + BigInt(bucket.outstandingMinorUnits), 0n),
+    ).toBe(BigInt(after.overdueMinorUnits));
+    expect(BigInt(after.openReceivableCount) - BigInt(before.openReceivableCount)).toBe(7n);
+  });
+
+  test("lists the people of the active business only to its owner", async () => {
+    const people = await businesses.listMembers(actor("ownerA", businessA));
+    expect(people.map(({ email, role }) => ({ email, role }))).toEqual(
+      expect.arrayContaining([
+        { email: `receivables-ownerA-${runId}@example.test`, role: "owner" },
+        { email: `receivables-admin-${runId}@example.test`, role: "admin" },
+        { email: `receivables-member-${runId}@example.test`, role: "member" },
+      ]),
+    );
+    expect(people.some(({ email }) => email.includes("ownerB"))).toBe(false);
+    for (const key of ["admin", "member"] as const) {
+      await expect(businesses.listMembers(actor(key, businessA))).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
+    }
   });
 
   test("requires reversal before void and denies stale sessions", async () => {

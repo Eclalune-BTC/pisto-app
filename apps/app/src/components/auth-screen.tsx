@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useUniwind } from "uniwind";
 import { AppearanceControl } from "@/components/appearance-control";
 import { Brand } from "@/components/brand";
 import { DocumentTitle } from "@/components/document-title";
@@ -20,6 +21,7 @@ import { Field } from "@/components/ui/field";
 import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { DictationExample } from "@/features/welcome/dictation-example";
 import { authClient } from "@/lib/auth-client";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -34,6 +36,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   const { t } = useTranslation();
   const isSignUp = mode === "sign-up";
   const wide = useWindowDimensions().width >= 1024;
+  const { theme } = useUniwind();
   const queryClient = useQueryClient();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -171,7 +174,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View className="min-w-0 flex-1 gap-6 px-5 py-5 sm:px-10">
+            <View className="min-w-0 flex-1 gap-6 px-5 py-5 sm:px-10 sm:py-8">
               <View className="flex-row items-center justify-between gap-3">
                 <Link href="/" replace asChild>
                   <Button
@@ -180,7 +183,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                     size="sm"
                     variant="ghost"
                   >
-                    <Brand compact />
+                    <Brand />
                   </Button>
                 </Link>
                 <AppearanceControl compact />
@@ -192,7 +195,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                     <DocumentTitle
                       title={isSignUp ? t("auth.signUpTitle") : t("auth.signInTitle")}
                     />
-                    <Heading className="text-2xl leading-8">
+                    <Heading className="text-[26px] leading-8 tracking-[-0.6px]">
                       {isSignUp ? t("auth.signUpTitle") : t("auth.signInTitle")}
                     </Heading>
                     <Text className="text-sm leading-5 text-muted-foreground">
@@ -246,7 +249,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                   ) : null}
 
                   <Button
-                    className="w-full"
+                    className="w-full rounded-lg"
                     label={isSignUp ? t("auth.createAccount") : t("auth.signIn")}
                     loading={submitting}
                     onPress={submit}
@@ -258,26 +261,24 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                       {isSignUp ? t("auth.alreadyRegistered") : t("auth.newToPisto")}
                     </Text>
                     <Link href={isSignUp ? "/sign-in" : "/sign-up"} replace asChild>
-                      <Text className="font-ui text-sm text-link underline web:underline-offset-4">
+                      <Text className="font-ui text-sm text-foreground underline web:underline-offset-4">
                         {isSignUp ? t("auth.signInLink") : t("auth.createAccountLink")}
                       </Text>
                     </Link>
                   </View>
                 </View>
               </View>
+              <Text className="text-xs leading-4 text-muted-foreground">{t("auth.footer")}</Text>
             </View>
           </ScrollView>
 
           {wide ? (
-            <View className="w-[44%] max-w-[640px] justify-between bg-primary px-14 py-12">
-              <Brand inverse />
-              <View className="gap-3">
-                <Text className="font-heading text-[28px] leading-9 tracking-[-0.6px] text-primary-foreground">
-                  {t("welcome.title")}
+            <View className="w-[52%] max-w-[760px] justify-center bg-primary px-12 py-12 dark:border-l dark:border-border dark:bg-card xl:px-20">
+              <View className="w-full max-w-[520px] gap-6 self-center">
+                <Text className="text-[17px] leading-7 text-primary-foreground/85 dark:text-foreground">
+                  {t("auth.panel")}
                 </Text>
-                <Text className="max-w-[420px] text-base leading-6 text-primary-foreground/75">
-                  {t("welcome.description")}
-                </Text>
+                <DictationExample tone={theme === "dark" ? "default" : "inverse"} />
               </View>
             </View>
           ) : null}

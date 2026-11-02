@@ -17,6 +17,7 @@ import { resolveLocalDateTime } from "../local-time.ts";
 import { parseMinorUnits } from "../money.ts";
 import { beginOperation, saveOperation } from "../operation-log.ts";
 import { customer, receivable, receivablePayment } from "../schema/receivables.ts";
+import { sale } from "../schema/sales.ts";
 import { paymentResultSchema, receivableCommandFingerprint } from "./codec.ts";
 import { toPayment } from "./mappers.ts";
 import {
@@ -128,6 +129,14 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
         if (existing.status === "voided") {
           throw new ProductError("CONFLICT", "The receivable is already voided");
         }
+        const [sourceSale] = await tx
+          .select({ id: sale.id })
+          .from(sale)
+          .where(and(eq(sale.businessId, access.businessId), eq(sale.receivableId, receivableId)))
+          .limit(1);
+        if (sourceSale) {
+          throw new ProductError("CONFLICT", "Void the sale that created this receivable instead");
+        }
         if ((await getPaidMinorUnits(tx, access.businessId, receivableId)) !== 0n) {
           throw new ProductError(
             "CONFLICT",
@@ -169,6 +178,7 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
         occurredLocalTime: command.occurredLocalTime,
         receivableId,
         reference: command.reference ?? null,
+        entrySource: command.entrySource,
       });
       const amountMinorUnits = parseMinorUnits(command.amountMinorUnits, "The amount", {
         allowZero: false,
@@ -229,6 +239,7 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
             timeZone: access.timeZone,
             cashAccountId: command.cashAccountId,
             reference: command.reference ?? null,
+            entrySource: command.entrySource,
             createdByUserId: actor.userId,
           })
           .returning();

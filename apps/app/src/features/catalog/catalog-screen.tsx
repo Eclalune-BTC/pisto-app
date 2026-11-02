@@ -1,6 +1,6 @@
-import type { Category, ProductDetail } from "@pisto/contracts";
+import type { Category, ProductDetail, ProductStockFilter } from "@pisto/contracts";
 import { type Href, Link } from "expo-router";
-import { Lock, PackageSearch, Plus, Tags, TriangleAlert } from "lucide-react-native";
+import { Lock, PackageOpen, PackageSearch, Plus, Tags, TriangleAlert } from "lucide-react-native";
 import { type ReactElement, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { type TextInput, View } from "react-native";
@@ -11,11 +11,10 @@ import { Page } from "@/components/page";
 import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { CellText } from "@/components/ui/cell-text";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
-import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
+import { fitColumns } from "@/components/ui/fit-columns";
 import { LoadMoreButton } from "@/components/ui/load-more-button";
 import { SearchField } from "@/components/ui/search-field";
 import { SelectField } from "@/components/ui/select-field";
@@ -24,13 +23,13 @@ import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
 import { useMeasuredWidth } from "@/lib/use-measured-width";
+import { formatQuantity } from "../inventory/quantity";
 import {
   type CategoryCell,
-  CategoryName,
   categoryCell,
   MissingValue,
-  ProductStatusBadge,
-  StockValue,
+  ProductStateCell,
+  StockLevelCell,
 } from "./catalog-cells";
 import { productPrice } from "./format";
 import type { CatalogStatusFilter } from "./queries";
@@ -68,16 +67,21 @@ type CatalogScreenProps = {
   onLoadMore: () => void;
   onRetry: () => void;
   onRetryCategories: () => void;
+  /** Opens "Registrar entrada"; absent when the role cannot record stock movements. */
+  onReceiveStock?: () => void;
   onSearchChange: (value: string) => void;
   onStatusChange: (status: CatalogStatusFilter) => void;
+  onStockChange: (stock: ProductStockFilter | null) => void;
   search: string;
   /** The typed search is not applied yet or its results are still loading. */
   searching?: boolean;
   state: CatalogCollectionState;
   status: CatalogStatusFilter;
+  stock: ProductStockFilter | null;
 };
 
 const ALL_CATEGORIES = "all";
+const ALL_STOCK = "all";
 
 /** A product with the category name its row shows, so the row redraws when that name arrives. */
 type CatalogRow = { category: CategoryCell; detail: ProductDetail };
@@ -99,12 +103,15 @@ export function CatalogScreen({
   onLoadMore,
   onRetry,
   onRetryCategories,
+  onReceiveStock,
   onSearchChange,
   onStatusChange,
+  onStockChange,
   search,
   searching = false,
   state,
   status,
+  stock,
 }: CatalogScreenProps) {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
@@ -127,49 +134,27 @@ export function CatalogScreen({
   const columns = fitColumns<CatalogRow>(
     [
       {
-        estimate: 240,
+        estimate: 260,
         column: {
           id: "product",
           header: t("catalog.list.product"),
           meta: { primary: true },
           cell: ({ row: { original } }) => (
-            <Text className="text-[13px]" numberOfLines={2}>
-              {original.detail.product.name}
-            </Text>
+            <View className="min-w-0">
+              <Text className="text-[13px]" numberOfLines={2}>
+                {original.detail.product.name}
+              </Text>
+              <ProductLine category={original.category} sku={original.detail.product.sku} />
+            </View>
           ),
         },
       },
       {
-        estimate: 120,
-        dropRank: 0,
-        column: {
-          id: "sku",
-          header: t("dataTable.columns.sku"),
-          cell: ({ row: { original } }) =>
-            original.detail.product.sku ? (
-              <CellText className="text-muted-foreground" maxWidth="max-w-[8rem]">
-                {original.detail.product.sku}
-              </CellText>
-            ) : (
-              <MissingValue label={t("catalog.detail.noSku")} />
-            ),
-        },
-      },
-      {
-        estimate: 150,
-        dropRank: 1,
-        column: {
-          id: "category",
-          header: t("dataTable.columns.category"),
-          cell: ({ row: { original } }) => <CategoryName cell={original.category} />,
-        },
-      },
-      {
-        estimate: 110,
+        estimate: 100,
         column: {
           id: "price",
           header: t("dataTable.columns.price"),
-          meta: { align: "end", width: 110 },
+          meta: { align: "end", width: 100 },
           cell: ({ row: { original } }) => {
             const price = productPrice(original.detail.product, locale);
             return price ? (
@@ -183,38 +168,59 @@ export function CatalogScreen({
         },
       },
       {
-        estimate: 170,
+        estimate: 150,
         column: {
           id: "stock",
           header: t("dataTable.columns.stock"),
-          meta: { align: "end", width: 170 },
+          meta: { align: "end", width: 150 },
           cell: ({ row: { original } }) => (
-            <StockValue product={original.detail.product} stock={original.detail.stock} />
+            <StockLevelCell product={original.detail.product} stock={original.detail.stock} />
           ),
         },
       },
-      // A filter on one status makes the column identical on every row.
-      ...(status === "all"
-        ? [
-            {
-              estimate: 110,
-              column: {
-                id: "status",
-                header: t("dataTable.columns.status"),
-                meta: { width: 110 },
-                cell: ({ row: { original } }) => (
-                  <ProductStatusBadge status={original.detail.product.status} />
-                ),
-              },
-            } satisfies FittedColumn<CatalogRow>,
-          ]
-        : []),
+      {
+        estimate: 84,
+        dropRank: 1,
+        only: "table",
+        column: {
+          id: "minimum",
+          header: t("catalog.list.minimum"),
+          meta: { align: "end", width: 84 },
+          cell: ({ row: { original } }) => {
+            const productStock = original.detail.stock;
+            return productStock?.lowStockThresholdMinorUnits ? (
+              <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
+                {formatQuantity(
+                  productStock.lowStockThresholdMinorUnits,
+                  productStock.quantityPrecision,
+                  locale,
+                )}
+              </Text>
+            ) : (
+              <MissingValue label={t("catalog.list.noMinimum")} />
+            );
+          },
+        },
+      },
+      {
+        estimate: 128,
+        dropRank: 0,
+        column: {
+          id: "state",
+          header: t("dataTable.columns.status"),
+          meta: { width: 128 },
+          cell: ({ row: { original } }) => (
+            <ProductStateCell product={original.detail.product} stock={original.detail.stock} />
+          ),
+        },
+      },
     ],
     width,
   );
   const names = new Map(categories.map((category) => [category.id, category.name]));
   const choices = { complete: !categoriesLoading, failed: categoriesError, names };
-  const filtered = search.trim() !== "" || categoryId !== null || status !== "active";
+  const filtered =
+    search.trim() !== "" || categoryId !== null || status !== "active" || stock !== null;
   // Active categories come first; an archived one is still offered so its products can be found.
   const categoryOptions = [
     { label: t("catalog.list.allCategories"), value: ALL_CATEGORIES },
@@ -324,6 +330,15 @@ export function CatalogScreen({
                 : undefined
             }
             secondary={[
+              ...(onReceiveStock
+                ? [
+                    {
+                      icon: PackageOpen,
+                      label: t("catalog.list.receiveStock"),
+                      onPress: onReceiveStock,
+                    },
+                  ]
+                : []),
               {
                 href: "/operate/catalog/categories",
                 icon: Tags,
@@ -344,19 +359,16 @@ export function CatalogScreen({
           className="min-w-0 flex-row flex-wrap items-end gap-2"
           role="toolbar"
         >
-          <View className="min-w-0 grow basis-[220px] sm:max-w-[320px]">
-            <SearchField
-              maxLength={SEARCH_MAX_LENGTH}
-              busy={searching}
-              clearLabel={t("catalog.list.clearSearch")}
-              label={t("catalog.list.searchLabel")}
-              onChangeText={onSearchChange}
-              placeholder={t("catalog.list.searchPlaceholder")}
-              ref={searchRef}
-              value={search}
-            />
-          </View>
-          <View className="min-w-0 grow basis-[200px] sm:max-w-[240px]">
+          <FilterBar
+            label={t("catalog.list.stockLabel")}
+            onChange={(value) => onStockChange(value === ALL_STOCK ? null : value)}
+            options={([ALL_STOCK, "low", "out"] as const).map((value) => ({
+              label: t(`catalog.list.stockFilters.${value}`),
+              value,
+            }))}
+            value={stock ?? ALL_STOCK}
+          />
+          <View className="min-w-0 grow basis-[180px] sm:max-w-[220px] sm:grow-0">
             <SelectField
               disabled={categoriesLoading}
               label={t("catalog.list.categoryLabel")}
@@ -368,15 +380,30 @@ export function CatalogScreen({
               value={categoriesLoading && categoryId ? null : (categoryId ?? ALL_CATEGORIES)}
             />
           </View>
-          <FilterBar
-            label={t("catalog.list.statusLabel")}
-            onChange={onStatusChange}
-            options={(["all", "active", "archived"] as const).map((value) => ({
-              label: t(`catalog.list.statuses.${value}`),
-              value,
-            }))}
-            value={status}
-          />
+          <View className="min-w-0 grow basis-[140px] sm:max-w-[160px] sm:grow-0">
+            <SelectField
+              label={t("catalog.list.statusLabel")}
+              labelHidden
+              onChange={onStatusChange}
+              options={(["active", "archived", "all"] as const).map((value) => ({
+                label: t(`catalog.list.statuses.${value}`),
+                value,
+              }))}
+              value={status}
+            />
+          </View>
+          <View className="min-w-0 grow basis-[220px] sm:ml-auto sm:max-w-[300px]">
+            <SearchField
+              maxLength={SEARCH_MAX_LENGTH}
+              busy={searching}
+              clearLabel={t("catalog.list.clearSearch")}
+              label={t("catalog.list.searchLabel")}
+              onChangeText={onSearchChange}
+              placeholder={t("catalog.list.searchPlaceholder")}
+              ref={searchRef}
+              value={search}
+            />
+          </View>
         </View>
         {categoriesError ? (
           <Alert
@@ -408,5 +435,25 @@ function NewProductLink() {
         <Text>{t("catalog.list.createProduct")}</Text>
       </Button>
     </Link>
+  );
+}
+
+/** The category under the product name, with its code when it has one. */
+function ProductLine({ category, sku }: { category: CategoryCell; sku: string | null }) {
+  const { t } = useTranslation();
+  const name =
+    category.kind === "named"
+      ? category.name
+      : category.kind === "none"
+        ? t("catalog.list.noCategory")
+        : category.kind === "unavailable"
+          ? t("catalog.list.categoryUnavailable")
+          : null;
+  const parts = [name, sku].filter((part): part is string => Boolean(part));
+  if (parts.length === 0) return null;
+  return (
+    <Text className="text-xs leading-4 text-muted-foreground" numberOfLines={1}>
+      {parts.join(" · ")}
+    </Text>
   );
 }

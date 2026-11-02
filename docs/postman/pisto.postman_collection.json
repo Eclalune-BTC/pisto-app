@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Pisto API",
-    "description": "Every Pisto HTTP endpoint, ordered as one end-to-end run against a local API. Run the whole collection in order: it creates a new demo account and business each time, stores ids in collection variables and asserts each response. Set `baseUrl` (API origin) and `webOrigin` (an origin listed in CORS_ORIGINS and TRUSTED_ORIGINS) in the environment. Sessions use the HttpOnly `pisto.session_token` cookie, which Postman keeps automatically.",
+    "description": "Every Pisto HTTP endpoint, ordered as one end-to-end run against a local API. Run the whole collection in order with a 1000 ms delay between requests (the API allows 60 writes per minute per user): it creates a new demo account and business each time, stores ids in collection variables and asserts each response. Set `baseUrl` (API origin) and `webOrigin` (an origin listed in CORS_ORIGINS and TRUSTED_ORIGINS) in the environment. Sessions use the HttpOnly `pisto.session_token` cookie, which Postman keeps automatically.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -4351,7 +4351,1427 @@
       ]
     },
     {
-      "name": "11 Security and error handling",
+      "name": "11 Itemized sales",
+      "description": "A counter sale with products: stock leaves inventory, the amount received enters one account and any balance becomes the customer's receivable, all in one idempotent command.",
+      "item": [
+        {
+          "name": "Create customer for credit sales",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"creditCustomerId\", json.data.customer.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Rosa Ayala\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "customers"]
+            }
+          }
+        },
+        {
+          "name": "Sale form options (active accounts)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"lists the cash account\", () => pm.expect(json.data.accounts.map((a) => a.id)).to.include(pm.collectionVariables.get(\"cashAccountId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/form-options",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "form-options"]
+            }
+          }
+        },
+        {
+          "name": "Record itemized sale on credit",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"itemizedKey\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "pm.collectionVariables.set(\"dueDate\", new Date(Date.now() - 6 * 3600e3 + 15 * 86400e3).toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"itemizedSaleId\", json.data.sale.id);",
+                  "pm.test(\"total is quantity times the catalog price\", () => pm.expect(json.data.sale.grossMinorUnits).to.eql(String(2n * BigInt(json.data.lines[0].unitPriceMinorUnits))));",
+                  "pm.test(\"received part\", () => pm.expect(json.data.settlement.receivedMinorUnits).to.eql(\"100\"));",
+                  "pm.test(\"the rest is on credit\", () => pm.expect(BigInt(json.data.settlement.creditMinorUnits)).to.eql(BigInt(json.data.sale.grossMinorUnits) - 100n));",
+                  "pm.test(\"the balance became a receivable\", () => pm.expect(json.data.settlement.receivableId).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{itemizedKey}}\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"12:10\",\n  \"customerId\": \"{{creditCustomerId}}\",\n  \"lines\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantityMinorUnits\": \"2\"\n    }\n  ],\n  \"payment\": {\n    \"method\": \"cash\",\n    \"accountId\": \"{{cashAccountId}}\",\n    \"receivedMinorUnits\": \"100\"\n  },\n  \"dueDate\": \"{{dueDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/itemized",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "itemized"]
+            }
+          }
+        },
+        {
+          "name": "Record itemized sale again (same key replays)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"replay is reported\", () => pm.expect(json.data.replayed).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{itemizedKey}}\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"12:10\",\n  \"customerId\": \"{{creditCustomerId}}\",\n  \"lines\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantityMinorUnits\": \"2\"\n    }\n  ],\n  \"payment\": {\n    \"method\": \"cash\",\n    \"accountId\": \"{{cashAccountId}}\",\n    \"receivedMinorUnits\": \"100\"\n  },\n  \"dueDate\": \"{{dueDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/itemized",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "itemized"]
+            }
+          }
+        },
+        {
+          "name": "Selling more than the stock is refused",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is CONFLICT\", () => pm.expect(json.error.code).to.eql(\"CONFLICT\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"12:20\",\n  \"customerId\": \"{{creditCustomerId}}\",\n  \"lines\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantityMinorUnits\": \"999\"\n    }\n  ],\n  \"dueDate\": \"{{dueDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/itemized",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "itemized"]
+            }
+          }
+        },
+        {
+          "name": "A balance on credit needs a customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is one of 400/409\", () => pm.expect([400,409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"12:25\",\n  \"lines\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantityMinorUnits\": \"1\"\n    }\n  ],\n  \"payment\": {\n    \"method\": \"cash\",\n    \"accountId\": \"{{cashAccountId}}\",\n    \"receivedMinorUnits\": \"50\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/itemized",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "itemized"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Suppliers, purchases and payables",
+      "description": "Suppliers, purchases on cash or credit that enter stock, supplier payments up to the balance and the accounts payable summary.",
+      "item": [
+        {
+          "name": "Create supplier",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"supplierId\", json.data.supplier.id);",
+                  "pm.test(\"supplier is active\", () => pm.expect(json.data.supplier.status).to.eql(\"active\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Distribuidora Centro {{runId}}\",\n  \"phone\": \"2222-0000\",\n  \"creditDays\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/suppliers",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "suppliers"]
+            }
+          }
+        },
+        {
+          "name": "Update supplier",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"contact saved\", () => pm.expect(json.data.supplier.contactName).to.eql(\"Luis Pérez\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"contactName\": \"Luis Pérez\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/suppliers/{{supplierId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "suppliers", "{{supplierId}}"]
+            }
+          }
+        },
+        {
+          "name": "List suppliers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"lists the supplier\", () => pm.expect(json.data.items.map((s) => s.id)).to.include(pm.collectionVariables.get(\"supplierId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/suppliers?limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "suppliers"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Credit purchase needs a due date",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is VALIDATION_ERROR\", () => pm.expect(json.error.code).to.eql(\"VALIDATION_ERROR\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"supplierId\": \"{{supplierId}}\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"13:00\",\n  \"lines\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantityMinorUnits\": \"12\",\n      \"unitCostMinorUnits\": \"80\"\n    }\n  ],\n  \"received\": true,\n  \"paymentTerms\": \"credit\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/purchases",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "purchases"]
+            }
+          }
+        },
+        {
+          "name": "Record purchase on credit (stock received)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"dueDate\", new Date(Date.now() - 6 * 3600e3 + 15 * 86400e3).toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"purchaseId\", json.data.purchase.id);",
+                  "pm.test(\"total is exact\", () => pm.expect(json.data.purchase.totalMinorUnits).to.eql(\"960\"));",
+                  "pm.test(\"all of it is owed\", () => pm.expect(json.data.purchase.balanceMinorUnits).to.eql(\"960\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"supplierId\": \"{{supplierId}}\",\n  \"invoiceNumber\": \"F-1043\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"13:05\",\n  \"lines\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantityMinorUnits\": \"12\",\n      \"unitCostMinorUnits\": \"80\"\n    }\n  ],\n  \"received\": true,\n  \"paymentTerms\": \"credit\",\n  \"dueDate\": \"{{dueDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/purchases",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "purchases"]
+            }
+          }
+        },
+        {
+          "name": "Pay part of the purchase",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"balance went down\", () => pm.expect(json.data.purchase.balanceMinorUnits).to.eql(\"560\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"accountId\": \"{{cashAccountId}}\",\n  \"amountMinorUnits\": \"400\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"13:30\",\n  \"reference\": \"Abono 1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/purchases/{{purchaseId}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "purchases", "{{purchaseId}}", "payments"]
+            }
+          }
+        },
+        {
+          "name": "Paying more than the balance is refused",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is CONFLICT\", () => pm.expect(json.error.code).to.eql(\"CONFLICT\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"accountId\": \"{{cashAccountId}}\",\n  \"amountMinorUnits\": \"561\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"13:35\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/purchases/{{purchaseId}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "purchases", "{{purchaseId}}", "payments"]
+            }
+          }
+        },
+        {
+          "name": "Get purchase with its payments",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"one payment\", () => pm.expect(json.data.payments).to.have.length(1));",
+                  "pm.test(\"paid so far\", () => pm.expect(json.data.purchase.paidMinorUnits).to.eql(\"400\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/purchases/{{purchaseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "purchases", "{{purchaseId}}"]
+            }
+          }
+        },
+        {
+          "name": "List open purchases",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"lists the open purchase\", () => pm.expect(json.data.items.map((p) => p.id)).to.include(pm.collectionVariables.get(\"purchaseId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/purchases?payable=open&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "purchases"],
+              "query": [
+                {
+                  "key": "payable",
+                  "value": "open"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accounts payable summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"outstanding balance\", () => pm.expect(json.data.outstandingMinorUnits).to.eql(\"560\"));",
+                  "pm.test(\"one open purchase\", () => pm.expect(json.data.openPurchaseCount).to.eql(\"1\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/payables/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "payables", "summary"]
+            }
+          }
+        },
+        {
+          "name": "A purchase with payments cannot be voided",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is CONFLICT\", () => pm.expect(json.error.code).to.eql(\"CONFLICT\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"reason\": \"Factura duplicada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/purchases/{{purchaseId}}/void",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "purchases", "{{purchaseId}}", "void"]
+            }
+          }
+        },
+        {
+          "name": "Record cash purchase",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"cashPurchaseId\", json.data.purchase.id);",
+                  "pm.test(\"paid in full\", () => pm.expect(json.data.purchase.balanceMinorUnits).to.eql(\"0\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"supplierId\": \"{{supplierId}}\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"14:00\",\n  \"lines\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantityMinorUnits\": \"6\",\n      \"unitCostMinorUnits\": \"80\"\n    }\n  ],\n  \"received\": true,\n  \"paymentTerms\": \"cash\",\n  \"accountId\": \"{{cashAccountId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/purchases",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "purchases"]
+            }
+          }
+        },
+        {
+          "name": "Void the cash purchase (stock and money return)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"purchase is voided\", () => pm.expect(json.data.purchase.status).to.eql(\"voided\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"reason\": \"Mercadería devuelta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/purchases/{{cashPurchaseId}}/void",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "purchases", "{{cashPurchaseId}}", "void"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Movements, home and settings",
+      "description": "Reads behind the home and the unified ledger: money trend, movements of every kind with period totals, debtors, monthly cash flow, low stock and the role policy.",
+      "item": [
+        {
+          "name": "Money trend (30 days)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 200\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/reports/money-trend?range=30d",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "reports", "money-trend"],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "30d"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Today's movements",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"lists sales, purchases and payments\", () => { const kinds = json.data.items.map((m) => m.kind); [\"sale\", \"purchase\", \"supplier_payment\"].forEach((k) => pm.expect(kinds).to.include(k)); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/movements?startLocalDate={{localDate}}&endLocalDate={{localDate}}&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "movements"],
+              "query": [
+                {
+                  "key": "startLocalDate",
+                  "value": "{{localDate}}"
+                },
+                {
+                  "key": "endLocalDate",
+                  "value": "{{localDate}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Only purchases",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"only purchases\", () => json.data.items.forEach((m) => pm.expect(m.kind).to.eql(\"purchase\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/movements?startLocalDate={{localDate}}&endLocalDate={{localDate}}&kind=purchase&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "movements"],
+              "query": [
+                {
+                  "key": "startLocalDate",
+                  "value": "{{localDate}}"
+                },
+                {
+                  "key": "endLocalDate",
+                  "value": "{{localDate}}"
+                },
+                {
+                  "key": "kind",
+                  "value": "purchase"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Movements reject an inverted period",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is VALIDATION_ERROR\", () => pm.expect(json.error.code).to.eql(\"VALIDATION_ERROR\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/movements?startLocalDate=2026-03-02&endLocalDate=2026-03-01",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "movements"],
+              "query": [
+                {
+                  "key": "startLocalDate",
+                  "value": "2026-03-02"
+                },
+                {
+                  "key": "endLocalDate",
+                  "value": "2026-03-01"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Customers who owe the most",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 200\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/receivables/debtors",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "receivables", "debtors"]
+            }
+          }
+        },
+        {
+          "name": "Monthly cash flow",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"localMonth\", pm.collectionVariables.get(\"localDate\").slice(0, 7));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 200\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/reports/cash-flow?endMonth={{localMonth}}&months=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "reports", "cash-flow"],
+              "query": [
+                {
+                  "key": "endMonth",
+                  "value": "{{localMonth}}"
+                },
+                {
+                  "key": "months",
+                  "value": "3"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Products with low stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 200\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/products?stock=low&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "products"],
+              "query": [
+                {
+                  "key": "stock",
+                  "value": "low"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Role permissions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 200\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses", "roles"]
+            }
+          }
+        },
+        {
+          "name": "Business members",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 200\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses", "members"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 AI assistant",
+      "description": "The registration assistant turns one sentence into a draft the user reviews; it never saves a record. Locally it answers 503 unless Workers AI credentials are configured; the hosted Worker uses the AI binding.",
+      "item": [
+        {
+          "name": "Assistant status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"reports availability\", () => pm.expect(json.data.enabled).to.be.a(\"boolean\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/assistant/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "assistant", "status"]
+            }
+          }
+        },
+        {
+          "name": "Interpret a sentence",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is one of 200/503\", () => pm.expect([200,503]).to.include(pm.response.code));",
+                  "const json = pm.response.json();",
+                  "if (pm.response.code === 200) { const json = pm.response.json(); pm.test(\"drafts an expense of $18.00\", () => { pm.expect(json.data.interpretation.draft.kind).to.eql(\"expense\"); pm.expect(json.data.interpretation.draft.amountMinorUnits).to.eql(\"1800\"); }); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Pagué 18 dólares de luz con la caja\",\n  \"source\": \"text\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/assistant/interpretations",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "assistant", "interpretations"]
+            }
+          }
+        },
+        {
+          "name": "Interpretation rejects an empty sentence",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is one of 400/503\", () => pm.expect([400,503]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \" \",\n  \"source\": \"text\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/assistant/interpretations",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "assistant", "interpretations"]
+            }
+          }
+        },
+        {
+          "name": "Transcription accepts only WAV audio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is one of 415/503\", () => pm.expect([415,503]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "audio/wav"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "not audio"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/assistant/transcriptions",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "assistant", "transcriptions"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 Security and error handling",
       "description": "Negative checks: strict queries, hidden identifiers, origin policy, content type and session revocation.",
       "item": [
         {

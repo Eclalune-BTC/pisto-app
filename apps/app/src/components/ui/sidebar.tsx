@@ -19,16 +19,14 @@ export function Sidebar({ children, label }: PropsWithChildren<{ label: string }
 }
 
 export function SidebarHeader({ children }: PropsWithChildren) {
-  return (
-    <View className="h-12 justify-center border-b border-sidebar-border px-2">{children}</View>
-  );
+  return <View className="gap-3 px-3 pb-2 pt-3">{children}</View>;
 }
 
 export function SidebarContent({ children }: PropsWithChildren) {
   return (
     <ScrollView
       className="min-h-0 flex-1"
-      contentContainerClassName="gap-4 px-2 pb-4 pt-2"
+      contentContainerClassName="gap-5 px-3 pb-4 pt-2"
       showsVerticalScrollIndicator={false}
     >
       {children}
@@ -37,7 +35,7 @@ export function SidebarContent({ children }: PropsWithChildren) {
 }
 
 export function SidebarFooter({ children }: PropsWithChildren) {
-  return <View className="gap-2 border-t border-sidebar-border p-2">{children}</View>;
+  return <View className="gap-1 px-3 pb-3 pt-2">{children}</View>;
 }
 
 export function SidebarGroup({
@@ -48,7 +46,7 @@ export function SidebarGroup({
   return (
     <View className="gap-0.5">
       {label && !collapsed ? (
-        <Text className="px-2 pb-1 font-ui text-xs text-muted-foreground">{label}</Text>
+        <Text className="px-2.5 pb-1 text-xs leading-4 text-muted-foreground">{label}</Text>
       ) : null}
       {children}
     </View>
@@ -78,7 +76,7 @@ export function SidebarLink({
         accessibilityState={{ selected: active }}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "w-full justify-start gap-2.5 px-2 web:pointer-coarse:min-h-10",
+          "h-9 w-full justify-start gap-3 rounded-md px-2.5 web:pointer-coarse:min-h-10",
           collapsed && "justify-center px-0",
           active
             ? "bg-sidebar-accent web:hover:bg-sidebar-accent"
@@ -90,14 +88,14 @@ export function SidebarLink({
       >
         <Icon
           as={icon}
-          className={active ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/70"}
-          size={16}
-          strokeWidth={active ? 2.25 : 1.75}
+          className={active ? "text-sidebar-accent-foreground" : "text-muted-foreground"}
+          size={17}
+          strokeWidth={active ? 2 : 1.6}
         />
         {collapsed ? null : (
           <Text
             className={cn(
-              "min-w-0 shrink text-left text-sm",
+              "min-w-0 shrink text-left text-[14px]",
               active
                 ? "font-ui text-sidebar-accent-foreground"
                 : "font-sans text-sidebar-foreground",

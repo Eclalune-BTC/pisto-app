@@ -1,0 +1,27 @@
+{
+  "name": "@pisto/assistant",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/fake-provider.ts"
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --packages external",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "eval": "bun ./eval/run.ts"
+  },
+  "dependencies": {
+    "@pisto/contracts": "workspace:*",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

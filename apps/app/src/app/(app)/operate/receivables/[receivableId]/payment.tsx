@@ -1,64 +1,44 @@
 import { useQuery } from "@tanstack/react-query";
 import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
+import { PageHeader } from "@/components/layout/page-header";
+import { Page } from "@/components/page";
 import { RouteState } from "@/components/route-state";
 import { useRouteLabel } from "@/components/shell/shell-context";
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
-import { customerDetailQueryOptions } from "@/features/customers/queries";
-import { readState } from "@/features/customers/read-state";
-import { PaymentEditor } from "@/features/receivables/payment-editor";
 import { receivableDetailQueryOptions } from "@/features/receivables/queries";
-import { acceptsPayment } from "@/features/receivables/rules";
+import { ReceivablePaymentForm } from "@/features/receivables/receivable-payment-form";
 import { hasDeniedRead } from "@/lib/query-state";
 import { firstParam } from "@/lib/route-params";
 
 export default function ApplyPaymentRoute() {
   const router = useRouter();
+  const { t } = useTranslation();
   const receivableId = firstParam(
     useLocalSearchParams<{ receivableId?: string | string[] }>().receivableId,
   );
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
   const businessId = access.business?.id;
-  const enabled = Boolean(access.business && access.hasManagePermission);
+  // The form reads the same detail; this read only names the record in the breadcrumb.
   const detail = useQuery({
     ...receivableDetailQueryOptions(businessId, receivableId),
-    enabled: enabled && receivableId !== undefined,
-  });
-  const customerId = detail.data?.receivable.customerId;
-  const customer = useQuery({
-    ...customerDetailQueryOptions(businessId, customerId),
-    enabled: enabled && customerId !== undefined,
+    enabled: Boolean(access.business && access.hasManagePermission && receivableId),
   });
   useRouteLabel(
     "/operate/receivables/[receivableId]",
-    manageCapabilityBoundaryState(access) === "ready" && !hasDeniedRead([detail, customer])
+    manageCapabilityBoundaryState(access) === "ready" && !hasDeniedRead([detail])
       ? detail.data?.receivable.description
       : undefined,
   );
 
   const accessState = manageCapabilityBoundaryState(access);
   if (!access.business && accessState === "ready") return <Redirect href="/business" />;
-  if (accessState !== "ready" || !access.business) {
+  if (accessState !== "ready" || !access.business || !receivableId) {
     return (
       <RouteState
-        kind={accessState === "ready" ? "error" : accessState}
+        kind={accessState === "ready" ? "notFound" : accessState}
         onRetry={() => void access.refetch()}
-        variant="form"
-        width="form"
-      />
-    );
-  }
-
-  const read = receivableId
-    ? readState(customerId ? [detail, customer] : [detail])
-    : { kind: "notFound" as const };
-  if (read.kind !== "ready" || !receivableId || !detail.data || !customer.data) {
-    return (
-      <RouteState
-        kind={read.kind === "ready" ? "error" : read.kind}
-        onRetry={() => {
-          void detail.refetch();
-          void customer.refetch();
-        }}
         variant="form"
         width="form"
       />
@@ -70,24 +50,19 @@ export default function ApplyPaymentRoute() {
     params: { receivableId },
   };
   return (
-    <PaymentEditor
-      availability={
-        !acceptsPayment(detail.data.receivable, customer.data.customer.status === "active")
-          ? "unavailable"
-          : read.stale || access.isStale
-            ? "stale"
-            : "available"
-      }
-      business={access.business}
-      cancelHref={detailHref}
-      customerName={customer.data.customer.name}
-      onConfirmed={() => router.replace(detailHref)}
-      onRetryRead={() => {
-        void access.refetch();
-        void detail.refetch();
-        void customer.refetch();
-      }}
-      receivable={detail.data.receivable}
-    />
+    <Page width="form">
+      <PageHeader
+        description={t("receivables.paymentForm.pageDescription")}
+        title={t("receivables.paymentForm.title")}
+      />
+      <View className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <ReceivablePaymentForm
+          entrySource="manual"
+          onCancel={() => router.replace(detailHref)}
+          onSaved={() => router.replace(detailHref)}
+          receivableId={receivableId}
+        />
+      </View>
+    </Page>
   );
 }

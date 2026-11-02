@@ -111,6 +111,8 @@ describe("sales list route", () => {
           id: originalSaleId,
           status: "voided" as const,
           entryMode: "total_only" as const,
+          entrySource: "manual" as const,
+          customer: null,
           grossMinorUnits: "1250",
           currency: "USD",
           currencyMinorUnitDigits: 2,
@@ -217,5 +219,169 @@ describe("durable sale review routes", () => {
       acknowledgedSaleId: id,
     });
     expect(await response.json()).toEqual({ data: { saleId: id } });
+  });
+});
+
+describe("itemized sale routes", () => {
+  const saleId = "5312a3e6-7c91-486a-9233-0cf4d9d3dcc7";
+  const productId = "0c0f4c55-3a52-4a39-9d0a-4cf1f3e2b9a1";
+  const accountId = "a8d0b1a6-5f1c-4c55-9a39-2f8d4bd7f6a2";
+  const command = {
+    idempotencyKey: "11111111-1111-4111-8111-111111111111",
+    occurredLocalDate: "2026-11-02",
+    occurredLocalTime: "10:15",
+    lines: [{ productId, quantityMinorUnits: "2" }],
+    payment: { method: "cash", accountId, receivedMinorUnits: "500" },
+  };
+  const post = (body: unknown) =>
+    new Request("http://localhost/v1/sales/itemized", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  const result = {
+    sale: {
+      id: saleId,
+      status: "posted" as const,
+      entryMode: "itemized" as const,
+      entrySource: "manual" as const,
+      customer: null,
+      grossMinorUnits: "500",
+      currency: "USD",
+      currencyMinorUnitDigits: 2,
+      occurredAt: "2026-11-02T16:15:00.000Z",
+      occurredLocalDate: "2026-11-02",
+      occurredLocalTime: "10:15",
+      timeZone: "America/El_Salvador",
+      description: null,
+      correction: null,
+      createdAt: "2026-11-02T16:15:01.000Z",
+    },
+    lines: [
+      {
+        id: "3ce0fe40-da34-4fc4-b8a6-0b9b3df52136",
+        productId,
+        productName: "Café molido 1 lb",
+        quantityMinorUnits: "2",
+        quantityPrecision: 0,
+        unitPriceMinorUnits: "250",
+        subtotalMinorUnits: "500",
+      },
+    ],
+    settlement: {
+      customerId: null,
+      customerName: null,
+      paymentMethod: "cash" as const,
+      accountId,
+      receivedMinorUnits: "500",
+      creditMinorUnits: "0",
+      receivableId: null,
+      dueDate: null,
+    },
+  };
+
+  test("requires a session before the command reaches the repository", async () => {
+    let called = false;
+    const app = createTestApp(
+      {
+        createItemizedSale: async () => {
+          called = true;
+          return { ...result, replayed: false };
+        },
+      },
+      false,
+    );
+    expect((await app.request(post(command))).status).toBe(401);
+    expect((await app.request("/v1/sales/form-options")).status).toBe(401);
+    expect(called).toBe(false);
+  });
+
+  test("rejects client-chosen tenants, prices without lines and amounts as numbers", async () => {
+    let called = false;
+    const app = createTestApp({
+      createItemizedSale: async () => {
+        called = true;
+        return { ...result, replayed: false };
+      },
+    });
+    const invalid = [
+      { ...command, businessId: "another-business" },
+      { ...command, lines: [] },
+      { ...command, grossMinorUnits: "500" },
+      { ...command, lines: [{ productId, quantityMinorUnits: 2 }] },
+      { ...command, payment: { ...command.payment, receivedMinorUnits: "0" } },
+      { ...command, entrySource: "assistant" },
+    ];
+    for (const body of invalid) {
+      const response = await app.request(post(body));
+      expect(response.status).toBe(400);
+      expect((await response.json()).error.code).toBe("VALIDATION_ERROR");
+    }
+    expect(called).toBe(false);
+  });
+
+  test("forwards the parsed command with its default source and answers 201, then 200 on replay", async () => {
+    const received: unknown[] = [];
+    let replayed = false;
+    const app = createTestApp({
+      createItemizedSale: async (actor, body) => {
+        received.push({ actor, body });
+        const response = { ...result, replayed };
+        replayed = true;
+        return response;
+      },
+    });
+    const first = await app.request(post(command));
+    const second = await app.request(post(command));
+    expect([first.status, second.status]).toEqual([201, 200]);
+    expect(received[0]).toEqual({
+      actor: { userId: "user_test", sessionId: "session_test", activeBusinessId: "business_test" },
+      body: { ...command, entrySource: "manual" },
+    });
+    expect(await first.json()).toEqual({ data: { ...result, replayed: false } });
+  });
+
+  test("maps stock and permission refusals to their public status", async () => {
+    const conflict = await createTestApp({
+      createItemizedSale: async () => {
+        throw new ProductError("CONFLICT", "There is not enough stock for this sale");
+      },
+    }).request(post(command));
+    const denied = await createTestApp({
+      getSaleFormOptions: async () => {
+        throw new ProductError("FORBIDDEN", "The business membership does not permit this action");
+      },
+    }).request("/v1/sales/form-options");
+    expect(conflict.status).toBe(409);
+    expect(denied.status).toBe(403);
+  });
+
+  test("serves payment accounts on a static path, not as a sale identifier", async () => {
+    const accounts = [{ id: accountId, name: "Caja", kind: "cash" as const }];
+    const app = createTestApp({ getSaleFormOptions: async () => ({ accounts }) });
+    const response = await app.request("/v1/sales/form-options");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ data: { accounts } });
+  });
+
+  test("returns an itemized sale's lines and settlement with its detail", async () => {
+    const app = createTestApp({
+      getSale: async (_actor, id) => {
+        expect(id).toBe(saleId);
+        return {
+          sale: result.sale,
+          details: { lines: result.lines, settlement: result.settlement },
+        };
+      },
+    });
+    const response = await app.request(`/v1/sales/${saleId}`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      data: {
+        sale: result.sale,
+        details: { lines: result.lines, settlement: result.settlement },
+        replayed: false,
+      },
+    });
   });
 });

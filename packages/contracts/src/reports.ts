@@ -139,6 +139,54 @@ export const operatingReportResponseSchema = z
   .object({ data: z.object({ report: operatingReportSchema }).strict() })
   .strict();
 
+/** A calendar month in the business time zone, "YYYY-MM". */
+export const calendarMonthSchema = z
+  .string()
+  .regex(/^\d{4}-(?:0[1-9]|1[0-2])$/, "Must be a calendar month")
+  .refine((value) => !value.startsWith("0000"), "Year zero is not supported");
+
+export const maximumCashFlowMonths = 12;
+
+export const cashFlowReportQuerySchema = z
+  .object({
+    endMonth: calendarMonthSchema,
+    months: z.coerce.number().int().min(1).max(maximumCashFlowMonths).default(6),
+  })
+  .strict();
+
+/**
+ * Money that entered and left the business accounts in one month. Transfers between the
+ * business's own accounts move no money in or out; the closing balance adds every account.
+ */
+const cashFlowMonthSchema = z
+  .object({
+    month: calendarMonthSchema,
+    inflowMinorUnits: aggregateIntegerSchema,
+    outflowMinorUnits: aggregateIntegerSchema,
+    netMinorUnits: signedAggregateIntegerSchema,
+    closingBalanceMinorUnits: signedAggregateIntegerSchema,
+  })
+  .strict();
+
+export const cashFlowReportSchema = z
+  .object({
+    timeZone: timeZoneSchema,
+    currency: currencyCodeSchema,
+    currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
+    /** The business-local date the report was read on; a later month has no movements yet. */
+    asOfLocalDate: calendarLocalDateSchema,
+    months: z.array(cashFlowMonthSchema).min(1).max(maximumCashFlowMonths),
+    queriedAt: timestampSchema,
+  })
+  .strict();
+
+export const cashFlowReportResponseSchema = z
+  .object({ data: z.object({ report: cashFlowReportSchema }).strict() })
+  .strict();
+
 export type OperatingReportQuery = z.infer<typeof operatingReportQuerySchema>;
+export type CashFlowReportQuery = z.input<typeof cashFlowReportQuerySchema>;
+export type CashFlowReport = z.infer<typeof cashFlowReportSchema>;
+export type CashFlowReportResponse = z.infer<typeof cashFlowReportResponseSchema>;
 export type OperatingReport = z.infer<typeof operatingReportSchema>;
 export type OperatingReportResponse = z.infer<typeof operatingReportResponseSchema>;

@@ -1,4 +1,8 @@
 import {
+  type CashFlowReport,
+  type CashFlowReportQuery,
+  cashFlowReportQuerySchema,
+  cashFlowReportSchema,
   type OperatingReport,
   type OperatingReportQuery,
   operatingReportQuerySchema,
@@ -30,6 +34,7 @@ export const REPORT_TRANSACTION_CONFIG = {
 
 export interface ReportsRepository {
   getOperatingReport(actor: ProductActor, query: OperatingReportQuery): Promise<OperatingReport>;
+  getCashFlowReport(actor: ProductActor, query: CashFlowReportQuery): Promise<CashFlowReport>;
 }
 
 // The bounds stay ISO strings because postgres.js binds a JavaScript Date in a
@@ -77,6 +82,81 @@ function sumIntegerStrings(values: readonly string[]): string {
 
 export function createReportsRepository(db: Database): ReportsRepository {
   return {
+    async getCashFlowReport(actor, rawQuery) {
+      const parsedQuery = cashFlowReportQuerySchema.safeParse(rawQuery);
+      if (!parsedQuery.success) {
+        throw new ProductError("VALIDATION_ERROR", "The cash flow months are invalid");
+      }
+      const { endMonth, months } = parsedQuery.data;
+
+      return db.transaction(async (transaction) => {
+        const access = await authorizeBusinessAction(transaction, actor, ["reports:read"], "none");
+        type MonthRow = {
+          as_of_local_date: string;
+          closing_minor_units: string;
+          inflow_minor_units: string;
+          month: string;
+          outflow_minor_units: string;
+        };
+        // Month bounds are local midnights resolved by the zone's own rules, like the operating
+        // report; the closing balance sums every movement before the month ends.
+        const rows = await transaction.execute<MonthRow>(sql`
+          with months as (
+            select generate_series(
+              (${`${endMonth}-01`}::date - make_interval(months => ${months - 1})),
+              ${`${endMonth}-01`}::date,
+              interval '1 month'
+            )::date as month_start
+          ),
+          bounds as (
+            select
+              month_start,
+              (month_start::timestamp at time zone ${access.timeZone}) as start_utc,
+              ((month_start + interval '1 month')::timestamp at time zone ${access.timeZone}) as end_utc
+            from months
+          )
+          select
+            to_char(bounds.month_start, 'YYYY-MM') as month,
+            coalesce(sum(${cashMovement.amountMinorUnits}) filter (
+              where ${cashMovement.direction} = 'in'
+                and ${cashMovement.action} not in ('transfer_in', 'transfer_out')
+                and ${cashMovement.occurredAt} >= bounds.start_utc
+            ), 0::numeric)::text as inflow_minor_units,
+            coalesce(sum(${cashMovement.amountMinorUnits}) filter (
+              where ${cashMovement.direction} = 'out'
+                and ${cashMovement.action} not in ('transfer_in', 'transfer_out')
+                and ${cashMovement.occurredAt} >= bounds.start_utc
+            ), 0::numeric)::text as outflow_minor_units,
+            coalesce(sum(${cashMovement.deltaMinorUnits}), 0::numeric)::text as closing_minor_units,
+            to_char(transaction_timestamp() at time zone ${access.timeZone}, 'YYYY-MM-DD') as as_of_local_date
+          from bounds
+          left join ${cashMovement}
+            on ${cashMovement.businessId} = ${access.businessId}
+            and ${cashMovement.occurredAt} < bounds.end_utc
+          group by bounds.month_start
+          order by bounds.month_start
+        `);
+        const first = rows[0];
+        if (!first) throw new Error("Cash flow report query returned no months");
+        return cashFlowReportSchema.parse({
+          timeZone: access.timeZone,
+          currency: access.currency,
+          currencyMinorUnitDigits: access.currencyMinorUnitDigits,
+          asOfLocalDate: first.as_of_local_date,
+          months: rows.map((row) => ({
+            month: row.month,
+            inflowMinorUnits: row.inflow_minor_units,
+            outflowMinorUnits: row.outflow_minor_units,
+            netMinorUnits: (
+              BigInt(row.inflow_minor_units) - BigInt(row.outflow_minor_units)
+            ).toString(),
+            closingBalanceMinorUnits: row.closing_minor_units,
+          })),
+          queriedAt: access.queriedAt.toISOString(),
+        });
+      }, REPORT_TRANSACTION_CONFIG);
+    },
+
     async getOperatingReport(actor, rawQuery) {
       const parsedQuery = operatingReportQuerySchema.safeParse(rawQuery);
       if (!parsedQuery.success) {

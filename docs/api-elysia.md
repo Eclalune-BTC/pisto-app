@@ -25,10 +25,12 @@ The baseline surface is:
 | `POST` | `/v1/businesses` | Yes, fresh session | Create or replay the one owner business and settings |
 | `GET` | `/v1/sales` | `sales:read`, fresh session | List active-business sales by occurrence, newest first, with a status filter |
 | `POST` | `/v1/sales` | `sales:create`, fresh session | Confirm or replay one total-only sale |
+| `POST` | `/v1/sales/itemized` | `sales:create`, fresh session | Post or replay one itemized sale with stock, payment and credit |
+| `GET` | `/v1/sales/form-options` | `sales:create`, fresh session | Active payment accounts without balances |
 | `GET`, `POST` | `/v1/sales/review` | `sales:create`, fresh session | Read or prepare the current actor/business review without posting |
 | `POST` | `/v1/sales/review/:reviewId/confirm` | `sales:create`, fresh session | Explicitly confirm the stored review and retain its result |
 | `POST` | `/v1/sales/review/:reviewId/dismiss` | `sales:create`, fresh session | Dismiss or acknowledge the exact saved-sale ID |
-| `GET` | `/v1/sales/:saleId` | `sales:read`, fresh session | Read a canonical active-business sale |
+| `GET` | `/v1/sales/:saleId` | `sales:read`, fresh session | Read a canonical active-business sale and its itemized details |
 | `POST` | `/v1/sales/:saleId/void` | `sales:correct`, fresh session | Void or exactly replay one posted sale correction |
 | `POST` | `/v1/sales/:saleId/replace` | `sales:correct`, fresh session | Atomically void and replace or exactly replay one sale |
 | `GET` | `/v1/sales/summary/previous-month` | `sales:summary:read`, fresh session | Calculate the previous business-local calendar month |
@@ -79,6 +81,9 @@ The baseline surface is:
 | `POST` | `/v1/receivables/:receivableId/payments` | `receivables:manage` and `cash:manage`, fresh session | Record one payment and its linked cash movement |
 | `POST` | `/v1/receivables/:receivableId/void` | `receivables:manage`, fresh session | Void one receivable after its payments are reversed |
 | `POST` | `/v1/receivable-payments/:paymentId/reverse` | `receivables:manage` and `cash:manage`, fresh session | Reverse one payment exactly once |
+| `GET` | `/v1/assistant/status` | Yes, fresh session | Whether a model provider is composed (`enabled`, `transcription`) |
+| `POST` | `/v1/assistant/interpretations` | `assistant:use`, fresh session; assistant budgets | Turn one sentence into a reviewable draft; nothing is saved |
+| `POST` | `/v1/assistant/transcriptions` | `assistant:use`, fresh session, allowlisted Origin; assistant budgets | Transcribe a raw `audio/wav` body (own byte cap) to editable text |
 
 The implementation and `@pisto/contracts` are definitive. Update this table and the
 [Postman collection](postman/pisto.postman_collection.json) in the same change as a route addition

@@ -4,6 +4,10 @@ import { BillingProviderError, type BillingRuntime, RevenueCatWebhookError } fro
 import type {
   CashRepository,
   CatalogRepository,
+  DebtorsRepository,
+  MoneyTrendRepository,
+  MovementsRepository,
+  PurchasesRepository,
   ReceivablesRepository,
   ReportsRepository,
 } from "@pisto/db";
@@ -11,11 +15,13 @@ import {
   type BusinessRepository,
   type DatabaseHandle,
   ProductError,
+  resolveBusinessAccess,
   type SalesRepository,
 } from "@pisto/db";
 import { createApp } from "../src/app.ts";
 import { sessionPolicyPaths } from "../src/middleware/product-access.ts";
 import { RealtimeHub } from "../src/realtime.ts";
+import { assistantTestConfig, disabledAssistant } from "./assistant-support.ts";
 import { testClient } from "./http-client.ts";
 
 function unavailableRepository<T extends object>(name: string, onCall?: () => void): T {
@@ -121,6 +127,7 @@ function testApp(
           createBusiness: async () => {
             throw new ProductError("CONFLICT", "Not configured in this test");
           },
+          listMembers: async () => [],
         } satisfies BusinessRepository));
   const sales =
     options.sales ??
@@ -149,6 +156,12 @@ function testApp(
           getSale: async () => {
             throw new ProductError("NOT_FOUND", "Sale was not found");
           },
+          createItemizedSale: async () => {
+            throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
+          },
+          getSaleFormOptions: async () => {
+            throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
+          },
           listSales: async () => {
             throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
           },
@@ -168,7 +181,9 @@ function testApp(
         productWritesEnabled: true,
         productReadLimit: 300,
         productWriteLimit: 60,
+        assistant: assistantTestConfig,
       },
+      assistant: disabledAssistant(),
       authBaseUrl: "https://api.example.test",
       auth,
       realtime: options.realtime ?? new RealtimeHub(),
@@ -183,6 +198,22 @@ function testApp(
         cash: unavailableRepository<CashRepository>("Cash repository", options.onRepositoryCall),
         catalog: unavailableRepository<CatalogRepository>(
           "Catalog repository",
+          options.onRepositoryCall,
+        ),
+        purchases: unavailableRepository<PurchasesRepository>(
+          "Purchases repository",
+          options.onRepositoryCall,
+        ),
+        debtors: unavailableRepository<DebtorsRepository>(
+          "Debtors repository",
+          options.onRepositoryCall,
+        ),
+        moneyTrend: unavailableRepository<MoneyTrendRepository>(
+          "Money trend repository",
+          options.onRepositoryCall,
+        ),
+        movements: unavailableRepository<MovementsRepository>(
+          "Movements repository",
           options.onRepositoryCall,
         ),
         receivables: unavailableRepository<ReceivablesRepository>(
@@ -417,6 +448,15 @@ describe("Pisto API", () => {
 
     expect(response.status).toBe(404);
     expect(response.headers.get("x-request-id")).not.toBe("invalid id with spaces");
+  });
+
+  test("states every role's permissions exactly as the server policy grants them", async () => {
+    const response = await testApp({ authenticated: true }).request("/v1/businesses/roles");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { data: { roles: unknown[] } };
+    expect(body.data.roles).toEqual(
+      ["owner", "admin", "member"].map((role) => resolveBusinessAccess(role)),
+    );
   });
 
   test("does not write unexpected error messages into request logs", async () => {
@@ -1008,6 +1048,9 @@ describe("Pisto API", () => {
     ["POST", `/v1/receivables/${recordId}/payments`],
     ["POST", `/v1/receivable-payments/${recordId}/reverse`],
     ["GET", "/v1/reports/operating?startLocalDate=2026-08-01&endLocalDate=2026-08-22"],
+    ["GET", "/v1/reports/cash-flow?endMonth=2026-08"],
+    ["GET", "/v1/businesses/roles"],
+    ["GET", "/v1/businesses/members"],
   ];
 
   test("resolves a session before every domain handler touches a repository", async () => {

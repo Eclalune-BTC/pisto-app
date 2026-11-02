@@ -1,4 +1,4 @@
-import type { Category } from "@pisto/contracts";
+import type { Category, ProductStockFilter } from "@pisto/contracts";
 import {
   infiniteQueryOptions,
   type QueryClient,
@@ -21,6 +21,8 @@ export type ProductListFilters = {
   categoryId: string | null;
   search: string;
   status: CatalogStatusFilter;
+  /** Tracked products running low or out of stock; null lists every product. */
+  stock?: ProductStockFilter | null;
 };
 
 export type CategoryListFilters = { search: string; status: CatalogStatusFilter };
@@ -103,6 +105,7 @@ export function productsInfiniteOptions(
               limit: CATALOG_PAGE_SIZE,
               search: filters.search || undefined,
               status: filters.status,
+              stock: filters.stock ?? undefined,
             },
             signal,
           )

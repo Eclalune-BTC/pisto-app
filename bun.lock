@@ -15,6 +15,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@elysiajs/cors": "1.4.2",
+        "@pisto/assistant": "workspace:*",
         "@pisto/auth": "workspace:*",
         "@pisto/billing": "workspace:*",
         "@pisto/config": "workspace:*",
@@ -105,6 +106,18 @@
         "sharp": "0.35.5",
         "typescript": "~6.0.3",
         "vitest": "4.1.11",
+      },
+    },
+    "packages/assistant": {
+      "name": "@pisto/assistant",
+      "version": "0.0.0",
+      "dependencies": {
+        "@pisto/contracts": "workspace:*",
+        "zod": "4.4.3",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.0",
+        "typescript": "6.0.3",
       },
     },
     "packages/auth": {
@@ -612,6 +625,8 @@
     "@pisto/api": ["@pisto/api@workspace:apps/api"],
 
     "@pisto/app": ["@pisto/app@workspace:apps/app"],
+
+    "@pisto/assistant": ["@pisto/assistant@workspace:packages/assistant"],
 
     "@pisto/auth": ["@pisto/auth@workspace:packages/auth"],
 
