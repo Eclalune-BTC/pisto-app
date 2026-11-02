@@ -31,13 +31,24 @@ export function exampleSpans(text: string, fragments: readonly string[]): Assist
  * A static illustration of the dictation flow built from the real transcript component: the
  * sentence a person says and the sale it becomes. It is labeled as an example and saves nothing.
  */
-export function DictationExample({ tone }: { tone: "inverse" | "default" }) {
+export function DictationExample({
+  label,
+  tone,
+}: {
+  /** What the figure shows where it sits; defaults to the plain example label. */
+  label?: string;
+  tone: "inverse" | "default";
+}) {
   const { t } = useTranslation();
   const text = t("welcome.example.said");
   const fragments = FIELDS.map(({ key }) => t(`welcome.example.fragments.${key}`));
   const inverse = tone === "inverse";
   return (
-    <View accessibilityLabel={t("welcome.example.label")} className="min-w-0 gap-3" role="figure">
+    <View
+      accessibilityLabel={label ?? t("welcome.example.label")}
+      className="min-w-0 gap-3"
+      role="figure"
+    >
       <View
         className={cn(
           "gap-2 rounded-xl px-4 py-3.5",
@@ -67,10 +78,7 @@ export function DictationExample({ tone }: { tone: "inverse" | "default" }) {
         />
       </View>
       <View
-        className={cn(
-          "gap-0.5 rounded-xl bg-card px-4 py-3",
-          inverse ? "ml-0 sm:ml-8" : "border border-border",
-        )}
+        className={cn("gap-0.5 rounded-xl bg-card px-4 py-3", !inverse && "border border-border")}
       >
         <View className="flex-row items-center justify-between gap-2 pb-1.5">
           <Text className="font-ui text-[13px] text-card-foreground">
@@ -87,7 +95,7 @@ export function DictationExample({ tone }: { tone: "inverse" | "default" }) {
             key={key}
           >
             <TranscriptMarker marker={index + 1} />
-            <Text className="w-24 text-[13px] text-muted-foreground sm:w-28">
+            <Text className="w-28 text-[13px] text-muted-foreground">
               {t(`welcome.example.rows.${key}.label`)}
             </Text>
             <Text className="min-w-0 flex-1 font-ui text-[13px] text-card-foreground">
