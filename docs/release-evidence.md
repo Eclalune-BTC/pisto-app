@@ -16,6 +16,28 @@ targets, not a statement that every process is currently running.
 
 ## Validation
 
+### 2026-11-02 Phase 2 design delivery
+
+Five feature branches (itemized sales, purchases and payables, the AI assistant, the shell and home,
+and the module screens) were merged into `develop` with one combined migration,
+`0010_purchases_itemized_sales_ledger.sql`.
+
+- `bun run check` passed: 22 Turbo tasks (lint, types, every workspace's tests) and the web build.
+- PostgreSQL 18 integration passed 100 database tests in a disposable database, including the
+  itemized sales, purchases, ledger and assistant directory suites.
+- The Postman collection passed 138 requests and 266 assertions against the local Worker
+  (`wrangler dev` with the remote Workers AI binding) and against the hosted Worker, with
+  `--delay-request 1000`.
+- Migration 0010 was applied to Neon with `pisto_migrator`; `db:seed` added the demo
+  suppliers, purchases and itemized sales to the existing demo business. The Worker was deployed as
+  version `bd93dcda-1902-46e5-a77d-bfd128bbc3f6`; `/ready` reported the database as ok and a
+  hosted interpretation of "Pagué 18 dólares de luz con la caja" returned an $18.00 utilities
+  expense draft from Caja principal.
+- Rendered and compared with prototype figures 11-15 at 1280 px (light) and 390 px (light): home,
+  movements, new sale, accounts payable, the assistant review with a live interpretation, and the
+  landing page.
+
+
 The 2026-10-03 baseline at commit `3dc650c` uses Elysia 1.4.30, CORS 1.4.2 and the required
 TypeBox 0.34.52 runtime peer under
 [ADR 0019](adrs/0019-elysia-http-composition.md). Hono was removed from the manifest and lockfile.
