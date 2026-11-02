@@ -1,13 +1,22 @@
 # Pisto
 
-Pisto is a business operating application for Spanish-speaking small businesses: sales, catalog and
-inventory, cash and expenses, customers and receivables, and exact operating reports. It is a
-TypeScript monorepo with an Expo Router client (web, iOS, Android) and a Bun/Elysia API backed by
-PostgreSQL 18 through Drizzle, Better Auth sessions and shared Zod request/response contracts.
+Pisto is a business operating application for Spanish-speaking small businesses: sales with
+products, purchases and suppliers, expenses, cash and bank accounts, who owes you and whom you owe,
+inventory and exact reports, with an AI assistant that turns a dictated or typed sentence into a
+record the user reviews before saving. It is a TypeScript monorepo with an Expo Router client (web,
+iOS, Android) and a Bun/Elysia API backed by PostgreSQL 18 through Drizzle, Better Auth sessions and
+shared Zod request/response contracts.
 
 The product interface is Spanish (`es-SV`); code, commits and documentation are English.
 
-**Live demo:** <https://pisto.contact-862.workers.dev> (Cloudflare Workers + Neon PostgreSQL).
+| | |
+| --- | --- |
+| **Live demo** | <https://pisto.contact-862.workers.dev> (Cloudflare Workers + Neon PostgreSQL + Workers AI) |
+| **Health check** | <https://pisto.contact-862.workers.dev/ready> |
+| **Source** | <https://github.com/Eclalune-BTC/pisto-app> (`main` = delivered, `develop` = integration) |
+| **API collection** | [`docs/postman`](docs/postman) (Postman or Bruno, local and hosted environments) |
+| **Phase 3 delivery** | [`docs/fase3-entrega.md`](docs/fase3-entrega.md): every requirement of the UFG Fase 3 guide mapped to its evidence |
+| **Agile board** | <https://trello.com/b/PoTcegqU/sistema-financiero-mypes-product-backlog-y-sprint-1> |
 
 ## Demo accounts and roles
 
@@ -19,7 +28,7 @@ password for all three is `PistoDemo2026` unless `SEED_PASSWORD` was set when se
 | --- | --- | --- |
 | Owner (dueño) | `dueno@pisto.test` | Everything, including business settings |
 | Admin (encargado) | `encargado@pisto.test` | Every operation except changing business settings |
-| Member (vendedor) | `vendedor@pisto.test` | Record and view sales; view catalog and stock. No cash, expenses, customers, receivables or reports |
+| Member (vendedor) | `vendedor@pisto.test` | Record and view sales (also on credit to a customer); view catalog, stock and customers. No cash, purchases, expenses, receivables or reports |
 
 Permissions are checked on the server for every request; the app only hides what the role cannot use.
 
@@ -32,18 +41,23 @@ Every flow below works end to end, from the screen through the API to PostgreSQL
 | --- | --- | --- |
 | Create an account, sign in and sign out | `/sign-up`, `/sign-in`, user menu | `/api/auth/sign-up/email`, `/api/auth/sign-in/email`, `/api/auth/sign-out` |
 | Register my business with its currency and time zone | `/business`, `/settings` | `GET/POST /v1/businesses` |
-| Record a sale, review it before saving, see history, void or correct it | `/operate/sales`, `/operate/sales/new`, `/operate/sales/[saleId]`, `/operate/sales/correct/[saleId]` | `/v1/sales`, `/v1/sales/review`, `/v1/sales/:id/void`, `/v1/sales/:id/replace` |
+| Dictate or type what happened and review the record the AI assistant drafted before saving it | **Dictar** in the top bar, **Registrar** on the home, `/operate/assistant/review` | `/v1/assistant/status`, `/v1/assistant/interpretations`, `/v1/assistant/transcriptions` |
+| See the business at a glance: money available, today's movements, who owes and the next payment | `/operate` (home) | `/v1/reports/money-trend`, `/v1/movements`, `/v1/receivables/debtors`, `/v1/payables/summary` |
+| See every sale, purchase, expense and payment in one ledger | `/operate/movements` | `GET /v1/movements` |
+| Record a sale with products, payment and credit (stock leaves inventory, the balance becomes a receivable), or a total-only sale; see history, void or correct it | `/operate/sales`, `/operate/sales/new`, `/operate/sales/[saleId]`, `/operate/sales/correct/[saleId]` | `/v1/sales/itemized`, `/v1/sales/form-options`, `/v1/sales`, `/v1/sales/review`, `/v1/sales/:id/void`, `/v1/sales/:id/replace` |
+| Register suppliers, record purchases on cash or credit (stock enters inventory), pay suppliers and follow accounts payable | `/operate/suppliers`, `/operate/purchases/new`, `/operate/purchases/[purchaseId]`, `/operate/payables` | `/v1/suppliers`, `/v1/purchases`, `/v1/purchases/:id/payments`, `/v1/purchases/:id/void`, `/v1/payables/summary` |
 | Manage categories and products | `/operate/catalog`, `/operate/catalog/categories` | `/v1/catalog/categories`, `/v1/catalog/products` |
 | Receive and adjust stock, reverse a movement | `/operate/inventory` | `/v1/inventory/stock`, `/v1/inventory/products/:id/movements`, `/v1/inventory/movements/:id/reverse` |
 | Track cash accounts, adjustments and transfers | `/operate/cash` | `/v1/cash/accounts`, `/v1/cash/adjustments`, `/v1/cash/transfers`, `/v1/cash/movements` |
 | Record and void paid expenses | `/operate/expenses` | `/v1/expenses` |
 | Register customers, charge on credit, collect and reverse payments | `/operate/customers`, `/operate/receivables` | `/v1/customers`, `/v1/receivables`, `/v1/receivable-payments/:id/reverse` |
-| See the operating report for a period | `/operate/reports` | `GET /v1/reports/operating` |
-| See changes from other devices live | Every screen (sidebar shows **En vivo**) | `GET /v1/realtime` (WebSocket) |
+| See the income statement and the monthly cash flow | `/operate/reports` | `GET /v1/reports/operating`, `GET /v1/reports/cash-flow` |
+| See the roles and the people of the business | `/settings` | `GET /v1/businesses/roles`, `GET /v1/businesses/members` |
+| See changes from other devices live | Every screen refreshes its data; the top bar only speaks up after a lost connection | `GET /v1/realtime` (WebSocket) |
 
-Billing adapters (Polar, RevenueCat) exist but are disabled by default. AI and voice entry are
-planned, not implemented. [The capability matrix](docs/production-capabilities.md) owns the
-detailed status.
+Billing adapters (Polar, RevenueCat) exist but are disabled by default. Voice dictation works in the
+web app; native builds offer typed entry. [The capability matrix](docs/production-capabilities.md)
+owns the detailed status.
 
 ## Run it locally
 

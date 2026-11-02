@@ -315,7 +315,7 @@ async function main() {
     await seedPurchases({ db, owner, now });
 
     console.info(
-      `Seeded ${demoBusiness.name}: ${demoUsers.length} users, ${products.length} products, 7 sales, 3 expenses, ${customers.length} receivables.`,
+      `Seeded ${demoBusiness.name}: ${demoUsers.length} users, ${products.length} products, 7 total-only sales, 3 expenses, ${customers.length} receivables.`,
     );
   } finally {
     await runtime.database.close();
