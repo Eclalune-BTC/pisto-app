@@ -15,7 +15,7 @@
     "android": {
       "package": "com.example.pisto",
       "adaptiveIcon": {
-        "backgroundColor": "#1C1917",
+        "backgroundColor": "#1B3D2C",
         "foregroundImage": "./assets/brand/adaptive-foreground.png",
         "backgroundImage": "./assets/brand/adaptive-background.png",
         "monochromeImage": "./assets/brand/monochrome.png"
@@ -32,9 +32,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FAFAF9",
+          "backgroundColor": "#F3F4F0",
           "dark": {
-            "backgroundColor": "#0F0E0D",
+            "backgroundColor": "#0B100D",
             "image": "./assets/brand/splash-icon-dark.png"
           },
           "image": "./assets/brand/splash-icon.png",

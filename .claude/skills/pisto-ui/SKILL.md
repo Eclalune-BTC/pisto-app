@@ -12,8 +12,9 @@ working method. When a lesson below becomes a durable rule, move it into the des
 ## Direction (owner, non-negotiable)
 
 - Modern fintech/AI SaaS that conveys trust. Clean, dense, calm. Nothing that looks generated.
-- No blue (test-enforced hue band 175-280°) and no green brand color. Color is for state and data.
-- Nearly square: small radii from the radius tokens; never pill buttons or soft blobs.
+- One brand color since 2026-11-01: the Phase 2 prototypes' deep forest green, light theme first.
+  No blue (test-enforced hue band 175-280°) and no second accent. State colors only for state.
+- Crisp: radius tokens (6 px controls, 8 px cards); never pill buttons or soft blobs.
 - Little padding: compact rows, tight page gutters, information first.
 - No gradients, glows, decorative shadows, eyebrow labels, accent left-border lines, ornamental
   dividers, oversized headings or marketing copy inside the product.
@@ -174,4 +175,14 @@ Append one line per lesson: `YYYY-MM-DD · screen · lesson · where it is now e
   header menus and form footers; reuse the shared block or extend it, never copy it into a feature.
 - 2026-10-04 · tooling · On Windows the Expo typed-routes watcher writes files outside `src/app` as
   routes and TypeScript reports TS2590; restart Expo with `--clear` before trusting tsc.
+- 2026-11-01 · all screens · A chip on every "Registrada" row and "Ver … →" arrow links read as
+  generated; the normal state is muted text and links are plain link-coloured text · `ui/status-badge`.
+- 2026-11-01 · auth · A checklist of product promises beside the sign-in form is marketing slop; the
+  aside is a solid brand panel with one sentence · `components/auth-screen.tsx`.
+- 2026-11-01 · tooling · `CI=1 expo start` does not watch files, and Chrome captures of a fresh dev
+  bundle can time out while the page is idle; check `document.body.innerText` before calling a
+  screen frozen.
+- 2026-11-01 · session restore · Replacing the QueryClient when the restored session resolves left
+  every mounted query loading forever after a reload; the client changes only on a direct account
+  switch · `providers/query-provider.tsx`.
 

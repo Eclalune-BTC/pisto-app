@@ -1,6 +1,6 @@
 import type { OperatingReport } from "@pisto/contracts";
 import { type Href, Link } from "expo-router";
-import { ArrowRight, CalendarX2 } from "lucide-react-native";
+import { CalendarX2 } from "lucide-react-native";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
@@ -10,7 +10,6 @@ import { Stat, StatGroup } from "@/components/layout/stat-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
-import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
@@ -50,8 +49,7 @@ function ModuleLink({ href, label }: { href: Href; label: string }) {
   return (
     <Link asChild href={href}>
       <Button accessibilityRole="link" className="gap-1 px-1" size="sm" variant="ghost">
-        <Text className="text-[13px]">{label}</Text>
-        <Icon as={ArrowRight} className="text-foreground" size={14} />
+        <Text className="text-[13px] text-link">{label}</Text>
       </Button>
     </Link>
   );

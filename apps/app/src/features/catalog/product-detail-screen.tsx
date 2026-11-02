@@ -1,13 +1,6 @@
 import type { InventoryMovement, ProductDetail } from "@pisto/contracts";
 import { Link } from "expo-router";
-import {
-  Archive,
-  ArrowRight,
-  ArrowRightLeft,
-  History,
-  Pencil,
-  TriangleAlert,
-} from "lucide-react-native";
+import { Archive, ArrowRightLeft, History, Pencil, TriangleAlert } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { DescriptionList } from "@/components/layout/description-list";
@@ -22,7 +15,6 @@ import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
@@ -219,8 +211,7 @@ export function ProductDetailScreen({
             movements.read === "ready" && movements.items.length > 0 ? (
               <Link asChild href={stockHref(product.id)}>
                 <Button accessibilityRole="link" className="gap-1 px-1" size="sm" variant="ghost">
-                  <Text className="text-[13px]">{t("catalog.detail.viewHistory")}</Text>
-                  <Icon as={ArrowRight} className="text-foreground" size={14} />
+                  <Text className="text-[13px] text-link">{t("catalog.detail.viewHistory")}</Text>
                 </Button>
               </Link>
             ) : undefined

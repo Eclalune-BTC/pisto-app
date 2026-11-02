@@ -12,6 +12,11 @@ export const shell = {
   businessStale: "sin actualizar",
   businessSwitchFailed: "No pudimos cambiar de negocio. El negocio activo no cambió.",
   signingOut: "Cerrando sesión…",
+  realtime: {
+    live: "En vivo",
+    connecting: "Conectando…",
+    offline: "Sin conexión en vivo",
+  },
   routes: {
     "/operate": "Inicio",
     "/operate/sales": "Ventas",

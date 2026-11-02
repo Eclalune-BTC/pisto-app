@@ -94,6 +94,11 @@ export function createAuth(input: { config: AuthConfig; db: Database; billing: B
       cookiePrefix: "pisto",
       useSecureCookies: input.config.production,
       trustedProxyHeaders: input.config.trustedProxyHeaders,
+      // Only a header the edge overwrites (Cloudflare's cf-connecting-ip) may key rate limits;
+      // without it every client shares one bucket.
+      ...(input.config.ipAddressHeader
+        ? { ipAddress: { ipAddressHeaders: [input.config.ipAddressHeader] } }
+        : {}),
     },
     plugins,
   });

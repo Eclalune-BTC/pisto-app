@@ -15,6 +15,7 @@ import {
 } from "@pisto/db";
 import { createApp } from "../src/app.ts";
 import { sessionPolicyPaths } from "../src/middleware/product-access.ts";
+import { RealtimeHub } from "../src/realtime.ts";
 import { testClient } from "./http-client.ts";
 
 function unavailableRepository<T extends object>(name: string, onCall?: () => void): T {
@@ -43,6 +44,7 @@ function testApp(
     db?: DatabaseHandle["db"];
     onConsume?: () => void;
     ping?: DatabaseHandle["ping"];
+    realtime?: RealtimeHub;
   } = {},
 ) {
   const auth = {
@@ -169,6 +171,7 @@ function testApp(
       },
       authBaseUrl: "https://api.example.test",
       auth,
+      realtime: options.realtime ?? new RealtimeHub(),
       consumeProductRequest: async () => {
         options.onConsume?.();
         return { allowed: true, retryAfterSeconds: 60 };
@@ -809,6 +812,52 @@ describe("Pisto API", () => {
       expect(response.headers.get("x-request-id")).toBe("command-test");
       expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     }
+  });
+
+  test("announces a committed write to the active business and stays silent on failure", async () => {
+    const businessId = "6f9c2a4e-8d1b-4c3a-9e5f-1a2b3c4d5e6f";
+    const command = {
+      idempotencyKey: "0b7c2d1e-3f4a-4b5c-8d6e-7f8a9b0c1d2e",
+      grossMinorUnits: "1250",
+      occurredLocalDate: "2026-11-01",
+      occurredLocalTime: "09:30",
+    };
+    const published: unknown[] = [];
+    const realtime = new RealtimeHub();
+    realtime.publish = (target, message) => {
+      published.push({ target, message });
+    };
+    let fail = false;
+    const sales = {
+      createSale: async () => {
+        if (fail) throw new ProductError("IDEMPOTENCY_CONFLICT", "Key already used");
+        return { sale: { id: "sale-test" }, replayed: false };
+      },
+    } as unknown as SalesRepository;
+    const app = testApp({ authenticated: true, activeBusinessId: businessId, sales, realtime });
+    const post = () =>
+      app.request("/v1/sales", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(command),
+      });
+
+    expect((await post()).status).toBe(201);
+    expect(published).toEqual([
+      {
+        target: businessId,
+        message: {
+          type: "business.changed",
+          businessId,
+          resource: "sales",
+          at: expect.any(String),
+        },
+      },
+    ]);
+
+    fail = true;
+    expect((await post()).status).toBe(409);
+    expect(published).toHaveLength(1);
   });
 
   test("translates every domain failure code to its unchanged public status", async () => {

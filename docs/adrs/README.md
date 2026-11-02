@@ -25,9 +25,10 @@ should update the affected guide and references. Accepted target architecture is
 | [0014](0014-static-current-operation-permissions.md) | Accepted | Static Pisto permissions authorize current business and sales operations |
 | [0015](0015-business-owned-currency-and-money-snapshots.md) | Accepted | Business-owned currency and immutable money snapshots prevent global defaults and history rewrites |
 | [0016](0016-owner-ports-for-cross-capability-transactions.md) | Accepted | Narrow owner ports keep cross-capability financial writes atomic without hiding ownership |
-| [0017](0017-portable-postgres-and-hosting.md) | Accepted, revised; HTTP adapter updated by 0019 | Local Expo, Bun API, and PostgreSQL; future hosting remains undecided |
+| [0017](0017-portable-postgres-and-hosting.md) | Accepted, revised; hosting decided by 0020 | Local Expo, Bun API, and PostgreSQL with portable artifacts |
 | [0018](0018-durable-sale-review.md) | Accepted | Server-owned recovery for reviewed new sales without client-side financial storage |
 | [0019](0019-elysia-http-composition.md) | Accepted | Elysia HTTP composition with existing REST and Zod contracts |
+| [0020](0020-cloudflare-workers-neon-hosting.md) | Accepted | Hosted demo on Cloudflare Workers (one Durable Object) with Neon PostgreSQL |
 
 ## Status values
 

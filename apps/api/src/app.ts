@@ -11,13 +11,14 @@ import type {
   ReportsRepository,
   SalesRepository,
 } from "@pisto/db";
-import { Elysia } from "elysia";
+import { Elysia, type ElysiaConfig } from "elysia";
 
 import type { ApiConfig } from "./config.ts";
 import { ApiError, normalizeError } from "./errors.ts";
 import { productAccess, sessionPolicyPaths } from "./middleware/product-access.ts";
 import { requestContext } from "./middleware/request-context.ts";
 import { requestBodyLimit, requestPolicy } from "./middleware/request-policy.ts";
+import { changedResource, type RealtimeHub } from "./realtime.ts";
 import { billingRoutes } from "./routes/billing.ts";
 import { businessRoutes } from "./routes/businesses.ts";
 import { cashRoutes } from "./routes/cash.ts";
@@ -45,6 +46,9 @@ export function createApp(input: {
   database: DatabaseHandle;
   repositories: ProductRepositories;
   consumeProductRequest: ConsumeProductRequest;
+  realtime: RealtimeHub;
+  /** Cloudflare Workers pass their adapter so `compile()` can prepare every route at startup. */
+  adapter?: ElysiaConfig<"">["adapter"];
 }) {
   // Routes under /v1 that own their session policy. Every other /v1 path is a business route.
   const sessionPolicyGroups = [
@@ -62,7 +66,7 @@ export function createApp(input: {
     consume: input.consumeProductRequest,
     sessionPolicyPaths: sessionPolicyPaths(...sessionPolicyGroups),
   });
-  const app = new Elysia({ strictPath: true })
+  const app = new Elysia({ strictPath: true, ...(input.adapter ? { adapter: input.adapter } : {}) })
     .use(requestContext())
     .use(
       cors({
@@ -83,6 +87,19 @@ export function createApp(input: {
     .use(requestPolicy(input.config))
     .use(access)
     .use(requestBodyLimit(input.config.requestBodyLimitBytes))
+    // A handler only returns after its transaction committed; failures skip this hook.
+    .onAfterHandle({ as: "global" }, ({ request, actor }) => {
+      if (request.method !== "POST" && request.method !== "PATCH") return;
+      const resource = changedResource(new URL(request.url).pathname);
+      const businessId = actor?.activeBusinessId;
+      if (!resource || !businessId) return;
+      input.realtime.publish(businessId, {
+        type: "business.changed",
+        businessId,
+        resource,
+        at: new Date().toISOString(),
+      });
+    })
     .onError(({ error, set, requestId, request }) => {
       const { apiError, unexpected } = normalizeError(error);
       if (unexpected)
