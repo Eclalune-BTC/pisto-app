@@ -225,6 +225,61 @@ export const businessMembersResponseSchema = z.object({
   data: z.object({ members: z.array(businessMemberSchema) }),
 });
 
+/** The roles an owner can give. Ownership is never granted or taken away by a member command. */
+export const assignableBusinessRoleSchema = z.enum(["admin", "member"]);
+
+/**
+ * Better Auth's default password length policy, checked here so the form can say so inline. The
+ * sign-up policy that creates the account stays authoritative.
+ */
+export const accountPasswordSchema = z.string().min(8).max(128);
+
+/**
+ * Adds a person to the active business. An email without an account gets a new password account;
+ * an existing account is added as it is, and `initialPassword` is ignored for it.
+ */
+export const addBusinessMemberRequestSchema = z
+  .object({
+    idempotencyKey: uuidSchema,
+    name: z.string().trim().min(1).max(80),
+    email: z.string().trim().toLowerCase().email().max(254),
+    role: assignableBusinessRoleSchema,
+    initialPassword: accountPasswordSchema,
+  })
+  .strict();
+
+/** Whether adding the person created their account or added one that already existed. */
+export const businessMemberAccountSchema = z.enum(["created", "existing"]);
+
+export const addBusinessMemberResponseSchema = z.object({
+  data: z.object({
+    member: businessMemberSchema,
+    account: businessMemberAccountSchema,
+    replayed: z.boolean(),
+  }),
+});
+
+export const changeBusinessMemberRoleRequestSchema = z
+  .object({
+    idempotencyKey: uuidSchema,
+    role: assignableBusinessRoleSchema,
+  })
+  .strict();
+
+export const removeBusinessMemberRequestSchema = z
+  .object({
+    idempotencyKey: uuidSchema,
+  })
+  .strict();
+
+/** The member as it is after a role change, or as it was when it was removed. */
+export const businessMemberCommandResponseSchema = z.object({
+  data: z.object({
+    member: businessMemberSchema,
+    replayed: z.boolean(),
+  }),
+});
+
 export const createBusinessRequestSchema = z
   .object({
     name: z.string().trim().min(2).max(80),
@@ -517,6 +572,13 @@ export type BusinessesResponse = z.infer<typeof businessesResponseSchema>;
 export type BusinessRolePoliciesResponse = z.infer<typeof businessRolePoliciesResponseSchema>;
 export type BusinessMember = z.infer<typeof businessMemberSchema>;
 export type BusinessMembersResponse = z.infer<typeof businessMembersResponseSchema>;
+export type AssignableBusinessRole = z.infer<typeof assignableBusinessRoleSchema>;
+export type AddBusinessMemberRequest = z.input<typeof addBusinessMemberRequestSchema>;
+export type BusinessMemberAccount = z.infer<typeof businessMemberAccountSchema>;
+export type AddBusinessMemberResponse = z.infer<typeof addBusinessMemberResponseSchema>;
+export type ChangeBusinessMemberRoleRequest = z.infer<typeof changeBusinessMemberRoleRequestSchema>;
+export type RemoveBusinessMemberRequest = z.infer<typeof removeBusinessMemberRequestSchema>;
+export type BusinessMemberCommandResponse = z.infer<typeof businessMemberCommandResponseSchema>;
 export type CreateBusinessRequest = z.infer<typeof createBusinessRequestSchema>;
 export type CreateBusinessResponse = z.infer<typeof createBusinessResponseSchema>;
 export type Sale = z.infer<typeof saleSchema>;

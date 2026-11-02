@@ -4,11 +4,12 @@ import {
   createWorkersAiRestProvider,
   type WorkersAiBinding,
 } from "@pisto/assistant";
-import { createAuth, parseAuthConfig } from "@pisto/auth";
+import { createAuth, createStaffAccountProvisioner, parseAuthConfig } from "@pisto/auth";
 import { createBillingRuntime, parseBillingConfig } from "@pisto/billing";
 import {
   createAssistantDirectory,
   createAssistantSupplierDirectory,
+  createBusinessMembersRepository,
   createBusinessRepository,
   createCashRepository,
   createCatalogRepository,
@@ -74,6 +75,7 @@ export function createRuntime(
       businesses: createBusinessRepository(database.db),
       cash: createCashRepository(database.db),
       catalog: createCatalogRepository(database.db),
+      members: createBusinessMembersRepository(database.db, createStaffAccountProvisioner(auth)),
       purchases: createPurchasesRepository(database.db),
       debtors: createDebtorsRepository(database.db),
       moneyTrend: createMoneyTrendRepository(database.db),

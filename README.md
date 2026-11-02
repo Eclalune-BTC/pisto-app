@@ -31,6 +31,9 @@ password for all three is `PistoDemo2026` unless `SEED_PASSWORD` was set when se
 | Member (vendedor) | `vendedor@pisto.test` | Record and view sales (also on credit to a customer); view catalog, stock and customers. No cash, purchases, expenses, receivables or reports |
 
 Permissions are checked on the server for every request; the app only hides what the role cannot use.
+The owner can add more users from Configuración → Negocio y usuarios (name, email, role and an initial
+password; an email that already has an account keeps its own password), change their role or remove
+them; a removed user is refused from their next request.
 
 ## What the MVP does
 

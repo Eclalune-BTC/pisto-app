@@ -45,6 +45,7 @@ vi.mock("expo-router", () => ({
 }));
 vi.mock("@/lib/api-client", () => ({ api: { businesses: { list: vi.fn() }, me: vi.fn() } }));
 vi.mock("@/lib/auth-client", () => ({ authClient: {} }));
+vi.mock("@/features/business/member-dialogs", () => ({}));
 vi.mock("@/hooks/use-sign-out", () => ({ useSignOut: () => fixture.signOut }));
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("uniwind", () => ({

@@ -4,6 +4,7 @@ export * from "./business.ts";
 export * from "./cash.ts";
 export * from "./cash-account.ts";
 export * from "./catalog.ts";
+export * from "./members.ts";
 export * from "./purchases.ts";
 export * from "./receivables.ts";
 export * from "./sale-line.ts";
@@ -14,6 +15,7 @@ import * as billing from "./billing.ts";
 import * as business from "./business.ts";
 import * as cash from "./cash.ts";
 import * as catalog from "./catalog.ts";
+import * as members from "./members.ts";
 import * as purchases from "./purchases.ts";
 import * as receivables from "./receivables.ts";
 import * as saleLines from "./sale-line.ts";
@@ -33,6 +35,8 @@ export const schema = {
   billingSubscription: billing.billingSubscription,
   entitlement: billing.entitlement,
   businessSettings: business.businessSettings,
+  businessMemberOperation: members.businessMemberOperation,
+  businessMemberAccountIntent: members.businessMemberAccountIntent,
   catalogCategory: catalog.catalogCategory,
   catalogProduct: catalog.catalogProduct,
   inventoryMovement: catalog.inventoryMovement,

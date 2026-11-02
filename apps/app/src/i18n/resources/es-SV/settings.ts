@@ -11,6 +11,67 @@ export const settings = {
   membersUnavailable: "No pudimos consultar los usuarios del negocio.",
   membersOwnerOnly: "Solo el propietario puede ver quién usa Pisto en este negocio.",
   roleNames: { owner: "Propietario", admin: "Encargado", member: "Vendedor", unknown: "Sin rol" },
+  staff: {
+    add: "Agregar usuario",
+    rowActions: "Acciones para {{name}}",
+    changeRole: "Cambiar rol",
+    remove: "Quitar del negocio",
+    roleDescriptions: {
+      admin:
+        "Registra ventas, compras, gastos y cobros, y ve reportes. No cambia el negocio ni sus usuarios.",
+      member:
+        "Registra ventas y consulta productos, existencias y clientes. No ve caja, gastos ni reportes.",
+    },
+    addTitle: "Agregar usuario",
+    addDescription:
+      "La persona entra con su correo y la contraseña inicial. Si el correo ya tiene cuenta en Pisto, se agrega esa cuenta y su contraseña no cambia.",
+    name: "Nombre",
+    namePlaceholder: "Nombre y apellido",
+    email: "Correo",
+    emailPlaceholder: "nombre@correo.com",
+    role: "Rol",
+    initialPassword: "Contraseña inicial",
+    initialPasswordDescription:
+      "Al menos 8 caracteres. Compártala con la persona por un medio privado.",
+    showPassword: "Mostrar contraseña",
+    hidePassword: "Ocultar contraseña",
+    confirmAdd: "Agregar usuario",
+    problems: {
+      nameMissing: "Escriba el nombre de la persona.",
+      nameTooLong: "Use 80 caracteres o menos.",
+      emailMissing: "Escriba el correo con el que entrará.",
+      emailInvalid: "Escriba un correo válido.",
+      roleMissing: "Elija qué rol tendrá.",
+      passwordTooShort: "Use al menos 8 caracteres.",
+      passwordTooLong: "Use 128 caracteres o menos.",
+      sameRole: "Elija un rol distinto al actual.",
+    },
+    added: "Usuario agregado",
+    addedCreated: "{{name}} ya puede entrar con {{email}} y la contraseña inicial.",
+    addedExisting: "{{name}} ya tenía cuenta en Pisto y entra con su contraseña de siempre.",
+    roleTitle: "Cambiar el rol de {{name}}",
+    roleDescription: "El cambio aplica desde la siguiente acción que haga en Pisto.",
+    confirmRole: "Guardar rol",
+    roleChanged: "Rol actualizado",
+    roleChangedDescription: "{{name}} ahora es {{role}}.",
+    removeTitle: "¿Quitar a {{name}} del negocio?",
+    removeDescription:
+      "Dejará de entrar a {{business}} desde su siguiente acción. Su cuenta y lo que registró se conservan.",
+    removed: "Usuario quitado del negocio",
+    uncertainDescription:
+      "Reintente la misma confirmación para saber si el cambio se guardó; Pisto no lo aplicará dos veces.",
+    errors: {
+      addConflict: "Ese correo ya tiene acceso a este negocio.",
+      addValidation:
+        "Revise los datos: el correo debe ser válido y la contraseña inicial debe tener entre 8 y 128 caracteres.",
+      ownerConflict: "No se puede cambiar el rol del propietario ni el suyo.",
+      removeConflict: "No se puede quitar al propietario ni quitarse a usted mismo.",
+      forbidden: "Solo el propietario puede administrar los usuarios del negocio.",
+      notFound: "Esa persona ya no pertenece a este negocio.",
+      idempotency: "Esta confirmación ya se envió con otros datos. Revise y envíe de nuevo.",
+      fallback: "No pudimos guardar el cambio. Ningún cambio se confirmó.",
+    },
+  },
   matrix: {
     title: "Qué puede hacer cada rol",
     sales: "Registrar ventas",

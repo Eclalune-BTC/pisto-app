@@ -11,6 +11,11 @@ export {
   createAssistantSupplierDirectory,
 } from "./assistant-directory.ts";
 export type { ProductActor } from "./business-access.ts";
+export {
+  type BusinessMembersRepository,
+  createBusinessMembersRepository,
+  type StaffAccountProvisioner,
+} from "./business-members.ts";
 export { type BusinessRepository, createBusinessRepository } from "./businesses.ts";
 export { type CashRepository, createCashRepository } from "./cash.ts";
 export { type CatalogRepository, createCatalogRepository } from "./catalog.ts";

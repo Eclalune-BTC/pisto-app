@@ -12,6 +12,7 @@ export const businessChangeResourceSchema = z.enum([
   "customers",
   "receivables",
   "purchases",
+  "members",
 ]);
 
 /**

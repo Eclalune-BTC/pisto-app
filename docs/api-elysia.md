@@ -23,6 +23,11 @@ The baseline surface is:
 | `GET` (WebSocket) | `/v1/realtime` | Yes, member of the active business; allowed Origin | Change notices for the active business (`ready`, `business.changed`, `pong`); see [realtime](#realtime) |
 | `GET` | `/v1/businesses` | Yes, fresh session | Explicit memberships and active business selector |
 | `POST` | `/v1/businesses` | Yes, fresh session | Create or replay the one owner business and settings |
+| `GET` | `/v1/businesses/roles` | Yes, fresh session | What each role may do, from the server role policy |
+| `GET` | `/v1/businesses/members` | `business:configure`, fresh session | List the people of the active business |
+| `POST` | `/v1/businesses/members` | `business:configure`, fresh session | Add or replay one admin/seller: a new email gets a Better Auth password account with no session; an existing account is added unchanged |
+| `PATCH` | `/v1/businesses/members/:memberId` | `business:configure`, fresh session | Make a member an admin or a seller; never the owner, never the actor |
+| `POST` | `/v1/businesses/members/:memberId/remove` | `business:configure`, fresh session | Remove a member, effective on their next request; never the owner, never the actor |
 | `GET` | `/v1/sales` | `sales:read`, fresh session | List active-business sales by occurrence, newest first, with a status filter |
 | `POST` | `/v1/sales` | `sales:create`, fresh session | Confirm or replay one total-only sale |
 | `POST` | `/v1/sales/itemized` | `sales:create`, fresh session | Post or replay one itemized sale with stock, payment and credit |
@@ -93,7 +98,21 @@ in order, against a fresh account, and asserts each response. See
 
 All Better Auth organization routes are denied at the Elysia edge except
 `POST /api/auth/organization/set-active`. Pisto owns business onboarding and does not expose raw
-organization, invitation, member, role, or team mutations.
+organization, invitation, member, role, or team mutations; the owner changes staff only through the
+`/v1/businesses/members` commands above.
+
+Adding a member whose email has no account calls Better Auth `signUpEmail` from the server, so
+normalization, the password policy and hashing are the sign-up ones, and deletes the session sign-up
+opens. The account is created between two transactions, never inside one; an intent row with the
+command fingerprint, written before it, keeps a retried or duplicated command reporting
+`account: "created"`. The initial password enters that fingerprint only as an HMAC under the auth
+secret, so once an account or receipt exists a changed password or email under the same key is
+`IDEMPOTENCY_CONFLICT`, and nothing stored can be brute-forced back into the password. Rotating the
+auth secret turns a pending retry into that conflict. "Created" means no account had the email when
+the command first looked: an account someone else registers in that window, or a sign-up that
+failed between Better Auth's non-transactional user and credential inserts, is still labelled
+created. Owner and self targets are refused (`409`) before the target row is locked, and the role
+enum is `admin | member` only.
 
 ## Request pipeline
 
@@ -241,8 +260,10 @@ the exact installed source and the API regression tests when applying version-se
 `server.upgrade` locally, a `WebSocketPair` in the Durable Object) after `authorizeRealtime` checks
 the Origin against `CORS_ORIGINS`, a fresh session, an active business and a membership row. After
 any successful `POST`/`PATCH` to a business area, an `onAfterHandle` hook publishes
-`{ type: "business.changed", businessId, resource, at }` to that business's sockets; a failed
-command publishes nothing. Clients send `{ type: "ping" }` and receive `{ type: "pong" }`. Notices
+`{ type: "business.changed", businessId, resource, at }` to that business's sockets (staff commands
+use the `members` resource); a failed command publishes nothing. A socket is authorized at the
+handshake only, so a removed member's open socket keeps receiving these record-free notices until it
+reconnects, when the handshake refuses it. Clients send `{ type: "ping" }` and receive `{ type: "pong" }`. Notices
 never contain record data, so a client always refetches through the authorized REST endpoints.
 Message schemas live in `packages/contracts/src/realtime.ts`.
 
