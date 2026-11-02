@@ -17,6 +17,7 @@ pisto-stack/
 |   `-- db/                  # @pisto/db: Drizzle schema, migrations, repositories
 |-- docs/
 |   |-- adrs/                # Consequential architecture decisions
+|   |-- postman/             # Postman v2.1 collection and local environment covering every route
 |   `-- product-briefs/      # Approved product jobs, acceptance, and non-goals
 |-- infra/gcp/               # Inactive reference scripts with credential-free CI tests
 |-- scripts/

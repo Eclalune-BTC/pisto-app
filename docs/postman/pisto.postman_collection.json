@@ -1,0 +1,4758 @@
+{
+  "info": {
+    "name": "Pisto API",
+    "description": "Every Pisto HTTP endpoint, ordered as one end-to-end run against a local API. Run the whole collection in order: it creates a new demo account and business each time, stores ids in collection variables and asserts each response. Set `baseUrl` (API origin) and `webOrigin` (an origin listed in CORS_ORIGINS and TRUSTED_ORIGINS) in the environment. Sessions use the HttpOnly `pisto.session_token` cookie, which Postman keeps automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Demo businesses use America/El_Salvador, which is UTC-6 all year (no daylight saving).",
+          "pm.collectionVariables.set(\"localDate\", new Date(Date.now() - 6 * 3600e3).toISOString().slice(0, 10));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001"
+    },
+    {
+      "key": "webOrigin",
+      "value": "http://localhost:8081"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 System",
+      "description": "Public liveness, readiness and version endpoints. No session required.",
+      "item": [
+        {
+          "name": "Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"process is alive\", () => pm.expect(json.status).to.eql(\"ok\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Readiness (database check)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"database is ready\", () => pm.expect(json.checks.database).to.eql(\"ok\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ready",
+              "host": ["{{baseUrl}}"],
+              "path": ["ready"]
+            }
+          }
+        },
+        {
+          "name": "API version",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"version is v1\", () => pm.expect(json.data.version).to.eql(\"v1\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Authentication and business",
+      "description": "Better Auth email/password sessions (HttpOnly cookie kept by the Postman cookie jar) and the one owner business per account. Every later folder depends on this one.",
+      "item": [
+        {
+          "name": "Sign out any previous session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is one of 200/400/401\", () => pm.expect([200,400,401]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-out",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "sign-out"]
+            },
+            "description": "Clears a session left in the cookie jar by an earlier run."
+          }
+        },
+        {
+          "name": "Account summary without a session is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 401\", () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is UNAUTHORIZED\", () => pm.expect(json.error.code).to.eql(\"UNAUTHORIZED\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "me"]
+            }
+          }
+        },
+        {
+          "name": "Sign up rejects a short password",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const runId = Date.now().toString(36);",
+                  "pm.collectionVariables.set(\"runId\", runId);",
+                  "pm.collectionVariables.set(\"email\", `pisto-demo-${runId}@example.test`);",
+                  "pm.collectionVariables.set(\"password\", `Demo-${Math.random().toString(36).slice(2)}-${runId}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"password policy is enforced\", () => pm.expect(json.code).to.eql(\"PASSWORD_TOO_SHORT\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Owner\",\n  \"email\": \"{{email}}\",\n  \"password\": \"short\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "sign-up", "email"]
+            }
+          }
+        },
+        {
+          "name": "Sign up (creates the session cookie)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"account email is normalized\", () => pm.expect(json.user.email).to.eql(pm.collectionVariables.get(\"email\")));",
+                  "pm.test(\"password is never returned\", () => pm.expect(JSON.stringify(json)).not.to.include(pm.collectionVariables.get(\"password\")));",
+                  "pm.test(\"session cookie is set\", () => pm.expect(pm.cookies.has(\"pisto.session_token\")).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Owner\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "sign-up", "email"]
+            }
+          }
+        },
+        {
+          "name": "Account summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"no business is active yet\", () => pm.expect(json.data.session.activeOrganizationId).to.eql(null));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "me"]
+            }
+          }
+        },
+        {
+          "name": "Business routes require a business first",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is BUSINESS_REQUIRED\", () => pm.expect(json.error.code).to.eql(\"BUSINESS_REQUIRED\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales"]
+            }
+          }
+        },
+        {
+          "name": "Create business",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"businessId\", json.data.business.id);",
+                  "pm.test(\"creator is owner\", () => pm.expect(json.data.business.access.role).to.eql(\"owner\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tienda Demo {{runId}}\",\n  \"currency\": \"USD\",\n  \"timeZone\": \"America/El_Salvador\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses"]
+            }
+          }
+        },
+        {
+          "name": "Create business again (exact replay)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"replay is reported\", () => pm.expect(json.data.replayed).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tienda Demo {{runId}}\",\n  \"currency\": \"USD\",\n  \"timeZone\": \"America/El_Salvador\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses"]
+            }
+          }
+        },
+        {
+          "name": "Second business is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is CONFLICT\", () => pm.expect(json.error.code).to.eql(\"CONFLICT\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Otra Tienda {{runId}}\",\n  \"currency\": \"USD\",\n  \"timeZone\": \"America/El_Salvador\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses"]
+            }
+          }
+        },
+        {
+          "name": "Create business rejects invalid settings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is VALIDATION_ERROR\", () => pm.expect(json.error.code).to.eql(\"VALIDATION_ERROR\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"X\",\n  \"currency\": \"usd\",\n  \"timeZone\": \"Mars/Olympus\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses"]
+            }
+          }
+        },
+        {
+          "name": "List my businesses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"only the new business is visible\", () => pm.expect(json.data.items.map((b) => b.id)).to.eql([pm.collectionVariables.get(\"businessId\")]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businesses",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "businesses"]
+            }
+          }
+        },
+        {
+          "name": "Sign out",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 200\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-out",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "sign-out"]
+            }
+          }
+        },
+        {
+          "name": "Sign in rejects a wrong password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 401\", () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"credentials are rejected\", () => pm.expect(json.code).to.eql(\"INVALID_EMAIL_OR_PASSWORD\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"wrong-password-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-in/email",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "sign-in", "email"]
+            }
+          }
+        },
+        {
+          "name": "Sign in",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"user is returned\", () => pm.expect(json.user.email).to.eql(pm.collectionVariables.get(\"email\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-in/email",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "sign-in", "email"]
+            }
+          }
+        },
+        {
+          "name": "Current session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"session belongs to the user\", () => pm.expect(json.user.email).to.eql(pm.collectionVariables.get(\"email\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/get-session?disableCookieCache=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "get-session"],
+              "query": [
+                {
+                  "key": "disableCookieCache",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Select the active business",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"business is selected\", () => pm.expect(json.id).to.eql(pm.collectionVariables.get(\"businessId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizationId\": \"{{businessId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/organization/set-active",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "organization", "set-active"]
+            },
+            "description": "A new sign-in starts without an active business; the app selects it the same way."
+          }
+        },
+        {
+          "name": "Account summary shows the active business",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"active business is set\", () => pm.expect(json.data.session.activeOrganizationId).to.eql(pm.collectionVariables.get(\"businessId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Catalog",
+      "description": "Categories and products. Names and SKUs are unique per business; records are archived, never deleted.",
+      "item": [
+        {
+          "name": "Create category",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"categoryKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"categoryId\", json.data.category.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{categoryKey}}\",\n  \"name\": \"Bebidas\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Create category again (same key replays)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"replay is reported\", () => pm.expect(json.data.replayed).to.eql(true));",
+                  "pm.test(\"no duplicate is created\", () => pm.expect(json.data.category.id).to.eql(pm.collectionVariables.get(\"categoryId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{categoryKey}}\",\n  \"name\": \"Bebidas\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Duplicate category name is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is CONFLICT\", () => pm.expect(json.error.code).to.eql(\"CONFLICT\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"bebidas\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Rename category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"name is updated\", () => pm.expect(json.data.category.name).to.eql(\"Bebidas frías\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Bebidas frías\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "categories", "{{categoryId}}"]
+            }
+          }
+        },
+        {
+          "name": "List categories",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"category is listed\", () => pm.expect(json.data.items.map((c) => c.id)).to.include(pm.collectionVariables.get(\"categoryId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/categories?status=active&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "categories"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "active"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create spare category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"spareCategoryId\", json.data.category.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Temporada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Archive spare category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"category is archived\", () => pm.expect(json.data.category.status).to.eql(\"archived\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/categories/{{spareCategoryId}}/archive",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "categories", "{{spareCategoryId}}", "archive"]
+            }
+          }
+        },
+        {
+          "name": "Create tracked product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"productId\", json.data.product.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Coca-Cola 600 ml\",\n  \"unitKind\": \"unit\",\n  \"quantityPrecision\": 0,\n  \"tracked\": true,\n  \"categoryId\": \"{{categoryId}}\",\n  \"sku\": \"CC-600\",\n  \"sellingPriceMinorUnits\": \"125\",\n  \"lowStockThresholdMinorUnits\": \"5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "products"]
+            }
+          }
+        },
+        {
+          "name": "Create product rejects invalid fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is VALIDATION_ERROR\", () => pm.expect(json.error.code).to.eql(\"VALIDATION_ERROR\"));",
+                  "pm.test(\"each invalid field is reported\", () => pm.expect(json.error.details.fieldErrors).to.include.all.keys(\"name\", \"unitKind\", \"quantityPrecision\", \"tracked\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"\",\n  \"unitKind\": \"box\",\n  \"quantityPrecision\": 7,\n  \"tracked\": \"yes\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "products"]
+            }
+          }
+        },
+        {
+          "name": "Create untracked product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"spareProductId\", json.data.product.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Servicio de recarga\",\n  \"unitKind\": \"unit\",\n  \"quantityPrecision\": 0,\n  \"tracked\": false,\n  \"sellingPriceMinorUnits\": \"100\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "products"]
+            }
+          }
+        },
+        {
+          "name": "Search products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"product is found\", () => pm.expect(json.data.items.map((i) => i.product.id)).to.include(pm.collectionVariables.get(\"productId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/products?search=Coca&status=active&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "products"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Coca"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"price is exact\", () => pm.expect(json.data.product.sellingPriceMinorUnits).to.eql(\"125\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "products", "{{productId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update product price",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"price is updated\", () => pm.expect(json.data.product.sellingPriceMinorUnits).to.eql(\"150\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"sellingPriceMinorUnits\": \"150\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "products", "{{productId}}"]
+            }
+          }
+        },
+        {
+          "name": "Archive untracked product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"product is archived\", () => pm.expect(json.data.product.status).to.eql(\"archived\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/products/{{spareProductId}}/archive",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "products", "{{spareProductId}}", "archive"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Inventory",
+      "description": "Append-only stock movements for tracked products. On-hand stock is derived and can never go negative.",
+      "item": [
+        {
+          "name": "Receive stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"stock is 24\", () => pm.expect(json.data.stock.onHandMinorUnits).to.eql(\"24\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"action\": \"receive\",\n  \"quantityMinorUnits\": \"24\",\n  \"reason\": \"Compra inicial\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"08:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/inventory/products/{{productId}}/movements",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "inventory", "products", "{{productId}}", "movements"]
+            }
+          }
+        },
+        {
+          "name": "Adjust stock out",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"adjustOutMovementId\", json.data.movement.id);",
+                  "pm.test(\"stock is 20\", () => pm.expect(json.data.stock.onHandMinorUnits).to.eql(\"20\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"action\": \"adjust_out\",\n  \"quantityMinorUnits\": \"4\",\n  \"reason\": \"Producto dañado\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"08:15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/inventory/products/{{productId}}/movements",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "inventory", "products", "{{productId}}", "movements"]
+            }
+          }
+        },
+        {
+          "name": "Stock cannot go negative",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is CONFLICT\", () => pm.expect(json.error.code).to.eql(\"CONFLICT\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"action\": \"adjust_out\",\n  \"quantityMinorUnits\": \"999\",\n  \"reason\": \"Prueba\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"08:20\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/inventory/products/{{productId}}/movements",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "inventory", "products", "{{productId}}", "movements"]
+            }
+          }
+        },
+        {
+          "name": "Reverse the adjustment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"stock is back to 24\", () => pm.expect(json.data.stock.onHandMinorUnits).to.eql(\"24\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"reason\": \"Reconteo\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"08:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/inventory/movements/{{adjustOutMovementId}}/reverse",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "inventory", "movements", "{{adjustOutMovementId}}", "reverse"]
+            }
+          }
+        },
+        {
+          "name": "List stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"tracked product is listed\", () => pm.expect(json.data.items.map((i) => i.product.id)).to.include(pm.collectionVariables.get(\"productId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/inventory/stock?lowStockOnly=false&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "inventory", "stock"],
+              "query": [
+                {
+                  "key": "lowStockOnly",
+                  "value": "false"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List product movements",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"three movements are recorded\", () => pm.expect(json.data.items).to.have.lengthOf(3));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/inventory/products/{{productId}}/movements?limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "inventory", "products", "{{productId}}", "movements"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Cash",
+      "description": "Cash accounts with derived balances, manual adjustments, one-time reversals and paired transfers.",
+      "item": [
+        {
+          "name": "Create cash account with opening balance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"cashAccountId\", json.data.account.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Caja principal\",\n  \"kind\": \"cash\",\n  \"allowNegativeBalance\": false,\n  \"currency\": \"USD\",\n  \"opening\": {\n    \"direction\": \"in\",\n    \"amountMinorUnits\": \"100000\",\n    \"reason\": \"Fondo inicial\",\n    \"occurredLocalDate\": \"{{localDate}}\",\n    \"occurredLocalTime\": \"07:00\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/cash/accounts",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "cash", "accounts"]
+            }
+          }
+        },
+        {
+          "name": "Create bank account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"bankAccountId\", json.data.account.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Banco\",\n  \"kind\": \"bank\",\n  \"allowNegativeBalance\": false,\n  \"currency\": \"USD\",\n  \"opening\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/cash/accounts",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "cash", "accounts"]
+            }
+          }
+        },
+        {
+          "name": "Rename bank account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"name is updated\", () => pm.expect(json.data.account.name).to.eql(\"Banco Agrícola\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Banco Agrícola\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/cash/accounts/{{bankAccountId}}/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "cash", "accounts", "{{bankAccountId}}", "update"]
+            }
+          }
+        },
+        {
+          "name": "Record cash adjustment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"adjustmentMovementId\", json.data.movement.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"accountId\": \"{{cashAccountId}}\",\n  \"direction\": \"in\",\n  \"amountMinorUnits\": \"5000\",\n  \"currency\": \"USD\",\n  \"reason\": \"Sobrante de caja\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"12:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/cash/adjustments",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "cash", "adjustments"]
+            }
+          }
+        },
+        {
+          "name": "Reverse cash adjustment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"reversal points to the adjustment\", () => pm.expect(json.data.movement.reversalOfMovementId).to.eql(pm.collectionVariables.get(\"adjustmentMovementId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"reason\": \"Registrado por error\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"12:05\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/cash/movements/{{adjustmentMovementId}}/reverse",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "cash", "movements", "{{adjustmentMovementId}}", "reverse"]
+            }
+          }
+        },
+        {
+          "name": "Transfer between accounts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"two linked movements\", () => pm.expect(json.data.movements).to.have.lengthOf(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"fromAccountId\": \"{{cashAccountId}}\",\n  \"toAccountId\": \"{{bankAccountId}}\",\n  \"amountMinorUnits\": \"20000\",\n  \"currency\": \"USD\",\n  \"note\": \"Depósito\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"13:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/cash/transfers",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "cash", "transfers"]
+            }
+          }
+        },
+        {
+          "name": "Transfer rejects insufficient funds",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is CONFLICT\", () => pm.expect(json.error.code).to.eql(\"CONFLICT\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"fromAccountId\": \"{{bankAccountId}}\",\n  \"toAccountId\": \"{{cashAccountId}}\",\n  \"amountMinorUnits\": \"99999999\",\n  \"currency\": \"USD\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"13:10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/cash/transfers",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "cash", "transfers"]
+            }
+          }
+        },
+        {
+          "name": "Get cash account balance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"balance is 1000.00 - 200.00\", () => pm.expect(json.data.account.balanceMinorUnits).to.eql(\"80000\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/cash/accounts/{{cashAccountId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "cash", "accounts", "{{cashAccountId}}"]
+            }
+          }
+        },
+        {
+          "name": "List cash accounts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"both accounts are listed\", () => pm.expect(json.data.items).to.have.lengthOf(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/cash/accounts?status=active&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "cash", "accounts"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "active"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List cash movements of an account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"adjustment is in the ledger\", () => pm.expect(json.data.items.map((m) => m.id)).to.include(pm.collectionVariables.get(\"adjustmentMovementId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/cash/movements?accountId={{cashAccountId}}&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "cash", "movements"],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "{{cashAccountId}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create spare account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"spareAccountId\", json.data.account.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Caja chica\",\n  \"kind\": \"cash\",\n  \"allowNegativeBalance\": false,\n  \"currency\": \"USD\",\n  \"opening\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/cash/accounts",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "cash", "accounts"]
+            }
+          }
+        },
+        {
+          "name": "Archive spare account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"account is archived\", () => pm.expect(json.data.account.status).to.eql(\"archived\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/cash/accounts/{{spareAccountId}}/archive",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "cash", "accounts", "{{spareAccountId}}", "archive"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Expenses",
+      "description": "Paid expenses post their cash movement atomically; voiding reverses both.",
+      "item": [
+        {
+          "name": "Record expense",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"expenseId\", json.data.expense.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"accountId\": \"{{cashAccountId}}\",\n  \"category\": \"utilities\",\n  \"amountMinorUnits\": \"3500\",\n  \"currency\": \"USD\",\n  \"description\": \"Recibo de luz\",\n  \"payee\": \"CAESS\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"14:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/expenses",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "expenses"]
+            }
+          }
+        },
+        {
+          "name": "Record expense to void",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"voidExpenseId\", json.data.expense.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"accountId\": \"{{cashAccountId}}\",\n  \"category\": \"transport\",\n  \"amountMinorUnits\": \"800\",\n  \"currency\": \"USD\",\n  \"description\": \"Taxi duplicado\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"14:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/expenses",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "expenses"]
+            }
+          }
+        },
+        {
+          "name": "Void expense",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"expense is voided\", () => pm.expect(json.data.expense.status).to.eql(\"voided\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"reason\": \"Gasto duplicado\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"14:35\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/expenses/{{voidExpenseId}}/void",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "expenses", "{{voidExpenseId}}", "void"]
+            }
+          }
+        },
+        {
+          "name": "Get expense",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"amount is exact\", () => pm.expect(json.data.expense.amountMinorUnits).to.eql(\"3500\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/expenses/{{expenseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "expenses", "{{expenseId}}"]
+            }
+          }
+        },
+        {
+          "name": "List posted expenses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"only the posted expense is listed\", () => pm.expect(json.data.items.map((e) => e.id)).to.eql([pm.collectionVariables.get(\"expenseId\")]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/expenses?status=posted&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "expenses"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "posted"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Expense summary for today",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"voided expense is excluded\", () => pm.expect(json.data.summary.totalMinorUnits).to.eql(\"3500\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/expenses/summary?startLocalDate={{localDate}}&endLocalDate={{localDate}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "expenses", "summary"],
+              "query": [
+                {
+                  "key": "startLocalDate",
+                  "value": "{{localDate}}"
+                },
+                {
+                  "key": "endLocalDate",
+                  "value": "{{localDate}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Sales",
+      "description": "Total-only sales with idempotent confirmation, server-owned review, history and void/replace corrections. Amounts are integer minor units as strings (\"1250\" = $12.50).",
+      "item": [
+        {
+          "name": "Record sale",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"saleKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"saleId\", json.data.sale.id);",
+                  "pm.test(\"amount is exact\", () => pm.expect(json.data.sale.grossMinorUnits).to.eql(\"1250\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{saleKey}}\",\n  \"grossMinorUnits\": \"1250\",\n  \"description\": \"Venta de mostrador\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"09:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales"]
+            }
+          }
+        },
+        {
+          "name": "Record sale again (same key replays)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"replay is reported\", () => pm.expect(json.data.replayed).to.eql(true));",
+                  "pm.test(\"same sale is returned\", () => pm.expect(json.data.sale.id).to.eql(pm.collectionVariables.get(\"saleId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{saleKey}}\",\n  \"grossMinorUnits\": \"1250\",\n  \"description\": \"Venta de mostrador\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"09:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales"]
+            }
+          }
+        },
+        {
+          "name": "Reused key with another amount is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is IDEMPOTENCY_CONFLICT\", () => pm.expect(json.error.code).to.eql(\"IDEMPOTENCY_CONFLICT\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{saleKey}}\",\n  \"grossMinorUnits\": \"1251\",\n  \"description\": \"Venta de mostrador\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"09:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales"]
+            }
+          }
+        },
+        {
+          "name": "Record sale rejects invalid input",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is VALIDATION_ERROR\", () => pm.expect(json.error.code).to.eql(\"VALIDATION_ERROR\"));",
+                  "pm.test(\"each invalid field is reported\", () => pm.expect(json.error.details.fieldErrors).to.include.all.keys(\"idempotencyKey\", \"grossMinorUnits\", \"occurredLocalDate\", \"occurredLocalTime\"));",
+                  "pm.test(\"a client-chosen tenant is refused\", () => pm.expect(json.error.details.formErrors.join(\" \")).to.include(\"businessId\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"not-a-uuid\",\n  \"grossMinorUnits\": \"12.50\",\n  \"occurredLocalDate\": \"2026-02-30\",\n  \"occurredLocalTime\": \"9:30\",\n  \"businessId\": \"{{businessId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales"]
+            }
+          }
+        },
+        {
+          "name": "Get sale",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"sale is posted\", () => pm.expect(json.data.sale.status).to.eql(\"posted\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/{{saleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "{{saleId}}"]
+            }
+          }
+        },
+        {
+          "name": "Record sale to replace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"replaceSaleId\", json.data.sale.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"grossMinorUnits\": \"1400\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"10:15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales"]
+            }
+          }
+        },
+        {
+          "name": "Void sale",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"original sale is voided\", () => pm.expect(json.data.originalSale.status).to.eql(\"voided\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"reason\": \"Cliente devolvió el producto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/{{saleId}}/void",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "{{saleId}}", "void"]
+            }
+          }
+        },
+        {
+          "name": "Replace sale with a corrected amount",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"replacement is posted\", () => pm.expect(json.data.replacementSale.status).to.eql(\"posted\"));",
+                  "pm.test(\"replacement amount\", () => pm.expect(json.data.replacementSale.grossMinorUnits).to.eql(\"1500\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"reason\": \"Monto mal digitado\",\n  \"replacement\": {\n    \"grossMinorUnits\": \"1500\",\n    \"occurredLocalDate\": \"{{localDate}}\",\n    \"occurredLocalTime\": \"10:15\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/{{replaceSaleId}}/replace",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "{{replaceSaleId}}", "replace"]
+            }
+          }
+        },
+        {
+          "name": "Prepare sale review",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"reviewKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"reviewId\", json.data.review.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{reviewKey}}\",\n  \"grossMinorUnits\": \"990\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"11:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "review"]
+            }
+          }
+        },
+        {
+          "name": "Get open sale review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"review is open\", () => pm.expect(json.data.review.id).to.eql(pm.collectionVariables.get(\"reviewId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "review"]
+            }
+          }
+        },
+        {
+          "name": "Confirm sale review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"reviewSaleId\", json.data.sale.id);",
+                  "pm.test(\"reviewed amount is saved\", () => pm.expect(json.data.sale.grossMinorUnits).to.eql(\"990\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/review/{{reviewId}}/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "review", "{{reviewId}}", "confirm"]
+            }
+          }
+        },
+        {
+          "name": "Dismiss confirmed review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"saved sale is acknowledged\", () => pm.expect(json.data.saleId).to.eql(pm.collectionVariables.get(\"reviewSaleId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acknowledgedSaleId\": \"{{reviewSaleId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/review/{{reviewId}}/dismiss",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "review", "{{reviewId}}", "dismiss"]
+            }
+          }
+        },
+        {
+          "name": "List sales",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"history keeps all four sales\", () => pm.expect(json.data.items).to.have.lengthOf(4));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales?status=all&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "all"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List voided sales",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"both corrected originals are retained\", () => pm.expect(json.data.items).to.have.lengthOf(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales?status=voided&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "voided"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Previous month summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"summary uses business currency\", () => pm.expect(json.data.summary.currency).to.eql(\"USD\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/summary/previous-month",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "summary", "previous-month"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Customers and receivables",
+      "description": "Customers, credit charges, payments into a cash account, one-time payment reversals and voids.",
+      "item": [
+        {
+          "name": "Create customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"customerId\", json.data.customer.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"María López\",\n  \"phone\": \"+503 7000 0000\",\n  \"email\": \"maria@example.test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "customers"]
+            }
+          }
+        },
+        {
+          "name": "Create customer rejects an invalid email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is VALIDATION_ERROR\", () => pm.expect(json.error.code).to.eql(\"VALIDATION_ERROR\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Sin correo\",\n  \"email\": \"not-an-email\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "customers"]
+            }
+          }
+        },
+        {
+          "name": "Update customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"notes are saved\", () => pm.expect(json.data.customer.notes).to.eql(\"Paga los viernes\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"notes\": \"Paga los viernes\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/customers/{{customerId}}/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "customers", "{{customerId}}", "update"]
+            }
+          }
+        },
+        {
+          "name": "Search customers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"customer is found\", () => pm.expect(json.data.items.map((c) => c.id)).to.include(pm.collectionVariables.get(\"customerId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/customers?query=Mar&status=active&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "customers"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "Mar"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"customer is returned\", () => pm.expect(json.data.customer.name).to.eql(\"María López\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/customers/{{customerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "customers", "{{customerId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create receivable",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"receivableId\", json.data.receivable.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"originalMinorUnits\": \"5000\",\n  \"description\": \"Fiado de la semana\",\n  \"postedDate\": \"{{localDate}}\",\n  \"dueDate\": \"{{localDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/receivables",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "receivables"]
+            }
+          }
+        },
+        {
+          "name": "Record payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"paymentId\", json.data.payment.id);",
+                  "pm.test(\"balance drops to 30.00\", () => pm.expect(json.data.receivable.outstandingMinorUnits).to.eql(\"3000\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"amountMinorUnits\": \"2000\",\n  \"cashAccountId\": \"{{cashAccountId}}\",\n  \"reference\": \"Abono\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"15:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/receivables/{{receivableId}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "receivables", "{{receivableId}}", "payments"]
+            }
+          }
+        },
+        {
+          "name": "Payment above the balance is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is CONFLICT\", () => pm.expect(json.error.code).to.eql(\"CONFLICT\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"amountMinorUnits\": \"999999\",\n  \"cashAccountId\": \"{{cashAccountId}}\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"15:05\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/receivables/{{receivableId}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "receivables", "{{receivableId}}", "payments"]
+            }
+          }
+        },
+        {
+          "name": "Get receivable with payments",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"payment is listed\", () => pm.expect(json.data.payments).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/receivables/{{receivableId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "receivables", "{{receivableId}}"]
+            }
+          }
+        },
+        {
+          "name": "List receivables",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"receivable is listed\", () => pm.expect(json.data.items.map((r) => r.id)).to.include(pm.collectionVariables.get(\"receivableId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/receivables?state=all&customerId={{customerId}}&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "receivables"],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "all"
+                },
+                {
+                  "key": "customerId",
+                  "value": "{{customerId}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Receivables summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"outstanding total is 30.00\", () => pm.expect(json.data.summary.outstandingMinorUnits).to.eql(\"3000\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/receivables/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "receivables", "summary"]
+            }
+          }
+        },
+        {
+          "name": "Reverse payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"reversal is recorded\", () => pm.expect(json.data.payment.kind).to.eql(\"reversal\"));",
+                  "pm.test(\"balance is restored\", () => pm.expect(json.data.receivable.outstandingMinorUnits).to.eql(\"5000\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"reference\": \"Pago registrado por error\",\n  \"occurredLocalDate\": \"{{localDate}}\",\n  \"occurredLocalTime\": \"15:10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/receivable-payments/{{paymentId}}/reverse",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "receivable-payments", "{{paymentId}}", "reverse"]
+            }
+          }
+        },
+        {
+          "name": "Void receivable",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"receivable is voided\", () => pm.expect(json.data.receivable.state).to.eql(\"voided\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"reason\": \"Cargo duplicado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/receivables/{{receivableId}}/void",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "receivables", "{{receivableId}}", "void"]
+            }
+          }
+        },
+        {
+          "name": "Archive customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"customer is archived\", () => pm.expect(json.data.customer.status).to.eql(\"archived\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/customers/{{customerId}}/archive",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "customers", "{{customerId}}", "archive"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Reports",
+      "description": "Exact operating report for a business-local date range, computed in one read-only transaction.",
+      "item": [
+        {
+          "name": "Operating report for today",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"only posted sales count (15.00 + 9.90)\", () => pm.expect(json.data.report.sales.grossMinorUnits).to.eql(\"2490\"));",
+                  "pm.test(\"two posted sales\", () => pm.expect(json.data.report.sales.saleCount).to.eql(\"2\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/reports/operating?startLocalDate={{localDate}}&endLocalDate={{localDate}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "reports", "operating"],
+              "query": [
+                {
+                  "key": "startLocalDate",
+                  "value": "{{localDate}}"
+                },
+                {
+                  "key": "endLocalDate",
+                  "value": "{{localDate}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Report rejects an inverted range",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is VALIDATION_ERROR\", () => pm.expect(json.error.code).to.eql(\"VALIDATION_ERROR\"));",
+                  "pm.test(\"range error is explained\", () => pm.expect(json.error.message).to.eql(\"Operating report range is invalid\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/reports/operating?startLocalDate={{localDate}}&endLocalDate=2000-01-01",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "reports", "operating"],
+              "query": [
+                {
+                  "key": "startLocalDate",
+                  "value": "{{localDate}}"
+                },
+                {
+                  "key": "endLocalDate",
+                  "value": "2000-01-01"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 Billing (disabled locally)",
+      "description": "Billing adapters exist but BILLING_ENABLED and REVENUECAT_ENABLED are false by default; these requests assert the disabled contract.",
+      "item": [
+        {
+          "name": "Billing catalog",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"billing is disabled\", () => pm.expect(json.data.status).to.eql(\"disabled\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/billing/catalog",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "billing", "catalog"]
+            }
+          }
+        },
+        {
+          "name": "Billing state",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"billing is disabled\", () => pm.expect(json.data.status).to.eql(\"disabled\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/billing/state",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "billing", "state"]
+            }
+          }
+        },
+        {
+          "name": "Entitlements",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"scope is the business\", () => pm.expect(json.data.scope.type).to.eql(\"organization\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/billing/entitlements",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "billing", "entitlements"]
+            }
+          }
+        },
+        {
+          "name": "Checkout is disabled",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 503\", () => pm.response.to.have.status(503));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is BILLING_DISABLED\", () => pm.expect(json.error.code).to.eql(\"BILLING_DISABLED\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"pro\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/billing/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "billing", "checkout"]
+            }
+          }
+        },
+        {
+          "name": "Customer portal is disabled",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 503\", () => pm.response.to.have.status(503));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is BILLING_DISABLED\", () => pm.expect(json.error.code).to.eql(\"BILLING_DISABLED\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/billing/portal",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "billing", "portal"]
+            }
+          }
+        },
+        {
+          "name": "Polar webhook is not mounted while billing is disabled",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 404\", () => pm.response.to.have.status(404));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/polar/webhooks",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "polar", "webhooks"]
+            }
+          }
+        },
+        {
+          "name": "RevenueCat webhook is disabled",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 503\", () => pm.response.to.have.status(503));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is BILLING_DISABLED\", () => pm.expect(json.error.code).to.eql(\"BILLING_DISABLED\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer local-placeholder"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": {\n    \"type\": \"TEST\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/webhooks/revenuecat",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "webhooks", "revenuecat"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Security and error handling",
+      "description": "Negative checks: strict queries, hidden identifiers, origin policy, content type and session revocation.",
+      "item": [
+        {
+          "name": "Unknown query parameter is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is VALIDATION_ERROR\", () => pm.expect(json.error.code).to.eql(\"VALIDATION_ERROR\"));",
+                  "pm.test(\"the unknown key is named\", () => pm.expect(json.error.details.formErrors.join(\" \")).to.include(\"path\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/products?path=unexpected",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "products"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "unexpected"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Malformed record id is not found",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is NOT_FOUND\", () => pm.expect(json.error.code).to.eql(\"NOT_FOUND\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales/not-a-uuid",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales", "not-a-uuid"]
+            }
+          }
+        },
+        {
+          "name": "Unknown record id is not found",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is NOT_FOUND\", () => pm.expect(json.error.code).to.eql(\"NOT_FOUND\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/products/{{$guid}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "products", "{{$guid}}"]
+            }
+          }
+        },
+        {
+          "name": "Foreign origin cannot write",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 403\", () => pm.response.to.have.status(403));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is FORBIDDEN\", () => pm.expect(json.error.code).to.eql(\"FORBIDDEN\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "https://attacker.example"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"name\": \"Origen ajeno\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/catalog/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "catalog", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Non-JSON body is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 415\", () => pm.response.to.have.status(415));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "text/plain"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "grossMinorUnits=1250"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales"]
+            }
+          }
+        },
+        {
+          "name": "Browser preflight from the app origin is allowed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));",
+                  "pm.test(\"origin is echoed for credentials\", () => pm.expect(pm.response.headers.get(\"Access-Control-Allow-Origin\")).to.eql(pm.variables.get(\"webOrigin\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Access-Control-Request-Method",
+                "value": "POST"
+              },
+              {
+                "key": "Access-Control-Request-Headers",
+                "value": "content-type"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales"]
+            }
+          }
+        },
+        {
+          "name": "Raw organization management is not exposed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is NOT_FOUND\", () => pm.expect(json.error.code).to.eql(\"NOT_FOUND\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bypass\",\n  \"slug\": \"bypass-{{runId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/organization/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "organization", "create"]
+            }
+          }
+        },
+        {
+          "name": "Responses are not cached",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Cache-Control is no-store\", () => pm.expect(pm.response.headers.get(\"Cache-Control\")).to.include(\"no-store\"));",
+                  "// Kept to prove below that sign-out revokes the session on the server, not only in the cookie jar.",
+                  "pm.collectionVariables.set(\"signedOutSessionToken\", pm.cookies.get(\"pisto.session_token\"));",
+                  "pm.test(\"session token is captured\", () => pm.expect(pm.collectionVariables.get(\"signedOutSessionToken\")).to.be.a(\"string\").that.is.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "me"]
+            }
+          }
+        },
+        {
+          "name": "Sign out",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 200\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-out",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "sign-out"]
+            }
+          }
+        },
+        {
+          "name": "Signed-out session cookie is rejected by the server",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 401\", () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"error code is UNAUTHORIZED\", () => pm.expect(json.error.code).to.eql(\"UNAUTHORIZED\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "Cookie",
+                "value": "pisto.session_token={{signedOutSessionToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sales"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
