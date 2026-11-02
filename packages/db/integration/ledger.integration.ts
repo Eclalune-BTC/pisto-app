@@ -103,14 +103,12 @@ beforeAll(async () => {
   businessA = createdA.business.id;
   businessB = createdB.business.id;
   businessIds.push(businessA, businessB);
-  await database.db
-    .insert(member)
-    .values({
-      id: crypto.randomUUID(),
-      organizationId: businessA,
-      userId: userIds.member,
-      role: "member",
-    });
+  await database.db.insert(member).values({
+    id: crypto.randomUUID(),
+    organizationId: businessA,
+    userId: userIds.member,
+    role: "member",
+  });
   await database.db
     .update(session)
     .set({ activeOrganizationId: businessA })
@@ -249,7 +247,7 @@ beforeAll(async () => {
     description: "Recibo de luz ajeno",
     ...at(1, "09:00"),
   });
-});
+}, 30_000);
 
 afterAll(async () => {
   if (businessIds.length > 0) {
