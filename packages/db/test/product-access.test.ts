@@ -38,6 +38,8 @@ describe("Pisto business access policy", () => {
       expect(hasBusinessPermission(role, "customers:manage")).toBe(true);
       expect(hasBusinessPermission(role, "receivables:manage")).toBe(true);
       expect(hasBusinessPermission(role, "reports:read")).toBe(true);
+      expect(hasBusinessPermission(role, "purchases:read")).toBe(true);
+      expect(hasBusinessPermission(role, "purchases:manage")).toBe(true);
     }
 
     expect(hasBusinessPermission("member", "catalog:read")).toBe(true);
@@ -46,7 +48,10 @@ describe("Pisto business access policy", () => {
     expect(hasBusinessPermission("member", "catalog:manage")).toBe(false);
     expect(hasBusinessPermission("member", "expenses:read")).toBe(false);
     expect(hasBusinessPermission("member", "cash:read")).toBe(false);
-    expect(hasBusinessPermission("member", "customers:read")).toBe(false);
+    expect(hasBusinessPermission("member", "customers:read")).toBe(true);
+    expect(hasBusinessPermission("member", "customers:manage")).toBe(false);
+    expect(hasBusinessPermission("member", "purchases:read")).toBe(false);
+    expect(hasBusinessPermission("member", "purchases:manage")).toBe(false);
     expect(hasBusinessPermission("member", "receivables:read")).toBe(false);
     expect(hasBusinessPermission("member", "reports:read")).toBe(false);
   });

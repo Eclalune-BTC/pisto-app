@@ -6,6 +6,7 @@ import {
   calendarLocalDateSchema,
   currencyCodeSchema,
   currencyMinorUnitDigitsSchema,
+  entrySourceSchema,
   localTimeSchema,
   minorUnitsSchema,
   opaqueCursorSchema,
@@ -16,9 +17,11 @@ import {
   uuidSchema,
 } from "./primitives";
 
+export * from "./assistant";
 export * from "./cash";
 export * from "./catalog";
 export * from "./primitives";
+export * from "./purchases";
 export * from "./realtime";
 export * from "./receivables";
 export * from "./reports";
@@ -175,6 +178,8 @@ const businessPermissionSchema = z.enum([
   "receivables:read",
   "receivables:manage",
   "reports:read",
+  "purchases:read",
+  "purchases:manage",
   "assistant:use",
 ]);
 
@@ -217,6 +222,9 @@ export const createBusinessResponseSchema = z.object({
 
 export const saleStatusSchema = z.enum(["posted", "voided"]);
 
+/** total_only records one amount; itemized records product lines, stock, payment and credit. */
+export const saleEntryModeSchema = z.enum(["total_only", "itemized"]);
+
 export const saleCorrectionKindSchema = z.enum(["void", "replacement"]);
 
 const saleCorrectionReasonSchema = z.string().trim().min(2).max(240);
@@ -233,7 +241,7 @@ const saleCorrectionSchema = z.object({
 const saleSchema = z.object({
   id: uuidSchema,
   status: saleStatusSchema,
-  entryMode: z.literal("total_only"),
+  entryMode: saleEntryModeSchema,
   grossMinorUnits: positiveMinorUnitsSchema,
   currency: currencyCodeSchema,
   currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
@@ -325,6 +333,90 @@ export const saleCorrectionResponseSchema = z.object({
   }),
 });
 
+export const salePaymentMethodSchema = z.enum(["cash", "transfer", "card"]);
+
+const itemizedSaleLineRequestSchema = z
+  .object({
+    productId: uuidSchema,
+    /** Scaled by the product quantityPrecision, like inventory movements. */
+    quantityMinorUnits: positiveMinorUnitsSchema,
+    /** Omit to charge the product's current selling price. */
+    unitPriceMinorUnits: minorUnitsSchema.optional(),
+  })
+  .strict();
+
+/**
+ * One counter sale: product lines leave stock, `payment` enters one cash account, and any balance
+ * becomes a receivable for `customerId` due on `dueDate`. The server computes every amount.
+ */
+export const createItemizedSaleRequestSchema = z
+  .object({
+    idempotencyKey: uuidSchema,
+    occurredLocalDate: calendarLocalDateSchema,
+    occurredLocalTime: localTimeSchema,
+    description: shortRequestTextSchema.optional(),
+    customerId: uuidSchema.optional(),
+    lines: z.array(itemizedSaleLineRequestSchema).min(1).max(50),
+    payment: z
+      .object({
+        method: salePaymentMethodSchema,
+        accountId: uuidSchema,
+        receivedMinorUnits: positiveMinorUnitsSchema,
+      })
+      .strict()
+      .optional(),
+    dueDate: calendarLocalDateSchema.optional(),
+    entrySource: entrySourceSchema.default("manual"),
+  })
+  .strict();
+
+export const saleLineSchema = z.object({
+  id: uuidSchema,
+  productId: uuidSchema,
+  productName: z.string().min(1).max(120),
+  quantityMinorUnits: positiveMinorUnitsSchema,
+  quantityPrecision: z.number().int().min(0).max(3),
+  unitPriceMinorUnits: minorUnitsSchema,
+  subtotalMinorUnits: minorUnitsSchema,
+});
+
+export const saleSettlementSchema = z.object({
+  customerId: uuidSchema.nullable(),
+  customerName: z.string().min(1).max(120).nullable(),
+  paymentMethod: salePaymentMethodSchema.nullable(),
+  accountId: uuidSchema.nullable(),
+  receivedMinorUnits: minorUnitsSchema,
+  creditMinorUnits: minorUnitsSchema,
+  receivableId: uuidSchema.nullable(),
+  dueDate: calendarLocalDateSchema.nullable(),
+});
+
+export const itemizedSaleResponseSchema = z.object({
+  data: z.object({
+    sale: saleSchema,
+    lines: z.array(saleLineSchema).min(1),
+    settlement: saleSettlementSchema,
+    replayed: z.boolean(),
+  }),
+});
+
+/** Accounts a seller may choose for a payment, without balances. */
+export const saleFormOptionsResponseSchema = z
+  .object({
+    data: z
+      .object({
+        accounts: z.array(
+          z.object({
+            id: uuidSchema,
+            name: z.string().min(1).max(80),
+            kind: z.enum(["cash", "bank", "mobile_money", "other"]),
+          }),
+        ),
+      })
+      .strict(),
+  })
+  .strict();
+
 export const saleStatusFilterSchema = z.enum(["posted", "voided", "all"]);
 
 export const saleListQuerySchema = z
@@ -392,6 +484,13 @@ export type SaleCorrection = z.infer<typeof saleCorrectionSchema>;
 export type VoidSaleRequest = z.infer<typeof voidSaleRequestSchema>;
 export type ReplaceSaleRequest = z.infer<typeof replaceSaleRequestSchema>;
 export type SaleCorrectionResponse = z.infer<typeof saleCorrectionResponseSchema>;
+export type SaleEntryMode = z.infer<typeof saleEntryModeSchema>;
+export type SalePaymentMethod = z.infer<typeof salePaymentMethodSchema>;
+export type CreateItemizedSaleRequest = z.input<typeof createItemizedSaleRequestSchema>;
+export type SaleLine = z.infer<typeof saleLineSchema>;
+export type SaleSettlement = z.infer<typeof saleSettlementSchema>;
+export type ItemizedSaleResponse = z.infer<typeof itemizedSaleResponseSchema>;
+export type SaleFormOptionsResponse = z.infer<typeof saleFormOptionsResponseSchema>;
 export type SaleStatusFilter = z.infer<typeof saleStatusFilterSchema>;
 export type SaleListQuery = z.input<typeof saleListQuerySchema>;
 export type SaleList = z.infer<typeof saleListSchema>;

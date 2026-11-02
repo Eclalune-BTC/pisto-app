@@ -21,6 +21,8 @@ const rolePermissions = {
     "receivables:read",
     "receivables:manage",
     "reports:read",
+    "purchases:read",
+    "purchases:manage",
     "assistant:use",
   ],
   admin: [
@@ -42,6 +44,8 @@ const rolePermissions = {
     "receivables:read",
     "receivables:manage",
     "reports:read",
+    "purchases:read",
+    "purchases:manage",
     "assistant:use",
   ],
   member: [
@@ -51,6 +55,7 @@ const rolePermissions = {
     "sales:summary:read",
     "catalog:read",
     "inventory:read",
+    "customers:read",
     "assistant:use",
   ],
 } as const satisfies Record<BusinessRole, readonly BusinessPermission[]>;
