@@ -96,6 +96,7 @@ describe("stable query controls rendered through result transitions", () => {
         onClearCustomer: noop,
         onClearFilters: noop,
         onLoadMore: noop,
+        onRegisterPayment: noop,
         onRetry: noop,
         onStateChange: noop,
         state: { kind: "error" },

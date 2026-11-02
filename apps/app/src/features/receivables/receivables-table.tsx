@@ -2,12 +2,14 @@ import type { Receivable } from "@pisto/contracts";
 import type { Href } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CellText } from "@/components/ui/cell-text";
 import { DataTable } from "@/components/ui/data-table";
 import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
 import { Text } from "@/components/ui/text";
 import { useRecordFormat } from "@/features/customers/format";
 import { MoneyText } from "@/features/customers/money-text";
+import { initialsOf } from "@/lib/initials";
 import { useMeasuredWidth } from "@/lib/use-measured-width";
 
 import { ReceivableStateBadge } from "./receivable-state-badge";
@@ -15,11 +17,13 @@ import { ReceivableStateBadge } from "./receivable-state-badge";
 export type CustomerNameCell =
   | { kind: "loading" }
   | { kind: "unavailable" }
-  | { kind: "ready"; name: string };
+  | { kind: "ready"; name: string; phone: string | null };
 
 type ReceivableRow = { customer?: CustomerNameCell; receivable: Receivable };
 
 type ReceivablesTableProps = {
+  /** The business-local date overdue days are counted to; without it the column is left out. */
+  businessLocalDate?: string;
   caption: string;
   /** Adds the customer as the record name; the receivables of a single customer omit it. */
   customerNameFor?: (customerId: string) => CustomerNameCell;
@@ -28,16 +32,45 @@ type ReceivablesTableProps = {
   showState?: boolean;
 };
 
-function CustomerName({ customer }: { customer: CustomerNameCell | undefined }) {
+const DAY_MS = 86_400_000;
+
+/** Whole days from a due date to the business date; positive once the due date has passed. */
+export function daysPastDue(dueDate: string, businessLocalDate: string): number {
+  return Math.round(
+    (Date.parse(`${businessLocalDate}T00:00:00.000Z`) - Date.parse(`${dueDate}T00:00:00.000Z`)) /
+      DAY_MS,
+  );
+}
+
+function CustomerCell({ customer }: { customer: CustomerNameCell | undefined }) {
   const { t } = useTranslation();
-  return customer?.kind === "ready" ? (
-    <CellText maxWidth="max-w-[11rem]">{customer.name}</CellText>
-  ) : (
-    <CellText className="text-muted-foreground" maxWidth="max-w-[11rem]">
-      {customer?.kind === "loading"
-        ? t("receivables.list.customerLoading")
-        : t("receivables.list.customerUnavailable")}
-    </CellText>
+  if (customer?.kind !== "ready") {
+    return (
+      <CellText className="text-muted-foreground" maxWidth="max-w-[14rem]">
+        {customer?.kind === "loading"
+          ? t("receivables.list.customerLoading")
+          : t("receivables.list.customerUnavailable")}
+      </CellText>
+    );
+  }
+  return (
+    <View className="min-w-0 flex-row items-center gap-2.5">
+      <Avatar alt={customer.name} className="size-8">
+        <AvatarFallback className="bg-muted">
+          <Text className="font-ui text-[11px] text-muted-foreground">
+            {initialsOf(customer.name)}
+          </Text>
+        </AvatarFallback>
+      </Avatar>
+      <View className="min-w-0 shrink">
+        <CellText maxWidth="max-w-[14rem]">{customer.name}</CellText>
+        {customer.phone ? (
+          <Text className="text-xs leading-4 text-muted-foreground tabular-nums" numberOfLines={1}>
+            {customer.phone}
+          </Text>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -49,7 +82,34 @@ function DateText({ value }: { value: string }) {
   );
 }
 
+function LateDays({
+  businessLocalDate,
+  receivable,
+}: {
+  businessLocalDate: string;
+  receivable: Receivable;
+}) {
+  const { t } = useTranslation();
+  if (receivable.state !== "overdue" || !receivable.dueDate) {
+    return (
+      <Text
+        accessibilityLabel={t("receivables.list.notLate")}
+        className="text-[13px] text-muted-foreground"
+      >
+        —
+      </Text>
+    );
+  }
+  const days = daysPastDue(receivable.dueDate, businessLocalDate);
+  return (
+    <Text className="text-[13px] tabular-nums" numberOfLines={1}>
+      {t("receivables.list.lateDays", { count: days })}
+    </Text>
+  );
+}
+
 export function ReceivablesTable({
+  businessLocalDate,
   caption,
   customerNameFor,
   items,
@@ -59,33 +119,26 @@ export function ReceivablesTable({
   const format = useRecordFormat();
   const { onLayout, width } = useMeasuredWidth();
   const withCustomer = customerNameFor !== undefined;
-  const money = ({ receivable }: ReceivableRow, minorUnits: string) => (
-    <MoneyText
-      currency={receivable.currency}
-      digits={receivable.currencyMinorUnitDigits}
-      minorUnits={minorUnits}
-    />
-  );
   const entries: FittedColumn<ReceivableRow>[] = [
     ...(withCustomer
       ? [
           {
-            estimate: 200,
+            estimate: 240,
             column: {
               id: "customer",
               header: t("dataTable.columns.customer"),
               meta: { primary: true },
-              cell: ({ row: { original } }) => <CustomerName customer={original.customer} />,
+              cell: ({ row: { original } }) => <CustomerCell customer={original.customer} />,
             },
           } satisfies FittedColumn<ReceivableRow>,
         ]
       : []),
     {
-      estimate: withCustomer ? 216 : 280,
-      dropRank: withCustomer ? 2 : undefined,
+      estimate: withCustomer ? 200 : 280,
+      dropRank: withCustomer ? 1 : undefined,
       column: {
         id: "description",
-        header: t("dataTable.columns.description"),
+        header: t("receivables.columns.concept"),
         meta: withCustomer ? undefined : { primary: true },
         cell: ({ row: { original } }) => (
           <CellText
@@ -97,24 +150,22 @@ export function ReceivablesTable({
         ),
       },
     },
-    ...(withCustomer
-      ? []
-      : [
-          {
-            estimate: 114,
-            dropRank: 1,
-            only: "table",
-            column: {
-              id: "posted",
-              header: t("dataTable.columns.date"),
-              cell: ({ row: { original } }) => (
-                <DateText value={format.date(original.receivable.postedDate)} />
-              ),
-            },
-          } satisfies FittedColumn<ReceivableRow>,
-        ]),
     {
-      estimate: 114,
+      estimate: 116,
+      dropRank: 2,
+      only: "table",
+      column: {
+        id: "posted",
+        header: t("receivables.columns.since"),
+        cell: ({ row: { original } }) => (
+          <DateText value={format.date(original.receivable.postedDate)} />
+        ),
+      },
+    },
+    {
+      estimate: 116,
+      dropRank: 0,
+      only: "table",
       column: {
         id: "due",
         header: t("receivables.columns.due"),
@@ -131,10 +182,26 @@ export function ReceivablesTable({
           ),
       },
     },
+    ...(businessLocalDate
+      ? [
+          {
+            estimate: 96,
+            dropRank: 3,
+            only: "table",
+            column: {
+              id: "late",
+              header: t("receivables.columns.late"),
+              cell: ({ row: { original } }) => (
+                <LateDays businessLocalDate={businessLocalDate} receivable={original.receivable} />
+              ),
+            },
+          } satisfies FittedColumn<ReceivableRow>,
+        ]
+      : []),
     ...(showState
       ? [
           {
-            estimate: 90,
+            estimate: 96,
             column: {
               id: "state",
               header: t("dataTable.columns.status"),
@@ -147,34 +214,18 @@ export function ReceivablesTable({
       : []),
     // The amount still owed is the only figure of a compact record.
     {
-      estimate: 96,
-      dropRank: withCustomer ? 1 : 2,
-      only: "table",
-      column: {
-        id: "amount",
-        header: t("dataTable.columns.amount"),
-        meta: { align: "end" },
-        cell: ({ row: { original } }) => money(original, original.receivable.originalMinorUnits),
-      },
-    },
-    {
-      estimate: 96,
-      dropRank: 0,
-      only: "table",
-      column: {
-        id: "paid",
-        header: t("receivables.columns.paid"),
-        meta: { align: "end" },
-        cell: ({ row: { original } }) => money(original, original.receivable.paidMinorUnits),
-      },
-    },
-    {
-      estimate: 96,
+      estimate: 104,
       column: {
         id: "outstanding",
-        header: t("dataTable.columns.outstanding"),
+        header: t("receivables.columns.balance"),
         meta: { align: "end" },
-        cell: ({ row: { original } }) => money(original, original.receivable.outstandingMinorUnits),
+        cell: ({ row: { original } }) => (
+          <MoneyText
+            currency={original.receivable.currency}
+            digits={original.receivable.currencyMinorUnitDigits}
+            minorUnits={original.receivable.outstandingMinorUnits}
+          />
+        ),
       },
     },
   ];

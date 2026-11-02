@@ -43,6 +43,9 @@ vi.mock("@/features/customers/access", () => ({
 }));
 vi.mock("@/components/route-state", () => ({ RouteState: () => null }));
 vi.mock("@/features/customers/customer-picker", () => ({ CustomerPickerDialog: () => null }));
+vi.mock("@/features/receivables/receivable-payment-sheet", () => ({
+  ReceivablePaymentSheet: () => null,
+}));
 vi.mock("@/features/customers/queries", () => ({
   customerDetailQueryOptions: () => ({ read: "customer" }),
   customersQueryOptions: (_businessId: string, filters: unknown) => {

@@ -17,15 +17,18 @@ import {
   receivablesQueryOptions,
   receivablesSummaryQueryOptions,
 } from "@/features/receivables/queries";
+import { ReceivablePaymentSheet } from "@/features/receivables/receivable-payment-sheet";
 import { ReceivablesScreen } from "@/features/receivables/receivables-screen";
 import type { CustomerNameCell } from "@/features/receivables/receivables-table";
 import type { ReceivablesLoadState } from "@/features/receivables/types";
 import { readFailureKind } from "@/lib/query-state";
 
 function customerName(
-  query: ReadQuery & { data?: { customer: { name: string } } },
+  query: ReadQuery & { data?: { customer: { name: string; phone: string | null } } },
 ): CustomerNameCell {
-  if (query.data) return { kind: "ready", name: query.data.customer.name };
+  if (query.data) {
+    return { kind: "ready", name: query.data.customer.name, phone: query.data.customer.phone };
+  }
   return query.isPending && query.fetchStatus !== "paused"
     ? { kind: "loading" }
     : { kind: "unavailable" };
@@ -37,7 +40,9 @@ export default function ReceivablesRoute() {
     useLocalSearchParams<{ customerId?: string; state?: string }>(),
   );
   const access = useCapabilityAccess("receivables:read", "receivables:manage");
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // The customer picker either narrows the list or chooses who is paying.
+  const [picker, setPicker] = useState<"filter" | "payment" | null>(null);
+  const [payingCustomerId, setPayingCustomerId] = useState<string | null>(null);
   const customerFilterRef = useRef<View>(null);
   const businessId = access.business?.id;
   const enabled = Boolean(access.business && access.canRead);
@@ -117,10 +122,14 @@ export default function ReceivablesRoute() {
           return query ? customerName(query) : { kind: "unavailable" };
         }}
         filters={filters}
-        onChooseCustomer={() => setPickerOpen(true)}
+        onChooseCustomer={() => setPicker("filter")}
         onClearCustomer={() => setFilters({ ...filters, customerId: undefined })}
         onClearFilters={() => setFilters({ state: "all" })}
         onLoadMore={() => void list.fetchNextPage()}
+        onRegisterPayment={() => {
+          if (filters.customerId) setPayingCustomerId(filters.customerId);
+          else setPicker("payment");
+        }}
         onRetry={() => {
           void access.refetch();
           void list.refetch();
@@ -134,12 +143,29 @@ export default function ReceivablesRoute() {
         businessId={access.business.id}
         // Choosing a filter from cached names only narrows a read; it sends no command.
         freshChoiceOnly={false}
-        onOpenChange={setPickerOpen}
+        onOpenChange={(open) => setPicker(open ? "filter" : null)}
         onSelect={(customer) => setFilters({ ...filters, customerId: customer.id })}
-        open={pickerOpen}
+        open={picker === "filter"}
         returnFocusRef={customerFilterRef}
         selectedId={filters.customerId ?? null}
         status="all"
+      />
+      <CustomerPickerDialog
+        businessId={access.business.id}
+        // The payment itself is reviewed against a fresh read of the chosen customer's receivable.
+        freshChoiceOnly={false}
+        onOpenChange={(open) => setPicker(open ? "payment" : null)}
+        onSelect={(customer) => setPayingCustomerId(customer.id)}
+        open={picker === "payment"}
+        selectedId={null}
+        status="active"
+      />
+      <ReceivablePaymentSheet
+        customerId={payingCustomerId ?? undefined}
+        onOpenChange={(open) => {
+          if (!open) setPayingCustomerId(null);
+        }}
+        open={payingCustomerId !== null}
       />
     </>
   );
