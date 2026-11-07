@@ -6,16 +6,20 @@ COPY package.json bun.lock bunfig.toml ./
 COPY patches ./patches
 COPY apps/api/package.json ./apps/api/package.json
 COPY apps/app/package.json ./apps/app/package.json
+COPY packages/assistant/package.json ./packages/assistant/package.json
 COPY packages/auth/package.json ./packages/auth/package.json
 COPY packages/billing/package.json ./packages/billing/package.json
+COPY packages/config/package.json ./packages/config/package.json
 COPY packages/contracts/package.json ./packages/contracts/package.json
 COPY packages/db/package.json ./packages/db/package.json
 
 RUN bun install --frozen-lockfile --production
 
 COPY apps/api/src ./apps/api/src
+COPY packages/assistant/src ./packages/assistant/src
 COPY packages/auth/src ./packages/auth/src
 COPY packages/billing/src ./packages/billing/src
+COPY packages/config/src ./packages/config/src
 COPY packages/contracts/src ./packages/contracts/src
 COPY packages/db/src ./packages/db/src
 COPY packages/db/migrations ./packages/db/migrations
