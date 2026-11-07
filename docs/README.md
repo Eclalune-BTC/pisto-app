@@ -40,6 +40,7 @@ submission still requires separate approval.
 | HTTP, sessions or permissions | [Elysia API](api-elysia.md), [authentication](authentication.md), [security](security.md) |
 | Billing | [Entitlements](billing-entitlements.md), [billing package](../packages/billing/README.md) |
 | Tooling, local runtime or dependencies | [CLI](cli-workflow.md), [local runtime](local-runtime.md), [upgrades](versioning-upgrades.md) |
+| UFG course phases and their documents | [Course project](course-project.md), [Fase 3 evidence](fase3-entrega.md) |
 | New capability or architecture change | [Product requirements](product-requirements.md), [capability composition](product-capability-architecture.md), [engineering workflow](engineering-workflow.md), relevant [ADRs](adrs/README.md) |
 
 For material work, follow [the engineering workflow](engineering-workflow.md). Use

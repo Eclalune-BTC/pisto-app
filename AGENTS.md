@@ -36,6 +36,9 @@
 ## Engineering rules
 
 - Use English for source code, comments, command output, errors, and documentation.
+- Comment only a non-obvious why. No history notes ("fixed", "now uses", "previously", "moved
+  from"), restated code, commented-out code or TODOs. Do not keep compatibility shims, deprecated
+  aliases or re-exports for old callers; update the callers.
 - Follow the proportional research and review contract in `docs/engineering-workflow.md`.
 - Research primary, current sources before deciding anything version-sensitive, security-sensitive,
   provider-specific, policy-dependent, unfamiliar, or architectural when it depends on an external

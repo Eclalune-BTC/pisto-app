@@ -87,4 +87,10 @@ are pinned in `packages/assistant/src/models.ts` ([ADR 0021](adrs/0021-workers-a
 `BETTER_AUTH_SECRET` and a `DATABASE_URL` (use `127.0.0.1`, not `localhost`, for a local
 PostgreSQL). The AI binding is always remote: `wrangler dev` calls the real models and spends the
 account's Workers AI allocation. The pinned compatibility date needs a current wrangler (4.81 is
-too old).
+too old), so run `npx -y wrangler@latest dev --port 8787 --ip 127.0.0.1`.
+
+To use the web app against the local Worker, export it with `EXPO_PUBLIC_API_URL=http://localhost:8787`
+and without `APP_VARIANT=production` (the production variant refuses a non-HTTPS API origin), then
+restart `wrangler dev`: it keeps serving the previous `dist` and answers 404 for the new assets. A
+stale `workerd` process from an earlier run can still hold port 8787. Export again with the
+production command above before any `wrangler deploy`.
