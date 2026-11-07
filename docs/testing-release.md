@@ -34,7 +34,7 @@ The root `check` runs Biome, the documentation validator, all CLI/docs script te
 typechecks/tests, and workspace builds including the Expo web export. An export bundles route modules;
 it does not render or exercise them in a browser or on a device and does not publish anything.
 Database integration, dependency audit, and schema checks remain explicit commands above.
-`audit:ci` allows only the four reviewed transitive
+`audit:ci` allows only the reviewed transitive
 toolchain advisories registered in [Security](security.md#dependency-audit-snapshot) and fails on an
 additional advisory. A release records exact command output, commit, Bun/Node versions, and artifact
 digest/build IDs.
@@ -52,6 +52,7 @@ digest/build IDs.
 | Assistant orchestration | Tool schemas, loop bounds, approvals, denial, timeout, cancellation, duplicate continuation | AI SDK mock model; no live provider required |
 | Model semantic evaluation | Spanish extraction, clarification, tool choice, abstention, injection resistance, revenue/profit language | Versioned dataset against each pinned provider/model candidate |
 | App component/navigation | Loading/error/auth routing, accessibility, platform adapter selection | React Native/Expo test tooling |
+| End to end | Real browser against the web export, the API and a seeded PostgreSQL database | `bun run test:e2e` (Playwright) |
 | Voice acceptance | Permission, recording bounds, audio formats, editable transcript, cancellation/deletion/failure | Web plus physical iOS/Android devices and provider sandbox |
 | Native purchase acceptance | Real store sandbox purchase/restore lifecycle | Physical iOS/Android development/preview build |
 | Deployment smoke | Container contract, DB connection, secrets, IAM, health, rollback | Isolated candidate on a separately approved host |
@@ -174,14 +175,32 @@ The included `.github/workflows/ci.yml` currently:
 5. applies committed migrations and runs the database repository integration suites against the
    PostgreSQL 18 service, including billing webhook integration tests, through `bun run test:integration`;
 6. runs `bun run audit:ci` to reject advisories outside the reviewed exception set;
-7. runs `db:check`, `auth:schema:check`, credential-free release-script tests, and Bash syntax checks;
+7. runs `db:check` and `auth:schema:check`;
 8. builds the portable API Docker image, replays bundled migrations, and checks readiness, liveness,
-   unauthenticated denial, injected `PORT`, and successful bounded shutdown in the actual container.
+   unauthenticated denial, injected `PORT`, and successful bounded shutdown in the actual container;
+9. in a separate job, runs the Playwright end-to-end suite and uploads its report on failure.
+
+## End-to-end tests
+
+`bun run test:e2e` runs Playwright (`playwright.config.ts`, specs in `e2e/`) against a real stack:
+
+- the API on `127.0.0.1:3101` with a random auth secret per run;
+- the web export built with `--clear` for that API origin and served on `127.0.0.1:8181`;
+- a disposable database named in `E2E_DATABASE_URL`, which must end in `_e2e`. Global setup applies
+  the migrations and loads the demo seed.
+
+The setup project signs in once per role and saves the session, so the suite stays inside the
+sign-in rate limit. Specs cover the owner's home, an itemized cash sale and its stock effect, and the
+seller's navigation and server-side report denial. Locally:
+
+```sh
+docker exec pisto-stack-postgres-1 psql -U pisto -d postgres -c "create database pisto_e2e"
+npx playwright install chromium
+E2E_DATABASE_URL=postgresql://pisto:<password>@localhost:5432/pisto_e2e bun run test:e2e
+```
 
 It does **not** currently run `doctor`, an image vulnerability scan, a previous-schema upgrade fixture,
 a live provider test, or an Expo native preview build. Those are not implied by a green CI workflow.
-The retained `infra/gcp` shell tests use a fake provider command. They validate local safeguards, not
-provider compatibility, deployment permission or an active cloud architecture.
 
 A protected production promotion gate should additionally:
 

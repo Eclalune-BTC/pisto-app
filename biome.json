@@ -16,7 +16,10 @@
       "!!**/drizzle",
       "!!**/migrations/meta",
       "!!**/expo-env.d.ts",
-      "!!**/.generated"
+      "!!**/.generated",
+      "!!**/e2e/.auth",
+      "!!**/playwright-report",
+      "!!**/test-results"
     ]
   },
   "formatter": {
