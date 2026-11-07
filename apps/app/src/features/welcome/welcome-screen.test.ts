@@ -91,7 +91,6 @@ describe("public product page", () => {
       expect(markup).toContain(i18n.t(`welcome.roles.trust.${point}.description`));
     }
     expect(markup).toContain(i18n.t("welcome.roles.scope.description"));
-    expect(markup).not.toMatch(/Universidad|Francisco Gavidia|UFG|Proyecto de Aplicación/);
   });
 
   test("labels every illustration as an example and marks it as a figure", () => {

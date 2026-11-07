@@ -1,7 +1,6 @@
 /**
- * Versioned Spanish evaluation set for `assistant.extract`. Sentences come from the Phase 2
- * prototypes and from the demo business seed (scripts/seed.ts), so names and prices resolve
- * against real records. `expect` is a partial interpretation; a RegExp leaf matches a string.
+ * Versioned Spanish evaluation set for `assistant.extract`. Sentences use the demo business seed
+ * (scripts/seed.ts), so names and prices resolve against real records. `expect` is a partial interpretation; a RegExp leaf matches a string.
  */
 export const evaluationSetVersion = "2026-11-02.1";
 

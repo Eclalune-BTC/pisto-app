@@ -13,10 +13,14 @@ The product interface is Spanish (`es-SV`); code, commits and documentation are 
 | --- | --- |
 | **Live demo** | <https://pisto.contact-862.workers.dev> (Cloudflare Workers + Neon PostgreSQL + Workers AI) |
 | **Health check** | <https://pisto.contact-862.workers.dev/ready> |
-| **Source** | <https://github.com/Eclalune-BTC/pisto-app> (`main` = delivered, `develop` = integration) |
+| **Source** | <https://github.com/Eclalune-BTC/pisto-app> (`main` stable, `develop` integration) |
 | **API collection** | [`docs/postman`](docs/postman) (Postman or Bruno, local and hosted environments) |
-| **Phase 3 delivery** | [`docs/fase3-entrega.md`](docs/fase3-entrega.md): every requirement of the UFG Fase 3 guide mapped to its evidence |
-| **Agile board** | <https://trello.com/b/PoTcegqU/sistema-financiero-mypes-product-backlog-y-sprint-1> |
+
+![Pisto home on desktop and phone: available money, today's movements, receivables and the assistant entry](docs/screenshots/home.jpg)
+
+| Recording a sale | Reviewing a dictated sentence | Reports |
+| --- | --- | --- |
+| ![New sale form](docs/screenshots/sale-new.jpg) | ![Assistant review of a dictated sale](docs/screenshots/assistant-review.jpg) | ![Reports](docs/screenshots/reports.jpg) |
 
 ## Demo accounts and roles
 
@@ -160,7 +164,7 @@ runs the same API against Neon PostgreSQL with a least-privilege role. The proce
 
 ## Branching
 
-- `main`: delivered versions only.
+- `main`: stable releases.
 - `develop`: integration branch; every change arrives through a merge commit.
 - `feature/<name>` for product work and `docs/<name>` for documentation, branched from `develop`
   and merged back with `git merge --no-ff`.
@@ -258,4 +262,4 @@ disabled until a provider sandbox is configured.
 
 ## License
 
-No project license has been selected. Add one before distributing the project outside the team.
+No license has been granted yet, so all rights are reserved by default.

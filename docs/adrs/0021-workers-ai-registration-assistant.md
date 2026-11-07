@@ -10,11 +10,11 @@
 
 ## Context
 
-The Phase 2 design (CU01, HU-04, prototypes 11-13) asks for one job: the user says or types one
+The product design (CU01, HU-04) asks for one job: the user says or types one
 sentence ("Le vendí a don Carlos tres libras de café, me dio cinco dólares y el resto me lo quedó
 debiendo"), Pisto shows how the record would look, the user corrects it and saves it through the
 record's normal command. The hosted demo runs on Cloudflare Workers ([ADR 0020](0020-cloudflare-workers-neon-hosting.md)),
-and the owner chose Cloudflare Workers AI as the provider.
+and Cloudflare Workers AI was chosen as the provider.
 
 This job needs one structured extraction and one batch transcription per request. It needs no
 streaming, tool loop, approval protocol or conversation state: the draft is never a mutation, and

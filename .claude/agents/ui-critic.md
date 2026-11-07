@@ -15,7 +15,7 @@ anti-slop list, lessons) and skim `docs/design-system.md`.
 1. Use the isolated review environment only: web at `http://localhost:8095`, API at
    `http://localhost:3025`, disposable database `pisto_ui_review`. Sign in as the review account
    given by the lead. If the pages do not load, report that and stop; do not point anything at the
-   owner's database or servers on ports 3015/8090.
+   developer's own database or servers.
 2. For each route you were given: capture 1440 and 390 px (add 768 when layout changes there),
    in light and dark (`emulate colorScheme`). Exercise the states you can reach: loading (throttle
    the network), empty, populated, validation error, open menus/dialogs/sheets, keyboard focus.

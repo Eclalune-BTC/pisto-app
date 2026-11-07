@@ -7,8 +7,8 @@
 ## Decision
 
 Run Expo, the Bun/Elysia API and PostgreSQL 18 locally. Use the existing postgres-js driver, Drizzle
-schema and standard SQL migrations. GitHub source synchronization is authorized by the owner; it
-does not authorize cloud provisioning, hosted deployment, provider activation or store submission.
+schema and standard SQL migrations. Cloud provisioning, hosted deployment, provider activation and store submission are separate
+decisions.
 Hosting remains undecided. Do not use retained remote credentials for local startup or tests.
 
 Neon is an optional future database preference, not a selected runtime dependency. A future database

@@ -1,9 +1,7 @@
 # Getting started
 
-Use [Existing Windows workspace](#existing-windows-workspace) for the configured desktop checkout.
-Use [First checkout](#first-checkout) only for a new clone. They use different ports and Compose
-project names. Technical notes and commit messages are written in English; the product's approved
-Spanish interface remains in `apps/app/src/i18n/resources/es-SV.ts`.
+Technical notes and commit messages are written in English; the product's Spanish interface lives
+in `apps/app/src/i18n/resources/es-SV.ts`.
 
 ## Prerequisites
 
@@ -20,74 +18,9 @@ Spanish interface remains in `apps/app/src/i18n/resources/es-SV.ts`.
 The baseline does not require Polar, RevenueCat, Apple, Google Play, or Google Cloud credentials to
 run with billing disabled.
 
-## Existing Windows workspace
-
-Checked on 2026-09-26 for `C:\Users\wilme\OneDrive\Escritorio\pisto`:
-
-| Component | Configured value |
-| --- | --- |
-| Database | PostgreSQL 18, `localhost:55438`, database `pisto` |
-| Compose project / container | `pisto-audit` / `pisto-audit-postgres-1` |
-| API and Better Auth | `http://localhost:3015` |
-| Expo web / allowed browser origin | `http://localhost:8090` |
-| Server environment | Root `.env`, with billing disabled |
-| Client environment | `apps/app/.env.local` |
-
-The system `bun` was 1.3.14, which is older than this repository requires. This checkout already has
-the pinned 1.4.0 executable in its ignored tooling cache. Select it in each PowerShell terminal;
-this does not change the global toolchain or another project. On another machine, install the pinned
-Bun normally rather than relying on this machine-specific cache path.
-
-### Terminal 1: database and API
-
-Start Docker Desktop first. Then, from the project root:
-
-```powershell
-Set-Location 'C:\Users\wilme\OneDrive\Escritorio\pisto'
-$env:PATH = (Resolve-Path '.cache/tooling/bun-1.4.0/bun-windows-x64').Path + ';' + $env:PATH
-bun --version
-node --version
-docker compose -p pisto-audit ps
-```
-
-Expected tool versions are Bun 1.4.0 and Node 24.19.0. If the existing PostgreSQL service is stopped,
-start that same service, without creating a different Compose project or database volume:
-
-```powershell
-docker compose -p pisto-audit start postgres
-```
-
-If the container does not exist, stop and reconcile the configured database/volume before using the
-fresh-checkout instructions. Other Pisto/Supabase containers on this machine are not this app's
-configured database. Do not stop them or replace them to free a port.
-
-Start the API and leave the terminal running:
-
-```powershell
-bun run dev:api
-```
-
-### Terminal 2: Expo web
-
-```powershell
-Set-Location 'C:\Users\wilme\OneDrive\Escritorio\pisto'
-$env:PATH = (Resolve-Path '.cache/tooling/bun-1.4.0/bun-windows-x64').Path + ';' + $env:PATH
-bun run --cwd apps/app web --port 8090
-```
-
-Open `http://localhost:8090`. API diagnostics are `http://localhost:3015/health` and
-`http://localhost:3015/ready`. `/health` proves the process responds; `/ready` also checks the
-configured database. Check whether the intended ports already have a running Pisto instance before
-starting another one. Do not silently accept a different Expo port without aligning browser origins.
-
-Setup and migrations are not required on every launch. The prior recovery delivery applied migration
-`0006` to this local database. Apply later committed migrations only after checking the target and
-taking an appropriate private backup. Starting the API does not apply database migrations.
-
 ## First checkout
 
-This path uses the template defaults, not the configured Windows project above. Run commands from
-the repository root:
+Run commands from the repository root:
 
 ```sh
 bun install --frozen-lockfile
@@ -168,16 +101,16 @@ There are two connections: the device downloads JavaScript from Metro and separa
 Elysia API. A working QR code does not prove the API is reachable. Docker/PostgreSQL stays on the
 computer; never expose its port or put its credentials in the app.
 
-| Client | API address for the configured Windows workspace |
+| Client | API address with the default port |
 | --- | --- |
-| Browser on the same PC | `http://localhost:3015` |
-| Standard Android Studio emulator on that PC | `http://10.0.2.2:3015` |
-| Physical phone on the same trusted LAN | `http://<PC-LAN-IP>:3015`, with the actual IP substituted |
+| Browser on the same PC | `http://localhost:3001` |
+| Standard Android Studio emulator on that PC | `http://10.0.2.2:3001` |
+| Physical phone on the same trusted LAN | `http://<PC-LAN-IP>:3001`, with the actual IP substituted |
 
 Before using a phone, set `EXPO_PUBLIC_API_URL` in the private app environment to its reachable API
 origin. Keep the server's `BETTER_AUTH_URL` aligned with the chosen reachable auth origin, retain
 `EXPO_SCHEME=pisto`, and keep exact browser `CORS_ORIGINS`/`TRUSTED_ORIGINS` for any browser used in
-that session. The actual API config currently binds `0.0.0.0:3015`; restrict firewall permission to
+that session. The default API config binds `0.0.0.0:3001`; restrict firewall permission to
 the intended private network and development process. Do not disable the firewall or expose the
 service publicly. HTTP LAN testing is for trusted development only; release requires HTTPS.
 
@@ -185,7 +118,7 @@ Check `/health` and `/ready` from the phone's browser before debugging applicati
 Restart the API after server environment changes and restart/reload Metro after client environment
 changes. The configured `localhost` client URL cannot reach the PC from a physical phone. An Expo
 tunnel changes how Metro is reached; it does not automatically tunnel the separately running API.
-Return to the documented desktop URLs when ending a temporary LAN session.
+Return to the `localhost` URLs when ending a temporary LAN session.
 
 ## Expo Go preview
 
@@ -196,9 +129,8 @@ and run the [dependency checks](frontend-expo-ui.md#dependency-checks) before de
 
 After the API is running and phone networking is configured, start Metro from `apps/app`:
 
-```powershell
-Set-Location 'C:\Users\wilme\OneDrive\Escritorio\pisto\apps\app'
-node ../../node_modules/expo/bin/cli start --go --lan --port 8090
+```sh
+node ../../node_modules/expo/bin/cli start --go --lan
 ```
 
 Use this instead of a second Metro process on the same port. Open its QR code with a compatible
@@ -215,8 +147,7 @@ accepted through a preview alone.
 
 A custom development build is useful for ongoing Android/iOS work and app-specific native behavior.
 The repository has an EAS development profile but has not installed `expo-dev-client`; that profile
-alone is not a built or installed app. The following is a one-time setup procedure, not work already
-executed by this documentation update.
+alone is not a built or installed app. The following is a one-time setup procedure.
 
 Resolve the current Expo compatibility findings, review any manifest/lockfile changes, and set
 up the platform toolchain first. In `apps/app`, with the pinned Bun on PATH:
@@ -236,7 +167,7 @@ For later JavaScript, TypeScript and ordinary style changes, start Metro without
 native binary:
 
 ```sh
-node ../../node_modules/expo/bin/cli start --dev-client --port 8090
+node ../../node_modules/expo/bin/cli start --dev-client
 ```
 
 Changes to native dependencies, the Expo SDK, schemes, permissions or relevant app configuration
@@ -337,13 +268,7 @@ run it again. The diagnostic does not start Docker for you.
 
 ## Stop local work
 
-Use Ctrl+C in the API and Expo terminals. To stop only the configured desktop database:
-
-```sh
-docker compose -p pisto-audit stop postgres
-```
-
-For a fresh checkout using the default project instead:
+Use Ctrl+C in the API and Expo terminals. To stop the database:
 
 ```sh
 docker compose stop postgres

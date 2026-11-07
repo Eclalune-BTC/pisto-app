@@ -17,11 +17,8 @@ is in [the frontend guide](../../docs/frontend-expo-ui.md#expo-go-versus-a-devel
 
 ## Setup
 
-For the already configured desktop checkout, use the
-[Windows startup instructions](../../docs/getting-started.md#existing-windows-workspace) rather
-than starting a second database with the default Compose project.
-
-For a fresh checkout, install the monorepo once from its root:
+The full procedure is in [getting started](../../docs/getting-started.md). Install the monorepo once
+from its root:
 
 ```bash
 bun install --frozen-lockfile

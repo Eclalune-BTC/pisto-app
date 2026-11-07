@@ -198,8 +198,8 @@ qualification.
 
 ## Runtime topology
 
-Local Expo and Bun/Elysia processes use Docker PostgreSQL. The configured desktop ports and fresh
-checkout workflow are in [getting started](getting-started.md). Source publication to GitHub is
+Local Expo and Bun/Elysia processes use Docker PostgreSQL. Default ports and the local
+workflow are in [getting started](getting-started.md). Source publication to GitHub is
 separate from cloud provisioning, hosting or store submission; none is implied by a source push.
 
 The portable API container and Expo web export are separate artifacts. Secrets stay in private

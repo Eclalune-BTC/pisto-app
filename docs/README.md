@@ -40,12 +40,11 @@ submission still requires separate approval.
 | HTTP, sessions or permissions | [Elysia API](api-elysia.md), [authentication](authentication.md), [security](security.md) |
 | Billing | [Entitlements](billing-entitlements.md), [billing package](../packages/billing/README.md) |
 | Tooling, local runtime or dependencies | [CLI](cli-workflow.md), [local runtime](local-runtime.md), [upgrades](versioning-upgrades.md) |
-| UFG course phases and their documents | [Course project](course-project.md), [Fase 3 evidence](fase3-entrega.md) |
 | New capability or architecture change | [Product requirements](product-requirements.md), [capability composition](product-capability-architecture.md), [engineering workflow](engineering-workflow.md), relevant [ADRs](adrs/README.md) |
 
 For material work, follow [the engineering workflow](engineering-workflow.md). Use
 [the feature assignment template](agent-feature-prompt.md) when an assignment needs explicit
-acceptance and ownership. These are reusable instructions, not a stale next-session work order.
+acceptance and ownership.
 
 ## Approved future work, not current implementation
 
@@ -60,14 +59,10 @@ do not recreate implemented sales history, reports, request budgets or new-sale 
 
 ## Documentation maintenance
 
-Keep one current explanation per concern. Update its owner guide when implementation changes and
-link to it instead of copying another status matrix or task transcript. Retire superseded manuals
-and completed handoffs from the working tree; Git preserves history. Do not keep an archive folder
-that a new agent will mistake for active instructions. Retain active security rules, migration
-invariants, acceptance gaps and relevant primary sources.
-
-Generated output, ignored caches/backups and retired worktrees are not sources of current project
-instructions. Read the active branch's guides rather than restoring their obsolete copies.
+Keep one current explanation per concern. Update its guide when implementation changes and link to
+it instead of copying another status matrix. Remove superseded manuals rather than archiving them;
+Git preserves history. Retain active security rules, migration invariants, acceptance gaps and
+relevant primary sources.
 
 [The source index](source-index.md) identifies external references and recheck triggers, not proof of
 installed versions or deployed behavior. Source code, the lockfile and direct validation establish

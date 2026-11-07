@@ -470,9 +470,9 @@ Do not disable origin checks or change the app scheme merely to run Expo Go. Rec
 plugin behavior whenever Better Auth changes.
 
 Thus the stack does not rule out an Expo Go preview of Pisto. It still needs a compatible Expo Go
-binary, a phone-reachable API URL and a real sign-in/session test. The configured desktop URL uses
+binary, a phone-reachable API URL and a real sign-in/session test. The default local API URL uses
 `localhost`, which points to the phone itself when used on a physical device. No physical-device or
-Expo Go session has been accepted by this documentation review. Follow
+Expo Go session has been accepted yet. Follow
 [device networking and startup](getting-started.md#phone-and-emulator-networking).
 
 `eas.json` contains a development profile, but `expo-dev-client` is not installed and no development

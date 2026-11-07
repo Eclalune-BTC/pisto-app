@@ -23,8 +23,7 @@ the mounted screen. A total-only sale does not implicitly affect cash or stock.
 
 ## Work selection
 
-The owner's current request selects the task. Do not resume an old agent assignment or branch based
-on a dated handoff. For each new capability, settle the user outcome, actor/permission, authoritative
+The current request selects the task. For each new capability, settle the user outcome, actor/permission, authoritative
 data, confirmation/correction rules, failure states, platform requirements and acceptance before code.
 Use [capability composition](product-capability-architecture.md) and
 [the engineering workflow](engineering-workflow.md) for material changes.

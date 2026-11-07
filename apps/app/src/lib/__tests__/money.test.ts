@@ -104,8 +104,8 @@ describe("money parsing", () => {
   });
 
   test("rejects a group separator instead of silently reading it as a decimal point", () => {
-    // "1,500" at a three-digit exponent used to return 1500 minor units, which
-    // is 1.500 of the currency: a thousandfold understatement, silently.
+    // Reading "1,500" at a three-digit exponent as 1500 minor units would record 1.500 of the
+    // currency: a silent thousandfold understatement.
     expect(parseAmountToMinorUnits("1,500", 3)).toHaveProperty("error");
     expect(parseAmountToMinorUnits("1,234", 3)).toHaveProperty("error");
     expect(parseAmountToMinorUnits("2,000", 3)).toHaveProperty("error");

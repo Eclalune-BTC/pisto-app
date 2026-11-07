@@ -4,13 +4,9 @@ This guide covers the current local runtime and the portable artifacts it produc
 
 ## Current local workflow
 
-Expo, Bun/Elysia and PostgreSQL 18 run locally. GitHub source synchronization is authorized; hosting,
-provider activation and store publication require separate approval. No hosted database or platform
+Expo, Bun/Elysia and PostgreSQL 18 run locally. Hosting,
+provider activation and store publication are separate, deliberate steps. No hosted database or platform
 SDK is required for local startup. See [ADR 0017](adrs/0017-portable-postgres-and-hosting.md).
-
-The commands below are for a fresh checkout. Use
-[the configured Windows workspace](getting-started.md#existing-windows-workspace) for the existing
-pisto-audit database and its nondefault ports; do not create another database project there.
 
 Use the committed Bun version and local setup workflow:
 

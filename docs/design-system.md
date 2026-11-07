@@ -1,10 +1,9 @@
 # Pisto UI contract
 
-## Owner requirements
+## Direction
 
 Pisto looks like a modern fintech operations product that a business owner can trust: clean, dense,
-calm and precise. The owner's direction of 2026-11-01 brings the product back to the Phase 2
-prototypes and replaces the graphite-only palette of 2026-10-04:
+calm and precise:
 
 - One brand colour: a deep forest green (`--color-primary` `#1b3d2c` light, `#a7d8b9` dark) for
   primary actions, focus, selection, links and dark brand panels. Neutrals are tinted toward it;

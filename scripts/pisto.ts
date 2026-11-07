@@ -463,7 +463,7 @@ async function inspectRepository(root: string, diagnostics: Diagnostic[]): Promi
       "Better Auth toolchain",
       aligned
         ? "better-auth, @better-auth/expo, and the auth CLI are aligned at 1.7.1."
-        : "Expected better-auth, @better-auth/expo, and auth at 1.7.1 with no legacy @better-auth/cli lock entry.",
+        : "Expected better-auth, @better-auth/expo, and auth at 1.7.1 with no @better-auth/cli lock entry.",
     );
   } catch {
     addDiagnostic(

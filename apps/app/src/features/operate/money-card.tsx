@@ -76,7 +76,7 @@ function Figures({ figures, tone }: { figures: Figure[]; tone: "card" | "highlig
 
 /**
  * "Dinero disponible": the lime hero card on phones, a white card with a lime chart on wide
- * screens, as in the Phase 2 prototypes.
+ * screens.
  */
 export function MoneyCard({
   canManageCash,

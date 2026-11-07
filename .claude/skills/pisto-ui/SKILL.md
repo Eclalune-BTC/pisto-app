@@ -12,7 +12,7 @@ working method. When a lesson below becomes a durable rule, move it into the des
 ## Direction (owner, non-negotiable)
 
 - Modern fintech/AI SaaS that conveys trust. Clean, dense, calm. Nothing that looks generated.
-- One brand color since 2026-11-01: the Phase 2 prototypes' deep forest green, light theme first.
+- One brand color: deep forest green, light theme first.
   No blue (test-enforced hue band 175-280°) and no second accent. State colors only for state.
 - Crisp: radius tokens (6 px controls, 8 px cards); never pill buttons or soft blobs.
 - Little padding: compact rows, tight page gutters, information first.

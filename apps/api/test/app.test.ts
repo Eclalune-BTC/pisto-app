@@ -986,7 +986,7 @@ describe("Pisto API", () => {
     }
   });
 
-  test("covers the business listing that previously had no error translation", async () => {
+  test("translates product errors from the business listing", async () => {
     const response = await testApp({
       authenticated: true,
       businesses: {

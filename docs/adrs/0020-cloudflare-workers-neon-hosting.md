@@ -1,7 +1,7 @@
 # ADR 0020: Cloudflare Workers and Neon for the hosted demo
 
-- Status: Accepted (owner decision, 2026-11-01)
-- Scope: Hosted environment for the course MVP; supersedes the "hosting undecided" part of
+- Status: Accepted (2026-11-01)
+- Scope: Hosted environment for the public demo; supersedes the "hosting undecided" part of
   [ADR 0017](0017-portable-postgres-and-hosting.md)
 
 ## Decision
@@ -17,7 +17,7 @@ A stateless Worker may not reuse an I/O object, such as a PostgreSQL socket, acr
 regular Worker would open a database connection per request. A Durable Object keeps one I/O context
 for every request it serves. That lets the API keep its bounded postgres-js pool and hold the
 realtime WebSockets in memory, exactly like the Bun process. The object is placed in eastern North
-America (`locationHint: "enam"`) next to the database. One instance is enough for course traffic;
+America (`locationHint: "enam"`) next to the database. One instance is enough for demo traffic;
 it serializes nothing but JavaScript execution, and database I/O stays concurrent.
 
 ## Runtime constraints this introduced
