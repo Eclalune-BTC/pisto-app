@@ -16,7 +16,7 @@ not establish the latest upstream releases or a passing current audit.
 | Elysia / CORS / runtime TypeBox peer | 1.4.30 / `@elysiajs/cors` 1.4.2 / `@sinclair/typebox` 0.34.52 | Exact pins; review lifecycle/Standard Schema compatibility; Elysia 2 remains beta |
 | PostgreSQL | 18; resolve the deployed image patch explicitly | Test migrations and backups before major upgrade |
 | Drizzle ORM / Kit | 0.45.2 / 0.31.10 | Review generated SQL and release notes |
-| Better Auth / Expo adapter / `auth` CLI | 1.7.1 / 1.7.1 / 1.7.1 | Keep the synchronized release train aligned; regenerate/review auth schema |
+| Better Auth / Expo adapter / `auth` CLI | 1.7.18 / 1.7.18 / 1.7.18 | Keep the synchronized release train aligned; regenerate/review auth schema |
 | Polar Better Auth / SDK | 2.0.1 / 1.0.2, API `2026-10` | Exact pins; adapter requires Node 24+; test checkout/webhook sandbox contracts |
 | RevenueCat React Native SDK | Not installed in baseline | Pin deliberately when native IAP integration begins |
 | TypeScript | 6.0.3 | Keep every workspace and Expo tooling compatible; no silent major jump |
@@ -69,7 +69,7 @@ Do not independently bump React Native/React outside the matrix Expo documents f
 ### Better Auth
 
 - Read migration/release notes and keep `better-auth`, `@better-auth/expo`, and the `auth` CLI on
-  the same synchronized version. The installed CLI package is `auth@1.7.1`; the lockfile exposes its
+  the same synchronized version. The installed CLI package is `auth@1.7.18`; the lockfile exposes its
   `auth` and `better-auth` binaries.
 - Run `bun run auth:schema:generate` for manual review of the CLI output. Separately,
   `bun run auth:schema:check` compares installed Better Auth table/field definitions and required
@@ -161,7 +161,7 @@ Then complete and attach this checklist to the upgrade/release record:
 
 Use `--recursive` to include workspace dependencies; plain `bun outdated` only reports the root.
 Outdated versions and audit results require review of compatibility, advisories, and actual
-reachability. [Security](security.md#dependency-audit-snapshot) owns the dated findings and the four
+reachability. [Security](security.md#dependency-audit-snapshot) owns the current findings and the
 reviewed exceptions. `bun run audit:ci` fails on additional findings and passes only when the result
 stays within that explicit exception set; it does not establish a vulnerability-free dependency graph.
 

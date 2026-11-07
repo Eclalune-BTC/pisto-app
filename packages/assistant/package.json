@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@pisto/contracts": "workspace:*",
-    "zod": "4.4.3"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/bun": "1.4.0",

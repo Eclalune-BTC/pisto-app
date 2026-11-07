@@ -85,6 +85,13 @@
       "when": 1793643418810,
       "tag": "0011_business_member_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794079820060,
+      "tag": "0012_account_provider_identity",
+      "breakpoints": true
     }
   ]
 }

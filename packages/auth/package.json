@@ -14,16 +14,16 @@
     "auth:schema:generate": "better-auth generate --config ./src/cli.ts --output ./.generated/better-auth-schema.ts --yes"
   },
   "dependencies": {
-    "@better-auth/expo": "1.7.1",
+    "@better-auth/expo": "1.7.18",
     "@pisto/billing": "workspace:*",
     "@pisto/config": "workspace:*",
     "@pisto/db": "workspace:*",
-    "better-auth": "1.7.1",
+    "better-auth": "1.7.18",
     "drizzle-orm": "0.45.2"
   },
   "devDependencies": {
     "@types/bun": "1.4.0",
-    "auth": "1.7.1",
+    "auth": "1.7.18",
     "typescript": "6.0.3"
   },
   "engines": {

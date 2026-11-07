@@ -13,7 +13,7 @@ Building password hashing/session/token protocols locally would add avoidable se
 
 ## Decision
 
-Use Better Auth 1.7.1 in `@pisto/auth`, mounted through Elysia at `/api/auth` and `/api/auth/*`, with its Drizzle schema
+Use Better Auth 1.7.18 in `@pisto/auth`, mounted through Elysia at `/api/auth` and `/api/auth/*`, with its Drizzle schema
 owned by `@pisto/db` and official Expo adapter for native session storage. Use a 32-byte-or-greater
 secret, exact trusted origins, secure cookies in production, and documented secret rotation.
 The HTTP composition follows [ADR 0019](0019-elysia-http-composition.md): explicit method/path guards,
@@ -21,7 +21,7 @@ unparsed provider payloads and preservation of the auth handler's cookies.
 
 Use Better Auth's PostgreSQL-backed rate-limit storage so counters are shared across API
 instances. Keep the synchronized `better-auth`, `@better-auth/expo`, and `auth` CLI packages aligned;
-the accepted baseline is 1.7.1 for all three.
+the accepted baseline is 1.7.18 for all three.
 
 The Polar Better Auth plugin is used only as a billing integration; it does not make Polar the Pisto
 identity provider.

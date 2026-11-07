@@ -3,7 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
-    "@better-auth/expo": "1.7.1",
+    "@better-auth/expo": "1.7.18",
     "@expo-google-fonts/inter": "0.4.2",
     "@pisto/contracts": "workspace:*",
     "@radix-ui/react-accordion": "1.2.20",
@@ -30,7 +30,7 @@
     "@tanstack/react-query": "5.101.4",
     "@tanstack/react-table": "8.21.3",
     "axios": "1.20.0",
-    "better-auth": "1.7.1",
+    "better-auth": "1.7.18",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "expo": "~57.0.21",
@@ -63,7 +63,7 @@
     "tailwind-merge": "3.6.0",
     "tailwindcss": "4.3.3",
     "uniwind": "1.12.1",
-    "zod": "4.4.3"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.10",
@@ -73,7 +73,7 @@
     "metro-cache": "0.84.5",
     "sharp": "0.35.5",
     "typescript": "~6.0.3",
-    "vitest": "4.1.11"
+    "vitest": "4.1.12"
   },
   "scripts": {
     "brand:generate": "node scripts/generate-brand-assets.mjs",

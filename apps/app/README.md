@@ -95,10 +95,10 @@ Set `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_APP_SCHEME`, `EXPO_IOS_BUNDLE_IDENTIFIER
 - Expo `57.0.21`, Expo Router `57.0.20`
 - React `19.2.3`, React Native `0.86.3`, React Native Web `0.21.x`
 - Uniwind `1.12.1`, Tailwind CSS `4.3.3`
-- Better Auth and `@better-auth/expo` `1.7.1`
+- Better Auth and `@better-auth/expo` `1.7.18`
 - TanStack Query `5.101.4`
 - RN Primitives Slot `1.5.2`
-- Vitest `4.1.11`, TypeScript `6.0.x`, Biome `2.5.10`
+- Vitest `4.1.12`, TypeScript `6.0.x`, Biome `2.5.10`
 - EAS CLI production baseline `22.2.0`
 
 The app was created with the official `create-expo-app` SDK 57 template and then reduced to the Pisto-specific implementation.

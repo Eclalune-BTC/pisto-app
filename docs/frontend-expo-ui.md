@@ -457,7 +457,7 @@ adding native code that is absent from that binary, not using native components 
 
 The native Better Auth client calls `Linking.createURL` to set its `expo-origin` header. Expo Go
 resolves this to an `exp://` URL rather than registering Pisto's own scheme. However, the installed
-`@better-auth/expo` 1.7.1 server plugin already adds `exp://` to its effective trusted origins when
+`@better-auth/expo` 1.7.18 server plugin already adds `exp://` to its effective trusted origins when
 the API process has `NODE_ENV=development`. Better Auth's custom-scheme matching accepts Expo Go
 host URLs through that development entry. Production does not receive it.
 

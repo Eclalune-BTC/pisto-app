@@ -3,10 +3,11 @@ import type { BillingRuntime } from "@pisto/billing";
 import { authSchema, type Database } from "@pisto/db";
 import { type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError } from "better-auth/api";
 import { organization } from "better-auth/plugins";
 
 import type { AuthConfig } from "./env.ts";
+
+const failureLog = JSON.stringify({ level: "error", message: "Authentication request failed" });
 
 export function createAuth(input: { config: AuthConfig; db: Database; billing: BillingRuntime }) {
   const plugins: BetterAuthPlugin[] = [
@@ -14,8 +15,9 @@ export function createAuth(input: { config: AuthConfig; db: Database; billing: B
       id: "pisto-error-privacy",
       async onResponse(response) {
         if (response.status < 500) return;
-        // Better Auth may convert a provider APIError to a Response before
-        // onAPIError runs. Sanitize that second path while keeping cookie headers.
+        // A failed APIError reaches the client as a Response; replace its body, which can carry a
+        // provider or driver message, while keeping cookie headers.
+        console.error(failureLog);
         const headers = new Headers(response.headers);
         headers.delete("content-length");
         return {
@@ -36,7 +38,7 @@ export function createAuth(input: { config: AuthConfig; db: Database; billing: B
   ];
   if (input.billing.authPlugin) plugins.push(input.billing.authPlugin);
 
-  return betterAuth({
+  const auth = betterAuth({
     appName: "Pisto",
     baseURL: input.config.baseUrl,
     basePath: "/api/auth",
@@ -60,17 +62,9 @@ export function createAuth(input: { config: AuthConfig; db: Database; billing: B
         else console.info(entry);
       },
     },
-    onAPIError: {
-      onError(error) {
-        if (error instanceof APIError && error.status !== "INTERNAL_SERVER_ERROR") return;
-        console.error(JSON.stringify({ level: "error", message: "Authentication request failed" }));
-        // Throw a safe APIError so Better Call returns it without its fallback
-        // console.error of the original exception, which bypasses logger.log.
-        throw new APIError("INTERNAL_SERVER_ERROR", {
-          message: "Authentication request failed",
-        });
-      },
-    },
+    // Rethrow instead of letting Better Call print the original exception with console.error,
+    // which bypasses the logger above; the handler wrapper below answers with a safe 500.
+    onAPIError: { throw: true },
     rateLimit: {
       enabled: true,
       window: 60,
@@ -102,6 +96,16 @@ export function createAuth(input: { config: AuthConfig; db: Database; billing: B
     },
     plugins,
   });
+  const handler = auth.handler;
+  auth.handler = async (request) => {
+    try {
+      return await handler(request);
+    } catch {
+      console.error(failureLog);
+      return Response.json({ message: "Authentication request failed" }, { status: 500 });
+    }
+  };
+  return auth;
 }
 
 export type Auth = ReturnType<typeof createAuth>;

@@ -2,7 +2,7 @@
 
 ## Decision
 
-`@pisto/auth` centralizes authentication with Better Auth 1.7.1, its Drizzle adapter, and the Expo
+`@pisto/auth` centralizes authentication with Better Auth 1.7.18, its Drizzle adapter, and the Expo
 integration. `@pisto/api` mounts the raw handler at `/api/auth` and `/api/auth/*`; other protected
 routes resolve a session through the auth package rather than parsing cookies themselves.
 
@@ -121,8 +121,8 @@ so one migration system owns all PostgreSQL changes. Generate and review a migra
 plugin/schema changes. Auth identifiers are internal opaque identifiers and must not be email
 addresses in provider integrations.
 
-The schema workflow uses the installed `auth@1.7.1` CLI, aligned with `better-auth@1.7.1` and
-`@better-auth/expo@1.7.1`:
+The schema workflow uses the installed `auth@1.7.18` CLI, aligned with `better-auth@1.7.18` and
+`@better-auth/expo@1.7.18`:
 
 ```sh
 bun run auth:schema:generate

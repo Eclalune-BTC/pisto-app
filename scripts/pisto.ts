@@ -452,9 +452,9 @@ async function inspectRepository(root: string, diagnostics: Diagnostic[]): Promi
     };
     const lockfile = await readFile(join(root, "bun.lock"), "utf8");
     const aligned =
-      authPackage.dependencies?.["better-auth"] === "1.7.1" &&
-      authPackage.dependencies?.["@better-auth/expo"] === "1.7.1" &&
-      authPackage.devDependencies?.auth === "1.7.1" &&
+      authPackage.dependencies?.["better-auth"] === "1.7.18" &&
+      authPackage.dependencies?.["@better-auth/expo"] === "1.7.18" &&
+      authPackage.devDependencies?.auth === "1.7.18" &&
       /"auth":\s*\["auth@1\.7\.1"/.test(lockfile) &&
       !lockfile.includes("@better-auth/cli");
     addDiagnostic(
@@ -462,8 +462,8 @@ async function inspectRepository(root: string, diagnostics: Diagnostic[]): Promi
       aligned ? "PASS" : "FAIL",
       "Better Auth toolchain",
       aligned
-        ? "better-auth, @better-auth/expo, and the auth CLI are aligned at 1.7.1."
-        : "Expected better-auth, @better-auth/expo, and auth at 1.7.1 with no @better-auth/cli lock entry.",
+        ? "better-auth, @better-auth/expo, and the auth CLI are aligned at 1.7.18."
+        : "Expected better-auth, @better-auth/expo, and auth at 1.7.18 with no @better-auth/cli lock entry.",
     );
   } catch {
     addDiagnostic(

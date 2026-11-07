@@ -18,9 +18,9 @@
     "@pisto/db": "workspace:*",
     "@polar-sh/better-auth": "2.0.1",
     "@polar-sh/sdk": "1.0.2",
-    "better-auth": "1.7.1",
+    "better-auth": "1.7.18",
     "drizzle-orm": "0.45.2",
-    "zod": "4.4.3"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/bun": "1.4.0",

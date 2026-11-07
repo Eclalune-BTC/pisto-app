@@ -24,6 +24,18 @@ CORS_ORIGINS=https://pisto.contact-862.workers.dev TRUSTED_ORIGINS=https://pisto
 EXPO_SCHEME=pisto BETTER_AUTH_SECRET='...' bun run scripts/seed.ts
 ```
 
+Apply migrations before deploying a Worker built from the same commit. Migration
+`0012_account_provider_identity` drops `account.issuer` (required by Better Auth 1.7.0-1.7.2, unused
+from 1.7.3) and cannot be reverted, so create a Neon branch first and confirm no account would
+violate the new unique index:
+
+```sql
+SELECT provider_id, account_id, count(*) FROM account GROUP BY 1, 2 HAVING count(*) > 1;
+```
+
+A Worker running Better Auth 1.7.18 against a database that still has the `NOT NULL` `issuer`
+column fails every sign-up.
+
 A new database also needs the runtime grants, executed once as `pisto_migrator`:
 
 ```sql

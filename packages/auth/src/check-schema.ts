@@ -34,14 +34,14 @@ for (const [model, definition] of Object.entries(expected)) {
 
 if (errors.length > 0) {
   throw new Error(
-    `Better Auth 1.7.1 schema check failed:\n${errors.map((error) => `- ${error}`).join("\n")}`,
+    `Better Auth 1.7.18 schema check failed:\n${errors.map((error) => `- ${error}`).join("\n")}`,
   );
 }
 
 console.info(
   JSON.stringify({
     level: "info",
-    message: "Better Auth schema matches configured 1.7.1 tables and fields",
+    message: "Better Auth schema matches configured 1.7.18 tables and fields",
     tables: Object.keys(expected).sort(),
   }),
 );

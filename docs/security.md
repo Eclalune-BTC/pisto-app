@@ -53,7 +53,7 @@ secret.
 - Before production traffic, verify the selected host's exact client-IP header shape and spoofing behavior.
   If deployment needs `advanced.ipAddress.ipAddressHeaders` or `trustedProxies`, add and test that
   explicit code configuration only for a header/proxy the edge overwrites or sanitizes, and prevent
-  direct public access to the origin. This was checked against installed Better Auth 1.7.1 and its
+  direct public access to the origin. This was checked against installed Better Auth 1.7.18 and its
   [official rate-limit guidance](https://better-auth.com/docs/concepts/rate-limit) on 2026-10-03;
   recheck when the auth version or hosting topology changes.
 - Do not confuse `AUTH_TRUSTED_PROXY_HEADERS` (forwarded host/protocol URL inference) with a trusted
@@ -281,54 +281,35 @@ mandatory with that seam:
 
 ## Dependency audit snapshot
 
-The 2026-10-03 Elysia migration removed Hono from the lockfile. A fresh `bun run audit:ci` still
-fails on five pre-existing Expo/toolchain findings: four high and one moderate across
-brace-expansion, braces and node-forge. No additional audit exception was added. The new Elysia,
-CORS and TypeBox runtime packages produced no findings in this audit. The locked packages and
-unexcepted advisory references are:
+`bun run audit:ci` passes with no unexcepted advisory. Direct dependencies are pinned at patched
+releases (Better Auth 1.7.18, Zod 4.6.7, Vitest 4.1.12). Transitive packages with a fix inside the
+same major version are forced through root `overrides`: `brace-expansion` 5.0.12, `compression`
+1.8.2, `decode-uri-component` 0.5.1, `follow-redirects` 1.16.2, `node-forge` 1.4.3, `shell-quote`
+1.12.0, `source-map-js` 1.2.2 and `vite` 8.2.4. Each overridden package resolves to a single version
+in the lockfile, so the top-level override cannot cross a consumer's major range.
 
-- `brace-expansion@5.0.9`: [GHSA-qhr7-859c-m2p7](https://github.com/advisories/GHSA-qhr7-859c-m2p7),
-  [GHSA-6j4f-fj2g-mc7p](https://github.com/advisories/GHSA-6j4f-fj2g-mc7p), and
-  [GHSA-q2hr-2g5m-vwhr](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr).
-- `braces@3.0.3`: [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).
-- `node-forge@1.4.0`: [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv).
+The remaining advisories have no compatible fix and are ignored by exact GHSA identifier. Any new
+advisory still fails CI.
 
-Reassess affected paths and compatible updates before release. The separate four exceptions below
-remain configured in `audit:ci`; they do not make the current audit pass. Earlier audit snapshots
-remain in Git history.
-
-| Locked path | Advisory | Current reachability and required control |
+| Locked path | Advisory | Reachability and required control |
 | --- | --- | --- |
-| `drizzle-kit@0.31.10 -> @esbuild-kit/esm-loader -> @esbuild-kit/core-utils -> esbuild@0.18.20` | [GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99), moderate | The advisory concerns esbuild's development `serve` feature. This repository uses Drizzle Kit as a schema tool and does not invoke `esbuild.serve`; do not expose an esbuild development server. |
-| Expo/React Native Metro toolchain -> `image-size@1.2.1` | [GHSA-w3rx-r6r6-pgpr](https://github.com/advisories/GHSA-w3rx-r6r6-pgpr) and [GHSA-5p2g-fcmc-qvqq](https://github.com/advisories/GHSA-5p2g-fcmc-qvqq), high | Metro can parse image assets during development/build. Only process trusted repository assets; do not add an untrusted-image build or preview pipeline. The registry's latest `image-size` was `2.0.2`, and the advisories still marked every version through `2.0.2` affected. |
-| Expo Xcode project tooling -> `xcode@3.0.1 -> uuid@7.0.3` | [GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq), moderate | The advisory affects UUID v3/v5/v6 calls supplied a caller buffer. The installed Xcode tool calls only `uuid.v4()` without a buffer, so that affected path is not currently reached. Recheck this call site whenever Expo/Xcode tooling changes. |
+| `drizzle-kit -> esbuild@0.25.12` and its legacy loader | [GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99), moderate | Concerns esbuild's development `serve` feature. Drizzle Kit is a schema tool here and never starts an esbuild server. |
+| Metro -> `image-size@1.2.1` | [GHSA-w3rx-r6r6-pgpr](https://github.com/advisories/GHSA-w3rx-r6r6-pgpr), [GHSA-5p2g-fcmc-qvqq](https://github.com/advisories/GHSA-5p2g-fcmc-qvqq), high | Metro parses only trusted repository assets during development and build; the fix is in 2.x, outside Metro's range. Do not add an untrusted-image build pipeline. |
+| Expo Xcode tooling -> `xcode@3.0.1 -> uuid@7.0.3` | [GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq), moderate | Affects v3/v5/v6 with a caller buffer; the tool calls only `uuid.v4()` without one. |
+| `@expo/cli -> zod@3.25.76` | [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5), high | Memory exhaustion on oversized constrained collections. The 3.x line has no fix; the CLI validates local configuration only. Application code uses Zod 4.6.7. |
+| `@expo/cli -> glob@13.0.6` | [GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4), moderate | AbortSignal bypass in a local developer tool; the fix is in glob 14, outside the CLI's range. |
+| `@expo/fingerprint -> minimatch@10.2.6` | [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249), moderate | Pattern amplification with repository-owned patterns only; the fix is in minimatch 11. |
+| `@expo/config -> deepmerge@4.3.1` | [GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4), low | No fixed release; merges repository-owned app configuration only. |
 
-The committed baseline pins Elysia 1.4.30 and js-yaml 4.3.2 and overrides `decode-uri-component` to
-0.5.0. The current audit findings are recorded above. Expo Router still brings query-string
-7.1.3, whose CommonJS import needs the committed one-line `patches/query-string@7.1.3.patch` to read
-the decoder's ESM default export. Node and Bun subprocess regressions exercise real router query
-semantics and bound malformed 60 KB decoding to eight seconds. Web/native exports must verify Metro.
-Do not remove the patch/override until an upstream router dependency update passes those gates.
+Expo Router still brings query-string 7.1.3, whose CommonJS import needs the committed one-line
+`patches/query-string@7.1.3.patch` to read the decoder's ESM default export. Router regression tests
+exercise real query semantics and bound malformed 60 KB decoding. Do not remove the patch or the
+override until an upstream router update passes those gates.
 
-The four remaining exceptions are owned by the release maintainer, reviewed 2026-09-10; recheck
-before each release or by 2026-10-10. The current `xcode@3.0.1` still declares
-`uuid ^7.0.3`, and the current `drizzle-kit@0.31.10` still included its legacy esbuild loader. No
-out-of-range override was forced for those remaining packages: Bun supports only top-level overrides, not dependency-path-specific
-nested overrides, so an override would replace the package across the graph and could violate the
-tested Expo/Vite/Drizzle dependency ranges. Prefer a compatible upstream parent-package update and
-rerun the full validation matrix.
-
-CI runs `bun run audit:ci`, which ignores exactly the four GHSA identifiers in this table. That
-targeted exception makes any additional advisory fail the CI step; it is not a claim that the graph
-is vulnerability-free. Keep raw, unignored `bun audit` as the manual full view and update the script,
-this register, owner, and review date together whenever an exception changes.
-
-Before every release and dependency update, run `bun run audit:ci`, `bun audit`,
-`bun audit fix --dry-run`, and `bun pm why <package>`. Review the live advisory and registry state,
-record an owner and review date for any continuing exception, and remove this snapshot when an
-upstream compatible fix lands. A new runtime-reachable finding, untrusted image ingestion, exposed
-build server, or changed call path must block release until it is patched or separately mitigated
-and reviewed.
+Before every release and dependency update, run `bun run audit:ci`, raw `bun audit` and
+`bun pm why <package>`. Remove an exception when a compatible upstream fix lands, and update the
+script and this table together. A runtime-reachable finding must block release until it is patched
+or separately mitigated.
 
 ## Logging and privacy
 

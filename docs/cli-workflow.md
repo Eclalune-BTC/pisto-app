@@ -65,7 +65,7 @@ Doctor is read-only. It checks:
 - the installed Node.js version against the supported `>=24.19.0 <25` range (above Expo SDK 57's
   documented 22.13.x floor);
 - the pinned package manager, lockfile, and required hoisted linker in `bunfig.toml`;
-- the aligned `better-auth`, `@better-auth/expo`, and `auth` CLI 1.7.1 toolchain with no legacy CLI
+- the aligned `better-auth`, `@better-auth/expo`, and `auth` CLI 1.7.18 toolchain with no separate CLI
   lock entry;
 - Docker CLI, Compose plugin, and whether the engine is reachable;
 - static parsing of `compose.yaml` through `docker compose config --quiet`;
