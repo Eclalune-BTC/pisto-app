@@ -35,7 +35,6 @@ a local UI. Native device acceptance remains separate from web or bundle verific
 - `apps/app/dist`: ordinary Expo web files using `web.output: single`.
 - `apps/api/Dockerfile`: portable Bun/Elysia API and separate bundled migration entrypoint.
 - `packages/db/migrations`: standard PostgreSQL/Drizzle migration history.
-- `infra/gcp`: inactive reference scripts with credential-free CI tests; not a selected runtime or work order.
 
 No provider-specific web entrypoint, publishing configuration or host SDK is required. The API container does
 not serve web files. The exported client remains independent of API hosting and can be inspected

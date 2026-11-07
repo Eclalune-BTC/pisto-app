@@ -94,7 +94,7 @@ The implementation and `@pisto/contracts` are definitive. Update this table and 
 [Postman collection](postman/pisto.postman_collection.json) in the same change as a route addition
 or removal. The collection calls every Pisto route and every Better Auth endpoint the app uses,
 in order, against a fresh account, and asserts each response. See
-[the README](../README.md#api-collection-postman-or-bruno) for how to run it.
+[the README](postman/README.md) for how to run it.
 
 All Better Auth organization routes are denied at the Elysia edge except
 `POST /api/auth/organization/set-active`. Pisto owns business onboarding and does not expose raw

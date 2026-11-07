@@ -11,7 +11,7 @@ planned feature is not evidence of the current implementation.
 | What is Pisto, and what is the current goal? | [Product goal](product-goal.md) |
 | What exists and what still needs implementation? | [Capability matrix](production-capabilities.md) |
 | How does the system fit together? | [Architecture](architecture.md), [repository layout](repository-layout.md) |
-| How do I start this checkout? | [Getting started](getting-started.md), including the configured Windows workspace |
+| How do I start this checkout? | [Getting started](getting-started.md) |
 | What has actually been tested? | [Release evidence](release-evidence.md), [validation gates](testing-release.md) |
 
 The current product is a manual operating application: sales/history/correction, catalog/inventory,
@@ -22,8 +22,8 @@ are not implemented. The matrix owns the detailed status.
 
 Development runs locally on Expo, Bun/Elysia and PostgreSQL 18. The hosted demo runs on Cloudflare
 Workers with Neon ([ADR 0020](adrs/0020-cloudflare-workers-neon-hosting.md),
-[runbook](deployment-cloudflare.md)). GitHub source synchronization is authorized; store
-submission still requires separate approval.
+[runbook](deployment-cloudflare.md)). Store submission is a separate, deliberate
+step.
 
 ## Read by task
 

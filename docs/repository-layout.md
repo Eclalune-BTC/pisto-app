@@ -20,7 +20,6 @@ pisto-stack/
 |   |-- adrs/                # Consequential architecture decisions
 |   |-- postman/             # Postman v2.1 collection and local environment covering every route
 |   `-- product-briefs/      # Approved product jobs, acceptance, and non-goals
-|-- infra/gcp/               # Inactive reference scripts with credential-free CI tests
 |-- scripts/
 |   |-- dev-api.ts           # Root watch entry so shared package edits restart the API
 |   |-- pisto.ts             # Safe local init/doctor/help CLI

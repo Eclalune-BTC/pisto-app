@@ -204,8 +204,7 @@ separate from cloud provisioning, hosting or store submission; none is implied b
 
 The portable API container and Expo web export are separate artifacts. Secrets stay in private
 server configuration, migrations use a separately authorized connection, and pools remain bounded.
-`infra/gcp` contains inactive reference scripts still checked by credential-free CI, not a selected
-runtime or deployment work order. No queue or user-object adapter is implemented.
+No queue or user-object adapter is implemented.
 
 The API keeps no authoritative host-local state between requests. See
 [ADR 0017](adrs/0017-portable-postgres-and-hosting.md),
