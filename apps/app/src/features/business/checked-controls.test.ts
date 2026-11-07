@@ -18,6 +18,17 @@ const setup = vi.hoisted(() => ({
   },
 }));
 
+// The screen preselects the device time zone at import; pin a listed zone so the rendered inputs
+// do not depend on the host (CI runs in UTC, which adds the free-text zone field).
+vi.hoisted(() => {
+  const resolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
+  vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockImplementation(function (
+    this: Intl.DateTimeFormat,
+  ) {
+    return { ...resolvedOptions.call(this), timeZone: "America/El_Salvador" };
+  });
+});
+
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
 vi.mock("uniwind", () => ({
   useUniwind: () => ({ theme: "light" }),
