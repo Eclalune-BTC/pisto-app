@@ -65,7 +65,7 @@ npx wrangler secret put BETTER_AUTH_SECRET  # at least 32 random characters
 cd apps/app
 APP_VARIANT=production EXPO_PUBLIC_API_URL=https://pisto.contact-862.workers.dev \
 EXPO_PUBLIC_APP_SCHEME=pisto EXPO_IOS_BUNDLE_IDENTIFIER=com.eclalune.pisto \
-EXPO_ANDROID_PACKAGE=com.eclalune.pisto bunx expo export --platform web --clear
+EXPO_ANDROID_PACKAGE=com.eclalune.pisto bunx expo export --platform web --clear --max-workers 1
 cd ../api
 npx wrangler deploy
 ```
@@ -91,15 +91,21 @@ The registration assistant uses the `AI` binding declared in `wrangler.jsonc`; i
 Set `ASSISTANT_ENABLED=false` as a variable to turn the assistant off without a code change. Models
 are pinned in `packages/assistant/src/models.ts` ([ADR 0021](adrs/0021-workers-ai-registration-assistant.md)).
 
+Sign in with the demo owner and open **Nuevo registro**. The authenticated
+`GET /v1/assistant/status` should return `enabled: true` and `transcription: true`. Dictate
+“Pagué 64 dólares de luz con transferencia”, check the transcription, then choose **Usar este texto**.
+Confirm the $64 amount on **Revisar gasto** and end the check before saving.
+
 ## Local Worker
 
-`npx wrangler dev` in `apps/api` runs the same Worker in workerd. Put local overrides in
+Run `bunx --no-install wrangler dev --port 8787 --ip 127.0.0.1` in `apps/api` to use the
+repository's pinned Wrangler and the same AI binding on the local Worker. Put local overrides in
 `apps/api/.dev.vars` (ignored by Git), for example `NODE_ENV=development`,
 `BETTER_AUTH_URL=http://localhost:8787`, `CORS_ORIGINS=http://localhost:8787`, a local
 `BETTER_AUTH_SECRET` and a `DATABASE_URL` (use `127.0.0.1`, not `localhost`, for a local
-PostgreSQL). The AI binding is always remote: `wrangler dev` calls the real models and spends the
-account's Workers AI allocation. The pinned compatibility date needs a current wrangler (4.81 is
-too old), so run `npx -y wrangler@latest dev --port 8787 --ip 127.0.0.1`.
+PostgreSQL). The local Worker calls the real models using the account's Workers AI allocation.
+The standalone Bun API shows the assistant as unavailable unless its Workers AI REST credentials
+are configured.
 
 To use the web app against the local Worker, export it with `EXPO_PUBLIC_API_URL=http://localhost:8787`
 and without `APP_VARIANT=production` (the production variant refuses a non-HTTPS API origin), then
