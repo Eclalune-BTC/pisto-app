@@ -1,4 +1,4 @@
-import type { BusinessPermission } from "@pisto/contracts";
+import type { AssistantSupplierPaymentDraft, BusinessPermission } from "@pisto/contracts";
 import { and, asc, desc, eq, inArray, or, type SQL, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
@@ -71,12 +71,6 @@ export interface AssistantDirectoryRepository {
 export interface AssistantDirectorySupplier {
   id: string;
   name: string;
-  /** Null when nothing is owed to the supplier. */
-  oldestOpenPurchase: {
-    id: string;
-    invoiceNumber: string | null;
-    balanceMinorUnits: string;
-  } | null;
 }
 
 export interface AssistantSupplierDirectory {
@@ -85,6 +79,11 @@ export interface AssistantSupplierDirectory {
    * one of the terms; a member who cannot read purchases gets none.
    */
   lookup(actor: ProductActor, terms: readonly string[]): Promise<AssistantDirectorySupplier[]>;
+  findOpenPurchase(
+    actor: ProductActor,
+    supplierId: string,
+    invoiceNumber: string | null,
+  ): Promise<AssistantSupplierPaymentDraft["purchase"]>;
 }
 
 const maxTerms = 24;
@@ -294,7 +293,7 @@ export function createAssistantSupplierDirectory(db: Database): AssistantSupplie
           if (!hasBusinessPermission(access.role, "purchases:read") || terms.length === 0) {
             return [];
           }
-          const suppliers = await tx
+          return tx
             .select({ id: supplier.id, name: supplier.name })
             .from(supplier)
             .where(
@@ -306,41 +305,41 @@ export function createAssistantSupplierDirectory(db: Database): AssistantSupplie
             )
             .orderBy(desc(termHits(supplier.name, terms)), asc(supplier.name), asc(supplier.id))
             .limit(maxCandidates);
-          if (suppliers.length === 0) return [];
-
+        },
+        { accessMode: "read only" },
+      );
+    },
+    async findOpenPurchase(actor, supplierId, invoiceNumber) {
+      return db.transaction(
+        async (tx) => {
+          const access = await authorizeBusinessAction(tx, actor, ["assistant:use"], "none");
+          if (!hasBusinessPermission(access.role, "purchases:read")) return null;
+          // An invoice number can be reused, even on a settled or voided purchase.
+          const target =
+            invoiceNumber === null
+              ? sql`${purchase.status} = 'posted' and ${purchaseBalance()} > 0`
+              : sql`lower(btrim(${purchase.invoiceNumber})) = lower(${invoiceNumber})`;
           const rows = await tx.execute<{
-            supplier_id: string;
             id: string;
             invoice_number: string | null;
             balance: string;
           }>(sql`
             with payment_totals as (${supplierPaymentTotals(access.businessId)})
-            select distinct on (${purchase.supplierId})
-              ${purchase.supplierId} as supplier_id,
-              ${purchase.id} as id,
+            select ${purchase.id} as id,
               ${purchase.invoiceNumber} as invoice_number,
               (${purchaseBalance()})::text as balance
             from ${purchase}
+            join ${supplier} on ${supplier.id} = ${purchase.supplierId}
+              and ${supplier.businessId} = ${purchase.businessId} and ${supplier.status} = 'active'
             left join payment_totals on payment_totals.purchase_id = ${purchase.id}
             where ${purchase.businessId} = ${access.businessId}
-              and ${purchase.status} = 'posted'
-              and ${inArray(
-                purchase.supplierId,
-                suppliers.map((row) => row.id),
-              )}
-              and ${purchaseBalance()} > 0
-            order by ${purchase.supplierId}, ${purchase.dueDate} nulls last, ${purchase.occurredAt}, ${purchase.id}
+              and ${purchase.supplierId} = ${supplierId} and ${target}
+            order by ${purchase.dueDate} nulls last, ${purchase.occurredAt}, ${purchase.id}
+            limit ${invoiceNumber === null ? 1 : 2}
           `);
-          const openPurchases = new Map(
-            rows.map((row) => [
-              row.supplier_id,
-              { id: row.id, invoiceNumber: row.invoice_number, balanceMinorUnits: row.balance },
-            ]),
-          );
-          return suppliers.map((row) => ({
-            ...row,
-            oldestOpenPurchase: openPurchases.get(row.id) ?? null,
-          }));
+          const [row, duplicate] = rows;
+          if (!row || duplicate || BigInt(row.balance) <= 0n) return null;
+          return { id: row.id, invoiceNumber: row.invoice_number, balanceMinorUnits: row.balance };
         },
         { isolationLevel: "repeatable read", accessMode: "read only" },
       );

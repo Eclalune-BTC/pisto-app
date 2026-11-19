@@ -28,6 +28,7 @@ import {
   type UnreadField,
 } from "./extraction.ts";
 import { matchName, type NameMatch } from "./matching.ts";
+import { paymentInvoice } from "./payment-invoice.ts";
 import { extractionMessages } from "./prompt.ts";
 import { type AssistantProvider, AssistantProviderError } from "./provider.ts";
 import { findOccurrences, searchTerms } from "./text.ts";
@@ -394,16 +395,31 @@ function receivablePaymentDraft(input: DraftInput) {
   };
 }
 
-function supplierPaymentDraft(input: DraftInput) {
+async function supplierPaymentDraft<Actor>(
+  input: DraftInput,
+  directory: SupplierDirectory<Actor>,
+  actor: Actor,
+  sentence: string,
+) {
   const { extraction, context, suppliers, accounts, notices } = input;
   const occurred = occurrence(input);
   const match = matchName(extraction.party, suppliers);
   if (extraction.party === null) notices.add("missing", "supplier");
   else notices.match("supplier", match);
   const supplier = matchedRecord(match);
-  const purchase = supplier?.oldestOpenPurchase ?? null;
-  if (supplier && purchase === null && context.permissions.includes("purchases:read")) {
-    notices.add("not_found", "credit");
+  const invoice = paymentInvoice(sentence, extraction, input.unread.has("invoice"));
+  const canRead = supplier && context.permissions.includes("purchases:read");
+  const purchase =
+    canRead && invoice.kind !== "unclear"
+      ? await directory.findOpenPurchase(
+          actor,
+          supplier.id,
+          invoice.kind === "number" ? invoice.value : null,
+        )
+      : null;
+  if (invoice.kind === "unclear") notices.add("missing", "invoice");
+  else if (canRead && purchase === null) {
+    notices.add("not_found", invoice.kind === "number" ? "invoice" : "credit");
   }
   const amount = positiveMinorUnits(extraction.amount, context.currencyMinorUnitDigits);
   if (amount === null) notices.add("missing", "amount");
@@ -421,12 +437,14 @@ function supplierPaymentDraft(input: DraftInput) {
   };
 }
 
-const builders: Record<AssistantDraftKind, (input: DraftInput) => AssistantDraft> = {
+const builders: Record<
+  Exclude<AssistantDraftKind, "supplier_payment">,
+  (input: DraftInput) => AssistantDraft
+> = {
   sale: saleDraft,
   expense: expenseDraft,
   purchase: purchaseDraft,
   receivable_payment: receivablePaymentDraft,
-  supplier_payment: supplierPaymentDraft,
 };
 
 /**
@@ -474,13 +492,22 @@ export async function interpretSentence<Actor>(
     throw new AssistantProviderError("invalid_output", "The model output does not fit the schema");
   }
   const { extraction, unread } = read;
-  if (extraction.kind === "none" || extraction.kind === "several") {
+  if (
+    extraction.kind === "none" ||
+    extraction.kind === "several" ||
+    (extraction.kind === "purchase" && extraction.settlement === "partial_credit")
+  ) {
     return {
       text: request.text,
       source: request.source,
       spans: [],
       draft: null,
-      unsupported: extraction.kind === "none" ? "not_a_record" : "several_records",
+      unsupported:
+        extraction.kind === "purchase"
+          ? "partial_purchase_payment"
+          : extraction.kind === "none"
+            ? "not_a_record"
+            : "several_records",
       notices: [],
     };
   }
@@ -500,7 +527,7 @@ export async function interpretSentence<Actor>(
   ]);
 
   const notices = new Notices();
-  const draft = builders[kind]({
+  const input: DraftInput = {
     extraction,
     context: lookup.context,
     products: lookup.products,
@@ -509,7 +536,11 @@ export async function interpretSentence<Actor>(
     suppliers,
     notices,
     unread,
-  });
+  };
+  const draft =
+    kind === "supplier_payment"
+      ? await supplierPaymentDraft(input, dependencies.suppliers, actor, request.text)
+      : builders[kind](input);
   if (
     !kindPermissions[kind].every((permission) => lookup.context.permissions.includes(permission))
   ) {

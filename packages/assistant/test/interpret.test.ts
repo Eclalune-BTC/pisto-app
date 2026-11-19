@@ -436,7 +436,6 @@ describe("other record kinds", () => {
     const supplier: DirectorySupplier = {
       id: "00000000-0000-4000-8000-000000000041",
       name: "Distribuidora Centro",
-      oldestOpenPurchase: null,
     };
     const seen: unknown[] = [];
     const found = await interpret(
@@ -444,6 +443,7 @@ describe("other record kinds", () => {
       purchase,
       {
         suppliers: {
+          ...emptySupplierDirectory,
           async lookup(lookupActor, terms) {
             seen.push({ lookupActor, terms });
             return [supplier];
@@ -486,6 +486,25 @@ describe("other record kinds", () => {
     });
     const several = await interpret("Vendí un café y pagué la luz", { kind: "several" });
     expect(several.interpretation).toMatchObject({ draft: null, unsupported: "several_records" });
+  });
+
+  test("a partially paid purchase asks for the purchase and payment separately", async () => {
+    const { records, calls } = directory();
+    const result = await interpret(
+      "Compré $100 en café, pagué $40 y debo $60",
+      {
+        kind: "purchase",
+        settlement: "partial_credit",
+        amount: "100",
+        received: "40",
+      },
+      { records },
+    );
+    expect(result.interpretation).toMatchObject({
+      draft: null,
+      unsupported: "partial_purchase_payment",
+    });
+    expect(calls).toEqual([]);
   });
 });
 
@@ -871,15 +890,27 @@ describe("supplier payments", () => {
   const supplier: DirectorySupplier = {
     id: "00000000-0000-4000-8000-000000000041",
     name: "Distribuidora Centro",
-    oldestOpenPurchase: {
-      id: "00000000-0000-4000-8000-000000000051",
-      invoiceNumber: "F-204",
-      balanceMinorUnits: "1920",
-    },
   };
-  const suppliers = (found: DirectorySupplier[]): SupplierDirectory<Actor> => ({
+  const oldest = {
+    id: "00000000-0000-4000-8000-000000000051",
+    invoiceNumber: "F-204",
+    balanceMinorUnits: "1920",
+  };
+  const named = {
+    ...oldest,
+    id: "00000000-0000-4000-8000-000000000052",
+    invoiceNumber: "F-0204/A",
+  };
+  const suppliers = (found: DirectorySupplier[], hasDebt = true): SupplierDirectory<Actor> => ({
     async lookup() {
       return found;
+    },
+    async findOpenPurchase(lookupActor, supplierId, number) {
+      expect(lookupActor).toEqual(actor);
+      expect(supplierId).toBe(supplier.id);
+      if (!hasDebt) return null;
+      if (number === null) return oldest;
+      return number === named.invoiceNumber.toLowerCase() ? named : null;
     },
   });
   const payment: Partial<Extraction> = {
@@ -904,12 +935,58 @@ describe("supplier payments", () => {
         heard: "Distribuidora Centro",
         match: { id: supplier.id, name: "Distribuidora Centro", exact: true },
       },
-      purchase: supplier.oldestOpenPurchase,
+      purchase: oldest,
       amountMinorUnits: "1000",
       account: { id: bank.id, name: "Banco Agrícola" },
     });
     expect(interpretation.notices).toEqual([]);
   });
+
+  test.each([
+    ["F-0204/A", "f-0204/a."],
+    [null, "f-0204/a."],
+    ["F-0204/A", "F-0204/A por 10 dólares en efectivo"],
+    [null, "F-0204/A y pagué $10 en efectivo"],
+  ] as const)("honors a verbatim invoice read as %s in %s", async (invoiceNumber, reference) => {
+    const { interpretation } = await interpret(
+      `Aboné a Distribuidora Centro diez dólares a la factura ${reference}`,
+      { ...payment, invoiceNumber },
+      { suppliers: suppliers([supplier]) },
+    );
+    expect(interpretation.draft).toMatchObject({ purchase: named });
+    expect(interpretation.notices).toEqual([]);
+  });
+
+  test.each([
+    ["factura F-0204/A", "0204", "missing"],
+    ["factura F-0204/A", "F-0204", "missing"],
+    ["factura F-21", "F-21", "not_found"],
+    ["factura F-204, factura F-0204/A", "F-204", "missing"],
+    ["las facturas F-204 y F-0204/A", "F-204", "missing"],
+    ["factura F-204 o F-0204/A", null, "missing"],
+    ["factura F-204 o a la F-0204/A", "F-204", "missing"],
+    ["factura F-204 o por la F-0204/A", "F-204", "missing"],
+    ["factura F-204 o por el número 0204", "F-204", "missing"],
+    ["factura F-204 sino a la 205", null, "missing"],
+    ["factura 1043 o mejor la 1044", "1043", "missing"],
+    ["F-0204/A o a la factura F-204", "F-204", "missing"],
+    ["por transferencia con referencia 98765", null, "missing"],
+    ["factura número ciento diez", null, "missing"],
+    ["factura F-204:2", "F-204", "missing"],
+    ["con transferencia B12", "B12", "missing"],
+    ["en efectivo", "10", "missing"],
+  ] as const)(
+    "leaves the purchase unselected for %s read as %s",
+    async (reference, invoiceNumber, code) => {
+      const { interpretation } = await interpret(
+        `Aboné 10 dólares a Distribuidora Centro ${reference}`,
+        { ...payment, invoiceNumber },
+        { suppliers: suppliers([supplier]) },
+      );
+      expect(interpretation.draft).toMatchObject({ purchase: null });
+      expect(interpretation.notices).toContainEqual({ code, field: "invoice", lineIndex: null });
+    },
+  );
 
   test("paying exactly the balance is accepted and one cent more is flagged", async () => {
     const exact = await interpret(
@@ -939,7 +1016,7 @@ describe("supplier payments", () => {
     const { interpretation } = await interpret(
       "Le pagué 10 dólares a Distribuidora Centro por transferencia",
       payment,
-      { suppliers: suppliers([{ ...supplier, oldestOpenPurchase: null }]) },
+      { suppliers: suppliers([supplier], false) },
     );
 
     expect(interpretation.draft).toMatchObject({ purchase: null });

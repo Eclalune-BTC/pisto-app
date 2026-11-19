@@ -3,7 +3,6 @@ import type {
   Business,
   CreateSupplierPaymentRequest,
   EntrySource,
-  Purchase,
 } from "@pisto/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
@@ -39,7 +38,7 @@ import { OpenPurchasePickerDialog } from "./pickers";
 import { invalidatePurchaseMutation, purchaseQueryOptions } from "./queries";
 
 export type SupplierPaymentFormProps = {
-  /** The purchase being paid; without it, and without a draft purchase, the user picks one. */
+  /** A payment opened from a purchase stays on that purchase. */
   purchaseId?: string;
   /** Limits the purchase choice to one supplier's open purchases. */
   supplierId?: string;
@@ -95,13 +94,12 @@ function PaymentFormBody({
   const queryClient = useQueryClient();
   const amountMarker = useFieldMarker("amount");
   const accountMarker = useFieldMarker("account");
-  const [chosenPurchase, setChosenPurchase] = useState<Purchase | null>(null);
-  const purchaseId = requestedPurchaseId ?? assistantDraft?.purchase?.id ?? chosenPurchase?.id;
-  const detail = useQuery({
-    ...purchaseQueryOptions(business.id, purchaseId),
-    enabled: purchaseId !== undefined,
-  });
-  const purchase = detail.data?.purchase;
+  const invoiceMarker = useFieldMarker("invoice");
+  const [chosenPurchaseId, setChosenPurchaseId] = useState(assistantDraft?.purchase?.id);
+  const purchaseId = requestedPurchaseId ?? chosenPurchaseId;
+  const detail = useQuery(purchaseQueryOptions(business.id, purchaseId));
+  const read = purchaseId ? readState([detail]) : null;
+  const purchase = read?.kind === "ready" ? detail.data?.purchase : undefined;
   const digits = business.currencyMinorUnitDigits;
   const [draft, setDraft] = useState<SupplierPaymentDraft>(() =>
     initialDraft(business.timeZone, digits, assistantDraft),
@@ -138,7 +136,6 @@ function PaymentFormBody({
 
   const money = (minorUnits: string) =>
     format.money(minorUnits, business.currency, business.currencyMinorUnitDigits);
-  const read = purchaseId ? readState([detail]) : null;
   const balance = purchase?.status === "posted" ? purchase.balanceMinorUnits : "0";
   const after = purchase ? balanceAfterPayment(balance, draft.amount, digits) : null;
   const change = (patch: Partial<SupplierPaymentDraft>) => {
@@ -183,19 +180,18 @@ function PaymentFormBody({
 
   return (
     <View className="gap-4">
-      {requestedPurchaseId === undefined && !assistantDraft?.purchase ? (
+      {requestedPurchaseId === undefined ? (
         <PickerField
           error={issues.purchase ? t("purchases.payment.validation.purchase") : undefined}
           label={t("purchases.payment.purchase")}
+          marker={invoiceMarker}
           onPress={() => !busy && setPurchasePickerOpen(true)}
           placeholder={t("purchases.payment.choosePurchase")}
           ref={purchaseRef}
           value={
-            chosenPurchase
-              ? chosenPurchase.invoiceNumber
-                ? `${chosenPurchase.supplierName} · ${chosenPurchase.invoiceNumber}`
-                : chosenPurchase.supplierName
-              : undefined
+            purchase?.invoiceNumber
+              ? `${purchase.supplierName} · ${purchase.invoiceNumber}`
+              : purchase?.supplierName
           }
         />
       ) : null}
@@ -344,12 +340,12 @@ function PaymentFormBody({
         businessId={business.id}
         onOpenChange={setPurchasePickerOpen}
         onSelect={(next) => {
-          setChosenPurchase(next);
+          setChosenPurchaseId(next.id);
           setIssues((current) => ({ ...current, purchase: false }));
         }}
         open={purchasePickerOpen}
         returnFocusRef={purchaseRef}
-        selectedId={chosenPurchase?.id ?? null}
+        selectedId={purchaseId ?? null}
         supplierId={supplierId ?? assistantDraft?.supplier.match?.id}
       />
     </View>

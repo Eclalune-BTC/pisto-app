@@ -1,4 +1,4 @@
-import type { BusinessPermission } from "@pisto/contracts";
+import type { AssistantSupplierPaymentDraft, BusinessPermission } from "@pisto/contracts";
 
 /**
  * Read ports the deterministic post-processing resolves names through. Implementations authorize
@@ -48,16 +48,16 @@ export interface RecordDirectory<Actor> {
 export interface DirectorySupplier {
   id: string;
   name: string;
-  /** The supplier's oldest purchase that still has a balance, if any. */
-  oldestOpenPurchase: {
-    id: string;
-    invoiceNumber: string | null;
-    balanceMinorUnits: string;
-  } | null;
 }
 
 export interface SupplierDirectory<Actor> {
   lookup(actor: Actor, terms: readonly string[]): Promise<readonly DirectorySupplier[]>;
+  /** A stated invoice must identify a single purchase; an omitted one follows due-date order. */
+  findOpenPurchase(
+    actor: Actor,
+    supplierId: string,
+    invoiceNumber: string | null,
+  ): Promise<AssistantSupplierPaymentDraft["purchase"]>;
 }
 
 /**
@@ -66,4 +66,5 @@ export interface SupplierDirectory<Actor> {
  */
 export const emptySupplierDirectory: SupplierDirectory<unknown> = {
   lookup: async () => [],
+  findOpenPurchase: async () => null,
 };

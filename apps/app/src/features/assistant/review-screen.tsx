@@ -25,16 +25,11 @@ import { hasDeniedRead } from "@/lib/query-state";
 import { type DraftFormSlots, ReviewMarkersProvider, renderDraftForm } from "./draft-slots";
 import { type EntryMode, NewEntryDialog } from "./new-entry-dialog";
 import { noticeMessage } from "./notices";
-import { problemMessageKeys } from "./problems";
+import { problemMessageKeys, unsupportedMessageKeys } from "./problems";
 import { type AssistantAvailability, useAssistantAvailability } from "./queries";
 import { canRecord } from "./recorder";
 import { reviewStore, useReviewEntry } from "./review-store";
 import { type InterpretOutcome, useInterpretation } from "./use-interpretation";
-
-const unsupportedKeys = {
-  not_a_record: "assistant.problems.notARecord",
-  several_records: "assistant.problems.severalRecords",
-} as const;
 
 function Notices({
   interpretation,
@@ -102,7 +97,7 @@ function TranscriptPanel({
 
   const messageKey =
     outcome?.kind === "unsupported"
-      ? unsupportedKeys[outcome.reason]
+      ? unsupportedMessageKeys[outcome.reason]
       : outcome?.kind === "failed"
         ? problemMessageKeys[outcome.problem]
         : null;

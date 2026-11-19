@@ -19,7 +19,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import { assistantApi } from "./api";
-import { type AssistantProblem, assistantProblem, problemMessageKeys } from "./problems";
+import {
+  type AssistantProblem,
+  assistantProblem,
+  problemMessageKeys,
+  type UnsupportedReason,
+  unsupportedMessageKeys,
+} from "./problems";
 import { type AssistantAvailability, assistantQueryKeys } from "./queries";
 import {
   canRecord,
@@ -52,7 +58,7 @@ type Phase =
   | { kind: "voiceProblem"; failure: VoiceFailure; audio: Blob | null };
 
 /** Text shown next to the editable sentence after an attempt that produced no draft. */
-type TextNotice = "notARecord" | "severalRecords" | AssistantProblem | "tooShort" | null;
+type TextNotice = UnsupportedReason | AssistantProblem | "tooShort" | null;
 
 const voiceProblemKeys = {
   denied: "assistant.problems.micDenied",
@@ -64,8 +70,7 @@ const voiceProblemKeys = {
 const silence: VoiceFailure = { source: "microphone", problem: "silence" };
 
 const textNoticeKeys = {
-  notARecord: "assistant.problems.notARecord",
-  severalRecords: "assistant.problems.severalRecords",
+  ...unsupportedMessageKeys,
   ...problemMessageKeys,
 } as const;
 
@@ -239,13 +244,7 @@ function EntryFlow({
       onClose();
       return;
     }
-    setNotice(
-      outcome.kind === "unsupported"
-        ? outcome.reason === "several_records"
-          ? "severalRecords"
-          : "notARecord"
-        : outcome.problem,
-    );
+    setNotice(outcome.kind === "unsupported" ? outcome.reason : outcome.problem);
     setPhase({ kind: "text" });
   }
 

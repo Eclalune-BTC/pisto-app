@@ -13,21 +13,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import { NewEntryDialog } from "./new-entry-dialog";
-import { problemMessageKeys } from "./problems";
+import { problemMessageKeys, unsupportedMessageKeys } from "./problems";
 import { useAssistantAvailability } from "./queries";
 import { canRecord } from "./recorder";
 import { type InterpretOutcome, useInterpretation } from "./use-interpretation";
 
 const starters = ["sale", "purchase", "expense", "payment"] as const;
 
-const outcomeKeys = {
-  not_a_record: "assistant.problems.notARecord",
-  several_records: "assistant.problems.severalRecords",
-} as const;
-
 function outcomeMessageKey(outcome: InterpretOutcome | null): ParseKeys | null {
   if (!outcome || outcome.kind === "review" || outcome.kind === "abandoned") return null;
-  if (outcome.kind === "unsupported") return outcomeKeys[outcome.reason];
+  if (outcome.kind === "unsupported") return unsupportedMessageKeys[outcome.reason];
   return problemMessageKeys[outcome.problem];
 }
 

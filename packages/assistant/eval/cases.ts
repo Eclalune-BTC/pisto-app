@@ -2,7 +2,7 @@
  * Versioned Spanish evaluation set for `assistant.extract`. Sentences use the demo business seed
  * (scripts/seed.ts), so names and prices resolve against real records. `expect` is a partial interpretation; a RegExp leaf matches a string.
  */
-export const evaluationSetVersion = "2026-11-02.1";
+export const evaluationSetVersion = "2026-11-18.1";
 
 export type Expectation = {
   [key: string]: Expectation | string | number | boolean | null | RegExp;
@@ -161,6 +161,24 @@ export const evaluationCases: EvaluationCase[] = [
       },
     },
     minSpans: 2,
+  },
+  {
+    id: "supplier-payment-unknown-invoice",
+    text: "Aboné diez dólares en efectivo a Distribuidora Centro por la factura F-99999",
+    expect: {
+      draft: {
+        kind: "supplier_payment",
+        supplier: { match: { name: "Distribuidora Centro" } },
+        purchase: null,
+        amountMinorUnits: "1000",
+      },
+      notices: { 0: { code: "not_found", field: "invoice" } },
+    },
+  },
+  {
+    id: "purchase-with-partial-payment",
+    text: "Compré cien dólares de café a Distribuidora Centro, pagué cuarenta y quedé debiendo sesenta",
+    expect: { draft: null, unsupported: "partial_purchase_payment" },
   },
   {
     id: "catalog-price-sale",

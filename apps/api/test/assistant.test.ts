@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { blankExtraction, type Extraction } from "@pisto/assistant";
+import { blankExtraction, type Extraction, emptySupplierDirectory } from "@pisto/assistant";
 import { createFakeAssistantProvider } from "@pisto/assistant/testing";
 import type { Auth } from "@pisto/auth";
 import type { BillingRuntime } from "@pisto/billing";
@@ -113,7 +113,7 @@ function setup(
   const assistant: AssistantServices = {
     provider: options.enabled === false ? null : fake.provider,
     records,
-    suppliers: { lookup: async () => [] },
+    suppliers: emptySupplierDirectory,
     consume: async ({ key }) => {
       consumed.push(key);
       return { allowed: options.allowed?.(key) ?? true, retryAfterSeconds: 42 };

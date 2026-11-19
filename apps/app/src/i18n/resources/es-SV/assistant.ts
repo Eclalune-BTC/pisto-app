@@ -47,6 +47,8 @@ export const assistant = {
     },
   },
   problems: {
+    partialPurchasePayment:
+      "Para registrar una compra con abono, registre primero la compra al crédito. Después anote lo que pagó como abono a esa compra.",
     disabledTitle: "El asistente no está disponible",
     disabled:
       "Puede registrar ventas, gastos y abonos desde sus formularios mientras el asistente está apagado.",
@@ -106,9 +108,12 @@ export const assistant = {
       credit: "Indique si la compra fue al contado o al crédito.",
       product: "No pudimos leer todos los productos que dijo; revise las líneas.",
       invoice: "No pudimos leer el número de factura; escríbalo si lo necesita.",
+      paymentInvoice: "Revise el número que indicó y elija la compra que quiere abonar.",
       other: "Falta un dato; revíselo en el formulario.",
     },
     notFound: {
+      invoice:
+        "El número de factura no identifica una única compra pendiente de este proveedor. Elija la compra que quiere abonar.",
       customer: "No encontramos al cliente «{{heard}}».",
       supplier: "No encontramos al proveedor «{{heard}}».",
       product: "No encontramos «{{item}}» en el catálogo.",

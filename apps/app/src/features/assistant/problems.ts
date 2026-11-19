@@ -1,4 +1,13 @@
+import type { AssistantInterpretation } from "@pisto/contracts";
 import { ApiClientError } from "@/lib/api-error";
+
+export type UnsupportedReason = NonNullable<AssistantInterpretation["unsupported"]>;
+
+export const unsupportedMessageKeys = {
+  not_a_record: "assistant.problems.notARecord",
+  several_records: "assistant.problems.severalRecords",
+  partial_purchase_payment: "assistant.problems.partialPurchasePayment",
+} as const satisfies Record<UnsupportedReason, string>;
 
 export type AssistantProblem =
   | "offline"

@@ -77,6 +77,8 @@ export function noticeMessage(
     }
     case "not_found":
       switch (notice.field) {
+        case "invoice":
+          return t("assistant.notices.notFound.invoice");
         case "customer":
           return t("assistant.notices.notFound.customer", {
             heard: partyOf(draft, "customer")?.heard ?? "",
@@ -95,6 +97,9 @@ export function noticeMessage(
           return t("assistant.notices.notFound.other");
       }
     case "missing":
+      if (notice.field === "invoice" && draft.kind === "supplier_payment") {
+        return t("assistant.notices.missing.paymentInvoice");
+      }
       if (line && notice.field === "quantity") {
         return t("assistant.notices.missing.quantity", { item });
       }

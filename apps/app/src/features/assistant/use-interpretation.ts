@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "expo-router";
 import { authClient } from "@/lib/auth-client";
 
 import { assistantApi } from "./api";
-import { type AssistantProblem, assistantProblem } from "./problems";
+import { type AssistantProblem, assistantProblem, type UnsupportedReason } from "./problems";
 import { assistantQueryKeys } from "./queries";
 import { reviewStore } from "./review-store";
 
@@ -13,7 +13,7 @@ const REVIEW_ROUTE = "/operate/assistant/review";
 
 export type InterpretOutcome =
   | { kind: "review" }
-  | { kind: "unsupported"; reason: "not_a_record" | "several_records" }
+  | { kind: "unsupported"; reason: UnsupportedReason }
   | { kind: "failed"; problem: AssistantProblem }
   /** The caller went away (a closed dialog) before the answer arrived; nothing was shown. */
   | { kind: "abandoned" };

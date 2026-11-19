@@ -1,4 +1,6 @@
+import { type AssistantInterpretation, purchaseListResponseSchema } from "@pisto/contracts";
 import { expect, type Page, test } from "@playwright/test";
+import { apiOrigin } from "./environment.ts";
 
 test.use({ storageState: "e2e/.auth/owner.json" });
 
@@ -31,4 +33,64 @@ test("records a cash sale and takes the product out of stock", async ({ page }) 
   await expect(page.getByRole("row", { name: /Arroz San Pedro 1 lb 1 \$0\.95/ })).toBeVisible();
 
   expect(await remainingRice(page)).toBe(before - 1);
+});
+
+test("lets the reviewer change a suggested supplier invoice and keep the payment amount", async ({
+  page,
+}) => {
+  await page.route("**/v1/assistant/status", (route) =>
+    route.fulfill({ json: { data: { enabled: true, transcription: false } } }),
+  );
+  const purchases = await page.request.get(
+    `${apiOrigin}/v1/purchases?status=posted&payable=open&limit=50`,
+  );
+  expect(purchases.ok()).toBe(true);
+  const open = purchaseListResponseSchema.parse(await purchases.json()).data.items;
+  const [suggested, other] = open.filter(
+    (purchase) => purchase.supplierName === "Distribuidora Centro" && purchase.invoiceNumber,
+  );
+  if (!suggested || !other)
+    throw new Error("The demo requires two open invoices for one supplier.");
+
+  const text = `Aboné un dólar a ${suggested.supplierName} por la factura ${suggested.invoiceNumber}`;
+  const interpretation: AssistantInterpretation = {
+    text,
+    source: "text",
+    spans: [],
+    notices: [],
+    unsupported: null,
+    draft: {
+      kind: "supplier_payment",
+      occurredLocalDate: suggested.occurredAt.slice(0, 10),
+      occurredLocalTime: "10:00",
+      supplier: {
+        heard: suggested.supplierName,
+        match: { id: suggested.supplierId, name: suggested.supplierName, exact: true },
+      },
+      purchase: {
+        id: suggested.id,
+        invoiceNumber: suggested.invoiceNumber,
+        balanceMinorUnits: suggested.balanceMinorUnits,
+      },
+      amountMinorUnits: "100",
+      account: null,
+    },
+  };
+  await page.route("**/v1/assistant/interpretations", (route) =>
+    route.fulfill({ json: { data: { interpretation } } }),
+  );
+  await page.goto("/operate");
+  await page.getByRole("textbox", { name: "Qué quiere registrar" }).fill(text);
+  await page.getByRole("button", { name: "Revisar", exact: true }).click();
+  await page
+    .getByRole("button", { name: `Compra: ${suggested.supplierName} · ${suggested.invoiceNumber}` })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByText(`${other.supplierName} · ${other.invoiceNumber}`, { exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: `Compra: ${other.supplierName} · ${other.invoiceNumber}` }),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Monto del pago" })).toHaveValue("1.00");
 });

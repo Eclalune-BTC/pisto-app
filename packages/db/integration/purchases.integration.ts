@@ -344,7 +344,6 @@ describe("suppliers, purchases and payables on PostgreSQL 18", () => {
       {
         id: vendor.id,
         name: "Panificadora Santa Rita",
-        oldestOpenPurchase: { id: open.id, invoiceNumber: "F-1043", balanceMinorUnits: "5000" },
       },
     ]);
     expect(await supplierDirectory.lookup(actor("member"), ["santa rita"])).toEqual([]);
@@ -414,6 +413,61 @@ describe("suppliers, purchases and payables on PostgreSQL 18", () => {
     await expect(
       repository.voidPurchase(actor("ownerA"), open.id, { idempotencyKey: key(), reason: "Error" }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  test("resolves an invoice only within its supplier and business, including duplicate history", async () => {
+    const owner = actor("ownerA");
+    const vendor = await newSupplier("Café de altura");
+    const buy = (supplierId: string, invoiceNumber: string, days: number) =>
+      repository.createPurchase(
+        owner,
+        creditPurchase(supplierId, {
+          invoiceNumber,
+          received: false,
+          dueDate: shiftDate(today, days),
+          lines: [{ productId: trackedId, quantityMinorUnits: "1", unitCostMinorUnits: "100" }],
+        }),
+      );
+    const find = (number: string | null) =>
+      supplierDirectory.findOpenPurchase(owner, vendor.id, number);
+    const oldest = await buy(vendor.id, "F-103", 1);
+    const named = await buy(vendor.id, "F-0204/A", 20);
+    expect(await find(null)).toMatchObject({ id: oldest.purchase.id });
+    expect(await find("f-0204/a")).toMatchObject({
+      id: named.purchase.id,
+      invoiceNumber: "F-0204/A",
+      balanceMinorUnits: "100",
+    });
+    expect(await find("F-204/A")).toBeNull();
+    expect(
+      await supplierDirectory.findOpenPurchase(actor("member"), vendor.id, "F-0204/A"),
+    ).toBeNull();
+    expect(
+      await supplierDirectory.findOpenPurchase(actor("ownerB", businessB), vendor.id, "F-0204/A"),
+    ).toBeNull();
+
+    const other = await newSupplier("Café del valle");
+    const separate = await buy(other.id, "F-0204/A", 2);
+    expect(await find("F-0204/A")).toMatchObject({ id: named.purchase.id });
+
+    await repository.createSupplierPayment(owner, named.purchase.id, {
+      ...at,
+      idempotencyKey: key(),
+      accountId: tillId,
+      amountMinorUnits: "100",
+    });
+    expect(await find("F-0204/A")).toBeNull();
+    await buy(vendor.id, "F-0204/A", 3);
+    expect(await find("F-0204/A")).toBeNull();
+    expect(await supplierDirectory.findOpenPurchase(owner, other.id, "F-0204/A")).toMatchObject({
+      id: separate.purchase.id,
+    });
+
+    await repository.voidPurchase(owner, oldest.purchase.id, {
+      idempotencyKey: key(),
+      reason: "Duplicada",
+    });
+    expect(await find("F-103")).toBeNull();
   });
 
   test("voids a received cash purchase by returning its stock and its money", async () => {

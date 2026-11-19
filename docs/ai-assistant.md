@@ -17,6 +17,15 @@ reviews the draft at `/operate/assistant/review` and saves only through each rec
 AI SDK is not installed for this slice; the target below still applies to the conversational
 assistant.
 
+For a supplier payment, the review can suggest a purchase only within the active business and
+matched supplier. A stated invoice must identify one purchase with an outstanding balance.
+Ambiguous references, including a number reused on a settled purchase, leave the choice open.
+Without an invoice reference the earliest due open purchase is suggested. The reviewer can
+change the purchase before confirming. When extraction identifies a partially paid purchase,
+the app explains how to record the credit purchase and its payment separately. Evaluation set
+`2026-11-18.1` adds both a missing supplier invoice and a mixed purchase payment to the original
+16 Spanish cases. The recorded provider score applies to the original set.
+
 ## Decision summary
 
 The accepted target is AI SDK 7, with current APIs to be revalidated before implementation, as a
@@ -65,8 +74,8 @@ the operation.
 
 ## Planned ownership
 
-The assistant package does not exist yet. Create it only with the first approved implementation;
-existing product commands remain in their current capability owners.
+The registration package exists. Conversational orchestration is future work. Existing product
+commands stay with their capability owners.
 
 | Owner | Responsibility | Prohibited ownership |
 | --- | --- | --- |
@@ -74,7 +83,7 @@ existing product commands remain in their current capability owners.
 | `apps/api` | HTTP/stream composition, auth resolution, rate and size limits | Generated business rules or provider-specific domain types |
 | `packages/contracts` | Pisto-owned public turn, draft, approval, result, and error schemas | Raw provider responses or database rows |
 | `packages/db` capability modules | Product invariants, exact queries, commands, audit, schema, and transactions | AI SDK, prompts, tool selection, or UI state |
-| future `packages/assistant` | AI SDK configuration, prompt versions, tool registry, bounded orchestration | SQL, canonical financial calculations, or authorization policy |
+| `packages/assistant` (future conversational work) | AI SDK configuration, prompt versions, tool registry, bounded orchestration | SQL, canonical financial calculations, or authorization policy |
 
 The API is the composition root. The assistant package receives authorized product capabilities; the
 product domain does not depend on the assistant. A separate sales package requires the ownership

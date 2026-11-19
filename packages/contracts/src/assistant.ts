@@ -153,7 +153,7 @@ export const assistantSupplierPaymentDraftSchema = z.object({
   kind: z.literal("supplier_payment"),
   ...occurrenceFields,
   supplier: namedPartySchema,
-  /** The supplier's oldest purchase with a balance, which the payment would be applied to. */
+  /** The open purchase identified by the invoice, or the earliest due when no invoice was stated. */
   purchase: z
     .object({
       id: uuidSchema,
@@ -199,7 +199,7 @@ export const assistantInterpretationSchema = z
     spans: z.array(assistantSpanSchema).max(40),
     draft: assistantDraftSchema.nullable(),
     /** Set when `draft` is null. */
-    unsupported: z.enum(["not_a_record", "several_records"]).nullable(),
+    unsupported: z.enum(["not_a_record", "several_records", "partial_purchase_payment"]).nullable(),
     notices: z.array(assistantNoticeSchema).max(40),
   })
   .strict();

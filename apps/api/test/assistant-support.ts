@@ -1,3 +1,4 @@
+import { emptySupplierDirectory } from "@pisto/assistant";
 import type { AssistantConfig } from "../src/config.ts";
 import type { AssistantServices } from "../src/routes/assistant.ts";
 
@@ -22,7 +23,7 @@ export function disabledAssistant(): AssistantServices {
         throw new Error("The disabled assistant never looks records up");
       },
     },
-    suppliers: { lookup: async () => [] },
+    suppliers: emptySupplierDirectory,
     consume: async () => ({ allowed: true, retryAfterSeconds: 60 }),
     limits: { interpretPerMinute: 20, transcribePerMinute: 10, businessPerMinute: 60 },
     timeouts: { extractMs: 1_000, transcribeMs: 1_000 },
