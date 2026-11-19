@@ -11,15 +11,19 @@ Pisto can add voice without turning the product into a provider-owned agent or a
 execution path. Text and structured UI come first. Voice produces or presents text around the same
 authorized commands, queries, confirmation, idempotency, transaction, and audit rules.
 
-No AI SDK, `expo-audio`, ElevenLabs package, assistant route, audio upload, model, voice, or realtime
-session is installed or selected today.
+The browser records 16 kHz WAV audio and uploads it to the authenticated transcription endpoint.
+The server calls Workers AI Whisper. Native recording and spoken responses remain future work.
+
+The web recorder shows the microphone level and elapsed time against its 45-second limit.
+Stopping the recorder opens the full transcript for editing. The user must confirm the text
+before asking a question or preparing a financial draft. A transcript over 1,000 characters
+stays editable until it fits the interpretation limit. Above the 2,000-character transcription
+limit the user can record a shorter sentence or type. Cancelling releases the recording.
 
 ## Decision summary
 
-- The first possible voice slice is bounded push-to-talk transcription that returns editable text to
-  an assistant composer. No such composer exists: there is no assistant route, package, or UI in the
-  repository, so this slice has no surface to attach to and cannot begin as an independent feature.
-  Voice is blocked behind stage 1 below. It never submits or executes automatically.
+- Web push-to-talk returns editable text to the assistant composer. The user confirms the wording
+  before the app opens a read-only answer or prepares a draft for review.
 - Pisto owns separate provider-neutral aliases/ports for batch transcription, speech output, and any
   later realtime conversation. One `voiceEnabled` flag must not collapse these risk levels.
 - ElevenLabs is a credible candidate. If a voice brief is approved, evaluate first whether AI SDK
@@ -63,9 +67,8 @@ Expo push-to-talk recorder
   -> normal typed draft, authorization, confirmation, and domain flow
 ```
 
-The third-from-last step has no implementation to receive it. The text composer is delivered by the
-assistant slice, which does not exist; this diagram describes the target, not a wiring task that can
-start today.
+The web implementation uses the `assistant.transcribe` alias and the existing review flow. The
+additional cost and concurrency controls in the diagram are release gates.
 
 The current generic app client serializes JSON only. Keep it that way. A voice slice adds a narrow
 authenticated raw-binary upload adapter that reuses the platform's existing session-cookie behavior;

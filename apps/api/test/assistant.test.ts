@@ -324,6 +324,13 @@ describe("transcriptions", () => {
     expect(consumed[0]).toBe("pisto:assistant:transcribe:business_test:user_test");
   });
 
+  test("rejects a transcript over the limit without returning a truncated sentence", async () => {
+    const { client } = setup({ transcribe: () => "a".repeat(2001) });
+    const response = await client.request("/v1/assistant/transcriptions", audio(wave(16)));
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ error: { code: "BAD_REQUEST" } });
+  });
+
   test("accepts only WAV from an allowlisted origin within the audio limit", async () => {
     const { client, calls } = setup();
     const cases: Array<[RequestInit, number]> = [

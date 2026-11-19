@@ -12,6 +12,7 @@ export const unsupportedMessageKeys = {
 export type AssistantProblem =
   | "offline"
   | "provider"
+  | "recordingTooLong"
   | "rateLimited"
   | "denied"
   | "paused"
@@ -21,6 +22,7 @@ export type AssistantProblem =
 export function assistantProblem(error: unknown): AssistantProblem {
   if (!(error instanceof ApiClientError)) return "unexpected";
   if (error.status === 0) return "offline";
+  if (error.status === 413) return "recordingTooLong";
   if (error.code === "RATE_LIMITED") return "rateLimited";
   if (error.code === "FORBIDDEN") return "denied";
   if (error.code === "WRITES_PAUSED") return "paused";
@@ -33,6 +35,7 @@ export function assistantProblem(error: unknown): AssistantProblem {
 export const problemMessageKeys = {
   offline: "assistant.problems.offline",
   provider: "assistant.problems.provider",
+  recordingTooLong: "assistant.problems.recordingTooLong",
   rateLimited: "assistant.problems.rateLimited",
   denied: "assistant.problems.denied",
   paused: "assistant.problems.paused",

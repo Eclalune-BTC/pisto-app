@@ -1,14 +1,48 @@
 import { QueryClient, skipToken } from "@tanstack/react-query";
 import { describe, expect, test, vi } from "vitest";
+import { api } from "@/lib/api-client";
 
 vi.mock("@/lib/api-client", () => ({
   api: { sales: { get: vi.fn(), list: vi.fn(), previousMonthSummary: vi.fn(), review: {} } },
   apiRequest: vi.fn(),
 }));
 
-import { invalidateSaleReads, SALES_PAGE_SIZE, salesInfiniteOptions } from "./queries";
+import {
+  invalidateSaleReads,
+  previousMonthSummaryQueryOptions,
+  SALES_PAGE_SIZE,
+  salesInfiniteOptions,
+} from "./queries";
 
 describe("sales queries", () => {
+  test("caches the previous month only for the business authorized by the server", async () => {
+    const client = new QueryClient();
+    const response = {
+      summary: {
+        businessId: "shop-b",
+        periodStartLocal: "2026-09-01",
+        periodEndLocalExclusive: "2026-10-01",
+        periodStartUtc: "2026-09-01T06:00:00.000Z",
+        periodEndUtcExclusive: "2026-10-01T06:00:00.000Z",
+        queriedAt: "2026-10-10T12:00:00.000Z",
+        timeZone: "America/El_Salvador",
+        currency: "USD",
+        currencyMinorUnitDigits: 2,
+        grossMinorUnits: "250",
+        saleCount: "1",
+        averageMinorUnits: "250",
+      },
+    };
+    vi.mocked(api.sales.previousMonthSummary).mockResolvedValue(response);
+    const shopA = previousMonthSummaryQueryOptions("shop-a");
+    await expect(client.fetchQuery(shopA)).rejects.toMatchObject({ status: 403 });
+    expect(client.getQueryData(shopA.queryKey)).toBeUndefined();
+    await expect(client.fetchQuery(previousMonthSummaryQueryOptions("shop-b"))).resolves.toEqual(
+      response,
+    );
+    client.clear();
+  });
+
   test("a committed sale or correction refreshes every sales and report read of its business", async () => {
     const client = new QueryClient();
     const invalidate = vi.spyOn(client, "invalidateQueries").mockResolvedValue();

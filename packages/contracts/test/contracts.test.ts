@@ -64,6 +64,7 @@ describe("API contracts", () => {
 
   test("allows a canonical summary aggregate beyond one row's bigint range", () => {
     const result = previousMonthSummarySchema.safeParse({
+      businessId: "business",
       periodStartLocal: "2026-07-01",
       periodEndLocalExclusive: "2026-08-01",
       periodStartUtc: "2026-07-01T06:00:00.000Z",

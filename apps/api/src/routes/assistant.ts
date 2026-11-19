@@ -5,7 +5,10 @@ import {
   interpretSentence,
   type SupplierDirectory,
 } from "@pisto/assistant";
-import { assistantInterpretRequestSchema } from "@pisto/contracts";
+import {
+  assistantInterpretRequestSchema,
+  assistantTranscriptionResponseSchema,
+} from "@pisto/contracts";
 import type { AssistantDirectoryRepository, ConsumeRateLimit, ProductActor } from "@pisto/db";
 
 import { ApiError } from "../errors.ts";
@@ -161,7 +164,12 @@ export function assistantRoutes(input: { access: ProductAccess; assistant: Assis
           signal: AbortSignal.timeout(assistant.timeouts.transcribeMs),
         }),
       );
-      return { data: { text: text.replace(/\s+/g, " ").trim().slice(0, 2_000) } };
+      const result = assistantTranscriptionResponseSchema.safeParse({
+        data: { text: text.replace(/\s+/g, " ").trim() },
+      });
+      if (!result.success)
+        throw new ApiError(413, "BAD_REQUEST", "The transcription exceeds the supported length");
+      return result.data;
     },
     // The raw body was already bounded by the request-body limit for this path.
     { parse: "none" },

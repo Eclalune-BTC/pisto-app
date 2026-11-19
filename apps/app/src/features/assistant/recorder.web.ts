@@ -38,9 +38,24 @@ export async function startRecording(onLevel: (level: number) => void): Promise<
     throw failure(error);
   }
 
-  const context = new AudioContext();
-  // Safari can create the context suspended after the awaited permission prompt.
-  if (context.state === "suspended") await context.resume();
+  let context: AudioContext | undefined;
+  try {
+    context = new AudioContext();
+    // Safari can create the context suspended after the awaited permission prompt.
+    if (context.state === "suspended") await context.resume();
+    return connectRecording(stream, context, onLevel);
+  } catch (error) {
+    for (const track of stream.getTracks()) track.stop();
+    if (context && context.state !== "closed") void context.close().catch(() => {});
+    throw failure(error);
+  }
+}
+
+function connectRecording(
+  stream: MediaStream,
+  context: AudioContext,
+  onLevel: (level: number) => void,
+): Recording {
   const source = context.createMediaStreamSource(stream);
   // ScriptProcessorNode is deprecated but needs no separately served worklet module; a short
   // dictation does not need the worklet's off-main-thread timing.
@@ -66,7 +81,7 @@ export async function startRecording(onLevel: (level: number) => void): Promise<
     processor.disconnect();
     mute.disconnect();
     for (const track of stream.getTracks()) track.stop();
-    void context.close();
+    if (context.state !== "closed") void context.close().catch(() => {});
   };
 
   return {

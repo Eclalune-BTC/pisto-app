@@ -166,6 +166,7 @@ beforeEach(() => {
     }),
     summary: settled({
       summary: {
+        businessId: "business",
         periodStartLocal: "2026-09-01",
         periodEndLocalExclusive: "2026-10-01",
         periodStartUtc: "2026-09-01T06:00:00.000Z",

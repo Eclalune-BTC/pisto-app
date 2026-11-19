@@ -8,6 +8,7 @@ import {
 
 import { reportsQueryKeys } from "@/features/reports/queries";
 import { api } from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-error";
 
 export const SALES_PAGE_SIZE = 25;
 
@@ -65,7 +66,15 @@ export function saleFormOptionsQueryOptions(businessId: string | undefined) {
 
 export function previousMonthSummaryQueryOptions(businessId: string | undefined) {
   return queryOptions({
-    queryFn: businessId ? ({ signal }) => api.sales.previousMonthSummary(signal) : skipToken,
+    queryFn: businessId
+      ? async ({ signal }) => {
+          const result = await api.sales.previousMonthSummary(signal);
+          if (result.summary.businessId !== businessId) {
+            throw new ApiClientError("The active business changed", 403, "FORBIDDEN");
+          }
+          return result;
+        }
+      : skipToken,
     queryKey: saleQueryKeys.previousMonthSummary(businessId),
   });
 }

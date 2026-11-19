@@ -26,6 +26,17 @@ the app explains how to record the credit purchase and its payment separately. E
 `2026-11-18.1` adds both a missing supplier invoice and a mixed purchase payment to the original
 16 Spanish cases. The recorded provider score applies to the original set.
 
+## Read-only questions from the composer
+
+The assistant recognizes complete Spanish questions about the previous calendar month's sales,
+who owes the business money, and unpaid supplier invoices. Text and confirmed voice share the
+same recognition rules. The app checks the active membership and the destination's permission.
+The sales answer uses the server's existing previous-month query for gross sales, count,
+average, currency and period. It caches the result only when its authorized business matches the
+requested business. The receivables screen includes overdue balances and payables
+opens with its outstanding-balance filter. The composer also offers these questions when model
+extraction is disabled. All amounts come from the authenticated product APIs.
+
 ## Decision summary
 
 The accepted target is AI SDK 7, with current APIs to be revalidated before implementation, as a

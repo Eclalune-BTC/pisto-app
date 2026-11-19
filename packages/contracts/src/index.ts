@@ -535,6 +535,7 @@ export const saleListSchema = z
 export const saleListResponseSchema = z.object({ data: saleListSchema }).strict();
 
 export const previousMonthSummarySchema = z.object({
+  businessId: z.string().min(1),
   periodStartLocal: calendarLocalDateSchema,
   periodEndLocalExclusive: calendarLocalDateSchema,
   periodStartUtc: timestampSchema,

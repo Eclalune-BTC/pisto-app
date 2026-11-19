@@ -35,6 +35,7 @@ export const shell = {
     "/operate": "Inicio",
     "/operate/movements": "Movimientos",
     "/operate/assistant/review": "Revisar registro",
+    "/operate/assistant/sales-summary": "Ventas del mes pasado",
     "/operate/sales": "Ventas",
     "/operate/sales/new": "Nueva venta",
     "/operate/sales/[saleId]": "Venta",

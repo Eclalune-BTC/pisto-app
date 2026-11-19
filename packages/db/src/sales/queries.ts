@@ -190,6 +190,7 @@ export function createSaleQueries(db: Database): SaleQueries {
         `);
         if (!row) throw new Error("Previous-month summary query returned no row");
         return {
+          businessId: access.businessId,
           periodStartLocal: row.period_start_local,
           periodEndLocalExclusive: row.period_end_local_exclusive,
           periodStartUtc: new Date(row.period_start_utc).toISOString(),

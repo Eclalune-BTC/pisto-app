@@ -54,7 +54,7 @@ type Phase =
   | { kind: "requesting" }
   | { kind: "recording" }
   | { kind: "transcribing" }
-  | { kind: "interpreting"; from: "voice" | "text" }
+  | { kind: "interpreting" }
   | { kind: "voiceProblem"; failure: VoiceFailure; audio: Blob | null };
 
 /** Text shown next to the editable sentence after an attempt that produced no draft. */
@@ -84,12 +84,12 @@ function Waveform({ levels }: { levels: readonly number[] }) {
   return (
     <View
       accessibilityLabel={t("assistant.dialog.levelLabel")}
-      className="h-14 flex-row items-center justify-center gap-[3px]"
+      className="h-14 flex-row items-center justify-center gap-[3px] web:motion-reduce:hidden"
       role="img"
     >
       {levels.map((level, index) => (
         <View
-          className="w-[3px] rounded-full bg-primary-foreground"
+          className="w-[3px] rounded-full bg-brand-foreground"
           // biome-ignore lint/suspicious/noArrayIndexKey: bars are positional and only shift
           key={index}
           style={{ height: Math.max(3, Math.round(level * 52)), opacity: 0.35 + level * 0.65 }}
@@ -99,7 +99,7 @@ function Waveform({ levels }: { levels: readonly number[] }) {
   );
 }
 
-function Examples({ onPick }: { onPick?: (example: string) => void }) {
+function Examples({ onPick }: { onPick: (example: string) => void }) {
   const { t } = useTranslation();
   const examples = [t("assistant.dialog.examples.expense"), t("assistant.dialog.examples.payment")];
   return (
@@ -108,21 +108,15 @@ function Examples({ onPick }: { onPick?: (example: string) => void }) {
         {t("assistant.dialog.examplesTitle")}
       </Text>
       <View className="flex-row flex-wrap gap-2">
-        {examples.map((example) =>
-          onPick ? (
-            <Button
-              key={example}
-              label={`«${example}»`}
-              onPress={() => onPick(example)}
-              size="sm"
-              variant="outline"
-            />
-          ) : (
-            <Text className="text-dense text-foreground" key={example}>
-              «{example}»
-            </Text>
-          ),
-        )}
+        {examples.map((example) => (
+          <Button
+            key={example}
+            label={`«${example}»`}
+            onPress={() => onPick(example)}
+            size="sm"
+            variant="outline"
+          />
+        ))}
       </View>
     </View>
   );
@@ -237,7 +231,7 @@ function EntryFlow({
   }, []);
 
   async function review(sentence: string, from: "voice" | "text") {
-    setPhase({ kind: "interpreting", from });
+    setPhase({ kind: "interpreting" });
     const outcome = await interpret({ text: sentence, source: from }, () => !alive.current);
     if (!alive.current || outcome.kind === "abandoned") return;
     if (outcome.kind === "review") {
@@ -259,14 +253,15 @@ function EntryFlow({
     transcription.current = controller;
     try {
       const heard = (await assistantApi.transcribe(audio, controller.signal)).trim();
-      if (!alive.current) return;
+      if (!alive.current || controller.signal.aborted) return;
       if (heard.length < MIN_TEXT) {
         setPhase({ kind: "voiceProblem", failure: silence, audio: null });
         return;
       }
-      setText(heard.slice(0, MAX_TEXT));
+      setText(heard);
       setSource("voice");
-      await review(heard.slice(0, MAX_TEXT), "voice");
+      setNotice(null);
+      setPhase({ kind: "text" });
     } catch (error) {
       if (!alive.current || controller.signal.aborted) return;
       const problem = assistantProblem(error);
@@ -283,14 +278,16 @@ function EntryFlow({
     }
   }
 
-  async function stopAndReview() {
+  async function stopAndTranscribe() {
     const active = recording.current;
     if (!active) return;
     recording.current = null;
+    const current = attempt.current;
     try {
-      await transcribe(await active.stop());
+      const audio = await active.stop();
+      if (alive.current && attempt.current === current) await transcribe(audio);
     } catch {
-      if (alive.current) {
+      if (alive.current && attempt.current === current) {
         setPhase({
           kind: "voiceProblem",
           failure: { source: "microphone", problem: "failed" },
@@ -345,7 +342,7 @@ function EntryFlow({
 
   const recordingNow = phase.kind === "recording";
   // Reads the current recording when the limit is reached, without restarting the timer.
-  const reachLimit = useEffectEvent(() => void stopAndReview());
+  const reachLimit = useEffectEvent(() => void stopAndTranscribe());
   useEffect(() => {
     if (!recordingNow) return;
     const startedAt = Date.now();
@@ -364,21 +361,31 @@ function EntryFlow({
       return;
     }
     setNotice(null);
-    void review(sentence.slice(0, MAX_TEXT), source);
+    if (sentence.length <= MAX_TEXT) void review(sentence, source);
   }
 
-  if (phase.kind === "text" || (phase.kind === "interpreting" && phase.from === "text")) {
+  if (phase.kind === "text" || phase.kind === "interpreting") {
     const interpreting = phase.kind === "interpreting";
+    const spoken = source === "voice";
+    const excess = text.trim().length - MAX_TEXT;
     const noticeKey = notice && notice !== "tooShort" ? textNoticeKeys[notice] : null;
     return (
-      <View className="gap-4">
-        <DialogDescription>{t("assistant.dialog.textDescription")}</DialogDescription>
+      <View aria-busy={interpreting} className="gap-4">
+        <DialogDescription>
+          {t(spoken ? "assistant.dialog.transcriptHint" : "assistant.dialog.textDescription")}
+        </DialogDescription>
         <Field
           autoFocus
           editable={!interpreting}
-          error={notice === "tooShort" ? t("assistant.dialog.textTooShort") : undefined}
-          label={t("assistant.dialog.textLabel")}
-          maxLength={MAX_TEXT}
+          error={
+            excess > 0
+              ? t("assistant.dialog.tooLong", { count: excess })
+              : notice === "tooShort"
+                ? t("assistant.dialog.textTooShort")
+                : undefined
+          }
+          label={t(spoken ? "assistant.dialog.transcriptLabel" : "assistant.dialog.textLabel")}
+          maxLength={spoken ? undefined : MAX_TEXT}
           multiline
           numberOfLines={4}
           onChangeText={(value) => {
@@ -393,18 +400,22 @@ function EntryFlow({
             <AlertDescription>{t(noticeKey)}</AlertDescription>
           </Alert>
         ) : null}
-        <Examples
-          onPick={(example) => {
-            setText(example);
-            setSource("text");
-            setNotice(null);
-          }}
-        />
+        {!spoken && (
+          <Examples
+            onPick={(example) => {
+              setText(example);
+              setSource("text");
+              setNotice(null);
+            }}
+          />
+        )}
         <View className="flex-row flex-wrap items-center justify-between gap-2">
           {voiceAvailable ? (
             <Button disabled={interpreting} onPress={() => void listen()} size="sm" variant="ghost">
               <Icon as={Mic} className="text-foreground" size={16} />
-              <Text>{t("assistant.dialog.dictateInstead")}</Text>
+              <Text>
+                {t(spoken ? "assistant.dialog.recordAgain" : "assistant.dialog.dictateInstead")}
+              </Text>
             </Button>
           ) : (
             <View />
@@ -412,7 +423,8 @@ function EntryFlow({
           <View className="flex-row gap-2">
             <Button label={t("common.cancel")} onPress={onClose} variant="outline" />
             <Button
-              label={t("assistant.dialog.review")}
+              disabled={excess > 0}
+              label={t(spoken ? "assistant.dialog.continueWithText" : "assistant.dialog.review")}
               loading={interpreting}
               onPress={submitText}
             />
@@ -430,8 +442,9 @@ function EntryFlow({
         : t(problemMessageKeys[failure.problem]);
     const audio = phase.audio;
     const canRetryMicrophone =
-      failure.source === "microphone" &&
-      (failure.problem === "silence" || failure.problem === "failed");
+      (failure.source === "microphone" &&
+        (failure.problem === "silence" || failure.problem === "failed")) ||
+      (failure.source === "request" && failure.problem === "recordingTooLong");
     return (
       <View className="gap-4">
         <Alert icon={TriangleAlert} variant="warning">
@@ -460,34 +473,40 @@ function EntryFlow({
       ? t("assistant.dialog.requesting")
       : phase.kind === "transcribing"
         ? t("assistant.dialog.transcribing")
-        : phase.kind === "interpreting"
-          ? t("assistant.dialog.interpreting")
-          : t("assistant.dialog.listening");
-  const busy = phase.kind === "transcribing" || phase.kind === "interpreting";
+        : t("assistant.dialog.listening");
+  const busy = phase.kind === "transcribing";
   return (
     <View className="gap-4">
       <DialogDescription>{t("assistant.dialog.description")}</DialogDescription>
-      <View className="items-center gap-2 rounded-lg bg-primary px-4 py-5">
-        <Waveform levels={levels} />
-        <View aria-live="polite" className="flex-row items-center gap-2">
+      <View className="gap-3 rounded-xl bg-brand px-5 py-5">
+        <View className="flex-row items-center gap-2">
           <View
             className={cn(
               "size-2 rounded-full",
-              recordingNow ? "bg-highlight" : "bg-primary-foreground/40",
+              recordingNow ? "bg-brand-foreground" : "bg-white/45",
             )}
           />
-          <Text className="font-ui text-sm text-primary-foreground">{status}</Text>
-          {recordingNow ? (
-            <Text className="text-sm tabular-nums text-primary-foreground/80">
-              {t("assistant.dialog.elapsed", {
-                elapsed: clock(elapsed),
-                limit: clock(MAX_RECORDING_SECONDS),
-              })}
-            </Text>
-          ) : null}
+          <Text aria-live="polite" className="font-ui text-base text-white">
+            {status}
+          </Text>
+        </View>
+        {recordingNow ? <Waveform levels={levels} /> : null}
+        <View aria-hidden className="h-1 overflow-hidden rounded-full bg-white/25">
+          <View
+            className="h-full bg-brand-foreground"
+            style={{ width: `${Math.min(100, (elapsed / MAX_RECORDING_SECONDS) * 100)}%` }}
+          />
+        </View>
+        <View className="flex-row items-baseline justify-between">
+          <Text
+            className="font-heading text-figure tabular-nums text-white"
+            accessibilityLabel={t("assistant.dialog.recordedTime", { elapsed: clock(elapsed) })}
+          >
+            {clock(elapsed)}
+          </Text>
+          <Text className="text-sm tabular-nums text-white/80">{clock(MAX_RECORDING_SECONDS)}</Text>
         </View>
       </View>
-      <Examples />
       <View className="flex-row flex-wrap items-center justify-between gap-2">
         <Button disabled={busy} onPress={writeInstead} size="sm" variant="ghost">
           <Icon as={Keyboard} className="text-foreground" size={16} />
@@ -495,9 +514,9 @@ function EntryFlow({
         </Button>
         <View className="flex-row gap-2">
           <Button label={t("common.cancel")} onPress={onClose} variant="outline" />
-          <Button disabled={!recordingNow} loading={busy} onPress={() => void stopAndReview()}>
+          <Button disabled={!recordingNow} loading={busy} onPress={() => void stopAndTranscribe()}>
             {busy ? null : <Icon as={Square} className="text-primary-foreground" size={14} />}
-            <Text>{t("assistant.dialog.stopAndReview")}</Text>
+            <Text>{t("assistant.dialog.stopRecording")}</Text>
           </Button>
         </View>
       </View>

@@ -323,6 +323,7 @@ describe("product repository on PostgreSQL 18", () => {
 
     const activeActor = { ...firstActor, activeBusinessId: created.business.id };
     const emptySummary = await repository.getPreviousMonthSummary(activeActor);
+    expect(emptySummary.businessId).toBe(created.business.id);
     expect(emptySummary.grossMinorUnits).toBe("0");
     expect(emptySummary.saleCount).toBe("0");
     expect(emptySummary.averageMinorUnits).toBeNull();

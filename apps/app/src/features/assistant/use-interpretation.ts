@@ -3,8 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "expo-router";
 
 import { authClient } from "@/lib/auth-client";
+import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { isAccessDeniedError } from "@/lib/query-state";
 
 import { assistantApi } from "./api";
+import { businessQuestions, matchBusinessQuestion } from "./business-questions";
 import { type AssistantProblem, assistantProblem, type UnsupportedReason } from "./problems";
 import { assistantQueryKeys } from "./queries";
 import { reviewStore } from "./review-store";
@@ -38,6 +41,23 @@ export function useInterpretation(businessId: string | undefined) {
   ): Promise<InterpretOutcome> {
     // Callers render only for a loaded business; without one there is nowhere to keep a draft.
     if (!businessId || !userId) return { kind: "failed", problem: "unexpected" };
+    const question = matchBusinessQuestion(request.text);
+    if (question) {
+      const businesses = queryClient.getQueryState(businessesQueryOptions.queryKey);
+      const business = getActiveBusiness(queryClient.getQueryData(businessesQueryOptions.queryKey));
+      const { href, permission } = businessQuestions[question];
+      if (
+        business?.id !== businessId ||
+        isAccessDeniedError(businesses?.error) ||
+        !business.access.permissions.includes("assistant:use") ||
+        !business.access.permissions.includes(permission)
+      ) {
+        return { kind: "failed", problem: "denied" };
+      }
+      if (abandoned()) return { kind: "abandoned" };
+      router.push(href);
+      return { kind: "review" };
+    }
     try {
       const interpretation = await mutation.mutateAsync(request);
       if (abandoned()) return { kind: "abandoned" };
