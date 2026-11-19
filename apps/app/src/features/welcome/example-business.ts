@@ -1,4 +1,4 @@
-import type { CashFlowReport, MoneyTrend, MovementKind } from "@pisto/contracts";
+import type { CashFlowReport, MovementKind } from "@pisto/contracts";
 import type { EntrySource } from "@/features/movements/presentation";
 
 /**
@@ -35,73 +35,6 @@ export function shiftLocalMonth(today: string, offset: number): string {
   const [year, month] = today.split("-").map(Number);
   if (!year || !month) throw new Error(`"${today}" is not a calendar date.`);
   return new Date(Date.UTC(year, month - 1 + offset, 1)).toISOString().slice(0, 7);
-}
-
-/** Money held at the close of each of the last 31 days, ending with today's $4,857.30. */
-const CLOSINGS = [
-  "433000",
-  "438250",
-  "441900",
-  "436420",
-  "444800",
-  "451230",
-  "447610",
-  "455900",
-  "462340",
-  "458120",
-  "449870",
-  "456300",
-  "463950",
-  "470210",
-  "466480",
-  "459030",
-  "452760",
-  "461400",
-  "468920",
-  "475310",
-  "471050",
-  "463880",
-  "470640",
-  "478220",
-  "484900",
-  "480370",
-  "474150",
-  "479860",
-  "486420",
-  "481930",
-  "485730",
-] as const;
-
-/** Caja and Banco add up to the last closing. */
-export const EXAMPLE_ACCOUNTS = { cash: "130730", bank: "355000" } as const;
-
-export function exampleMoneyTrend(today: string): MoneyTrend {
-  const last = CLOSINGS.length - 1;
-  const points = CLOSINGS.map((closingMinorUnits, index) => ({
-    localDate: shiftLocalDate(today, index - last),
-    closingMinorUnits,
-  }));
-  const first = CLOSINGS[0];
-  const closing = CLOSINGS[last];
-  if (!closing) throw new Error("The example trend needs a closing balance.");
-  return {
-    range: "30d",
-    startLocalDate: shiftLocalDate(today, -last),
-    endLocalDate: today,
-    timeZone: EXAMPLE_TIME_ZONE,
-    currency: EXAMPLE_CURRENCY,
-    currencyMinorUnitDigits: EXAMPLE_DIGITS,
-    activeAccountCount: "2",
-    openingMinorUnits: first,
-    closingMinorUnits: closing,
-    changeMinorUnits: String(BigInt(closing) - BigInt(first)),
-    points,
-    kinds: [
-      { kind: "cash", accountCount: "1", balanceMinorUnits: EXAMPLE_ACCOUNTS.cash },
-      { kind: "bank", accountCount: "1", balanceMinorUnits: EXAMPLE_ACCOUNTS.bank },
-    ],
-    queriedAt: new Date().toISOString(),
-  };
 }
 
 export type ExampleMovement = {
@@ -198,12 +131,6 @@ export const EXAMPLE_RECEIVABLES = {
   overdue: "61050",
   customers: 8,
 } as const;
-
-/**
- * Caja and "Le deben" before the dictated sale: it brought $5.00 in cash and left $4.75 on credit,
- * which is how they reach `EXAMPLE_ACCOUNTS.cash` and `EXAMPLE_RECEIVABLES.outstanding`.
- */
-export const BEFORE_DICTATED_SALE = { cash: "130230", receivables: "127500" } as const;
 
 export type ExampleBalance = {
   /** Key of the name under `welcome.sample.people`. */

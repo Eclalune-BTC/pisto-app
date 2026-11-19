@@ -38,8 +38,6 @@ import { i18n } from "@/i18n/config";
 import { resolveBusinessAccess } from "../../../../../packages/db/src/product-access";
 import { DictationExample, exampleSpans } from "./dictation-example";
 import {
-  BEFORE_DICTATED_SALE,
-  EXAMPLE_ACCOUNTS,
   EXAMPLE_AGING,
   EXAMPLE_CREDITORS,
   EXAMPLE_DEBTORS,
@@ -48,7 +46,6 @@ import {
   EXAMPLE_RECEIVABLES,
   EXAMPLE_SALE,
   exampleCashFlow,
-  exampleMoneyTrend,
   shiftLocalDate,
   shiftLocalMonth,
 } from "./example-business";
@@ -88,7 +85,7 @@ describe("public product page", () => {
 
   test("walks through every step, module, role and guarantee it promises", () => {
     const markup = text(render());
-    for (const step of STEPS) expect(markup).toContain(i18n.t(`welcome.how.steps.${step}.title`));
+    for (const step of STEPS) expect(markup).toContain(i18n.t(`welcome.how.chapters.${step}`));
     for (const module of MODULES) {
       expect(markup).toContain(i18n.t(`welcome.modules.items.${module}.tab`));
     }
@@ -104,8 +101,9 @@ describe("public product page", () => {
     // One figure per illustration: a figure inside another would be announced twice.
     expect(markup).toContain("<figure");
     expect(markup).not.toMatch(/<figure[^>]*>(?:(?!<\/figure>).)*<figure/s);
-    expect(text(markup)).toContain(i18n.t("welcome.preview.example"));
-    expect(markup).toContain(`aria-label="${i18n.t("welcome.preview.label")}"`);
+    expect(text(markup)).toContain(i18n.t("welcome.modules.description"));
+    expect(text(markup)).toContain(i18n.t("welcome.how.detail.payment"));
+    expect(markup).toContain(`aria-label="${i18n.t("welcome.modules.next")}"`);
     expect(markup.match(/role="tab"/g)).toHaveLength(2 + MODULES.length);
     expect(markup).toContain(`aria-label="${i18n.t("welcome.example.label")}"`);
     expect(markup).toContain(`aria-label="${i18n.t("welcome.modules.items.movements.figure")}"`);
@@ -129,7 +127,7 @@ describe("public product page", () => {
     ]);
     expect(spans.map((span) => said.slice(span.start, span.end))).toEqual([
       "vendí",
-      "don Carlos",
+      "doña Rosa",
       "tres libras de café",
       "cinco dólares",
       "el resto me lo quedó debiendo",
@@ -168,19 +166,6 @@ describe("example business", () => {
     expect(() => shiftLocalDate("today", 1)).toThrow();
   });
 
-  test("draws a money trend that ends today on the accounts it lists", () => {
-    const trend = exampleMoneyTrend(today);
-    expect(trend.points.at(-1)).toEqual({
-      localDate: today,
-      closingMinorUnits: trend.closingMinorUnits,
-    });
-    expect(trend.startLocalDate).toBe(trend.points[0]?.localDate);
-    expect(sum(Object.values(EXAMPLE_ACCOUNTS))).toBe(BigInt(trend.closingMinorUnits));
-    expect(BigInt(trend.openingMinorUnits) + BigInt(trend.changeMinorUnits)).toBe(
-      BigInt(trend.closingMinorUnits),
-    );
-  });
-
   test("adds up every balance it shows", () => {
     const buckets = Object.values(EXAMPLE_AGING).map((bucket) => bucket.minorUnits);
     expect(sum(buckets)).toBe(BigInt(EXAMPLE_RECEIVABLES.outstanding));
@@ -212,10 +197,8 @@ describe("example business", () => {
     expect(BigInt(EXAMPLE_SALE.total)).toBe(
       BigInt(EXAMPLE_SALE.received) + BigInt(EXAMPLE_SALE.outstanding),
     );
-    expect(BigInt(EXAMPLE_ACCOUNTS.cash) - BigInt(BEFORE_DICTATED_SALE.cash)).toBe(500n);
-    expect(BigInt(EXAMPLE_RECEIVABLES.outstanding) - BigInt(BEFORE_DICTATED_SALE.receivables)).toBe(
-      475n,
-    );
+    expect(sale?.amountMinorUnits).toBe("500");
+    expect(EXAMPLE_SALE.outstanding).toBe("475");
   });
 
   test("reports the six complete months before the current one", () => {

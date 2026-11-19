@@ -1,9 +1,6 @@
-import type { LucideIcon } from "lucide-react-native";
-import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { buttonTextVariants, buttonVariants } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
@@ -12,7 +9,6 @@ import { entrySourceIcons, isIncoming, movementKindIcons } from "@/features/move
 import { formatLocalDayMonth } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
-import { initialsOf } from "@/lib/initials";
 import { currentLocalDateTime } from "@/lib/money";
 import {
   EXAMPLE_CURRENCY,
@@ -52,60 +48,10 @@ export function SectionHeading({
 }) {
   return (
     <View className="max-w-[640px] gap-4">
-      <Heading className="web:scroll-mt-5" level={2} nativeID={id} size="marketing" tabIndex={-1}>
+      <Heading className="web:scroll-mt-5" level={2} nativeID={id} size="display" tabIndex={-1}>
         {title}
       </Heading>
       <Text className="text-lg text-muted-foreground web:text-pretty">{description}</Text>
-    </View>
-  );
-}
-
-/** A product surface as the app draws it: hairline border, card radius, card fill. */
-export function Surface({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <View
-      className={cn("min-w-0 overflow-hidden rounded-xl border border-border bg-card", className)}
-    >
-      {children}
-    </View>
-  );
-}
-
-/** A card title row with the quiet "Ver todo" the home cards carry. */
-export function SurfaceHeader({ title, action }: { title: string; action?: string }) {
-  return (
-    <View className="flex-row items-center justify-between gap-2">
-      <Text className="font-heading text-title">{title}</Text>
-      {action ? <Text className="text-xs text-muted-foreground">{action}</Text> : null}
-    </View>
-  );
-}
-
-/**
- * The look of a shared Button without its role: illustrations show the control a person would
- * press in the app, but on this page there is nothing to press.
- */
-export function ButtonLook({
-  icon,
-  label,
-  size = "sm",
-  variant = "default",
-}: {
-  icon?: LucideIcon;
-  label: string;
-  size?: "sm" | "default";
-  variant?: "default" | "outline" | "ghost";
-}) {
-  return (
-    <View aria-hidden className={buttonVariants({ size, variant })}>
-      {icon ? (
-        <Icon
-          as={icon}
-          className={variant === "default" ? "text-primary-foreground" : "text-foreground"}
-          size={14}
-        />
-      ) : null}
-      <Text className={cn(buttonTextVariants({ variant }), "text-dense")}>{label}</Text>
     </View>
   );
 }
@@ -120,7 +66,7 @@ function useMovementCopy() {
     switch (movement.key) {
       case "dictatedSale":
         return {
-          title: t("movements.titles.saleTo", { name: person("carlos") }),
+          title: t("movements.titles.saleTo", { name: person("rosa") }),
           detail: t("movements.facts.paidOf", {
             paid: money(EXAMPLE_SALE.received),
             total: money(EXAMPLE_SALE.total),
@@ -192,7 +138,7 @@ export function MovementLine({
         />
       </View>
       <View className="min-w-0 flex-1 gap-0.5">
-        <Text className="font-ui text-dense" numberOfLines={1}>
+        <Text className="font-ui text-dense">
           {copy.title}
         </Text>
         <View className="min-w-0 flex-row flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -229,75 +175,6 @@ export function MovementLine({
       >
         {signedMoney(movement.amountMinorUnits)}
       </Text>
-    </View>
-  );
-}
-
-/**
- * A customer or supplier balance as the home lists it: name, due date and amount. The amount sits
- * on the name line so the due date keeps the row width in narrow cards.
- */
-export function BalanceLine({
-  balance,
-  className,
-  initials = true,
-}: {
-  balance: ExampleBalance;
-  className?: string;
-  initials?: boolean;
-}) {
-  const { t } = useTranslation();
-  const { dayMonth, money } = useExample();
-  const name = t(`welcome.sample.people.${balance.name}`);
-  const overdue = balance.dueInDays < 0;
-  return (
-    <View className={cn("min-h-12 flex-row items-center gap-3 py-2", className)}>
-      {initials ? (
-        <View className="size-8 items-center justify-center rounded-full bg-muted">
-          <Text className="font-ui text-micro text-muted-foreground">{initialsOf(name)}</Text>
-        </View>
-      ) : null}
-      <View className="min-w-0 flex-1">
-        <View className="flex-row items-baseline justify-between gap-3">
-          <Text className="min-w-0 shrink font-ui text-dense" numberOfLines={1}>
-            {name}
-          </Text>
-          <Text className="font-ui text-dense tabular-nums">{money(balance.minorUnits)}</Text>
-        </View>
-        <Text
-          className={cn(
-            "text-xs leading-4",
-            overdue ? "text-destructive" : "text-muted-foreground",
-          )}
-          numberOfLines={1}
-        >
-          {overdue
-            ? t("operate.home.debtors.overdueSince", { date: dayMonth(balance.dueInDays) })
-            : t("operate.home.debtors.dueOn", { date: dayMonth(balance.dueInDays) })}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-/** Balance rows divided by hairlines, with one above the first. */
-export function BalanceList({
-  balances,
-  initials = true,
-}: {
-  balances: readonly ExampleBalance[];
-  initials?: boolean;
-}) {
-  return (
-    <View className="border-t border-border">
-      {balances.map((balance, index) => (
-        <BalanceLine
-          balance={balance}
-          className={cn(index > 0 && "border-t border-border")}
-          initials={initials}
-          key={balance.name}
-        />
-      ))}
     </View>
   );
 }

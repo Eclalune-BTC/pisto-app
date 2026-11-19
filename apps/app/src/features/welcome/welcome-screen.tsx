@@ -16,9 +16,9 @@ import coffeeCounter from "../../../assets/welcome/coffee-counter.jpg";
 import { DictationExample } from "./dictation-example";
 import { SectionHeading } from "./fragments";
 import { HeaderMenu } from "./header-menu";
-import { HowItWorks } from "./how-it-works";
 import { ModulePreviews } from "./module-previews";
 import { RolesAndTrust } from "./roles-section";
+import { SaleFilm } from "./sale-film";
 
 /** The one content width every band of the page shares. */
 const CONTAINER = "mx-auto w-full max-w-[1240px] px-5 sm:px-8";
@@ -85,7 +85,7 @@ export default function WelcomeScreen() {
   const section = (id: SectionId, children: ReactNode) => (
     <View
       aria-labelledby={id}
-      className="border-t border-border"
+      className={cn("border-t border-border", id === "how" && "bg-secondary/50")}
       onLayout={(event) => {
         offsets.current[id] = event.nativeEvent.layout.y;
       }}
@@ -233,7 +233,7 @@ export default function WelcomeScreen() {
           >
             <DictationExample key={play} showSource={play > 0} />
           </View>
-          {section("how", <HowItWorks />)}
+          {section("how", <SaleFilm />)}
 
           {section(
             "modules",
@@ -260,7 +260,7 @@ export default function WelcomeScreen() {
             />,
           )}
 
-          <View className="border-t border-border">
+          <View className="bg-highlight">
             <View
               className={cn(
                 CONTAINER,
@@ -268,18 +268,21 @@ export default function WelcomeScreen() {
                 "items-start gap-5 md:flex-row md:items-center md:justify-between",
               )}
             >
-              <Heading level={2} size="display">
+              <Heading className="text-highlight-foreground" level={2} size="display">
                 {t("welcome.cta.title")}
               </Heading>
               <Link href="/sign-up" asChild>
-                <Button label={t("welcome.createAccount")} size="lg" />
+                <Button className="bg-brand web:hover:bg-brand/90" size="lg">
+                  <Text className="font-ui text-base text-white">{t("welcome.createAccount")}</Text>
+                  <Icon as={ArrowUpRight} className="text-white" size={17} />
+                </Button>
               </Link>
             </View>
           </View>
         </View>
 
         <SafeAreaView className="border-t border-border" edges={["bottom"]}>
-          <View className={cn(CONTAINER, "gap-10 pb-8 pt-12")} role="contentinfo">
+          <View className={cn(CONTAINER, "gap-8 pb-6 pt-9")} role="contentinfo">
             <View className="flex-row flex-wrap justify-between gap-x-16 gap-y-10">
               <View className="max-w-[300px] shrink gap-3">
                 <Brand />

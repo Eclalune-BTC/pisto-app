@@ -138,7 +138,7 @@ export function DictationExample({ showSource = false }: { showSource?: boolean 
           {t("welcome.example.label")}
         </Text>
         <Text className="text-sm text-muted-foreground">
-          {t("welcome.sample.business")} · {t("welcome.sample.people.carlos")}
+          {t("welcome.sample.business")} · {t("welcome.sample.people.rosa")}
         </Text>
         <TabsList accessibilityLabel={t("welcome.example.label")} className="mt-1 self-start">
           {(["sentence", "draft"] as const).map((tab) => (

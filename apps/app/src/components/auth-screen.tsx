@@ -4,6 +4,7 @@ import { Eye, EyeOff, TriangleAlert } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -20,8 +21,9 @@ import { Field } from "@/components/ui/field";
 import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { PhonePreview } from "@/features/welcome/product-preview";
 import { authClient } from "@/lib/auth-client";
+import delivery from "../../assets/welcome/delivery.jpg";
+import shopTeam from "../../assets/welcome/shop-team.jpg";
 
 type AuthMode = "sign-in" | "sign-up";
 
@@ -269,14 +271,13 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
           </ScrollView>
 
           {wide ? (
-            // The public page's grey stage: the product is the only picture, cropped by the edge.
-            <View className="w-[46%] max-w-[720px] overflow-hidden border-l border-border bg-muted px-12 pt-14">
-              <View className="w-full max-w-[380px] flex-1 gap-3 self-center">
-                <Text className="text-xs text-muted-foreground">
-                  {t("welcome.preview.example")}
-                </Text>
-                <PhonePreview className="flex-1" />
-              </View>
+            <View className="relative w-[46%] max-w-[720px] overflow-hidden bg-brand">
+              <Image
+                accessible={false}
+                resizeMode="cover"
+                source={isSignUp ? shopTeam : delivery}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+              />
             </View>
           ) : null}
         </View>

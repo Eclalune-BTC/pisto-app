@@ -12,11 +12,6 @@ export const welcome = {
     modules: "El producto",
     roles: "Roles y permisos",
   },
-  preview: {
-    label: "Ejemplo del dinero disponible en Abarrotes La Ceiba",
-    phoneLabel: "Ejemplo de la pantalla Hoy de Pisto en un teléfono",
-    example: "Negocio y cifras de ejemplo",
-  },
   sample: {
     business: "Abarrotes La Ceiba",
     counterSale: "Venta de mostrador",
@@ -41,10 +36,10 @@ export const welcome = {
     line: "{{count}} lb × {{price}}",
     total: "Total de la venta",
     cash: "En efectivo",
-    said: "Le vendí a don Carlos tres libras de café, me dio cinco dólares y el resto me lo quedó debiendo.",
+    said: "Le vendí a doña Rosa tres libras de café, me dio cinco dólares y el resto me lo quedó debiendo.",
     fragments: {
       kind: "vendí",
-      customer: "don Carlos",
+      customer: "doña Rosa",
       product: "tres libras de café",
       received: "cinco dólares",
       credit: "el resto me lo quedó debiendo",
@@ -60,26 +55,34 @@ export const welcome = {
   },
   how: {
     title: "Cómo funciona",
-    steps: {
-      say: {
-        title: "Cuente qué pasó",
-        description:
-          "Escriba la venta como se la contaría a otra persona. En la web también puede dictarla.",
-      },
-      review: {
-        title: "Revise el borrador",
-        description:
-          "Compruebe el cliente, los productos y el pago. Puede corregir los datos antes de guardar.",
-      },
-      save: {
-        title: "Confirme la venta",
-        description:
-          "El efectivo entra en caja y el saldo pendiente queda en la cuenta del cliente.",
-      },
+    filmTitle: "Una venta de café.",
+    filmDescription:
+      "Tres libras de café, cinco dólares en efectivo y una parte al fiado. Vea cómo queda registrada la venta en Pisto.",
+    play: "Reproducir la venta de café",
+    playShort: "Ver el vídeo",
+    filmLabel: "Vídeo de ejemplo de una venta de café en Pisto",
+    filmError: "El vídeo no se pudo cargar. Puede seguir los pasos que aparecen a continuación.",
+    filmCaptions: "Español",
+    duration: "0:18",
+    chapters: {
+      product: "Elegir el producto",
+      payment: "Revisar el pago",
+      receipt: "Guardar la venta",
+    },
+    detail: {
+      product: "Seleccione tres libras de café molido a $3.25 por libra.",
+      payment: "De los $9.75, Rosa paga $5.00 en efectivo. Quedan $4.75 al fiado.",
+      receipt: "Confirme la venta y consulte el total en su comprobante.",
     },
   },
   modules: {
     title: "Las cuentas de cada día.",
+    previous: "Módulo anterior",
+    day: "Día de los movimientos de ejemplo",
+    today: "Hoy",
+    yesterday: "Ayer",
+    next: "Módulo siguiente",
+    position: "{{current}} / {{total}}",
     description: "Explore las cuentas de Abarrotes La Ceiba con datos de ejemplo.",
     items: {
       movements: {
@@ -110,7 +113,7 @@ export const welcome = {
     },
   },
   roles: {
-    title: "Quién puede ver las cuentas.",
+    title: "Un equipo, distintos permisos.",
     description:
       "Cada persona entra con su usuario. Su rol define qué puede consultar y registrar.",
     trust: {

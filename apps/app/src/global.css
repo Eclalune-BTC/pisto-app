@@ -178,6 +178,40 @@
     transform: scale(1);
   }
 }
+@keyframes pisto-slide-forward {
+  from {
+    opacity: 0.65;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pisto-slide-back {
+  from {
+    opacity: 0.65;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@utility pisto-slide-next {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: pisto-slide-forward 320ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+  }
+}
+
+@utility pisto-slide-previous {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: pisto-slide-back 320ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+  }
+}
+
 @keyframes pisto-split-reveal {
   from {
     transform: scaleX(0);

@@ -1,17 +1,26 @@
-import { type ReactNode, useState } from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react-native";
+import { type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { Image, Platform, View } from "react-native";
+import { Button } from "@/components/ui/button";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { Heading } from "@/components/ui/heading";
+import { Icon } from "@/components/ui/icon";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
 import { CashFlowChart } from "@/features/reports/cash-flow-chart";
 import { capitalizeFirst } from "@/features/reports/report-figures";
 import { formatLocalDateFull, formatMonthName } from "@/i18n/format";
 import { cn } from "@/lib/cn";
+import closePhoto from "../../../assets/welcome/closing.jpg";
+import deliveryPhoto from "../../../assets/welcome/delivery.jpg";
+import notebookPhoto from "../../../assets/welcome/notebook.jpg";
+import tillPhoto from "../../../assets/welcome/till.jpg";
 import {
   type AgingBucket,
   EXAMPLE_AGING,
   EXAMPLE_CREDITORS,
+  EXAMPLE_MOVEMENTS,
   EXAMPLE_PAYABLES,
   EXAMPLE_RECEIVABLES,
   EXAMPLE_YESTERDAY,
@@ -21,8 +30,14 @@ import {
 } from "./example-business";
 import { MovementLine, useExample } from "./fragments";
 
-/** In reading order: a row of what happened, then a row of what is still owed either way. */
 export const MODULES = ["movements", "reports", "receivables", "payables"] as const;
+type Module = (typeof MODULES)[number];
+const photos = {
+  movements: tillPhoto,
+  reports: closePhoto,
+  receivables: notebookPhoto,
+  payables: deliveryPhoto,
+};
 
 const AGING_BUCKETS = ["current", "days1To30", "days31To60", "over60"] as const;
 
@@ -81,12 +96,27 @@ function TableHead({ children }: { children: ReactNode }) {
 function MovementsPreview() {
   const { t } = useTranslation();
   const { locale, money, signedMoney, today } = useExample();
-  const totals = movementTotals(EXAMPLE_YESTERDAY);
-  const day = formatLocalDateFull(shiftLocalDate(today, -1), locale, { year: false });
+  const [period, setPeriod] = useState<"today" | "yesterday">("today");
+  const rows = period === "today" ? EXAMPLE_MOVEMENTS : EXAMPLE_YESTERDAY;
+  const totals = movementTotals(rows);
+  const day = formatLocalDateFull(period === "today" ? today : shiftLocalDate(today, -1), locale, {
+    year: false,
+  });
   return (
     <View className="min-w-0">
       <View className="flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border pb-2">
-        <Text className="font-ui text-dense">{capitalizeFirst(day, locale)}</Text>
+        <View className="max-w-full flex-row flex-wrap items-center gap-2">
+          <Text className="font-ui text-dense">{capitalizeFirst(day, locale)}</Text>
+          <FilterBar
+            label={t("welcome.modules.day")}
+            value={period}
+            onChange={setPeriod}
+            options={[
+              { value: "today", label: t("welcome.modules.today") },
+              { value: "yesterday", label: t("welcome.modules.yesterday") },
+            ]}
+          />
+        </View>
         <Text className="text-xs tabular-nums text-muted-foreground">
           {t("movements.totals.day", {
             inflow: signedMoney(totals.inflow),
@@ -94,7 +124,7 @@ function MovementsPreview() {
           })}
         </Text>
       </View>
-      {EXAMPLE_YESTERDAY.map((movement, index) => (
+      {rows.map((movement, index) => (
         <MovementLine
           className={cn("px-0", index > 0 && "border-t border-border")}
           key={movement.key}
@@ -300,43 +330,125 @@ const previews: Record<(typeof MODULES)[number], () => ReactNode> = {
 
 export function ModulePreviews() {
   const { t } = useTranslation();
-  const [active, setActive] = useState<string>(MODULES[0]);
+  const [active, setActive] = useState<Module>(MODULES[0]);
+  const [direction, setDirection] = useState<"next" | "previous">("next");
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const index = MODULES.indexOf(active);
+
+  function select(value: string) {
+    const module = MODULES.find((item) => item === value);
+    if (!module || module === active) return;
+    setDirection(MODULES.indexOf(module) > index ? "next" : "previous");
+    setActive(module);
+  }
+
+  function move(delta: number) {
+    const module = MODULES[index + delta];
+    if (module) select(module);
+  }
+
   return (
-    <Tabs value={active} onValueChange={setActive} className="min-w-0 gap-0">
-      <TabsList
-        accessibilityLabel={t("welcome.nav.modules")}
-        className="w-full justify-start gap-x-3 gap-y-0 rounded-none border-0 border-b border-border bg-transparent p-0 sm:gap-x-8"
-      >
-        {MODULES.map((module) => (
-          <TabsTrigger
-            className={cn(
-              "min-h-11 rounded-none border-b-2 bg-transparent px-0 shadow-none web:cursor-pointer dark:bg-transparent",
-              active === module ? "border-foreground" : "border-transparent",
-            )}
-            key={module}
-            value={module}
+    <Tabs value={active} onValueChange={select} className="min-w-0 gap-0">
+      <View className="flex-row flex-wrap items-center justify-between gap-x-5 gap-y-2 border-b border-border pb-2">
+        <TabsList
+          accessibilityLabel={t("welcome.nav.modules")}
+          className="max-w-full flex-row flex-wrap justify-start gap-x-3 gap-y-0 rounded-none border-0 bg-transparent p-0 sm:gap-x-7"
+        >
+          {MODULES.map((module) => (
+            <TabsTrigger
+              className={cn(
+                "min-h-11 rounded-none border-b-2 bg-transparent px-0 shadow-none web:cursor-pointer dark:bg-transparent",
+                active === module ? "border-foreground" : "border-transparent",
+              )}
+              key={module}
+              value={module}
+            >
+              <Text className="text-sm sm:text-base">
+                {t(`welcome.modules.items.${module}.tab`)}
+              </Text>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <View className="flex-row items-center gap-1">
+          <Text
+            accessibilityLiveRegion="polite"
+            aria-live="polite"
+            className="mr-2 text-sm tabular-nums text-muted-foreground"
           >
-            <Text className="text-sm sm:text-base">{t(`welcome.modules.items.${module}.tab`)}</Text>
-          </TabsTrigger>
-        ))}
-      </TabsList>
+            {t("welcome.modules.position", { current: index + 1, total: MODULES.length })}
+          </Text>
+          <Button
+            accessibilityLabel={t("welcome.modules.previous")}
+            disabled={index === 0}
+            onPress={() => move(-1)}
+            size="icon"
+            variant="outline"
+          >
+            <Icon as={ArrowLeft} className="text-foreground" size={18} />
+          </Button>
+          <Button
+            accessibilityLabel={t("welcome.modules.next")}
+            disabled={index === MODULES.length - 1}
+            onPress={() => move(1)}
+            size="icon"
+            variant="outline"
+          >
+            <Icon as={ArrowRight} className="text-foreground" size={18} />
+          </Button>
+        </View>
+      </View>
       {MODULES.map((module) => (
         <TabsContent key={module} tabIndex={0} value={module}>
-          <View className="gap-5 py-6 sm:py-8 lg:flex-row lg:items-start lg:gap-16 xl:gap-24">
-            <View className="min-w-0 gap-2 lg:flex-1">
-              <Heading level={3} size="item">
-                {t(`welcome.modules.items.${module}.title`)}
-              </Heading>
-              <Text className="max-w-[360px] text-base text-muted-foreground">
-                {t(`welcome.modules.items.${module}.description`)}
-              </Text>
+          <View
+            className={cn(
+              "min-w-0 gap-5 pt-5 md:flex-row md:items-stretch md:gap-8 lg:gap-12 lg:pt-7",
+              direction === "next" ? "pisto-slide-next" : "pisto-slide-previous",
+            )}
+            onTouchStart={({ nativeEvent }) => {
+              const point = nativeEvent.touches[0];
+              start.current =
+                point && nativeEvent.touches.length === 1
+                  ? { x: point.pageX, y: point.pageY }
+                  : null;
+            }}
+            onTouchCancel={() => {
+              start.current = null;
+            }}
+            onTouchEnd={({ nativeEvent }) => {
+              const from = start.current;
+              start.current = null;
+              const point = nativeEvent.changedTouches[0];
+              if (!from || !point || nativeEvent.touches.length) return;
+              const dx = point.pageX - from.x;
+              const dy = point.pageY - from.y;
+              if (Math.abs(dx) >= 45 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1);
+            }}
+            style={Platform.OS === "web" ? { touchAction: "pan-y" } : undefined}
+          >
+            <View className="h-[170px] overflow-hidden bg-muted sm:h-[232px] md:h-auto md:min-h-[340px] md:w-[37%]">
+              <Image
+                accessible={false}
+                resizeMode="cover"
+                source={photos[module]}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+              />
             </View>
-            <View
-              accessibilityLabel={t(`welcome.modules.items.${module}.figure`)}
-              className="min-w-0 lg:flex-[1.5]"
-              role="figure"
-            >
-              {previews[module]()}
+            <View className="min-w-0 flex-1 gap-5 pb-2 md:py-2 lg:gap-6">
+              <View className="gap-2">
+                <Heading level={3} size="marketing">
+                  {t(`welcome.modules.items.${module}.title`)}
+                </Heading>
+                <Text className="text-base text-muted-foreground">
+                  {t(`welcome.modules.items.${module}.description`)}
+                </Text>
+              </View>
+              <View
+                accessibilityLabel={t(`welcome.modules.items.${module}.figure`)}
+                className="min-w-0 border-t border-border pt-4"
+                role="figure"
+              >
+                {previews[module]()}
+              </View>
             </View>
           </View>
         </TabsContent>

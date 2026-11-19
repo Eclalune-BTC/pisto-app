@@ -36,6 +36,7 @@ vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ clear: fixtur
 vi.mock("expo-router", () => ({ Link: "a", useRouter: () => ({ replace: fixture.replace }) }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock("react-native", () => ({
+  Image: "img",
   KeyboardAvoidingView: "div",
   Platform: { OS: "web" },
   Pressable: "button",
@@ -46,7 +47,6 @@ vi.mock("react-native", () => ({
 }));
 vi.mock("react-native-safe-area-context", () => ({ SafeAreaView: "div" }));
 vi.mock("@/components/brand", () => ({ Brand: "span" }));
-vi.mock("@/features/welcome/product-preview", () => ({ PhonePreview: "figure" }));
 vi.mock("@/components/appearance-control", () => ({ AppearanceControl: "div" }));
 vi.mock("@/components/ui/alert", () => ({ Alert: "div", AlertDescription: "span" }));
 vi.mock("@/components/ui/text", () => ({ Text: "span" }));
