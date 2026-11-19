@@ -56,12 +56,14 @@ export function AssistantTools({
   onTool,
   onWrite,
   canInterpret,
+  businessConversation,
 }: {
   permissions: readonly BusinessPermission[];
   /** `question` is the sentence shown above the answer of a business question. */
   onTool: (tool: AssistantToolCall, question?: string) => void;
   onWrite: () => void;
   canInterpret: boolean;
+  businessConversation: boolean;
 }) {
   const { t } = useTranslation();
   return (
@@ -87,8 +89,10 @@ export function AssistantTools({
         {canInterpret && (
           <ToolRow
             icon={PencilLine}
-            title={t("assistant.tools.write")}
-            detail={t("assistant.tools.writeHint")}
+            title={t(businessConversation ? "assistant.tools.askOrWrite" : "assistant.tools.write")}
+            detail={t(
+              businessConversation ? "assistant.tools.askHint" : "assistant.tools.writeHint",
+            )}
             onPress={onWrite}
           />
         )}

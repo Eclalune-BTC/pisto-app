@@ -32,7 +32,9 @@ export function productAccess(input: {
       // onRequest is the only Elysia hook that runs before body parsing.
       const session = await requireSession(input.auth, context.request.headers);
       context.actor = toProductActor(session);
-      const write = !["GET", "HEAD"].includes(context.request.method);
+      const readOnlyConversation =
+        context.request.method === "POST" && path === "/v1/assistant/business-turns";
+      const write = !readOnlyConversation && !["GET", "HEAD"].includes(context.request.method);
       if (write && !input.writesEnabled) {
         throw new ApiError(503, "WRITES_PAUSED", "Business changes are temporarily paused");
       }

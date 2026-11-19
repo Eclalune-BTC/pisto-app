@@ -12,6 +12,7 @@ import { cashAccount } from "./schema/cash-account.ts";
 import { catalogProduct } from "./schema/catalog.ts";
 import { purchase, supplier } from "./schema/purchases.ts";
 import { customer, receivable } from "./schema/receivables.ts";
+import { containsName } from "./text-search.ts";
 
 export interface AssistantBusinessContext {
   businessId: string;
@@ -95,28 +96,14 @@ export interface AssistantSupplierDirectory {
 const maxTerms = 24;
 const maxCandidates = 50;
 
-// Lowercase, then strip the Spanish diacritics so "cafe" finds "Café"; kept in sync with the
-// assistant's own folding of what was heard.
-const accented = "áàäâãéèëêíìïîóòöôõúùüûñç";
-const plain = "aaaaaeeeeiiiiooooouuuunc";
-
-function folded(column: AnyPgColumn): SQL {
-  return sql`translate(lower(${column}), ${accented}, ${plain})`;
-}
-
-/** Terms are folded by the caller; LIKE wildcards in them are escaped here. */
-function containsTerm(column: AnyPgColumn, term: string): SQL {
-  return sql`${folded(column)} like ${`%${term.replace(/[\\%_]/g, "\\$&")}%`} escape '\\'`;
-}
-
 function containsAnyTerm(column: AnyPgColumn, terms: readonly string[]): SQL | undefined {
-  return or(...terms.map((term) => containsTerm(column, term)));
+  return or(...terms.map((term) => containsName(column, term)));
 }
 
 /** How many of the terms a name contains; candidates naming more of what was heard come first. */
 function termHits(column: AnyPgColumn, terms: readonly string[]): SQL {
   return sql.join(
-    terms.map((term) => sql`(${containsTerm(column, term)})::int`),
+    terms.map((term) => sql`(${containsName(column, term)})::int`),
     sql` + `,
   );
 }

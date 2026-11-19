@@ -39,6 +39,7 @@ export const assistantStatusResponseSchema = z
         enabled: z.boolean(),
         transcription: z.boolean(),
         catalogConversation: z.boolean().optional(),
+        businessConversation: z.boolean().optional(),
       })
       .strict(),
   })
@@ -288,6 +289,56 @@ export const businessAnswerResponseSchema = z
   .strict();
 
 export type BusinessTopic = z.infer<typeof businessTopicSchema>;
+export const businessSourceSchema = z.enum([
+  ...businessTopicSchema.options,
+  "product_price",
+  "product_stock",
+  "customer",
+  "supplier",
+  "movements",
+]);
+export type BusinessSource = z.infer<typeof businessSourceSchema>;
+
+const questionText = z.string().trim().min(2).max(1_000);
+export const businessTurnRequestSchema = z
+  .object({
+    expectedBusinessId: z.string().trim().min(1).max(256),
+    text: questionText,
+    previousQuestions: z.array(questionText).max(3),
+  })
+  .strict();
+export const businessQuestionGapSchema = z.enum([
+  "clarify",
+  "period",
+  "name",
+  "profit",
+  "forecast",
+  "missing_data",
+  "off_topic",
+]);
+export const businessReplySchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("answer"),
+      text: z.string().trim().min(1).max(6000),
+      sources: z.array(businessSourceSchema).min(1).max(4),
+      asOf: calendarLocalDateSchema,
+    })
+    .strict(),
+  z.object({ kind: z.literal("gap"), reason: businessQuestionGapSchema }).strict(),
+]);
+export const businessTurnResponseSchema = z
+  .object({
+    data: z
+      .object({
+        reply: z.union([businessReplySchema, z.object({ kind: z.literal("record") }).strict()]),
+      })
+      .strict(),
+  })
+  .strict();
+export type BusinessReply = z.infer<typeof businessReplySchema>;
+export type BusinessTurnRequest = z.infer<typeof businessTurnRequestSchema>;
+export type BusinessTurnResponse = z.infer<typeof businessTurnResponseSchema>;
 export type BusinessPeriod = z.infer<typeof businessPeriodSchema>;
 export type BusinessAnswerQuery = z.infer<typeof businessAnswerQuerySchema>;
 export type BusinessAnswer = z.infer<typeof businessAnswerSchema>;

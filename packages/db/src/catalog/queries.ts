@@ -4,7 +4,7 @@ import {
   productListQuerySchema,
   stockListQuerySchema,
 } from "@pisto/contracts";
-import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import { authorizeBusinessAction } from "../business-access.ts";
@@ -22,7 +22,7 @@ import {
 } from "../pagination.ts";
 import { catalogCategory, catalogProduct, inventoryMovement } from "../schema/catalog.ts";
 import { correlatedSubquery } from "../subquery.ts";
-import { containsText } from "../text-search.ts";
+import { containsName, containsText } from "../text-search.ts";
 import { stockFor, toCategory, toMovement, toProduct, trackedStockFor } from "./mappers.ts";
 import { onHandQuantity } from "./records.ts";
 import type { CatalogQueries } from "./types.ts";
@@ -104,7 +104,10 @@ export function createCatalogQueries(db: Database): CatalogQueries {
               query.status === "all" ? undefined : eq(catalogProduct.status, query.status),
               query.categoryId ? eq(catalogProduct.categoryId, query.categoryId) : undefined,
               query.search
-                ? containsText([catalogProduct.name, catalogProduct.sku], query.search)
+                ? or(
+                    containsName(catalogProduct.name, query.search),
+                    containsText([catalogProduct.sku], query.search),
+                  )
                 : undefined,
               query.stock === "low"
                 ? sql`${catalogProduct.tracked} = true

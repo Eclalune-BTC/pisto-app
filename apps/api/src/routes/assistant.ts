@@ -2,13 +2,17 @@ import {
   type AssistantProvider,
   AssistantProviderError,
   answerBusinessQuestion,
-  type BusinessFacts,
+  type BusinessModel,
+  businessPromptVersion,
   type CatalogModel,
+  type ConversationFacts,
   catalogModelId,
   catalogPromptVersion,
   catalogReply,
+  deepSeekModelId,
   extractionPromptVersion,
   interpretSentence,
+  readBusinessEvidence,
   type SupplierDirectory,
 } from "@pisto/assistant";
 import {
@@ -17,7 +21,10 @@ import {
   assistantTranscriptionResponseSchema,
   type BusinessPermission,
   businessAnswerQuerySchema,
+  businessReadPermissions,
   businessTopicPermissions,
+  businessTurnRequestSchema,
+  businessTurnResponseSchema,
   catalogTurnRequestSchema,
 } from "@pisto/contracts";
 import type {
@@ -40,6 +47,7 @@ export interface AssistantServices {
   /** Null when the kill switch is off or no provider is configured. */
   provider: AssistantProvider | null;
   catalogModel: CatalogModel | null;
+  businessModel: BusinessModel | null;
   records: AssistantDirectoryRepository;
   suppliers: SupplierDirectory<ProductActor>;
   consume: ConsumeRateLimit;
@@ -50,7 +58,7 @@ export interface AssistantServices {
 type Task = "interpret" | "transcribe";
 
 function log(event: {
-  task: Task | "catalog";
+  task: Task | "catalog" | "business";
   provider: string;
   outcome: string;
   durationMs: number;
@@ -64,9 +72,11 @@ function log(event: {
       promptVersion:
         event.task === "interpret"
           ? extractionPromptVersion
-          : event.task === "catalog"
-            ? catalogPromptVersion
-            : undefined,
+          : event.task === "business"
+            ? businessPromptVersion
+            : event.task === "catalog"
+              ? catalogPromptVersion
+              : undefined,
       ...event,
     }),
   );
@@ -89,7 +99,7 @@ export function assistantRoutes(input: {
   access: ProductAccess;
   assistant: AssistantServices;
   catalog: Pick<CatalogRepository, "getProduct">;
-  facts: BusinessFacts<ProductActor>;
+  facts: ConversationFacts<ProductActor>;
 }) {
   const { assistant } = input;
   const routes = protectedRoutes(input.access);
@@ -102,7 +112,8 @@ export function assistantRoutes(input: {
     expectedBusinessId?: string,
     permissions: readonly BusinessPermission[] = [],
   ) {
-    const { businessId } = await assistant.records.authorize(actor, permissions);
+    const scope = await assistant.records.authorize(actor, permissions);
+    const { businessId } = scope;
     if (expectedBusinessId !== undefined && businessId !== expectedBusinessId) {
       throw new ApiError(403, "FORBIDDEN", "The active business changed");
     }
@@ -123,10 +134,11 @@ export function assistantRoutes(input: {
         throw new ApiError(429, "RATE_LIMITED", "Too many assistant requests; try again shortly");
       }
     }
+    return scope;
   }
 
   async function call<T>(
-    task: Task | "catalog",
+    task: Task | "catalog" | "business",
     provider: string,
     requestId: string | undefined,
     run: () => Promise<T>,
@@ -152,15 +164,72 @@ export function assistantRoutes(input: {
 
   routes.get("/assistant/status", ({ request }) => {
     const enabled = assistant.provider !== null;
-    const catalogRequested = new URL(request.url).searchParams.get("include") === "catalog";
+    const include = new URL(request.url).searchParams.getAll("include");
     return {
       data: {
         enabled,
         transcription: assistant.provider?.transcribes ?? false,
-        ...(catalogRequested && { catalogConversation: assistant.catalogModel !== null }),
+        ...(include.includes("catalog") && {
+          catalogConversation: assistant.catalogModel !== null,
+        }),
+        ...(include.includes("business") && {
+          businessConversation: assistant.businessModel !== null,
+        }),
       },
     };
   });
+
+  routes.post(
+    "/assistant/business-turns",
+    async (context) => {
+      const { actor, body, request, set } = context;
+      const model = assistant.businessModel;
+      if (!model) throw unavailable();
+      const { localDate } = await admit(actor, "interpret", set, body.expectedBusinessId);
+      const signal = AbortSignal.any([
+        request.signal,
+        AbortSignal.timeout(assistant.timeouts.extractMs),
+      ]);
+      const question = { text: body.text, previousQuestions: body.previousQuestions };
+      const plan = await call("business", deepSeekModelId, requestIdOf(context), () =>
+        model.plan(question, localDate, signal),
+      );
+      if (plan.kind !== "read") return { data: { reply: plan } };
+      const permissions = [
+        ...new Set(plan.reads.flatMap((read) => businessReadPermissions(read.source))),
+      ];
+      async function reauthorize() {
+        const scope = await assistant.records.authorize(actor, permissions);
+        if (scope.businessId !== body.expectedBusinessId)
+          throw new ApiError(403, "FORBIDDEN", "The active business changed");
+        if (signal.aborted) throw unavailable();
+      }
+      await reauthorize();
+      const evidence = await Promise.all(
+        plan.reads.map((read) => readBusinessEvidence(input.facts, actor, read, localDate)),
+      );
+      await admit(actor, "interpret", set, body.expectedBusinessId, permissions);
+      if (signal.aborted) throw unavailable();
+      const wording = await call("business", deepSeekModelId, requestIdOf(context), () =>
+        model.compose(question, evidence, signal),
+      );
+      await reauthorize();
+      const reply =
+        typeof wording === "string"
+          ? {
+              kind: "answer",
+              text: wording,
+              asOf: localDate,
+              sources: [...new Set(plan.reads.map((read) => read.source))],
+            }
+          : wording;
+      return businessTurnResponseSchema.parse({ data: { reply } });
+    },
+    {
+      parse: "json",
+      body: contract(businessTurnRequestSchema, "The business question is invalid"),
+    },
+  );
 
   // Answers are exact reads with no model call, so they stay available with the assistant off and
   // spend the product read budget, not the model budgets.

@@ -1,4 +1,4 @@
-import type { AssistantToolCall, BusinessPeriod, BusinessPermission } from "@pisto/contracts";
+import type { BusinessPeriod, BusinessPermission, BusinessReply } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "expo-router";
 import { ArrowLeft, ArrowUpRight, Send, TriangleAlert } from "lucide-react-native";
@@ -14,15 +14,20 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { readState } from "@/features/customers/read-state";
+import { formatLocalDate } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
 import { answerView } from "./answer-view";
 import {
+  type CocoTool,
+  type ConversationTurn,
   isPeriodTopic,
   matchBusinessQuestion,
   matchSaleTool,
+  permitsReply,
   permitsTopic,
   type QuestionTool,
+  sourceHrefs,
   suggestedQuestions,
   topicHrefs,
 } from "./business-questions";
@@ -30,10 +35,11 @@ import { problemMessageKeys, unsupportedMessageKeys } from "./problems";
 import { businessAnswerQueryOptions } from "./queries";
 import { useInterpretation } from "./use-interpretation";
 
-type Exchange = {
+type ThreadTool = QuestionTool | ConversationTurn;
+type Exchange<T extends ThreadTool = ThreadTool> = {
   id: number;
   question: string;
-  tool: QuestionTool;
+  tool: T;
   /** The period the question named, kept among the choices after another one is picked. */
   asked: BusinessPeriod | null;
 };
@@ -66,7 +72,7 @@ function Answer({
   onClose,
 }: {
   businessId: string;
-  exchange: Exchange;
+  exchange: Exchange<QuestionTool>;
   permitted: boolean;
   /** Only the newest answer carries the period control and the link to its screen. */
   latest: boolean;
@@ -205,11 +211,51 @@ function Answer({
   );
 }
 
+function ConversationAnswer({
+  reply,
+  permissions,
+  onClose,
+}: {
+  reply: BusinessReply;
+  permissions: readonly BusinessPermission[];
+  onClose: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  if (!permitsReply(permissions, reply)) return <Text>{t("assistant.answers.denied")}</Text>;
+  if (reply.kind === "gap")
+    return (
+      <Text className="text-base leading-6">{t(`assistant.questions.gaps.${reply.reason}`)}</Text>
+    );
+  const date = formatLocalDate(reply.asOf, requireSupportedLocale(i18n.resolvedLanguage));
+  return (
+    <View className="gap-2">
+      <Text className="text-base leading-6">{reply.text}</Text>
+      <Text className="text-xs text-muted-foreground">
+        {t("assistant.questions.grounded", { date })}
+      </Text>
+      <View className="flex-row flex-wrap gap-2">
+        {reply.sources.map((source) => (
+          <Link key={source} asChild href={sourceHrefs[source]}>
+            <Button
+              accessibilityRole="link"
+              onPress={onClose}
+              size="sm"
+              variant="outline"
+              label={t(`assistant.answers.open.${source}`)}
+            />
+          </Link>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 /** Questions about the business, each answered with figures Pisto reads from its records. */
 export function BusinessThread({
   businessId,
   permissions,
   canInterpret,
+  businessConversation,
   initial,
   onBusy,
   onTool,
@@ -219,22 +265,28 @@ export function BusinessThread({
   businessId: string;
   permissions: readonly BusinessPermission[];
   canInterpret: boolean;
-  initial: { question: string; tool: QuestionTool };
+  businessConversation: boolean;
+  initial: { question: string; tool: ThreadTool };
   /** True while a typed question is being interpreted. */
   onBusy: (busy: boolean) => void;
   /** A follow-up that asks for a sale or a product leaves the thread. */
-  onTool: (tool: AssistantToolCall, sentence: string) => void;
+  onTool: (tool: CocoTool, sentence: string) => void;
   onBack: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const { interpret } = useInterpretation(businessId);
+  const { interpret } = useInterpretation(businessId, businessConversation);
   const sequence = useRef(1);
   const [exchanges, setExchanges] = useState<Exchange[]>([
-    { id: 0, ...initial, asked: initial.tool.period },
+    {
+      id: 0,
+      ...initial,
+      asked: initial.tool.name === "answer_question" ? initial.tool.period : null,
+    },
   ]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const sending = useRef(false);
   const [notice, setNotice] = useState<string | null>(null);
   const latest = useRef<View>(null);
   const field = useRef<TextInput>(null);
@@ -256,32 +308,41 @@ export function BusinessThread({
     (latest.current as unknown as HTMLElement | null)?.scrollIntoView?.({ block: "start" });
   }, [newest]);
 
-  function append(question: string, tool: QuestionTool) {
+  function append(question: string, tool: ThreadTool) {
     const id = sequence.current++;
     setExchanges((previous) => [
       ...previous.slice(1 - maxExchanges),
-      { id, question, tool, asked: tool.period },
+      { id, question, tool, asked: tool.name === "answer_question" ? tool.period : null },
     ]);
     setText("");
   }
 
   async function ask(sentence: string) {
-    if (sentence.length < 2 || busy) return;
+    if (sentence.length < 2 || sending.current) return;
     setNotice(null);
-    if (!canInterpret && !matchSaleTool(sentence) && !matchBusinessQuestion(sentence)) {
+    if (
+      !canInterpret &&
+      !businessConversation &&
+      !matchSaleTool(sentence) &&
+      !matchBusinessQuestion(sentence)
+    ) {
       setNotice(t("assistant.answers.unknown"));
       return;
     }
+    sending.current = true;
     setBusy(true);
     const outcome = await interpret(
       { text: sentence, source: "text", allowTools: true },
       () => !alive.current,
+      exchanges.slice(-3).map((entry) => entry.question),
     );
+    sending.current = false;
     if (!alive.current || outcome.kind === "abandoned") return;
     setBusy(false);
     if (outcome.kind === "review") onClose();
     else if (outcome.kind === "tool") {
-      if (outcome.tool.name === "answer_question") append(sentence, outcome.tool);
+      if (outcome.tool.name === "answer_question" || outcome.tool.name === "business_reply")
+        append(sentence, outcome.tool);
       else onTool(outcome.tool, sentence);
     } else if (outcome.kind === "unsupported") {
       setNotice(
@@ -294,7 +355,15 @@ export function BusinessThread({
     } else setNotice(t(problemMessageKeys[outcome.problem]));
   }
 
-  const asked = new Set(exchanges.map(({ tool }) => tool.topic));
+  const asked = new Set(
+    exchanges.flatMap(({ tool }) =>
+      tool.name === "answer_question"
+        ? [tool.topic]
+        : tool.reply.kind === "answer"
+          ? tool.reply.sources
+          : [],
+    ),
+  );
   const suggestions = suggestedQuestions
     .filter(({ tool }) => !asked.has(tool.topic) && permitsTopic(permissions, tool.topic))
     .slice(0, 3);
@@ -311,22 +380,30 @@ export function BusinessThread({
             <Text className="max-w-[92%] self-end rounded-lg bg-muted px-3 py-2 text-sm">
               {exchange.question}
             </Text>
-            <Answer
-              businessId={businessId}
-              exchange={exchange}
-              latest={index === exchanges.length - 1}
-              onClose={onClose}
-              onPeriod={(period) =>
-                setExchanges((previous) =>
-                  previous.map((entry) =>
-                    entry.id === exchange.id
-                      ? { ...entry, tool: { ...entry.tool, period } }
-                      : entry,
-                  ),
-                )
-              }
-              permitted={permitsTopic(permissions, exchange.tool.topic)}
-            />
+            {exchange.tool.name === "business_reply" ? (
+              <ConversationAnswer
+                reply={exchange.tool.reply}
+                permissions={permissions}
+                onClose={onClose}
+              />
+            ) : (
+              <Answer
+                businessId={businessId}
+                exchange={{ ...exchange, tool: exchange.tool }}
+                latest={index === exchanges.length - 1}
+                onClose={onClose}
+                onPeriod={(period) =>
+                  setExchanges((previous) =>
+                    previous.map((entry) =>
+                      entry.id === exchange.id && entry.tool.name === "answer_question"
+                        ? { ...entry, tool: { ...entry.tool, period } }
+                        : entry,
+                    ),
+                  )
+                }
+                permitted={permitsTopic(permissions, exchange.tool.topic)}
+              />
+            )}
           </View>
         ))}
         {busy ? (
@@ -345,7 +422,7 @@ export function BusinessThread({
               accessibilityLabel={t("assistant.answers.input")}
               // Sending keeps the field focused for the next question.
               blurOnSubmit={false}
-              maxLength={500}
+              maxLength={1000}
               onChangeText={(value) => {
                 setText(value);
                 setNotice(null);
@@ -380,7 +457,11 @@ export function BusinessThread({
                   label={t(`assistant.questions.suggested.${key}`)}
                   onPress={() => {
                     setNotice(null);
-                    append(t(`assistant.questions.suggested.${key}`), tool);
+                    const question = t(`assistant.questions.suggested.${key}`);
+                    if (businessConversation) {
+                      setText(question);
+                      void ask(question);
+                    } else append(question, tool);
                     // The pressed suggestion leaves the list; the field takes the focus it held.
                     field.current?.focus();
                   }}

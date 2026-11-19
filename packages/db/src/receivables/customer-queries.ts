@@ -1,5 +1,5 @@
 import { listCustomersQuerySchema } from "@pisto/contracts";
-import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, or, sql } from "drizzle-orm";
 
 import { authorizeBusinessAction } from "../business-access.ts";
 import type { Database } from "../client.ts";
@@ -12,7 +12,7 @@ import {
   pageRows,
 } from "../pagination.ts";
 import { customer, receivable } from "../schema/receivables.ts";
-import { containsText } from "../text-search.ts";
+import { containsName, containsText } from "../text-search.ts";
 import { toCustomer } from "./mappers.ts";
 import { businessLocalDate, paymentTotals } from "./records.ts";
 import type { ReceivablesRepository } from "./types.ts";
@@ -45,7 +45,10 @@ export function createCustomerQueries(db: Database): CustomerQueries {
               eq(customer.businessId, access.businessId),
               query.status === "all" ? undefined : eq(customer.status, query.status),
               query.query
-                ? containsText([customer.name, customer.email, customer.phone], query.query)
+                ? or(
+                    containsName(customer.name, query.query),
+                    containsText([customer.email, customer.phone], query.query),
+                  )
                 : undefined,
               keysetBefore(customer, cursor),
             ),

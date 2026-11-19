@@ -10,8 +10,12 @@ import {
   assistantTranscriptionResponseSchema,
   type BusinessAnswerQuery,
   type BusinessAnswerResponse,
+  type BusinessTurnRequest,
+  type BusinessTurnResponse,
   businessAnswerQuerySchema,
   businessAnswerResponseSchema,
+  businessTurnRequestSchema,
+  businessTurnResponseSchema,
   type CatalogTurnRequest,
   type CatalogTurnResponse,
   catalogTurnRequestSchema,
@@ -69,7 +73,7 @@ async function uploadAudio(audio: Blob, businessId: string, signal?: AbortSignal
 export const assistantApi = {
   status: (signal?: AbortSignal) =>
     apiRequest<AssistantStatusResponse, AssistantStatusResponse["data"]>(
-      "/v1/assistant/status?include=catalog",
+      "/v1/assistant/status?include=catalog&include=business",
       { authenticated: true, signal },
       assistantStatusResponseSchema,
     ),
@@ -86,6 +90,17 @@ export const assistantApi = {
     return data.interpretation;
   },
   transcribe: uploadAudio,
+  businessTurn: (request: BusinessTurnRequest, signal: AbortSignal) =>
+    apiRequest<BusinessTurnResponse, BusinessTurnResponse["data"]>(
+      "/v1/assistant/business-turns",
+      {
+        authenticated: true,
+        method: "POST",
+        body: parseRequestPayload(businessTurnRequestSchema, request),
+        signal,
+      },
+      businessTurnResponseSchema,
+    ),
   answer: (query: BusinessAnswerQuery, signal?: AbortSignal) => {
     const { expectedBusinessId, topic, period } = parseRequestPayload(
       businessAnswerQuerySchema,

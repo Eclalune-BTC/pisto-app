@@ -88,6 +88,7 @@ The baseline surface is:
 | `POST` | `/v1/receivable-payments/:paymentId/reverse` | `receivables:manage` and `cash:manage`, fresh session | Reverse one payment exactly once |
 | `GET` | `/v1/assistant/status` | Yes, fresh session | Whether a model provider is composed (`enabled`, `transcription`) |
 | `POST` | `/v1/assistant/interpretations` | `assistant:use`, fresh session; assistant budgets | Turn one sentence into a reviewable draft; nothing is saved |
+| `POST` | `/v1/assistant/business-turns` | `assistant:use` and every selected read permission, fresh session, read and model budgets | Plan and answer a free business question from exact reads with DeepSeek |
 | `GET` | `/v1/assistant/answers` | `assistant:use` plus the topic's permission, fresh session; product read budget | Answer one business question (`topic`, optional `period`, `expectedBusinessId`) from exact reads; no model call |
 | `POST` | `/v1/assistant/transcriptions` | `assistant:use`, fresh session, allowlisted Origin; assistant budgets | Transcribe a raw `audio/wav` body (own byte cap) to editable text |
 

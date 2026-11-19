@@ -1,18 +1,12 @@
-const maximumMinorUnits = 9_223_372_036_854_775_807n;
+import { assertFractionDigits, toDecimalString } from "@pisto/contracts";
 
-const canonicalMinorUnits = /^-?(?:0|[1-9]\d*)$/;
+const maximumMinorUnits = 9_223_372_036_854_775_807n;
 
 export type AmountParseError =
   | "invalid-decimals"
   | "invalid-integer"
   | "non-positive"
   | "too-large";
-
-function assertFractionDigits(fractionDigits: number): void {
-  if (!Number.isInteger(fractionDigits) || fractionDigits < 0 || fractionDigits > 4) {
-    throw new RangeError(`Unsupported currency exponent: ${fractionDigits}`);
-  }
-}
 
 export function parseAmountToMinorUnits(
   input: string,
@@ -48,24 +42,6 @@ export function parseAmountToMinorUnits(
   if (value === 0n && !allowZero) return { error: "non-positive" };
   if (value > maximumMinorUnits) return { error: "too-large" };
   return { value: value.toString() };
-}
-
-/**
- * Exact, sign-correct decimal text for a minor-unit amount. This is the part
- * that must never lose a digit, so it stays in BigInt and never touches a
- * double. Rendering that text for a locale is Intl's job, not ours.
- */
-export function toDecimalString(minorUnits: string, fractionDigits: number): string {
-  assertFractionDigits(fractionDigits);
-  if (!canonicalMinorUnits.test(minorUnits) || minorUnits === "-0") {
-    throw new TypeError(`Not a canonical minor-unit amount: ${JSON.stringify(minorUnits)}`);
-  }
-  const value = BigInt(minorUnits);
-  const negative = value < 0n;
-  const digits = (negative ? -value : value).toString().padStart(fractionDigits + 1, "0");
-  const whole = fractionDigits === 0 ? digits : digits.slice(0, -fractionDigits);
-  const fraction = fractionDigits === 0 ? "" : `.${digits.slice(-fractionDigits)}`;
-  return `${negative ? "-" : ""}${whole}${fraction}`;
 }
 
 export function formatMinorUnits(

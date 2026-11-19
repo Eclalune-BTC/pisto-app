@@ -1,5 +1,6 @@
 import {
   type AssistantProvider,
+  createDeepSeekBusinessModel,
   createDeepSeekCatalogModel,
   createDeepSeekProvider,
   createWorkersAiBindingProvider,
@@ -99,6 +100,10 @@ export function createRuntime(
     },
     assistant: {
       provider: assistantProvider(config.assistant, options.ai),
+      businessModel:
+        config.assistant.enabled !== false && config.assistant.deepseekApiKey
+          ? createDeepSeekBusinessModel(config.assistant.deepseekApiKey)
+          : null,
       catalogModel:
         config.assistant.enabled !== false && config.assistant.deepseekApiKey
           ? createDeepSeekCatalogModel(config.assistant.deepseekApiKey)

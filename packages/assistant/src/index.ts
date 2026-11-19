@@ -1,6 +1,12 @@
 export { decimalToMinorUnits, lineSubtotal, positiveMinorUnits } from "./amounts.ts";
 export { answerBusinessQuestion, type BusinessFacts } from "./answers.ts";
 export {
+  type BusinessModel,
+  businessPromptVersion,
+  createDeepSeekBusinessModel,
+} from "./business-conversation.ts";
+export { type ConversationFacts, readBusinessEvidence } from "./business-evidence.ts";
+export {
   type CatalogIntent,
   type CatalogModel,
   catalogModelId,

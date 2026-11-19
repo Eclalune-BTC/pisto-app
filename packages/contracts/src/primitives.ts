@@ -57,3 +57,27 @@ export const shortRequestTextSchema = z.string().trim().min(1).max(240);
 /** How a record was captured: a form, a dictated transcript or a typed natural-language message. */
 export const entrySourceSchema = z.enum(["manual", "voice", "text"]);
 export type EntrySource = z.infer<typeof entrySourceSchema>;
+
+export function assertFractionDigits(fractionDigits: number): void {
+  if (!Number.isInteger(fractionDigits) || fractionDigits < 0 || fractionDigits > 4) {
+    throw new RangeError(`Unsupported currency exponent: ${fractionDigits}`);
+  }
+}
+
+/**
+ * Exact, sign-correct decimal text for a minor-unit amount. This is the part
+ * that must never lose a digit, so it stays in BigInt and never touches a
+ * double. Rendering that text for a locale is Intl's job, not ours.
+ */
+export function toDecimalString(minorUnits: string, fractionDigits: number): string {
+  assertFractionDigits(fractionDigits);
+  if (!signedAggregateIntegerSchema.safeParse(minorUnits).success) {
+    throw new TypeError(`Not a canonical minor-unit amount: ${JSON.stringify(minorUnits)}`);
+  }
+  const value = BigInt(minorUnits);
+  const negative = value < 0n;
+  const digits = (negative ? -value : value).toString().padStart(fractionDigits + 1, "0");
+  const whole = fractionDigits === 0 ? digits : digits.slice(0, -fractionDigits);
+  const fraction = fractionDigits === 0 ? "" : `.${digits.slice(-fractionDigits)}`;
+  return `${negative ? "-" : ""}${whole}${fraction}`;
+}

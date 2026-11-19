@@ -1,6 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import {
   type AssistantProvider,
+  type BusinessModel,
   blankExtraction,
   type CatalogModel,
   type Extraction,
@@ -84,6 +85,7 @@ function setup(
   options: {
     authenticated?: boolean;
     enabled?: boolean;
+    businessModel?: BusinessModel;
     extract?: (sentence: string) => unknown;
     transcribe?: (audio: Uint8Array) => string | Error;
     authorize?: AssistantDirectoryRepository["authorize"];
@@ -133,6 +135,7 @@ function setup(
   const assistant: AssistantServices = {
     provider: options.enabled === false ? null : (options.provider ?? fake.provider),
     catalogModel: options.catalogModel ?? null,
+    businessModel: options.businessModel ?? null,
     records,
     suppliers: emptySupplierDirectory,
     consume: async ({ key }) => {
@@ -344,6 +347,57 @@ describe("business answers", () => {
     queriedAt: "2026-11-04T15:00:00.000Z",
   };
   const path = (query: string) => `/v1/assistant/answers?expectedBusinessId=business_test&${query}`;
+
+  test("checks the whole plan before reading and checks access again before returning the wording", async () => {
+    const body = json({
+      expectedBusinessId: "business_test",
+      text: "¿Cómo nos fue ayer?",
+      previousQuestions: [],
+    });
+    let reads = 0;
+    let revoked = false;
+    const model: BusinessModel = {
+      plan: async () => ({ kind: "read", reads: [{ source: "sales", period: "yesterday" }] }),
+      compose: async (_question, evidence) => {
+        expect(evidence[0]?.facts[0]).toContain("USD 97.50");
+        revoked = true;
+        return "A grounded response";
+      },
+    };
+    const { client } = setup({
+      businessModel: model,
+      getPeriodSummary: async () => {
+        reads++;
+        return summary;
+      },
+      authorize: async () => {
+        if (revoked) throw new ProductError("FORBIDDEN", "Membership revoked");
+        return { businessId: "business_test", localDate: "2026-11-04" };
+      },
+    });
+    expect((await client.request("/v1/assistant/business-turns", body)).status).toBe(403);
+    expect(reads).toBe(1);
+    const denied = setup({
+      businessModel: {
+        ...model,
+        plan: async () => ({
+          kind: "read",
+          reads: [{ source: "sales", period: "today" }, { source: "receivables" }],
+        }),
+      },
+      authorize: async (_actor, required) => {
+        if (required?.includes("receivables:read"))
+          throw new ProductError("FORBIDDEN", "Not allowed");
+        return { businessId: "business_test", localDate: "2026-11-04" };
+      },
+      getPeriodSummary: async () => {
+        reads++;
+        return summary;
+      },
+    });
+    expect((await denied.client.request("/v1/assistant/business-turns", body)).status).toBe(403);
+    expect(reads).toBe(1);
+  });
 
   test("answers from the sales repository over the business week, with the model off", async () => {
     const ranges: unknown[] = [];

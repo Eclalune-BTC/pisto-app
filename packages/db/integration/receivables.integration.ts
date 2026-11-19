@@ -149,21 +149,21 @@ afterAll(async () => {
 });
 
 describe("customers and receivables repository on PostgreSQL 18", () => {
-  test("treats customer-search wildcard characters as literal text", async () => {
+  test("finds customer names without accents and treats search wildcards as literal text", async () => {
     const owner = actor("ownerA", businessA);
     for (const suffix of ["plain", "%", "_", "\\"]) {
       await repository.createCustomer(owner, {
         idempotencyKey: crypto.randomUUID(),
-        name: `Search fixture ${suffix}`,
+        name: `Lucía fixture ${suffix}`,
       });
     }
     for (const suffix of ["plain", "%", "_", "\\"]) {
       const result = await repository.listCustomers(owner, {
-        query: `Search fixture ${suffix}`,
+        query: `Lucia fixture ${suffix}`,
         status: "active",
         limit: 25,
       });
-      expect(result.items.map(({ name }) => name)).toEqual([`Search fixture ${suffix}`]);
+      expect(result.items.map(({ name }) => name)).toEqual([`Lucía fixture ${suffix}`]);
     }
   });
 

@@ -1,6 +1,7 @@
+import { toDecimalString } from "@pisto/contracts";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
-import { formatMinorUnits, toDecimalString } from "@/lib/money";
+import { formatMinorUnits } from "@/lib/money";
 
 /**
  * The formatted amount split before its decimal separator, so the cents can be set smaller. The

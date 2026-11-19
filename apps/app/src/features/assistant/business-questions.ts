@@ -2,13 +2,28 @@ import {
   type AssistantToolCall,
   type BusinessPeriod,
   type BusinessPermission,
+  type BusinessReply,
+  type BusinessSource,
   type BusinessTopic,
+  businessReadPermissions,
   businessTopicPermissions,
   periodBusinessTopics,
 } from "@pisto/contracts";
 import type { Href } from "expo-router";
 
 export type QuestionTool = Extract<AssistantToolCall, { name: "answer_question" }>;
+export type ConversationTurn = { name: "business_reply"; reply: BusinessReply };
+export type CocoTool = AssistantToolCall | ConversationTurn;
+
+export function permitsReply(permissions: readonly BusinessPermission[], reply: BusinessReply) {
+  return (
+    permissions.includes("assistant:use") &&
+    (reply.kind !== "answer" ||
+      reply.sources.every((source) =>
+        businessReadPermissions(source).every((p) => permissions.includes(p)),
+      ))
+  );
+}
 
 /** The screen that owns each topic's figures. */
 export const topicHrefs = {
@@ -21,6 +36,15 @@ export const topicHrefs = {
   payables: { pathname: "/operate/payables", params: { payable: "open" } },
   low_stock: "/operate/inventory",
 } as const satisfies Record<BusinessTopic, Href>;
+
+export const sourceHrefs = {
+  ...topicHrefs,
+  product_price: "/operate/catalog",
+  product_stock: "/operate/inventory",
+  customer: "/operate/customers",
+  supplier: "/operate/suppliers",
+  movements: "/operate/movements",
+} as const satisfies Record<BusinessSource, Href>;
 
 export function isPeriodTopic(topic: BusinessTopic): boolean {
   return (periodBusinessTopics as readonly BusinessTopic[]).includes(topic);

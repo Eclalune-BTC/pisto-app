@@ -43,8 +43,19 @@ export type AssistantAvailability =
   | { kind: "hidden" }
   | { kind: "loading"; businessId: string }
   | { kind: "error"; businessId: string; retry: () => void }
-  | { kind: "disabled"; businessId: string; catalogConversation: boolean }
-  | { kind: "ready"; businessId: string; transcription: boolean; catalogConversation: boolean };
+  | {
+      kind: "disabled";
+      businessId: string;
+      catalogConversation: boolean;
+      businessConversation: boolean;
+    }
+  | {
+      kind: "ready";
+      businessId: string;
+      transcription: boolean;
+      catalogConversation: boolean;
+      businessConversation: boolean;
+    };
 
 /** Whether the active member may use the assistant and the server reports it on. */
 export function useAssistantAvailability(): AssistantAvailability {
@@ -65,11 +76,13 @@ export function useAssistantAvailability(): AssistantAvailability {
           kind: "ready",
           businessId: business.id,
           transcription: status.data.transcription,
+          businessConversation: status.data.businessConversation === true,
           catalogConversation: status.data.catalogConversation === true,
         }
       : {
           kind: "disabled",
           businessId: business.id,
+          businessConversation: status.data.businessConversation === true,
           catalogConversation: status.data.catalogConversation === true,
         };
   }

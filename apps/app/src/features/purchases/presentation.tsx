@@ -1,8 +1,7 @@
 import type { Purchase, Supplier } from "@pisto/contracts";
+import { toDecimalString } from "@pisto/contracts";
 import { useTranslation } from "react-i18next";
-
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
-import { toDecimalString } from "@/lib/money";
 
 type PurchaseState = Purchase["payableState"] | "voided";
 

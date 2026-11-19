@@ -5,13 +5,13 @@ import type {
   EntrySource,
   PurchasePaymentTerms,
 } from "@pisto/contracts";
+import { toDecimalString } from "@pisto/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { CircleAlert, Plus, Trash2, TriangleAlert } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-
 import { Section } from "@/components/layout/section";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ import { PickerField } from "@/features/customers/picker-field";
 import { useCommand } from "@/features/customers/use-command";
 import { CashAccountPickerDialog } from "@/features/receivables/cash-account-picker";
 import { cn } from "@/lib/cn";
-import { currentLocalDateTime, toDecimalString } from "@/lib/money";
+import { currentLocalDateTime } from "@/lib/money";
 import { notify } from "@/lib/notify";
 import { purchasesApi } from "./api";
 import {

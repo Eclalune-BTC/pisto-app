@@ -1,4 +1,5 @@
 import type { Business, SaleEntryMode, SaleReview } from "@pisto/contracts";
+import { toDecimalString } from "@pisto/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Redirect, useRouter } from "expo-router";
@@ -18,7 +19,7 @@ import { FilterBar } from "@/components/ui/filter-bar";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { api, isAmbiguousMutationError } from "@/lib/api-client";
-import { currentLocalDateTime, toDecimalString } from "@/lib/money";
+import { currentLocalDateTime } from "@/lib/money";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";

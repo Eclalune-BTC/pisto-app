@@ -4,8 +4,12 @@ import type {
   ProductUnitKind,
   UpdateProductRequest,
 } from "@pisto/contracts";
-import { createProductRequestSchema, updateProductRequestSchema } from "@pisto/contracts";
-import { parseAmountToMinorUnits, toDecimalString } from "@/lib/money";
+import {
+  createProductRequestSchema,
+  toDecimalString,
+  updateProductRequestSchema,
+} from "@pisto/contracts";
+import { parseAmountToMinorUnits } from "@/lib/money";
 import { formatQuantityMinorUnits, parseQuantityToMinorUnits } from "../inventory/quantity";
 
 export type QuantityPrecision = 0 | 1 | 2 | 3;

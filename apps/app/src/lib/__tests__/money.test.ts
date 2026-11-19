@@ -1,6 +1,6 @@
+import { toDecimalString } from "@pisto/contracts";
 import { describe, expect, test } from "vitest";
-
-import { formatMinorUnits, parseAmountToMinorUnits, toDecimalString } from "@/lib/money";
+import { formatMinorUnits, parseAmountToMinorUnits } from "@/lib/money";
 
 describe("minor-unit decimal text", () => {
   test("keeps the sign and the scale exact on both sides of zero", () => {

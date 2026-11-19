@@ -124,9 +124,10 @@ from `packages/assistant`: it signs in as the demo owner and only reads. Authent
 ask the price of the demo ground coffee, ask how much three cost and accept the quote. The sale
 editor should open with three units at the current catalog price. End the check before saving.
 
-Type “¿Cuánto vendí el mes pasado?” in Coco's field on the home. The answer must state the
-month's gross sales and the number of sales, and `GET /v1/assistant/answers` must return 200. Then
-ask “¿Quiénes me quedaron debiendo?” to exercise the model's classification.
+Check `GET /v1/assistant/status?include=catalog&include=business` with an authenticated session.
+A configured Worker reports `businessConversation: true`. Type “¿Cuánto vendí el mes pasado?”
+in Coco on the home screen. Compare the grounded answer from `POST /v1/assistant/business-turns`
+with `GET /v1/assistant/answers` for the same period. Ask “¿Y la semana pasada?” in the same dialog.
 
 Sign in with the demo owner and open **Nuevo registro**. The authenticated
 `GET /v1/assistant/status` should return `enabled: true` and `transcription: true`. Dictate

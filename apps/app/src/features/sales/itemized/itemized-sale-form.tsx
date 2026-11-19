@@ -7,6 +7,7 @@ import type {
   ProductStock,
   SalePaymentMethod,
 } from "@pisto/contracts";
+import { toDecimalString } from "@pisto/contracts";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { useRouter } from "expo-router";
@@ -38,7 +39,7 @@ import { ApiClientError } from "@/lib/api-error";
 import { cn } from "@/lib/cn";
 import { EMPTY_VALUE } from "@/lib/empty-value";
 import { useKeyedCommand } from "@/lib/keyed-command";
-import { currentLocalDateTime, formatMinorUnits, toDecimalString } from "@/lib/money";
+import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { isLockedPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";

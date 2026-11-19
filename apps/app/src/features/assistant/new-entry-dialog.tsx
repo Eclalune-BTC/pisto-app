@@ -1,4 +1,4 @@
-import type { AssistantToolCall, BusinessPermission } from "@pisto/contracts";
+import type { BusinessPermission } from "@pisto/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Keyboard, Mic, Square, TriangleAlert } from "lucide-react-native";
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
@@ -22,7 +22,12 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { assistantApi } from "./api";
-import { matchBusinessQuestion, matchSaleTool, permitsTool } from "./business-questions";
+import {
+  type CocoTool,
+  matchBusinessQuestion,
+  matchSaleTool,
+  permitsTool,
+} from "./business-questions";
 import { BusinessThread } from "./business-thread";
 import { Coco, type CocoActivity } from "./coco";
 import {
@@ -47,7 +52,7 @@ const BARS = 36;
 const MIN_TEXT = 2;
 const MAX_TEXT = 1_000;
 
-export type EntryMode = "voice" | "text" | "tools" | AssistantToolCall;
+export type EntryMode = "voice" | "text" | "tools" | CocoTool;
 
 type VoiceProblem = "denied" | "unsupported" | "failed" | "silence";
 
@@ -58,7 +63,7 @@ type VoiceFailure =
 
 type Phase =
   | { kind: "tools" }
-  | { kind: "saleTool"; tool: AssistantToolCall; question?: string }
+  | { kind: "saleTool"; tool: CocoTool; question?: string }
   | { kind: "text" }
   | { kind: "requesting" }
   | { kind: "recording" }
@@ -227,13 +232,14 @@ function EntryBody({
   const voiceAvailable = availability.kind === "ready" && availability.transcription && canRecord();
   return (
     <EntryFlow
+      businessConversation={availability.businessConversation}
       catalogConversation={availability.catalogConversation}
       initialQuestion={initialQuestion}
       onActivity={onActivity}
       businessId={availability.businessId}
       initialMode={
         initialMode === "voice" && !voiceAvailable
-          ? availability.kind === "ready"
+          ? availability.kind === "ready" || availability.businessConversation
             ? "text"
             : "tools"
           : initialMode
@@ -248,6 +254,7 @@ function EntryBody({
 
 function EntryFlow({
   catalogConversation,
+  businessConversation,
   initialQuestion,
   onActivity,
   businessId,
@@ -258,6 +265,7 @@ function EntryFlow({
   voiceAvailable,
 }: {
   catalogConversation: boolean;
+  businessConversation: boolean;
   initialQuestion?: string;
   onActivity: (value: CocoActivity) => void;
   businessId: string;
@@ -269,7 +277,7 @@ function EntryFlow({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { interpret } = useInterpretation(businessId);
+  const { interpret } = useInterpretation(businessId, businessConversation);
   const [phase, setPhase] = useState<Phase>(
     typeof initialMode === "object"
       ? { kind: "saleTool", tool: initialMode, question: initialQuestion }
@@ -313,7 +321,12 @@ function EntryFlow({
   }, []);
 
   async function review(sentence: string, from: "voice" | "text") {
-    if (!canInterpret && !matchSaleTool(sentence) && !matchBusinessQuestion(sentence)) {
+    if (
+      !canInterpret &&
+      !businessConversation &&
+      !matchSaleTool(sentence) &&
+      !matchBusinessQuestion(sentence)
+    ) {
       setPhase({ kind: "tools" });
       return;
     }
@@ -467,10 +480,14 @@ function EntryFlow({
       setNotice(null);
       setPhase({ kind: "text" });
     };
-    if (phase.kind === "saleTool" && phase.tool.name === "answer_question") {
+    if (
+      phase.kind === "saleTool" &&
+      (phase.tool.name === "answer_question" || phase.tool.name === "business_reply")
+    ) {
       return (
         <BusinessThread
           businessId={businessId}
+          businessConversation={businessConversation}
           canInterpret={canInterpret}
           initial={{
             question: phase.question ?? t("assistant.tools.questions"),
@@ -485,7 +502,11 @@ function EntryFlow({
         />
       );
     }
-    if (phase.kind === "saleTool" && permitsTool(permissions, phase.tool)) {
+    if (
+      phase.kind === "saleTool" &&
+      phase.tool.name !== "business_reply" &&
+      permitsTool(permissions, phase.tool)
+    ) {
       return (
         <SaleToolPanel
           catalogConversation={catalogConversation}
@@ -506,8 +527,14 @@ function EntryFlow({
     return (
       <AssistantTools
         permissions={permissions}
-        canInterpret={canInterpret}
-        onTool={(tool, question) => setPhase({ kind: "saleTool", tool, question })}
+        canInterpret={canInterpret || businessConversation}
+        businessConversation={businessConversation}
+        onTool={(tool, question) => {
+          if (businessConversation && tool.name === "answer_question" && question) {
+            setText(question);
+            void review(question, "text");
+          } else setPhase({ kind: "saleTool", tool, question });
+        }}
         onWrite={write}
       />
     );

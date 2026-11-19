@@ -111,7 +111,10 @@ function ComposerForm({
   permissions: readonly BusinessPermission[];
 }) {
   const { t } = useTranslation();
-  const { interpret, pending } = useInterpretation(availability.businessId);
+  const { interpret, pending } = useInterpretation(
+    availability.businessId,
+    availability.businessConversation,
+  );
   const [text, setText] = useState("");
   const [entry, setEntry] = useState<EntryMode | null>(null);
   const [question, setQuestion] = useState<string>();
@@ -136,7 +139,12 @@ function ComposerForm({
         : null;
   async function submit() {
     if (sentence.length < 2 || sending.current) return;
-    if (!ready && !matchSaleTool(sentence) && !matchBusinessQuestion(sentence)) {
+    if (
+      !ready &&
+      !availability.businessConversation &&
+      !matchSaleTool(sentence) &&
+      !matchBusinessQuestion(sentence)
+    ) {
       setUnrecognized(true);
       return;
     }
@@ -154,7 +162,8 @@ function ComposerForm({
       }
       if (
         result.kind === "review" ||
-        (result.kind === "tool" && result.tool.name === "answer_question")
+        (result.kind === "tool" &&
+          (result.tool.name === "answer_question" || result.tool.name === "business_reply"))
       ) {
         setText("");
       }
@@ -191,7 +200,9 @@ function ComposerForm({
               }}
               onSubmitEditing={() => void submit()}
               placeholder={t(
-                ready ? "assistant.composer.placeholder" : "assistant.questions.placeholder",
+                ready || availability.businessConversation
+                  ? "assistant.composer.placeholder"
+                  : "assistant.questions.placeholder",
               )}
               returnKeyType="send"
               value={text}
@@ -246,6 +257,9 @@ function ComposerForm({
           <Alert icon={TriangleAlert} variant="warning">
             <AlertDescription>{t(message)}</AlertDescription>
           </Alert>
+        )}
+        {!ready && !availability.businessConversation && !message && (
+          <Text className="text-xs text-muted-foreground">{t("assistant.questions.modelOff")}</Text>
         )}
         {entry !== null && (
           <NewEntryDialog

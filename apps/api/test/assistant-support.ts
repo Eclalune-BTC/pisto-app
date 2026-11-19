@@ -17,6 +17,7 @@ export const assistantTestConfig: AssistantConfig = {
 export function disabledAssistant(): AssistantServices {
   return {
     provider: null,
+    businessModel: null,
     catalogModel: null,
     records: {
       authorize: async () => {

@@ -5,6 +5,7 @@ import type {
   EntrySource,
   Receivable,
 } from "@pisto/contracts";
+import { toDecimalString } from "@pisto/contracts";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import type { TFunction } from "i18next";
@@ -35,7 +36,7 @@ import { readState } from "@/features/customers/read-state";
 import { useCommand } from "@/features/customers/use-command";
 import { cn } from "@/lib/cn";
 import { EMPTY_VALUE } from "@/lib/empty-value";
-import { currentLocalDateTime, parseAmountToMinorUnits, toDecimalString } from "@/lib/money";
+import { currentLocalDateTime, parseAmountToMinorUnits } from "@/lib/money";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { flattenPages } from "@/lib/pages";

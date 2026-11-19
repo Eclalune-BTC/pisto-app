@@ -6,8 +6,9 @@ import type {
   SaleFormOptionsResponse,
   SalePaymentMethod,
 } from "@pisto/contracts";
+import { toDecimalString } from "@pisto/contracts";
 import { formatQuantityMinorUnits, parseQuantityToMinorUnits } from "@/features/inventory/quantity";
-import { parseAmountToMinorUnits, toDecimalString } from "@/lib/money";
+import { parseAmountToMinorUnits } from "@/lib/money";
 
 export type PaymentAccount = SaleFormOptionsResponse["data"]["accounts"][number];
 

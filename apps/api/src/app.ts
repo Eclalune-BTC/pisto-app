@@ -227,6 +227,14 @@ export function createApp(input: {
           debtors: (actor) => debtors.getDebtors(actor),
           payablesSummary: (actor) => purchases.getPayablesSummary(actor),
           lowStock: (actor, limit) => catalog.listStock(actor, { lowStockOnly: true, limit }),
+          products: (actor, search) =>
+            catalog.listProducts(actor, { search, status: "active", limit: 8 }),
+          customers: (actor, query) =>
+            receivables.listCustomers(actor, { query, status: "all", limit: 8 }),
+          customer: (actor, id) => receivables.getCustomer(actor, id),
+          suppliers: (actor, query) =>
+            purchases.listSuppliers(actor, { query, status: "all", limit: 8 }),
+          movements: (actor, query) => movements.listMovements(actor, query),
         },
       }),
     );

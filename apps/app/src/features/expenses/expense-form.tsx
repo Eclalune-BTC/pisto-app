@@ -4,6 +4,7 @@ import type {
   EntrySource,
   PostExpenseRequest,
 } from "@pisto/contracts";
+import { toDecimalString } from "@pisto/contracts";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { useEffect, useState } from "react";
@@ -16,7 +17,7 @@ import {
 import { ContentSkeleton } from "@/components/layout/skeletons";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { useKeyedCommand } from "@/lib/keyed-command";
-import { currentLocalDateTime, formatMinorUnits, toDecimalString } from "@/lib/money";
+import { currentLocalDateTime, formatMinorUnits } from "@/lib/money";
 import { isLockedPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
 import { flattenPages } from "@/lib/pages";

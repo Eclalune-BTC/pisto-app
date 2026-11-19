@@ -53,27 +53,20 @@ Product-specific follow-ups use the selected catalog record and an ephemeral quo
 
 ## Business questions
 
-A member asks about the business by text or confirmed dictation and reads the answer in Coco's
-dialog. [ADR 0023](adrs/0023-business-questions-from-exact-reads.md) owns the decision.
+Coco accepts free questions and follow-ups from the home composer, tools and confirmed transcripts.
+With DeepSeek configured, even a familiar sales question goes to the model. The server validates
+up to four read proposals, resolves periods in the business time zone, enforces permissions and
+reads exact figures. DeepSeek writes its answer by joining references to complete facts. Pisto
+inserts their original labels, scopes and values. Two sales or expense periods also have an exact
+difference. Questions about a named customer, supplier or product, a ledger search, breakdowns and
+comparisons use the same repositories as the product screens. An unavailable measure or ambiguous
+scope gets a clarification or an explicit limitation. Read and provider failures remain errors.
 
-- **Topics:** sales, best-selling products, expenses, a period summary, money available,
-  receivables, payables and low stock. **Periods:** today, yesterday, this or last week (Monday
-  first), this or last month and the last 7 or 30 days, in the business time zone. Without a stated
-  period the answer covers the month in progress and says so.
-- **Classification:** the extraction prompt returns the kind `ask` with a topic and a period from
-  those closed sets; the server answers with the tool call `answer_question`. Complete known
-  phrasings are matched in the app without a model call and work with the assistant off.
-- **Read:** `GET /v1/assistant/answers` authorizes `assistant:use` plus the topic's permission
-  (`businessTopicPermissions`) and composes the answer from the repositories behind the screens.
-  Sales and the product ranking use `SalesRepository.getPeriodSummary` under `sales:summary:read`.
-  The route calls no model and spends the product read budget.
-- **Wording:** the app words the exact values. An empty period is a sentence, a failed read an
-  error with a retry, a missing permission a plain refusal. The summary never calls sales minus
-  expenses a profit, and a ranking says how many sales carried no product lines.
-- **Thread:** up to four exchanges kept in memory, a period control on the latest answer, a link to
-  the screen that owns the figures and three suggested questions. Nothing is persisted or written.
-- **Declined:** another period (a named month, a year, a date range), one customer or supplier,
-  advice and forecasts. Coco lists what it can answer.
+The last three user questions supply context for follow-ups. The dialog holds up to four exchanges
+and clears them on close or a business change. Replies identify the date and link to their sources.
+With DeepSeek off, the exact shortcuts continue to use the authorized read-only answers route and
+the app's own wording. The [composition decision](adrs/0025-grounded-business-conversation.md)
+and [exact-question decision](adrs/0023-business-questions-from-exact-reads.md) own both contracts.
 
 ## Decision summary
 
@@ -320,8 +313,8 @@ account setting.
 | Product brief and target architecture | Approved and documented |
 | AI SDK | Not installed; the registration slice uses a typed Workers AI adapter (ADR 0021) |
 | Provider | Sentences: Workers AI by default, DeepSeek where `ASSISTANT_EXTRACTION_PROVIDER=deepseek` (the hosted demo, [ADR 0024](adrs/0024-deepseek-sentence-extraction.md)). Dictation: Workers AI Whisper. `AI` binding in the Worker, REST credentials for the local Bun API, `ASSISTANT_ENABLED` kill switch, no failover |
-| Registration routes, package, prompt, UI | Implemented: `/v1/assistant/status`, `/interpretations`, `/transcriptions` and `/answers`; `packages/assistant`; prompt `extract-2026-11-19.1`; Coco, its tool menu, dictation, home composer, question thread and review route |
-| Follow-up conversation and streaming | Scoped product conversation with price, stock, quantity quotes and reviewed sale preparation, and a question thread of up to four exact answers. Each turn is classified on its own; no streaming. |
+| Registration routes, package, prompt, UI | Implemented: `/v1/assistant/status`, `/interpretations`, `/transcriptions`, `/answers` and `/business-turns`; `packages/assistant`; prompt `extract-2026-11-19.1`; Coco, its tool menu, dictation, home composer, question thread and review route |
+| Follow-up conversation and streaming | Scoped product conversation with price, stock, quantity quotes and reviewed sale preparation, and a question thread of up to four exact answers. Free questions can refer to the previous user questions and use a fresh, bounded read. |
 | Sales, catalog, inventory, expense, cash, customer, and receivable product data | Implemented; source synchronized. Validation and remaining platform/release limits are in [release evidence](release-evidence.md) |
 | Business reads behind the answers | The operating report, money trend, receivables summary and debtors, payables summary, stock list and the ranged sales summary; `answer_question` selects one by topic |
 | Sale and catalog tools | `start_sale` opens the sale form, `find_product` queries the authorized catalog. Only the existing product forms confirm mutations. |

@@ -33,6 +33,7 @@ should update the affected guide and references. Accepted target architecture is
 | [0022](0022-contextual-catalog-questions.md) | Accepted | Scoped catalog follow-ups with DeepSeek and deterministic sale quotes |
 | [0023](0023-business-questions-from-exact-reads.md) | Accepted; extends 0021 and 0022 | Business questions classified by the model and answered from exact reads |
 | [0024](0024-deepseek-sentence-extraction.md) | Accepted; amends 0021 | DeepSeek reads sentences on the hosted demo; Workers AI keeps dictation |
+| [0025](0025-grounded-business-conversation.md) | Accepted | Open business questions with bounded exact reads and DeepSeek composition |
 
 ## Status values
 

@@ -1,4 +1,5 @@
 import type { ReplaceSaleRequest, Sale, SaleDetails, VoidSaleRequest } from "@pisto/contracts";
+import { toDecimalString } from "@pisto/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Link, Redirect, useLocalSearchParams, useRouter } from "expo-router";
@@ -22,7 +23,7 @@ import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { api } from "@/lib/api-client";
 import { useKeyedCommand } from "@/lib/keyed-command";
-import { formatMinorUnits, toDecimalString } from "@/lib/money";
+import { formatMinorUnits } from "@/lib/money";
 import { notify } from "@/lib/notify";
 import { productErrorMessage } from "@/lib/product-errors";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";

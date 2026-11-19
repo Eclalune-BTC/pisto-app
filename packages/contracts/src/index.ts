@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { BusinessTopic } from "./assistant";
+import type { BusinessSource, BusinessTopic } from "./assistant";
 import {
   aggregateIntegerSchema,
   boundedListLimitSchema,
@@ -198,6 +198,23 @@ export const businessTopicPermissions = {
   payables: "purchases:read",
   low_stock: "inventory:read",
 } as const satisfies Record<BusinessTopic, z.infer<typeof businessPermissionSchema>>;
+
+export function businessReadPermissions(source: BusinessSource): readonly BusinessPermission[] {
+  switch (source) {
+    case "customer":
+      return ["customers:read", "receivables:read"];
+    case "supplier":
+      return ["purchases:read"];
+    case "product_price":
+      return ["catalog:read"];
+    case "product_stock":
+      return ["catalog:read", "inventory:read"];
+    case "movements":
+      return ["cash:read"];
+    default:
+      return [businessTopicPermissions[source]];
+  }
+}
 
 export const businessAccessSchema = z.object({
   role: businessRoleSchema,

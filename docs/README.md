@@ -20,7 +20,7 @@ recovery. The registration assistant drafts records from one dictated or typed s
 ([ADR 0021](adrs/0021-workers-ai-registration-assistant.md)). Coco also handles catalog follow-ups
 ([ADR 0022](adrs/0022-contextual-catalog-questions.md)) and answers questions about sales, expenses,
 cash, debts and stock from exact reads ([ADR 0023](adrs/0023-business-questions-from-exact-reads.md));
-general-purpose chat and native purchases are not implemented. The matrix owns the detailed status.
+DeepSeek also composes free-form business answers from authorized records ([ADR 0025](adrs/0025-grounded-business-conversation.md)). Native purchases remain pending. The matrix owns the detailed status.
 
 Development runs locally on Expo, Bun/Elysia and PostgreSQL 18. The hosted demo runs on Cloudflare
 Workers with Neon ([ADR 0020](adrs/0020-cloudflare-workers-neon-hosting.md),

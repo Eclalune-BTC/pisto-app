@@ -4,6 +4,7 @@ import type {
   CreateSupplierPaymentRequest,
   EntrySource,
 } from "@pisto/contracts";
+import { toDecimalString } from "@pisto/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { CircleAlert, TriangleAlert } from "lucide-react-native";
@@ -25,7 +26,7 @@ import { useCommand } from "@/features/customers/use-command";
 import { CashAccountPickerDialog } from "@/features/receivables/cash-account-picker";
 import { cn } from "@/lib/cn";
 import { EMPTY_VALUE } from "@/lib/empty-value";
-import { currentLocalDateTime, toDecimalString } from "@/lib/money";
+import { currentLocalDateTime } from "@/lib/money";
 import { notify } from "@/lib/notify";
 import { purchasesApi } from "./api";
 import {

@@ -1,5 +1,5 @@
 import { listSuppliersQuerySchema } from "@pisto/contracts";
-import { and, eq, type SQL, sql } from "drizzle-orm";
+import { and, eq, or, type SQL, sql } from "drizzle-orm";
 
 import { type AuthorizedBusinessContext, authorizeBusinessAction } from "../business-access.ts";
 import type { Database } from "../client.ts";
@@ -12,7 +12,7 @@ import {
   pageRows,
 } from "../pagination.ts";
 import { purchase, supplier } from "../schema/purchases.ts";
-import { containsText } from "../text-search.ts";
+import { containsName, containsText } from "../text-search.ts";
 import { toSupplier } from "./mappers.ts";
 import { businessLocalDateSql, purchaseBalance, supplierPaymentTotals } from "./records.ts";
 import type { PurchasesRepository } from "./types.ts";
@@ -134,15 +134,12 @@ export function createSupplierQueries(db: Database): SupplierQueries {
               eq(supplier.businessId, access.businessId),
               query.status === "all" ? undefined : eq(supplier.status, query.status),
               query.query
-                ? containsText(
-                    [
-                      supplier.name,
-                      supplier.contactName,
-                      supplier.phone,
-                      supplier.email,
-                      supplier.taxId,
-                    ],
-                    query.query,
+                ? or(
+                    containsName(supplier.name, query.query),
+                    containsText(
+                      [supplier.contactName, supplier.phone, supplier.email, supplier.taxId],
+                      query.query,
+                    ),
                   )
                 : undefined,
               query.balance === "outstanding"

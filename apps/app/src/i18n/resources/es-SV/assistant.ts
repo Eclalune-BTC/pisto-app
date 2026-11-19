@@ -54,6 +54,11 @@ export const assistant = {
       receivables: "Abrir Por cobrar",
       payables: "Abrir Por pagar",
       low_stock: "Abrir Inventario",
+      product_price: "Abrir Catálogo",
+      product_stock: "Abrir Inventario",
+      customer: "Abrir Clientes",
+      supplier: "Abrir Proveedores",
+      movements: "Abrir Movimientos",
     },
     sales: {
       lead_one: "{{period}} vendió {{total}} en una venta.",
@@ -155,6 +160,8 @@ export const assistant = {
     interpreting: "Interpretando su mensaje",
   },
   tools: {
+    askOrWrite: "Escribirle a Coco",
+    askHint: "Haga una pregunta sobre sus cuentas o describa un registro.",
     pendingHint:
       "Tiene una revisión de otra venta. Puede conservarla y comenzar con el producto que eligió.",
     continueWithProduct: "Continuar con el producto elegido",
@@ -215,6 +222,22 @@ export const assistant = {
     record: "Dictar con el micrófono",
   },
   questions: {
+    grounded: "Consultado en Pisto el {{date}}",
+    modelOff: "La conversación con IA está desactivada. Puede usar las consultas de Herramientas.",
+    gaps: {
+      clarify:
+        "¿Qué le gustaría saber de su negocio? Puede preguntar por un producto, un saldo o un período.",
+      period:
+        "¿Qué fechas quiere consultar? Puedo revisar períodos de hasta un año con registros hasta hoy.",
+      name: "¿Cuál es el nombre del cliente, proveedor o producto que quiere consultar?",
+      profit:
+        "Para calcular su ganancia neta falta el costo de lo vendido. Puedo consultar sus ventas y gastos registrados para ese período.",
+      forecast:
+        "Los registros muestran lo que ya pasó. Puedo comparar períodos anteriores si quiere ver cómo cambiaron sus ventas.",
+      missing_data:
+        "Con los registros que puedo consultar en Pisto no tengo datos suficientes para responder esa pregunta.",
+      off_topic: "Puedo ayudarle con preguntas sobre los registros de su negocio en Pisto.",
+    },
     placeholder: "Pregunte o ingrese una venta",
     suggested: {
       salesToday: "¿Cuánto vendí hoy?",
