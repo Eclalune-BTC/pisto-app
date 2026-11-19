@@ -138,9 +138,7 @@ export function MovementLine({
         />
       </View>
       <View className="min-w-0 flex-1 gap-0.5">
-        <Text className="font-ui text-dense">
-          {copy.title}
-        </Text>
+        <Text className="font-ui text-dense">{copy.title}</Text>
         <View className="min-w-0 flex-row flex-wrap items-center gap-x-2 gap-y-0.5">
           <Text className="text-xs leading-4 text-muted-foreground tabular-nums">
             {movement.time}
