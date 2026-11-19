@@ -38,45 +38,51 @@ export function TopBar({
   const { t } = useTranslation();
   return (
     <View
-      className="absolute inset-x-0 top-0 z-20 h-12 flex-row items-center gap-2 border-b border-border bg-background px-3 web:bg-background/92 web:backdrop-blur-lg sm:px-4"
+      className="absolute inset-x-0 top-0 z-20 h-12 justify-center border-b border-border bg-background web:bg-background/92 web:backdrop-blur-lg"
       role="banner"
     >
-      {wide ? (
-        <Button
-          accessibilityLabel={collapsed ? t("shell.expandSidebar") : t("shell.collapseSidebar")}
-          onPress={onToggleSidebar}
-          size="icon-sm"
-          variant="ghost"
-        >
-          <Icon as={PanelLeft} className="text-muted-foreground" size={16} />
-        </Button>
-      ) : (
-        <Button
-          accessibilityLabel={t("shell.openNavigation")}
-          onPress={onOpenNavigation}
-          size="icon-sm"
-          variant="ghost"
-        >
-          <Icon as={Menu} className="text-foreground" size={18} />
-        </Button>
-      )}
-      <View className="min-w-0 flex-1 px-1">
-        <ShellBreadcrumbs compact={!wide} />
+      <View className="mx-auto w-full max-w-[1120px] flex-row items-center gap-1 px-4 sm:gap-2 sm:px-6 lg:px-8">
+        {wide ? (
+          <Button
+            accessibilityLabel={collapsed ? t("shell.expandSidebar") : t("shell.collapseSidebar")}
+            onPress={onToggleSidebar}
+            size="icon-sm"
+            variant="ghost"
+          >
+            <Icon as={PanelLeft} className="text-muted-foreground" size={16} />
+          </Button>
+        ) : (
+          <Button
+            accessibilityLabel={t("shell.openNavigation")}
+            onPress={onOpenNavigation}
+            size="icon-sm"
+            variant="ghost"
+          >
+            <Icon as={Menu} className="text-foreground" size={18} />
+          </Button>
+        )}
+        <View className="min-w-0 flex-1 px-1">
+          <ShellBreadcrumbs compact={!wide} />
+        </View>
+        {sessionUnverified ? (
+          <Text
+            className="min-w-0 shrink text-xs text-muted-foreground"
+            numberOfLines={1}
+            role="status"
+          >
+            {wide ? t("session.unverified") : t("session.unverifiedShort")}
+          </Text>
+        ) : realtime ? (
+          <RealtimeNotice compact={!wide} status={realtime} />
+        ) : null}
+        <View className="flex-row items-center gap-1 sm:gap-2">
+          {permissions ? <NewRecordMenu compact={!wide} permissions={permissions} /> : null}
+          <DictateButton compact={!wide} />
+        </View>
+        <View className="ml-1 border-l border-border pl-1 sm:ml-2 sm:pl-3">
+          <NavUser user={user} />
+        </View>
       </View>
-      {sessionUnverified ? (
-        <Text
-          className="min-w-0 shrink text-xs text-muted-foreground"
-          numberOfLines={1}
-          role="status"
-        >
-          {wide ? t("session.unverified") : t("session.unverifiedShort")}
-        </Text>
-      ) : realtime ? (
-        <RealtimeNotice compact={!wide} status={realtime} />
-      ) : null}
-      {permissions ? <NewRecordMenu compact={!wide} permissions={permissions} /> : null}
-      <DictateButton />
-      <NavUser user={user} />
     </View>
   );
 }

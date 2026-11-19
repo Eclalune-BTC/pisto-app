@@ -9,7 +9,7 @@ import { NewEntryDialog } from "./new-entry-dialog";
 import { useAssistantAvailability } from "./queries";
 
 /** The top-bar entry point to "Nuevo registro"; absent when the role cannot use the assistant. */
-export function DictateButton() {
+export function DictateButton({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
   const availability = useAssistantAvailability();
   const [open, setOpen] = useState(false);
@@ -19,10 +19,10 @@ export function DictateButton() {
       <Button
         accessibilityLabel={t("assistant.dictateLabel")}
         onPress={() => setOpen(true)}
-        size="sm"
+        size={compact ? "icon-sm" : "sm"}
       >
         <Icon as={Mic} className="text-primary-foreground" size={15} />
-        <Text>{t("assistant.dictate")}</Text>
+        {!compact ? <Text>{t("assistant.dictate")}</Text> : null}
       </Button>
       <NewEntryDialog
         availability={availability}

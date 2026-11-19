@@ -15,17 +15,11 @@ import { formatLocalDayMonth } from "@/i18n/format";
 import { cn } from "@/lib/cn";
 import { formatMinorUnits } from "@/lib/money";
 import { MoneyFigure } from "./money-figure";
-import { type MoneyFigureRow, MoneyFigureRows, MoneyFigureStrip } from "./money-figure-rows";
 import { MoneyTrendChart } from "./money-trend-chart";
 
 export const MONEY_TREND_RANGES = ["7d", "30d", "6m"] as const satisfies readonly MoneyTrendRange[];
 
-type Figure = MoneyFigureRow;
-
-/**
- * "Dinero disponible". Phones get the lime hero card. Wide screens get one card in two columns:
- * the balance and its trend, and beside them the accounts that hold it.
- */
+/** Cash on hand for the selected period and its breakdown by account type. */
 export function MoneyCard({
   canManageCash,
   compact,
@@ -48,7 +42,7 @@ export function MoneyCard({
       <Text
         accessibilityRole="header"
         aria-level={2}
-        className={cn("font-heading text-title", compact && "text-highlight-foreground")}
+        className="font-heading text-title text-white"
       >
         {title}
       </Text>
@@ -63,26 +57,19 @@ export function MoneyCard({
       />
     </View>
   );
-  const shell = (balance: ReactNode, accounts: ReactNode) =>
-    compact ? (
-      <View accessibilityLabel={title} className="gap-4 rounded-xl bg-highlight p-4" role="region">
+  const shell = (balance: ReactNode, accounts: ReactNode) => (
+    <View
+      accessibilityLabel={title}
+      className="min-w-0 overflow-hidden rounded-xl border border-border bg-card"
+      role="region"
+    >
+      <View className="min-w-0 gap-4 bg-brand px-4 py-4 sm:px-5 sm:py-5">
         {heading}
         {balance}
-        {accounts}
       </View>
-    ) : (
-      <View
-        accessibilityLabel={title}
-        className="flex-row overflow-hidden rounded-xl border border-border bg-card"
-        role="region"
-      >
-        <View className="min-w-0 flex-1 gap-4 p-4">
-          {heading}
-          {balance}
-        </View>
-        <View className="w-[300px] shrink-0 border-l border-border p-4">{accounts}</View>
-      </View>
-    );
+      <View className="gap-2 px-4 py-3 sm:px-5">{accounts}</View>
+    </View>
+  );
 
   if (trend.isPending) {
     return shell(
@@ -139,7 +126,7 @@ export function MoneyCard({
     formatMinorUnits(minorUnits, data.currency, data.currencyMinorUnitDigits, locale);
   const change = data.changeMinorUnits;
   const since = formatLocalDayMonth(data.startLocalDate, locale);
-  const figures: Figure[] = data.kinds.map((kind) => ({
+  const figures = data.kinds.map((kind) => ({
     key: kind.kind,
     label: t(`operate.home.money.kinds.${kind.kind}`),
     value: money(kind.balanceMinorUnits),
@@ -149,22 +136,14 @@ export function MoneyCard({
     <>
       <View className="gap-1">
         <MoneyFigure
-          className={cn("text-figure-xl", compact && "text-highlight-foreground")}
+          className="text-figure-xl text-white"
           currency={data.currency}
-          fractionClassName={cn(
-            "text-figure",
-            compact ? "text-highlight-foreground/60" : "text-muted-foreground",
-          )}
+          fractionClassName="text-figure text-white/75"
           fractionDigits={data.currencyMinorUnitDigits}
           locale={locale}
           minorUnits={data.closingMinorUnits}
         />
-        <Text
-          className={cn(
-            "text-dense tabular-nums",
-            compact ? "text-highlight-foreground/75" : "text-muted-foreground",
-          )}
-        >
+        <Text className="text-dense tabular-nums text-white/80">
           {change === "0" ? (
             t("operate.home.money.noChange", { date: since })
           ) : (
@@ -172,11 +151,7 @@ export function MoneyCard({
               <Text
                 className={cn(
                   "font-ui text-dense tabular-nums",
-                  compact
-                    ? "text-highlight-foreground"
-                    : change.startsWith("-")
-                      ? "text-foreground"
-                      : "text-positive-foreground",
+                  change.startsWith("-") ? "text-white" : "text-brand-foreground",
                 )}
               >
                 {change.startsWith("-") ? money(change) : `+${money(change)}`}
@@ -186,32 +161,25 @@ export function MoneyCard({
           )}
         </Text>
       </View>
-      <MoneyTrendChart
-        height={compact ? 110 : 176}
-        locale={locale}
-        tone={compact ? "highlight" : "card"}
-        trend={data}
-      />
+      <MoneyTrendChart height={compact ? 100 : 122} locale={locale} trend={data} />
     </>,
-    compact ? (
-      <MoneyFigureStrip figures={figures} />
-    ) : (
-      <View className="flex-1 gap-3">
-        <View className="min-h-8 flex-row items-center justify-between gap-2">
-          <Text className="font-heading text-title">{t("operate.modules.cash.label")}</Text>
-          <Link asChild href="/operate/cash">
-            <Button
-              accessibilityRole="link"
-              className="-mr-1.5 h-7 px-1.5"
-              size="sm"
-              variant="ghost"
-            >
-              <Text className="text-xs text-muted-foreground">{t("operate.home.today.all")}</Text>
-            </Button>
-          </Link>
-        </View>
-        <MoneyFigureRows figures={figures} />
+    <>
+      <View className="flex-row items-center justify-between gap-2">
+        <Text className="font-heading text-title">{t("operate.modules.cash.label")}</Text>
+        <Link asChild href="/operate/cash">
+          <Button accessibilityRole="link" size="sm" variant="ghost">
+            <Text className="text-xs text-muted-foreground">{t("operate.home.today.all")}</Text>
+          </Button>
+        </Link>
       </View>
-    ),
+      <View className="flex-row flex-wrap gap-x-4 gap-y-2">
+        {figures.map((figure) => (
+          <View key={figure.key} className="min-w-[94px] flex-1 gap-0.5">
+            <Text className="text-xs text-muted-foreground">{figure.label}</Text>
+            <Text className="font-heading text-title tabular-nums">{figure.value}</Text>
+          </View>
+        ))}
+      </View>
+    </>,
   );
 }

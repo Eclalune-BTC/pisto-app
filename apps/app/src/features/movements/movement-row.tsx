@@ -156,6 +156,14 @@ export function MovementRow({
               {movement.occurredLocalTime}
             </Text>
             <EntrySourceTag movement={movement} />
+            {showAccount && movement.accountName ? (
+              <Text
+                className="min-w-0 shrink text-xs leading-4 text-muted-foreground"
+                numberOfLines={1}
+              >
+                {movement.accountName}
+              </Text>
+            ) : null}
             {subtitle ? (
               <Text
                 className="min-w-0 shrink text-xs leading-4 text-muted-foreground"
@@ -166,14 +174,6 @@ export function MovementRow({
             ) : null}
           </View>
         </View>
-        {showAccount && movement.accountName ? (
-          <Text
-            className="hidden w-28 text-right text-xs text-muted-foreground md:flex"
-            numberOfLines={1}
-          >
-            {movement.accountName}
-          </Text>
-        ) : null}
         <MovementAmount format={format} movement={movement} />
       </View>
     </MovementLink>

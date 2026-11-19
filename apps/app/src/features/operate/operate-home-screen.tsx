@@ -134,7 +134,9 @@ export default function OperateHomeScreen() {
     [locale, t],
   );
 
-  if (denied) return <RouteState kind="denied" />;
+  const reads = [businesses, trend, todayMovements, summary, debtors, payables, sales];
+  if (hasDeniedRead(reads)) return <RouteState kind="denied" />;
+  const staleReads = reads.filter(queryHasStaleData);
   if (businesses.fetchStatus === "paused" && !businesses.data) {
     return (
       <Page>
@@ -193,7 +195,10 @@ export default function OperateHomeScreen() {
   const todayCard = can("cash:read") ? (
     <View
       accessibilityLabel={t("operate.home.today.title")}
-      className="overflow-hidden rounded-xl border border-border bg-card"
+      className={cn(
+        "min-w-0 overflow-hidden rounded-xl border border-border bg-card",
+        twoColumns && "flex-1",
+      )}
       role="region"
     >
       <View className="flex-row items-center justify-between gap-2 px-4 pb-1 pt-3.5">
@@ -332,7 +337,13 @@ export default function OperateHomeScreen() {
         title={t("operate.home.title")}
       />
 
-      {queryHasStaleData(businesses) ? <StaleNotice onRetry={() => businesses.refetch()} /> : null}
+      {staleReads.length > 0 ? (
+        <StaleNotice
+          onRetry={() => {
+            for (const query of staleReads) void query.refetch();
+          }}
+        />
+      ) : null}
 
       {!hasAnyRead ? (
         <StatePanel
@@ -343,18 +354,20 @@ export default function OperateHomeScreen() {
         />
       ) : null}
 
-      {/* Wide: full-width bands on one grid. Compact: the same blocks stacked, money first. */}
       <View className="min-w-0 gap-4" onLayout={layout.onLayout}>
-        {twoColumns ? <AssistantComposer layout="bar" /> : null}
-        {moneyCard}
-        {twoColumns ? null : <AssistantComposer />}
+        <AssistantComposer layout={twoColumns ? "bar" : undefined} />
+        {moneyCard ? (
+          <View className={cn("min-w-0 gap-4", twoColumns && "flex-row items-start")}>
+            <View className={cn("min-w-0", twoColumns && "flex-[1.2]")}>{moneyCard}</View>
+            {todayCard}
+          </View>
+        ) : null}
         {debtorsCard || payablesCard ? (
           <View className={cn("min-w-0 gap-4", twoColumns && "flex-row")}>
             {debtorsCard}
             {payablesCard}
           </View>
         ) : null}
-        {todayCard}
         {salesSection}
       </View>
     </Page>

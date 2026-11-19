@@ -29,15 +29,18 @@ export function Stat({
 }) {
   return (
     // The same 16 px inset as a table cell, so stacked blocks start their text on one line.
-    <View className="min-w-[140px] flex-1 basis-[140px] gap-1 bg-card px-4 py-4">
+    <View
+      className="min-w-0 max-w-full grow shrink gap-1 bg-card px-4 py-3.5"
+      style={{ flexBasis: Math.max(152, Math.min(400, value.length * 16 + 32)) }}
+    >
       <Text className="text-xs leading-4 text-muted-foreground">{label}</Text>
       <Text
         className={cn(
-          "font-heading text-heading tabular-nums",
+          "font-heading text-heading tabular-nums web:break-all",
           tone === "destructive" && "text-destructive",
           tone === "warning" && "text-warning-foreground",
         )}
-        numberOfLines={1}
+        selectable
       >
         {value}
       </Text>

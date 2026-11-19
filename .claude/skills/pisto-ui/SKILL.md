@@ -402,3 +402,6 @@ Append one line per lesson: `YYYY-MM-DD · screen · lesson · where it is now e
 - 2026-11-18 · landing · The owner found the side-by-side framed dashboard too generic. The
   public page pairs a photographed sale with an interactive cash and credit breakdown. Use
   one-shot motion to connect quoted words to money, with an immediate reduced-motion state.
+- The public tour follows a real demo sale through its receipt. Use chapter controls, manually
+  advanced photographs and keyboard-accessible tabs. On the operating home keep the composer in
+  the same React position when available content width changes.

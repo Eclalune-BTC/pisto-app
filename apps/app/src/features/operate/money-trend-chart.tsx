@@ -58,27 +58,16 @@ export function axisLabelIndexes(count: number, labels = AXIS_LABELS): number[] 
 export function MoneyTrendChart({
   height,
   locale,
-  tone = "card",
   trend,
 }: {
   height: number;
   locale: string;
-  /** `card` draws lime on a white card; `highlight` draws on the lime hero card. */
-  tone?: "card" | "highlight";
   trend: MoneyTrend;
 }) {
   const { t } = useTranslation();
   const [width, setWidth] = useState(0);
   const [active, setActive] = useState<number | null>(null);
-  const [primary, chartFill, highlightStrong, highlightInk, border] = useCSSVariable([
-    "--color-primary",
-    "--color-chart-fill",
-    "--color-highlight-strong",
-    "--color-highlight-foreground",
-    "--color-border",
-  ]) as [string, string, string, string, string];
-  // The lime card keeps its own ink in both themes; the primary colour is lime in the dark one.
-  const ink = tone === "card" ? primary : highlightInk;
+  const ink = useCSSVariable("--color-brand-foreground") as string;
   const points = trend.points;
   const money = (minorUnits: string) =>
     formatMinorUnits(minorUnits, trend.currency, trend.currencyMinorUnitDigits, locale);
@@ -108,9 +97,9 @@ export function MoneyTrendChart({
             {[0.25, 0.5, 0.75].map((fraction) => (
               <Line
                 key={fraction}
-                stroke={tone === "card" ? border : ink}
+                stroke={ink}
                 strokeDasharray="2 4"
-                strokeOpacity={tone === "card" ? 1 : 0.18}
+                strokeOpacity={0.18}
                 strokeWidth={1}
                 x1={0}
                 x2={width}
@@ -118,7 +107,7 @@ export function MoneyTrendChart({
                 y2={height * fraction}
               />
             ))}
-            <Path d={geometry.area} fill={tone === "card" ? chartFill : highlightStrong} />
+            <Path d={geometry.area} fill={ink} fillOpacity={0.09} />
             <Path
               d={geometry.line}
               fill="none"
@@ -187,11 +176,8 @@ export function MoneyTrendChart({
             <Text
               className={cn(
                 "text-micro tabular-nums",
-                index === lastIndex
-                  ? cn("font-ui", tone === "card" ? "text-foreground" : "text-highlight-foreground")
-                  : tone === "card"
-                    ? "text-muted-foreground"
-                    : "text-highlight-foreground/70",
+                index === lastIndex && "font-ui",
+                "text-white/85",
               )}
               key={point.localDate}
             >

@@ -16,11 +16,11 @@ type PageHeaderProps = {
 /** The single H1 of a route. Orientation lives in the breadcrumb, so there is no eyebrow. */
 export function PageHeader({ actions, adornment, description, title }: PageHeaderProps) {
   return (
-    <View className="flex-row flex-wrap items-start justify-between gap-x-6 gap-y-3">
+    <View className="min-w-0 gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-x-6">
       <DocumentTitle title={title} />
-      <View className="min-w-0 shrink grow basis-[280px] gap-1">
+      <View className="min-w-0 gap-1 sm:grow sm:shrink sm:basis-[260px]">
         <View className="min-w-0 flex-row flex-wrap items-center gap-2">
-          <Heading className="shrink">{title}</Heading>
+          <Heading className="shrink sm:text-figure-lg">{title}</Heading>
           {/* Badges align to their row's start; the wrapper is what centers on the title. */}
           {adornment ? <View>{adornment}</View> : null}
         </View>

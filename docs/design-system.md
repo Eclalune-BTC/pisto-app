@@ -166,11 +166,21 @@ example fixture. Activating “Ver el desglose” reveals the quoted words behin
 The headline, photograph and payment split each animate once. Reduced motion displays their
 final states immediately.
 
-Three visible rows explain entry, review and confirmation beside an example of the home balance.
-Visitors can select Movimientos, Reportes, Por cobrar or Por pagar to inspect a single legible
-module at a time. The role matrix follows the product examples and shares its jobs with Settings.
-Product captures show real empty forms only. Use the disposable `pisto_ui_review` database for
-visual reviews and keep fictional records out of the owner's database.
+The film in “Cómo funciona” shows a coffee sale entered and confirmed through Pisto on a disposable
+demo business. The 18-second, 720p H.264 file loads on demand on the web. Its three chapter
+controls seek to the product, payment and receipt. Native uses the corresponding bundled frames
+and the same descriptions. The editable footage contains only fictional shop records.
+
+Four original market photographs pair the cash drawer, closing book, customer ledger and supplier
+delivery with the corresponding module. Visitors can swipe, use the previous and next buttons or
+choose a tab with the keyboard. The carousel advances on request. Role disclosures use the same
+jobs as Settings. The final sign-up invitation uses the lime brand surface. Auth screens use a
+shop photograph on wide layouts and keep the form first on small screens.
+
+On the operating home, the dark forest balance and its lime trend sit beside today's movements
+when the measured content width allows. A single composer keeps its draft across resizes. The
+shell toolbar and page share the same content width and gutters. Summary cells allow long
+currency values to use more space.
 
 ## Validation and upgrade costs
 

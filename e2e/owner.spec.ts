@@ -21,6 +21,31 @@ test("shows the business at a glance", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Movimientos de hoy" })).toBeVisible();
 });
 
+test("hides the cached balance when refreshing the period loses access", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/operate");
+  const balance = page.getByRole("region", { name: "Dinero disponible", exact: true });
+  await expect(balance.getByText("Caja y bancos", { exact: true })).toBeVisible();
+  await page.getByRole("radio", { name: /7 días/ }).click();
+  await expect(balance.getByText("Caja y bancos", { exact: true })).toBeVisible();
+  await page.route("**/v1/reports/money-trend?range=30d", (route) =>
+    route.fulfill({
+      status: 403,
+      json: {
+        error: { code: "FORBIDDEN", message: "Access denied", requestId: "e2e-financial-refresh" },
+      },
+    }),
+  );
+  await page.clock.setFixedTime(new Date(Date.now() + 60_000));
+  const denial = page.waitForResponse(
+    (response) => response.url().includes("/money-trend?range=30d") && response.status() === 403,
+  );
+  await page.getByRole("radio", { name: /30 días/ }).click();
+  await denial;
+  await expect(page.getByRole("heading", { name: "No tiene acceso", exact: true })).toBeVisible();
+  await expect(balance).toHaveCount(0);
+});
+
 test("records a cash sale and takes the product out of stock", async ({ page }) => {
   const before = await remainingRice(page);
 

@@ -6,6 +6,20 @@ test.use({
   launchOptions: { args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] },
 });
 
+test("keeps the same draft when the workspace changes width", async ({ page }) => {
+  await page.route("**/v1/assistant/status", (route) =>
+    route.fulfill({ json: { data: { enabled: true, transcription: true } } }),
+  );
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/operate");
+  const field = page.getByRole("textbox", { name: "Qué quiere registrar" });
+  await field.fill("Vendí tres libras de café");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(field).toHaveValue("Vendí tres libras de café");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(field).toHaveValue("Vendí tres libras de café");
+});
+
 test("reviews the complete recording before using the corrected words", async ({ page }) => {
   const audio: Buffer[] = [];
   const interpretations: unknown[] = [];
