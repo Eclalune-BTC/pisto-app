@@ -63,7 +63,7 @@ describe("catalog HTTP routes", () => {
         listProducts: async (actor, query) => {
           receivedBusiness = actor.activeBusinessId;
           expect(query).toEqual({ limit: 25, status: "active" });
-          return { items: [], nextCursor: null };
+          return { businessId: "business-from-session", items: [], nextCursor: null };
         },
       }),
     );
@@ -71,7 +71,9 @@ describe("catalog HTTP routes", () => {
     const response = await app.request("/v1/catalog/products");
     expect(response.status).toBe(200);
     expect(receivedBusiness).toBe("business-from-session");
-    expect(await response.json()).toEqual({ data: { items: [], nextCursor: null } });
+    expect(await response.json()).toEqual({
+      data: { businessId: "business-from-session", items: [], nextCursor: null },
+    });
   });
 
   test("rejects unknown mutation fields before the repository", async () => {
@@ -153,7 +155,7 @@ describe("catalog HTTP routes", () => {
       createRepository({
         listProducts: async (_actor, query) => {
           received = query;
-          return { items: [], nextCursor: null };
+          return { businessId: "business-from-session", items: [], nextCursor: null };
         },
       }),
     );
@@ -172,7 +174,7 @@ describe("catalog HTTP routes", () => {
       createRepository({
         listProducts: async (_actor, query) => {
           received = query;
-          return { items: [], nextCursor: null };
+          return { businessId: "business-from-session", items: [], nextCursor: null };
         },
       }),
     );
@@ -191,7 +193,7 @@ describe("catalog HTTP routes", () => {
       createRepository({
         listProducts: async (_actor, query) => {
           received = query;
-          return { items: [], nextCursor: null };
+          return { businessId: "business-from-session", items: [], nextCursor: null };
         },
       }),
     );

@@ -1,11 +1,9 @@
+import type { AssistantToolCall, BusinessPermission } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "expo-router";
-import type { ParseKeys } from "i18next";
-import { Mic, TriangleAlert } from "lucide-react-native";
-import { useRef, useState } from "react";
+import { LayoutList, Mic, PackageSearch, ReceiptText, TriangleAlert } from "lucide-react-native";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { type TextInput, View } from "react-native";
-
+import { View } from "react-native";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
@@ -13,207 +11,246 @@ import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
+import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
-import { isAccessDeniedError } from "@/lib/query-state";
-import { businessQuestions, matchBusinessQuestion, questionKinds } from "./business-questions";
-import { NewEntryDialog } from "./new-entry-dialog";
+import { matchBusinessQuestion, matchSaleTool, permitsTool } from "./business-questions";
+import { Coco } from "./coco";
+import { type EntryMode, NewEntryDialog } from "./new-entry-dialog";
 import { problemMessageKeys, unsupportedMessageKeys } from "./problems";
-import { useAssistantAvailability } from "./queries";
+import { type AssistantAvailability, useAssistantAvailability } from "./queries";
 import { canRecord } from "./recorder";
 import { type InterpretOutcome, useInterpretation } from "./use-interpretation";
 
-const starters = ["sale", "purchase", "expense", "payment"] as const;
-type ComposerOutcome = InterpretOutcome | { kind: "unknownQuestion" };
+const saleTool: AssistantToolCall = { name: "start_sale" };
+const catalogTool: AssistantToolCall = { name: "find_product", query: null };
 
-function outcomeMessageKey(outcome: ComposerOutcome | null): ParseKeys | null {
-  if (!outcome || outcome.kind === "review" || outcome.kind === "abandoned") return null;
-  if (outcome.kind === "unknownQuestion") return "assistant.questions.help";
-  if (outcome.kind === "unsupported") return unsupportedMessageKeys[outcome.reason];
-  return problemMessageKeys[outcome.problem];
-}
-
-/**
- * The home "Registrar" panel: one line to type or dictate a record, reviewed before saving. The
- * chips start the sentence for the record kind. `bar` lays it across a wide page, with the title
- * beside the line instead of above it.
- */
 export function AssistantComposer({ layout = "panel" }: { layout?: "panel" | "bar" }) {
   const { t } = useTranslation();
   const availability = useAssistantAvailability();
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
-  if (availability.kind === "hidden" || isAccessDeniedError(businesses.error)) return null;
-  const bar = layout === "bar";
+  const userId = authClient.useSession().data?.user.id;
+  if (!business || !userId || availability.kind === "hidden") return null;
+  const wide = layout === "bar";
+  if (availability.kind === "ready" || availability.kind === "disabled") {
+    return (
+      <ComposerForm
+        key={JSON.stringify([userId, business.id])}
+        wide={wide}
+        availability={availability}
+        permissions={business.access.permissions}
+      />
+    );
+  }
+  return (
+    <ComposerFrame wide={wide}>
+      {availability.kind === "loading" ? (
+        <Skeleton className="h-10 w-full rounded-md" />
+      ) : (
+        <Alert
+          icon={TriangleAlert}
+          variant="warning"
+          action={
+            <Button
+              label={t("common.retry")}
+              onPress={availability.retry}
+              size="sm"
+              variant="outline"
+            />
+          }
+        >
+          <AlertDescription>{t("assistant.problems.statusFailed")}</AlertDescription>
+        </Alert>
+      )}
+    </ComposerFrame>
+  );
+}
+
+function ComposerFrame({
+  wide,
+  tools,
+  children,
+}: {
+  wide: boolean;
+  tools?: ReactNode;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
   return (
     <View
       className={cn(
-        "gap-3 rounded-xl border border-border bg-card p-4",
-        bar && "flex-row items-center gap-8",
+        "gap-3 rounded-xl border border-border bg-card px-4 py-3.5",
+        wide && "flex-row items-center gap-7",
       )}
     >
-      <View className={cn("gap-0.5", bar && "w-[200px] shrink-0")}>
-        <Heading level={2} size="section">
-          {t("assistant.composer.title")}
-        </Heading>
-        <Text className="text-dense text-muted-foreground">
-          {t(
-            availability.kind === "disabled"
-              ? "assistant.questions.description"
-              : "assistant.composer.description",
-          )}
-        </Text>
-      </View>
-      <View className={cn("gap-3", bar && "min-w-0 flex-1")}>
-        {availability.kind === "loading" ? (
-          <Skeleton className="h-9 w-full rounded-md" />
-        ) : availability.kind === "error" ? (
-          <Alert
-            action={
-              <Button
-                label={t("common.retry")}
-                onPress={availability.retry}
-                size="sm"
-                variant="outline"
-              />
-            }
-            icon={TriangleAlert}
-            variant="warning"
-          >
-            <AlertDescription>{t("assistant.problems.statusFailed")}</AlertDescription>
-          </Alert>
-        ) : (
-          <ComposerForm
-            businessId={availability.businessId}
-            questionsOnly={availability.kind === "disabled"}
-            voice={availability.kind === "ready" && availability.transcription && canRecord()}
-          />
-        )}
-        <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1">
-          {questionKinds
-            .filter((kind) =>
-              business?.access.permissions.includes(businessQuestions[kind].permission),
-            )
-            .map((kind) => (
-              <Link asChild href={businessQuestions[kind].href} key={kind}>
-                <Button accessibilityRole="link" className="min-h-9 px-0" size="sm" variant="link">
-                  <Text className="text-sm text-link underline web:underline-offset-4">
-                    {t(`assistant.questions.${kind}`)}
-                  </Text>
-                </Button>
-              </Link>
-            ))}
+      <View className={cn("flex-row items-center gap-3", wide && "w-[205px] shrink-0")}>
+        <Coco size={wide ? 66 : 48} />
+        <View className="min-w-0 flex-1">
+          <Heading level={2} size="page">
+            {t("assistant.companion.name")}
+          </Heading>
+          <Text className="text-sm text-muted-foreground">{t("assistant.companion.role")}</Text>
         </View>
+        {!wide && tools}
+      </View>
+      <View className={cn("min-w-0", wide && "flex-1 border-l border-border pl-6")}>
+        {children}
       </View>
     </View>
   );
 }
 
 function ComposerForm({
-  businessId,
-  questionsOnly,
-  voice,
+  wide,
+  availability,
+  permissions,
 }: {
-  businessId: string;
-  questionsOnly: boolean;
-  voice: boolean;
+  wide: boolean;
+  availability: Extract<AssistantAvailability, { kind: "ready" | "disabled" }>;
+  permissions: readonly BusinessPermission[];
 }) {
   const { t } = useTranslation();
-  const availability = useAssistantAvailability();
-  const { interpret, pending } = useInterpretation(businessId);
+  const { interpret, pending } = useInterpretation(availability.businessId);
   const [text, setText] = useState("");
-  const [outcome, setOutcome] = useState<ComposerOutcome | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const input = useRef<TextInput>(null);
-  const messageKey = outcomeMessageKey(outcome);
+  const [entry, setEntry] = useState<EntryMode | null>(null);
+  const [outcome, setOutcome] = useState<InterpretOutcome | null>(null);
+  const [unrecognized, setUnrecognized] = useState(false);
+  const alive = useRef(true);
+  const sending = useRef(false);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  const ready = availability.kind === "ready";
   const sentence = text.trim();
-
+  const message = unrecognized
+    ? "assistant.tools.limited"
+    : outcome?.kind === "failed"
+      ? problemMessageKeys[outcome.problem]
+      : outcome?.kind === "unsupported"
+        ? unsupportedMessageKeys[outcome.reason]
+        : null;
   async function submit() {
-    if (sentence.length < 2 || pending) return;
-    if (questionsOnly && !matchBusinessQuestion(sentence)) {
-      setOutcome({ kind: "unknownQuestion" });
+    if (sentence.length < 2 || sending.current) return;
+    if (!ready && !matchSaleTool(sentence) && !matchBusinessQuestion(sentence)) {
+      setUnrecognized(true);
       return;
     }
-    setOutcome(null);
-    const result = await interpret({ text: sentence.slice(0, 1_000), source: "text" });
-    setOutcome(result);
-    if (result.kind === "review") setText("");
+    sending.current = true;
+    try {
+      const result = await interpret(
+        { text: sentence, source: "text", allowTools: true },
+        () => !alive.current,
+      );
+      if (!alive.current) return;
+      setOutcome(result);
+      if (result.kind === "tool") setEntry(result.tool);
+      if (result.kind === "review") setText("");
+    } finally {
+      sending.current = false;
+    }
   }
-
+  const tools = (
+    <Button
+      className="min-h-9 gap-1.5 px-0"
+      size="sm"
+      variant="ghost"
+      accessibilityLabel={t("assistant.tools.menu")}
+      onPress={() => setEntry("tools")}
+      disabled={pending}
+    >
+      <Icon as={LayoutList} size={15} className="text-muted-foreground" />
+      <Text>{t("assistant.tools.menu")}</Text>
+    </Button>
+  );
   return (
-    // The closed dialog still leaves an empty element; it stays outside the spaced column so it
-    // does not add a gap under the chips.
-    <View>
-      <View className="gap-3">
-        <View className="flex-row items-center gap-2">
+    <ComposerFrame wide={wide} tools={tools}>
+      <View className="gap-1.5">
+        <View className="flex-row items-center gap-1.5">
           <View className="min-w-0 flex-1">
             <Input
+              editable={!pending}
               accessibilityLabel={t(
-                questionsOnly ? "assistant.questions.input" : "assistant.composer.inputLabel",
+                ready ? "assistant.composer.inputLabel" : "assistant.questions.input",
               )}
-              maxLength={1_000}
-              onChangeText={(value) => {
-                setText(value);
+              maxLength={1000}
+              onChangeText={(v) => {
+                setText(v);
                 setOutcome(null);
+                setUnrecognized(false);
               }}
               onSubmitEditing={() => void submit()}
               placeholder={t(
-                questionsOnly ? "assistant.questions.input" : "assistant.composer.placeholder",
+                ready ? "assistant.composer.placeholder" : "assistant.questions.placeholder",
               )}
-              ref={input}
               returnKeyType="send"
               value={text}
             />
           </View>
-          {voice ? (
+          {ready && availability.transcription && canRecord() && (
             <Button
               accessibilityLabel={t("assistant.composer.record")}
-              onPress={() => setDialogOpen(true)}
+              disabled={pending}
               size="icon"
               variant="outline"
+              onPress={() => setEntry("voice")}
             >
-              <Icon as={Mic} className="text-foreground" size={16} />
+              <Icon as={Mic} className="text-foreground" size={17} />
             </Button>
-          ) : null}
+          )}
           <Button
             disabled={sentence.length < 2}
-            label={t(questionsOnly ? "assistant.questions.submit" : "assistant.composer.submit")}
             loading={pending}
+            label={t(ready ? "assistant.composer.submit" : "assistant.questions.submit")}
             onPress={() => void submit()}
           />
         </View>
-        {!questionsOnly && (
-          <View className="flex-row flex-wrap gap-1.5">
-            {starters.map((starter) => (
-              <Button
-                className="h-7 px-2.5"
-                key={starter}
-                label={t(`assistant.composer.chips.${starter}`)}
-                onPress={() => {
-                  setText(t(`assistant.composer.starters.${starter}`));
-                  setOutcome(null);
-                  input.current?.focus();
-                }}
-                size="sm"
-                variant="outline"
-              />
-            ))}
-          </View>
-        )}
-        {messageKey ? (
+        <View className="flex-row flex-wrap items-center gap-x-4 gap-y-0.5">
+          {permitsTool(permissions, saleTool) && (
+            <Button
+              className="min-h-9 gap-1.5 px-0"
+              size="sm"
+              variant="ghost"
+              onPress={() => setEntry(saleTool)}
+              disabled={pending}
+            >
+              <Icon as={ReceiptText} size={15} className="text-foreground" />
+              <Text>{t("assistant.tools.sale")}</Text>
+            </Button>
+          )}
+          {permitsTool(permissions, catalogTool) && (
+            <Button
+              className="min-h-9 gap-1.5 px-0"
+              size="sm"
+              variant="ghost"
+              onPress={() => setEntry(catalogTool)}
+              disabled={pending}
+            >
+              <Icon as={PackageSearch} size={15} className="text-foreground" />
+              <Text>{t("assistant.tools.catalog")}</Text>
+            </Button>
+          )}
+          {wide && tools}
+        </View>
+        {message && (
           <Alert icon={TriangleAlert} variant="warning">
-            <AlertDescription>{t(messageKey)}</AlertDescription>
+            <AlertDescription>{t(message)}</AlertDescription>
           </Alert>
-        ) : null}
+        )}
+        {entry !== null && (
+          <NewEntryDialog
+            availability={availability}
+            initialMode={entry}
+            onOpenChange={(open) => {
+              if (!open) setEntry(null);
+            }}
+            open
+          />
+        )}
       </View>
-      {availability.kind === "hidden" ? null : (
-        <NewEntryDialog
-          availability={availability}
-          initialMode="voice"
-          onOpenChange={setDialogOpen}
-          open={dialogOpen}
-        />
-      )}
-    </View>
+    </ComposerFrame>
   );
 }

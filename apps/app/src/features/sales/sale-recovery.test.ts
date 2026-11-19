@@ -28,6 +28,7 @@ const fixture = vi.hoisted(() => ({
   tasks: [] as Promise<void>[],
   review: null as SaleReview | null,
   recovery: {
+    isFetchedAfterMount: true,
     data: undefined as { review: SaleReview | null } | undefined,
     error: null as unknown,
     isPending: false,
@@ -236,6 +237,7 @@ beforeEach(() => {
   });
   fixture.businesses.data.business.timeZone = "America/El_Salvador";
   Object.assign(fixture.recovery, {
+    isFetchedAfterMount: true,
     isError: false,
     isPending: false,
     isFetching: false,
@@ -269,9 +271,10 @@ beforeEach(() => {
 });
 
 describe("how a new sale opens", () => {
-  const modes = () => {
+  const modes = (initialProductId?: string) => {
     fixture.hookIndex = 0;
     return NewSaleModes({
+      initialProductId,
       business: fixture.businesses.data.business,
       businessStale: false,
       businessFetching: false,
@@ -286,6 +289,23 @@ describe("how a new sale opens", () => {
   test("on the pending review when one exists", () => {
     restore(review());
     expect(modes().type).toBe(SaleReviewScreen);
+  });
+
+  test("keeps the pending review when the owner chooses the new catalog product", () => {
+    fixture.recovery.isFetchedAfterMount = false;
+    expect(elements<ComponentProps<typeof Button>>(modes("product"), Button)).toHaveLength(0);
+    fixture.recovery.isFetchedAfterMount = true;
+    restore(review());
+    const choices = elements<ComponentProps<typeof Button>>(modes("product"), Button);
+    const selected = choices.find(
+      ({ props }) => props.label === "assistant.tools.continueWithProduct",
+    );
+    expect(choices.some(({ props }) => props.label === "assistant.tools.openPending")).toBe(true);
+    if (!selected?.props.onPress) throw new Error("Missing product choice");
+    selected.props.onPress({} as Parameters<typeof selected.props.onPress>[0]);
+    expect(modes("product").type).not.toBe(SaleReviewScreen);
+    expect(fixture.api.dismiss).not.toHaveBeenCalled();
+    expect(fixture.api.confirm).not.toHaveBeenCalled();
   });
 
   test.each(["error", "paused"])(

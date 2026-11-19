@@ -10,7 +10,7 @@ import { ShellBreadcrumbs } from "@/components/shell/shell-breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { DictateButton } from "@/features/assistant/dictate-button";
+import { AssistantButton } from "@/features/assistant/assistant-button";
 import type { RealtimeStatus } from "@/lib/realtime";
 
 type TopBarProps = {
@@ -77,7 +77,7 @@ export function TopBar({
         ) : null}
         <View className="flex-row items-center gap-1 sm:gap-2">
           {permissions ? <NewRecordMenu compact={!wide} permissions={permissions} /> : null}
-          <DictateButton compact={!wide} />
+          <AssistantButton compact={!wide} />
         </View>
         <View className="ml-1 border-l border-border pl-1 sm:ml-2 sm:pl-3">
           <NavUser user={user} />

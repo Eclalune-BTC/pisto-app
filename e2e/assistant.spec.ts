@@ -39,7 +39,8 @@ test("reviews the complete recording before using the corrected words", async ({
       json: {
         data: {
           interpretation: {
-            ...input,
+            text: input.text,
+            source: input.source,
             spans: [],
             notices: [],
             draft: null,
@@ -74,7 +75,66 @@ test("reviews the complete recording before using the corrected words", async ({
   const corrected = "Pagué 64 dólares de luz";
   await editor.fill(corrected);
   await useText.click();
-  await expect.poll(() => interpretations).toEqual([{ text: corrected, source: "voice" }]);
+  await expect
+    .poll(() => interpretations)
+    .toEqual([
+      {
+        text: corrected,
+        source: "voice",
+        allowTools: true,
+        expectedBusinessId: expect.any(String),
+      },
+    ]);
+});
+
+test("rereads the selected product before filling a second sale from the catalog", async ({
+  page,
+}) => {
+  await page.goto("/operate");
+  const selectRice = async () => {
+    await page.getByRole("button", { name: "Ingresar venta", exact: true }).click();
+    const guide = page.getByRole("dialog");
+    await guide.getByRole("searchbox", { name: "Buscar producto" }).fill("arroz");
+    await guide.getByRole("button", { name: /Agregar Arroz San Pedro/ }).click();
+  };
+  await selectRice();
+  const paid = page.getByRole("textbox", { name: "¿Cuánto le pagaron?" });
+  await expect(paid).toHaveValue("0.95");
+  const productId = new URL(page.url()).searchParams.get("productId");
+  expect(productId).toBeTruthy();
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "Hoy", level: 1 })).toBeVisible();
+  const detail = `**/v1/catalog/products/${productId}`;
+  let finish!: () => void;
+  const released = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  await page.route(detail, async (route) => {
+    await released;
+    await route.fulfill({
+      status: 404,
+      json: {
+        error: {
+          code: "NOT_FOUND",
+          message: "Product unavailable",
+          requestId: "e2e-selected-product",
+        },
+      },
+    });
+  });
+  const reading = page.waitForRequest(detail);
+  await selectRice();
+  await reading;
+  try {
+    await expect(paid).toHaveCount(0);
+  } finally {
+    finish();
+  }
+  await expect(
+    page.getByText("El producto elegido ya no está disponible.", { exact: false }),
+  ).toBeVisible();
+  await expect(page.getByText("Arroz San Pedro 1 lb", { exact: true })).toHaveCount(0);
+  await expect(paid).toHaveValue("");
 });
 
 test("answers financial questions with the business records when model extraction is disabled", async ({
@@ -97,9 +157,11 @@ test("answers financial questions with the business records when model extractio
   await expect(page.getByRole("heading", { name: "¿Cuánto vendí el mes pasado?" })).toBeVisible();
   await expect(page.getByText("Promedio por venta", { exact: true })).toBeVisible();
   await page.goto("/operate");
+  await page.getByRole("button", { name: "Herramientas", exact: true }).click();
   await page.getByRole("link", { name: "¿Quién me debe?" }).click();
   await expect(page).toHaveURL(/\/operate\/receivables$/);
   await page.goto("/operate");
+  await page.getByRole("button", { name: "Herramientas", exact: true }).click();
   await page.getByRole("link", { name: "¿Qué facturas debo?" }).click();
   await expect(page).toHaveURL(/\/operate\/payables\?payable=open$/);
   expect(modelCalls).toBe(0);

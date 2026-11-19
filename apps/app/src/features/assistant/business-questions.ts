@@ -1,4 +1,4 @@
-import type { BusinessPermission } from "@pisto/contracts";
+import type { AssistantToolCall, BusinessPermission } from "@pisto/contracts";
 import type { Href } from "expo-router";
 
 export const businessQuestions = {
@@ -41,8 +41,8 @@ export const businessQuestions = {
 export type BusinessQuestion = keyof typeof businessQuestions;
 export const questionKinds = Object.keys(businessQuestions) as BusinessQuestion[];
 
-export function matchBusinessQuestion(text: string): BusinessQuestion | undefined {
-  const question = text
+function normalized(text: string): string {
+  return text
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
     .toLowerCase()
@@ -51,7 +51,40 @@ export function matchBusinessQuestion(text: string): BusinessQuestion | undefine
     .replace(/[?!.]+$/u, "")
     .trim()
     .replace(/\s+/gu, " ");
+}
+
+export function matchBusinessQuestion(text: string): BusinessQuestion | undefined {
+  const question = normalized(text);
   return questionKinds.find((kind) =>
     businessQuestions[kind].phrases.some((phrase) => phrase === question),
+  );
+}
+
+/** Match complete launcher commands only. Sale details still go through record extraction. */
+export function matchSaleTool(text: string): AssistantToolCall | undefined {
+  const command = normalized(text);
+  if (
+    /^(?:(?:quiero|necesito|quisiera|ayudame a) )?(?:ingresar|registrar|anotar|apuntar|hacer|abrir) (?:una |la |mis |las )?ventas?(?: por favor)?$/u.test(
+      command,
+    )
+  ) {
+    return { name: "start_sale" };
+  }
+  if (["nueva venta", "vender", "iniciar venta"].includes(command)) return { name: "start_sale" };
+  if (["buscar producto", "buscar un producto", "consultar catalogo"].includes(command)) {
+    return { name: "find_product", query: null };
+  }
+  const term = text
+    .trim()
+    .match(/^(?:buscar|busca|busque)\s+(?:(?:el|un)\s+)?producto\s+(.+?)\s*[?!.]?$/iu)?.[1]
+    ?.trim();
+  if (term && term.length <= 120) return { name: "find_product", query: term };
+  return undefined;
+}
+
+export function permitsTool(permissions: readonly BusinessPermission[], tool: AssistantToolCall) {
+  return (
+    permissions.includes("assistant:use") &&
+    permissions.includes(tool.name === "start_sale" ? "sales:create" : "catalog:read")
   );
 }

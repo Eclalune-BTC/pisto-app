@@ -5,6 +5,7 @@ import {
   type AssistantStatusResponse,
   assistantInterpretRequestSchema,
   assistantInterpretResponseSchema,
+  assistantScopeHeader,
   assistantStatusResponseSchema,
   assistantTranscriptionResponseSchema,
 } from "@pisto/contracts";
@@ -17,14 +18,18 @@ import { env } from "@/lib/env";
  * Raw audio upload for the one route that takes a binary body. The JSON client stays JSON-only;
  * this is web-only (the browser sends the session cookie), like recording itself.
  */
-async function uploadAudio(audio: Blob, signal?: AbortSignal): Promise<string> {
+async function uploadAudio(audio: Blob, businessId: string, signal?: AbortSignal): Promise<string> {
   let response: Response;
   try {
     response = await fetch(`${env.apiUrl}/v1/assistant/transcriptions`, {
       method: "POST",
       body: audio,
       credentials: "include",
-      headers: { Accept: "application/json", "Content-Type": "audio/wav" },
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "audio/wav",
+        [assistantScopeHeader]: businessId,
+      },
       signal,
     });
   } catch (error) {

@@ -7,6 +7,7 @@ import {
 } from "@pisto/assistant";
 import {
   assistantInterpretRequestSchema,
+  assistantScopeHeader,
   assistantTranscriptionResponseSchema,
 } from "@pisto/contracts";
 import type { AssistantDirectoryRepository, ConsumeRateLimit, ProductActor } from "@pisto/db";
@@ -68,12 +69,20 @@ export function assistantRoutes(input: { access: ProductAccess; assistant: Assis
   const routes = protectedRoutes(input.access);
 
   /** Authorizes the active business, then charges the per-user and per-business budgets. */
-  async function admit(actor: ProductActor, task: Task, set: { headers: Record<string, unknown> }) {
+  async function admit(
+    actor: ProductActor,
+    task: Task,
+    set: { headers: Record<string, unknown> },
+    expectedBusinessId?: string,
+  ) {
     const provider = assistant.provider;
     if (!provider) {
       throw new ApiError(503, "SERVICE_UNAVAILABLE", "The assistant is turned off");
     }
     const { businessId } = await assistant.records.authorize(actor);
+    if (expectedBusinessId !== undefined && businessId !== expectedBusinessId) {
+      throw new ApiError(403, "FORBIDDEN", "The active business changed");
+    }
     const budgets = [
       {
         key: `pisto:assistant:${task}:${businessId}:${actor.userId}`,
@@ -128,7 +137,7 @@ export function assistantRoutes(input: { access: ProductAccess; assistant: Assis
     "/assistant/interpretations",
     async (context) => {
       const { actor, body, set } = context;
-      const provider = await admit(actor, "interpret", set);
+      const provider = await admit(actor, "interpret", set, body.expectedBusinessId);
       const interpretation = await call("interpret", provider, requestIdOf(context), () =>
         interpretSentence(
           {
@@ -153,7 +162,12 @@ export function assistantRoutes(input: { access: ProductAccess; assistant: Assis
     "/assistant/transcriptions",
     async (context) => {
       const { actor, request, set } = context;
-      const provider = await admit(actor, "transcribe", set);
+      const provider = await admit(
+        actor,
+        "transcribe",
+        set,
+        request.headers.get(assistantScopeHeader) ?? undefined,
+      );
       const audio = new Uint8Array(await request.arrayBuffer());
       if (!isWave(audio)) {
         throw new ApiError(415, "BAD_REQUEST", "This audio format is not accepted");

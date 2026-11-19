@@ -122,6 +122,7 @@ export function createCatalogQueries(db: Database): CatalogQueries {
           .limit(query.limit + 1);
         const page = pageRows(rows, query.limit, filterFingerprint);
         return {
+          businessId: access.businessId,
           items: page.rows.map((record) => ({
             product: toProduct(record),
             stock: stockFor(record, record.onHandMinorUnits),
@@ -142,7 +143,11 @@ export function createCatalogQueries(db: Database): CatalogQueries {
           )
           .limit(1);
         if (!record) throw new ProductError("NOT_FOUND", "Product was not found");
-        return { product: toProduct(record), stock: stockFor(record, record.onHandMinorUnits) };
+        return {
+          businessId: access.businessId,
+          product: toProduct(record),
+          stock: stockFor(record, record.onHandMinorUnits),
+        };
       });
     },
 

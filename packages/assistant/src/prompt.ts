@@ -1,7 +1,7 @@
 import { blankExtraction, type Extraction } from "./extraction.ts";
 
 /** Bump with every wording change; evaluations and logs record which prompt produced a result. */
-export const extractionPromptVersion = "extract-2026-11-02.1";
+export const extractionPromptVersion = "extract-2026-11-18.2";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -102,10 +102,28 @@ function wrapSentence(sentence: string): string {
   return `Sentence:\n<<<\n${neutral}\n>>>`;
 }
 
-export function extractionMessages(sentence: string): ChatMessage[] {
+const toolInstructions = `Two additional kinds are available for explicit requests about the current shop:
+- start_sale: the user wants help starting or entering a sale without giving transaction details. If the user supplies actual sale details, extract a sale instead.
+- find_product: they explicitly want to look up one product in the shop catalog by name or SKU, including its price or stock. Copy just the product name or SKU literally from the sentence into items[0].name. Leave items empty when there is no term. Do not answer with a price, stock, identifier or URL.
+Never open a tool for a negated request, an unsupported period, multiple intents or a request about someone else's business.`;
+
+export function extractionMessages(sentence: string, allowTools = false): ChatMessage[] {
   return [
-    { role: "system", content: systemPrompt },
+    {
+      role: "system",
+      content: allowTools ? `${systemPrompt}\n\n${toolInstructions}` : systemPrompt,
+    },
     ...examples,
+    ...(allowTools
+      ? [
+          ...example("¿Me ayudás a apuntar una venta?", { ...blankExtraction, kind: "start_sale" }),
+          ...example("¿A cuánto tengo el café molido?", {
+            ...blankExtraction,
+            kind: "find_product",
+            items: [{ name: "café molido", quantity: null, unitPrice: null }],
+          }),
+        ]
+      : []),
     { role: "user", content: wrapSentence(sentence) },
   ];
 }

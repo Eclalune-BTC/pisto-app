@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { reportsQueryKeys } from "@/features/reports/queries";
+import { ApiClientError } from "@/lib/api-error";
 import { flattenPages } from "@/lib/pages";
 import { catalogApi } from "./api";
 
@@ -97,8 +98,8 @@ export function productsInfiniteOptions(
   return infiniteQueryOptions({
     initialPageParam: undefined as string | undefined,
     queryFn: businessId
-      ? ({ pageParam, signal }) =>
-          catalogApi.products.list(
+      ? async ({ pageParam, signal }) => {
+          const result = await catalogApi.products.list(
             {
               categoryId: filters.categoryId ?? undefined,
               cursor: pageParam,
@@ -108,7 +109,11 @@ export function productsInfiniteOptions(
               stock: filters.stock ?? undefined,
             },
             signal,
-          )
+          );
+          if (result.businessId !== businessId)
+            throw new ApiClientError("The active business changed", 403, "FORBIDDEN");
+          return result;
+        }
       : skipToken,
     queryKey: catalogInventoryQueryKeys.products(businessId, filters),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -120,7 +125,12 @@ export function productQueryOptions(businessId: string | undefined, productId: s
   return queryOptions({
     queryFn:
       businessId && productId
-        ? ({ signal }) => catalogApi.products.get(productId, signal)
+        ? async ({ signal }) => {
+            const response = await catalogApi.products.get(productId, signal);
+            if (response.businessId !== businessId)
+              throw new ApiClientError("The active business changed", 403, "FORBIDDEN");
+            return response;
+          }
         : skipToken,
     queryKey: catalogInventoryQueryKeys.product(businessId, productId),
   });

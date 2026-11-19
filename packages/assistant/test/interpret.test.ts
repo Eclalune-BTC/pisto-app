@@ -113,6 +113,7 @@ async function interpret(
   sentence: string,
   extraction: Partial<Extraction>,
   options: {
+    allowTools?: true;
     records?: RecordDirectory<Actor>;
     suppliers?: SupplierDirectory<Actor>;
   } = {},
@@ -128,7 +129,7 @@ async function interpret(
       timeoutMs: 1_000,
     },
     actor,
-    { text: sentence, source: "voice" },
+    { text: sentence, source: "voice", allowTools: options.allowTools },
   );
   return { interpretation, calls };
 }
@@ -150,6 +151,31 @@ const prototypeExtraction: Partial<Extraction> = {
   settlement: "partial_credit",
   paymentMethod: "cash",
 };
+
+describe("bounded sale and catalog tools", () => {
+  test("opens a sale guide only for clients accepting tools", async () => {
+    const sentence = "¿Me ayuda a apuntar una venta?";
+    expect(
+      (await interpret(sentence, { kind: "start_sale" }, { allowTools: true })).interpretation,
+    ).toMatchObject({ draft: null, tool: { name: "start_sale" } });
+    expect((await interpret(sentence, { kind: "start_sale" })).interpretation).toMatchObject({
+      draft: null,
+      unsupported: "not_a_record",
+    });
+  });
+  test("grounds a single catalog search in the original words and discards invented names", async () => {
+    const query = async (name: string) =>
+      (
+        await interpret(
+          "¿A cuánto tengo el CAFÉ molido?",
+          { kind: "find_product", items: [{ name, quantity: null, unitPrice: null }] },
+          { allowTools: true },
+        )
+      ).interpretation.tool;
+    expect(await query("café molido")).toEqual({ name: "find_product", query: "CAFÉ molido" });
+    expect(await query("tortillas")).toEqual({ name: "find_product", query: null });
+  });
+});
 
 describe("sale drafts", () => {
   test("the prototype sentence becomes a priced credit sale with numbered fragments", async () => {

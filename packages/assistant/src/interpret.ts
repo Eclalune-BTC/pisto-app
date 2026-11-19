@@ -25,6 +25,7 @@ import {
   type Extraction,
   extractionJsonSchema,
   readExtraction,
+  toolExtractionJsonSchema,
   type UnreadField,
 } from "./extraction.ts";
 import { matchName, type NameMatch } from "./matching.ts";
@@ -483,8 +484,8 @@ export async function interpretSentence<Actor>(
   request: AssistantInterpretRequest,
 ): Promise<AssistantInterpretation> {
   const raw = await dependencies.provider.extract({
-    messages: extractionMessages(request.text),
-    jsonSchema: extractionJsonSchema,
+    messages: extractionMessages(request.text, request.allowTools),
+    jsonSchema: request.allowTools ? toolExtractionJsonSchema : extractionJsonSchema,
     signal: AbortSignal.timeout(dependencies.timeoutMs),
   });
   const read = readExtraction(raw);
@@ -492,6 +493,23 @@ export async function interpretSentence<Actor>(
     throw new AssistantProviderError("invalid_output", "The model output does not fit the schema");
   }
   const { extraction, unread } = read;
+  if (extraction.kind === "start_sale" || extraction.kind === "find_product") {
+    const result = {
+      text: request.text,
+      source: request.source,
+      spans: [],
+      draft: null,
+      notices: [],
+    };
+    if (!request.allowTools) return { ...result, unsupported: "not_a_record" };
+    if (extraction.kind === "start_sale") {
+      return { ...result, unsupported: null, tool: { name: "start_sale" } };
+    }
+    const term = extraction.items.length === 1 ? extraction.items[0]?.name : undefined;
+    const match = term ? findOccurrences(request.text, term)[0] : undefined;
+    const query = match ? request.text.slice(match[0], match[1]).replace(/\s+/gu, " ") : null;
+    return { ...result, unsupported: null, tool: { name: "find_product", query } };
+  }
   if (
     extraction.kind === "none" ||
     extraction.kind === "several" ||

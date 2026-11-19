@@ -3,7 +3,7 @@ import { blankExtraction, type Extraction, emptySupplierDirectory } from "@pisto
 import { createFakeAssistantProvider } from "@pisto/assistant/testing";
 import type { Auth } from "@pisto/auth";
 import type { BillingRuntime } from "@pisto/billing";
-import { assistantInterpretResponseSchema } from "@pisto/contracts";
+import { assistantInterpretResponseSchema, assistantScopeHeader } from "@pisto/contracts";
 import {
   type AssistantDirectoryRepository,
   type DatabaseHandle,
@@ -220,6 +220,49 @@ describe("assistant status and kill switch", () => {
 });
 
 describe("interpretations", () => {
+  test.each([
+    [undefined, 400],
+    ["different-business", 403],
+  ] as const)(
+    "requires the authorized business for tool requests (%s)",
+    async (expectedBusinessId, status) => {
+      const { client, calls, consumed, lookups } = setup();
+      const response = await client.request(
+        "/v1/assistant/interpretations",
+        json({
+          text: "Quiero ingresar ventas",
+          source: "text",
+          allowTools: true,
+          expectedBusinessId,
+        }),
+      );
+      expect(response.status).toBe(status);
+      expect(consumed).toHaveLength(0);
+      expect(calls.extract).toHaveLength(0);
+      expect(lookups).toHaveLength(0);
+    },
+  );
+
+  test("returns a sale tool for the authorized business without a financial lookup", async () => {
+    const { client, lookups } = setup({
+      extract: () => ({ ...blankExtraction, kind: "start_sale" }),
+    });
+    const response = await client.request(
+      "/v1/assistant/interpretations",
+      json({
+        text: "Quiero ingresar ventas",
+        source: "text",
+        allowTools: true,
+        expectedBusinessId: "business_test",
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(
+      assistantInterpretResponseSchema.parse(await response.json()).data.interpretation.tool,
+    ).toEqual({ name: "start_sale" });
+    expect(lookups).toHaveLength(0);
+  });
+
   test("returns a contract-valid draft resolved through the directory", async () => {
     const { client, consumed, lookups } = setup();
     const response = await client.request(
@@ -313,6 +356,16 @@ describe("interpretations", () => {
 });
 
 describe("transcriptions", () => {
+  test("rejects a business switch before charging or transcribing the recording", async () => {
+    const { client, calls, consumed } = setup();
+    const response = await client.request(
+      "/v1/assistant/transcriptions",
+      audio(wave(16), { [assistantScopeHeader]: "different-business" }),
+    );
+    expect(response.status).toBe(403);
+    expect(consumed).toHaveLength(0);
+    expect(calls.transcribe).toHaveLength(0);
+  });
   test("transcribes a WAV body above the JSON limit and returns trimmed text", async () => {
     const { client, calls, consumed } = setup();
     const body = wave(1_500);

@@ -257,6 +257,25 @@
   }
 }
 
+@keyframes pisto-coco-nod {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  38% {
+    transform: rotate(-7deg);
+  }
+  72% {
+    transform: rotate(2deg);
+  }
+}
+@utility pisto-coco-nod {
+  @media (prefers-reduced-motion: no-preference) {
+    transform-origin: center 84%;
+    animation: pisto-coco-nod 420ms ease-out;
+  }
+}
+
 @keyframes pisto-fade-in {
   from {
     opacity: 0;

@@ -206,13 +206,14 @@ export const productMutationResponseSchema = z.object({
 });
 
 export const productDetailResponseSchema = z.object({
-  data: productDetailSchema,
+  data: productDetailSchema.extend({ businessId: z.string().min(1) }),
 });
 
 const productListItemSchema = productDetailSchema;
 
 export const productListResponseSchema = z.object({
   data: z.object({
+    businessId: z.string().min(1),
     items: z.array(productListItemSchema),
     nextCursor: opaqueCursorSchema.nullable(),
   }),

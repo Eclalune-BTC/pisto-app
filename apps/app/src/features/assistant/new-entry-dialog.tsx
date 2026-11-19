@@ -1,10 +1,11 @@
-import { useQueryClient } from "@tanstack/react-query";
+import type { AssistantToolCall, BusinessPermission } from "@pisto/contracts";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Keyboard, Mic, Square, TriangleAlert } from "lucide-react-native";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { ScrollView, useWindowDimensions, View } from "react-native";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,8 +18,12 @@ import { Field } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
+import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
+import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { assistantApi } from "./api";
+import { matchBusinessQuestion, matchSaleTool, permitsTool } from "./business-questions";
+import { Coco, type CocoActivity } from "./coco";
 import {
   type AssistantProblem,
   assistantProblem,
@@ -34,13 +39,14 @@ import {
   type Recording,
   startRecording,
 } from "./recorder";
+import { AssistantTools, SaleToolPanel } from "./tool-panel";
 import { useInterpretation } from "./use-interpretation";
 
 const BARS = 36;
 const MIN_TEXT = 2;
 const MAX_TEXT = 1_000;
 
-export type EntryMode = "voice" | "text";
+export type EntryMode = "voice" | "text" | "tools" | AssistantToolCall;
 
 type VoiceProblem = "denied" | "unsupported" | "failed" | "silence";
 
@@ -50,6 +56,8 @@ type VoiceFailure =
   | { source: "request"; problem: AssistantProblem };
 
 type Phase =
+  | { kind: "tools" }
+  | { kind: "saleTool"; tool: AssistantToolCall }
   | { kind: "text" }
   | { kind: "requesting" }
   | { kind: "recording" }
@@ -133,20 +141,60 @@ type NewEntryDialogProps = {
 /** "Nuevo registro": dictate or write one sentence, then review the draft before saving. */
 export function NewEntryDialog(props: NewEntryDialogProps) {
   const { t } = useTranslation();
+  const { height } = useWindowDimensions();
+  const [activity, setActivity] = useState<CocoActivity>("idle");
+  const userId = authClient.useSession().data?.user.id;
   return (
     <Dialog onOpenChange={props.onOpenChange} open={props.open}>
-      <DialogContent className="gap-4 sm:max-w-xl">
-        <DialogHeader className="pr-8">
-          <DialogTitle>{t("assistant.dialog.title")}</DialogTitle>
+      <DialogContent
+        overlayClassName="justify-end p-0 sm:justify-center sm:p-3"
+        className="gap-3 rounded-b-none p-4 web:max-w-full sm:max-w-lg sm:rounded-2xl sm:p-6"
+        style={{ maxHeight: height * 0.9 }}
+      >
+        <DialogHeader className="flex-row items-center gap-3 border-b border-border pb-3 pr-8">
+          <Coco size={51} activity={activity} />
+          <View className="min-w-0">
+            <DialogTitle className="font-heading text-title-lg">
+              {t("assistant.companion.name")}
+            </DialogTitle>
+            <Text className="text-sm text-muted-foreground">
+              {t(
+                activity === "idle"
+                  ? "assistant.companion.role"
+                  : `assistant.companion.${activity}`,
+              )}
+            </Text>
+          </View>
         </DialogHeader>
-        {props.open ? <EntryBody {...props} /> : null}
+        {props.open && userId ? (
+          <ScrollView className="shrink px-1" keyboardShouldPersistTaps="handled">
+            <EntryBody
+              key={JSON.stringify([userId, props.availability.businessId])}
+              {...props}
+              onActivity={setActivity}
+            />
+          </ScrollView>
+        ) : null}
       </DialogContent>
     </Dialog>
   );
 }
 
-function EntryBody({ availability, initialMode, onOpenChange }: NewEntryDialogProps) {
+function EntryBody({
+  availability,
+  initialMode,
+  onOpenChange,
+  onActivity,
+}: NewEntryDialogProps & { onActivity: (value: CocoActivity) => void }) {
   const { t } = useTranslation();
+  const membership = useQuery(businessesQueryOptions);
+  const business = getActiveBusiness(membership.data);
+  if (
+    !business ||
+    business.id !== availability.businessId ||
+    !business.access.permissions.includes("assistant:use")
+  )
+    return null;
   if (availability.kind === "loading") {
     return (
       <View aria-busy className="gap-3" role="progressbar">
@@ -173,19 +221,20 @@ function EntryBody({ availability, initialMode, onOpenChange }: NewEntryDialogPr
       </Alert>
     );
   }
-  if (availability.kind === "disabled") {
-    return (
-      <Alert icon={TriangleAlert} role="note" variant="warning">
-        <AlertTitle>{t("assistant.problems.disabledTitle")}</AlertTitle>
-        <AlertDescription>{t("assistant.problems.disabled")}</AlertDescription>
-      </Alert>
-    );
-  }
-  const voiceAvailable = availability.transcription && canRecord();
+  const voiceAvailable = availability.kind === "ready" && availability.transcription && canRecord();
   return (
     <EntryFlow
+      onActivity={onActivity}
       businessId={availability.businessId}
-      initialMode={voiceAvailable ? initialMode : "text"}
+      initialMode={
+        initialMode === "voice" && !voiceAvailable
+          ? availability.kind === "ready"
+            ? "text"
+            : "tools"
+          : initialMode
+      }
+      permissions={business.access.permissions}
+      canInterpret={availability.kind === "ready"}
       onClose={() => onOpenChange(false)}
       voiceAvailable={voiceAvailable}
     />
@@ -193,13 +242,19 @@ function EntryBody({ availability, initialMode, onOpenChange }: NewEntryDialogPr
 }
 
 function EntryFlow({
+  onActivity,
   businessId,
   initialMode,
+  permissions,
+  canInterpret,
   onClose,
   voiceAvailable,
 }: {
+  onActivity: (value: CocoActivity) => void;
   businessId: string;
   initialMode: EntryMode;
+  permissions: readonly BusinessPermission[];
+  canInterpret: boolean;
   onClose: () => void;
   voiceAvailable: boolean;
 }) {
@@ -207,7 +262,13 @@ function EntryFlow({
   const queryClient = useQueryClient();
   const { interpret } = useInterpretation(businessId);
   const [phase, setPhase] = useState<Phase>(
-    initialMode === "voice" ? { kind: "requesting" } : { kind: "text" },
+    typeof initialMode === "object"
+      ? { kind: "saleTool", tool: initialMode }
+      : initialMode === "tools"
+        ? { kind: "tools" }
+        : initialMode === "voice"
+          ? { kind: "requesting" }
+          : { kind: "text" },
   );
   const [text, setText] = useState("");
   const [source, setSource] = useState<"voice" | "text">("text");
@@ -221,6 +282,14 @@ function EntryFlow({
   const attempt = useRef(0);
 
   useEffect(() => {
+    const kind = phase.kind;
+    onActivity(
+      kind === "recording" || kind === "transcribing" || kind === "interpreting" ? kind : "idle",
+    );
+    return () => onActivity("idle");
+  }, [phase.kind, onActivity]);
+
+  useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
@@ -231,11 +300,22 @@ function EntryFlow({
   }, []);
 
   async function review(sentence: string, from: "voice" | "text") {
+    if (!canInterpret && !matchSaleTool(sentence) && !matchBusinessQuestion(sentence)) {
+      setPhase({ kind: "tools" });
+      return;
+    }
     setPhase({ kind: "interpreting" });
-    const outcome = await interpret({ text: sentence, source: from }, () => !alive.current);
+    const outcome = await interpret(
+      { text: sentence, source: from, allowTools: true },
+      () => !alive.current,
+    );
     if (!alive.current || outcome.kind === "abandoned") return;
     if (outcome.kind === "review") {
       onClose();
+      return;
+    }
+    if (outcome.kind === "tool") {
+      setPhase({ kind: "saleTool", tool: outcome.tool });
       return;
     }
     setNotice(outcome.kind === "unsupported" ? outcome.reason : outcome.problem);
@@ -252,7 +332,7 @@ function EntryFlow({
     const controller = new AbortController();
     transcription.current = controller;
     try {
-      const heard = (await assistantApi.transcribe(audio, controller.signal)).trim();
+      const heard = (await assistantApi.transcribe(audio, businessId, controller.signal)).trim();
       if (!alive.current || controller.signal.aborted) return;
       if (heard.length < MIN_TEXT) {
         setPhase({ kind: "voiceProblem", failure: silence, audio: null });
@@ -362,6 +442,39 @@ function EntryFlow({
     }
     setNotice(null);
     if (sentence.length <= MAX_TEXT) void review(sentence, source);
+  }
+
+  if (phase.kind === "tools" || phase.kind === "saleTool") {
+    const write = () => {
+      setSource("text");
+      setNotice(null);
+      setPhase({ kind: "text" });
+    };
+    if (phase.kind === "saleTool" && permitsTool(permissions, phase.tool)) {
+      return (
+        <SaleToolPanel
+          businessId={businessId}
+          permissions={permissions}
+          canInterpret={canInterpret}
+          tool={phase.tool}
+          onBack={() => setPhase({ kind: "tools" })}
+          onClose={onClose}
+          onWrite={() => {
+            if (matchSaleTool(text)) setText("");
+            write();
+          }}
+        />
+      );
+    }
+    return (
+      <AssistantTools
+        permissions={permissions}
+        canInterpret={canInterpret}
+        onTool={(tool) => setPhase({ kind: "saleTool", tool })}
+        onWrite={write}
+        onClose={onClose}
+      />
+    );
   }
 
   if (phase.kind === "text" || phase.kind === "interpreting") {

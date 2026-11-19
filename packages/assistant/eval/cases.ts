@@ -2,7 +2,7 @@
  * Versioned Spanish evaluation set for `assistant.extract`. Sentences use the demo business seed
  * (scripts/seed.ts), so names and prices resolve against real records. `expect` is a partial interpretation; a RegExp leaf matches a string.
  */
-export const evaluationSetVersion = "2026-11-18.1";
+export const evaluationSetVersion = "2026-11-18.2";
 
 export type Expectation = {
   [key: string]: Expectation | string | number | boolean | null | RegExp;
@@ -17,6 +17,21 @@ export interface EvaluationCase {
 }
 
 export const evaluationCases: EvaluationCase[] = [
+  {
+    id: "guide-sale",
+    text: "Necesito ayuda para apuntar una venta",
+    expect: { draft: null, tool: { name: "start_sale" } },
+  },
+  {
+    id: "lookup-price",
+    text: "¿En cuánto tengo el café molido en mi tienda?",
+    expect: { draft: null, tool: { name: "find_product", query: /caf[eé] molido/i } },
+  },
+  {
+    id: "decline-sale",
+    text: "No quiero registrar una venta",
+    expect: { draft: null, unsupported: "not_a_record" },
+  },
   {
     id: "prototype-credit-sale",
     text: "Le vendí a don Carlos tres libras de café, me dio cinco dólares y el resto me lo quedó debiendo",

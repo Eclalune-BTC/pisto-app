@@ -1,9 +1,10 @@
 import type { ProductDetail } from "@pisto/contracts";
-import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
-import { Plus } from "lucide-react-native";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { ChevronRight, Plus } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { PressableSurface } from "@/components/ui/pressable-surface";
 import { SearchField } from "@/components/ui/search-field";
@@ -20,22 +21,32 @@ type ProductSearchProps = {
   businessId: string;
   disabled: boolean;
   onAdd: (detail: ProductDetail) => void;
-  selectedIds: ReadonlySet<string>;
+  selectedIds?: ReadonlySet<string>;
+  initialSearch?: string;
+  viewOnly?: boolean;
 };
 
 /** Finds active products by name or SKU and adds the chosen one to the sale. */
-export function ProductSearch({ businessId, disabled, onAdd, selectedIds }: ProductSearchProps) {
+export function ProductSearch({
+  businessId,
+  disabled,
+  onAdd,
+  selectedIds,
+  initialSearch = "",
+  viewOnly = false,
+}: ProductSearchProps) {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const query = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
   const results = useInfiniteQuery({
     ...productsInfiniteOptions(businessId, { categoryId: null, search: query, status: "active" }),
     enabled: query.length > 0,
-    placeholderData: keepPreviousData,
+    placeholderData: undefined,
   });
   const items = flattenPages(results.data).slice(0, VISIBLE_RESULTS);
-  const searching = query.length > 0;
+  const searching = search.trim().length > 0;
+  const pendingTerm = query !== search.trim();
 
   return (
     <View className="min-w-0 gap-2">
@@ -54,10 +65,22 @@ export function ProductSearch({ businessId, disabled, onAdd, selectedIds }: Prod
           className="overflow-hidden rounded-md border border-border bg-card"
           role="list"
         >
-          {results.isError && !results.data ? (
-            <Text className="px-3 py-2.5 text-dense text-destructive">
-              {t("sales.itemized.searchUnavailable")}
+          {pendingTerm ? (
+            <Text className="px-3 py-2.5 text-dense text-muted-foreground">
+              {t("sales.itemized.searchLoading")}
             </Text>
+          ) : results.isError || results.fetchStatus === "paused" ? (
+            <View className="gap-1 p-2">
+              <Text className="px-3 py-2.5 text-dense text-destructive">
+                {t("sales.itemized.searchUnavailable")}
+              </Text>
+              <Button
+                label={t("common.retry")}
+                onPress={() => void results.refetch()}
+                size="sm"
+                variant="outline"
+              />
+            </View>
           ) : results.data === undefined ? (
             <Text className="px-3 py-2.5 text-dense text-muted-foreground">
               {t("sales.itemized.searchLoading")}
@@ -70,46 +93,64 @@ export function ProductSearch({ businessId, disabled, onAdd, selectedIds }: Prod
             items.map((detail, index) => {
               const { product, stock } = detail;
               const price = productPrice(product, locale);
-              const added = selectedIds.has(product.id);
+              const added = selectedIds?.has(product.id);
               return (
-                <PressableSurface
-                  accessibilityHint={added ? t("sales.itemized.alreadyAdded") : undefined}
-                  accessibilityLabel={t("sales.itemized.addProduct", { product: product.name })}
-                  accessibilityRole="button"
-                  className={
-                    index === 0
-                      ? "flex-row items-center gap-3 px-3 py-2"
-                      : "flex-row items-center gap-3 border-t border-border px-3 py-2"
-                  }
-                  disabled={disabled}
-                  key={product.id}
-                  onPress={() => {
-                    onAdd(detail);
-                    setSearch("");
-                  }}
-                  role="listitem"
-                >
-                  <View className="min-w-0 flex-1">
-                    <Text className="text-sm leading-5" numberOfLines={1}>
-                      {product.name}
-                    </Text>
-                    {stock ? (
-                      <Text className="text-xs leading-4 text-muted-foreground tabular-nums">
-                        {t("sales.itemized.stockLeft", {
-                          quantity: quantityText(t, locale, {
-                            minorUnits: stock.onHandMinorUnits,
-                            precision: stock.quantityPrecision,
-                            unitKind: product.unitKind,
-                          }),
-                        })}
+                <View key={product.id} role="listitem">
+                  <PressableSurface
+                    accessibilityHint={added ? t("sales.itemized.alreadyAdded") : undefined}
+                    accessibilityLabel={
+                      product.sku
+                        ? t(
+                            viewOnly
+                              ? "sales.itemized.viewProductSku"
+                              : "sales.itemized.addProductSku",
+                            { product: product.name, sku: product.sku },
+                          )
+                        : t(viewOnly ? "sales.itemized.viewProduct" : "sales.itemized.addProduct", {
+                            product: product.name,
+                          })
+                    }
+                    accessibilityRole="button"
+                    className={
+                      index === 0
+                        ? "flex-row items-center gap-3 px-3 py-2"
+                        : "flex-row items-center gap-3 border-t border-border px-3 py-2"
+                    }
+                    disabled={disabled}
+                    onPress={() => {
+                      onAdd(detail);
+                      setSearch("");
+                    }}
+                  >
+                    <View className="min-w-0 flex-1">
+                      <Text className="text-sm leading-5" numberOfLines={1}>
+                        {product.name}
                       </Text>
-                    ) : null}
-                  </View>
-                  <Text className="font-ui text-dense tabular-nums text-muted-foreground">
-                    {price ?? t("sales.itemized.noPrice")}
-                  </Text>
-                  <Icon as={Plus} className="text-muted-foreground" size={16} />
-                </PressableSurface>
+                      {product.sku && (
+                        <Text className="text-xs text-muted-foreground">{product.sku}</Text>
+                      )}
+                      {stock ? (
+                        <Text className="text-xs leading-4 text-muted-foreground tabular-nums">
+                          {t("sales.itemized.stockLeft", {
+                            quantity: quantityText(t, locale, {
+                              minorUnits: stock.onHandMinorUnits,
+                              precision: stock.quantityPrecision,
+                              unitKind: product.unitKind,
+                            }),
+                          })}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Text className="font-ui text-dense tabular-nums text-muted-foreground">
+                      {price ?? t("sales.itemized.noPrice")}
+                    </Text>
+                    <Icon
+                      as={viewOnly ? ChevronRight : Plus}
+                      className="text-muted-foreground"
+                      size={16}
+                    />
+                  </PressableSurface>
+                </View>
               );
             })
           )}

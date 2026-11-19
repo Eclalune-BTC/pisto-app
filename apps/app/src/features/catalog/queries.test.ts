@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
   listCategories: vi.fn(async () => ({ items: [], nextCursor: null })),
-  listProducts: vi.fn(async () => ({ items: [], nextCursor: null })),
+  listProducts: vi.fn(async () => ({ businessId: "business-a", items: [], nextCursor: null })),
+  getProduct: vi.fn(async () => ({ businessId: "business-a" })),
   listStock: vi.fn(async () => ({ items: [], nextCursor: null })),
 }));
 vi.mock("react-native", async () => vi.importActual("react-native-web"));
@@ -11,7 +12,7 @@ vi.mock("@/lib/api-client", () => ({ api: {} }));
 vi.mock("./api", () => ({
   catalogApi: {
     categories: { list: api.listCategories },
-    products: { list: api.listProducts },
+    products: { list: api.listProducts, get: api.getProduct },
   },
 }));
 vi.mock("../inventory/api", () => ({ inventoryApi: { listStock: api.listStock } }));
@@ -74,6 +75,28 @@ describe("catalog and inventory query ownership", () => {
       { cursor: undefined, limit: 25, lowStockOnly: true, search: "café" },
       expect.any(AbortSignal),
     );
+    client.clear();
+  });
+
+  test("refuses to cache even an empty catalog from a different active session business", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    await expect(
+      client.fetchInfiniteQuery(productsInfiniteOptions("business-b", filters)),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(
+      client.getQueryData(catalogInventoryQueryKeys.products("business-b", filters)),
+    ).toBeUndefined();
+    client.clear();
+  });
+
+  test("rejects a selected product served for another business", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    await expect(
+      client.fetchQuery(productQueryOptions("business-b", "product")),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(
+      client.getQueryData(catalogInventoryQueryKeys.product("business-b", "product")),
+    ).toBeUndefined();
     client.clear();
   });
 

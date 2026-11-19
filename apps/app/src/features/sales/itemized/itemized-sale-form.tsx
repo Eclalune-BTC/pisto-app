@@ -60,6 +60,8 @@ import { ProductSearch } from "./product-search";
 import { SaleLinesEditor } from "./sale-lines-editor";
 
 export type ItemizedSaleFormProps = {
+  /** Re-read the selected catalog product in this business before starting its line. */
+  initialProductId?: string;
   /** A reviewed assistant draft: every field it resolved starts filled, the rest stay empty. */
   draft?: AssistantSaleDraft;
   entrySource: EntrySource;
@@ -80,6 +82,7 @@ const paymentMethods: readonly SalePaymentMethod[] = ["cash", "transfer", "card"
 export function ItemizedSaleForm({
   draft,
   entrySource,
+  initialProductId,
   onCancel,
   onLockedChange,
   onSaved,
@@ -90,16 +93,33 @@ export function ItemizedSaleForm({
   const canCreate = business?.access.permissions.includes("sales:create") ?? false;
   const options = useQuery(saleFormOptionsQueryOptions(canCreate ? business?.id : undefined));
   const draftProductIds = [
-    ...new Set(draft?.lines.flatMap((line) => (line.product ? [line.product.id] : [])) ?? []),
+    ...new Set([
+      ...(draft?.lines.flatMap((line) => (line.product ? [line.product.id] : [])) ?? []),
+      ...(initialProductId && canCreate ? [initialProductId] : []),
+    ]),
   ];
   const products = useQueries({
-    queries: draftProductIds.map((productId) => productQueryOptions(business?.id, productId)),
+    queries: draftProductIds.map((productId) => ({
+      ...productQueryOptions(business?.id, productId),
+      ...(productId === initialProductId && { refetchOnMount: "always" as const }),
+    })),
   });
+  const selectionRead = initialProductId
+    ? products[draftProductIds.indexOf(initialProductId)]
+    : undefined;
   // A matched product removed from the catalog since the draft is reported as not identified.
   const productReads = products.filter(
     (query) => !(query.isError && readFailureKind(query.error) === "notFound"),
   );
-  const read = readState([businesses, options, ...productReads]);
+  const read = readState([
+    businesses,
+    options,
+    ...productReads.map((query) =>
+      query === selectionRead && (!query.isFetchedAfterMount || query.isError)
+        ? { ...query, data: undefined }
+        : query,
+    ),
+  ]);
 
   if (read === "denied" || (business && !canCreate)) {
     return (
@@ -142,7 +162,12 @@ export function ItemizedSaleForm({
   const accounts = options.data.accounts;
   const catalog = new Map<string, { product: Product; stock: ProductStock | null }>();
   for (const query of products) {
-    if (query.data?.product.status === "active") catalog.set(query.data.product.id, query.data);
+    if (
+      !query.isError &&
+      query.data?.businessId === business.id &&
+      query.data.product.status === "active"
+    )
+      catalog.set(query.data.product.id, query.data);
   }
   const prefill = draft
     ? draftFromAssistant({
@@ -153,11 +178,12 @@ export function ItemizedSaleForm({
       })
     : null;
   const now = currentLocalDateTime(business.timeZone);
+  const selected = initialProductId ? catalog.get(initialProductId) : undefined;
   const initial: ItemizedSaleDraft = prefill?.draft ?? {
     customer: null,
     date: now.date,
     time: now.time,
-    lines: [],
+    lines: selected ? addProductLine([], selected.product, selected.stock) : [],
     note: "",
     received: "",
     receivedEdited: false,
@@ -166,17 +192,24 @@ export function ItemizedSaleForm({
     dueDate: "",
   };
   return (
-    <ItemizedSaleEditor
-      accounts={accounts}
-      business={business}
-      entrySource={entrySource}
-      initial={initial}
-      key={business.id}
-      onCancel={onCancel}
-      onLockedChange={onLockedChange}
-      onSaved={onSaved}
-      unmatched={prefill?.unmatched ?? []}
-    />
+    <>
+      {initialProductId && !selected ? (
+        <Alert icon={Info}>
+          <AlertDescription>{t("assistant.tools.productUnavailable")}</AlertDescription>
+        </Alert>
+      ) : null}
+      <ItemizedSaleEditor
+        accounts={accounts}
+        business={business}
+        entrySource={entrySource}
+        initial={initial}
+        key={JSON.stringify([business.id, initialProductId])}
+        onCancel={onCancel}
+        onLockedChange={onLockedChange}
+        onSaved={onSaved}
+        unmatched={prefill?.unmatched ?? []}
+      />
+    </>
   );
 }
 

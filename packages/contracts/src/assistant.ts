@@ -29,12 +29,19 @@ export const assistantStatusResponseSchema = z
   })
   .strict();
 
+export const assistantScopeHeader = "X-Pisto-Expected-Business";
+
 export const assistantInterpretRequestSchema = z
   .object({
     text: z.string().trim().min(2).max(1_000),
     source: assistantInputSourceSchema,
+    allowTools: z.literal(true).optional(),
+    expectedBusinessId: z.string().trim().min(1).max(256).optional(),
   })
-  .strict();
+  .strict()
+  .refine((value) => !value.allowTools || value.expectedBusinessId !== undefined, {
+    message: "Tools require the expected active business",
+  });
 
 /** Review fields a transcript fragment can be linked to. */
 export const assistantFieldSchema = z.enum([
@@ -192,17 +199,32 @@ export const assistantNoticeSchema = z
   })
   .strict();
 
+export const assistantToolCallSchema = z.discriminatedUnion("name", [
+  z.object({ name: z.literal("start_sale") }).strict(),
+  z
+    .object({
+      name: z.literal("find_product"),
+      query: z.string().trim().min(1).max(120).nullable(),
+    })
+    .strict(),
+]);
+
+export type AssistantToolCall = z.infer<typeof assistantToolCallSchema>;
+
 export const assistantInterpretationSchema = z
   .object({
     text: z.string().min(2).max(1_000),
     source: assistantInputSourceSchema,
     spans: z.array(assistantSpanSchema).max(40),
     draft: assistantDraftSchema.nullable(),
-    /** Set when `draft` is null. */
+    tool: assistantToolCallSchema.optional(),
     unsupported: z.enum(["not_a_record", "several_records", "partial_purchase_payment"]).nullable(),
     notices: z.array(assistantNoticeSchema).max(40),
   })
-  .strict();
+  .strict()
+  .refine((value) => !value.tool || (value.draft === null && value.unsupported === null), {
+    message: "A tool call cannot also be a record or a refusal",
+  });
 
 export const assistantInterpretResponseSchema = z
   .object({ data: z.object({ interpretation: assistantInterpretationSchema }).strict() })

@@ -24,7 +24,27 @@ Without an invoice reference the earliest due open purchase is suggested. The re
 change the purchase before confirming. When extraction identifies a partially paid purchase,
 the app explains how to record the credit purchase and its payment separately. Evaluation set
 `2026-11-18.1` adds both a missing supplier invoice and a mixed purchase payment to the original
-16 Spanish cases. The recorded provider score applies to the original set.
+16 Spanish cases. Set `2026-11-18.2` adds a guided sale, a product price and a declined action.
+
+## Guided sale and catalog tools
+
+Coco helps a signed-in member start a sale by typing, choosing an action or confirming a
+transcript. A general request to enter a sale opens the sale guide. A product lookup presents
+active catalog matches by name or SKU, with the price and stock returned by the catalog API.
+The member chooses the product before the itemized form opens. That form owns quantity,
+payment, validation, confirmation, idempotency, stock effects and the canonical sale receipt.
+The ordinary new-sale route remains available, including its pending total-only review.
+
+The assistant can propose two typed actions, `start_sale` and `find_product`. The latter's
+optional search term must be grounded in the user's sentence. Actions have fixed destinations
+and use the current membership's assistant, sales and catalog permissions. The catalog query
+and sale command authorize the actor again. The client keeps working text in the current
+session, clears it on a business change, and distinguishes loading, denied, unavailable and
+successful empty results. Explicit actions also work when the model is off. The browser
+supports opt-in recording and native clients use text. Acceptance covers keyboard and touch,
+the chosen product in a draft, cancellation, and an explicitly confirmed sale in an isolated
+business. The UI uses the existing Expo controls for tool selection, review and explicit confirmation,
+following the interaction pattern in [Vercel AI Elements](https://elements.ai-sdk.dev/components/tool).
 
 ## Read-only questions from the composer
 
@@ -282,15 +302,15 @@ account setting.
 | Product brief and target architecture | Approved and documented |
 | AI SDK | Not installed; the registration slice uses a typed Workers AI adapter (ADR 0021) |
 | Provider | Workers AI: `AI` binding in the Worker, REST credentials for the local Bun API, `ASSISTANT_ENABLED` kill switch |
-| Registration routes, package, prompt, UI | Implemented: `/v1/assistant/status`, `/interpretations`, `/transcriptions`; `packages/assistant`; prompt `extract-2026-11-02.1`; dictation dialog, home composer and review route |
-| Conversational turns, tools, approvals, streaming | Not implemented |
+| Registration routes, package, prompt, UI | Implemented: `/v1/assistant/status`, `/interpretations`, `/transcriptions`; `packages/assistant`; prompt `extract-2026-11-18.2`; Coco, its tool menu, dictation, home composer and review route |
+| Follow-up conversation and streaming | Single-turn interpretation with typed tool selection |
 | Sales, catalog, inventory, expense, cash, customer, and receivable product data | Implemented; source synchronized. Validation and remaining platform/release limits are in [release evidence](release-evidence.md) |
 | Operating reports the assistant would read | Implemented PostgreSQL repository, `GET /v1/reports/operating`, and `/operate/reports`; no assistant tool yet |
-| Narrow read or mutation tools over that product data | Not implemented |
+| Sale and catalog tools | `start_sale` opens the sale form, `find_product` queries the authorized catalog. Only the existing product forms confirm mutations. |
 | Voice recording or transcription | Web push-to-talk to 16 kHz WAV and batch Whisper transcription; native builds are text-only |
 | Conversation persistence or long-term memory | Not implemented |
 | RAG, embeddings, pgvector, Neo4j, or GraphRAG | Intentionally not selected |
-| Provider sandbox/device/deployment evidence | 16/16 on evaluation set `2026-11-02.1` through `wrangler dev` with the remote binding; no deployment, physical device or real-speaker evidence |
+| Provider sandbox/device/deployment evidence | 21/21 on Spanish set `2026-11-18.2` through the remote Workers AI binding; web recording was exercised in Chrome with a synthetic Spanish voice. Physical-device and real-speaker evidence remain open. |
 
 ## Primary sources
 

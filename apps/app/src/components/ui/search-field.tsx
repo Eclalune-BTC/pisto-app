@@ -48,7 +48,7 @@ export function SearchField({
         autoCapitalize="none"
         autoCorrect={false}
         autoFocus={autoFocus}
-        className="pl-8 pr-9 native:pl-9"
+        className="pl-8 pr-9 native:pl-9 web:focus-visible:ring-0"
         enterKeyHint="search"
         inputMode="search"
         maxLength={maxLength}

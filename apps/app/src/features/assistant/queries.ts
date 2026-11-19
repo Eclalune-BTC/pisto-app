@@ -1,6 +1,7 @@
 import { queryOptions, skipToken, useQuery } from "@tanstack/react-query";
 
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
+import { isAccessDeniedError } from "@/lib/query-state";
 import { assistantApi } from "./api";
 
 export const assistantQueryKeys = {
@@ -29,7 +30,13 @@ export function useAssistantAvailability(): AssistantAvailability {
   const business = getActiveBusiness(businesses.data);
   const permitted = business?.access.permissions.includes("assistant:use") ?? false;
   const status = useQuery(assistantStatusQueryOptions(permitted ? business?.id : undefined));
-  if (!business || !permitted) return { kind: "hidden" };
+  if (
+    !business ||
+    !permitted ||
+    isAccessDeniedError(businesses.error) ||
+    isAccessDeniedError(status.error)
+  )
+    return { kind: "hidden" };
   if (status.data) {
     return status.data.enabled
       ? { kind: "ready", businessId: business.id, transcription: status.data.transcription }

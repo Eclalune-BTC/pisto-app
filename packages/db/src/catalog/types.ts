@@ -46,8 +46,14 @@ export interface CatalogRepository {
     categoryId: string,
     command: ArchiveCategoryRequest,
   ): Promise<{ category: Category; replayed: boolean }>;
-  listProducts(actor: ProductActor, query: ProductListQuery): Promise<Page<ProductDetail>>;
-  getProduct(actor: ProductActor, productId: string): Promise<ProductDetail>;
+  listProducts(
+    actor: ProductActor,
+    query: ProductListQuery,
+  ): Promise<Page<ProductDetail> & { businessId: string }>;
+  getProduct(
+    actor: ProductActor,
+    productId: string,
+  ): Promise<ProductDetail & { businessId: string }>;
   createProduct(
     actor: ProductActor,
     command: CreateProductRequest,

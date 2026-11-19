@@ -1,6 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import type { Auth } from "@pisto/auth";
 import type { BillingRuntime } from "@pisto/billing";
+import { assistantScopeHeader } from "@pisto/contracts";
 import type {
   BusinessMembersRepository,
   BusinessRepository,
@@ -108,6 +109,7 @@ export function createApp(input: {
           "Content-Type",
           "Authorization",
           "X-Request-ID",
+          assistantScopeHeader,
           "X-RevenueCat-Webhook-Signature",
         ],
         exposeHeaders: ["X-Request-ID", "Retry-After"],

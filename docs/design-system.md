@@ -29,6 +29,7 @@ product pictures instead of decoration. The layout carries the quality; colour o
 - No gradients, glows, decorative shadows, eyebrow labels above titles, accent left-border lines,
   ornamental dividers, oversized headings or marketing copy inside the product. Subtle translucent
   surfaces ("glass") are allowed only for the top bar and overlays on the web.
+- Coco, the illustrated garrobo, identifies the assistant. Its short nod follows recording or processing transitions, respects reduced motion and is backed by a visible state label.
 - Real navigation and feedback: breadcrumbs, a user menu, toasts, dialogs, tables and skeletons.
 
 The working method, the rubric used to judge a screen and the lessons learned live in the

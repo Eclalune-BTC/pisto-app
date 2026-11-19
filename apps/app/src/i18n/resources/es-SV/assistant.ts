@@ -1,4 +1,36 @@
 export const assistant = {
+  companion: {
+    name: "Coco",
+    role: "Asistente de Pisto",
+    open: "Abrir las herramientas de Coco",
+    recording: "Escuchando",
+    transcribing: "Transcribiendo",
+    interpreting: "Interpretando su mensaje",
+  },
+  tools: {
+    pendingHint:
+      "Tiene una revisión de otra venta. Puede conservarla y comenzar con el producto que eligió.",
+    continueWithProduct: "Continuar con el producto elegido",
+    openPending: "Abrir la revisión anterior",
+    menu: "Herramientas",
+    menuHint: "Elija qué quiere hacer con las cuentas de su negocio.",
+    sale: "Ingresar venta",
+    saleHint: "Elija productos o cuente qué vendió.",
+    catalog: "Buscar producto",
+    catalogHint: "Consulte su precio y sus existencias por nombre o código.",
+    write: "Escribir un registro",
+    writeHint: "Describa una venta, una compra, un gasto o un abono.",
+    questions: "Consultar mis cuentas",
+    salePrompt: "¿Qué vendió? Elija un producto de su catálogo para comenzar.",
+    catalogPrompt: "Busque por nombre o código. Si desea venderlo, agréguelo a una venta.",
+    catalogReadPrompt: "Busque por nombre o código para ver el precio y las existencias.",
+    writeSale: "Describir mi venta",
+    writeSaleHint: "Escriba qué vendió, cuánto y cómo le pagaron.",
+    openSale: "Abrir el formulario de venta",
+    productUnavailable: "El producto elegido ya no está disponible. Busque otro para continuar.",
+    limited:
+      "Puede buscar productos, ingresar ventas y consultar sus cuentas con las herramientas.",
+  },
   dictate: "Dictar",
   dictateLabel: "Dictar o escribir un registro",
   dialog: {
@@ -52,6 +84,7 @@ export const assistant = {
     },
   },
   questions: {
+    placeholder: "Por ejemplo, quiero ingresar una venta",
     description: "Consulte sus cuentas. El dictado y los borradores están desactivados.",
     input: "Pregunta sobre sus cuentas",
     help: "Puede consultar ventas del mes pasado, cuentas por cobrar o facturas pendientes. Elija una de las preguntas.",

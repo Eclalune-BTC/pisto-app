@@ -37,7 +37,7 @@ function mismatches(actual: unknown, expected: Expectation | unknown, path: stri
   );
 }
 
-async function signIn(api: string, origin: string): Promise<string> {
+async function signIn(api: string, origin: string) {
   const response = await fetch(`${api}/api/auth/sign-in/email`, {
     method: "POST",
     headers: { "content-type": "application/json", origin },
@@ -52,6 +52,7 @@ async function signIn(api: string, origin: string): Promise<string> {
   const cookie = cookies.join("; ");
   // A new sign-in has no active business; select the first membership like the app does.
   const listed = await fetch(`${api}/v1/businesses`, { headers: { origin, cookie } });
+  if (!listed.ok) throw new Error(`Reading the business failed with ${listed.status}`);
   const businesses = (await listed.json()) as { data: { items: Array<{ id: string }> } };
   const business = businesses.data.items[0];
   if (!business) throw new Error("The evaluation account has no business");
@@ -61,17 +62,36 @@ async function signIn(api: string, origin: string): Promise<string> {
     body: JSON.stringify({ organizationId: business.id }),
   });
   if (!selected.ok) throw new Error(`Selecting the business failed with ${selected.status}`);
-  return cookie;
+  return { cookie, businessId: business.id };
 }
 
-async function run(api: string, origin: string, cookie: string, testCase: EvaluationCase) {
+async function run(
+  api: string,
+  origin: string,
+  cookie: string,
+  businessId: string,
+  testCase: EvaluationCase,
+) {
   const startedAt = performance.now();
   const response = await fetch(`${api}/v1/assistant/interpretations`, {
     method: "POST",
     headers: { "content-type": "application/json", origin, cookie },
-    body: JSON.stringify({ text: testCase.text, source: "text" }),
+    body: JSON.stringify({
+      text: testCase.text,
+      source: "text",
+      allowTools: true,
+      expectedBusinessId: businessId,
+    }),
   });
   const latencyMs = Math.round(performance.now() - startedAt);
+  if (!response.headers.get("content-type")?.includes("application/json")) {
+    return {
+      id: testCase.id,
+      pass: false,
+      latencyMs,
+      problems: [`Non-JSON provider response (HTTP ${response.status})`],
+    };
+  }
   const payload: unknown = await response.json();
   if (!response.ok) {
     return {
@@ -96,16 +116,17 @@ async function run(api: string, origin: string, cookie: string, testCase: Evalua
 }
 
 const [api = "http://localhost:3193", origin = "http://localhost:8103"] = process.argv.slice(2);
-const cookie = await signIn(api, origin);
+const { cookie, businessId } = await signIn(api, origin);
 const results = [];
 for (const testCase of evaluationCases) {
-  const result = await run(api, origin, cookie, testCase);
+  const result = await run(api, origin, cookie, businessId, testCase);
   results.push(result);
   console.info(
     `${result.pass ? "PASS" : "FAIL"} ${result.id} ${result.latencyMs} ms${result.problems.length ? `\n  ${result.problems.join("\n  ")}` : ""}`,
   );
 }
 const latencies = results.map((result) => result.latencyMs).sort((left, right) => left - right);
+if (results.some((result) => !result.pass)) process.exitCode = 1;
 console.info(
   JSON.stringify(
     {

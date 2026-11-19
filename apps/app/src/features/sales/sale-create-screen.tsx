@@ -37,7 +37,7 @@ import { firstInvalidField, type SaleDraftFieldRefs, SaleDraftFields } from "./s
 import { saleAmount, saleDescriptionItem, saleMoment } from "./sale-facts";
 import { readState } from "./state";
 
-export default function NewSaleScreen() {
+export default function NewSaleScreen({ initialProductId }: { initialProductId?: string } = {}) {
   const { t } = useTranslation();
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
@@ -70,7 +70,8 @@ export default function NewSaleScreen() {
   if (!business) return <Redirect href="/business" />;
   return (
     <NewSaleModes
-      key={business.id}
+      key={initialProductId ? JSON.stringify([business.id, initialProductId]) : business.id}
+      initialProductId={initialProductId}
       business={business}
       businessStale={queryHasStaleData(businesses)}
       businessFetching={businesses.isFetching}
@@ -87,6 +88,7 @@ export default function NewSaleScreen() {
  * state (offline, failed, retry) instead of the products form opening as if there were none.
  */
 export function NewSaleModes(props: {
+  initialProductId?: string;
   business: Business;
   businessStale: boolean;
   businessFetching: boolean;
@@ -94,18 +96,52 @@ export function NewSaleModes(props: {
 }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const recovery = useQuery(saleReviewQueryOptions(props.business.id));
+  const recovery = useQuery({
+    ...saleReviewQueryOptions(props.business.id),
+    ...(props.initialProductId && { refetchOnMount: "always" as const }),
+  });
   const [chosen, setChosen] = useState<SaleEntryMode | null>(null);
   const [arrival, setArrival] = useState<SaleEntryMode | null>(null);
-  if (arrival === null && recovery.data) {
-    setArrival(recovery.data.review ? "total_only" : "itemized");
+  const recoveryReady =
+    recovery.data &&
+    (!props.initialProductId || (recovery.isFetchedAfterMount && !queryHasStaleData(recovery)));
+  const firstAnswer = recoveryReady ? (recovery.data.review ? "total_only" : "itemized") : null;
+  if (arrival === null && firstAnswer) setArrival(firstAnswer);
+  if (props.initialProductId && arrival === null && !firstAnswer) {
+    if (hasDeniedRead([recovery])) return <RouteState kind="denied" width="form" />;
+    if (recovery.fetchStatus === "paused") return <RouteState kind="offline" width="form" />;
+    if (recovery.isError)
+      return <RouteState kind="error" onRetry={() => void recovery.refetch()} width="form" />;
+    return <RouteState kind="loading" label={t("sales.new.loading")} variant="form" width="form" />;
   }
   if (chosen === null && recovery.isPending && recovery.fetchStatus === "fetching") {
     return <RouteState kind="loading" label={t("sales.new.loading")} variant="form" width="form" />;
   }
-  const answered =
-    arrival ?? (recovery.data ? (recovery.data.review ? "total_only" : "itemized") : null);
+  const answered = arrival ?? firstAnswer;
   const mode = chosen ?? answered ?? "total_only";
+  if (
+    props.initialProductId &&
+    chosen === null &&
+    answered === "total_only" &&
+    recovery.data?.review?.businessId === props.business.id &&
+    !queryHasStaleData(recovery) &&
+    !props.businessStale
+  ) {
+    return (
+      <Page width="form">
+        <PageHeader title={t("sales.new.title")} description={t("assistant.tools.pendingHint")} />
+        <Button
+          label={t("assistant.tools.continueWithProduct")}
+          onPress={() => setChosen("itemized")}
+        />
+        <Button
+          label={t("assistant.tools.openPending")}
+          onPress={() => setChosen("total_only")}
+          variant="outline"
+        />
+      </Page>
+    );
+  }
   const modeSwitch = (
     <FilterBar
       label={t("sales.mode.label")}
@@ -127,6 +163,7 @@ export function NewSaleModes(props: {
       />
       <ItemizedSaleForm
         entrySource="manual"
+        initialProductId={props.initialProductId}
         onCancel={() => router.replace("/operate/sales")}
         onSaved={(saleId) =>
           router.replace({ pathname: "/operate/sales/[saleId]", params: { saleId } })

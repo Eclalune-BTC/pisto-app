@@ -17,6 +17,8 @@ const extractedKinds = [
   "several",
 ] as const;
 
+const withToolKinds = [...extractedKinds, "start_sale", "find_product"] as const;
+
 const settlements = ["paid", "partial_credit", "credit"] as const;
 const paymentMethods = ["cash", "transfer", "card"] as const;
 
@@ -63,7 +65,7 @@ function extractionSchemaReporting(unread: (field: UnreadField) => void) {
   };
 
   return z.object({
-    kind: z.enum(extractedKinds),
+    kind: z.enum(withToolKinds),
     fragments: z
       .array(
         z
@@ -215,4 +217,9 @@ export const extractionJsonSchema = {
     "invoiceNumber",
   ],
   additionalProperties: false,
+} as const;
+
+export const toolExtractionJsonSchema = {
+  ...extractionJsonSchema,
+  properties: { ...extractionJsonSchema.properties, kind: { type: "string", enum: withToolKinds } },
 } as const;
