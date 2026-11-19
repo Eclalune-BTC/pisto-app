@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { BusinessTopic } from "./assistant";
 import {
   aggregateIntegerSchema,
   boundedListLimitSchema,
@@ -185,6 +186,18 @@ const businessPermissionSchema = z.enum([
   "purchases:manage",
   "assistant:use",
 ]);
+
+/** The permission each business question needs: the one of the screen that owns its figures. */
+export const businessTopicPermissions = {
+  sales: "sales:summary:read",
+  top_products: "sales:summary:read",
+  expenses: "reports:read",
+  summary: "reports:read",
+  cash: "cash:read",
+  receivables: "receivables:read",
+  payables: "purchases:read",
+  low_stock: "inventory:read",
+} as const satisfies Record<BusinessTopic, z.infer<typeof businessPermissionSchema>>;
 
 export const businessAccessSchema = z.object({
   role: businessRoleSchema,

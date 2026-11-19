@@ -405,3 +405,20 @@ Append one line per lesson: `YYYY-MM-DD · screen · lesson · where it is now e
 - The public tour follows a real demo sale through its receipt. Use chapter controls, manually
   advanced photographs and keyboard-accessible tabs. On the operating home keep the composer in
   the same React position when available content width changes.
+- 2026-11-19 · Coco · The owner called the assistant weak: a question got "no encontré un
+  registro". An assistant answers with the screen's own figures in its dialog: one sentence,
+  hairline rows, the dates it covers, a period control and a link to the owning screen. No card
+  inside the dialog and no generated prose · `features/assistant/business-thread.tsx`.
+- 2026-11-19 · dialogs · A single-line field that submits on Enter blurs by default on the web;
+  the focus then lands on the dialog and draws its ring around the whole surface. A field that
+  takes follow-ups keeps the focus (`blurOnSubmit={false}`) · `business-thread.tsx`.
+- 2026-11-19 · landing films · The owner rejected a 19-second film of one feature: a product film
+  shows the whole product. Capture the running app at 2x in a disposable database, frame and
+  caption it in Remotion, and keep captions large enough to read at the inline size (about 40 % of
+  1080p). Two films sit behind one tab list with their length and one sentence each; a chapter
+  shows its line only while it plays, so six chapters stay shorter than the film ·
+  `features/welcome/how-it-works.tsx`, `media/coco-demo`.
+- 2026-11-19 · tooling · `wrangler dev` serves assets without range requests, so a video cannot
+  seek there; check film chapters on a static server that answers 206. A demo database seeded
+  right after local midnight has an empty "today": seed a disposable database in a zone where it is
+  daytime and keep that zone out of frame.

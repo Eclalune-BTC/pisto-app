@@ -169,6 +169,9 @@ function testApp(
           getPreviousMonthSummary: async () => {
             throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
           },
+          getPeriodSummary: async () => {
+            throw new ProductError("BUSINESS_REQUIRED", "Create a business first");
+          },
         } satisfies SalesRepository));
 
   return testClient(

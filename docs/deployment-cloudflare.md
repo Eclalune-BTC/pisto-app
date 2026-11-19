@@ -97,6 +97,10 @@ from `apps/api` and enter the key at the prompt. Authenticated clients request
 ask the price of the demo ground coffee, ask how much three cost and accept the quote. The sale
 editor should open with three units at the current catalog price. End the check before saving.
 
+Type “¿Cuánto vendí el mes pasado?” in Coco's field on the home. The answer must state the
+month's gross sales and the number of sales, and `GET /v1/assistant/answers` must return 200. Then
+ask “¿Quiénes me quedaron debiendo?” to exercise the model's classification.
+
 Sign in with the demo owner and open **Nuevo registro**. The authenticated
 `GET /v1/assistant/status` should return `enabled: true` and `transcription: true`. Dictate
 “Pagué 64 dólares de luz con transferencia”, check the transcription, then choose **Usar este texto**.

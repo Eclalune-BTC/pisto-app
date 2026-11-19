@@ -152,7 +152,12 @@ function ComposerForm({
         setQuestion(matchSaleTool(sentence) ? undefined : sentence);
         setEntry(result.tool);
       }
-      if (result.kind === "review") setText("");
+      if (
+        result.kind === "review" ||
+        (result.kind === "tool" && result.tool.name === "answer_question")
+      ) {
+        setText("");
+      }
     } finally {
       sending.current = false;
     }
@@ -177,9 +182,7 @@ function ComposerForm({
           <View className="min-w-0 flex-1">
             <Input
               editable={!pending}
-              accessibilityLabel={t(
-                ready ? "assistant.composer.inputLabel" : "assistant.questions.input",
-              )}
+              accessibilityLabel={t("assistant.composer.inputLabel")}
               maxLength={1000}
               onChangeText={(v) => {
                 setText(v);
@@ -208,7 +211,7 @@ function ComposerForm({
           <Button
             disabled={sentence.length < 2}
             loading={pending}
-            label={t(ready ? "assistant.composer.submit" : "assistant.questions.submit")}
+            label={t("assistant.composer.submit")}
             onPress={() => void submit()}
           />
         </View>

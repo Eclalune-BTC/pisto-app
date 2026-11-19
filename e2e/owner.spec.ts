@@ -57,10 +57,8 @@ test("records a cash sale and takes the product out of stock", async ({ page }) 
     route.fulfill({ json: { data: { enabled: false, transcription: false } } }),
   );
   await page.goto("/operate");
-  await page
-    .getByRole("textbox", { name: "Pregunta sobre sus cuentas" })
-    .fill("Quiero ingresar ventas");
-  await page.getByRole("button", { name: "Consultar", exact: true }).click();
+  await page.getByRole("textbox", { name: "Mensaje para Coco" }).fill("Quiero ingresar ventas");
+  await page.getByRole("button", { name: "Enviar", exact: true }).click();
   const guide = page.getByRole("dialog");
   await expect(guide.getByRole("heading", { name: "Ingresar venta" })).toBeVisible();
   await guide.getByRole("searchbox", { name: "Buscar producto" }).fill("Arroz");
@@ -123,8 +121,8 @@ test("lets the reviewer change a suggested supplier invoice and keep the payment
     route.fulfill({ json: { data: { interpretation } } }),
   );
   await page.goto("/operate");
-  await page.getByRole("textbox", { name: "Qué quiere registrar" }).fill(text);
-  await page.getByRole("button", { name: "Revisar", exact: true }).click();
+  await page.getByRole("textbox", { name: "Mensaje para Coco" }).fill(text);
+  await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await page
     .getByRole("button", { name: `Compra: ${suggested.supplierName} · ${suggested.invoiceNumber}` })
     .click();

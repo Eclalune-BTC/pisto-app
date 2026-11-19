@@ -177,6 +177,60 @@ describe("bounded sale and catalog tools", () => {
   });
 });
 
+describe("questions about the business", () => {
+  const ask = async (question: Extraction["question"], options: { allowTools?: true } = {}) =>
+    (await interpret("¿Cuánto vendí esta semana?", { kind: "ask", question }, options))
+      .interpretation;
+
+  test("proposes the topic and period without reading any record", async () => {
+    const { records, calls } = directory();
+    const { interpretation } = await interpret(
+      "¿Cuánto vendí esta semana?",
+      { kind: "ask", question: { topic: "sales", period: "this_week" } },
+      { allowTools: true, records },
+    );
+    expect(interpretation).toMatchObject({
+      draft: null,
+      unsupported: null,
+      tool: { name: "answer_question", topic: "sales", period: "this_week" },
+    });
+    expect(calls).toHaveLength(0);
+  });
+
+  test("keeps an unstated period open and drops a period from a current position", async () => {
+    expect((await ask({ topic: "expenses", period: null }, { allowTools: true })).tool).toEqual({
+      name: "answer_question",
+      topic: "expenses",
+      period: null,
+    });
+    expect(
+      (await ask({ topic: "receivables", period: "last_month" }, { allowTools: true })).tool,
+    ).toEqual({ name: "answer_question", topic: "receivables", period: null });
+  });
+
+  test("is not a record without tools or without a readable question", async () => {
+    const invented = await interpret(
+      "¿Cuánto gané en 2024?",
+      { kind: "ask", question: { topic: "profit", period: "2024" } as never },
+      { allowTools: true },
+    );
+    const otherPeriod = await interpret(
+      "¿Cuánto vendí este año?",
+      { kind: "ask", question: { topic: "sales", period: "this_year" } as never },
+      { allowTools: true },
+    );
+    for (const interpretation of [
+      await ask({ topic: "sales", period: "today" }),
+      await ask(null, { allowTools: true }),
+      invented.interpretation,
+      otherPeriod.interpretation,
+    ]) {
+      expect(interpretation.tool).toBeUndefined();
+      expect(interpretation.unsupported).toBe("not_a_record");
+    }
+  });
+});
+
 describe("sale drafts", () => {
   test("the prototype sentence becomes a priced credit sale with numbered fragments", async () => {
     const { records } = directory({ customers: [carlosRivas, ana] });

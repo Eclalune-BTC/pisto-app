@@ -7,12 +7,7 @@ import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/busines
 import { isAccessDeniedError } from "@/lib/query-state";
 
 import { assistantApi } from "./api";
-import {
-  businessQuestions,
-  matchBusinessQuestion,
-  matchSaleTool,
-  permitsTool,
-} from "./business-questions";
+import { matchBusinessQuestion, matchSaleTool, permitsTool } from "./business-questions";
 import { type AssistantProblem, assistantProblem, type UnsupportedReason } from "./problems";
 import { assistantQueryKeys } from "./queries";
 import { reviewStore } from "./review-store";
@@ -63,16 +58,8 @@ export function useInterpretation(businessId: string | undefined) {
       return permitsTool(business.access.permissions, launcher)
         ? { kind: "tool", tool: launcher }
         : { kind: "failed", problem: "denied" };
-    const question = matchBusinessQuestion(request.text);
-    if (question) {
-      const { href, permission } = businessQuestions[question];
-      if (!business.access.permissions.includes(permission)) {
-        return { kind: "failed", problem: "denied" };
-      }
-      if (abandoned()) return { kind: "abandoned" };
-      router.push(href);
-      return { kind: "review" };
-    }
+    const question = request.allowTools && matchBusinessQuestion(request.text);
+    if (question) return { kind: "tool", tool: question };
     try {
       const interpretation = await mutation.mutateAsync({
         ...request,

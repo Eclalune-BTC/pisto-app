@@ -661,4 +661,167 @@ describe("itemized sales on PostgreSQL 18", () => {
     expect((await sales.getSale(actor("ownerA"), posted.sale.id)).sale.status).toBe("posted");
     expect(await onHand(fixture.coffeeId)).toBe(stock);
   });
+
+  test("summarizes a period's posted sales and ranks the products they sold", async () => {
+    const paid = (received: string) => ({
+      method: "cash" as const,
+      accountId: fixture.cashId,
+      receivedMinorUnits: received,
+    });
+    // The first and last minute of the range in the business time zone are inside it.
+    await sales.createItemizedSale(
+      actor("member"),
+      command({ occurredLocalDate: "2026-10-05", occurredLocalTime: "00:00" }),
+    );
+    await sales.createItemizedSale(
+      actor("member"),
+      command({
+        occurredLocalDate: "2026-10-07",
+        occurredLocalTime: "23:59",
+        lines: [
+          { productId: fixture.cheeseId, quantityMinorUnits: "1500" },
+          { productId: fixture.coffeeId, quantityMinorUnits: "1" },
+        ],
+        payment: paid("825"),
+      }),
+    );
+    await sales.createSale(actor("ownerA"), {
+      idempotencyKey: crypto.randomUUID(),
+      grossMinorUnits: "1000",
+      occurredLocalDate: "2026-10-06",
+      occurredLocalTime: "12:00",
+    });
+    const voided = await sales.createItemizedSale(
+      actor("member"),
+      command({
+        occurredLocalDate: "2026-10-06",
+        lines: [{ productId: fixture.coffeeId, quantityMinorUnits: "5" }],
+        payment: paid("1625"),
+      }),
+    );
+    await sales.voidSale(actor("ownerA"), voided.sale.id, {
+      idempotencyKey: crypto.randomUUID(),
+      reason: "Entered twice",
+    });
+    await sales.createItemizedSale(
+      actor("member"),
+      command({ occurredLocalDate: "2026-10-08", occurredLocalTime: "00:00" }),
+    );
+    await sales.createSale(actor("ownerB"), {
+      idempotencyKey: crypto.randomUUID(),
+      grossMinorUnits: "7777",
+      occurredLocalDate: "2026-10-06",
+      occurredLocalTime: "12:00",
+    });
+
+    const range = { startLocalDate: "2026-10-05", endLocalDate: "2026-10-07" };
+    const summary = await sales.getPeriodSummary(actor("member"), range);
+    expect(summary).toMatchObject({
+      grossMinorUnits: "2475",
+      saleCount: "3",
+      averageMinorUnits: "825",
+      itemizedSaleCount: "2",
+      currency: "USD",
+      currencyMinorUnitDigits: 2,
+    });
+    expect(
+      summary.topProducts.map(({ productId, name, ...figures }) => ({
+        productId,
+        named: name.startsWith(productId === fixture.coffeeId ? "Coffee" : "Cheese"),
+        ...figures,
+      })),
+    ).toEqual([
+      {
+        productId: fixture.coffeeId,
+        named: true,
+        unitKind: "unit",
+        quantityPrecision: 0,
+        quantityMinorUnits: "3",
+        grossMinorUnits: "975",
+      },
+      {
+        productId: fixture.cheeseId,
+        named: true,
+        unitKind: "kilogram",
+        quantityPrecision: 3,
+        quantityMinorUnits: "1500",
+        grossMinorUnits: "500",
+      },
+    ]);
+    expect(summary.businessLocalDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+    expect(
+      await sales.getPeriodSummary(actor("ownerA"), {
+        startLocalDate: "2026-09-01",
+        endLocalDate: "2026-09-30",
+      }),
+    ).toMatchObject({
+      grossMinorUnits: "0",
+      saleCount: "0",
+      averageMinorUnits: null,
+      itemizedSaleCount: "0",
+      topProducts: [],
+    });
+    expect(await sales.getPeriodSummary(actor("ownerB"), range)).toMatchObject({
+      grossMinorUnits: "7777",
+      saleCount: "1",
+      itemizedSaleCount: "0",
+      topProducts: [],
+    });
+    for (const invalid of [
+      { startLocalDate: "2026-10-07", endLocalDate: "2026-10-05" },
+      { startLocalDate: "2025-01-01", endLocalDate: "2026-10-05" },
+      { startLocalDate: "2026-02-30", endLocalDate: "2026-03-01" },
+    ]) {
+      expect(await rejection(sales.getPeriodSummary(actor("ownerA"), invalid))).toBe(
+        "VALIDATION_ERROR",
+      );
+    }
+    expect(
+      await rejection(
+        sales.getPeriodSummary({ ...actor("ownerB"), activeBusinessId: fixture.businessA }, range),
+      ),
+    ).toBe("UNAUTHORIZED");
+  });
+
+  test("ranks a product edited between two sales by its money and adds no mixed quantities", async () => {
+    const ropeId = await createProduct("ownerA", {
+      name: "Rope",
+      price: "200",
+      precision: 0,
+      tracked: false,
+    });
+    const sell = (date: string, quantityMinorUnits: string, received: string) =>
+      sales.createItemizedSale(
+        actor("member"),
+        command({
+          occurredLocalDate: date,
+          lines: [{ productId: ropeId, quantityMinorUnits }],
+          payment: { method: "cash", accountId: fixture.cashId, receivedMinorUnits: received },
+        }),
+      );
+    await sell("2026-08-10", "2", "400");
+    await catalog.updateProduct(actor("ownerA"), ropeId, {
+      idempotencyKey: crypto.randomUUID(),
+      quantityPrecision: 3,
+      unitKind: "kilogram",
+    });
+    await sell("2026-08-11", "1500", "300");
+
+    const firstDay = await sales.getPeriodSummary(actor("ownerA"), {
+      startLocalDate: "2026-08-10",
+      endLocalDate: "2026-08-10",
+    });
+    expect(firstDay.topProducts).toMatchObject([
+      { productId: ropeId, quantityPrecision: 0, quantityMinorUnits: "2", grossMinorUnits: "400" },
+    ]);
+    const bothDays = await sales.getPeriodSummary(actor("ownerA"), {
+      startLocalDate: "2026-08-10",
+      endLocalDate: "2026-08-11",
+    });
+    expect(bothDays).toMatchObject({ grossMinorUnits: "700", saleCount: "2" });
+    expect(bothDays.topProducts).toMatchObject([
+      { productId: ropeId, quantityMinorUnits: null, grossMinorUnits: "700" },
+    ]);
+  });
 });

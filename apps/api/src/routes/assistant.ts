@@ -1,6 +1,8 @@
 import {
   type AssistantProvider,
   AssistantProviderError,
+  answerBusinessQuestion,
+  type BusinessFacts,
   type CatalogModel,
   catalogModelId,
   catalogPromptVersion,
@@ -14,6 +16,8 @@ import {
   assistantScopeHeader,
   assistantTranscriptionResponseSchema,
   type BusinessPermission,
+  businessAnswerQuerySchema,
+  businessTopicPermissions,
   catalogTurnRequestSchema,
 } from "@pisto/contracts";
 import type {
@@ -26,7 +30,7 @@ import type {
 import { ApiError } from "../errors.ts";
 import { contract } from "../http.ts";
 import type { ProductAccess } from "../middleware/product-access.ts";
-import { protectedRoutes } from "./protected.ts";
+import { protectedRoutes, queryContract } from "./protected.ts";
 
 export const transcriptionPath = "/v1/assistant/transcriptions";
 /** The client encodes 16 kHz mono PCM WAV, the one container verified with the transcription model. */
@@ -85,6 +89,7 @@ export function assistantRoutes(input: {
   access: ProductAccess;
   assistant: AssistantServices;
   catalog: Pick<CatalogRepository, "getProduct">;
+  facts: BusinessFacts<ProductActor>;
 }) {
   const { assistant } = input;
   const routes = protectedRoutes(input.access);
@@ -156,6 +161,23 @@ export function assistantRoutes(input: {
       },
     };
   });
+
+  // Answers are exact reads with no model call, so they stay available with the assistant off and
+  // spend the product read budget, not the model budgets.
+  routes.get(
+    "/assistant/answers",
+    async ({ actor, query }) => {
+      const scope = await assistant.records.authorize(actor, [
+        businessTopicPermissions[query.topic],
+      ]);
+      if (scope.businessId !== query.expectedBusinessId) {
+        throw new ApiError(403, "FORBIDDEN", "The active business changed");
+      }
+      const answer = await answerBusinessQuestion(input.facts, actor, query, scope.localDate);
+      return { data: { answer } };
+    },
+    { ...queryContract(businessAnswerQuerySchema, "The business question is invalid") },
+  );
 
   routes.post(
     "/assistant/catalog-turns",

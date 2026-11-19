@@ -7,7 +7,7 @@ import { onHandQuantity } from "./catalog/records.ts";
 import type { Database } from "./client.ts";
 import { hasBusinessPermission, resolveBusinessAccess } from "./product-access.ts";
 import { purchaseBalance, supplierPaymentTotals } from "./purchases/records.ts";
-import { paymentTotals } from "./receivables/records.ts";
+import { businessLocalDate, paymentTotals } from "./receivables/records.ts";
 import { cashAccount } from "./schema/cash-account.ts";
 import { catalogProduct } from "./schema/catalog.ts";
 import { purchase, supplier } from "./schema/purchases.ts";
@@ -55,11 +55,14 @@ export interface AssistantDirectoryLookup {
 }
 
 export interface AssistantDirectoryRepository {
-  /** Fails unless the actor may use the assistant in its active business, before any model cost. */
+  /**
+   * Fails unless the actor may use the assistant in its active business, before any model cost.
+   * `localDate` is the business's calendar date on the database clock.
+   */
   authorize(
     actor: ProductActor,
     required?: readonly BusinessPermission[],
-  ): Promise<{ businessId: string }>;
+  ): Promise<{ businessId: string; localDate: string }>;
   /**
    * Authorizes `assistant:use` and reads, from the active business only, the records whose folded
    * name contains one of the search terms. Each record family is returned only when the member's
@@ -136,7 +139,11 @@ export function createAssistantDirectory(db: Database): AssistantDirectoryReposi
             ["assistant:use", ...required],
             "none",
           );
-          return { businessId: access.businessId };
+          const [clock] = await tx.execute<{ local_date: string }>(
+            sql`select ${businessLocalDate(access.timeZone)} as local_date`,
+          );
+          if (!clock) throw new Error("Database clock returned no row");
+          return { businessId: access.businessId, localDate: clock.local_date };
         },
         { accessMode: "read only" },
       );

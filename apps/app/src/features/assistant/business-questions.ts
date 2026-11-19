@@ -1,45 +1,129 @@
-import type { AssistantToolCall, BusinessPermission } from "@pisto/contracts";
+import {
+  type AssistantToolCall,
+  type BusinessPeriod,
+  type BusinessPermission,
+  type BusinessTopic,
+  businessTopicPermissions,
+  periodBusinessTopics,
+} from "@pisto/contracts";
 import type { Href } from "expo-router";
 
-export const businessQuestions = {
-  sales: {
-    permission: "sales:summary:read",
-    href: "/operate/assistant/sales-summary",
-    phrases: [
-      "como me fue el mes pasado",
-      "cuanto vendi el mes pasado",
-      "cuanto vendimos el mes pasado",
-      "cuantas ventas hice el mes pasado",
-      "cuantas ventas tuvimos el mes pasado",
-      "cuanto fue la venta promedio del mes pasado",
-      "cual fue el promedio por venta el mes pasado",
-      "como fueron mis ventas el mes pasado",
-      "ventas del mes pasado",
+export type QuestionTool = Extract<AssistantToolCall, { name: "answer_question" }>;
+
+/** The screen that owns each topic's figures. */
+export const topicHrefs = {
+  sales: "/operate/sales",
+  top_products: "/operate/sales",
+  expenses: "/operate/expenses",
+  summary: "/operate/reports",
+  cash: "/operate/cash",
+  receivables: "/operate/receivables",
+  payables: { pathname: "/operate/payables", params: { payable: "open" } },
+  low_stock: "/operate/inventory",
+} as const satisfies Record<BusinessTopic, Href>;
+
+export function isPeriodTopic(topic: BusinessTopic): boolean {
+  return (periodBusinessTopics as readonly BusinessTopic[]).includes(topic);
+}
+
+const question = (topic: BusinessTopic, period: BusinessPeriod | null = null): QuestionTool => ({
+  name: "answer_question",
+  topic,
+  period,
+});
+
+/** Questions offered as one-tap shortcuts, most used first. */
+export const suggestedQuestions = [
+  { key: "salesToday", tool: question("sales", "today") },
+  { key: "summaryWeek", tool: question("summary", "this_week") },
+  { key: "cash", tool: question("cash") },
+  { key: "receivables", tool: question("receivables") },
+  { key: "payables", tool: question("payables") },
+  { key: "lowStock", tool: question("low_stock") },
+  { key: "topProducts", tool: question("top_products", "this_month") },
+  { key: "expensesMonth", tool: question("expenses", "this_month") },
+] as const;
+
+export function permitsTopic(permissions: readonly BusinessPermission[], topic: BusinessTopic) {
+  return permissions.includes(businessTopicPermissions[topic]);
+}
+
+/** Complete questions answered without the model. Other wordings go through interpretation. */
+const topicPhrases: ReadonlyArray<readonly [BusinessTopic, readonly string[]]> = [
+  [
+    "sales",
+    [
+      "cuanto vendi",
+      "cuanto vendimos",
+      "cuanto llevo vendido",
+      "cuanto he vendido",
+      "cuantas ventas hice",
+      "cuantas ventas tuvimos",
+      "cuanto fue la venta promedio",
+      "cual fue el promedio por venta",
+      "como fueron mis ventas",
+      "ventas",
     ],
-  },
-  receivables: {
-    permission: "receivables:read",
-    href: "/operate/receivables",
-    phrases: ["quien me debe", "quien me debe dinero", "quienes me deben", "cuanto me deben"],
-  },
-  payables: {
-    permission: "purchases:read",
-    href: { pathname: "/operate/payables", params: { payable: "open" } },
-    phrases: [
+  ],
+  ["summary", ["como me fue", "como nos fue", "como va el negocio"]],
+  ["expenses", ["cuanto gaste", "cuanto gastamos", "cuanto he gastado", "en que gaste", "gastos"]],
+  [
+    "top_products",
+    [
+      "que es lo que mas se vende",
+      "que es lo que mas vendo",
+      "que se vende mas",
+      "que fue lo mas vendido",
+      "cual es mi producto mas vendido",
+      "productos mas vendidos",
+    ],
+  ],
+  [
+    "cash",
+    [
+      "cuanto tengo en caja",
+      "cuanto hay en caja",
+      "cuanto dinero tengo",
+      "cuanto tengo disponible",
+      "cuanto tengo en el banco",
+    ],
+  ],
+  ["receivables", ["quien me debe", "quien me debe dinero", "quienes me deben", "cuanto me deben"]],
+  [
+    "payables",
+    [
       "que facturas debo",
       "que facturas tengo pendientes de pagar",
       "a que proveedores les debo",
       "cuanto debo a proveedores",
       "cuanto les debo a mis proveedores",
     ],
-  },
-} as const satisfies Record<
-  string,
-  { permission: BusinessPermission; href: Href; phrases: readonly string[] }
->;
+  ],
+  [
+    "low_stock",
+    [
+      "que se esta acabando",
+      "que se me esta acabando",
+      "que productos se estan acabando",
+      "que productos se me estan acabando",
+      "que tengo que pedir",
+      "que productos tienen pocas existencias",
+    ],
+  ],
+];
 
-export type BusinessQuestion = keyof typeof businessQuestions;
-export const questionKinds = Object.keys(businessQuestions) as BusinessQuestion[];
+const periodPhrases: Readonly<Record<string, BusinessPeriod>> = {
+  hoy: "today",
+  ayer: "yesterday",
+  "esta semana": "this_week",
+  "la semana pasada": "last_week",
+  "este mes": "this_month",
+  "el mes pasado": "last_month",
+  "los ultimos 7 dias": "last_7_days",
+  "los ultimos siete dias": "last_7_days",
+  "los ultimos 30 dias": "last_30_days",
+  "los ultimos treinta dias": "last_30_days",
+};
 
 function normalized(text: string): string {
   return text
@@ -53,11 +137,23 @@ function normalized(text: string): string {
     .replace(/\s+/gu, " ");
 }
 
-export function matchBusinessQuestion(text: string): BusinessQuestion | undefined {
-  const question = normalized(text);
-  return questionKinds.find((kind) =>
-    businessQuestions[kind].phrases.some((phrase) => phrase === question),
-  );
+/** "del mes pasado", "de hoy", "en esta semana" or the bare period; `null` for anything else. */
+function periodOf(rest: string): BusinessPeriod | null {
+  const phrase = rest.replace(/^del /u, "de el ").replace(/^(?:de|en) /u, "");
+  return Object.hasOwn(periodPhrases, phrase) ? (periodPhrases[phrase] ?? null) : null;
+}
+
+export function matchBusinessQuestion(text: string): QuestionTool | undefined {
+  const sentence = normalized(text);
+  for (const [topic, phrases] of topicPhrases) {
+    for (const phrase of phrases) {
+      if (sentence === phrase) return question(topic);
+      if (!isPeriodTopic(topic) || !sentence.startsWith(`${phrase} `)) continue;
+      const period = periodOf(sentence.slice(phrase.length + 1));
+      if (period) return question(topic, period);
+    }
+  }
+  return undefined;
 }
 
 /** Match complete launcher commands only. Sale details still go through record extraction. */
@@ -82,9 +178,9 @@ export function matchSaleTool(text: string): AssistantToolCall | undefined {
   return undefined;
 }
 
+/** A question opens for any assistant user; its answer states when the role cannot read it. */
 export function permitsTool(permissions: readonly BusinessPermission[], tool: AssistantToolCall) {
-  return (
-    permissions.includes("assistant:use") &&
-    permissions.includes(tool.name === "start_sale" ? "sales:create" : "catalog:read")
-  );
+  if (!permissions.includes("assistant:use")) return false;
+  if (tool.name === "answer_question") return true;
+  return permissions.includes(tool.name === "start_sale" ? "sales:create" : "catalog:read");
 }

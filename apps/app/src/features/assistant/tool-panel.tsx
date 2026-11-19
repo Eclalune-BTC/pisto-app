@@ -19,7 +19,7 @@ import { Icon } from "@/components/ui/icon";
 import { PressableSurface } from "@/components/ui/pressable-surface";
 import { Text } from "@/components/ui/text";
 import { ProductSearch } from "@/features/sales/itemized/product-search";
-import { businessQuestions, permitsTool, questionKinds } from "./business-questions";
+import { permitsTool, permitsTopic, suggestedQuestions } from "./business-questions";
 import { CatalogConversation } from "./catalog-conversation";
 
 function ToolRow({
@@ -55,13 +55,12 @@ export function AssistantTools({
   permissions,
   onTool,
   onWrite,
-  onClose,
   canInterpret,
 }: {
   permissions: readonly BusinessPermission[];
-  onTool: (tool: AssistantToolCall) => void;
+  /** `question` is the sentence shown above the answer of a business question. */
+  onTool: (tool: AssistantToolCall, question?: string) => void;
   onWrite: () => void;
-  onClose: () => void;
   canInterpret: boolean;
 }) {
   const { t } = useTranslation();
@@ -98,23 +97,21 @@ export function AssistantTools({
         <Heading size="item" level={2}>
           {t("assistant.tools.questions")}
         </Heading>
-        {questionKinds
-          .filter((kind) => permissions.includes(businessQuestions[kind].permission))
-          .map((kind) => (
-            <Link asChild href={businessQuestions[kind].href} key={kind}>
-              <Button
-                accessibilityRole="link"
-                className="h-auto min-h-10 justify-start px-0"
-                onPress={onClose}
-                size="sm"
-                variant="ghost"
-              >
-                <Text className="min-w-0 shrink font-ui text-dense">
-                  {t(`assistant.questions.${kind}`)}
-                </Text>
-                <Icon as={ArrowUpRight} className="text-muted-foreground" size={14} />
-              </Button>
-            </Link>
+        {suggestedQuestions
+          .filter(({ tool }) => permitsTopic(permissions, tool.topic))
+          .map(({ key, tool }) => (
+            <Button
+              className="h-auto min-h-10 justify-start px-0"
+              key={key}
+              onPress={() => onTool(tool, t(`assistant.questions.suggested.${key}`))}
+              size="sm"
+              variant="ghost"
+            >
+              <Text className="min-w-0 shrink font-ui text-dense">
+                {t(`assistant.questions.suggested.${key}`)}
+              </Text>
+              <Icon as={ChevronRight} className="text-muted-foreground" size={14} />
+            </Button>
           ))}
       </View>
     </View>

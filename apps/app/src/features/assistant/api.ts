@@ -8,6 +8,10 @@ import {
   assistantScopeHeader,
   assistantStatusResponseSchema,
   assistantTranscriptionResponseSchema,
+  type BusinessAnswerQuery,
+  type BusinessAnswerResponse,
+  businessAnswerQuerySchema,
+  businessAnswerResponseSchema,
   type CatalogTurnRequest,
   type CatalogTurnResponse,
   catalogTurnRequestSchema,
@@ -82,6 +86,17 @@ export const assistantApi = {
     return data.interpretation;
   },
   transcribe: uploadAudio,
+  answer: (query: BusinessAnswerQuery, signal?: AbortSignal) => {
+    const { expectedBusinessId, topic, period } = parseRequestPayload(
+      businessAnswerQuerySchema,
+      query,
+    );
+    return apiRequest<BusinessAnswerResponse, BusinessAnswerResponse["data"]>(
+      `/v1/assistant/answers?expectedBusinessId=${encodeURIComponent(expectedBusinessId)}&topic=${topic}${period ? `&period=${period}` : ""}`,
+      { authenticated: true, signal },
+      businessAnswerResponseSchema,
+    );
+  },
   catalogTurn: (request: CatalogTurnRequest, signal?: AbortSignal) =>
     apiRequest<CatalogTurnResponse, CatalogTurnResponse["data"]>(
       "/v1/assistant/catalog-turns",

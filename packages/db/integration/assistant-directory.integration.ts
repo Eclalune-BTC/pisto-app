@@ -286,8 +286,27 @@ describe("assistant directory", () => {
     await expect(
       directory.lookup(actor("ownerB", businessA), { products: ["cafe"], customers: [] }),
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
-    expect(await directory.authorize(actor("ownerB", businessB))).toEqual({
-      businessId: businessB,
+    const authorized = await directory.authorize(actor("ownerB", businessB));
+    expect(authorized.businessId).toBe(businessB);
+    const { context } = await directory.lookup(actor("ownerB", businessB), {
+      products: [],
+      customers: [],
     });
+    // Both read the business-local date from the database clock.
+    expect(authorized.localDate).toBe(context.localDate);
+    expect(
+      (await directory.authorize(actor("ownerB", businessB), ["reports:read", "cash:read"]))
+        .businessId,
+    ).toBe(businessB);
+    for (const required of [["reports:read"], ["cash:read"], ["purchases:read"]] as const) {
+      await expect(directory.authorize(actor("member", businessA), required)).rejects.toMatchObject(
+        {
+          code: "FORBIDDEN",
+        },
+      );
+    }
+    expect(
+      (await directory.authorize(actor("member", businessA), ["sales:summary:read"])).businessId,
+    ).toBe(businessA);
   });
 });

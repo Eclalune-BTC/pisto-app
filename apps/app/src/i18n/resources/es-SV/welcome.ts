@@ -55,22 +55,47 @@ export const welcome = {
   },
   how: {
     title: "Cómo funciona",
-    filmTitle: "Una venta de café.",
-    filmDescription:
-      "Tres libras de café, cinco dólares en efectivo y una parte al fiado. Vea cómo queda registrada la venta en Pisto.",
-    play: "Reproducir la venta de café",
+    heading: "Así se usa Pisto.",
+    description:
+      "Dos vídeos sin sonido, grabados en Pisto con los datos de ejemplo de Abarrotes La Ceiba.",
+    toursLabel: "Vídeos de ejemplo",
+    tours: {
+      app: {
+        name: "Recorrido con Coco",
+        summary:
+          "Coco registra una venta dictada y responde cuánto se vendió hoy. Después verá la caja, el inventario, las deudas, los reportes y el equipo de la tienda.",
+        play: "Reproducir el recorrido con Coco",
+        label: "Vídeo del recorrido por Pisto con Coco",
+      },
+      sale: {
+        name: "Una venta de café",
+        summary:
+          "Tres libras de café, cinco dólares en efectivo y el resto al fiado: la venta paso a paso, del producto al comprobante.",
+        play: "Reproducir la venta de café",
+        label: "Vídeo de ejemplo de una venta de café en Pisto",
+      },
+    },
     playShort: "Ver el vídeo",
-    filmLabel: "Vídeo de ejemplo de una venta de café en Pisto",
     filmError: "El vídeo no se pudo cargar. Puede seguir los pasos que aparecen a continuación.",
     filmCaptions: "Español",
-    cocoDemo: "Ver a Coco cotizar una venta",
-    duration: "0:18",
     chapters: {
+      today: "El día de la tienda",
+      dictate: "Coco registra",
+      ask: "Coco responde",
+      money: "Ventas, caja y gastos",
+      stock: "Inventario y deudas",
+      reports: "Reportes y equipo",
       product: "Elegir el producto",
       payment: "Revisar el pago",
       receipt: "Guardar la venta",
     },
     detail: {
+      today: "El dinero disponible, los movimientos de hoy y lo que falta cobrar y pagar.",
+      dictate: "Una venta dictada queda como borrador. Usted la revisa antes de guardarla.",
+      ask: "Cuánto vendió hoy y quién le debe, con las cifras de sus registros.",
+      money: "Cada venta con su comprobante, las cuentas de caja y banco y los gastos del mes.",
+      stock: "Las existencias que se acaban, las compras a proveedores y los saldos pendientes.",
+      reports: "El resumen del período, los permisos de cada rol y la misma tienda en el teléfono.",
       product: "Seleccione tres libras de café molido a $3.25 por libra.",
       payment: "De los $9.75, Rosa paga $5.00 en efectivo. Quedan $4.75 al fiado.",
       receipt: "Confirme la venta y consulte el total en su comprobante.",

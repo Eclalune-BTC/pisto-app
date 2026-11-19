@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { Children, cloneElement, createElement, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
@@ -49,9 +50,9 @@ import {
   shiftLocalDate,
   shiftLocalMonth,
 } from "./example-business";
-import { STEPS } from "./how-it-works";
 import { MODULES } from "./module-previews";
 import { PUBLIC_ROLE_ACCESS, ROLES, TRUST_POINTS } from "./roles-section";
+import { chapterAt, chapterStart, TOUR_IDS, TOURS } from "./tours";
 import WelcomeScreen from "./welcome-screen";
 
 const render = () => renderToStaticMarkup(createElement(WelcomeScreen));
@@ -85,7 +86,16 @@ describe("public product page", () => {
 
   test("walks through every step, module, role and guarantee it promises", () => {
     const markup = text(render());
-    for (const step of STEPS) expect(markup).toContain(i18n.t(`welcome.how.chapters.${step}`));
+    for (const tour of TOUR_IDS) {
+      expect(markup).toContain(i18n.t(`welcome.how.tours.${tour}.name`));
+      expect(markup).toContain(TOURS[tour].duration);
+    }
+    // The page opens on the full tour; its summary and chapters say what the film shows.
+    expect(markup).toContain(i18n.t("welcome.how.tours.app.summary"));
+    for (const { id } of TOURS.app.chapters) {
+      expect(markup).toContain(i18n.t(`welcome.how.chapters.${id}`));
+    }
+    expect(markup).toContain(i18n.t("welcome.how.detail.today"));
     for (const module of MODULES) {
       expect(markup).toContain(i18n.t(`welcome.modules.items.${module}.tab`));
     }
@@ -102,9 +112,9 @@ describe("public product page", () => {
     expect(markup).toContain("<figure");
     expect(markup).not.toMatch(/<figure[^>]*>(?:(?!<\/figure>).)*<figure/s);
     expect(text(markup)).toContain(i18n.t("welcome.modules.description"));
-    expect(text(markup)).toContain(i18n.t("welcome.how.detail.payment"));
+    expect(text(markup)).toContain(i18n.t("welcome.how.detail.today"));
     expect(markup).toContain(`aria-label="${i18n.t("welcome.modules.next")}"`);
-    expect(markup.match(/role="tab"/g)).toHaveLength(2 + MODULES.length);
+    expect(markup.match(/role="tab"/g)).toHaveLength(2 + TOUR_IDS.length + MODULES.length);
     expect(markup).toContain(`aria-label="${i18n.t("welcome.example.label")}"`);
     expect(markup).toContain(`aria-label="${i18n.t("welcome.modules.items.movements.figure")}"`);
     expect(markup).toContain(i18n.t("welcome.example.play"));
@@ -216,5 +226,41 @@ describe("example business", () => {
         BigInt(month.netMinorUnits),
       );
     }
+  });
+});
+
+describe("films of the public page", () => {
+  const captions = import.meta.glob("../../../public/media/*.vtt", {
+    eager: true,
+    import: "default",
+    query: "?raw",
+  }) as Record<string, string>;
+  const seconds = (clock: string) => {
+    const [minutes = "0", rest = "0"] = clock.split(":");
+    return Number(minutes) * 60 + Number(rest);
+  };
+
+  test.each(TOUR_IDS)("the %s film starts every chapter on a caption cue", (tour) => {
+    const film = TOURS[tour];
+    const file = captions[`../../../public${film.captions}`];
+    if (!file) throw new Error(`Missing captions for the ${tour} film`);
+    const cues = [...file.matchAll(/^(\d{2}):(\d{2}):(\d{2})\.\d{3} --> /gm)].map(
+      ([, hours, minutes, rest]) => Number(hours) * 3600 + Number(minutes) * 60 + Number(rest),
+    );
+    const starts = film.chapters.map((chapter) => chapter.start);
+    expect(starts[0]).toBe(0);
+    expect(starts).toEqual([...starts].sort((left, right) => left - right));
+    for (const start of starts) expect(cues).toContain(start);
+    expect(Math.max(...starts)).toBeLessThan(seconds(film.duration));
+  });
+
+  test("follows the film by its last started chapter and seeks to a chapter's first second", () => {
+    expect(chapterAt("sale", 0)).toBe("product");
+    expect(chapterAt("sale", 7.9)).toBe("product");
+    expect(chapterAt("sale", 8)).toBe("payment");
+    expect(chapterAt("sale", 17.5)).toBe("receipt");
+    expect(chapterStart("sale", "receipt")).toBe(13);
+    for (const { id, start } of TOURS.app.chapters) expect(chapterAt("app", start)).toBe(id);
+    expect(() => chapterStart("sale", "today")).toThrow("no chapter");
   });
 });

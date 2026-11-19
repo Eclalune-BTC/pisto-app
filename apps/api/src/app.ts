@@ -214,5 +214,20 @@ export function createApp(input: {
     .use(moneyTrendRoutes({ access, moneyTrend }))
     .use(movementsRoutes({ access, movements }))
     .use(debtorsRoutes({ access, debtors }))
-    .use(assistantRoutes({ access, assistant: input.assistant, catalog }));
+    .use(
+      assistantRoutes({
+        access,
+        assistant: input.assistant,
+        catalog,
+        facts: {
+          salesSummary: (actor, range) => sales.getPeriodSummary(actor, range),
+          operatingReport: (actor, range) => reports.getOperatingReport(actor, range),
+          moneyTrend: (actor) => moneyTrend.getMoneyTrend(actor, { range: "7d" }),
+          receivablesSummary: (actor) => receivables.getSummary(actor),
+          debtors: (actor) => debtors.getDebtors(actor),
+          payablesSummary: (actor) => purchases.getPayablesSummary(actor),
+          lowStock: (actor, limit) => catalog.listStock(actor, { lowStockOnly: true, limit }),
+        },
+      }),
+    );
 }

@@ -8,6 +8,7 @@ import {
   type AssistantSpan,
   assistantInterpretationSchema,
   type BusinessPermission,
+  periodBusinessTopics,
 } from "@pisto/contracts";
 
 import { decimalToMinorUnits, lineSubtotal, positiveMinorUnits, withinRange } from "./amounts.ts";
@@ -493,7 +494,11 @@ export async function interpretSentence<Actor>(
     throw new AssistantProviderError("invalid_output", "The model output does not fit the schema");
   }
   const { extraction, unread } = read;
-  if (extraction.kind === "start_sale" || extraction.kind === "find_product") {
+  if (
+    extraction.kind === "start_sale" ||
+    extraction.kind === "find_product" ||
+    extraction.kind === "ask"
+  ) {
     const result = {
       text: request.text,
       source: request.source,
@@ -504,6 +509,20 @@ export async function interpretSentence<Actor>(
     if (!request.allowTools) return { ...result, unsupported: "not_a_record" };
     if (extraction.kind === "start_sale") {
       return { ...result, unsupported: null, tool: { name: "start_sale" } };
+    }
+    if (extraction.kind === "ask") {
+      const question = extraction.question;
+      if (!question) return { ...result, unsupported: "not_a_record" };
+      const overPeriod = (periodBusinessTopics as readonly string[]).includes(question.topic);
+      return {
+        ...result,
+        unsupported: null,
+        tool: {
+          name: "answer_question",
+          topic: question.topic,
+          period: overPeriod ? question.period : null,
+        },
+      };
     }
     const term = extraction.items.length === 1 ? extraction.items[0]?.name : undefined;
     const match = term ? findOccurrences(request.text, term)[0] : undefined;

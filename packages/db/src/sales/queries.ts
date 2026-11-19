@@ -1,5 +1,10 @@
 import type { SaleCorrection } from "@pisto/contracts";
-import { saleListQuerySchema } from "@pisto/contracts";
+import {
+  maximumTopProducts,
+  operatingReportQuerySchema,
+  saleListQuerySchema,
+  salesPeriodSummarySchema,
+} from "@pisto/contracts";
 import { and, desc, eq, getTableColumns, inArray, or, sql } from "drizzle-orm";
 
 import { authorizeBusinessAction } from "../business-access.ts";
@@ -13,7 +18,11 @@ import {
   occurrenceKeysetBefore,
   pageOccurrenceRows,
 } from "../pagination.ts";
+import { businessLocalDate } from "../receivables/records.ts";
+import { REPORT_TRANSACTION_CONFIG } from "../reports.ts";
+import { catalogProduct } from "../schema/catalog.ts";
 import { customer } from "../schema/receivables.ts";
+import { saleLine } from "../schema/sale-line.ts";
 import { sale, saleCorrection } from "../schema/sales.ts";
 import { readSaleDetails } from "./itemized.ts";
 import { toCorrection, toSale } from "./records.ts";
@@ -21,7 +30,7 @@ import type { SalesRepository } from "./types.ts";
 
 type SaleQueries = Pick<
   SalesRepository,
-  "getPreviousMonthSummary" | "getSale" | "getSaleFormOptions" | "listSales"
+  "getPeriodSummary" | "getPreviousMonthSummary" | "getSale" | "getSaleFormOptions" | "listSales"
 >;
 
 /** The current name of the customer a sale names, joined on the same business. */
@@ -204,6 +213,113 @@ export function createSaleQueries(db: Database): SaleQueries {
           queriedAt: access.queriedAt.toISOString(),
         };
       });
+    },
+
+    async getPeriodSummary(actor, rawRange) {
+      const range = parseInput(operatingReportQuerySchema, rawRange, "The sales period is invalid");
+      return db.transaction(async (tx) => {
+        const access = await authorizeBusinessAction(tx, actor, ["sales:summary:read"], "none");
+        // Local midnights are resolved by the zone's own rules, like the operating report.
+        const posted = sql`
+          select ${sale.id} as id, ${sale.grossMinorUnits} as gross, ${sale.occurredAt} as occurred_at
+          from ${sale}
+          where ${sale.businessId} = ${access.businessId}
+            and ${sale.status} = 'posted'
+            and ${sale.occurredAt} >= (${range.startLocalDate}::date::timestamp at time zone ${access.timeZone})
+            and ${sale.occurredAt} < ((${range.endLocalDate}::date + 1)::timestamp at time zone ${access.timeZone})
+        `;
+        type TotalsRow = {
+          average_minor_units: string | null;
+          business_local_date: string;
+          gross_minor_units: string;
+          itemized_sale_count: string;
+          sale_count: string;
+        };
+        const [totals] = await tx.execute<TotalsRow>(sql`
+          with posted as (${posted})
+          select
+            coalesce(sum(posted.gross), 0::numeric)::text as gross_minor_units,
+            count(posted.id)::text as sale_count,
+            case
+              when count(posted.id) = 0 then null
+              else floor(sum(posted.gross) / count(posted.id) + 0.5)::text
+            end as average_minor_units,
+            count(posted.id) filter (
+              where exists (
+                select 1 from ${saleLine}
+                where ${saleLine.businessId} = ${access.businessId}
+                  and ${saleLine.saleId} = posted.id
+              )
+            )::text as itemized_sale_count,
+            ${businessLocalDate(access.timeZone)} as business_local_date
+          from posted
+        `);
+        if (!totals) throw new Error("Sales period summary query returned no row");
+
+        type ProductRow = {
+          gross_minor_units: string;
+          name: string;
+          product_id: string;
+          quantity_minor_units: string | null;
+          quantity_precision: number;
+          unit_kind: string;
+        };
+        // A line keeps the precision it was sold at but not its unit, and an edited product can
+        // change both. Quantities are added only when every line shares one precision; the
+        // ranking is by money either way. The name is the one the latest sale charged.
+        const products = await tx.execute<ProductRow>(sql`
+          with posted as (${posted}),
+          lines as (
+            select
+              ${saleLine.productId} as product_id,
+              ${saleLine.quantityMinorUnits} as quantity,
+              ${saleLine.quantityPrecision} as precision,
+              ${saleLine.subtotalMinorUnits} as subtotal,
+              first_value(${saleLine.productName}) over (
+                partition by ${saleLine.productId}
+                order by posted.occurred_at desc, ${saleLine.saleId} desc
+              ) as name
+            from ${saleLine}
+            join posted on posted.id = ${saleLine.saleId}
+            where ${saleLine.businessId} = ${access.businessId}
+          )
+          select
+            lines.product_id::text as product_id,
+            lines.name as name,
+            ${catalogProduct.unitKind} as unit_kind,
+            max(lines.precision)::int as quantity_precision,
+            case
+              when min(lines.precision) = max(lines.precision) then sum(lines.quantity)::text
+            end as quantity_minor_units,
+            sum(lines.subtotal)::text as gross_minor_units
+          from lines
+          join ${catalogProduct}
+            on ${catalogProduct.businessId} = ${access.businessId}
+            and ${catalogProduct.id} = lines.product_id
+          group by lines.product_id, lines.name, ${catalogProduct.unitKind}
+          order by sum(lines.subtotal) desc, lower(lines.name), lines.product_id
+          limit ${maximumTopProducts}
+        `);
+
+        return salesPeriodSummarySchema.parse({
+          grossMinorUnits: totals.gross_minor_units,
+          saleCount: totals.sale_count,
+          averageMinorUnits: totals.average_minor_units,
+          itemizedSaleCount: totals.itemized_sale_count,
+          topProducts: products.map((row) => ({
+            productId: row.product_id,
+            name: row.name,
+            unitKind: row.unit_kind,
+            quantityPrecision: row.quantity_precision,
+            quantityMinorUnits: row.quantity_minor_units,
+            grossMinorUnits: row.gross_minor_units,
+          })),
+          businessLocalDate: totals.business_local_date,
+          currency: access.currency,
+          currencyMinorUnitDigits: access.currencyMinorUnitDigits,
+          queriedAt: access.queriedAt.toISOString(),
+        });
+      }, REPORT_TRANSACTION_CONFIG);
     },
   };
 }

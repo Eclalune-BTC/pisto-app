@@ -1,6 +1,7 @@
 import type {
   CreateItemizedSaleRequest,
   CreateSaleRequest,
+  OperatingReportQuery,
   PreviousMonthSummary,
   ReplaceSaleRequest,
   Sale,
@@ -10,6 +11,7 @@ import type {
   SaleList,
   SaleListQuery,
   SaleReview,
+  SalesPeriodSummary,
   VoidSaleRequest,
 } from "@pisto/contracts";
 
@@ -62,4 +64,6 @@ export interface SalesRepository {
   ): Promise<{ sale: Sale; details: SaleDetails | null }>;
   listSales(actor: ProductActor, query: SaleListQuery): Promise<SaleList>;
   getPreviousMonthSummary(actor: ProductActor): Promise<PreviousMonthSummary>;
+  /** Posted sales between two business-local dates, inclusive, with the products that sold most. */
+  getPeriodSummary(actor: ProductActor, range: OperatingReportQuery): Promise<SalesPeriodSummary>;
 }

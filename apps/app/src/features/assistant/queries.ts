@@ -1,3 +1,4 @@
+import type { BusinessPeriod, BusinessTopic } from "@pisto/contracts";
 import { queryOptions, skipToken, useQuery } from "@tanstack/react-query";
 
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
@@ -6,7 +7,28 @@ import { assistantApi } from "./api";
 
 export const assistantQueryKeys = {
   status: (businessId: string | undefined) => ["assistant", businessId, "status"] as const,
+  answer: (businessId: string | undefined, topic: BusinessTopic, period: BusinessPeriod | null) =>
+    ["assistant", businessId, "answer", topic, period] as const,
 } as const;
+
+/** One exact answer. It is read again on every mount, and a change notice refreshes it. */
+export function businessAnswerQueryOptions(
+  businessId: string | undefined,
+  question: { topic: BusinessTopic; period: BusinessPeriod | null },
+) {
+  const { topic, period } = question;
+  return queryOptions({
+    queryKey: assistantQueryKeys.answer(businessId, topic, period),
+    queryFn: businessId
+      ? ({ signal }) =>
+          assistantApi.answer(
+            { expectedBusinessId: businessId, topic, ...(period && { period }) },
+            signal,
+          )
+      : skipToken,
+    staleTime: 0,
+  });
+}
 
 function assistantStatusQueryOptions(businessId: string | undefined) {
   return queryOptions({

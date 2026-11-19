@@ -2,7 +2,7 @@
  * Versioned Spanish evaluation set for `assistant.extract`. Sentences use the demo business seed
  * (scripts/seed.ts), so names and prices resolve against real records. `expect` is a partial interpretation; a RegExp leaf matches a string.
  */
-export const evaluationSetVersion = "2026-11-18.2";
+export const evaluationSetVersion = "2026-11-19.1";
 
 export type Expectation = {
   [key: string]: Expectation | string | number | boolean | null | RegExp;
@@ -216,8 +216,85 @@ export const evaluationCases: EvaluationCase[] = [
     minSpans: 2,
   },
   {
-    id: "question-is-not-a-record",
+    id: "ask-sales-week",
     text: "¿Cuánto vendí esta semana?",
+    expect: {
+      draft: null,
+      tool: { name: "answer_question", topic: "sales", period: "this_week" },
+    },
+  },
+  {
+    id: "ask-sales-today",
+    text: "¿Cómo voy de ventas hoy?",
+    expect: {
+      draft: null,
+      tool: { name: "answer_question", topic: "sales", period: "today" },
+    },
+  },
+  {
+    id: "ask-expenses-month",
+    text: "¿Cuánto llevo gastado este mes?",
+    expect: {
+      draft: null,
+      tool: { name: "answer_question", topic: "expenses", period: "this_month" },
+    },
+  },
+  {
+    id: "ask-summary-week",
+    text: "¿Cómo le fue al negocio en los últimos siete días?",
+    expect: {
+      draft: null,
+      tool: { name: "answer_question", topic: "summary", period: "last_7_days" },
+    },
+  },
+  {
+    id: "ask-top-products",
+    text: "¿Cuál fue el producto que más se vendió el mes pasado?",
+    expect: {
+      draft: null,
+      tool: { name: "answer_question", topic: "top_products", period: "last_month" },
+    },
+  },
+  {
+    id: "ask-cash",
+    text: "¿Cuánta plata tengo ahorita?",
+    expect: {
+      draft: null,
+      tool: { name: "answer_question", topic: "cash", period: null },
+    },
+  },
+  {
+    id: "ask-receivables",
+    text: "¿Quiénes me quedaron debiendo?",
+    expect: {
+      draft: null,
+      tool: { name: "answer_question", topic: "receivables", period: null },
+    },
+  },
+  {
+    id: "ask-payables",
+    text: "¿Cuánto le debo a los proveedores?",
+    expect: {
+      draft: null,
+      tool: { name: "answer_question", topic: "payables", period: null },
+    },
+  },
+  {
+    id: "ask-low-stock",
+    text: "¿Qué producto se me está terminando?",
+    expect: {
+      draft: null,
+      tool: { name: "answer_question", topic: "low_stock", period: null },
+    },
+  },
+  {
+    id: "ask-unsupported-period",
+    text: "¿Cuánto vendí el año pasado?",
+    expect: { draft: null, unsupported: "not_a_record" },
+  },
+  {
+    id: "ask-advice",
+    text: "¿Me conviene subirle el precio al café?",
     expect: { draft: null, unsupported: "not_a_record" },
   },
   {

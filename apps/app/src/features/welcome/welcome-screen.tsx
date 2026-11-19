@@ -18,7 +18,7 @@ import { SectionHeading } from "./fragments";
 import { HeaderMenu } from "./header-menu";
 import { ModulePreviews } from "./module-previews";
 import { RolesAndTrust } from "./roles-section";
-import { SaleFilm } from "./sale-film";
+import { TourFilm } from "./tour-film";
 
 /** The one content width every band of the page shares. */
 const CONTAINER = "mx-auto w-full max-w-[1240px] px-5 sm:px-8";
@@ -233,7 +233,7 @@ export default function WelcomeScreen() {
           >
             <DictationExample key={play} showSource={play > 0} />
           </View>
-          {section("how", <SaleFilm />)}
+          {section("how", <TourFilm />)}
 
           {section(
             "modules",

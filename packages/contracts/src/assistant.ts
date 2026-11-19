@@ -1,14 +1,22 @@
 import { z } from "zod";
 
-import { expenseCategorySchema } from "./cash";
-import { productDetailResponseSchema } from "./catalog";
+import { cashAccountKindSchema, expenseCategorySchema } from "./cash";
+import { productDetailResponseSchema, productUnitKindSchema } from "./catalog";
+import { debtorsSchema } from "./debtors";
 import {
+  aggregateIntegerSchema,
   calendarLocalDateSchema,
+  currencyCodeSchema,
+  currencyMinorUnitDigitsSchema,
   localTimeSchema,
   minorUnitsSchema,
   positiveMinorUnitsSchema,
+  signedAggregateIntegerSchema,
+  timestampSchema,
   uuidSchema,
 } from "./primitives";
+import { payablesSummaryResponseSchema } from "./purchases";
+import { reportExpenseCategoryFactsSchema } from "./reports";
 
 /**
  * The assistant turns one dictated or typed sentence into a draft of a record the user then reviews
@@ -75,6 +83,216 @@ export const catalogTurnResponseSchema = z
 export type CatalogTurnRequest = z.infer<typeof catalogTurnRequestSchema>;
 export type CatalogTurnResponse = z.infer<typeof catalogTurnResponseSchema>;
 export type CatalogReply = z.infer<typeof catalogReplySchema>;
+
+/** What a member can ask about the business. Each topic is one exact, authorized server read. */
+export const businessTopicSchema = z.enum([
+  "sales",
+  "top_products",
+  "expenses",
+  "summary",
+  "cash",
+  "receivables",
+  "payables",
+  "low_stock",
+]);
+
+/** Calendar periods in the business time zone. A week starts on Monday. */
+export const businessPeriodSchema = z.enum([
+  "today",
+  "yesterday",
+  "this_week",
+  "last_week",
+  "this_month",
+  "last_month",
+  "last_7_days",
+  "last_30_days",
+]);
+
+/** Topics that add up a period. The others are positions as of the read. */
+export const periodBusinessTopics = [
+  "sales",
+  "top_products",
+  "expenses",
+  "summary",
+] as const satisfies readonly z.infer<typeof businessTopicSchema>[];
+
+export const maximumTopProducts = 5;
+export const maximumLowStockProducts = 8;
+
+export const businessAnswerQuerySchema = z
+  .object({
+    expectedBusinessId: z.string().trim().min(1).max(256),
+    topic: businessTopicSchema,
+    period: businessPeriodSchema.optional(),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      value.period === undefined ||
+      (periodBusinessTopics as readonly string[]).includes(value.topic),
+    { message: "A current position takes no period", path: ["period"] },
+  );
+
+const answerPeriodSchema = z
+  .object({
+    key: businessPeriodSchema,
+    startLocalDate: calendarLocalDateSchema,
+    endLocalDate: calendarLocalDateSchema,
+  })
+  .strict();
+
+const answerScope = {
+  businessLocalDate: calendarLocalDateSchema,
+  currency: currencyCodeSchema,
+  currencyMinorUnitDigits: currencyMinorUnitDigitsSchema,
+  queriedAt: timestampSchema,
+};
+
+/** Posted sales of a period. The average is rounded for display; gross and count stay exact. */
+export const salesPeriodSummarySchema = z
+  .object({
+    grossMinorUnits: aggregateIntegerSchema,
+    saleCount: aggregateIntegerSchema,
+    averageMinorUnits: minorUnitsSchema.nullable(),
+    /** Sales with product lines. A sale recorded by its total alone has no products to rank. */
+    itemizedSaleCount: aggregateIntegerSchema,
+    topProducts: z
+      .array(
+        z
+          .object({
+            productId: uuidSchema,
+            name: z.string().min(1).max(120),
+            unitKind: productUnitKindSchema,
+            quantityPrecision: z.number().int().min(0).max(3),
+            /** Null when the product's lines used more than one precision and cannot be added. */
+            quantityMinorUnits: aggregateIntegerSchema.nullable(),
+            grossMinorUnits: aggregateIntegerSchema,
+          })
+          .strict(),
+      )
+      .max(maximumTopProducts),
+    ...answerScope,
+  })
+  .strict();
+
+const payablesFacts = payablesSummaryResponseSchema.shape.data.shape;
+
+export const businessAnswerSchema = z.discriminatedUnion("topic", [
+  z
+    .object({
+      topic: z.literal("sales"),
+      period: answerPeriodSchema,
+      grossMinorUnits: aggregateIntegerSchema,
+      saleCount: aggregateIntegerSchema,
+      averageMinorUnits: minorUnitsSchema.nullable(),
+      ...answerScope,
+    })
+    .strict(),
+  z
+    .object({
+      topic: z.literal("top_products"),
+      period: answerPeriodSchema,
+      saleCount: aggregateIntegerSchema,
+      itemizedSaleCount: aggregateIntegerSchema,
+      products: salesPeriodSummarySchema.shape.topProducts,
+      ...answerScope,
+    })
+    .strict(),
+  z
+    .object({
+      topic: z.literal("expenses"),
+      period: answerPeriodSchema,
+      totalMinorUnits: aggregateIntegerSchema,
+      expenseCount: aggregateIntegerSchema,
+      categories: z.array(reportExpenseCategoryFactsSchema),
+      ...answerScope,
+    })
+    .strict(),
+  z
+    .object({
+      topic: z.literal("summary"),
+      period: answerPeriodSchema,
+      salesGrossMinorUnits: aggregateIntegerSchema,
+      saleCount: aggregateIntegerSchema,
+      expensesTotalMinorUnits: aggregateIntegerSchema,
+      expenseCount: aggregateIntegerSchema,
+      cashInflowMinorUnits: aggregateIntegerSchema,
+      cashOutflowMinorUnits: aggregateIntegerSchema,
+      ...answerScope,
+    })
+    .strict(),
+  z
+    .object({
+      topic: z.literal("cash"),
+      totalMinorUnits: signedAggregateIntegerSchema,
+      activeAccountCount: aggregateIntegerSchema,
+      kinds: z.array(
+        z
+          .object({
+            kind: cashAccountKindSchema,
+            accountCount: aggregateIntegerSchema,
+            balanceMinorUnits: signedAggregateIntegerSchema,
+          })
+          .strict(),
+      ),
+      ...answerScope,
+    })
+    .strict(),
+  z
+    .object({
+      topic: z.literal("receivables"),
+      outstandingMinorUnits: aggregateIntegerSchema,
+      overdueMinorUnits: aggregateIntegerSchema,
+      customerCount: aggregateIntegerSchema,
+      debtors: debtorsSchema.shape.items,
+      ...answerScope,
+    })
+    .strict(),
+  z
+    .object({
+      topic: z.literal("payables"),
+      outstandingMinorUnits: payablesFacts.outstandingMinorUnits,
+      dueSoonMinorUnits: payablesFacts.dueSoonMinorUnits,
+      overdueMinorUnits: payablesFacts.overdueMinorUnits,
+      openPurchaseCount: payablesFacts.openPurchaseCount,
+      nextDue: payablesFacts.nextDue,
+      ...answerScope,
+    })
+    .strict(),
+  z
+    .object({
+      topic: z.literal("low_stock"),
+      products: z
+        .array(
+          z
+            .object({
+              productId: uuidSchema,
+              name: z.string().min(1).max(120),
+              unitKind: productUnitKindSchema,
+              quantityPrecision: z.number().int().min(0).max(3),
+              onHandMinorUnits: aggregateIntegerSchema,
+              lowStockThresholdMinorUnits: minorUnitsSchema,
+            })
+            .strict(),
+        )
+        .max(maximumLowStockProducts),
+      /** True when more products are low than the ones listed. */
+      more: z.boolean(),
+      businessLocalDate: calendarLocalDateSchema,
+    })
+    .strict(),
+]);
+
+export const businessAnswerResponseSchema = z
+  .object({ data: z.object({ answer: businessAnswerSchema }).strict() })
+  .strict();
+
+export type BusinessTopic = z.infer<typeof businessTopicSchema>;
+export type BusinessPeriod = z.infer<typeof businessPeriodSchema>;
+export type BusinessAnswerQuery = z.infer<typeof businessAnswerQuerySchema>;
+export type BusinessAnswer = z.infer<typeof businessAnswerSchema>;
+export type BusinessAnswerResponse = z.infer<typeof businessAnswerResponseSchema>;
+export type SalesPeriodSummary = z.infer<typeof salesPeriodSummarySchema>;
 
 export const assistantInterpretRequestSchema = z
   .object({
@@ -250,6 +468,14 @@ export const assistantToolCallSchema = z.discriminatedUnion("name", [
     .object({
       name: z.literal("find_product"),
       query: z.string().trim().min(1).max(120).nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      name: z.literal("answer_question"),
+      topic: businessTopicSchema,
+      /** Null when the question names no period; the answer then states the one it used. */
+      period: businessPeriodSchema.nullable(),
     })
     .strict(),
 ]);

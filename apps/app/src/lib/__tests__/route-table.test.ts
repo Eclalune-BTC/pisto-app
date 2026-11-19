@@ -19,7 +19,6 @@ describe("route table", () => {
       "/dashboard",
       "/operate",
       "/operate/assistant/review",
-      "/operate/assistant/sales-summary",
       "/operate/cash",
       "/operate/cash/accounts/[accountId]",
       "/operate/cash/accounts/[accountId]/edit",

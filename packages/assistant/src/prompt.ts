@@ -1,7 +1,7 @@
 import { blankExtraction, type Extraction } from "./extraction.ts";
 
 /** Bump with every wording change; evaluations and logs record which prompt produced a result. */
-export const extractionPromptVersion = "extract-2026-11-18.2";
+export const extractionPromptVersion = "extract-2026-11-19.1";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -34,6 +34,7 @@ Fields; use null when the sentence does not say it:
 - category: (expense) utilities for luz, agua, teléfono, internet; rent; payroll; transport for flete, gasolina, pasajes; marketing; tax; inventory; other.
 - description: (sale, expense) a short concept in Spanish such as "Recibo de luz".
 - invoiceNumber: the invoice number if said.
+- question: null, unless a later instruction defines it.
 
 Money and quantities are decimal strings with a dot, without currency symbols or thousands separators. Convert Spanish number words: "cinco dólares" is "5", "sesenta y cuatro" is "64", "veinticinco con cincuenta" is "25.50", "una docena" is "12".
 
@@ -102,10 +103,15 @@ function wrapSentence(sentence: string): string {
   return `Sentence:\n<<<\n${neutral}\n>>>`;
 }
 
-const toolInstructions = `Two additional kinds are available for explicit requests about the current shop:
+const toolInstructions = `Three additional kinds are available for explicit requests about the current shop:
 - start_sale: the user wants help starting or entering a sale without giving transaction details. If the user supplies actual sale details, extract a sale instead.
 - find_product: they explicitly want to look up one product in the shop catalog by name or SKU, including its price or stock. Copy just the product name or SKU literally from the sentence into items[0].name. Leave items empty when there is no term. Do not answer with a price, stock, identifier or URL.
-Never open a tool for a negated request, an unsupported period, multiple intents or a request about someone else's business.`;
+- ask: the user asks about the shop's own figures instead of stating a record. Fill question and leave every other field empty. Never answer, estimate or calculate.
+  question.topic: "sales" (how much or how many times they sold), "top_products" (which products sell the most), "expenses" (how much they spent), "summary" (how the business did overall, what came in and went out, earnings or profit), "cash" (how much money they have now in the drawer or the bank), "receivables" (which customers owe them and how much), "payables" (what they owe suppliers, invoices still to pay), "low_stock" (which products are running out or need reordering).
+  question.period: "today", "yesterday", "this_week", "last_week", "this_month", "last_month", "last_7_days", "last_30_days", or null when the question names no period. It is always null for cash, receivables, payables and low_stock.
+  Use none instead for any other period (a named month, a year, a date, a range), for a question about one customer, one supplier or one sale, and for anything that is not this shop's figures (advice, forecasts, another business). A question about one named product's price or stock stays find_product.
+question is null for every kind except ask.
+Never open a tool for a negated request, multiple intents or a request about someone else's business.`;
 
 export function extractionMessages(sentence: string, allowTools = false): ChatMessage[] {
   return [
@@ -122,6 +128,22 @@ export function extractionMessages(sentence: string, allowTools = false): ChatMe
             kind: "find_product",
             items: [{ name: "café molido", quantity: null, unitPrice: null }],
           }),
+          ...example("¿Cuánto llevo vendido hoy?", {
+            ...blankExtraction,
+            kind: "ask",
+            question: { topic: "sales", period: "today" },
+          }),
+          ...example("¿Quiénes me deben?", {
+            ...blankExtraction,
+            kind: "ask",
+            question: { topic: "receivables", period: null },
+          }),
+          ...example("¿Cómo me fue la semana pasada?", {
+            ...blankExtraction,
+            kind: "ask",
+            question: { topic: "summary", period: "last_week" },
+          }),
+          ...example("¿Cuánto vendí en marzo?", blankExtraction),
         ]
       : []),
     { role: "user", content: wrapSentence(sentence) },

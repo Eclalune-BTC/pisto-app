@@ -1,4 +1,5 @@
 export { decimalToMinorUnits, lineSubtotal, positiveMinorUnits } from "./amounts.ts";
+export { answerBusinessQuestion, type BusinessFacts } from "./answers.ts";
 export {
   type CatalogIntent,
   type CatalogModel,
@@ -32,6 +33,7 @@ export {
 } from "./interpret.ts";
 export { matchName, type NameMatch } from "./matching.ts";
 export { type AssistantModelAlias, assistantModels } from "./models.ts";
+export { defaultAnswerPeriod, periodRange } from "./periods.ts";
 export { type ChatMessage, extractionMessages, extractionPromptVersion } from "./prompt.ts";
 export {
   type AssistantProvider,

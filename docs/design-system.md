@@ -167,16 +167,21 @@ example fixture. Activating “Ver el desglose” reveals the quoted words behin
 The headline, photograph and payment split each animate once. Reduced motion displays their
 final states immediately.
 
-The film in “Cómo funciona” shows a coffee sale entered and confirmed through Pisto on a disposable
-demo business. The 18-second, 720p H.264 file loads on demand on the web. Its three chapter
-controls seek to the product, payment and receipt. Native uses the corresponding bundled frames
-and the same descriptions. The editable footage contains only fictional shop records.
+“Cómo funciona” offers two silent films behind one tab list: each tab names the film and its
+length, a sentence under it says what the film shows, and the chapter list seeks the film. A
+chapter shows its line while it plays. Both are 16:9 H.264 files that load on demand with a poster
+and Spanish captions; native builds show one bundled frame per chapter.
 
-The same web section links to the 19-second Coco demonstration at `/media/coco-demo.mp4`.
-It shows a real price lookup, a follow-up typed in the running app, a quote and the editable sale.
-The last shot enlarges the quantity and total from a 390-pixel viewport. Spanish text carries
-the walkthrough without sound. To render it again, install the locked dependencies in
-`media/coco-demo` with Bun and run `bun run render` there. The renderer has its own lockfile.
+- **Recorrido con Coco** (1:06, 1080p, `/media/coco-demo.mp4`): the whole product on a disposable
+  demo business. Coco hears a dictated credit sale and drafts it, the member reviews and saves it,
+  Coco answers what was sold today and who owes, then sales, cash, expenses, stock, debts, reports,
+  roles and the phone layout. Every frame is a capture of the running app with the real models; the
+  composition only frames, cuts and captions them. Footage and composition live in
+  `media/coco-demo`; install its locked dependencies with Bun and run `bun run render` there.
+- **Una venta de café** (0:18, 720p): one sale from the product to its receipt, in three chapters.
+
+The films contain only fictional shop records. Chapter starts in `features/welcome/tours.ts` match
+a caption cue of each film, which a test checks.
 
 Four original market photographs pair the cash drawer, closing book, customer ledger and supplier
 delivery with the corresponding module. Visitors can swipe, use the previous and next buttons or

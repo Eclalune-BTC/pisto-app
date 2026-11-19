@@ -1,4 +1,9 @@
-import { assistantFieldSchema, expenseCategorySchema } from "@pisto/contracts";
+import {
+  assistantFieldSchema,
+  businessPeriodSchema,
+  businessTopicSchema,
+  expenseCategorySchema,
+} from "@pisto/contracts";
 import { z } from "zod";
 
 import { weekdays } from "./dates.ts";
@@ -17,7 +22,7 @@ const extractedKinds = [
   "several",
 ] as const;
 
-const withToolKinds = [...extractedKinds, "start_sale", "find_product"] as const;
+const withToolKinds = [...extractedKinds, "start_sale", "find_product", "ask"] as const;
 
 const settlements = ["paid", "partial_credit", "credit"] as const;
 const paymentMethods = ["cash", "transfer", "card"] as const;
@@ -103,6 +108,11 @@ function extractionSchemaReporting(unread: (field: UnreadField) => void) {
     category: expenseCategorySchema.nullable().catch(null),
     description: text(240).catch(null),
     invoiceNumber: text(40).catch(reporting("invoice", null)),
+    // A period outside the set is not "no period": the whole question is dropped and declined.
+    question: z
+      .object({ topic: businessTopicSchema, period: businessPeriodSchema.nullable() })
+      .nullable()
+      .catch(null),
   });
 }
 
@@ -135,6 +145,7 @@ export const blankExtraction: Extraction = {
   category: null,
   description: null,
   invoiceNumber: null,
+  question: null,
 };
 
 const nullable = (schema: Record<string, unknown>) => ({
@@ -199,6 +210,15 @@ export const extractionJsonSchema = {
     category: nullableEnum(expenseCategorySchema.options),
     description: nullable({ type: "string" }),
     invoiceNumber: nullable({ type: "string" }),
+    question: nullable({
+      type: "object",
+      properties: {
+        topic: { type: "string", enum: [...businessTopicSchema.options] },
+        period: nullableEnum(businessPeriodSchema.options),
+      },
+      required: ["topic", "period"],
+      additionalProperties: false,
+    }),
   },
   required: [
     "kind",
@@ -215,6 +235,7 @@ export const extractionJsonSchema = {
     "category",
     "description",
     "invoiceNumber",
+    "question",
   ],
   additionalProperties: false,
 } as const;

@@ -33,6 +33,25 @@ another request, a foreign-origin handshake was refused, and the seeded member a
 cash and reports (403). Production web exports are built with `--clear` so Metro cannot embed a
 cached local API origin.
 
+## Business questions and the public films (2026-11-19)
+
+- Model: evaluation set `2026-11-19.1` passed 31/31 with prompt `extract-2026-11-19.1` through
+  `wrangler dev` and the remote Workers AI binding (20 registration and tool cases, 11 question
+  cases, median 4.4 s).
+- Local Worker, Chrome, disposable database seeded with the demo story: a synthetic Spanish voice
+  dictated a credit sale to Rosa Ayala; Whisper returned the sentence, the draft showed $9.75,
+  $5.00 in cash and $4.75 owed, and the saved sale appeared in the day's movements. Coco then
+  answered “¿Cómo voy de ventas hoy?” ($27.80 in 6 sales) and “¿Quiénes me quedaron debiendo?”
+  (three customers, two overdue) with the figures of the home and of Por cobrar. The same run
+  produced the footage of the 1:06 film.
+- Public page, static export served with range requests, 1440 and 390 CSS pixels: both films are
+  offered with their length and summary, nothing loads before a request, arrow keys change the
+  film, Enter plays, the playing film takes the focus and Space pauses and resumes it, a chapter
+  seeks, choosing the other film stops the first, the page stays usable below, there is no
+  horizontal overflow and reduced motion shows the summary without animation. `wrangler dev`
+  serves assets without range requests, so seeking cannot be checked on it.
+- Not covered: a physical phone, a screen reader pass on the thread and real Salvadoran speakers.
+
 ## Browser evidence
 
 Rendered checks sampled 320, 390, 768, 1024 and 1440 CSS-pixel widths in light and dark themes

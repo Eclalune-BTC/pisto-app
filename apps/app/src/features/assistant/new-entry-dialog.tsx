@@ -1,7 +1,7 @@
 import type { AssistantToolCall, BusinessPermission } from "@pisto/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Keyboard, Mic, Square, TriangleAlert } from "lucide-react-native";
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, useWindowDimensions, View } from "react-native";
 
@@ -23,6 +23,7 @@ import { cn } from "@/lib/cn";
 import { businessesQueryOptions, getActiveBusiness } from "@/lib/queries/businesses";
 import { assistantApi } from "./api";
 import { matchBusinessQuestion, matchSaleTool, permitsTool } from "./business-questions";
+import { BusinessThread } from "./business-thread";
 import { Coco, type CocoActivity } from "./coco";
 import {
   type AssistantProblem,
@@ -289,6 +290,10 @@ function EntryFlow({
   /** Bumped when the user leaves the microphone, so a late permission grant cannot resume it. */
   const attempt = useRef(0);
 
+  const reading = useCallback(
+    (busy: boolean) => onActivity(busy ? "interpreting" : "idle"),
+    [onActivity],
+  );
   useEffect(() => {
     const kind = phase.kind;
     onActivity(
@@ -462,6 +467,24 @@ function EntryFlow({
       setNotice(null);
       setPhase({ kind: "text" });
     };
+    if (phase.kind === "saleTool" && phase.tool.name === "answer_question") {
+      return (
+        <BusinessThread
+          businessId={businessId}
+          canInterpret={canInterpret}
+          initial={{
+            question: phase.question ?? t("assistant.tools.questions"),
+            tool: phase.tool,
+          }}
+          key={JSON.stringify([businessId, phase.tool, phase.question])}
+          onBack={() => setPhase({ kind: "tools" })}
+          onBusy={reading}
+          onClose={onClose}
+          onTool={(tool, question) => setPhase({ kind: "saleTool", tool, question })}
+          permissions={permissions}
+        />
+      );
+    }
     if (phase.kind === "saleTool" && permitsTool(permissions, phase.tool)) {
       return (
         <SaleToolPanel
@@ -484,9 +507,8 @@ function EntryFlow({
       <AssistantTools
         permissions={permissions}
         canInterpret={canInterpret}
-        onTool={(tool) => setPhase({ kind: "saleTool", tool })}
+        onTool={(tool, question) => setPhase({ kind: "saleTool", tool, question })}
         onWrite={write}
-        onClose={onClose}
       />
     );
   }

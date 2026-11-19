@@ -11,8 +11,10 @@ import type { BillingRuntime } from "@pisto/billing";
 import {
   assistantInterpretResponseSchema,
   assistantScopeHeader,
+  businessAnswerResponseSchema,
   catalogTurnResponseSchema,
   type Product,
+  type SalesPeriodSummary,
 } from "@pisto/contracts";
 import {
   type AssistantDirectoryRepository,
@@ -20,6 +22,7 @@ import {
   type DatabaseHandle,
   type ProductActor,
   ProductError,
+  type SalesRepository,
 } from "@pisto/db";
 
 import { createApp } from "../src/app.ts";
@@ -86,6 +89,7 @@ function setup(
     allowed?: (key: string) => boolean;
     catalogModel?: CatalogModel;
     getProduct?: CatalogRepository["getProduct"];
+    getPeriodSummary?: SalesRepository["getPeriodSummary"];
   } = {},
 ) {
   const fake = createFakeAssistantProvider({
@@ -95,7 +99,8 @@ function setup(
   const consumed: string[] = [];
   const lookups: Array<{ actor: ProductActor; terms: unknown }> = [];
   const records: AssistantDirectoryRepository = {
-    authorize: options.authorize ?? (async () => ({ businessId: "business_test" })),
+    authorize:
+      options.authorize ?? (async () => ({ businessId: "business_test", localDate: "2026-11-04" })),
     async lookup(actor, terms) {
       lookups.push({ actor, terms });
       return {
@@ -192,7 +197,12 @@ function setup(
       purchases: unavailable("Purchases repository"),
       receivables: unavailable("Receivables repository"),
       reports: unavailable("Reports repository"),
-      sales: unavailable("Sales repository"),
+      sales: options.getPeriodSummary
+        ? {
+            ...unavailable<SalesRepository>("Sales repository"),
+            getPeriodSummary: options.getPeriodSummary,
+          }
+        : unavailable("Sales repository"),
     },
     consumeProductRequest: async () => ({ allowed: true, retryAfterSeconds: 60 }),
     realtime: new RealtimeHub(),
@@ -296,7 +306,7 @@ describe("catalog conversation", () => {
       authorize: async (_actor, permissions) => {
         if (permissions?.includes("sales:create"))
           throw new ProductError("FORBIDDEN", "Sale is not permitted");
-        return { businessId: "business_test" };
+        return { businessId: "business_test", localDate: "2026-11-04" };
       },
     });
     expect((await client.request("/v1/assistant/catalog-turns", json(request))).status).toBe(403);
@@ -307,6 +317,134 @@ describe("catalog conversation", () => {
     expect(
       (await (await client.request("/v1/assistant/status")).json()).data.catalogConversation,
     ).toBeUndefined();
+  });
+});
+
+describe("business answers", () => {
+  const summary: SalesPeriodSummary = {
+    grossMinorUnits: "9750",
+    saleCount: "3",
+    averageMinorUnits: "3250",
+    itemizedSaleCount: "2",
+    topProducts: [
+      {
+        productId: "10000000-0000-4000-8000-000000000001",
+        name: "Café molido 1 lb",
+        unitKind: "unit",
+        quantityPrecision: 0,
+        quantityMinorUnits: "6",
+        grossMinorUnits: "1950",
+      },
+    ],
+    businessLocalDate: "2026-11-04",
+    currency: "USD",
+    currencyMinorUnitDigits: 2,
+    queriedAt: "2026-11-04T15:00:00.000Z",
+  };
+  const path = (query: string) => `/v1/assistant/answers?expectedBusinessId=business_test&${query}`;
+
+  test("answers from the sales repository over the business week, with the model off", async () => {
+    const ranges: unknown[] = [];
+    const required: unknown[] = [];
+    const { client, calls, consumed } = setup({
+      enabled: false,
+      authorize: async (_actor, permissions) => {
+        required.push(permissions);
+        return { businessId: "business_test", localDate: "2026-11-04" };
+      },
+      getPeriodSummary: async (_actor, range) => {
+        ranges.push(range);
+        return summary;
+      },
+    });
+    const response = await client.request(path("topic=sales&period=this_week"));
+    expect(response.status).toBe(200);
+    expect(businessAnswerResponseSchema.parse(await response.json()).data.answer).toEqual({
+      topic: "sales",
+      period: { key: "this_week", startLocalDate: "2026-11-02", endLocalDate: "2026-11-04" },
+      grossMinorUnits: "9750",
+      saleCount: "3",
+      averageMinorUnits: "3250",
+      businessLocalDate: "2026-11-04",
+      currency: "USD",
+      currencyMinorUnitDigits: 2,
+      queriedAt: "2026-11-04T15:00:00.000Z",
+    });
+    expect(ranges).toEqual([{ startLocalDate: "2026-11-02", endLocalDate: "2026-11-04" }]);
+    expect(required).toEqual([["sales:summary:read"]]);
+    expect(calls.extract).toHaveLength(0);
+    expect(consumed).toHaveLength(0);
+  });
+
+  test("ranks products over the month in progress when the question names no period", async () => {
+    const ranges: unknown[] = [];
+    const { client } = setup({
+      getPeriodSummary: async (_actor, range) => {
+        ranges.push(range);
+        return summary;
+      },
+    });
+    const response = await client.request(path("topic=top_products"));
+    expect(response.status).toBe(200);
+    expect(businessAnswerResponseSchema.parse(await response.json()).data.answer).toMatchObject({
+      topic: "top_products",
+      period: { key: "this_month", startLocalDate: "2026-11-01", endLocalDate: "2026-11-04" },
+      saleCount: "3",
+      itemizedSaleCount: "2",
+      products: [{ name: "Café molido 1 lb", quantityMinorUnits: "6" }],
+    });
+    expect(ranges).toEqual([{ startLocalDate: "2026-11-01", endLocalDate: "2026-11-04" }]);
+  });
+
+  test("refuses a changed business and a denied role before any read", async () => {
+    let reads = 0;
+    const getPeriodSummary = async () => {
+      reads += 1;
+      return summary;
+    };
+    const changed = setup({ getPeriodSummary });
+    expect(
+      (
+        await changed.client.request(
+          "/v1/assistant/answers?expectedBusinessId=another_business&topic=sales",
+        )
+      ).status,
+    ).toBe(403);
+    const denied = setup({
+      getPeriodSummary,
+      authorize: async () => {
+        throw new ProductError("FORBIDDEN", "The business membership does not permit this action");
+      },
+    });
+    expect((await denied.client.request(path("topic=sales"))).status).toBe(403);
+    expect(reads).toBe(0);
+  });
+
+  test("rejects unknown topics, periods, extra keys and anonymous callers", async () => {
+    const { client } = setup({ getPeriodSummary: async () => summary });
+    for (const query of [
+      "topic=profit",
+      "topic=sales&period=2026",
+      "topic=sales&businessId=business_test",
+      "topic=sales&topic=cash",
+      "topic=cash&period=today",
+    ]) {
+      expect((await client.request(path(query))).status).toBe(400);
+    }
+    expect((await client.request("/v1/assistant/answers?topic=sales")).status).toBe(400);
+    const anonymous = setup({ authenticated: false });
+    expect((await anonymous.client.request(path("topic=sales"))).status).toBe(401);
+  });
+
+  test("a read failure is an error, never an empty answer", async () => {
+    const { client } = setup({
+      getPeriodSummary: async () => {
+        throw new Error("The database is unreachable");
+      },
+    });
+    const response = await client.request(path("topic=sales&period=today"));
+    expect(response.status).toBe(500);
+    expect((await response.json()).data).toBeUndefined();
   });
 });
 

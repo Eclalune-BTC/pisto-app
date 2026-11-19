@@ -8,7 +8,6 @@ export const OPERATE_ROOT = "/operate";
  */
 export const OPERATE_ROUTE_PARENTS = {
   "/operate/assistant/review": "/operate",
-  "/operate/assistant/sales-summary": "/operate",
   "/operate/cash": "/operate",
   "/operate/cash/accounts/[accountId]": "/operate/cash",
   "/operate/cash/accounts/[accountId]/edit": "/operate/cash/accounts/[accountId]",

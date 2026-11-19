@@ -12,7 +12,7 @@ test("keeps the same draft when the workspace changes width", async ({ page }) =
   );
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/operate");
-  const field = page.getByRole("textbox", { name: "Qué quiere registrar" });
+  const field = page.getByRole("textbox", { name: "Mensaje para Coco" });
   await field.fill("Vendí tres libras de café");
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(field).toHaveValue("Vendí tres libras de café");
@@ -138,8 +138,8 @@ test("keeps the catalog product and quantity through a quote, acceptance and edi
     await route.fulfill({ json: { data: { ...data, reply } } });
   });
   await page.goto("/operate");
-  await page.getByRole("textbox", { name: "Qué quiere registrar" }).fill(firstQuestion);
-  await page.getByRole("button", { name: "Revisar", exact: true }).click();
+  await page.getByRole("textbox", { name: "Mensaje para Coco" }).fill(firstQuestion);
+  await page.getByRole("button", { name: "Enviar", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "Café molido 1 lb" })).toBeVisible();
   const follow = dialog.getByRole("textbox", { name: "Preguntarle a Coco sobre este producto" });
@@ -221,21 +221,132 @@ test("answers financial questions with the business records when model extractio
     route.fulfill({ json: { data: { enabled: false, transcription: false } } }),
   );
   await page.goto("/operate");
-  await page
-    .getByRole("textbox", { name: "Pregunta sobre sus cuentas" })
-    .fill("¿Cuánto vendí el mes pasado?");
-  const answer = page.waitForResponse("**/v1/sales/summary/previous-month");
-  await page.getByRole("button", { name: "Consultar", exact: true }).click();
-  expect((await answer).status()).toBe(200);
-  await expect(page.getByRole("heading", { name: "¿Cuánto vendí el mes pasado?" })).toBeVisible();
-  await expect(page.getByText("Promedio por venta", { exact: true })).toBeVisible();
-  await page.goto("/operate");
-  await page.getByRole("button", { name: "Herramientas", exact: true }).click();
-  await page.getByRole("link", { name: "¿Quién me debe?" }).click();
+  const composer = page.getByRole("textbox", { name: "Mensaje para Coco" });
+  const send = page.getByRole("button", { name: "Enviar", exact: true });
+  const dialog = page.getByRole("dialog");
+  await composer.fill("¿Va a llover mañana?");
+  await send.click();
+  await expect(page.getByText("Con el asistente apagado puede", { exact: false })).toBeVisible();
+  await expect(dialog).toHaveCount(0);
+
+  await composer.fill("¿Cuánto vendí el mes pasado?");
+  const answered = page.waitForResponse((response) =>
+    response.url().includes("/v1/assistant/answers?"),
+  );
+  await send.click();
+  const first = await answered;
+  expect(first.status()).toBe(200);
+  expect(new URL(first.url()).searchParams.get("period")).toBe("last_month");
+  await expect(dialog.getByText("¿Cuánto vendí el mes pasado?", { exact: true })).toBeVisible();
+  await expect(
+    dialog.getByText(/^El mes pasado vendió \$[\d,]+\.\d{2} en \d+ ventas\.$/),
+  ).toBeVisible();
+
+  // The period control reads the same question again without a model.
+  await dialog.getByRole("radio", { name: "Período de la respuesta: Este mes" }).click();
+  await expect(
+    dialog.getByText(/^(Este mes vendió \$|No hay ventas registradas este mes\.)/),
+  ).toBeVisible();
+
+  const follow = dialog.getByRole("textbox", { name: "Pregunta para Coco" });
+  await follow.fill("¿Quién me debe?");
+  await follow.press("Enter");
+  await expect(
+    dialog.getByText(/^(Le deben \$|Un cliente le debe \$|Nadie le debe en este momento\.)/),
+  ).toBeVisible();
+  await dialog.getByRole("link", { name: "Abrir Por cobrar" }).click();
   await expect(page).toHaveURL(/\/operate\/receivables$/);
+  await expect(dialog).toHaveCount(0);
+
   await page.goto("/operate");
   await page.getByRole("button", { name: "Herramientas", exact: true }).click();
-  await page.getByRole("link", { name: "¿Qué facturas debo?" }).click();
+  await dialog.getByRole("button", { name: "¿Qué facturas debo?" }).click();
+  await expect(
+    dialog.getByText(/^(Debe \$[\d,]+\.\d{2} de |No le debe a ningún proveedor\.)/),
+  ).toBeVisible();
+  await dialog.getByRole("link", { name: "Abrir Por pagar" }).click();
   await expect(page).toHaveURL(/\/operate\/payables\?payable=open$/);
   expect(modelCalls).toBe(0);
+});
+
+test("answers a question the model classified and declines one it cannot answer", async ({
+  page,
+}) => {
+  const interpretation = (text: string, extra: object) => ({
+    data: {
+      interpretation: { text, source: "text", spans: [], notices: [], draft: null, ...extra },
+    },
+  });
+  await page.route("**/v1/assistant/status*", (route) =>
+    route.fulfill({ json: { data: { enabled: true, transcription: false } } }),
+  );
+  await page.route("**/v1/assistant/interpretations", (route) => {
+    const { text } = route.request().postDataJSON();
+    if (text === "¿Qué tal estuvo el negocio estos días?") {
+      return route.fulfill({
+        json: interpretation(text, {
+          unsupported: null,
+          tool: { name: "answer_question", topic: "summary", period: "last_7_days" },
+        }),
+      });
+    }
+    return route.fulfill({ json: interpretation(text, { unsupported: "not_a_record" }) });
+  });
+  await page.goto("/operate");
+  await page
+    .getByRole("textbox", { name: "Mensaje para Coco" })
+    .fill("¿Qué tal estuvo el negocio estos días?");
+  const answered = page.waitForResponse((response) =>
+    response.url().includes("/v1/assistant/answers?"),
+  );
+  await page.getByRole("button", { name: "Enviar", exact: true }).click();
+  const response = await answered;
+  expect(response.status()).toBe(200);
+  const request = new URL(response.url()).searchParams;
+  expect([request.get("topic"), request.get("period")]).toEqual(["summary", "last_7_days"]);
+  const { answer } = (await response.json()).data;
+  expect(answer.period.key).toBe("last_7_days");
+
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByText(/^(En los últimos 7 días vendió \$|No hay ventas ni gastos registrados)/),
+  ).toBeVisible();
+  if (answer.saleCount !== "0" || answer.expenseCount !== "0") {
+    await expect(dialog.getByText("no es la ganancia", { exact: false })).toBeVisible();
+  }
+  await expect(
+    dialog.getByRole("radio", { name: "Período de la respuesta: 7 días" }),
+  ).toBeChecked();
+
+  const follow = dialog.getByRole("textbox", { name: "Pregunta para Coco" });
+  await follow.fill("¿Me conviene subir los precios?");
+  await follow.press("Enter");
+  await expect(dialog.getByText("Todavía no sé responder eso.", { exact: false })).toBeVisible();
+  await expect(follow).toBeFocused();
+
+  // A failed read is an error with a retry, never an empty answer.
+  await page.route("**/v1/assistant/answers*", (route) =>
+    route.fulfill({
+      status: 500,
+      json: { error: { code: "INTERNAL_ERROR", message: "Unexpected", requestId: "e2e-answer" } },
+    }),
+  );
+  await dialog.getByRole("button", { name: "¿Cuánto tengo en caja?" }).click();
+  await expect(dialog.getByText("No pudimos leer sus registros.", { exact: false })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(dialog.getByText(/^Tiene \$/)).toHaveCount(0);
+  await page.unroute("**/v1/assistant/answers*");
+  await dialog.getByRole("button", { name: "Volver a intentar" }).click();
+  await expect(dialog.getByText(/^(Tiene \$|Todavía no tiene cuentas)/)).toBeVisible();
+
+  // Without a connection the question waits with a way to ask again.
+  await page.context().setOffline(true);
+  await dialog.getByRole("button", { name: "¿Quién me debe?" }).click();
+  await expect(dialog.getByText("Sin conexión.", { exact: false })).toBeVisible();
+  // The paused read resumes by itself once the connection returns.
+  await page.context().setOffline(false);
+  await expect(
+    dialog.getByText(/^(Le deben \$|Un cliente le debe \$|Nadie le debe en este momento\.)/),
+  ).toBeVisible({ timeout: 20_000 });
 });

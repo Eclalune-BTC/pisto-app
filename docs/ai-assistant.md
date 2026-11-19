@@ -24,7 +24,8 @@ Without an invoice reference the earliest due open purchase is suggested. The re
 change the purchase before confirming. When extraction identifies a partially paid purchase,
 the app explains how to record the credit purchase and its payment separately. Evaluation set
 `2026-11-18.1` adds both a missing supplier invoice and a mixed purchase payment to the original
-16 Spanish cases. Set `2026-11-18.2` adds a guided sale, a product price and a declined action.
+16 Spanish cases. Set `2026-11-18.2` adds a guided sale, a product price and a declined action. Set
+`2026-11-19.1` adds nine business questions, an unsupported period and a request for advice.
 
 ## Guided sale and catalog tools
 
@@ -46,18 +47,33 @@ the chosen product in a draft, cancellation, and an explicitly confirmed sale in
 business. The UI uses the existing Expo controls for tool selection, review and explicit confirmation,
 following the interaction pattern in [Vercel AI Elements](https://elements.ai-sdk.dev/components/tool).
 
-## Read-only questions from the composer
+## Product follow-ups
 
 Product-specific follow-ups use the selected catalog record and an ephemeral quote context. DeepSeek classifies the follow-up. Pisto grounds the quantity, rechecks the current business and computes the amount from the freshly read catalog. Asking for a sale opens a reviewed, editable itemized sale. See [ADR 0022](adrs/0022-contextual-catalog-questions.md).
 
-The assistant recognizes complete Spanish questions about the previous calendar month's sales,
-who owes the business money, and unpaid supplier invoices. Text and confirmed voice share the
-same recognition rules. The app checks the active membership and the destination's permission.
-The sales answer uses the server's existing previous-month query for gross sales, count,
-average, currency and period. It caches the result only when its authorized business matches the
-requested business. The receivables screen includes overdue balances and payables
-opens with its outstanding-balance filter. The composer also offers these questions when model
-extraction is disabled. All amounts come from the authenticated product APIs.
+## Business questions
+
+A member asks about the business by text or confirmed dictation and reads the answer in Coco's
+dialog. [ADR 0023](adrs/0023-business-questions-from-exact-reads.md) owns the decision.
+
+- **Topics:** sales, best-selling products, expenses, a period summary, money available,
+  receivables, payables and low stock. **Periods:** today, yesterday, this or last week (Monday
+  first), this or last month and the last 7 or 30 days, in the business time zone. Without a stated
+  period the answer covers the month in progress and says so.
+- **Classification:** the extraction prompt returns the kind `ask` with a topic and a period from
+  those closed sets; the server answers with the tool call `answer_question`. Complete known
+  phrasings are matched in the app without a model call and work with the assistant off.
+- **Read:** `GET /v1/assistant/answers` authorizes `assistant:use` plus the topic's permission
+  (`businessTopicPermissions`) and composes the answer from the repositories behind the screens.
+  Sales and the product ranking use `SalesRepository.getPeriodSummary` under `sales:summary:read`.
+  The route calls no model and spends the product read budget.
+- **Wording:** the app words the exact values. An empty period is a sentence, a failed read an
+  error with a retry, a missing permission a plain refusal. The summary never calls sales minus
+  expenses a profit, and a ranking says how many sales carried no product lines.
+- **Thread:** up to four exchanges kept in memory, a period control on the latest answer, a link to
+  the screen that owns the figures and three suggested questions. Nothing is persisted or written.
+- **Declined:** another period (a named month, a year, a date range), one customer or supplier,
+  advice and forecasts. Coco lists what it can answer.
 
 ## Decision summary
 
@@ -304,15 +320,15 @@ account setting.
 | Product brief and target architecture | Approved and documented |
 | AI SDK | Not installed; the registration slice uses a typed Workers AI adapter (ADR 0021) |
 | Provider | Workers AI: `AI` binding in the Worker, REST credentials for the local Bun API, `ASSISTANT_ENABLED` kill switch |
-| Registration routes, package, prompt, UI | Implemented: `/v1/assistant/status`, `/interpretations`, `/transcriptions`; `packages/assistant`; prompt `extract-2026-11-18.2`; Coco, its tool menu, dictation, home composer and review route |
-| Follow-up conversation and streaming | Scoped product conversation with price, stock, quantity quotes and reviewed sale preparation. Other registration and report requests are single-turn. |
+| Registration routes, package, prompt, UI | Implemented: `/v1/assistant/status`, `/interpretations`, `/transcriptions` and `/answers`; `packages/assistant`; prompt `extract-2026-11-19.1`; Coco, its tool menu, dictation, home composer, question thread and review route |
+| Follow-up conversation and streaming | Scoped product conversation with price, stock, quantity quotes and reviewed sale preparation, and a question thread of up to four exact answers. Each turn is classified on its own; no streaming. |
 | Sales, catalog, inventory, expense, cash, customer, and receivable product data | Implemented; source synchronized. Validation and remaining platform/release limits are in [release evidence](release-evidence.md) |
-| Operating reports the assistant would read | Implemented PostgreSQL repository, `GET /v1/reports/operating`, and `/operate/reports`; no assistant tool yet |
+| Business reads behind the answers | The operating report, money trend, receivables summary and debtors, payables summary, stock list and the ranged sales summary; `answer_question` selects one by topic |
 | Sale and catalog tools | `start_sale` opens the sale form, `find_product` queries the authorized catalog. Only the existing product forms confirm mutations. |
 | Voice recording or transcription | Web push-to-talk to 16 kHz WAV and batch Whisper transcription; native builds are text-only |
 | Conversation persistence or long-term memory | Not implemented |
 | RAG, embeddings, pgvector, Neo4j, or GraphRAG | Intentionally not selected |
-| Provider sandbox/device/deployment evidence | 21/21 on Spanish set `2026-11-18.2` through the remote Workers AI binding; web recording was exercised in Chrome with a synthetic Spanish voice. Physical-device and real-speaker evidence remain open. |
+| Provider sandbox/device/deployment evidence | 31/31 on Spanish set `2026-11-19.1` (20 registration and tool cases, 11 question cases) with prompt `extract-2026-11-19.1` through the remote Workers AI binding, median 4.4 s per sentence; web recording was exercised in Chrome with a synthetic Spanish voice. Physical-device and real-speaker evidence remain open. |
 
 ## Primary sources
 
