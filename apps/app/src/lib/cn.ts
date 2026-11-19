@@ -19,6 +19,7 @@ export const TEXT_ROLES = [
   "display",
   "display-lg",
   "display-xl",
+  "display-xxl",
 ] as const;
 
 const merge = extendTailwindMerge({ extend: { theme: { text: [...TEXT_ROLES] } } });

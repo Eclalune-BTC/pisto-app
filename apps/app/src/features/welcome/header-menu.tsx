@@ -1,6 +1,8 @@
 import { useRouter } from "expo-router";
 import { Menu } from "lucide-react-native";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { Platform } from "react-native";
 import { useUniwind } from "uniwind";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +29,7 @@ export function HeaderMenu({
   const router = useRouter();
   const { theme } = useUniwind();
   const appearance = useAppearance();
+  const chosenSection = useRef<(() => void) | null>(null);
   const nextTheme = theme === "dark" ? "light" : "dark";
   return (
     <DropdownMenu>
@@ -35,9 +38,26 @@ export function HeaderMenu({
           <Icon as={Menu} size={19} strokeWidth={1.75} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56" side="bottom" sideOffset={6}>
+      <DropdownMenuContent
+        align="end"
+        className="w-56"
+        onCloseAutoFocus={(event) => {
+          if (!chosenSection.current) return;
+          event.preventDefault();
+          chosenSection.current();
+          chosenSection.current = null;
+        }}
+        side="bottom"
+        sideOffset={6}
+      >
         {sections.map((section) => (
-          <DropdownMenuItem key={section.label} onPress={section.onPress}>
+          <DropdownMenuItem
+            key={section.label}
+            onPress={() => {
+              if (Platform.OS === "web") chosenSection.current = section.onPress;
+              else section.onPress();
+            }}
+          >
             <Text>{section.label}</Text>
           </DropdownMenuItem>
         ))}

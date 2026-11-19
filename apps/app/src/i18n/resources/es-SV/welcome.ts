@@ -1,18 +1,19 @@
 export const welcome = {
   signIn: "Iniciar sesión",
   createAccount: "Crear cuenta",
-  pageTitle: "Pisto · Las cuentas de su negocio, sin cuaderno",
-  title: "Las cuentas de su negocio, sin cuaderno.",
+  pageTitle: "Pisto · Ventas, caja y cuentas por cobrar",
+  title: "De su voz\na sus cuentas.",
   description:
-    "Ventas, gastos, caja y cobros en un solo lugar. Dígalo o escríbalo y Pisto deja el registro listo para revisar.",
+    "Escriba la venta o díctela en la web. Pisto separa el efectivo de lo que quedó fiado y le deja el borrador para revisar.",
+  howLink: "Ver cómo funciona",
   nav: {
     label: "Secciones de esta página",
     menu: "Menú",
-    modules: "Módulos",
+    modules: "El producto",
     roles: "Roles y permisos",
   },
   preview: {
-    label: "Ejemplo de la pantalla Hoy de Pisto con un negocio ficticio y cifras inventadas",
+    label: "Ejemplo del dinero disponible en Abarrotes La Ceiba",
     phoneLabel: "Ejemplo de la pantalla Hoy de Pisto en un teléfono",
     example: "Negocio y cifras de ejemplo",
   },
@@ -33,8 +34,13 @@ export const welcome = {
     },
   },
   example: {
-    label: "Ejemplo de una venta dictada",
-    youSaid: "Usted dijo",
+    label: "Venta de ejemplo",
+    views: { sentence: "Frase", draft: "Borrador" },
+    play: "Ver el desglose",
+    product: "Café molido",
+    line: "{{count}} lb × {{price}}",
+    total: "Total de la venta",
+    cash: "En efectivo",
     said: "Le vendí a don Carlos tres libras de café, me dio cinco dólares y el resto me lo quedó debiendo.",
     fragments: {
       kind: "vendí",
@@ -43,71 +49,70 @@ export const welcome = {
       received: "cinco dólares",
       credit: "el resto me lo quedó debiendo",
     },
-    reviewTitle: "Venta lista para revisar",
     unsaved: "Sin guardar",
-    rows: {
-      kind: { label: "Tipo", value: "Venta" },
-      customer: { label: "Cliente", value: "Carlos Rivas" },
-      // No-break spaces keep the quantity and the price together when the value wraps.
-      product: { label: "Producto", value: "Café molido 1 lb × 3 · $9.75" },
-      received: { label: "Recibido", value: "$5.00 en efectivo" },
-      credit: { label: "Queda debiendo", value: "$4.75" },
+    fields: {
+      kind: "Tipo",
+      customer: "Cliente",
+      product: "Producto",
+      received: "Pago",
+      credit: "Saldo",
     },
   },
   how: {
     title: "Cómo funciona",
-    description:
-      "Una venta, una compra o un gasto se registran con una sola frase, dicha o escrita.",
     steps: {
       say: {
-        title: "Dígalo o escríbalo",
-        description: "Cuente qué pasó, con quién y cuánto. Si prefiere, escriba la frase.",
-        figure: "Ejemplo: Pisto escucha la venta que usted dicta",
+        title: "Cuente qué pasó",
+        description:
+          "Escriba la venta como se la contaría a otra persona. En la web también puede dictarla.",
       },
       review: {
-        title: "Revise lo que Pisto entendió",
-        description: "Cada dato muestra, con un número, de qué parte de su frase salió.",
-        figure: "Ejemplo: la venta dictada, lista para revisar",
+        title: "Revise el borrador",
+        description:
+          "Compruebe el cliente, los productos y el pago. Puede corregir los datos antes de guardar.",
       },
       save: {
-        title: "Guárdelo y véalo al instante",
-        description: "La venta aparece en Movimientos y la caja y lo que le deben se actualizan.",
-        figure: "Ejemplo: la venta guardada y los saldos que cambió",
+        title: "Confirme la venta",
+        description:
+          "El efectivo entra en caja y el saldo pendiente queda en la cuenta del cliente.",
       },
     },
   },
   modules: {
-    title: "Lo que lleva Pisto",
-    description:
-      "Movimientos, reportes, cobros y pagos con cifras exactas. Pisto también lleva productos, inventario, clientes, proveedores y gastos.",
+    title: "Las cuentas de cada día.",
+    description: "Explore las cuentas de Abarrotes La Ceiba con datos de ejemplo.",
     items: {
       movements: {
-        title: "Movimientos",
+        tab: "Movimientos",
+        title: "¿Qué pasó en caja?",
         description:
           "Todo el dinero que entra y sale, día por día, con la hora y cómo se registró.",
         figure: "Ejemplo de los movimientos de un día",
       },
       receivables: {
-        title: "Cuentas por cobrar",
+        tab: "Por cobrar",
+        title: "¿Quién se atrasó en pagar?",
         description: "Cuánto le deben, cuánto está vencido y desde hace cuánto.",
         figure: "Ejemplo del resumen de las cuentas por cobrar y su antigüedad",
       },
       payables: {
-        title: "Cuentas por pagar",
+        tab: "Por pagar",
+        title: "¿Qué factura vence primero?",
         description: "Lo que debe a sus proveedores, factura por factura, y cuándo vence.",
         figure: "Ejemplo de las cuentas por pagar por factura",
       },
       reports: {
-        title: "Reportes",
+        tab: "Reportes",
+        title: "¿Cómo cerró el mes?",
         description: "Cuánto entró y salió cada mes, con las cifras detrás de cada barra.",
         figure: "Ejemplo del flujo de caja de seis meses",
       },
     },
   },
   roles: {
-    title: "Usted decide qué se guarda y quién lo ve",
+    title: "Quién puede ver las cuentas.",
     description:
-      "Cada persona entra con su propio usuario y un rol: propietario, encargado o vendedor. Pisto revisa ese rol antes de mostrar o guardar cualquier dato.",
+      "Cada persona entra con su usuario. Su rol define qué puede consultar y registrar.",
     trust: {
       confirmed: {
         title: "Usted confirma cada registro",
@@ -127,8 +132,7 @@ export const welcome = {
     },
   },
   cta: {
-    title: "Lleve sus cuentas desde hoy.",
-    description: "Cree su cuenta, registre su negocio y anote su primera venta.",
+    title: "Anote su primera venta.",
   },
   footer: {
     rights: "© {{year}} Pisto",

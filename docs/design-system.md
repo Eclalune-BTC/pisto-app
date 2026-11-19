@@ -123,6 +123,7 @@ Tailwind's `xs` 12, `sm` 14, `base` 16, `lg` 18 and `xl` 20, the theme declares:
 | `text-figure`, `-lg`, `-xl` | 24 / 32, 28 / 36, 44 / 50 | money figures |
 | `text-headline` | 36 / 42 | public section headings |
 | `text-display-sm`, `text-display`, `text-display-lg` | 34 / 38, 46 / 50, 60 / 64 | public hero and closing |
+| `text-display-xl`, `text-display-xxl` | 72 / 76, 86 / 80 | large public headings |
 
 Each role carries its line height and tracking. `lib/cn.ts` declares the names to tailwind-merge,
 which would otherwise read `text-dense` as a colour and drop the colour beside it; a new role is
@@ -157,18 +158,19 @@ states remain visible; an uncertain outcome is never reported as a success toast
 wordmark; the icon and favicon are the same tile. `brand:generate` renders icon, favicon and
 splash assets. Assets follow the no-blue rule.
 
-The public page uses the same components and tokens as the application. It shares one 1240 px
-container; sections open with a hairline and 96–128 px of air. The page stays on the neutral
-surface from top to bottom: no coloured bands. Green and lime reach it only through the product
-drawn inside it. It opens left-aligned with the headline at the largest type role
-(`display-xl` from 1280 px), one supporting line, one button and a text link to the steps.
-Product pictures stand on one grey stage (`bg-muted`, hairline, 12 px radius): the "Hoy" home in
-the app's own frame and, from 1280 px, the same home at phone width over its corner, both cropped
-by the stage instead of shrunk; phones show the phone picture alone. The steps are tabs whose
-figure sits on the same stage; module fragments sit in a hairline grid without cards of their
-own. Section openers that carry a sentence use `Statement`: the claim in ink and its
-continuation in grey at the same size. The page ends with a statement and one button. Product captures show real empty forms only; never insert fictional records into
-the owner's database for a capture. Visual reviews use the disposable `pisto_ui_review` database.
+The public page pairs Hanken with an original market photograph. The image brief is a Salvadoran
+shopkeeper handing over a kraft bag of ground coffee beside an olive scale, in warm daylight.
+The opening uses the existing forest and lime brand tokens. The adjacent ledger shows the same
+sale as a sentence or a reviewed draft. Its three figures and proportional bar share the
+example fixture. Activating “Ver el desglose” reveals the quoted words behind cash and credit.
+The headline, photograph and payment split each animate once. Reduced motion displays their
+final states immediately.
+
+Three visible rows explain entry, review and confirmation beside an example of the home balance.
+Visitors can select Movimientos, Reportes, Por cobrar or Por pagar to inspect a single legible
+module at a time. The role matrix follows the product examples and shares its jobs with Settings.
+Product captures show real empty forms only. Use the disposable `pisto_ui_review` database for
+visual reviews and keep fictional records out of the owner's database.
 
 ## Validation and upgrade costs
 

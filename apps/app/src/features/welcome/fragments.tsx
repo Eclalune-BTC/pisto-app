@@ -17,6 +17,7 @@ import { currentLocalDateTime } from "@/lib/money";
 import {
   EXAMPLE_CURRENCY,
   EXAMPLE_DIGITS,
+  EXAMPLE_SALE,
   EXAMPLE_TIME_ZONE,
   type ExampleBalance,
   type ExampleMovement,
@@ -40,42 +41,22 @@ export function useExample() {
 }
 
 /** A page section's H2 and the one sentence under it. */
-export function SectionHeading({ description, title }: { description: string; title: string }) {
+export function SectionHeading({
+  description,
+  id,
+  title,
+}: {
+  description: string;
+  id: string;
+  title: string;
+}) {
   return (
     <View className="max-w-[640px] gap-4">
-      <Heading level={2} size="marketing">
+      <Heading className="web:scroll-mt-5" level={2} nativeID={id} size="marketing" tabIndex={-1}>
         {title}
       </Heading>
       <Text className="text-lg text-muted-foreground web:text-pretty">{description}</Text>
     </View>
-  );
-}
-
-const STATEMENT_ROLES = {
-  marketing: "text-heading sm:text-headline",
-  display: "text-display-sm sm:text-display lg:text-display-lg",
-} as const;
-
-/**
- * A heading that runs the full width of its band: the claim in ink and, in the same size, the
- * sentence that completes it in grey. It replaces a title with a small paragraph under it.
- */
-export function Statement({
-  continuation,
-  size = "marketing",
-  title,
-}: {
-  continuation: string;
-  size?: keyof typeof STATEMENT_ROLES;
-  title: string;
-}) {
-  return (
-    <Heading className="max-w-[940px] font-ui" level={2} size={size}>
-      {/[.!?:]$/.test(title) ? title : `${title}.`}{" "}
-      <Text className={cn("font-ui text-muted-foreground", STATEMENT_ROLES[size])}>
-        {continuation}
-      </Text>
-    </Heading>
   );
 }
 
@@ -140,7 +121,10 @@ function useMovementCopy() {
       case "dictatedSale":
         return {
           title: t("movements.titles.saleTo", { name: person("carlos") }),
-          detail: t("movements.facts.paidOf", { paid: money("500"), total: money("975") }),
+          detail: t("movements.facts.paidOf", {
+            paid: money(EXAMPLE_SALE.received),
+            total: money(EXAMPLE_SALE.total),
+          }),
         };
       case "rosaPayment":
         return {

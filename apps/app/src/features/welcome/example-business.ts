@@ -10,6 +10,19 @@ export const EXAMPLE_TIME_ZONE = "America/El_Salvador";
 export const EXAMPLE_CURRENCY = "USD";
 export const EXAMPLE_DIGITS = 2;
 
+const coffeeQuantity = 3;
+const coffeePrice = 325n;
+const coffeeReceived = 500n;
+const coffeeTotal = BigInt(coffeeQuantity) * coffeePrice;
+
+export const EXAMPLE_SALE = {
+  quantity: coffeeQuantity,
+  unitPrice: coffeePrice.toString(),
+  total: coffeeTotal.toString(),
+  received: coffeeReceived.toString(),
+  outstanding: (coffeeTotal - coffeeReceived).toString(),
+};
+
 /** The calendar date `offset` days away from a business-local `today` (YYYY-MM-DD). */
 export function shiftLocalDate(today: string, offset: number): string {
   const [year, month, day] = today.split("-").map(Number);
@@ -112,7 +125,13 @@ export type ExampleMovement = {
 
 /** Today's movements, newest first; the dictated sale is the one "Cómo funciona" saves. */
 export const EXAMPLE_MOVEMENTS: readonly ExampleMovement[] = [
-  { key: "dictatedSale", kind: "sale", source: "voice", time: "10:12", amountMinorUnits: "500" },
+  {
+    key: "dictatedSale",
+    kind: "sale",
+    source: "voice",
+    time: "10:12",
+    amountMinorUnits: EXAMPLE_SALE.received,
+  },
   {
     key: "rosaPayment",
     kind: "receivable_payment",

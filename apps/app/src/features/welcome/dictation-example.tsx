@@ -1,11 +1,13 @@
 import type { AssistantSpan } from "@pisto/contracts";
-import { Mic } from "lucide-react-native";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { Icon } from "@/components/ui/icon";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
 import { TranscriptHighlight, TranscriptMarker } from "@/components/ui/transcript-highlight";
-import { cn } from "@/lib/cn";
+import { MoneyFigure } from "@/features/operate/money-figure";
+import { EXAMPLE_CURRENCY, EXAMPLE_DIGITS, EXAMPLE_SALE } from "./example-business";
+import { useExample } from "./fragments";
 
 const FIELDS = [
   { key: "kind", field: "kind" },
@@ -27,83 +29,133 @@ export function exampleSpans(text: string, fragments: readonly string[]): Assist
   });
 }
 
-/**
- * A static illustration of the dictation flow built from the real transcript component: the
- * sentence a person says and the sale it becomes. It is labeled as an example and saves nothing.
- */
-export function DictationExample({
-  label,
-  tone,
-}: {
-  /** What the figure shows where it sits; defaults to the plain example label. */
-  label?: string;
-  tone: "inverse" | "default";
-}) {
+function SaleDraft({ showSource }: { showSource: boolean }) {
   const { t } = useTranslation();
-  const text = t("welcome.example.said");
-  const fragments = FIELDS.map(({ key }) => t(`welcome.example.fragments.${key}`));
-  const inverse = tone === "inverse";
+  const { money, locale } = useExample();
   return (
-    <View
-      accessibilityLabel={label ?? t("welcome.example.label")}
-      className="min-w-0 gap-3"
-      role="figure"
-    >
-      <View
-        className={cn(
-          "gap-2 rounded-xl px-4 py-3.5",
-          inverse ? "bg-primary-foreground/8" : "border border-border bg-card",
-        )}
-      >
-        <View className="flex-row items-center gap-1.5">
-          <Icon
-            as={Mic}
-            className={inverse ? "text-primary-foreground/70" : "text-muted-foreground"}
-            size={13}
-          />
-          <Text
-            className={cn(
-              "text-xs",
-              inverse ? "text-primary-foreground/70" : "text-muted-foreground",
-            )}
-          >
-            {t("welcome.example.youSaid")}
+    <View className="gap-3">
+      <View className="flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <Text className="font-ui text-sm">
+          {t("welcome.example.product")} ·{" "}
+          {t("welcome.example.line", {
+            count: EXAMPLE_SALE.quantity,
+            price: money(EXAMPLE_SALE.unitPrice),
+          })}
+        </Text>
+        <Text className="text-xs text-muted-foreground">{t("welcome.example.unsaved")}</Text>
+      </View>
+      <View className="flex-row border-t border-border pt-3">
+        <View className="pisto-receipt-total min-w-0 flex-1 gap-1 pr-2">
+          <Text className="text-xs text-muted-foreground sm:text-sm">
+            {t("welcome.example.total")}
           </Text>
+          <MoneyFigure
+            className="text-figure-lg sm:text-figure-xl"
+            currency={EXAMPLE_CURRENCY}
+            fractionClassName="text-title-lg sm:text-figure-lg"
+            fractionDigits={EXAMPLE_DIGITS}
+            locale={locale}
+            minorUnits={EXAMPLE_SALE.total}
+          />
         </View>
-        <TranscriptHighlight
-          className="text-lg leading-8"
-          spans={exampleSpans(text, fragments)}
-          text={text}
-          tone={inverse ? "inverse" : "default"}
-        />
+        <View className="pisto-receipt-cash min-w-0 flex-1 gap-1 border-l border-border px-3 sm:px-5">
+          <Text className="text-xs text-muted-foreground sm:text-sm">
+            {t("welcome.example.cash")}
+          </Text>
+          <Text className="font-heading text-figure-lg tabular-nums sm:text-figure-xl">
+            {money(EXAMPLE_SALE.received)}
+          </Text>
+          {showSource ? (
+            <Text className="text-xs text-muted-foreground">
+              «{t("welcome.example.fragments.received")}»
+            </Text>
+          ) : null}
+        </View>
+        <View className="pisto-receipt-credit min-w-0 flex-1 gap-1 border-l border-border pl-3 sm:pl-5">
+          <Text className="text-xs text-muted-foreground sm:text-sm">
+            {t("operate.home.money.owed")}
+          </Text>
+          <Text className="font-heading text-figure-lg tabular-nums sm:text-figure-xl">
+            {money(EXAMPLE_SALE.outstanding)}
+          </Text>
+          {showSource ? (
+            <Text className="text-xs text-muted-foreground">
+              «{t("welcome.example.fragments.credit")}»
+            </Text>
+          ) : null}
+        </View>
       </View>
       <View
-        className={cn("gap-0.5 rounded-xl bg-card px-4 py-3", !inverse && "border border-border")}
+        aria-hidden
+        className="pisto-payment-split h-1.5 w-full flex-row overflow-hidden rounded-xs bg-muted"
       >
-        <View className="flex-row items-center justify-between gap-2 pb-1.5">
-          <Text className="font-ui text-dense text-card-foreground">
-            {t("welcome.example.reviewTitle")}
-          </Text>
-          <Text className="text-xs text-muted-foreground">{t("welcome.example.unsaved")}</Text>
-        </View>
+        <View className="bg-chart-1" style={{ flex: Number(EXAMPLE_SALE.received) }} />
+        <View className="bg-highlight-strong" style={{ flex: Number(EXAMPLE_SALE.outstanding) }} />
+      </View>
+    </View>
+  );
+}
+
+function SaleSentence() {
+  const { t } = useTranslation();
+  const sentence = t("welcome.example.said");
+  const fragments = FIELDS.map(({ key }) => t(`welcome.example.fragments.${key}`));
+  return (
+    <View className="pisto-receipt-total gap-2">
+      <Text className="font-ui text-sm">{t("assistant.review.transcriptTitle")}</Text>
+      <TranscriptHighlight spans={exampleSpans(sentence, fragments)} text={sentence} />
+      <View className="flex-row flex-wrap gap-x-5 gap-y-2 border-t border-border pt-4">
         {FIELDS.map(({ key }, index) => (
-          <View
-            className={cn(
-              "min-h-9 flex-row items-center gap-3 py-1.5",
-              index > 0 && "border-t border-border",
-            )}
-            key={key}
-          >
+          <View key={key} className="flex-row items-center gap-1.5">
             <TranscriptMarker marker={index + 1} />
-            <Text className="w-28 text-dense text-muted-foreground">
-              {t(`welcome.example.rows.${key}.label`)}
-            </Text>
-            <Text className="min-w-0 flex-1 font-ui text-dense text-card-foreground">
-              {t(`welcome.example.rows.${key}.value`)}
+            <Text className="text-xs text-muted-foreground">
+              {t(`welcome.example.fields.${key}`)}
             </Text>
           </View>
         ))}
       </View>
     </View>
+  );
+}
+
+export function DictationExample({ showSource = false }: { showSource?: boolean } = {}) {
+  const { t } = useTranslation();
+  const [view, setView] = useState("draft");
+  return (
+    <Tabs
+      value={view}
+      onValueChange={setView}
+      className="min-w-0 gap-5 lg:flex-row lg:items-start lg:gap-16"
+    >
+      <View className="gap-2 lg:w-[38%]">
+        <Text
+          accessibilityRole="header"
+          aria-level={2}
+          className="font-heading text-title-lg web:scroll-mt-5 sm:text-heading"
+          nativeID="example-sale"
+          tabIndex={-1}
+        >
+          {t("welcome.example.label")}
+        </Text>
+        <Text className="text-sm text-muted-foreground">
+          {t("welcome.sample.business")} · {t("welcome.sample.people.carlos")}
+        </Text>
+        <TabsList accessibilityLabel={t("welcome.example.label")} className="mt-1 self-start">
+          {(["sentence", "draft"] as const).map((tab) => (
+            <TabsTrigger key={tab} value={tab}>
+              <Text>{t(`welcome.example.views.${tab}`)}</Text>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </View>
+      <View className="min-w-0 lg:flex-1">
+        <TabsContent tabIndex={0} value="draft">
+          <SaleDraft showSource={showSource} />
+        </TabsContent>
+        <TabsContent tabIndex={0} value="sentence">
+          <SaleSentence />
+        </TabsContent>
+      </View>
+    </Tabs>
   );
 }

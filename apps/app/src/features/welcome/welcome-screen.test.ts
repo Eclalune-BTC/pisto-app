@@ -46,6 +46,7 @@ import {
   EXAMPLE_MOVEMENTS,
   EXAMPLE_PAYABLES,
   EXAMPLE_RECEIVABLES,
+  EXAMPLE_SALE,
   exampleCashFlow,
   exampleMoneyTrend,
   shiftLocalDate,
@@ -68,6 +69,10 @@ describe("public product page", () => {
     expect(markup).toContain(i18n.t("welcome.title"));
     expect(markup).toContain('href="/sign-in"');
     expect(markup).toContain('href="/sign-up"');
+    for (const section of ["how", "modules", "roles"]) {
+      expect(markup).toContain(`href="#${section}"`);
+      expect(markup).toContain(`id="${section}"`);
+    }
     expect(markup).not.toContain('href="/operate');
     expect(markup).toContain('role="main"');
     expect(markup).toContain(i18n.t("welcome.pageTitle"));
@@ -85,7 +90,7 @@ describe("public product page", () => {
     const markup = text(render());
     for (const step of STEPS) expect(markup).toContain(i18n.t(`welcome.how.steps.${step}.title`));
     for (const module of MODULES) {
-      expect(markup).toContain(i18n.t(`welcome.modules.items.${module}.title`));
+      expect(markup).toContain(i18n.t(`welcome.modules.items.${module}.tab`));
     }
     for (const role of ROLES) expect(markup).toContain(i18n.t(`settings.roleNames.${role}`));
     for (const point of TRUST_POINTS) {
@@ -101,27 +106,19 @@ describe("public product page", () => {
     expect(markup).not.toMatch(/<figure[^>]*>(?:(?!<\/figure>).)*<figure/s);
     expect(text(markup)).toContain(i18n.t("welcome.preview.example"));
     expect(markup).toContain(`aria-label="${i18n.t("welcome.preview.label")}"`);
-    // The steps are tabs: the first opens with its figure, the others show theirs when chosen.
-    expect(markup.match(/role="tab"/g)).toHaveLength(STEPS.length);
-    expect(markup).toContain(`aria-label="${i18n.t("welcome.how.steps.say.figure")}"`);
-    for (const module of MODULES) {
-      expect(markup).toContain(`aria-label="${i18n.t(`welcome.modules.items.${module}.figure`)}"`);
-    }
-    // Illustrated controls look like buttons but are not announced as ones: the only buttons on
-    // the page are the appearance switch and the compact header's menu; every other action is a
-    // link.
-    expect(markup.match(/role="button"/g)).toHaveLength(2);
+    expect(markup.match(/role="tab"/g)).toHaveLength(2 + MODULES.length);
+    expect(markup).toContain(`aria-label="${i18n.t("welcome.example.label")}"`);
+    expect(markup).toContain(`aria-label="${i18n.t("welcome.modules.items.movements.figure")}"`);
+    expect(markup).toContain(i18n.t("welcome.example.play"));
     expect(markup).toContain(`aria-label="${i18n.t("welcome.nav.menu")}"`);
   });
 
   test("labels the dictation example and marks every fragment it fills", () => {
-    const label = i18n.t("welcome.how.steps.review.figure");
-    const markup = renderToStaticMarkup(
-      createElement(DictationExample, { label, tone: "default" }),
-    );
-    expect(markup).toContain(`aria-label="${label}"`);
+    const markup = renderToStaticMarkup(createElement(DictationExample));
     expect(markup).toContain(i18n.t("welcome.example.unsaved"));
-    expect(text(markup)).toContain(i18n.t("welcome.example.rows.credit.value"));
+    expect(text(markup)).toContain("$9.75");
+    expect(text(markup)).toContain("$5.00");
+    expect(text(markup)).toContain("$4.75");
     const said = i18n.t("welcome.example.said");
     const spans = exampleSpans(said, [
       i18n.t("welcome.example.fragments.kind"),
@@ -138,12 +135,6 @@ describe("public product page", () => {
       "el resto me lo quedó debiendo",
     ]);
     expect(() => exampleSpans(said, ["café", "vendí"])).toThrow();
-  });
-
-  test("shows the same home at both sizes, each labelled as its own example", () => {
-    const markup = render();
-    expect(markup).toContain(`aria-label="${i18n.t("welcome.preview.label")}"`);
-    expect(markup).toContain(`aria-label="${i18n.t("welcome.preview.phoneLabel")}"`);
   });
 
   test("lets a visitor switch to the dark appearance before signing in", () => {
@@ -217,7 +208,10 @@ describe("example business", () => {
   test("moves the balances by exactly what the dictated sale says", () => {
     const sale = EXAMPLE_MOVEMENTS.find((movement) => movement.key === "dictatedSale");
     // "me dio cinco dólares y el resto me lo quedó debiendo" on a $9.75 sale.
-    expect(sale?.amountMinorUnits).toBe("500");
+    expect(sale?.amountMinorUnits).toBe(EXAMPLE_SALE.received);
+    expect(BigInt(EXAMPLE_SALE.total)).toBe(
+      BigInt(EXAMPLE_SALE.received) + BigInt(EXAMPLE_SALE.outstanding),
+    );
     expect(BigInt(EXAMPLE_ACCOUNTS.cash) - BigInt(BEFORE_DICTATED_SALE.cash)).toBe(500n);
     expect(BigInt(EXAMPLE_RECEIVABLES.outstanding) - BigInt(BEFORE_DICTATED_SALE.receivables)).toBe(
       475n,

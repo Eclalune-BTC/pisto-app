@@ -1,9 +1,9 @@
 import { Link } from "expo-router";
 import Head from "expo-router/head";
-import { ArrowDown } from "lucide-react-native";
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import { ArrowDownRight, ArrowUpRight, Play } from "lucide-react-native";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, ScrollView, View } from "react-native";
+import { Image, Platform, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppearanceControl } from "@/components/appearance-control";
 import { Brand } from "@/components/brand";
@@ -12,62 +12,84 @@ import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
-import { SectionHeading, Statement } from "./fragments";
+import coffeeCounter from "../../../assets/welcome/coffee-counter.jpg";
+import { DictationExample } from "./dictation-example";
+import { SectionHeading } from "./fragments";
 import { HeaderMenu } from "./header-menu";
 import { HowItWorks } from "./how-it-works";
 import { ModulePreviews } from "./module-previews";
-import { PhonePreview, ProductPreview } from "./product-preview";
 import { RolesAndTrust } from "./roles-section";
 
 /** The one content width every band of the page shares. */
 const CONTAINER = "mx-auto w-full max-w-[1240px] px-5 sm:px-8";
 
 /** The space above and below a band's content: every band keeps the same rhythm. */
-const BAND = "py-16 sm:py-20 lg:py-24";
+const BAND = "py-12 sm:py-16 lg:py-20";
 
 const SECTIONS = ["how", "modules", "roles"] as const;
 type SectionId = (typeof SECTIONS)[number];
 
 const LINK_TEXT = "font-sans text-sm text-muted-foreground web:group-hover:text-foreground";
 
-/** A link to a section of this page: it scrolls instead of navigating, on every platform. */
-function SectionLink({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Button
-      accessibilityRole="link"
-      className="min-h-0 justify-start rounded-none px-0 py-0 active:bg-transparent web:hover:bg-transparent"
-      onPress={onPress}
-      variant="ghost"
-    >
-      <Text className={LINK_TEXT}>{label}</Text>
-    </Button>
-  );
+function focusHashHeading() {
+  const section = SECTIONS.find((id) => window.location.hash === `#${id}`);
+  if (!section) return;
+  const heading = document.getElementById(section);
+  heading?.focus({ preventScroll: true });
+  heading?.scrollIntoView({ block: "start" });
 }
 
 export default function WelcomeScreen() {
   const { t } = useTranslation();
   const scroll = useRef<ScrollView>(null);
   const offsets = useRef<Partial<Record<SectionId, number>>>({});
+  const [play, setPlay] = useState(0);
+  const sampleOffset = useRef(0);
   const [scrolled, setScrolled] = useState(false);
   const year = useMemo(() => new Date().getFullYear(), []);
 
-  const scrollTo = (section: SectionId) =>
+  useEffect(() => {
+    // Expo Router may remount the page when the browser moves between two fragments.
+    if (Platform.OS !== "web" || !window.location.hash) return;
+    const frame = requestAnimationFrame(focusHashHeading);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const scrollTo = (section: SectionId) => {
+    if (Platform.OS === "web") {
+      window.location.hash = section;
+      focusHashHeading();
+      return;
+    }
     scroll.current?.scrollTo({ y: offsets.current[section] ?? 0, animated: true });
+  };
+  const sectionLink = (id: SectionId) =>
+    Platform.OS === "web" ? { href: `#${id}` } : { onPress: () => scrollTo(id) };
   const sectionLabels: Record<SectionId, string> = {
     how: t("welcome.how.title"),
     modules: t("welcome.nav.modules"),
     roles: t("welcome.nav.roles"),
   };
   const sectionLinks = SECTIONS.map((section) => (
-    <SectionLink key={section} label={sectionLabels[section]} onPress={() => scrollTo(section)} />
+    <Button
+      {...sectionLink(section)}
+      accessibilityRole="link"
+      className="min-h-0 justify-start rounded-none px-0 py-0 active:bg-transparent web:hover:bg-transparent"
+      key={section}
+      variant="ghost"
+    >
+      <Text className={LINK_TEXT}>{sectionLabels[section]}</Text>
+    </Button>
   ));
 
   const section = (id: SectionId, children: ReactNode) => (
     <View
+      aria-labelledby={id}
       className="border-t border-border"
       onLayout={(event) => {
         offsets.current[id] = event.nativeEvent.layout.y;
       }}
+      role="region"
     >
       <View className={cn(CONTAINER, BAND)}>{children}</View>
     </View>
@@ -131,80 +153,94 @@ export default function WelcomeScreen() {
         scrollEventThrottle={48}
       >
         <View className="flex-1" role="main">
-          {/*
-            The page stays on the neutral surface: the type states the job and the product is the
-            picture. Colour comes only from the product inside the stage.
-          */}
-          <View className={cn(CONTAINER, "gap-9 pb-10 pt-12 sm:pb-12 sm:pt-20 lg:pt-24")}>
-            <View className="gap-6">
-              <Heading className="max-w-[940px] font-ui xl:text-display-xl" size="display">
-                {t("welcome.title")}
-              </Heading>
-              <Text className="max-w-[560px] text-lg text-muted-foreground web:text-pretty sm:text-xl sm:leading-8">
-                {t("welcome.description")}
-              </Text>
-            </View>
-            <View className="flex-row flex-wrap items-center gap-x-7 gap-y-4">
-              <Link href="/sign-up" asChild>
-                <Button label={t("welcome.createAccount")} size="lg" />
-              </Link>
-              <Button
-                accessibilityRole="link"
-                className="min-h-0 gap-1.5 rounded-none px-0 py-0 active:bg-transparent web:hover:bg-transparent"
-                onPress={() => scrollTo("how")}
-                variant="ghost"
-              >
-                <Text className="font-ui text-base text-foreground web:group-hover:underline web:underline-offset-4">
-                  {t("welcome.how.title")}
+          <View className="relative overflow-hidden bg-brand">
+            <View className={CONTAINER}>
+              <View className="items-start gap-5 py-8 sm:gap-6 sm:py-12 lg:min-h-[384px] lg:w-[47%] lg:justify-center lg:py-14 xl:min-h-[446px]">
+                <Heading
+                  className="pisto-headline-in font-heading text-display leading-[46px] tracking-[-2px] text-white sm:text-display-xl sm:leading-[66px] xl:text-display-xxl xl:leading-[80px]"
+                  size="display"
+                >
+                  {t("welcome.title")}
+                </Heading>
+                <Text className="pisto-caption-in max-w-[385px] text-base leading-6 text-white/85 sm:text-lg">
+                  {t("welcome.description")}
                 </Text>
-                <Icon as={ArrowDown} className="text-foreground" size={16} />
-              </Button>
-            </View>
-          </View>
-
-          {/*
-            The stage: the home in the app's own frame, and on the widest screens the same home at
-            phone width over its corner. Both run past the stage's lower edge instead of being
-            shrunk; each height puts that edge in the space under a block, never through a line of
-            text. Below the width of the window, the phone-sized home is shown whole instead.
-          */}
-          <View className={CONTAINER}>
-            <View className="overflow-hidden rounded-2xl border border-border bg-muted p-2 md:h-[644px] md:px-8 md:pb-0 md:pt-8 lg:h-[784px] lg:px-14 lg:pt-14 xl:h-[840px]">
-              <PhonePreview className="w-full max-w-[420px] self-center md:hidden" frame="closed" />
-              <View className="hidden md:flex">
-                <ProductPreview />
+                <View className="flex-row flex-wrap items-center gap-x-5 gap-y-2">
+                  <Link href="/sign-up" asChild>
+                    <Button
+                      accessibilityRole="link"
+                      className="bg-highlight web:hover:bg-highlight-strong"
+                      size="lg"
+                    >
+                      <Text className="font-ui text-base text-highlight-foreground">
+                        {t("welcome.createAccount")}
+                      </Text>
+                      <Icon as={ArrowUpRight} className="text-highlight-foreground" size={17} />
+                    </Button>
+                  </Link>
+                  <Button
+                    {...sectionLink("how")}
+                    accessibilityRole="link"
+                    className="gap-1.5 px-0 active:bg-transparent web:hover:bg-transparent"
+                    variant="ghost"
+                  >
+                    <Text className="font-ui text-dense text-white web:group-hover:underline">
+                      {t("welcome.howLink")}
+                    </Text>
+                    <Icon as={ArrowDownRight} className="text-white" size={16} />
+                  </Button>
+                </View>
               </View>
-              {/*
-                The phone starts level with the window's money card, beside the rows the window
-                ends short for it. Its shadow lifts it off the window; nothing else on the page
-                has one.
-              */}
-              <PhonePreview className="absolute bottom-0 right-6 top-[331px] hidden w-[340px] shadow-xl shadow-black/10 xl:flex" />
             </View>
-            <Text className="pt-3 text-xs text-muted-foreground">
-              {t("welcome.preview.example")}
-            </Text>
+            <View className="relative h-[172px] w-full overflow-hidden sm:h-[238px] lg:absolute lg:inset-y-0 lg:right-0 lg:h-full lg:w-1/2">
+              <Image
+                accessible={false}
+                className="pisto-photo-in"
+                resizeMode="cover"
+                source={coffeeCounter}
+                style={{ width: "100%", height: "100%" }}
+              />
+              <View className="absolute bottom-4 left-5 sm:bottom-6 sm:left-8">
+                <Button
+                  className="min-h-10 flex-row gap-2 bg-background px-4 web:hover:bg-muted"
+                  onPress={() => {
+                    setPlay((n) => n + 1);
+                    if (Platform.OS === "web") {
+                      requestAnimationFrame(() => {
+                        const sample = document.getElementById("example-sale");
+                        sample?.focus({ preventScroll: true });
+                        sample?.scrollIntoView({ block: "nearest" });
+                      });
+                    } else {
+                      scroll.current?.scrollTo({ y: sampleOffset.current, animated: true });
+                    }
+                  }}
+                  size="sm"
+                >
+                  <Icon as={Play} className="text-foreground" size={14} />
+                  <Text className="font-ui text-sm text-foreground">
+                    {t("welcome.example.play")}
+                  </Text>
+                </Button>
+              </View>
+            </View>
           </View>
-
-          <View className="h-16 sm:h-20 lg:h-24" />
-
-          {section(
-            "how",
-            <HowItWorks
-              heading={
-                <SectionHeading
-                  description={t("welcome.how.description")}
-                  title={t("welcome.how.title")}
-                />
-              }
-            />,
-          )}
+          <View
+            className={cn(CONTAINER, "py-6 sm:py-8 lg:py-9")}
+            onLayout={(e) => {
+              sampleOffset.current = e.nativeEvent.layout.y;
+            }}
+          >
+            <DictationExample key={play} showSource={play > 0} />
+          </View>
+          {section("how", <HowItWorks />)}
 
           {section(
             "modules",
-            <View className="gap-12 lg:gap-16">
-              <Statement
-                continuation={t("welcome.modules.description")}
+            <View className="gap-7 lg:gap-9">
+              <SectionHeading
+                description={t("welcome.modules.description")}
+                id="modules"
                 title={t("welcome.modules.title")}
               />
               <ModulePreviews />
@@ -217,25 +253,27 @@ export default function WelcomeScreen() {
               heading={
                 <SectionHeading
                   description={t("welcome.roles.description")}
+                  id="roles"
                   title={t("welcome.roles.title")}
                 />
               }
             />,
           )}
 
-          {/* The page ends as it began: a statement and one action on the neutral surface. */}
           <View className="border-t border-border">
-            <View className={cn(CONTAINER, BAND, "gap-10")}>
-              <Statement
-                continuation={t("welcome.cta.description")}
-                size="display"
-                title={t("welcome.cta.title")}
-              />
-              <View className="flex-row">
-                <Link href="/sign-up" asChild>
-                  <Button label={t("welcome.createAccount")} size="lg" />
-                </Link>
-              </View>
+            <View
+              className={cn(
+                CONTAINER,
+                BAND,
+                "items-start gap-5 md:flex-row md:items-center md:justify-between",
+              )}
+            >
+              <Heading level={2} size="display">
+                {t("welcome.cta.title")}
+              </Heading>
+              <Link href="/sign-up" asChild>
+                <Button label={t("welcome.createAccount")} size="lg" />
+              </Link>
             </View>
           </View>
         </View>

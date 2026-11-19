@@ -399,3 +399,6 @@ Append one line per lesson: `YYYY-MM-DD · screen · lesson · where it is now e
 - 2026-11-18 · tooling · `react-native-web` 0.21.3+ with Uniwind 1.12.1 exports a bundle that
   builds, typechecks and passes unit tests but renders nothing. After any dependency change,
   load the exported page before calling the change verified · `docs/versioning-upgrades.md`.
+- 2026-11-18 · landing · The owner found the side-by-side framed dashboard too generic. The
+  public page pairs a photographed sale with an interactive cash and credit breakdown. Use
+  one-shot motion to connect quoted words to money, with an immediate reduced-motion state.

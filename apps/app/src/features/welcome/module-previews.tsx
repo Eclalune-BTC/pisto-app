@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Heading } from "@/components/ui/heading";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
 import { CashFlowChart } from "@/features/reports/cash-flow-chart";
 import { capitalizeFirst } from "@/features/reports/report-figures";
@@ -297,41 +298,49 @@ const previews: Record<(typeof MODULES)[number], () => ReactNode> = {
   reports: () => <ReportsPreview />,
 };
 
-/**
- * The modules a business works in every day, each shown by a fragment of its real screen. The
- * cells share hairlines like a ledger page, so no fragment needs a card of its own.
- */
 export function ModulePreviews() {
   const { t } = useTranslation();
+  const [active, setActive] = useState<string>(MODULES[0]);
   return (
-    <View className="min-w-0 border-t border-border md:flex-row md:flex-wrap" role="list">
-      {MODULES.map((module, index) => (
-        <View
-          className={cn(
-            "min-w-0 gap-8 border-b border-border py-10 md:w-1/2 md:py-12",
-            index % 2 === 0 ? "md:pr-10 lg:pr-14" : "md:border-l md:pl-10 lg:pl-14",
-          )}
-          key={module}
-          role="listitem"
-        >
-          <View className="gap-2">
-            <Heading level={3} size="item">
-              {t(`welcome.modules.items.${module}.title`)}
-            </Heading>
-            {/* Two lines of room beside a pair, so a one-line description does not raise its figure. */}
-            <Text className="max-w-[440px] text-base text-muted-foreground web:text-pretty md:min-h-12">
-              {t(`welcome.modules.items.${module}.description`)}
-            </Text>
-          </View>
-          <View
-            accessibilityLabel={t(`welcome.modules.items.${module}.figure`)}
-            className="pointer-events-none min-w-0"
-            role="figure"
+    <Tabs value={active} onValueChange={setActive} className="min-w-0 gap-0">
+      <TabsList
+        accessibilityLabel={t("welcome.nav.modules")}
+        className="w-full justify-start gap-x-3 gap-y-0 rounded-none border-0 border-b border-border bg-transparent p-0 sm:gap-x-8"
+      >
+        {MODULES.map((module) => (
+          <TabsTrigger
+            className={cn(
+              "min-h-11 rounded-none border-b-2 bg-transparent px-0 shadow-none web:cursor-pointer dark:bg-transparent",
+              active === module ? "border-foreground" : "border-transparent",
+            )}
+            key={module}
+            value={module}
           >
-            {previews[module]()}
+            <Text className="text-sm sm:text-base">{t(`welcome.modules.items.${module}.tab`)}</Text>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      {MODULES.map((module) => (
+        <TabsContent key={module} tabIndex={0} value={module}>
+          <View className="gap-5 py-6 sm:py-8 lg:flex-row lg:items-start lg:gap-16 xl:gap-24">
+            <View className="min-w-0 gap-2 lg:flex-1">
+              <Heading level={3} size="item">
+                {t(`welcome.modules.items.${module}.title`)}
+              </Heading>
+              <Text className="max-w-[360px] text-base text-muted-foreground">
+                {t(`welcome.modules.items.${module}.description`)}
+              </Text>
+            </View>
+            <View
+              accessibilityLabel={t(`welcome.modules.items.${module}.figure`)}
+              className="min-w-0 lg:flex-[1.5]"
+              role="figure"
+            >
+              {previews[module]()}
+            </View>
           </View>
-        </View>
+        </TabsContent>
       ))}
-    </View>
+    </Tabs>
   );
 }
