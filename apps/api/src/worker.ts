@@ -4,6 +4,7 @@ import type { RealtimeServerMessage } from "@pisto/contracts";
 import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 import { z } from "zod";
 
+import { type AssetFetcher, serveMediaRange } from "./media-range.ts";
 import { isRealtimeUpgrade } from "./realtime.ts";
 import { createRuntime } from "./runtime.ts";
 
@@ -17,6 +18,7 @@ interface DurableObjectNamespace {
 }
 interface WorkerEnv {
   API: DurableObjectNamespace;
+  ASSETS: AssetFetcher;
 }
 interface WorkerSocket {
   accept(): void;
@@ -76,6 +78,9 @@ export class ApiServer {
 export default {
   // Static assets answer every other path before this handler runs (see wrangler.jsonc).
   fetch(request: Request, workerEnv: WorkerEnv): Promise<Response> {
+    if (new URL(request.url).pathname.startsWith("/media/")) {
+      return serveMediaRange(request, workerEnv.ASSETS);
+    }
     // The database is in AWS us-east-1; eastern North America keeps each query round trip short.
     const api = workerEnv.API.get(workerEnv.API.idFromName("api"), { locationHint: "enam" });
     return api.fetch(request);

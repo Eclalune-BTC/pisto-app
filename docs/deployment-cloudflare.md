@@ -85,6 +85,22 @@ npx newman run docs/postman/pisto.postman_collection.json \
 `/ready` must report `"database":"ok"`. A deployment restarts the Durable Object; for a minute after
 a deploy, a request can still reach the previous version.
 
+## Films and range requests
+
+Workers static assets answer a `Range` request with the whole file and status 200, so a video
+served by them cannot seek (Cloudflare documents the limitation and the workaround in
+[cloudflare-docs#34856](https://github.com/cloudflare/cloudflare-docs/pull/34856), read on
+2026-11-19). `/media/*` therefore runs the Worker first, and `apps/api/src/media-range.ts` builds
+the 206 response from the `ASSETS` binding. It reads the whole file for each range, which suits a
+few short films; move larger media to object storage instead. After a deployment, check it:
+
+```sh
+curl -s -D - -o /dev/null -H "Range: bytes=0-999" https://pisto.contact-862.workers.dev/media/coco-demo.mp4
+```
+
+The response must be `206` with `Content-Range: bytes 0-999/<size>`. `wrangler dev` routes the same
+path through the Worker, so chapters can be checked locally too.
+
 ## Workers AI
 
 The registration assistant uses the `AI` binding declared in `wrangler.jsonc`; it needs no secret.

@@ -48,8 +48,10 @@ cached local API origin.
   offered with their length and summary, nothing loads before a request, arrow keys change the
   film, Enter plays, the playing film takes the focus and Space pauses and resumes it, a chapter
   seeks, choosing the other film stops the first, the page stays usable below, there is no
-  horizontal overflow and reduced motion shows the summary without animation. `wrangler dev`
-  serves assets without range requests, so seeking cannot be checked on it.
+  horizontal overflow and reduced motion shows the summary without animation. Workers static
+  assets ignore range requests, so `/media/*` is answered by the Worker
+  (`apps/api/src/media-range.ts`); the first deployment of this change showed the films playing
+  but not seeking until that was added.
 - Not covered: a physical phone, a screen reader pass on the thread and real Salvadoran speakers.
 
 ## Browser evidence

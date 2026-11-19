@@ -418,7 +418,8 @@ Append one line per lesson: `YYYY-MM-DD · screen · lesson · where it is now e
   1080p). Two films sit behind one tab list with their length and one sentence each; a chapter
   shows its line only while it plays, so six chapters stay shorter than the film ·
   `features/welcome/how-it-works.tsx`, `media/coco-demo`.
-- 2026-11-19 · tooling · `wrangler dev` serves assets without range requests, so a video cannot
-  seek there; check film chapters on a static server that answers 206. A demo database seeded
-  right after local midnight has an empty "today": seed a disposable database in a zone where it is
-  daytime and keep that zone out of frame.
+- 2026-11-19 · landing films · The films played on the hosted page but a chapter restarted them:
+  Workers static assets answer a Range request with the whole file. A film is checked for
+  seeking (`video.seekable`) on the real host, not only for playing · `apps/api/src/media-range.ts`.
+- 2026-11-19 · tooling · A demo database seeded right after local midnight has an empty "today":
+  seed a disposable database in a zone where it is daytime and keep that zone out of frame.
