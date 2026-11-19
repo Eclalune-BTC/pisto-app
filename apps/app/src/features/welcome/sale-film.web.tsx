@@ -101,6 +101,9 @@ export function SaleFilm() {
               {t("welcome.how.filmError")}
             </Text>
           ) : null}
+          <Text asChild className="self-start py-2 font-ui text-sm text-foreground underline">
+            <a href="/media/coco-demo.mp4">{t("welcome.how.cocoDemo")}</a>
+          </Text>
         </View>
       }
     />

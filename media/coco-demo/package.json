@@ -1,0 +1,13 @@
+{
+  "name": "pisto-demo-renderer",
+  "private": true,
+  "scripts": {
+    "render": "remotion render index.tsx Coco ../../apps/app/public/media/coco-demo.mp4 --codec=h264 --color-space=bt709 --image-format=png --crf=18 --concurrency=1"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.540",
+    "remotion": "4.0.540",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  }
+}

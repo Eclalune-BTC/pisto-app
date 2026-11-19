@@ -1,7 +1,7 @@
 import type { ProductDetail } from "@pisto/contracts";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { ChevronRight, Plus } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,11 @@ const VISIBLE_RESULTS = 6;
 type ProductSearchProps = {
   businessId: string;
   disabled: boolean;
-  onAdd: (detail: ProductDetail) => void;
+  onAdd: (detail: ProductDetail, search: string) => void;
   selectedIds?: ReadonlySet<string>;
   initialSearch?: string;
   viewOnly?: boolean;
+  onResolveInitial?: (detail: ProductDetail) => void;
 };
 
 /** Finds active products by name or SKU and adds the chosen one to the sale. */
@@ -34,6 +35,7 @@ export function ProductSearch({
   selectedIds,
   initialSearch = "",
   viewOnly = false,
+  onResolveInitial,
 }: ProductSearchProps) {
   const { i18n, t } = useTranslation();
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
@@ -43,10 +45,26 @@ export function ProductSearch({
     ...productsInfiniteOptions(businessId, { categoryId: null, search: query, status: "active" }),
     enabled: query.length > 0,
     placeholderData: undefined,
+    ...(onResolveInitial && { refetchOnMount: "always" as const }),
   });
   const items = flattenPages(results.data).slice(0, VISIBLE_RESULTS);
   const searching = search.trim().length > 0;
   const pendingTerm = query !== search.trim();
+  const firstPage = results.data?.pages[0];
+  const unique =
+    initialSearch &&
+    search === initialSearch &&
+    !pendingTerm &&
+    results.isFetchedAfterMount &&
+    !results.isError &&
+    results.fetchStatus === "idle" &&
+    firstPage?.nextCursor === null &&
+    firstPage.items.length === 1
+      ? firstPage.items[0]
+      : undefined;
+  useEffect(() => {
+    if (unique && onResolveInitial) onResolveInitial(unique);
+  }, [unique, onResolveInitial]);
 
   return (
     <View className="min-w-0 gap-2">
@@ -118,7 +136,7 @@ export function ProductSearch({
                     }
                     disabled={disabled}
                     onPress={() => {
-                      onAdd(detail);
+                      onAdd(detail, search.trim());
                       setSearch("");
                     }}
                   >

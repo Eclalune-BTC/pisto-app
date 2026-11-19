@@ -1,11 +1,22 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { blankExtraction, type Extraction, emptySupplierDirectory } from "@pisto/assistant";
+import {
+  blankExtraction,
+  type CatalogModel,
+  type Extraction,
+  emptySupplierDirectory,
+} from "@pisto/assistant";
 import { createFakeAssistantProvider } from "@pisto/assistant/testing";
 import type { Auth } from "@pisto/auth";
 import type { BillingRuntime } from "@pisto/billing";
-import { assistantInterpretResponseSchema, assistantScopeHeader } from "@pisto/contracts";
+import {
+  assistantInterpretResponseSchema,
+  assistantScopeHeader,
+  catalogTurnResponseSchema,
+  type Product,
+} from "@pisto/contracts";
 import {
   type AssistantDirectoryRepository,
+  type CatalogRepository,
   type DatabaseHandle,
   type ProductActor,
   ProductError,
@@ -73,6 +84,8 @@ function setup(
     transcribe?: (audio: Uint8Array) => string | Error;
     authorize?: AssistantDirectoryRepository["authorize"];
     allowed?: (key: string) => boolean;
+    catalogModel?: CatalogModel;
+    getProduct?: CatalogRepository["getProduct"];
   } = {},
 ) {
   const fake = createFakeAssistantProvider({
@@ -112,6 +125,7 @@ function setup(
   };
   const assistant: AssistantServices = {
     provider: options.enabled === false ? null : fake.provider,
+    catalogModel: options.catalogModel ?? null,
     records,
     suppliers: emptySupplierDirectory,
     consume: async ({ key }) => {
@@ -165,7 +179,12 @@ function setup(
     repositories: {
       businesses: unavailable("Business repository"),
       cash: unavailable("Cash repository"),
-      catalog: unavailable("Catalog repository"),
+      catalog: options.getProduct
+        ? {
+            ...unavailable<CatalogRepository>("Catalog repository"),
+            getProduct: options.getProduct,
+          }
+        : unavailable("Catalog repository"),
       members: unavailable("Business members repository"),
       debtors: unavailable("Debtors repository"),
       moneyTrend: unavailable("Money trend repository"),
@@ -192,6 +211,103 @@ const audio = (body: BodyInit, headers: Record<string, string> = {}): RequestIni
   method: "POST",
   headers: { "content-type": "audio/wav", origin, ...headers },
   body,
+});
+
+describe("catalog conversation", () => {
+  const product: Product = {
+    id: "10000000-0000-4000-8000-000000000001",
+    name: "Café",
+    status: "active",
+    sku: null,
+    categoryId: null,
+    tracked: false,
+    lowStockThresholdMinorUnits: null,
+    quantityPrecision: 0,
+    unitKind: "unit",
+    sellingPriceCurrency: "USD",
+    sellingPriceCurrencyMinorUnitDigits: 2,
+    sellingPriceMinorUnits: "325",
+    createdAt: "2026-11-18T12:00:00Z",
+    updatedAt: "2026-11-18T12:00:00Z",
+  };
+  const request = {
+    text: "¿y tres?",
+    expectedBusinessId: "business_test",
+    productId: product.id,
+    previousQuantity: null,
+  };
+  const quote: CatalogModel = async () => ({
+    intent: "quote",
+    quantityText: "tres",
+    usePrevious: false,
+  });
+  test("uses a freshly authorized price after the model returns and shares the interpretation budget", async () => {
+    let reads = 0;
+    const { client, consumed } = setup({
+      catalogModel: quote,
+      getProduct: async () => ({
+        businessId: "business_test",
+        stock: null,
+        product: { ...product, sellingPriceMinorUnits: ++reads === 1 ? "300" : "325" },
+      }),
+    });
+    const response = await client.request("/v1/assistant/catalog-turns", json(request));
+    expect(response.status).toBe(200);
+    expect(catalogTurnResponseSchema.parse(await response.json()).data.reply).toMatchObject({
+      kind: "quote",
+      totalMinorUnits: "975",
+    });
+    expect(reads).toBe(2);
+    expect(consumed[0]).toBe("pisto:assistant:interpret:business_test:user_test");
+  });
+  test("refuses changed businesses or archived products before contacting DeepSeek", async () => {
+    let calls = 0;
+    const { client, consumed } = setup({
+      catalogModel: async (arg) => {
+        calls++;
+        return quote(arg);
+      },
+      getProduct: async () => ({
+        businessId: "business_test",
+        stock: null,
+        product: { ...product, status: "archived" },
+      }),
+    });
+    expect(
+      (
+        await client.request(
+          "/v1/assistant/catalog-turns",
+          json({ ...request, expectedBusinessId: "another" }),
+        )
+      ).status,
+    ).toBe(403);
+    expect(consumed).toHaveLength(0);
+    expect((await client.request("/v1/assistant/catalog-turns", json(request))).status).toBe(404);
+    expect(calls).toBe(0);
+  });
+  test("refuses a sale proposal without sale permission and advertises the extension only on opt-in", async () => {
+    const { client } = setup({
+      catalogModel: async () => ({
+        intent: "prepare_sale",
+        quantityText: "tres",
+        usePrevious: false,
+      }),
+      getProduct: async () => ({ businessId: "business_test", product, stock: null }),
+      authorize: async (_actor, permissions) => {
+        if (permissions?.includes("sales:create"))
+          throw new ProductError("FORBIDDEN", "Sale is not permitted");
+        return { businessId: "business_test" };
+      },
+    });
+    expect((await client.request("/v1/assistant/catalog-turns", json(request))).status).toBe(403);
+    expect(
+      (await (await client.request("/v1/assistant/status?include=catalog")).json()).data
+        .catalogConversation,
+    ).toBe(true);
+    expect(
+      (await (await client.request("/v1/assistant/status")).json()).data.catalogConversation,
+    ).toBeUndefined();
+  });
 });
 
 describe("assistant status and kill switch", () => {

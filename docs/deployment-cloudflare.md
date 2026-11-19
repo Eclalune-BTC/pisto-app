@@ -91,6 +91,12 @@ The registration assistant uses the `AI` binding declared in `wrangler.jsonc`; i
 Set `ASSISTANT_ENABLED=false` as a variable to turn the assistant off without a code change. Models
 are pinned in `packages/assistant/src/models.ts` ([ADR 0021](adrs/0021-workers-ai-registration-assistant.md)).
 
+Product-specific questions use DeepSeek. Run `bunx --no-install wrangler secret put DEEPSEEK_API_KEY`
+from `apps/api` and enter the key at the prompt. Authenticated clients request
+`GET /v1/assistant/status?include=catalog` to check `catalogConversation`. For a deployment check,
+ask the price of the demo ground coffee, ask how much three cost and accept the quote. The sale
+editor should open with three units at the current catalog price. End the check before saving.
+
 Sign in with the demo owner and open **Nuevo registro**. The authenticated
 `GET /v1/assistant/status` should return `enabled: true` and `transcription: true`. Dictate
 “Pagué 64 dólares de luz con transferencia”, check the transcription, then choose **Usar este texto**.

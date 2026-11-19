@@ -48,6 +48,8 @@ following the interaction pattern in [Vercel AI Elements](https://elements.ai-sd
 
 ## Read-only questions from the composer
 
+Product-specific follow-ups use the selected catalog record and an ephemeral quote context. DeepSeek classifies the follow-up. Pisto grounds the quantity, rechecks the current business and computes the amount from the freshly read catalog. Asking for a sale opens a reviewed, editable itemized sale. See [ADR 0022](adrs/0022-contextual-catalog-questions.md).
+
 The assistant recognizes complete Spanish questions about the previous calendar month's sales,
 who owes the business money, and unpaid supplier invoices. Text and confirmed voice share the
 same recognition rules. The app checks the active membership and the destination's permission.
@@ -303,7 +305,7 @@ account setting.
 | AI SDK | Not installed; the registration slice uses a typed Workers AI adapter (ADR 0021) |
 | Provider | Workers AI: `AI` binding in the Worker, REST credentials for the local Bun API, `ASSISTANT_ENABLED` kill switch |
 | Registration routes, package, prompt, UI | Implemented: `/v1/assistant/status`, `/interpretations`, `/transcriptions`; `packages/assistant`; prompt `extract-2026-11-18.2`; Coco, its tool menu, dictation, home composer and review route |
-| Follow-up conversation and streaming | Single-turn interpretation with typed tool selection |
+| Follow-up conversation and streaming | Scoped product conversation with price, stock, quantity quotes and reviewed sale preparation. Other registration and report requests are single-turn. |
 | Sales, catalog, inventory, expense, cash, customer, and receivable product data | Implemented; source synchronized. Validation and remaining platform/release limits are in [release evidence](release-evidence.md) |
 | Operating reports the assistant would read | Implemented PostgreSQL repository, `GET /v1/reports/operating`, and `/operate/reports`; no assistant tool yet |
 | Sale and catalog tools | `start_sale` opens the sale form, `find_product` queries the authorized catalog. Only the existing product forms confirm mutations. |

@@ -53,7 +53,7 @@ test("records a cash sale and takes the product out of stock", async ({ page }) 
     if (request.method() === "POST" && request.url().endsWith("/v1/sales/itemized"))
       writes.push(request.url());
   });
-  await page.route("**/v1/assistant/status", (route) =>
+  await page.route("**/v1/assistant/status*", (route) =>
     route.fulfill({ json: { data: { enabled: false, transcription: false } } }),
   );
   await page.goto("/operate");
@@ -81,7 +81,7 @@ test("records a cash sale and takes the product out of stock", async ({ page }) 
 test("lets the reviewer change a suggested supplier invoice and keep the payment amount", async ({
   page,
 }) => {
-  await page.route("**/v1/assistant/status", (route) =>
+  await page.route("**/v1/assistant/status*", (route) =>
     route.fulfill({ json: { data: { enabled: true, transcription: false } } }),
   );
   const purchases = await page.request.get(

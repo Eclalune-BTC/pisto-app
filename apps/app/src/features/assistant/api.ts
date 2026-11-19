@@ -8,6 +8,10 @@ import {
   assistantScopeHeader,
   assistantStatusResponseSchema,
   assistantTranscriptionResponseSchema,
+  type CatalogTurnRequest,
+  type CatalogTurnResponse,
+  catalogTurnRequestSchema,
+  catalogTurnResponseSchema,
 } from "@pisto/contracts";
 
 import { ApiClientError, apiRequest, parseRequestPayload } from "@/lib/api-client";
@@ -61,7 +65,7 @@ async function uploadAudio(audio: Blob, businessId: string, signal?: AbortSignal
 export const assistantApi = {
   status: (signal?: AbortSignal) =>
     apiRequest<AssistantStatusResponse, AssistantStatusResponse["data"]>(
-      "/v1/assistant/status",
+      "/v1/assistant/status?include=catalog",
       { authenticated: true, signal },
       assistantStatusResponseSchema,
     ),
@@ -78,4 +82,15 @@ export const assistantApi = {
     return data.interpretation;
   },
   transcribe: uploadAudio,
+  catalogTurn: (request: CatalogTurnRequest, signal?: AbortSignal) =>
+    apiRequest<CatalogTurnResponse, CatalogTurnResponse["data"]>(
+      "/v1/assistant/catalog-turns",
+      {
+        authenticated: true,
+        method: "POST",
+        body: parseRequestPayload(catalogTurnRequestSchema, request),
+        signal,
+      },
+      catalogTurnResponseSchema,
+    ),
 } as const;

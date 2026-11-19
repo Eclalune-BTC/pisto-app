@@ -1,4 +1,30 @@
 export const assistant = {
+  chat: {
+    pick: "Elija un producto para preguntarle a Coco por su precio, cantidades o existencias.",
+    unitPrice: "Cuesta {{price}} por unidad de venta.",
+    stock: "En este momento quedan {{quantity}}.",
+    untracked: "El negocio no lleva el conteo de existencias de este producto.",
+    quote: "{{countText}} salen en {{total}}.",
+    offer: "{{countText}} salen en {{total}}. ¿Quiere agregarlas a la venta?",
+    shortStock: "En existencias hay {{quantity}}. Revise la cantidad antes de guardar.",
+    prepared: "La venta de {{countText}} suma {{total}}. Puede revisarla antes de guardarla.",
+    clarify:
+      "Puedo consultar el precio o las existencias de este producto y preparar una venta. ¿Qué quiere hacer?",
+    quantityNeeded:
+      "¿Qué cantidad quiere consultar? Puede escribirla en números según la unidad de este producto.",
+    missingPrice: "Este producto todavía no tiene precio de venta en el catálogo.",
+    unavailable:
+      "El producto ya no está disponible para esta consulta. Vuelva a buscarlo en el catálogo.",
+    precisionChanged:
+      "La cantidad elegida no corresponde a la unidad actual. Elija de nuevo el producto y la cantidad.",
+    input: "Preguntarle a Coco sobre este producto",
+    placeholder: "¿Y cuánto cuestan tres?",
+    send: "Enviar pregunta",
+    checking: "Coco está consultando el catálogo…",
+    change: "Buscar otro producto",
+    review: "Revisar venta",
+    addOne: "Vender una unidad",
+  },
   companion: {
     name: "Coco",
     role: "Asistente de Pisto",

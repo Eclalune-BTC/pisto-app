@@ -31,6 +31,7 @@ import { useFieldMarker } from "@/features/assistant/draft-slots";
 import { productQueryOptions } from "@/features/catalog/queries";
 import { CustomerPickerDialog } from "@/features/customers/customer-picker";
 import { PickerField } from "@/features/customers/picker-field";
+import { parseQuantityToMinorUnits } from "@/features/inventory/quantity";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { api } from "@/lib/api-client";
 import { ApiClientError } from "@/lib/api-error";
@@ -53,6 +54,7 @@ import {
   draftFromAssistant,
   draftTotals,
   type ItemizedSaleDraft,
+  newProductLine,
   type PaymentAccount,
   validateItemizedDraft,
 } from "./itemized-draft";
@@ -62,6 +64,7 @@ import { SaleLinesEditor } from "./sale-lines-editor";
 export type ItemizedSaleFormProps = {
   /** Re-read the selected catalog product in this business before starting its line. */
   initialProductId?: string;
+  initialQuantity?: string;
   /** A reviewed assistant draft: every field it resolved starts filled, the rest stay empty. */
   draft?: AssistantSaleDraft;
   entrySource: EntrySource;
@@ -83,6 +86,7 @@ export function ItemizedSaleForm({
   draft,
   entrySource,
   initialProductId,
+  initialQuantity,
   onCancel,
   onLockedChange,
   onSaved,
@@ -179,11 +183,18 @@ export function ItemizedSaleForm({
     : null;
   const now = currentLocalDateTime(business.timeZone);
   const selected = initialProductId ? catalog.get(initialProductId) : undefined;
+  const invalidQuantity =
+    selected &&
+    initialQuantity !== undefined &&
+    "error" in parseQuantityToMinorUnits(initialQuantity, selected.product.quantityPrecision);
   const initial: ItemizedSaleDraft = prefill?.draft ?? {
     customer: null,
     date: now.date,
     time: now.time,
-    lines: selected ? addProductLine([], selected.product, selected.stock) : [],
+    lines:
+      selected && !invalidQuantity
+        ? [newProductLine(selected.product, selected.stock, initialQuantity)]
+        : [],
     note: "",
     received: "",
     receivedEdited: false,
@@ -193,9 +204,15 @@ export function ItemizedSaleForm({
   };
   return (
     <>
-      {initialProductId && !selected ? (
+      {initialProductId && (!selected || invalidQuantity) ? (
         <Alert icon={Info}>
-          <AlertDescription>{t("assistant.tools.productUnavailable")}</AlertDescription>
+          <AlertDescription>
+            {t(
+              invalidQuantity
+                ? "assistant.chat.precisionChanged"
+                : "assistant.tools.productUnavailable",
+            )}
+          </AlertDescription>
         </Alert>
       ) : null}
       <ItemizedSaleEditor
@@ -203,7 +220,7 @@ export function ItemizedSaleForm({
         business={business}
         entrySource={entrySource}
         initial={initial}
-        key={JSON.stringify([business.id, initialProductId])}
+        key={JSON.stringify([business.id, initialProductId, initialQuantity])}
         onCancel={onCancel}
         onLockedChange={onLockedChange}
         onSaved={onSaved}

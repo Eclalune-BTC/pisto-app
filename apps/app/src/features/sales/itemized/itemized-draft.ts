@@ -260,6 +260,14 @@ export function validateItemizedDraft(
   };
 }
 
+export function newProductLine(
+  product: Product,
+  stock: ProductStock | null,
+  quantity = "1",
+): ItemizedLineDraft {
+  return { product, stock, quantity, unitPrice: catalogPriceText(product) };
+}
+
 /** Adds a product, or one more unit of it when it is already on the sale. */
 export function addProductLine(
   lines: readonly ItemizedLineDraft[],
@@ -268,7 +276,7 @@ export function addProductLine(
 ): ItemizedLineDraft[] {
   const existing = lines.find((line) => line.product.id === product.id);
   if (!existing) {
-    return [...lines, { product, stock, quantity: "1", unitPrice: catalogPriceText(product) }];
+    return [...lines, newProductLine(product, stock)];
   }
   return lines.map((line) =>
     line === existing ? { ...line, quantity: stepQuantity(line, 1) } : line,

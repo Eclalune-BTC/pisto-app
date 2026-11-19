@@ -56,7 +56,10 @@ export interface AssistantDirectoryLookup {
 
 export interface AssistantDirectoryRepository {
   /** Fails unless the actor may use the assistant in its active business, before any model cost. */
-  authorize(actor: ProductActor): Promise<{ businessId: string }>;
+  authorize(
+    actor: ProductActor,
+    required?: readonly BusinessPermission[],
+  ): Promise<{ businessId: string }>;
   /**
    * Authorizes `assistant:use` and reads, from the active business only, the records whose folded
    * name contains one of the search terms. Each record family is returned only when the member's
@@ -124,10 +127,15 @@ function boundedTerms(terms: readonly string[]): string[] {
 
 export function createAssistantDirectory(db: Database): AssistantDirectoryRepository {
   return {
-    async authorize(actor) {
+    async authorize(actor, required = []) {
       return db.transaction(
         async (tx) => {
-          const access = await authorizeBusinessAction(tx, actor, ["assistant:use"], "none");
+          const access = await authorizeBusinessAction(
+            tx,
+            actor,
+            ["assistant:use", ...required],
+            "none",
+          );
           return { businessId: access.businessId };
         },
         { accessMode: "read only" },

@@ -1,4 +1,12 @@
 export { decimalToMinorUnits, lineSubtotal, positiveMinorUnits } from "./amounts.ts";
+export {
+  type CatalogIntent,
+  type CatalogModel,
+  catalogModelId,
+  catalogPromptVersion,
+  catalogReply,
+  createDeepSeekCatalogModel,
+} from "./catalog-turn.ts";
 export { type DateExpression, dateWindowDays, resolveDate } from "./dates.ts";
 export {
   type DirectoryAccount,

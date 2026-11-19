@@ -114,6 +114,7 @@ function ComposerForm({
   const { interpret, pending } = useInterpretation(availability.businessId);
   const [text, setText] = useState("");
   const [entry, setEntry] = useState<EntryMode | null>(null);
+  const [question, setQuestion] = useState<string>();
   const [outcome, setOutcome] = useState<InterpretOutcome | null>(null);
   const [unrecognized, setUnrecognized] = useState(false);
   const alive = useRef(true);
@@ -147,7 +148,10 @@ function ComposerForm({
       );
       if (!alive.current) return;
       setOutcome(result);
-      if (result.kind === "tool") setEntry(result.tool);
+      if (result.kind === "tool") {
+        setQuestion(matchSaleTool(sentence) ? undefined : sentence);
+        setEntry(result.tool);
+      }
       if (result.kind === "review") setText("");
     } finally {
       sending.current = false;
@@ -242,10 +246,14 @@ function ComposerForm({
         )}
         {entry !== null && (
           <NewEntryDialog
+            initialQuestion={question}
             availability={availability}
             initialMode={entry}
             onOpenChange={(open) => {
-              if (!open) setEntry(null);
+              if (!open) {
+                setEntry(null);
+                setQuestion(undefined);
+              }
             }}
             open
           />

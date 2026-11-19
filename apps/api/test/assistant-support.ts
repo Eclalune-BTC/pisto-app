@@ -5,6 +5,7 @@ import type { AssistantServices } from "../src/routes/assistant.ts";
 export const assistantTestConfig: AssistantConfig = {
   enabled: null,
   rest: null,
+  deepseekApiKey: null,
   interpretLimit: 20,
   transcribeLimit: 10,
   businessLimit: 60,
@@ -15,6 +16,7 @@ export const assistantTestConfig: AssistantConfig = {
 export function disabledAssistant(): AssistantServices {
   return {
     provider: null,
+    catalogModel: null,
     records: {
       authorize: async () => {
         throw new Error("The disabled assistant never authorizes");

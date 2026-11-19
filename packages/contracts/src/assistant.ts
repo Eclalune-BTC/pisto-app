@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { expenseCategorySchema } from "./cash";
+import { productDetailResponseSchema } from "./catalog";
 import {
   calendarLocalDateSchema,
   localTimeSchema,
@@ -25,11 +26,55 @@ export const assistantInputSourceSchema = z.enum(["voice", "text"]);
 
 export const assistantStatusResponseSchema = z
   .object({
-    data: z.object({ enabled: z.boolean(), transcription: z.boolean() }).strict(),
+    data: z
+      .object({
+        enabled: z.boolean(),
+        transcription: z.boolean(),
+        catalogConversation: z.boolean().optional(),
+      })
+      .strict(),
   })
   .strict();
 
 export const assistantScopeHeader = "X-Pisto-Expected-Business";
+
+/** Decimal quantities cross the UI boundary as text. The current product supplies their precision. */
+export const catalogQuantitySchema = z
+  .string()
+  .max(20)
+  .regex(/^(?:0|[1-9]\d{0,18})(?:\.\d{1,3})?$/)
+  .refine((value) => /[1-9]/.test(value));
+
+export const catalogTurnRequestSchema = z
+  .object({
+    expectedBusinessId: z.string().trim().min(1).max(256),
+    productId: uuidSchema,
+    text: z.string().trim().min(1).max(500),
+    previousQuantity: catalogQuantitySchema.nullable(),
+  })
+  .strict();
+
+const catalogReplySchema = z.union([
+  z
+    .object({ kind: z.enum(["price", "stock", "clarify", "quantity_needed", "missing_price"]) })
+    .strict(),
+  z
+    .object({
+      kind: z.enum(["quote", "prepare_sale"]),
+      quantity: catalogQuantitySchema,
+      quantityMinorUnits: positiveMinorUnitsSchema,
+      totalMinorUnits: minorUnitsSchema,
+    })
+    .strict(),
+]);
+export const catalogTurnResponseSchema = z
+  .object({
+    data: productDetailResponseSchema.shape.data.extend({ reply: catalogReplySchema }).strict(),
+  })
+  .strict();
+export type CatalogTurnRequest = z.infer<typeof catalogTurnRequestSchema>;
+export type CatalogTurnResponse = z.infer<typeof catalogTurnResponseSchema>;
+export type CatalogReply = z.infer<typeof catalogReplySchema>;
 
 export const assistantInterpretRequestSchema = z
   .object({

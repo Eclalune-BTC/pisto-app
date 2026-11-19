@@ -20,6 +20,7 @@ import { PressableSurface } from "@/components/ui/pressable-surface";
 import { Text } from "@/components/ui/text";
 import { ProductSearch } from "@/features/sales/itemized/product-search";
 import { businessQuestions, permitsTool, questionKinds } from "./business-questions";
+import { CatalogConversation } from "./catalog-conversation";
 
 function ToolRow({
   icon,
@@ -121,6 +122,8 @@ export function AssistantTools({
 }
 
 export function SaleToolPanel({
+  catalogConversation,
+  question,
   tool,
   businessId,
   permissions,
@@ -129,6 +132,8 @@ export function SaleToolPanel({
   onBack,
   onClose,
 }: {
+  catalogConversation: boolean;
+  question?: string;
   tool: AssistantToolCall;
   businessId: string;
   permissions: readonly BusinessPermission[];
@@ -141,6 +146,19 @@ export function SaleToolPanel({
   const router = useRouter();
   const sale = tool.name === "start_sale";
   const canSell = permissions.includes("sales:create");
+  if (tool.name === "find_product" && catalogConversation && permissions.includes("catalog:read")) {
+    return (
+      <CatalogConversation
+        key={JSON.stringify([businessId, tool.query])}
+        businessId={businessId}
+        initialSearch={tool.query ?? ""}
+        question={question}
+        canSell={canSell}
+        onBack={onBack}
+        onClose={onClose}
+      />
+    );
+  }
   return (
     <View className="pisto-caption-in gap-4">
       <View className="gap-1.5">

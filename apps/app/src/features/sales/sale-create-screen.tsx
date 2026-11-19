@@ -37,7 +37,13 @@ import { firstInvalidField, type SaleDraftFieldRefs, SaleDraftFields } from "./s
 import { saleAmount, saleDescriptionItem, saleMoment } from "./sale-facts";
 import { readState } from "./state";
 
-export default function NewSaleScreen({ initialProductId }: { initialProductId?: string } = {}) {
+export default function NewSaleScreen({
+  initialProductId,
+  initialQuantity,
+}: {
+  initialProductId?: string;
+  initialQuantity?: string;
+} = {}) {
   const { t } = useTranslation();
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
@@ -70,8 +76,13 @@ export default function NewSaleScreen({ initialProductId }: { initialProductId?:
   if (!business) return <Redirect href="/business" />;
   return (
     <NewSaleModes
-      key={initialProductId ? JSON.stringify([business.id, initialProductId]) : business.id}
+      key={
+        initialProductId
+          ? JSON.stringify([business.id, initialProductId, initialQuantity])
+          : business.id
+      }
       initialProductId={initialProductId}
+      initialQuantity={initialQuantity}
       business={business}
       businessStale={queryHasStaleData(businesses)}
       businessFetching={businesses.isFetching}
@@ -89,6 +100,7 @@ export default function NewSaleScreen({ initialProductId }: { initialProductId?:
  */
 export function NewSaleModes(props: {
   initialProductId?: string;
+  initialQuantity?: string;
   business: Business;
   businessStale: boolean;
   businessFetching: boolean;
@@ -162,7 +174,8 @@ export function NewSaleModes(props: {
         title={t("sales.new.title")}
       />
       <ItemizedSaleForm
-        entrySource="manual"
+        entrySource={props.initialQuantity ? "text" : "manual"}
+        initialQuantity={props.initialQuantity}
         initialProductId={props.initialProductId}
         onCancel={() => router.replace("/operate/sales")}
         onSaved={(saleId) =>

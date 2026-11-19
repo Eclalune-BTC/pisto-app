@@ -17,6 +17,7 @@ export interface AssistantConfig {
   enabled: boolean | null;
   /** Workers AI REST credentials for the local Bun API; the Worker uses its AI binding. */
   rest: { accountId: string; apiToken: string } | null;
+  deepseekApiKey: string | null;
   interpretLimit: number;
   transcribeLimit: number;
   businessLimit: number;
@@ -58,6 +59,7 @@ function parseAssistantConfig(read: EnvironmentReader): AssistantConfig {
         ? null
         : read.boolean("ASSISTANT_ENABLED", false),
     rest: accountId && apiToken ? { accountId, apiToken } : null,
+    deepseekApiKey: read.optional("DEEPSEEK_API_KEY") ?? null,
     interpretLimit: read.integer("ASSISTANT_INTERPRET_LIMIT_PER_MINUTE", 20, { min: 1, max: 600 }),
     transcribeLimit: read.integer("ASSISTANT_TRANSCRIBE_LIMIT_PER_MINUTE", 10, {
       min: 1,

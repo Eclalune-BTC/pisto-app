@@ -30,6 +30,7 @@ should update the affected guide and references. Accepted target architecture is
 | [0019](0019-elysia-http-composition.md) | Accepted | Elysia HTTP composition with existing REST and Zod contracts |
 | [0020](0020-cloudflare-workers-neon-hosting.md) | Accepted | Hosted demo on Cloudflare Workers (one Durable Object) with Neon PostgreSQL |
 | [0021](0021-workers-ai-registration-assistant.md) | Accepted; amends 0009 | Registration assistant on Workers AI behind a small typed adapter |
+| [0022](0022-contextual-catalog-questions.md) | Accepted | Scoped catalog follow-ups with DeepSeek and deterministic sale quotes |
 
 ## Status values
 

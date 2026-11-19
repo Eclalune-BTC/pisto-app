@@ -11,7 +11,8 @@
     "build": "bun build ./src/index.ts --outdir ./dist --target bun --packages external",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "eval": "bun ./eval/run.ts"
+    "eval": "bun ./eval/run.ts",
+    "eval:catalog": "bun ./eval/catalog.ts"
   },
   "dependencies": {
     "@pisto/contracts": "workspace:*",

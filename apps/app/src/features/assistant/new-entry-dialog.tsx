@@ -57,7 +57,7 @@ type VoiceFailure =
 
 type Phase =
   | { kind: "tools" }
-  | { kind: "saleTool"; tool: AssistantToolCall }
+  | { kind: "saleTool"; tool: AssistantToolCall; question?: string }
   | { kind: "text" }
   | { kind: "requesting" }
   | { kind: "recording" }
@@ -131,6 +131,7 @@ function Examples({ onPick }: { onPick: (example: string) => void }) {
 }
 
 type NewEntryDialogProps = {
+  initialQuestion?: string;
   availability: Exclude<AssistantAvailability, { kind: "hidden" }>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -182,6 +183,7 @@ export function NewEntryDialog(props: NewEntryDialogProps) {
 
 function EntryBody({
   availability,
+  initialQuestion,
   initialMode,
   onOpenChange,
   onActivity,
@@ -224,6 +226,8 @@ function EntryBody({
   const voiceAvailable = availability.kind === "ready" && availability.transcription && canRecord();
   return (
     <EntryFlow
+      catalogConversation={availability.catalogConversation}
+      initialQuestion={initialQuestion}
       onActivity={onActivity}
       businessId={availability.businessId}
       initialMode={
@@ -242,6 +246,8 @@ function EntryBody({
 }
 
 function EntryFlow({
+  catalogConversation,
+  initialQuestion,
   onActivity,
   businessId,
   initialMode,
@@ -250,6 +256,8 @@ function EntryFlow({
   onClose,
   voiceAvailable,
 }: {
+  catalogConversation: boolean;
+  initialQuestion?: string;
   onActivity: (value: CocoActivity) => void;
   businessId: string;
   initialMode: EntryMode;
@@ -263,7 +271,7 @@ function EntryFlow({
   const { interpret } = useInterpretation(businessId);
   const [phase, setPhase] = useState<Phase>(
     typeof initialMode === "object"
-      ? { kind: "saleTool", tool: initialMode }
+      ? { kind: "saleTool", tool: initialMode, question: initialQuestion }
       : initialMode === "tools"
         ? { kind: "tools" }
         : initialMode === "voice"
@@ -315,7 +323,11 @@ function EntryFlow({
       return;
     }
     if (outcome.kind === "tool") {
-      setPhase({ kind: "saleTool", tool: outcome.tool });
+      setPhase({
+        kind: "saleTool",
+        tool: outcome.tool,
+        question: matchSaleTool(sentence) ? undefined : sentence,
+      });
       return;
     }
     setNotice(outcome.kind === "unsupported" ? outcome.reason : outcome.problem);
@@ -453,6 +465,8 @@ function EntryFlow({
     if (phase.kind === "saleTool" && permitsTool(permissions, phase.tool)) {
       return (
         <SaleToolPanel
+          catalogConversation={catalogConversation}
+          question={phase.question}
           businessId={businessId}
           permissions={permissions}
           canInterpret={canInterpret}

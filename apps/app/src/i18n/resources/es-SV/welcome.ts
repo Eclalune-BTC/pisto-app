@@ -63,6 +63,7 @@ export const welcome = {
     filmLabel: "Vídeo de ejemplo de una venta de café en Pisto",
     filmError: "El vídeo no se pudo cargar. Puede seguir los pasos que aparecen a continuación.",
     filmCaptions: "Español",
+    cocoDemo: "Ver a Coco cotizar una venta",
     duration: "0:18",
     chapters: {
       product: "Elegir el producto",

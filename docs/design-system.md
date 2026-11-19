@@ -172,6 +172,12 @@ demo business. The 18-second, 720p H.264 file loads on demand on the web. Its th
 controls seek to the product, payment and receipt. Native uses the corresponding bundled frames
 and the same descriptions. The editable footage contains only fictional shop records.
 
+The same web section links to the 19-second Coco demonstration at `/media/coco-demo.mp4`.
+It shows a real price lookup, a follow-up typed in the running app, a quote and the editable sale.
+The last shot enlarges the quantity and total from a 390-pixel viewport. Spanish text carries
+the walkthrough without sound. To render it again, install the locked dependencies in
+`media/coco-demo` with Bun and run `bun run render` there. The renderer has its own lockfile.
+
 Four original market photographs pair the cash drawer, closing book, customer ledger and supplier
 delivery with the corresponding module. Visitors can swipe, use the previous and next buttons or
 choose a tab with the keyboard. The carousel advances on request. Role disclosures use the same

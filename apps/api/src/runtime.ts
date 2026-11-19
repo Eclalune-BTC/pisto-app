@@ -1,5 +1,6 @@
 import {
   type AssistantProvider,
+  createDeepSeekCatalogModel,
   createWorkersAiBindingProvider,
   createWorkersAiRestProvider,
   type WorkersAiBinding,
@@ -86,6 +87,10 @@ export function createRuntime(
     },
     assistant: {
       provider: assistantProvider(config.assistant, options.ai),
+      catalogModel:
+        config.assistant.enabled !== false && config.assistant.deepseekApiKey
+          ? createDeepSeekCatalogModel(config.assistant.deepseekApiKey)
+          : null,
       records: createAssistantDirectory(database.db),
       // The purchases module supplies the real supplier directory when it is composed.
       suppliers: createAssistantSupplierDirectory(database.db),

@@ -21,8 +21,8 @@ export type AssistantAvailability =
   | { kind: "hidden" }
   | { kind: "loading"; businessId: string }
   | { kind: "error"; businessId: string; retry: () => void }
-  | { kind: "disabled"; businessId: string }
-  | { kind: "ready"; businessId: string; transcription: boolean };
+  | { kind: "disabled"; businessId: string; catalogConversation: boolean }
+  | { kind: "ready"; businessId: string; transcription: boolean; catalogConversation: boolean };
 
 /** Whether the active member may use the assistant and the server reports it on. */
 export function useAssistantAvailability(): AssistantAvailability {
@@ -39,8 +39,17 @@ export function useAssistantAvailability(): AssistantAvailability {
     return { kind: "hidden" };
   if (status.data) {
     return status.data.enabled
-      ? { kind: "ready", businessId: business.id, transcription: status.data.transcription }
-      : { kind: "disabled", businessId: business.id };
+      ? {
+          kind: "ready",
+          businessId: business.id,
+          transcription: status.data.transcription,
+          catalogConversation: status.data.catalogConversation === true,
+        }
+      : {
+          kind: "disabled",
+          businessId: business.id,
+          catalogConversation: status.data.catalogConversation === true,
+        };
   }
   if (status.isError) {
     return { kind: "error", businessId: business.id, retry: () => void status.refetch() };

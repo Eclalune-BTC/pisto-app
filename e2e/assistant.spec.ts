@@ -7,7 +7,7 @@ test.use({
 });
 
 test("keeps the same draft when the workspace changes width", async ({ page }) => {
-  await page.route("**/v1/assistant/status", (route) =>
+  await page.route("**/v1/assistant/status*", (route) =>
     route.fulfill({ json: { data: { enabled: true, transcription: true } } }),
   );
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -24,7 +24,7 @@ test("reviews the complete recording before using the corrected words", async ({
   const audio: Buffer[] = [];
   const interpretations: unknown[] = [];
   const transcript = `${"Compré café. ".repeat(85)}La factura termina en 050.`;
-  await page.route("**/v1/assistant/status", (route) =>
+  await page.route("**/v1/assistant/status*", (route) =>
     route.fulfill({ json: { data: { enabled: true, transcription: true } } }),
   );
   await page.route("**/v1/assistant/transcriptions", (route) => {
@@ -87,6 +87,79 @@ test("reviews the complete recording before using the corrected words", async ({
     ]);
 });
 
+test("keeps the catalog product and quantity through a quote, acceptance and editable sale", async ({
+  page,
+}) => {
+  const firstQuestion = "¿Cuánto cuestan tres bolsas de café molido?";
+  await page.route("**/v1/assistant/interpretations", (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          interpretation: {
+            text: firstQuestion,
+            source: "text",
+            spans: [],
+            draft: null,
+            unsupported: null,
+            notices: [],
+            tool: { name: "find_product", query: "café molido" },
+          },
+        },
+      },
+    }),
+  );
+  await page.route("**/v1/assistant/status*", (route) =>
+    route.fulfill({
+      json: { data: { enabled: true, transcription: true, catalogConversation: true } },
+    }),
+  );
+  const turns: Array<{ text: string; previousQuantity: string | null }> = [];
+  const writes: string[] = [];
+  page.on("request", (r) => {
+    if (r.method() === "POST" && r.url().endsWith("/v1/sales/itemized")) writes.push(r.url());
+  });
+  await page.route("**/v1/assistant/catalog-turns", async (route) => {
+    const req = route.request().postDataJSON();
+    turns.push({ text: req.text, previousQuantity: req.previousQuantity });
+    const detail = await page.request.get(
+      new URL(`/v1/catalog/products/${req.productId}`, route.request().url()).href,
+    );
+    const { data } = await detail.json();
+    expect(data.businessId).toBe(req.expectedBusinessId);
+    const reply =
+      req.text === "¿Cuántas quedan?"
+        ? { kind: "stock" }
+        : {
+            kind: req.text === firstQuestion ? "quote" : "prepare_sale",
+            quantity: "3",
+            quantityMinorUnits: "3",
+            totalMinorUnits: "975",
+          };
+    await route.fulfill({ json: { data: { ...data, reply } } });
+  });
+  await page.goto("/operate");
+  await page.getByRole("textbox", { name: "Qué quiere registrar" }).fill(firstQuestion);
+  await page.getByRole("button", { name: "Revisar", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "Café molido 1 lb" })).toBeVisible();
+  const follow = dialog.getByRole("textbox", { name: "Preguntarle a Coco sobre este producto" });
+  await expect(dialog.getByText(/3 unidades salen en \$9\.75/)).toBeVisible();
+  await follow.fill("¿Cuántas quedan?");
+  await follow.press("Enter");
+  await expect(dialog.getByText(/En este momento quedan|no lleva el conteo/)).toBeVisible();
+  await follow.fill("Sí, agréguelas");
+  await follow.press("Enter");
+  await expect(dialog.getByText(/La venta de 3 unidades suma \$9\.75/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Revisar venta", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "¿Cuánto le pagaron?" })).toHaveValue("9.75");
+  expect(turns).toEqual([
+    { text: firstQuestion, previousQuantity: null },
+    { text: "¿Cuántas quedan?", previousQuantity: "3" },
+    { text: "Sí, agréguelas", previousQuantity: "3" },
+  ]);
+  expect(writes).toEqual([]);
+});
+
 test("rereads the selected product before filling a second sale from the catalog", async ({
   page,
 }) => {
@@ -144,7 +217,7 @@ test("answers financial questions with the business records when model extractio
   page.on("request", (request) => {
     if (request.url().endsWith("/v1/assistant/interpretations")) modelCalls++;
   });
-  await page.route("**/v1/assistant/status", (route) =>
+  await page.route("**/v1/assistant/status*", (route) =>
     route.fulfill({ json: { data: { enabled: false, transcription: false } } }),
   );
   await page.goto("/operate");

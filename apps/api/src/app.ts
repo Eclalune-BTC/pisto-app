@@ -214,5 +214,5 @@ export function createApp(input: {
     .use(moneyTrendRoutes({ access, moneyTrend }))
     .use(movementsRoutes({ access, movements }))
     .use(debtorsRoutes({ access, debtors }))
-    .use(assistantRoutes({ access, assistant: input.assistant }));
+    .use(assistantRoutes({ access, assistant: input.assistant, catalog }));
 }
