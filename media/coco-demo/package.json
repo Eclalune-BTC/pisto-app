@@ -2,7 +2,7 @@
   "name": "pisto-demo-renderer",
   "private": true,
   "scripts": {
-    "render": "remotion render index.tsx Coco ../../apps/app/public/media/coco-demo.mp4 --codec=h264 --color-space=bt709 --image-format=jpeg --jpeg-quality=95 --crf=22 --concurrency=1"
+    "render": "remotion render index.tsx Tour ../../apps/app/public/media/recorrido-pisto.mp4 --codec=h264 --color-space=bt709 --image-format=jpeg --jpeg-quality=95 --crf=22 --concurrency=1"
   },
   "dependencies": {
     "@remotion/cli": "4.0.540",

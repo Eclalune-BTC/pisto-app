@@ -64,8 +64,8 @@ const still = (file: string, time: number, from: View = whole, to: View = from):
   to,
 });
 
-const intro = seconds(2.4);
-const outro = seconds(2.6);
+const intro = seconds(3);
+const outro = seconds(3);
 
 const content: View = [228, 30, 1052];
 const dialog: View = [286, 170, 708];
@@ -77,82 +77,86 @@ const chapters: readonly Chapter[] = [
     title: "El día de la tienda",
     line: "Al abrir Pisto ve el dinero disponible, lo que se movió hoy y lo que falta cobrar y pagar.",
     shots: [
-      still("home", 2.4, whole, content),
-      still("home-tall", 2, content, [262, 250, 990]),
-      still("home-tall", 2.2, [262, 250, 990], [262, 560, 990]),
+      still("home", 2.6, whole, content),
+      still("home-tall", 2.4, content, [262, 250, 990]),
+      still("home-tall", 2, [262, 250, 990], [262, 560, 990]),
     ],
   },
   {
-    title: "Coco registra",
-    line: "Dicte la venta como la contaría. Coco arma el borrador y usted lo revisa antes de guardar.",
+    title: "Vender",
+    line: "Cada venta queda con sus productos, cómo se pagó y su comprobante. El inventario baja solo.",
+    shots: [
+      still("module-sales", 3, content, module),
+      still("sale-detail", 3, content, module),
+      still("sale-review", 3, content, [250, 110, 560]),
+    ],
+  },
+  {
+    title: "Fiado y cobros",
+    line: "Sabe quién le debe, desde cuándo y cuánto está vencido. Cada abono baja el saldo del cliente.",
+    shots: [
+      still("module-receivables", 3.5, content, module),
+      still("module-receivables", 3.5, module, [240, 168, 1012]),
+    ],
+  },
+  {
+    title: "Compras e inventario",
+    line: "Las facturas de sus proveedores, lo que vence primero y las existencias que se están acabando.",
+    shots: [
+      still("module-payables", 3.2, content, module),
+      still("module-inventory", 3, content, module),
+      still("module-catalog", 2.8, content, module),
+    ],
+  },
+  {
+    title: "Caja, gastos y reportes",
+    line: "El efectivo y el banco por cuenta, los gastos por categoría y el resumen del período.",
+    shots: [
+      still("module-cash", 3.2, content, module),
+      still("module-expenses", 3.2, content, module),
+      still("module-reports-tall", 5.6, content, [262, 420, 990]),
+    ],
+  },
+  {
+    title: "Coco, su asistente",
+    line: "Dicte una venta o pregunte cuánto vendió. Coco prepara el borrador y responde con sus registros.",
     shots: [
       {
         frames: ["dictate-1", "dictate-2", "dictate-3", "dictate-4", "dictate-5"],
-        seconds: 3.4,
+        seconds: 3.2,
         from: [236, 120, 840],
         to: dialog,
       },
-      { ...still("dictate-transcribing", 0.7, dialog), cut: true },
-      still("dictate-heard", 2.3, dialog),
-      still("sale-review", 3.2, content, [250, 110, 560]),
-      still("sale-review-due-tall", 2.4, [640, 130, 640], [640, 700, 640]),
-      still("sale-saved", 2, content, [228, 143, 1052]),
-    ],
-  },
-  {
-    title: "Coco responde",
-    line: "Pregunte con sus palabras. Las cifras salen de los registros de la tienda.",
-    shots: [
+      { ...still("dictate-transcribing", 0.6, dialog), cut: true },
+      still("dictate-heard", 2, [200, 160, 880]),
+      still("sale-review-due-tall", 2.2, [640, 130, 640], [640, 700, 640]),
       {
         frames: ["ask-type-1", "ask-type-2", "ask-type-3", "ask-type-4"],
-        seconds: 1.8,
+        seconds: 1.6,
         from: [262, 100, 990],
         to: [400, 110, 860],
       },
       { ...still("ask-reading", 0.6, [400, 110, 860]), cut: true },
-      still("ask-answer-1", 3.6, [256, 150, 768], [330, 160, 620]),
+      still("ask-answer-1", 3, [256, 150, 768], [330, 160, 620]),
       {
         frames: ["ask-follow-1", "ask-follow-2", "ask-follow-3", "ask-follow-4"],
-        seconds: 1.6,
+        seconds: 1.4,
         from: [330, 180, 620],
         cut: true,
       },
       { ...still("ask-reading-2", 0.6, [330, 180, 620]), cut: true },
-      still("ask-answer-2", 4.8, [320, 40, 640], [320, 238, 640]),
+      still("ask-answer-2", 3.8, [320, 40, 640], [320, 238, 640]),
     ],
   },
   {
-    title: "Ventas, caja y gastos",
-    line: "Cada venta guarda su comprobante. La caja, el banco y los gastos se ven por cuenta y por categoría.",
-    shots: [
-      still("module-sales", 2.4, content, module),
-      still("sale-detail", 2.4, content, module),
-      still("module-cash", 2.6, content, module),
-      still("module-expenses", 2.6, content, module),
-    ],
-  },
-  {
-    title: "Inventario y deudas",
-    line: "Sabe qué se está acabando, quién le debe y qué facturas tiene pendientes con sus proveedores.",
-    shots: [
-      still("module-catalog", 2.5, content, module),
-      still("module-inventory", 2.3, content, module),
-      still("module-receivables", 2.6, content, module),
-      still("module-payables", 2.6, content, module),
-    ],
-  },
-  {
-    title: "Reportes y equipo",
-    line: "El resumen del período, un rol para cada persona y la misma tienda en el teléfono.",
-    shots: [
-      still("module-reports-tall", 3, content, [262, 120, 990]),
-      still("module-settings-tall", 2.4, [690, 180, 590], [690, 360, 590]),
-    ],
+    title: "Equipo y teléfono",
+    line: "Un rol para cada persona de la tienda, y todo Pisto también en el teléfono.",
+    shots: [still("module-settings-tall", 3, [690, 180, 590], [690, 360, 590])],
   },
 ];
 
 const phones = ["phone-home", "phone-answer", "phone-movements"] as const;
-const phoneSeconds = 2;
+const phoneSeconds = 3;
 
 const chapterFrames = chapters.map((chapter, index) => {
   const shots = chapter.shots.reduce((total, shot) => total + seconds(shot.seconds), 0);
@@ -418,14 +422,14 @@ function Tour() {
                 letterSpacing: "-0.045em",
               }}
             >
-              La tienda completa,
+              Toda su tienda
               <br />
-              con Coco.
+              en un solo lugar.
             </div>
             <div style={{ marginTop: 34, display: "flex", alignItems: "center", gap: 18 }}>
               <div style={{ width: 64, height: 8, backgroundColor: lime }} />
               <div style={{ fontSize: 34, fontWeight: 400, color: "rgba(255,255,255,0.86)" }}>
-                Abarrotes La Ceiba · datos de ejemplo
+                Ventas, fiado, compras, inventario, caja y reportes
               </div>
             </div>
           </div>
@@ -448,10 +452,16 @@ function Tour() {
                 letterSpacing: "-0.045em",
               }}
             >
-              De su voz
-              <br />a sus cuentas.
+              Empiece hoy
+              <br />
+              con su tienda.
             </div>
-            <div style={{ marginTop: 40, width: 64, height: 8, backgroundColor: lime }} />
+            <div style={{ marginTop: 40, display: "flex", alignItems: "center", gap: 18 }}>
+              <div style={{ width: 64, height: 8, backgroundColor: lime }} />
+              <div style={{ fontSize: 34, fontWeight: 400, color: "rgba(255,255,255,0.86)" }}>
+                Cree su cuenta y registre su primera venta
+              </div>
+            </div>
           </div>
         </Card>
       </Sequence>
@@ -466,7 +476,7 @@ function Root() {
       durationInFrames={totalFrames}
       fps={fps}
       height={1080}
-      id="Coco"
+      id="Tour"
       width={1920}
     />
   );

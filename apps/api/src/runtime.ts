@@ -48,10 +48,15 @@ export function assistantProvider(
     : config.rest
       ? createWorkersAiRestProvider(config.rest)
       : null;
-  const provider =
-    config.extraction === "deepseek" && config.deepseekApiKey
-      ? createDeepSeekProvider(config.deepseekApiKey, workersAi)
-      : workersAi;
+  let provider = workersAi;
+  if (config.extraction === "deepseek") {
+    if (!config.deepseekApiKey) {
+      throw new ApiConfigurationError(
+        "ASSISTANT_EXTRACTION_PROVIDER=deepseek requires DEEPSEEK_API_KEY",
+      );
+    }
+    provider = createDeepSeekProvider(config.deepseekApiKey, workersAi);
+  }
   if (config.enabled === true && !provider) {
     throw new ApiConfigurationError(
       "ASSISTANT_ENABLED=true requires the AI binding, CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_AI_API_TOKEN, or ASSISTANT_EXTRACTION_PROVIDER=deepseek",

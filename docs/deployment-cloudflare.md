@@ -95,7 +95,7 @@ the 206 response from the `ASSETS` binding. It reads the whole file for each ran
 few short films; move larger media to object storage instead. After a deployment, check it:
 
 ```sh
-curl -s -D - -o /dev/null -H "Range: bytes=0-999" https://pisto.contact-862.workers.dev/media/coco-demo.mp4
+curl -s -D - -o /dev/null -H "Range: bytes=0-999" https://pisto.contact-862.workers.dev/media/recorrido-pisto.mp4
 ```
 
 The response must be `206` with `Content-Range: bytes 0-999/<size>`. `wrangler dev` routes the same
@@ -140,7 +140,9 @@ repository's pinned Wrangler and the same AI binding on the local Worker. Put lo
 `apps/api/.dev.vars` (ignored by Git), for example `NODE_ENV=development`,
 `BETTER_AUTH_URL=http://localhost:8787`, `CORS_ORIGINS=http://localhost:8787`, a local
 `BETTER_AUTH_SECRET` and a `DATABASE_URL` (use `127.0.0.1`, not `localhost`, for a local
-PostgreSQL). The local Worker calls the real models using the account's Workers AI allocation.
+PostgreSQL). `wrangler.jsonc` selects DeepSeek for sentences, so the local Worker needs either
+`DEEPSEEK_API_KEY` or `ASSISTANT_EXTRACTION_PROVIDER=workers-ai` in `.dev.vars`; without one of
+them it refuses to start. With `workers-ai` it calls the account's Workers AI allocation.
 The standalone Bun API shows the assistant as unavailable unless its Workers AI REST credentials
 are configured.
 

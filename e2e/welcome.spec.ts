@@ -3,19 +3,19 @@ import { expect, type Locator, test } from "@playwright/test";
 test("plays both films inside the page, seeks by chapter and pauses", async ({ page }) => {
   await page.goto("/#how");
   const time = (film: Locator) => film.evaluate((element: HTMLVideoElement) => element.currentTime);
-  const tour = page.getByLabel("Vídeo del recorrido por Pisto con Coco");
+  const tour = page.getByLabel("Vídeo del recorrido completo por Pisto");
   await expect(tour).toBeVisible();
-  await expect(page.getByRole("tab", { name: /Recorrido con Coco\s*1:06/ })).toHaveAttribute(
+  await expect(page.getByRole("tab", { name: /Recorrido completo\s*1:15/ })).toHaveAttribute(
     "aria-selected",
     "true",
   );
-  await expect(page.getByText("Coco registra una venta dictada", { exact: false })).toBeVisible();
+  await expect(page.getByText("Toda la tienda en un minuto", { exact: false })).toBeVisible();
   await expect.poll(() => tour.evaluate((element: HTMLVideoElement) => element.paused)).toBe(true);
-  await page.getByRole("button", { name: "Reproducir el recorrido con Coco" }).click();
+  await page.getByRole("button", { name: "Reproducir el recorrido completo" }).click();
   await expect.poll(() => time(tour)).toBeGreaterThan(0.2);
-  await page.getByRole("button", { name: "Coco responde", exact: true }).click();
-  await expect.poll(() => time(tour)).toBeGreaterThanOrEqual(23);
-  await expect.poll(() => tour.evaluate((element: HTMLVideoElement) => element.duration)).toBe(66);
+  await page.getByRole("button", { name: "Coco, su asistente", exact: true }).click();
+  await expect.poll(() => time(tour)).toBeGreaterThanOrEqual(47);
+  await expect.poll(() => tour.evaluate((element: HTMLVideoElement) => element.duration)).toBe(75);
 
   // Choosing the other film replaces the player, so the first one stops.
   await page.getByRole("tab", { name: /Una venta de café\s*0:18/ }).click();

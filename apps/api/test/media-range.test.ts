@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { type AssetFetcher, serveMediaRange } from "../src/media-range.ts";
 
 const film = new Uint8Array(1_000).map((_, index) => index % 251);
-const url = "https://pisto.example.test/media/coco-demo.mp4";
+const url = "https://pisto.example.test/media/recorrido-pisto.mp4";
 
 function assets(status = 200) {
   const seen: Request[] = [];

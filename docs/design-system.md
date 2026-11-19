@@ -172,12 +172,13 @@ length, a sentence under it says what the film shows, and the chapter list seeks
 chapter shows its line while it plays. Both are 16:9 H.264 files that load on demand with a poster
 and Spanish captions; native builds show one bundled frame per chapter.
 
-- **Recorrido con Coco** (1:06, 1080p, `/media/coco-demo.mp4`): the whole product on a disposable
-  demo business. Coco hears a dictated credit sale and drafts it, the member reviews and saves it,
-  Coco answers what was sold today and who owes, then sales, cash, expenses, stock, debts, reports,
-  roles and the phone layout. Every frame is a capture of the running app with the real models; the
-  composition only frames, cuts and captions them. Footage and composition live in
-  `media/coco-demo`; install its locked dependencies with Bun and run `bun run render` there.
+- **Recorrido completo** (1:15, 1080p, `/media/recorrido-pisto.mp4`): the whole product on a
+  disposable demo business, product first: the day, sales and receipts, receivables, purchases and
+  stock, cash, expenses and reports. Coco is one chapter near the end (a dictated credit sale and
+  two answers), then roles and the phone layout. Every frame is a capture of the running app with
+  the real models; the composition only frames, cuts and captions them. Footage and composition
+  live in `media/coco-demo`; install its locked dependencies with Bun and run `bun run render`
+  there.
 - **Una venta de café** (0:18, 720p): one sale from the product to its receipt, in three chapters.
 
 The films contain only fictional shop records. Chapter starts in `features/welcome/tours.ts` match

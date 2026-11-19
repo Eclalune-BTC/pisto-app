@@ -328,7 +328,7 @@ account setting.
 | Voice recording or transcription | Web push-to-talk to 16 kHz WAV and batch Whisper transcription; native builds are text-only |
 | Conversation persistence or long-term memory | Not implemented |
 | RAG, embeddings, pgvector, Neo4j, or GraphRAG | Intentionally not selected |
-| Provider sandbox/device/deployment evidence | 31/31 on Spanish set `2026-11-19.1` (20 registration and tool cases, 11 question cases) with prompt `extract-2026-11-19.1` through the remote Workers AI binding, median 4.4 s per sentence; web recording was exercised in Chrome with a synthetic Spanish voice. Physical-device and real-speaker evidence remain open. |
+| Provider sandbox/device/deployment evidence | 31/31 on Spanish set `2026-11-19.1` (20 registration and tool cases, 11 question cases) with prompt `extract-2026-11-19.1` through the remote Workers AI binding, median 4.4 s per sentence, and 31/31 on the hosted demo with DeepSeek (`deepseek-flash`, 2026-11-19), median 2.1 s and p95 2.8 s; web recording was exercised in Chrome with a synthetic Spanish voice. Physical-device and real-speaker evidence remain open. |
 
 ## Primary sources
 

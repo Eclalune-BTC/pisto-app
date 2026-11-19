@@ -26,8 +26,12 @@ export async function deepSeekJson(input: {
   maxTokens: number;
   signal: AbortSignal;
 }): Promise<unknown> {
+  const ended = () => new AssistantProviderError("timeout", "The DeepSeek call ended");
+  // workerd rejects fetch called as a method of another object, so it is called on its own.
+  const { send } = input;
+  let response: Response;
   try {
-    const response = await input.send(endpoint, {
+    response = await send(endpoint, {
       method: "POST",
       redirect: "manual",
       signal: input.signal,
@@ -42,20 +46,22 @@ export async function deepSeekJson(input: {
         messages: input.messages,
       }),
     });
-    if (!response.ok) {
-      throw new AssistantProviderError("unavailable", `DeepSeek returned HTTP ${response.status}`);
-    }
+  } catch {
+    // Runtimes disagree on the error a refused connection throws, so any failure to send counts.
+    throw input.signal.aborted
+      ? ended()
+      : new AssistantProviderError("unavailable", "DeepSeek could not be reached");
+  }
+  if (!response.ok) {
+    throw new AssistantProviderError("unavailable", `DeepSeek returned HTTP ${response.status}`);
+  }
+  try {
     const result = completionSchema.parse(await response.json());
     return JSON.parse(result.choices[0].message.content);
-  } catch (error) {
-    if (error instanceof AssistantProviderError) throw error;
-    if (input.signal.aborted) {
-      throw new AssistantProviderError("timeout", "The DeepSeek call ended");
-    }
-    throw new AssistantProviderError(
-      error instanceof TypeError ? "unavailable" : "invalid_output",
-      "DeepSeek returned no usable result",
-    );
+  } catch {
+    throw input.signal.aborted
+      ? ended()
+      : new AssistantProviderError("invalid_output", "DeepSeek returned no usable result");
   }
 }
 

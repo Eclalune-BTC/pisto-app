@@ -13,11 +13,13 @@ type Sent = { url: string; init: RequestInit; body: Record<string, unknown> };
 
 function vendor(reply: (sent: Sent) => Response | Promise<Response>) {
   const sent: Sent[] = [];
-  const send = (async (url: string | URL | Request, init: RequestInit = {}) => {
+  const send = async function (this: unknown, url: string | URL | Request, init: RequestInit = {}) {
+    // The Workers runtime throws this when fetch is called as a method of another object.
+    if (this !== undefined) throw new TypeError("Illegal invocation");
     const call = { url: String(url), init, body: JSON.parse(String(init.body)) };
     sent.push(call);
     return reply(call);
-  }) as typeof fetch;
+  } as typeof fetch;
   return { send, sent };
 }
 
@@ -70,10 +72,11 @@ describe("DeepSeek extraction", () => {
     ["a cut answer", () => completion('{"kind":', "length"), "invalid_output"],
     ["text that is not JSON", () => completion("Vendió mucho hoy."), "invalid_output"],
     ["an unexpected body", () => Response.json({ output: "{}" }), "invalid_output"],
+    ["an answer without choices", () => Response.json({ choices: [] }), "invalid_output"],
     [
-      "a network failure",
+      "a refused connection",
       () => {
-        throw new TypeError("fetch failed");
+        throw Object.assign(new Error("Unable to connect"), { code: "ConnectionRefused" });
       },
       "unavailable",
     ],

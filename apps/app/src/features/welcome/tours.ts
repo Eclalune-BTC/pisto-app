@@ -4,17 +4,18 @@
  */
 export const TOURS = {
   app: {
-    video: "/media/coco-demo.mp4",
-    poster: "/media/coco-demo.jpg",
-    captions: "/media/coco-demo.vtt",
-    duration: "1:06",
+    video: "/media/recorrido-pisto.mp4",
+    poster: "/media/recorrido-pisto.jpg",
+    captions: "/media/recorrido-pisto.vtt",
+    duration: "1:15",
     chapters: [
       { id: "today", start: 0 },
-      { id: "dictate", start: 9 },
-      { id: "ask", start: 23 },
-      { id: "money", start: 36 },
-      { id: "stock", start: 46 },
-      { id: "reports", start: 56 },
+      { id: "sell", start: 10 },
+      { id: "credit", start: 19 },
+      { id: "buy", start: 26 },
+      { id: "money", start: 35 },
+      { id: "coco", start: 47 },
+      { id: "team", start: 66 },
     ],
   },
   sale: {

@@ -43,7 +43,7 @@ cached local API origin.
   $5.00 in cash and $4.75 owed, and the saved sale appeared in the day's movements. Coco then
   answered “¿Cómo voy de ventas hoy?” ($27.80 in 6 sales) and “¿Quiénes me quedaron debiendo?”
   (three customers, two overdue) with the figures of the home and of Por cobrar. The same run
-  produced the footage of the 1:06 film.
+  produced the footage of the 1:15 film.
 - Public page, static export served with range requests, 1440 and 390 CSS pixels: both films are
   offered with their length and summary, nothing loads before a request, arrow keys change the
   film, Enter plays, the playing film takes the focus and Space pauses and resumes it, a chapter

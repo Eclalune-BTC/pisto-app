@@ -3,14 +3,13 @@
  * Runs the evaluation set through a running Pisto API, end to end: the configured model, the
  * deterministic post-processing and the demo business records. Usage:
  *
- *   bun ./eval/run.ts http://localhost:3193 http://localhost:8103 [model]
+ *   bun ./eval/run.ts http://localhost:3193 http://localhost:8103 <model>
  *
  * The second argument is an allowed browser origin. The third names the model the API under test
- * selects, for the summary; it defaults to the Workers AI extraction model. The demo owner from scripts/seed.ts signs in
+ * selects; the summary repeats it, so it is required. A rate-limited case waits and runs again. The demo owner from scripts/seed.ts signs in
  * (EVAL_EMAIL / EVAL_PASSWORD override it). Prints one line per case and a JSON summary.
  */
 import { assistantInterpretResponseSchema } from "@pisto/contracts";
-import { assistantModels } from "../src/models.ts";
 import { extractionPromptVersion } from "../src/prompt.ts";
 import {
   type EvaluationCase,
@@ -73,17 +72,25 @@ async function run(
   businessId: string,
   testCase: EvaluationCase,
 ) {
-  const startedAt = performance.now();
-  const response = await fetch(`${api}/v1/assistant/interpretations`, {
-    method: "POST",
-    headers: { "content-type": "application/json", origin, cookie },
-    body: JSON.stringify({
-      text: testCase.text,
-      source: "text",
-      allowTools: true,
-      expectedBusinessId: businessId,
-    }),
-  });
+  let startedAt = performance.now();
+  const send = () =>
+    fetch(`${api}/v1/assistant/interpretations`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin, cookie },
+      body: JSON.stringify({
+        text: testCase.text,
+        source: "text",
+        allowTools: true,
+        expectedBusinessId: businessId,
+      }),
+    });
+  let response = await send();
+  if (response.status === 429) {
+    const wait = Number(response.headers.get("retry-after") ?? "60");
+    await new Promise((resolve) => setTimeout(resolve, (wait + 1) * 1_000));
+    startedAt = performance.now();
+    response = await send();
+  }
   const latencyMs = Math.round(performance.now() - startedAt);
   if (!response.headers.get("content-type")?.includes("application/json")) {
     return {
@@ -116,11 +123,9 @@ async function run(
   };
 }
 
-const [
-  api = "http://localhost:3193",
-  origin = "http://localhost:8103",
-  model = assistantModels["assistant.extract"].id,
-] = process.argv.slice(2);
+const [api = "http://localhost:3193", origin = "http://localhost:8103", model] =
+  process.argv.slice(2);
+if (!model) throw new Error("Name the model the API under test selects as the third argument");
 const { cookie, businessId } = await signIn(api, origin);
 const results = [];
 for (const testCase of evaluationCases) {

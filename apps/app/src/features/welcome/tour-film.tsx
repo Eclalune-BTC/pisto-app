@@ -4,11 +4,12 @@ import { Image, type ImageSourcePropType, View } from "react-native";
 import payment from "../../../assets/welcome/sale-payment.jpg";
 import product from "../../../assets/welcome/sale-product.jpg";
 import receipt from "../../../assets/welcome/sale-receipt.jpg";
-import ask from "../../../assets/welcome/tour-ask.jpg";
-import dictate from "../../../assets/welcome/tour-dictate.jpg";
+import buy from "../../../assets/welcome/tour-buy.jpg";
+import coco from "../../../assets/welcome/tour-coco.jpg";
+import credit from "../../../assets/welcome/tour-credit.jpg";
 import money from "../../../assets/welcome/tour-money.jpg";
-import reports from "../../../assets/welcome/tour-reports.jpg";
-import stock from "../../../assets/welcome/tour-stock.jpg";
+import sell from "../../../assets/welcome/tour-sell.jpg";
+import team from "../../../assets/welcome/tour-team.jpg";
 import today from "../../../assets/welcome/tour-today.jpg";
 import { TourLayout } from "./how-it-works";
 import { type ChapterId, firstChapter, type TourId } from "./tours";
@@ -16,11 +17,12 @@ import { type ChapterId, firstChapter, type TourId } from "./tours";
 /** One frame of each chapter, bundled: native builds show the films as stills. */
 const stills = {
   today,
-  dictate,
-  ask,
+  sell,
+  credit,
+  buy,
   money,
-  stock,
-  reports,
+  coco,
+  team,
   product,
   payment,
   receipt,
