@@ -52,6 +52,15 @@ cached local API origin.
   assets ignore range requests, so `/media/*` is answered by the Worker
   (`apps/api/src/media-range.ts`); the first deployment of this change showed the films playing
   but not seeking until that was added.
+- Hosted demo, Worker version `9187ca0d` built from `e94ea80` (CI green), Chrome at 1365 and 390
+  CSS pixels with the demo owner: `/ready` reported the database; both films answered 206 to a
+  range request and passed the same 38 page checks; Coco answered last month's sales ($1,636.10 in
+  285 sales), who owes and the money available from the hosted records with no financial write.
+  The questions used phrasings resolved without the model: the account's Workers AI free
+  allocation (10,000 neurons a day) was spent by this day's evaluation and capture runs, so a
+  free-form sentence returned 503 and the assistant's degraded message until the allocation reset
+  at 00:00 UTC. Classification of free-form questions is therefore evidenced on the local Worker
+  only.
 - Not covered: a physical phone, a screen reader pass on the thread and real Salvadoran speakers.
 
 ## Browser evidence

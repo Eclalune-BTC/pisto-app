@@ -104,6 +104,11 @@ path through the Worker, so chapters can be checked locally too.
 ## Workers AI
 
 The registration assistant uses the `AI` binding declared in `wrangler.jsonc`; it needs no secret.
+On the free plan the account has 10,000 neurons a day, shared by the hosted demo, `wrangler dev`
+and the evaluation runs; on 2026-11-19 one evaluation of the 31 cases, the film capture sessions
+and the earlier checks of that day spent all of it. When it
+runs out the binding fails at once, the API answers 503 and Coco shows its degraded message until
+00:00 UTC. Run evaluations and capture sessions with that budget in mind.
 Set `ASSISTANT_ENABLED=false` as a variable to turn the assistant off without a code change. Models
 are pinned in `packages/assistant/src/models.ts` ([ADR 0021](adrs/0021-workers-ai-registration-assistant.md)).
 
