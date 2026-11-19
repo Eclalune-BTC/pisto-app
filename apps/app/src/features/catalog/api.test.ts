@@ -49,6 +49,10 @@ describe("catalog and inventory requests", () => {
   });
 
   test("sends only the list filters that are set", async () => {
+    http.request.mockResolvedValueOnce({
+      status: 200,
+      data: JSON.stringify({ data: { businessId: "business", items: [], nextCursor: null } }),
+    });
     await catalogApi.products.list({
       categoryId: undefined,
       cursor: undefined,

@@ -31,10 +31,7 @@ export const assistant = {
     limited:
       "Puede buscar productos, ingresar ventas y consultar sus cuentas con las herramientas.",
   },
-  dictate: "Dictar",
-  dictateLabel: "Dictar o escribir un registro",
   dialog: {
-    title: "Nuevo registro",
     description:
       "Diga qué pasó o haga una consulta. Al detener la grabación podrá corregir lo que escuchamos.",
     textDescription: "Escriba qué pasó, con quién y cuánto. Usted lo revisa antes de guardar.",
@@ -64,24 +61,10 @@ export const assistant = {
     levelLabel: "Nivel del micrófono",
   },
   composer: {
-    title: "Registrar o consultar",
-    description: "Usted confirma antes de guardar.",
     placeholder: "Diga o escriba lo que pasó",
     inputLabel: "Qué quiere registrar",
     submit: "Revisar",
     record: "Dictar con el micrófono",
-    chips: {
-      sale: "Venta",
-      purchase: "Compra",
-      expense: "Gasto",
-      payment: "Abono",
-    },
-    starters: {
-      sale: "Vendí ",
-      purchase: "Compré ",
-      expense: "Pagué ",
-      payment: "Me abonó ",
-    },
   },
   questions: {
     placeholder: "Por ejemplo, quiero ingresar una venta",
