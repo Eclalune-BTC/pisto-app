@@ -17,6 +17,7 @@ export function createFakeAssistantProvider(script: {
   };
   const provider: AssistantProvider = {
     name: "fake",
+    transcribes: true,
     async extract({ messages }) {
       calls.extract.push([...messages]);
       const sentence = messages.at(-1)?.content ?? "";

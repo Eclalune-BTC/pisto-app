@@ -6,6 +6,7 @@ export const assistantTestConfig: AssistantConfig = {
   enabled: null,
   rest: null,
   deepseekApiKey: null,
+  extraction: "workers-ai",
   interpretLimit: 20,
   transcribeLimit: 10,
   businessLimit: 60,

@@ -104,16 +104,22 @@ path through the Worker, so chapters can be checked locally too.
 ## Workers AI
 
 The registration assistant uses the `AI` binding declared in `wrangler.jsonc`; it needs no secret.
-On the free plan the account has 10,000 neurons a day, shared by the hosted demo, `wrangler dev`
-and the evaluation runs; on 2026-11-19 one evaluation of the 31 cases, the film capture sessions
+On the free plan the account has 10,000 neurons a day, shared by the hosted demo's dictation,
+`wrangler dev` and any evaluation run against Workers AI; on 2026-11-19 one evaluation of the 31 cases, the film capture sessions
 and the earlier checks of that day spent all of it. When it
-runs out the binding fails at once, the API answers 503 and Coco shows its degraded message until
-00:00 UTC. Run evaluations and capture sessions with that budget in mind.
+runs out the binding fails at once and dictation answers 503 until 00:00 UTC; sentences keep
+working on the hosted demo because DeepSeek reads them. Run local evaluations and capture sessions
+with that budget in mind.
 Set `ASSISTANT_ENABLED=false` as a variable to turn the assistant off without a code change. Models
 are pinned in `packages/assistant/src/models.ts` ([ADR 0021](adrs/0021-workers-ai-registration-assistant.md)).
 
-Product-specific questions use DeepSeek. Run `bunx --no-install wrangler secret put DEEPSEEK_API_KEY`
-from `apps/api` and enter the key at the prompt. Authenticated clients request
+DeepSeek reads every sentence sent to Coco (`ASSISTANT_EXTRACTION_PROVIDER=deepseek` in
+`wrangler.jsonc`, [ADR 0024](adrs/0024-deepseek-sentence-extraction.md)) and the product-specific
+follow-ups; Workers AI keeps dictation. Run `bunx --no-install wrangler secret put DEEPSEEK_API_KEY`
+from `apps/api` and enter the key at the prompt; the Worker refuses to start without it. To
+evaluate the deployed provider, run
+`bun ./eval/run.ts https://pisto.contact-862.workers.dev https://pisto.contact-862.workers.dev deepseek-flash`
+from `packages/assistant`: it signs in as the demo owner and only reads. Authenticated clients request
 `GET /v1/assistant/status?include=catalog` to check `catalogConversation`. For a deployment check,
 ask the price of the demo ground coffee, ask how much three cost and accept the quote. The sale
 editor should open with three units at the current catalog price. End the check before saving.

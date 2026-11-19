@@ -1,5 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import {
+  type AssistantProvider,
   blankExtraction,
   type CatalogModel,
   type Extraction,
@@ -90,6 +91,7 @@ function setup(
     catalogModel?: CatalogModel;
     getProduct?: CatalogRepository["getProduct"];
     getPeriodSummary?: SalesRepository["getPeriodSummary"];
+    provider?: AssistantProvider;
   } = {},
 ) {
   const fake = createFakeAssistantProvider({
@@ -129,7 +131,7 @@ function setup(
     },
   };
   const assistant: AssistantServices = {
-    provider: options.enabled === false ? null : fake.provider,
+    provider: options.enabled === false ? null : (options.provider ?? fake.provider),
     catalogModel: options.catalogModel ?? null,
     records,
     suppliers: emptySupplierDirectory,
@@ -714,5 +716,50 @@ describe("assistant configuration", () => {
     expect(() => assistantProvider(config({ ASSISTANT_ENABLED: "true" }), undefined)).toThrow(
       ApiConfigurationError,
     );
+  });
+
+  test("reads sentences with DeepSeek only when it is selected and has its key", () => {
+    const config = (env: Record<string, string>) => parseApiConfig(env).assistant;
+    expect(config({}).extraction).toBe("workers-ai");
+    expect(() => config({ ASSISTANT_EXTRACTION_PROVIDER: "openai" })).toThrow(
+      "ASSISTANT_EXTRACTION_PROVIDER must be workers-ai or deepseek",
+    );
+    expect(() => config({ ASSISTANT_EXTRACTION_PROVIDER: "deepseek" })).toThrow(
+      "ASSISTANT_EXTRACTION_PROVIDER=deepseek requires DEEPSEEK_API_KEY",
+    );
+    // A key alone changes nothing: the catalog follow-ups use it, extraction stays where it was.
+    expect(assistantProvider(config({ DEEPSEEK_API_KEY: "key" }), binding)?.name).toBe(
+      "workers-ai-binding",
+    );
+    const selected = { DEEPSEEK_API_KEY: "key", ASSISTANT_EXTRACTION_PROVIDER: "deepseek" };
+    expect(assistantProvider(config(selected), binding)).toMatchObject({
+      name: "deepseek+workers-ai-binding",
+      transcribes: true,
+    });
+    expect(assistantProvider(config(selected), undefined)).toMatchObject({
+      name: "deepseek",
+      transcribes: false,
+    });
+    expect(
+      assistantProvider(config({ ...selected, ASSISTANT_ENABLED: "false" }), binding),
+    ).toBeNull();
+  });
+});
+
+describe("an assistant without a speech model", () => {
+  test("offers no dictation and refuses a recording before charging it", async () => {
+    const fake = createFakeAssistantProvider({ extract: () => saleExtraction });
+    const { client, consumed } = setup({ provider: { ...fake.provider, transcribes: false } });
+    expect((await (await client.request("/v1/assistant/status")).json()).data).toEqual({
+      enabled: true,
+      transcription: false,
+    });
+    expect((await client.request("/v1/assistant/transcriptions", audio(wave(8)))).status).toBe(503);
+    expect(consumed).toHaveLength(0);
+    const read = await client.request(
+      "/v1/assistant/interpretations",
+      json({ text: "Vendí dos cafés", source: "text" }),
+    );
+    expect(read.status).toBe(200);
   });
 });

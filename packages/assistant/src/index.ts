@@ -9,6 +9,7 @@ export {
   createDeepSeekCatalogModel,
 } from "./catalog-turn.ts";
 export { type DateExpression, dateWindowDays, resolveDate } from "./dates.ts";
+export { createDeepSeekProvider, deepSeekModelId } from "./deepseek.ts";
 export {
   type DirectoryAccount,
   type DirectoryContext,

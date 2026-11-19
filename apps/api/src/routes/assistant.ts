@@ -156,7 +156,7 @@ export function assistantRoutes(input: {
     return {
       data: {
         enabled,
-        transcription: enabled,
+        transcription: assistant.provider?.transcribes ?? false,
         ...(catalogRequested && { catalogConversation: assistant.catalogModel !== null }),
       },
     };
@@ -250,7 +250,7 @@ export function assistantRoutes(input: {
     async (context) => {
       const { actor, request, set } = context;
       const provider = assistant.provider;
-      if (!provider) throw unavailable();
+      if (!provider?.transcribes) throw unavailable();
       await admit(actor, "transcribe", set, request.headers.get(assistantScopeHeader) ?? undefined);
       const audio = new Uint8Array(await request.arrayBuffer());
       if (!isWave(audio)) {

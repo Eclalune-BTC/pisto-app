@@ -18,6 +18,8 @@ export class AssistantProviderError extends Error {
 /** Pisto's port to a model provider: one structured extraction and one batch transcription. */
 export interface AssistantProvider {
   readonly name: string;
+  /** False when no speech model is composed; dictation is then not offered. */
+  readonly transcribes: boolean;
   extract(input: {
     messages: readonly ChatMessage[];
     jsonSchema: Record<string, unknown>;
@@ -115,6 +117,7 @@ function structuredOutput(result: unknown): unknown {
 function workersAiProvider(name: string, run: Runner): AssistantProvider {
   return {
     name,
+    transcribes: true,
     async extract({ messages, jsonSchema, signal }) {
       const model = assistantModels["assistant.extract"];
       const responseFormat =

@@ -1,6 +1,7 @@
 import {
   type AssistantProvider,
   createDeepSeekCatalogModel,
+  createDeepSeekProvider,
   createWorkersAiBindingProvider,
   createWorkersAiRestProvider,
   type WorkersAiBinding,
@@ -32,22 +33,28 @@ import { type ApiConfig, ApiConfigurationError, parseApiConfig } from "./config.
 import { authorizeRealtime, RealtimeHub } from "./realtime.ts";
 
 /**
- * The Worker passes its AI binding; the Bun API uses REST credentials when present. With neither,
- * or with ASSISTANT_ENABLED=false, the assistant reports itself as off; there is no fallback.
+ * The Worker passes its AI binding; the Bun API uses REST credentials when present. Sentences are
+ * read by Workers AI or, when configured, by DeepSeek; dictation always needs Workers AI. Without
+ * a provider, or with ASSISTANT_ENABLED=false, the assistant reports itself as off. One provider
+ * never stands in for another that failed.
  */
 export function assistantProvider(
   config: ApiConfig["assistant"],
   ai: WorkersAiBinding | undefined,
 ): AssistantProvider | null {
   if (config.enabled === false) return null;
-  const provider = ai
+  const workersAi = ai
     ? createWorkersAiBindingProvider(ai)
     : config.rest
       ? createWorkersAiRestProvider(config.rest)
       : null;
+  const provider =
+    config.extraction === "deepseek" && config.deepseekApiKey
+      ? createDeepSeekProvider(config.deepseekApiKey, workersAi)
+      : workersAi;
   if (config.enabled === true && !provider) {
     throw new ApiConfigurationError(
-      "ASSISTANT_ENABLED=true requires the AI binding or CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_AI_API_TOKEN",
+      "ASSISTANT_ENABLED=true requires the AI binding, CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_AI_API_TOKEN, or ASSISTANT_EXTRACTION_PROVIDER=deepseek",
     );
   }
   return provider;

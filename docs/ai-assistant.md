@@ -319,7 +319,7 @@ account setting.
 | --- | --- |
 | Product brief and target architecture | Approved and documented |
 | AI SDK | Not installed; the registration slice uses a typed Workers AI adapter (ADR 0021) |
-| Provider | Workers AI: `AI` binding in the Worker, REST credentials for the local Bun API, `ASSISTANT_ENABLED` kill switch |
+| Provider | Sentences: Workers AI by default, DeepSeek where `ASSISTANT_EXTRACTION_PROVIDER=deepseek` (the hosted demo, [ADR 0024](adrs/0024-deepseek-sentence-extraction.md)). Dictation: Workers AI Whisper. `AI` binding in the Worker, REST credentials for the local Bun API, `ASSISTANT_ENABLED` kill switch, no failover |
 | Registration routes, package, prompt, UI | Implemented: `/v1/assistant/status`, `/interpretations`, `/transcriptions` and `/answers`; `packages/assistant`; prompt `extract-2026-11-19.1`; Coco, its tool menu, dictation, home composer, question thread and review route |
 | Follow-up conversation and streaming | Scoped product conversation with price, stock, quantity quotes and reviewed sale preparation, and a question thread of up to four exact answers. Each turn is classified on its own; no streaming. |
 | Sales, catalog, inventory, expense, cash, customer, and receivable product data | Implemented; source synchronized. Validation and remaining platform/release limits are in [release evidence](release-evidence.md) |

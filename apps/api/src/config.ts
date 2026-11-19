@@ -18,6 +18,8 @@ export interface AssistantConfig {
   /** Workers AI REST credentials for the local Bun API; the Worker uses its AI binding. */
   rest: { accountId: string; apiToken: string } | null;
   deepseekApiKey: string | null;
+  /** The provider that reads sentences. Dictation always needs Workers AI. */
+  extraction: "workers-ai" | "deepseek";
   interpretLimit: number;
   transcribeLimit: number;
   businessLimit: number;
@@ -53,13 +55,22 @@ function parseAssistantConfig(read: EnvironmentReader): AssistantConfig {
   if (Boolean(accountId) !== Boolean(apiToken)) {
     read.fail("CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_AI_API_TOKEN must be set together");
   }
+  const deepseekApiKey = read.optional("DEEPSEEK_API_KEY") ?? null;
+  const extraction = read.optional("ASSISTANT_EXTRACTION_PROVIDER") ?? "workers-ai";
+  if (extraction !== "workers-ai" && extraction !== "deepseek") {
+    read.fail("ASSISTANT_EXTRACTION_PROVIDER must be workers-ai or deepseek");
+  }
+  if (extraction === "deepseek" && !deepseekApiKey) {
+    read.fail("ASSISTANT_EXTRACTION_PROVIDER=deepseek requires DEEPSEEK_API_KEY");
+  }
   return {
     enabled:
       read.optional("ASSISTANT_ENABLED") === undefined
         ? null
         : read.boolean("ASSISTANT_ENABLED", false),
     rest: accountId && apiToken ? { accountId, apiToken } : null,
-    deepseekApiKey: read.optional("DEEPSEEK_API_KEY") ?? null,
+    deepseekApiKey,
+    extraction: extraction === "deepseek" ? "deepseek" : "workers-ai",
     interpretLimit: read.integer("ASSISTANT_INTERPRET_LIMIT_PER_MINUTE", 20, { min: 1, max: 600 }),
     transcribeLimit: read.integer("ASSISTANT_TRANSCRIBE_LIMIT_PER_MINUTE", 10, {
       min: 1,

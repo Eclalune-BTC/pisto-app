@@ -3,9 +3,10 @@
  * Runs the evaluation set through a running Pisto API, end to end: the configured model, the
  * deterministic post-processing and the demo business records. Usage:
  *
- *   bun ./eval/run.ts http://localhost:3193 http://localhost:8103
+ *   bun ./eval/run.ts http://localhost:3193 http://localhost:8103 [model]
  *
- * The second argument is an allowed browser origin. The demo owner from scripts/seed.ts signs in
+ * The second argument is an allowed browser origin. The third names the model the API under test
+ * selects, for the summary; it defaults to the Workers AI extraction model. The demo owner from scripts/seed.ts signs in
  * (EVAL_EMAIL / EVAL_PASSWORD override it). Prints one line per case and a JSON summary.
  */
 import { assistantInterpretResponseSchema } from "@pisto/contracts";
@@ -115,7 +116,11 @@ async function run(
   };
 }
 
-const [api = "http://localhost:3193", origin = "http://localhost:8103"] = process.argv.slice(2);
+const [
+  api = "http://localhost:3193",
+  origin = "http://localhost:8103",
+  model = assistantModels["assistant.extract"].id,
+] = process.argv.slice(2);
 const { cookie, businessId } = await signIn(api, origin);
 const results = [];
 for (const testCase of evaluationCases) {
@@ -132,7 +137,7 @@ console.info(
     {
       evaluationSetVersion,
       promptVersion: extractionPromptVersion,
-      model: assistantModels["assistant.extract"].id,
+      model,
       passed: results.filter((result) => result.pass).length,
       total: results.length,
       p50Ms: latencies[Math.floor(latencies.length / 2)],

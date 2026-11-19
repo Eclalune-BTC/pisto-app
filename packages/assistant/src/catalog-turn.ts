@@ -1,11 +1,12 @@
 import type { CatalogReply, CatalogTurnRequest, Product } from "@pisto/contracts";
 import { z } from "zod";
 import { lineSubtotal, positiveMinorUnits } from "./amounts.ts";
+import { deepSeekJson, deepSeekModelId } from "./deepseek.ts";
 import { AssistantProviderError } from "./provider.ts";
 import { findOccurrences, fold } from "./text.ts";
 
 export const catalogPromptVersion = "catalog-2026-11-18.1";
-export const catalogModelId = "deepseek-flash";
+export const catalogModelId = deepSeekModelId;
 const intentSchema = z
   .object({
     intent: z.enum(["price", "stock", "quote", "prepare_sale", "clarify"]),
@@ -26,53 +27,27 @@ export function createDeepSeekCatalogModel(
   send: typeof fetch = fetch,
 ): CatalogModel {
   return async ({ text, productName, hasQuote, signal }) => {
-    try {
-      const response = await send("https://api.deepseek.com/chat/completions", {
-        method: "POST",
-        redirect: "manual",
-        signal,
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: catalogModelId,
-          thinking: { type: "disabled" },
-          stream: false,
-          max_tokens: 128,
-          temperature: 0,
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: instruction },
-            {
-              role: "user",
-              content: JSON.stringify({ selectedProduct: productName, hasQuote, followUp: text }),
-            },
-          ],
-        }),
-      });
-      if (!response.ok)
-        throw new AssistantProviderError(
-          "unavailable",
-          `DeepSeek returned HTTP ${response.status}`,
-        );
-      const result = z
-        .object({
-          choices: z.tuple([
-            z.object({
-              finish_reason: z.literal("stop"),
-              message: z.object({ content: z.string().trim().min(1).max(2048) }),
-            }),
-          ]),
-        })
-        .parse(await response.json());
-      return intentSchema.parse(JSON.parse(result.choices[0].message.content));
-    } catch (error) {
-      if (error instanceof AssistantProviderError) throw error;
-      if (signal.aborted)
-        throw new AssistantProviderError("timeout", "The catalog model call ended");
+    const output = await deepSeekJson({
+      apiKey,
+      send,
+      signal,
+      maxTokens: 128,
+      messages: [
+        { role: "system", content: instruction },
+        {
+          role: "user",
+          content: JSON.stringify({ selectedProduct: productName, hasQuote, followUp: text }),
+        },
+      ],
+    });
+    const intent = intentSchema.safeParse(output);
+    if (!intent.success) {
       throw new AssistantProviderError(
-        error instanceof TypeError ? "unavailable" : "invalid_output",
+        "invalid_output",
         "The catalog model returned no usable result",
       );
     }
+    return intent.data;
   };
 }
 

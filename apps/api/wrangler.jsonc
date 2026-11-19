@@ -37,6 +37,8 @@
     "DATABASE_IDLE_TIMEOUT_SECONDS": "60",
     "BILLING_ENABLED": "false",
     "REVENUECAT_ENABLED": "false",
-    "PRODUCT_WRITES_ENABLED": "true"
+    "PRODUCT_WRITES_ENABLED": "true",
+    // Sentences are read by DeepSeek (secret DEEPSEEK_API_KEY); Workers AI keeps dictation.
+    "ASSISTANT_EXTRACTION_PROVIDER": "deepseek"
   }
 }
