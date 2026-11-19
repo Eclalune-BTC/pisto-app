@@ -149,17 +149,18 @@ export function createCashQueries(db: Database): CashQueries {
         const access = await authorizeBusinessAction(tx, actor, ["expenses:read"]);
         // A local midnight can fall in a daylight-saving gap, which only the zone's own rules
         // resolve; a wall-clock lookup would reject the whole period.
+        // Epoch milliseconds avoid the driver's ambiguous parsing of timestamps before year 0100.
         const [bounds] = await tx.execute<{
-          end_utc_exclusive: Date | string;
-          start_utc: Date | string;
+          end_ms: string | number;
+          start_ms: string | number;
         }>(sql`
           select
-            (${query.startLocalDate}::date::timestamp at time zone ${access.timeZone}) as start_utc,
-            ((${query.endLocalDate}::date + 1)::timestamp at time zone ${access.timeZone}) as end_utc_exclusive
+            (extract(epoch from (${query.startLocalDate}::date::timestamp at time zone ${access.timeZone})) * 1000)::bigint as start_ms,
+            (extract(epoch from ((${query.endLocalDate}::date + 1)::timestamp at time zone ${access.timeZone})) * 1000)::bigint as end_ms
         `);
         if (!bounds) throw new Error("Expense period bounds query returned no row");
-        const periodStartUtc = new Date(bounds.start_utc);
-        const periodEndUtcExclusive = new Date(bounds.end_utc_exclusive);
+        const periodStartUtc = new Date(Number(bounds.start_ms));
+        const periodEndUtcExclusive = new Date(Number(bounds.end_ms));
         const rows = await tx
           .select({
             category: expense.category,
