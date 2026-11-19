@@ -1,7 +1,7 @@
 import { ArrowLeft, ArrowRight } from "lucide-react-native";
 import { type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Image, Platform, View } from "react-native";
+import { Image, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { Heading } from "@/components/ui/heading";
@@ -401,7 +401,7 @@ export function ModulePreviews() {
         <TabsContent key={module} tabIndex={0} value={module}>
           <View
             className={cn(
-              "min-w-0 gap-5 pt-5 md:flex-row md:items-stretch md:gap-8 lg:gap-12 lg:pt-7",
+              "min-w-0 gap-5 pt-5 web:touch-pan-y md:flex-row md:items-stretch md:gap-8 lg:gap-12 lg:pt-7",
               direction === "next" ? "pisto-slide-next" : "pisto-slide-previous",
             )}
             onTouchStart={({ nativeEvent }) => {
@@ -423,7 +423,6 @@ export function ModulePreviews() {
               const dy = point.pageY - from.y;
               if (Math.abs(dx) >= 45 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1);
             }}
-            style={Platform.OS === "web" ? { touchAction: "pan-y" } : undefined}
           >
             <View className="h-[170px] overflow-hidden bg-muted sm:h-[232px] md:h-auto md:min-h-[340px] md:w-[37%]">
               <Image

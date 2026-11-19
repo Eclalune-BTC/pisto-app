@@ -3,7 +3,7 @@
 import { Slot } from "@rn-primitives/slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-import { Platform, Text as RNText, type Role } from "react-native";
+import { Platform, Text as RNText, type Role, type ViewProps } from "react-native";
 import { cn } from "@/lib/cn";
 
 const textVariants = cva(
@@ -69,12 +69,14 @@ const TextClassContext = React.createContext<string | undefined>(undefined);
 function Text({
   className,
   asChild = false,
+  tabIndex,
   variant = "default",
   ...props
 }: React.ComponentProps<typeof RNText> &
   React.RefAttributes<typeof RNText> &
   TextVariantProps & {
     asChild?: boolean;
+    tabIndex?: ViewProps["tabIndex"];
   }) {
   const textClass = React.useContext(TextClassContext);
   const Component = asChild ? Slot : RNText;
@@ -83,6 +85,7 @@ function Text({
       className={cn(textVariants({ variant }), textClass, className)}
       role={variant ? ROLE[variant] : undefined}
       aria-level={variant ? ARIA_LEVEL[variant] : undefined}
+      {...(Platform.OS === "web" && tabIndex !== undefined ? { tabIndex } : {})}
       {...props}
     />
   );
