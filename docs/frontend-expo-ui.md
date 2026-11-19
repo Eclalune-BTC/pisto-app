@@ -182,7 +182,7 @@ the reusable read-state composition instead of making other features import it f
 
 ### Typography
 
-Use [the shared typography contract](design-system.md#palette-typography-and-layout). Inter
+Use [the shared typography contract](design-system.md#palette-typography-and-layout). Hanken Grotesk
 400/500/600 are loaded through Expo Font as PistoRegular/PistoMedium/PistoSemibold. Native text scaling
 stays enabled. The root keeps the native splash visible during font loading and shows a localized
 system-font error/retry if loading fails; it does not silently substitute the regular product font.
@@ -211,11 +211,17 @@ not establish visual approval, native device behavior or accessibility conforman
 The public `/` route composes `features/welcome/welcome-screen.tsx` inside the same Expo application.
 It is not a second marketing deployment or an authenticated workspace, and it reads no account,
 permission or business data. It shows the product through its own components: the "Hoy" home of an
-example business (labelled once as example figures), the dictation flow in three steps with the
-numbered transcript, previews of Movimientos, Cuentas por cobrar, Cuentas por pagar and Reportes,
-and the role table that Configuración also uses (`features/business/role-capabilities.ts`). Tests
-check that the example figures add up and that the role table matches the server's role policy. All
-copy comes from the typed `es-SV` catalog.
+example business inside the app's frame, in the home's own order (the "Registrar" composer, the
+money, what is owed and today's movements), with the sidebar drawn from
+`features/operate/navigation` and labelled once as example figures. Below `md` the phone-sized
+home is shown whole instead of a cropped window. Below it come the dictation flow as three tabs with the
+numbered transcript, previews of Movimientos, Reportes, Cuentas por cobrar and Cuentas por pagar,
+and the role table that Configuración also uses (`features/business/role-capabilities.ts`). Its
+header and footer link to the page's sections by scrolling to them, on every platform. Below the
+width that fits those links the header keeps "Crear cuenta" and folds the sections, sign-in and the
+appearance switch into one menu (`features/welcome/header-menu.tsx`). Tests check that the example
+figures add up and that the role table matches the server's role policy. All copy comes from the
+typed `es-SV` catalog.
 
 `AppearanceControl` is shared by the public page, authentication, workspace shell and Account. Uniwind owns effective
 light/dark/system state; `AppearanceProvider` restores and saves the preference through browser
@@ -224,13 +230,14 @@ stored. Absent storage means system appearance; corrupt or blocked storage produ
 localized error. A failed write does not change the selected theme. Restoration is asynchronous and
 does not block product access; an initial system-to-saved-theme transition may be visible on reload.
 The compact control switches to the named light/dark destination. Full light/dark/system choices
-remain in Account; the public page uses the compact control in its header. Its error state must not push the header outside the viewport.
+remain in Account; the public page uses the compact control in its wide header and offers the same
+switch as an item of its compact menu. Its error state must not push the header outside the viewport.
 
 The page remains a single-page web export, not an SEO-oriented static/SSR marketing site. Its localized
 title and description are set through the installed Expo Router Head API at runtime. A separate public
 site or static rendering strategy requires its own routing and hosting decision.
 
-Source review on 2026-10-04: [Inter](https://rsms.me/inter/),
+Source review on 2026-11-17: [Hanken Grotesk](https://fonts.google.com/specimen/Hanken+Grotesk),
 [Expo runtime fonts](https://docs.expo.dev/develop/user-interface/fonts/),
 [Uniwind classes and inheritance](https://docs.uniwind.dev/class-names),
 [WCAG reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html),
@@ -365,16 +372,15 @@ recorded in [the design system](design-system.md#installation-and-source-ownersh
 | Layer | Current implementation | Source of truth |
 | --- | --- | --- |
 | Shared controls | RNR Button, Text, Input, Card, Alert, selection and overlay components; domain-specific compositions | `apps/app/src/components/ui` |
-| Interaction primitives | Explicit RN Primitives dependencies, plus the Radix web Accordion adapter | App manifest and the design-system guide |
+| Interaction primitives | Explicit RN Primitives dependencies | App manifest and the design-system guide |
 | Styling | Tailwind CSS 4.3.3 and the free, JavaScript-based Uniwind 1.12.1 | App manifest, lockfile and Metro config |
 | Variants and class merging | CVA, `clsx`, `tailwind-merge` and the local `cn` function | `components/ui/button.tsx`, `lib/cn.ts` |
 | Icons | `lucide-react-native` backed by `react-native-svg` | App manifest and component imports |
 | Platform rendering | React Native 0.86.3 on Android/iOS; React Native Web on browsers | Expo SDK 57 and installed dependencies |
 
 There is no NativeWind integration or Base UI dependency. Installed RNR Dialog, Select, Tabs,
-Checkbox, Switch, RadioGroup and related components own their platform interactions. The existing
-direct Radix Accordion dependency is restricted to the explicit web adapter. No separate UI framework
-or source registry is required for native screens.
+Checkbox, Switch, RadioGroup and related components own their platform interactions. No separate UI
+framework or source registry is required for native screens.
 
 Standalone actions, actionable list rows and icon actions use the shared `Button`; its `icon` size
 retains a 44-unit target. Inputs use `Field`, and list filters use `FilterBar`. A passive row remains

@@ -7,8 +7,8 @@ import type {
 } from "@pisto/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
-import { CircleAlert, PackagePlus, Plus, Trash2, TriangleAlert } from "lucide-react-native";
-import { useRef, useState } from "react";
+import { CircleAlert, Plus, Trash2, TriangleAlert } from "lucide-react-native";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
@@ -52,6 +52,8 @@ export type PurchaseFormProps = {
   entrySource: EntrySource;
   onSaved: (purchaseId: string) => void;
   onCancel: () => void;
+  /** Tells a host that the purchase was sent and its outcome is pending or unknown. */
+  onLockedChange?: (locked: boolean) => void;
   /** Starts the form with this supplier, such as when it opens from the supplier's record. */
   initialSupplier?: { creditDays: number | null; id: string; name: string };
 };
@@ -118,6 +120,7 @@ function PurchaseFormBody({
   entrySource,
   initialSupplier,
   onCancel,
+  onLockedChange,
   onSaved,
 }: PurchaseFormProps & { business: Business; canManage: boolean }) {
   const { t } = useTranslation();
@@ -157,6 +160,9 @@ function PurchaseFormBody({
     },
   });
   const locked = state.phase === "pending" || state.phase === "uncertain";
+  useEffect(() => {
+    onLockedChange?.(locked);
+  }, [locked, onLockedChange]);
   const money = (minorUnits: string) => format.money(minorUnits, business.currency, digits);
   const total = previewTotal(draft.lines, digits);
 
@@ -230,301 +236,313 @@ function PurchaseFormBody({
     update({ paymentTerms }, ["account", "dueDate"]);
 
   return (
-    <View className="gap-4 lg:flex-row lg:items-start">
-      <View className="min-w-0 flex-1 gap-5 rounded-lg border border-border bg-card p-4">
-        <View className="gap-3">
-          <PickerField
-            detail={
-              draft.supplier && draft.supplier.creditDays !== null
-                ? t("purchases.form.creditDaysDetail", { count: draft.supplier.creditDays })
-                : undefined
-            }
-            error={issueText(issues.supplier)}
-            label={t("purchases.form.supplier")}
-            marker={supplierMarker}
-            onPress={() => !locked && setSupplierPickerOpen(true)}
-            placeholder={t("purchases.form.chooseSupplier")}
-            ref={supplierRef}
-            value={draft.supplier?.name}
-          />
-          <View className="gap-3 sm:flex-row">
-            <View className="min-w-0 flex-1">
-              <DateField
-                disabled={locked}
-                error={issueText(issues.date)}
-                label={t("purchases.form.date")}
-                onChange={(date) => {
-                  update(
-                    dueDateEdited
-                      ? { date }
-                      : { date, dueDate: defaultDueDate(date, draft.supplier?.creditDays ?? null) },
-                    ["date", "dueDate"],
-                  );
-                }}
-                value={draft.date}
-              />
-            </View>
-            <View className="min-w-0 sm:w-36">
-              <TimeField
-                disabled={locked}
-                error={issueText(issues.time)}
-                label={t("purchases.form.time")}
-                onChange={(time) => update({ time }, ["time"])}
-                value={draft.time}
-              />
-            </View>
-            <View className="min-w-0 flex-1">
-              <Field
-                editable={!locked}
-                error={issueText(issues.invoiceNumber)}
-                label={t("purchases.form.invoice")}
-                marker={invoiceMarker}
-                maxLength={40}
-                onChangeText={(invoiceNumber) => update({ invoiceNumber }, ["invoiceNumber"])}
-                placeholder="F-004512"
-                value={draft.invoiceNumber}
-              />
+    // The closed pickers still leave empty elements; outside the spaced row they take no gap, so
+    // the fields keep the whole width beside the total.
+    <View>
+      <View className="gap-6 lg:flex-row lg:items-start">
+        <View className="min-w-0 flex-1 gap-5">
+          <View className="gap-3">
+            <PickerField
+              detail={
+                draft.supplier && draft.supplier.creditDays !== null
+                  ? t("purchases.form.creditDaysDetail", { count: draft.supplier.creditDays })
+                  : undefined
+              }
+              error={issueText(issues.supplier)}
+              label={t("purchases.form.supplier")}
+              marker={supplierMarker}
+              onPress={() => !locked && setSupplierPickerOpen(true)}
+              placeholder={t("purchases.form.chooseSupplier")}
+              ref={supplierRef}
+              value={draft.supplier?.name}
+            />
+            <View className="gap-3 sm:flex-row">
+              <View className="min-w-0 flex-1">
+                <DateField
+                  disabled={locked}
+                  error={issueText(issues.date)}
+                  label={t("purchases.form.date")}
+                  onChange={(date) => {
+                    update(
+                      dueDateEdited
+                        ? { date }
+                        : {
+                            date,
+                            dueDate: defaultDueDate(date, draft.supplier?.creditDays ?? null),
+                          },
+                      ["date", "dueDate"],
+                    );
+                  }}
+                  value={draft.date}
+                />
+              </View>
+              <View className="min-w-0 sm:w-36">
+                <TimeField
+                  disabled={locked}
+                  error={issueText(issues.time)}
+                  label={t("purchases.form.time")}
+                  onChange={(time) => update({ time }, ["time"])}
+                  value={draft.time}
+                />
+              </View>
+              <View className="min-w-0 flex-1">
+                <Field
+                  editable={!locked}
+                  error={issueText(issues.invoiceNumber)}
+                  label={t("purchases.form.invoice")}
+                  marker={invoiceMarker}
+                  maxLength={40}
+                  onChangeText={(invoiceNumber) => update({ invoiceNumber }, ["invoiceNumber"])}
+                  placeholder="F-004512"
+                  value={draft.invoiceNumber}
+                />
+              </View>
             </View>
           </View>
-        </View>
 
-        <Section
-          actions={
-            <Button
-              disabled={locked || draft.lines.length >= 50}
-              onPress={() => setProductPickerOpen(true)}
-              size="sm"
-              variant="outline"
-            >
-              <Icon as={Plus} className="text-foreground" size={14} />
-              <Text>{t("purchases.form.addProduct")}</Text>
-            </Button>
-          }
-          description={
-            draft.lines.length > 0
-              ? t("purchases.form.productCount", { count: draft.lines.length })
-              : undefined
-          }
-          title={t("purchases.form.products")}
-        >
-          {draft.lines.length === 0 ? (
-            <View
-              className={cn(
-                "items-center gap-2 rounded-md border border-dashed px-4 py-6",
-                issues.lines ? "border-destructive" : "border-border",
-              )}
-            >
-              <Icon as={PackagePlus} className="text-muted-foreground" size={20} />
-              <Text className="text-center text-sm text-muted-foreground">
+          <Section
+            actions={
+              <Button
+                disabled={locked || draft.lines.length >= 50}
+                onPress={() => setProductPickerOpen(true)}
+                size="sm"
+                variant="outline"
+              >
+                <Icon as={Plus} className="text-foreground" size={14} />
+                <Text>{t("purchases.form.addProduct")}</Text>
+              </Button>
+            }
+            description={
+              draft.lines.length > 0
+                ? t("purchases.form.productCount", { count: draft.lines.length })
+                : undefined
+            }
+            title={t("purchases.form.products")}
+          >
+            {draft.lines.length === 0 ? (
+              <Text
+                className={cn(
+                  "rounded-xl border border-dashed px-3 py-6 text-center text-dense text-muted-foreground",
+                  issues.lines ? "border-destructive" : "border-border",
+                )}
+              >
                 {t("purchases.form.noProducts")}
               </Text>
-            </View>
-          ) : (
-            <View className="overflow-hidden rounded-md border border-border">
-              {draft.lines.map((line, index) => {
-                const subtotal = previewSubtotal(line, digits);
-                return (
-                  <View
-                    className={cn(
-                      "gap-2 px-3 py-2.5 md:flex-row md:items-start md:gap-3",
-                      index > 0 && "border-t border-border",
-                    )}
-                    key={line.key}
-                  >
-                    <View className="min-w-0 flex-row items-start justify-between gap-2 md:flex-1 md:pt-7">
-                      <Text className="min-w-0 flex-1 text-sm text-foreground" numberOfLines={2}>
-                        {line.productName}
-                      </Text>
-                      <Button
-                        accessibilityLabel={t("purchases.form.removeLine", {
-                          product: line.productName,
-                        })}
-                        className="md:hidden"
-                        disabled={locked}
-                        onPress={() =>
-                          update({ lines: draft.lines.filter(({ key }) => key !== line.key) })
-                        }
-                        size="icon-sm"
-                        variant="ghost"
-                      >
-                        <Icon as={Trash2} className="text-muted-foreground" size={14} />
-                      </Button>
-                    </View>
-                    <View className="flex-row items-start gap-2">
-                      <View className="w-24">
-                        <Field
-                          editable={!locked}
-                          error={issueText(
-                            issues.lineQuantities?.[line.key],
-                            line.quantityPrecision,
-                          )}
-                          keyboardType={line.quantityPrecision > 0 ? "decimal-pad" : "number-pad"}
-                          label={t("purchases.form.quantity")}
-                          onChangeText={(quantity) => updateLine(line.key, { quantity })}
-                          value={line.quantity}
-                        />
-                      </View>
-                      <View className="w-28">
-                        <Field
-                          editable={!locked}
-                          error={issueText(issues.lineCosts?.[line.key])}
-                          keyboardType="decimal-pad"
-                          label={t("purchases.form.unitCost")}
-                          onChangeText={(unitCost) => updateLine(line.key, { unitCost })}
-                          placeholder={toDecimalString("0", digits)}
-                          value={line.unitCost}
-                        />
-                      </View>
-                      <View className="min-w-0 flex-1 items-end gap-2 md:w-28 md:flex-none">
-                        <Text className="font-ui text-sm leading-none text-foreground">
-                          {t("purchases.form.subtotal")}
+            ) : (
+              <View className="overflow-hidden rounded-xl border border-border">
+                {draft.lines.map((line, index) => {
+                  const subtotal = previewSubtotal(line, digits);
+                  return (
+                    <View
+                      className={cn(
+                        "gap-2 px-3 py-2.5 md:flex-row md:items-start md:gap-3",
+                        index > 0 && "border-t border-border",
+                      )}
+                      key={line.key}
+                    >
+                      <View className="min-w-0 flex-row items-start justify-between gap-2 md:flex-1 md:pt-7">
+                        <Text className="min-w-0 flex-1 text-sm text-foreground" numberOfLines={2}>
+                          {line.productName}
                         </Text>
-                        <Text className="min-h-9 py-2 text-sm tabular-nums text-foreground">
-                          {subtotal === null
-                            ? t("purchases.form.pendingSubtotal")
-                            : money(subtotal)}
-                        </Text>
+                        <Button
+                          accessibilityLabel={t("purchases.form.removeLine", {
+                            product: line.productName,
+                          })}
+                          className="md:hidden"
+                          disabled={locked}
+                          onPress={() =>
+                            update({ lines: draft.lines.filter(({ key }) => key !== line.key) })
+                          }
+                          size="icon-sm"
+                          variant="ghost"
+                        >
+                          <Icon as={Trash2} className="text-muted-foreground" size={14} />
+                        </Button>
                       </View>
-                      <Button
-                        accessibilityLabel={t("purchases.form.removeLine", {
-                          product: line.productName,
-                        })}
-                        className="mt-6 hidden md:flex"
-                        disabled={locked}
-                        onPress={() =>
-                          update({ lines: draft.lines.filter(({ key }) => key !== line.key) })
-                        }
-                        size="icon-sm"
-                        variant="ghost"
-                      >
-                        <Icon as={Trash2} className="text-muted-foreground" size={14} />
-                      </Button>
+                      <View className="flex-row items-start gap-2">
+                        <View className="w-24">
+                          <Field
+                            editable={!locked}
+                            error={issueText(
+                              issues.lineQuantities?.[line.key],
+                              line.quantityPrecision,
+                            )}
+                            keyboardType={line.quantityPrecision > 0 ? "decimal-pad" : "number-pad"}
+                            label={t("purchases.form.quantity")}
+                            onChangeText={(quantity) => updateLine(line.key, { quantity })}
+                            value={line.quantity}
+                          />
+                        </View>
+                        <View className="w-28">
+                          <Field
+                            editable={!locked}
+                            error={issueText(issues.lineCosts?.[line.key])}
+                            keyboardType="decimal-pad"
+                            label={t("purchases.form.unitCost")}
+                            onChangeText={(unitCost) => updateLine(line.key, { unitCost })}
+                            placeholder={toDecimalString("0", digits)}
+                            value={line.unitCost}
+                          />
+                        </View>
+                        <View className="min-w-0 flex-1 items-end gap-2 md:w-28 md:flex-none">
+                          <Text className="font-ui text-sm leading-none text-foreground">
+                            {t("purchases.form.subtotal")}
+                          </Text>
+                          <Text className="min-h-9 py-2 text-sm tabular-nums text-foreground">
+                            {subtotal === null
+                              ? t("purchases.form.pendingSubtotal")
+                              : money(subtotal)}
+                          </Text>
+                        </View>
+                        <Button
+                          accessibilityLabel={t("purchases.form.removeLine", {
+                            product: line.productName,
+                          })}
+                          className="mt-6 hidden md:flex"
+                          disabled={locked}
+                          onPress={() =>
+                            update({ lines: draft.lines.filter(({ key }) => key !== line.key) })
+                          }
+                          size="icon-sm"
+                          variant="ghost"
+                        >
+                          <Icon as={Trash2} className="text-muted-foreground" size={14} />
+                        </Button>
+                      </View>
                     </View>
-                  </View>
-                );
-              })}
-            </View>
-          )}
-          {issues.lines ? (
-            <Text accessibilityRole="alert" className="text-sm text-destructive">
-              {issueText(issues.lines)}
-            </Text>
-          ) : null}
-        </Section>
+                  );
+                })}
+              </View>
+            )}
+            {issues.lines ? (
+              <Text accessibilityRole="alert" className="text-sm text-destructive">
+                {issueText(issues.lines)}
+              </Text>
+            ) : null}
+          </Section>
 
-        <View className="flex-row items-start gap-3 rounded-md bg-muted px-3 py-3">
-          <Checkbox
-            accessibilityLabel={t("purchases.form.received")}
-            aria-labelledby="purchase-received-label"
-            checked={draft.received}
-            className="mt-0.5"
-            disabled={locked}
-            nativeID="purchase-received"
-            onCheckedChange={(received) => !locked && update({ received })}
-          />
-          <View className="min-w-0 flex-1 gap-0.5">
-            <Label
+          <View className="flex-row items-start gap-3 rounded-lg bg-muted px-3 py-3">
+            <Checkbox
+              accessibilityLabel={t("purchases.form.received")}
+              aria-labelledby="purchase-received-label"
+              checked={draft.received}
+              className="mt-0.5"
               disabled={locked}
-              nativeID="purchase-received-label"
-              onPress={() => !locked && update({ received: !draft.received })}
-            >
-              {t("purchases.form.received")}
-            </Label>
-            <Text className="text-xs text-muted-foreground">
-              {draft.received
-                ? t("purchases.form.receivedHint")
-                : t("purchases.form.notReceivedHint")}
-            </Text>
+              nativeID="purchase-received"
+              onCheckedChange={(received) => !locked && update({ received })}
+            />
+            <View className="min-w-0 flex-1 gap-0.5">
+              <Label
+                disabled={locked}
+                nativeID="purchase-received-label"
+                onPress={() => !locked && update({ received: !draft.received })}
+              >
+                {t("purchases.form.received")}
+              </Label>
+              <Text className="text-xs text-muted-foreground">
+                {draft.received
+                  ? t("purchases.form.receivedHint")
+                  : t("purchases.form.notReceivedHint")}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <View className="gap-4 rounded-lg bg-highlight p-4 lg:w-[300px]">
-        <View className="gap-1">
-          <Text className="text-xs text-highlight-foreground">{t("purchases.form.total")}</Text>
-          <Text
-            accessibilityLiveRegion="polite"
-            className="font-heading text-3xl tabular-nums text-highlight-foreground"
-          >
-            {total === null ? money("0") : money(total)}
-          </Text>
-          {total === null && draft.lines.length > 0 ? (
-            <Text className="text-xs text-highlight-foreground">
-              {t("purchases.form.totalPending")}
+        {/* Lime marks the total only; the choices under it stay on the card, where they keep contrast. */}
+        <View className="overflow-hidden rounded-xl border border-border bg-card lg:w-[320px]">
+          <View className="gap-1 bg-highlight px-4 py-3.5">
+            <Text className="text-xs text-highlight-foreground">{t("purchases.form.total")}</Text>
+            <Text
+              accessibilityLiveRegion="polite"
+              className="font-heading text-figure-lg tabular-nums text-highlight-foreground"
+            >
+              {total === null ? money("0") : money(total)}
             </Text>
-          ) : null}
-        </View>
-        <FilterBar
-          disabled={locked}
-          label={t("purchases.form.paymentTerms")}
-          onChange={setTerms}
-          options={[
-            { label: t("purchases.terms.cash"), value: "cash" },
-            { label: t("purchases.terms.credit"), value: "credit" },
-          ]}
-          showLabel
-          value={draft.paymentTerms}
-        />
-        {draft.paymentTerms === "cash" ? (
-          <PickerField
-            error={issueText(issues.account)}
-            label={t("purchases.form.account")}
-            onPress={() => !locked && setAccountPickerOpen(true)}
-            placeholder={t("purchases.form.chooseAccount")}
-            ref={accountRef}
-            value={draft.account?.name}
-          />
-        ) : (
-          <DateField
-            description={
-              draft.supplier?.creditDays !== null && draft.supplier?.creditDays !== undefined
-                ? t("purchases.form.dueDateHint", { count: draft.supplier.creditDays })
-                : undefined
-            }
-            disabled={locked}
-            error={issueText(issues.dueDate)}
-            label={t("purchases.form.dueDate")}
-            onChange={(dueDate) => {
-              setDueDateEdited(true);
-              update({ dueDate }, ["dueDate"]);
-            }}
-            value={draft.dueDate}
-          />
-        )}
-        {total !== null && total !== "0" ? (
-          <Text className="text-xs text-highlight-foreground">
-            {draft.paymentTerms === "credit"
-              ? t("purchases.form.creditNote", { amount: money(total) })
-              : draft.account
-                ? t("purchases.form.cashNote", { account: draft.account.name })
-                : null}
-          </Text>
-        ) : null}
-        {!canManage ? (
-          <Alert icon={CircleAlert} variant="warning">
-            <AlertDescription>{t("purchases.form.stale")}</AlertDescription>
-          </Alert>
-        ) : null}
-        {state.phase === "uncertain" ? (
-          <Alert icon={TriangleAlert} variant="warning">
-            <AlertTitle>{t("common.uncertainTitle")}</AlertTitle>
-            <AlertDescription>{t("purchases.form.uncertain")}</AlertDescription>
-          </Alert>
-        ) : state.phase === "failed" ? (
-          <Alert icon={CircleAlert} variant="destructive">
-            <AlertDescription>{state.message}</AlertDescription>
-          </Alert>
-        ) : null}
-        <View className="gap-2">
-          <Button
-            disabled={!canManage || state.phase === "pending"}
-            label={
-              state.phase === "uncertain" ? t("purchases.form.retry") : t("purchases.form.save")
-            }
-            loading={state.phase === "pending"}
-            onPress={submit}
-          />
-          <Button disabled={locked} label={t("common.cancel")} onPress={onCancel} variant="ghost" />
+            {total === null && draft.lines.length > 0 ? (
+              <Text className="text-xs text-highlight-foreground">
+                {t("purchases.form.totalPending")}
+              </Text>
+            ) : null}
+          </View>
+          <View className="gap-4 p-4">
+            <FilterBar
+              disabled={locked}
+              label={t("purchases.form.paymentTerms")}
+              onChange={setTerms}
+              options={[
+                { label: t("purchases.terms.cash"), value: "cash" },
+                { label: t("purchases.terms.credit"), value: "credit" },
+              ]}
+              showLabel
+              value={draft.paymentTerms}
+            />
+            {draft.paymentTerms === "cash" ? (
+              <PickerField
+                error={issueText(issues.account)}
+                label={t("purchases.form.account")}
+                onPress={() => !locked && setAccountPickerOpen(true)}
+                placeholder={t("purchases.form.chooseAccount")}
+                ref={accountRef}
+                value={draft.account?.name}
+              />
+            ) : (
+              <DateField
+                description={
+                  draft.supplier?.creditDays !== null && draft.supplier?.creditDays !== undefined
+                    ? t("purchases.form.dueDateHint", { count: draft.supplier.creditDays })
+                    : undefined
+                }
+                disabled={locked}
+                error={issueText(issues.dueDate)}
+                label={t("purchases.form.dueDate")}
+                onChange={(dueDate) => {
+                  setDueDateEdited(true);
+                  update({ dueDate }, ["dueDate"]);
+                }}
+                value={draft.dueDate}
+              />
+            )}
+            {total !== null && total !== "0" ? (
+              <Text className="text-xs text-muted-foreground">
+                {draft.paymentTerms === "credit"
+                  ? t("purchases.form.creditNote", { amount: money(total) })
+                  : draft.account
+                    ? t("purchases.form.cashNote", { account: draft.account.name })
+                    : null}
+              </Text>
+            ) : null}
+            {!canManage ? (
+              <Alert icon={CircleAlert} variant="warning">
+                <AlertDescription>{t("purchases.form.stale")}</AlertDescription>
+              </Alert>
+            ) : null}
+            {state.phase === "uncertain" ? (
+              <Alert icon={TriangleAlert} variant="warning">
+                <AlertTitle>{t("common.uncertainTitle")}</AlertTitle>
+                <AlertDescription>{t("purchases.form.uncertain")}</AlertDescription>
+              </Alert>
+            ) : state.phase === "failed" ? (
+              <Alert icon={CircleAlert} variant="destructive">
+                <AlertDescription>{state.message}</AlertDescription>
+              </Alert>
+            ) : null}
+            <View className="gap-2">
+              <Button
+                disabled={state.phase === "pending" || (state.phase !== "uncertain" && !canManage)}
+                label={
+                  state.phase === "uncertain" ? t("purchases.form.retry") : t("purchases.form.save")
+                }
+                loading={state.phase === "pending"}
+                onPress={submit}
+              />
+              <Button
+                disabled={locked}
+                label={t("common.cancel")}
+                onPress={onCancel}
+                variant="ghost"
+              />
+            </View>
+          </View>
         </View>
       </View>
 

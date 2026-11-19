@@ -14,6 +14,7 @@ vi.mock("expo-router", () => ({
       href,
       accessibilityRole: "link",
     }),
+  useRouter: () => ({ push: vi.fn() }),
 }));
 vi.mock("expo-router/head", () => ({
   default: ({ children }: { children: ReactNode }) => children,
@@ -35,7 +36,7 @@ vi.mock("@/lib/api-client", () => ({ apiRequest: vi.fn() }));
 import { ROLE_CAPABILITIES, roleCan } from "@/features/business/role-capabilities";
 import { i18n } from "@/i18n/config";
 import { resolveBusinessAccess } from "../../../../../packages/db/src/product-access";
-import { exampleSpans } from "./dictation-example";
+import { DictationExample, exampleSpans } from "./dictation-example";
 import {
   BEFORE_DICTATED_SALE,
   EXAMPLE_ACCOUNTS,
@@ -100,20 +101,25 @@ describe("public product page", () => {
     expect(markup).not.toMatch(/<figure[^>]*>(?:(?!<\/figure>).)*<figure/s);
     expect(text(markup)).toContain(i18n.t("welcome.preview.example"));
     expect(markup).toContain(`aria-label="${i18n.t("welcome.preview.label")}"`);
-    for (const step of STEPS) {
-      expect(markup).toContain(`aria-label="${i18n.t(`welcome.how.steps.${step}.figure`)}"`);
-    }
+    // The steps are tabs: the first opens with its figure, the others show theirs when chosen.
+    expect(markup.match(/role="tab"/g)).toHaveLength(STEPS.length);
+    expect(markup).toContain(`aria-label="${i18n.t("welcome.how.steps.say.figure")}"`);
     for (const module of MODULES) {
       expect(markup).toContain(`aria-label="${i18n.t(`welcome.modules.items.${module}.figure`)}"`);
     }
-    // Illustrated controls look like buttons but are not announced as ones: the only button on
-    // the page is the appearance switch; every other action is a link.
-    expect(markup.match(/role="button"/g)).toHaveLength(1);
+    // Illustrated controls look like buttons but are not announced as ones: the only buttons on
+    // the page are the appearance switch and the compact header's menu; every other action is a
+    // link.
+    expect(markup.match(/role="button"/g)).toHaveLength(2);
+    expect(markup).toContain(`aria-label="${i18n.t("welcome.nav.menu")}"`);
   });
 
   test("labels the dictation example and marks every fragment it fills", () => {
-    const markup = render();
-    expect(markup).toContain(`aria-label="${i18n.t("welcome.how.steps.review.figure")}"`);
+    const label = i18n.t("welcome.how.steps.review.figure");
+    const markup = renderToStaticMarkup(
+      createElement(DictationExample, { label, tone: "default" }),
+    );
+    expect(markup).toContain(`aria-label="${label}"`);
     expect(markup).toContain(i18n.t("welcome.example.unsaved"));
     expect(text(markup)).toContain(i18n.t("welcome.example.rows.credit.value"));
     const said = i18n.t("welcome.example.said");
@@ -132,6 +138,12 @@ describe("public product page", () => {
       "el resto me lo quedó debiendo",
     ]);
     expect(() => exampleSpans(said, ["café", "vendí"])).toThrow();
+  });
+
+  test("shows the same home at both sizes, each labelled as its own example", () => {
+    const markup = render();
+    expect(markup).toContain(`aria-label="${i18n.t("welcome.preview.label")}"`);
+    expect(markup).toContain(`aria-label="${i18n.t("welcome.preview.phoneLabel")}"`);
   });
 
   test("lets a visitor switch to the dark appearance before signing in", () => {

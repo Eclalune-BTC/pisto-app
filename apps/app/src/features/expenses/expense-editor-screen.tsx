@@ -104,7 +104,7 @@ export function ExpenseEditorScreen({
           <Heading level={2} size="section">
             {t("expenses.editor.reviewTitle")}
           </Heading>
-          <Text className="text-[13px] leading-5 text-muted-foreground">
+          <Text className="text-dense text-muted-foreground">
             {t("expenses.editor.reviewDescription")}
           </Text>
         </View>

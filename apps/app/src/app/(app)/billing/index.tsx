@@ -50,15 +50,13 @@ function EntitlementTable({ items, locale }: { items: Entitlement[]; locale: str
         id: "key",
         header: t("billing.access.key"),
         meta: { primary: true },
-        cell: ({ row: { original } }) => (
-          <Text className="font-ui text-[13px]">{original.key}</Text>
-        ),
+        cell: ({ row: { original } }) => <Text className="font-ui text-dense">{original.key}</Text>,
       },
       {
         id: "source",
         header: t("billing.access.source"),
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground">
+          <Text className="text-dense text-muted-foreground">
             {t(`billing.access.sources.${original.source}`)}
           </Text>
         ),
@@ -67,7 +65,7 @@ function EntitlementTable({ items, locale }: { items: Entitlement[]; locale: str
         id: "validity",
         header: t("billing.access.validity"),
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] tabular-nums">
+          <Text className="text-dense tabular-nums">
             {original.validUntil
               ? t("billing.access.validUntil", {
                   date: formatLocalizedDate(original.validUntil, locale),
@@ -117,9 +115,7 @@ function ProductCards({
             <View className="gap-1">
               <Text className="font-heading text-sm">{product.name ?? product.slug}</Text>
               {product.description ? (
-                <Text className="text-[13px] leading-5 text-muted-foreground">
-                  {product.description}
-                </Text>
+                <Text className="text-dense text-muted-foreground">{product.description}</Text>
               ) : null}
             </View>
             <Button

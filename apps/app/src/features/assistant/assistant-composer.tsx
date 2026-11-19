@@ -11,6 +11,7 @@ import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
+import { cn } from "@/lib/cn";
 import { NewEntryDialog } from "./new-entry-dialog";
 import { problemMessageKeys } from "./problems";
 import { useAssistantAvailability } from "./queries";
@@ -32,50 +33,59 @@ function outcomeMessageKey(outcome: InterpretOutcome | null): ParseKeys | null {
 
 /**
  * The home "Registrar" panel: one line to type or dictate a record, reviewed before saving. The
- * chips start the sentence for the record kind.
+ * chips start the sentence for the record kind. `bar` lays it across a wide page, with the title
+ * beside the line instead of above it.
  */
-export function AssistantComposer() {
+export function AssistantComposer({ layout = "panel" }: { layout?: "panel" | "bar" }) {
   const { t } = useTranslation();
   const availability = useAssistantAvailability();
   if (availability.kind === "hidden") return null;
+  const bar = layout === "bar";
   return (
-    <View className="gap-3 rounded-lg border border-border bg-card p-4">
-      <View className="gap-0.5">
+    <View
+      className={cn(
+        "gap-3 rounded-xl border border-border bg-card p-4",
+        bar && "flex-row items-center gap-8",
+      )}
+    >
+      <View className={cn("gap-0.5", bar && "w-[200px] shrink-0")}>
         <Heading level={2} size="section">
           {t("assistant.composer.title")}
         </Heading>
-        <Text className="text-[13px] leading-5 text-muted-foreground">
+        <Text className="text-dense text-muted-foreground">
           {t("assistant.composer.description")}
         </Text>
       </View>
-      {availability.kind === "loading" ? (
-        <Skeleton className="h-9 w-full rounded-md" />
-      ) : availability.kind === "error" ? (
-        <Alert
-          action={
-            <Button
-              label={t("common.retry")}
-              onPress={availability.retry}
-              size="sm"
-              variant="outline"
-            />
-          }
-          icon={TriangleAlert}
-          variant="warning"
-        >
-          <AlertDescription>{t("assistant.problems.statusFailed")}</AlertDescription>
-        </Alert>
-      ) : availability.kind === "disabled" ? (
-        <Alert icon={TriangleAlert} role="note" variant="warning">
-          <AlertTitle>{t("assistant.problems.disabledTitle")}</AlertTitle>
-          <AlertDescription>{t("assistant.problems.disabled")}</AlertDescription>
-        </Alert>
-      ) : (
-        <ComposerForm
-          businessId={availability.businessId}
-          voice={availability.transcription && canRecord()}
-        />
-      )}
+      <View className={cn("gap-3", bar && "min-w-0 flex-1")}>
+        {availability.kind === "loading" ? (
+          <Skeleton className="h-9 w-full rounded-md" />
+        ) : availability.kind === "error" ? (
+          <Alert
+            action={
+              <Button
+                label={t("common.retry")}
+                onPress={availability.retry}
+                size="sm"
+                variant="outline"
+              />
+            }
+            icon={TriangleAlert}
+            variant="warning"
+          >
+            <AlertDescription>{t("assistant.problems.statusFailed")}</AlertDescription>
+          </Alert>
+        ) : availability.kind === "disabled" ? (
+          <Alert icon={TriangleAlert} role="note" variant="warning">
+            <AlertTitle>{t("assistant.problems.disabledTitle")}</AlertTitle>
+            <AlertDescription>{t("assistant.problems.disabled")}</AlertDescription>
+          </Alert>
+        ) : (
+          <ComposerForm
+            businessId={availability.businessId}
+            voice={availability.transcription && canRecord()}
+          />
+        )}
+      </View>
     </View>
   );
 }
@@ -100,61 +110,65 @@ function ComposerForm({ businessId, voice }: { businessId: string; voice: boolea
   }
 
   return (
-    <>
-      <View className="flex-row items-center gap-2">
-        <View className="min-w-0 flex-1">
-          <Input
-            accessibilityLabel={t("assistant.composer.inputLabel")}
-            maxLength={1_000}
-            onChangeText={(value) => {
-              setText(value);
-              setOutcome(null);
-            }}
-            onSubmitEditing={() => void submit()}
-            placeholder={t("assistant.composer.placeholder")}
-            ref={input}
-            returnKeyType="send"
-            value={text}
+    // The closed dialog still leaves an empty element; it stays outside the spaced column so it
+    // does not add a gap under the chips.
+    <View>
+      <View className="gap-3">
+        <View className="flex-row items-center gap-2">
+          <View className="min-w-0 flex-1">
+            <Input
+              accessibilityLabel={t("assistant.composer.inputLabel")}
+              maxLength={1_000}
+              onChangeText={(value) => {
+                setText(value);
+                setOutcome(null);
+              }}
+              onSubmitEditing={() => void submit()}
+              placeholder={t("assistant.composer.placeholder")}
+              ref={input}
+              returnKeyType="send"
+              value={text}
+            />
+          </View>
+          {voice ? (
+            <Button
+              accessibilityLabel={t("assistant.composer.record")}
+              onPress={() => setDialogOpen(true)}
+              size="icon"
+              variant="outline"
+            >
+              <Icon as={Mic} className="text-foreground" size={16} />
+            </Button>
+          ) : null}
+          <Button
+            disabled={sentence.length < 2}
+            label={t("assistant.composer.submit")}
+            loading={pending}
+            onPress={() => void submit()}
           />
         </View>
-        {voice ? (
-          <Button
-            accessibilityLabel={t("assistant.composer.record")}
-            onPress={() => setDialogOpen(true)}
-            size="icon"
-            variant="outline"
-          >
-            <Icon as={Mic} className="text-foreground" size={16} />
-          </Button>
+        <View className="flex-row flex-wrap gap-1.5">
+          {starters.map((starter) => (
+            <Button
+              className="h-7 px-2.5"
+              key={starter}
+              label={t(`assistant.composer.chips.${starter}`)}
+              onPress={() => {
+                setText(t(`assistant.composer.starters.${starter}`));
+                setOutcome(null);
+                input.current?.focus();
+              }}
+              size="sm"
+              variant="outline"
+            />
+          ))}
+        </View>
+        {messageKey ? (
+          <Alert icon={TriangleAlert} variant="warning">
+            <AlertDescription>{t(messageKey)}</AlertDescription>
+          </Alert>
         ) : null}
-        <Button
-          disabled={sentence.length < 2}
-          label={t("assistant.composer.submit")}
-          loading={pending}
-          onPress={() => void submit()}
-        />
       </View>
-      <View className="flex-row flex-wrap gap-1.5">
-        {starters.map((starter) => (
-          <Button
-            className="h-7 px-2.5"
-            key={starter}
-            label={t(`assistant.composer.chips.${starter}`)}
-            onPress={() => {
-              setText(t(`assistant.composer.starters.${starter}`));
-              setOutcome(null);
-              input.current?.focus();
-            }}
-            size="sm"
-            variant="outline"
-          />
-        ))}
-      </View>
-      {messageKey ? (
-        <Alert icon={TriangleAlert} variant="warning">
-          <AlertDescription>{t(messageKey)}</AlertDescription>
-        </Alert>
-      ) : null}
       {availability.kind === "hidden" ? null : (
         <NewEntryDialog
           availability={availability}
@@ -163,6 +177,6 @@ function ComposerForm({ businessId, voice }: { businessId: string; voice: boolea
           open={dialogOpen}
         />
       )}
-    </>
+    </View>
   );
 }

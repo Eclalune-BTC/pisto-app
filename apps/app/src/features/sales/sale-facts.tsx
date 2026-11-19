@@ -58,7 +58,7 @@ export function saleDescriptionItem(
 }
 
 /** When the sale happened, in its business-local wall-clock time, and its optional note. */
-export function saleOccurrenceItems(
+function saleOccurrenceItems(
   sale: SaleOccurrence,
   locale: string,
   t: TFunction,

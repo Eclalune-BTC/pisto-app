@@ -9,13 +9,13 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import * as Crypto from "expo-crypto";
 import type { TFunction } from "i18next";
 import { Lock, TriangleAlert } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { CommandReview } from "@/components/command-review";
 import { FormActions } from "@/components/layout/form-actions";
 import { ContentSkeleton } from "@/components/layout/skeletons";
-import { StaleNotice } from "@/components/remote-state";
+import { OfflineState, StaleNotice } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { FieldError } from "@/components/ui/field-error";
@@ -27,11 +27,14 @@ import { Text } from "@/components/ui/text";
 import { useFieldMarker } from "@/features/assistant/draft-slots";
 import { manageCapabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { commandPhase } from "@/features/customers/command-state";
+import { CustomerPickerDialog } from "@/features/customers/customer-picker";
 import { useRecordFormat } from "@/features/customers/format";
+import { PickerField } from "@/features/customers/picker-field";
 import { customerDetailQueryOptions } from "@/features/customers/queries";
 import { readState } from "@/features/customers/read-state";
 import { useCommand } from "@/features/customers/use-command";
 import { cn } from "@/lib/cn";
+import { EMPTY_VALUE } from "@/lib/empty-value";
 import { currentLocalDateTime, parseAmountToMinorUnits, toDecimalString } from "@/lib/money";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { notify } from "@/lib/notify";
@@ -88,7 +91,7 @@ function SummaryRow({
     <View className="flex-row items-center justify-between gap-3 px-3 py-2">
       <Text
         className={cn(
-          "text-[13px]",
+          "text-dense",
           emphasis ? "font-heading text-foreground" : "text-muted-foreground",
         )}
       >
@@ -96,7 +99,7 @@ function SummaryRow({
       </Text>
       <Text
         className={cn(
-          "text-[13px] tabular-nums",
+          "text-dense tabular-nums",
           emphasis && "font-heading",
           tone === "positive" && "text-positive",
         )}
@@ -127,31 +130,41 @@ export function ReceivablePaymentForm({
   const [chosenId, setChosenId] = useState<string | null>(
     receivableId ?? draft?.receivable?.id ?? null,
   );
-  const ownerId = customerId ?? draft?.customer.match?.id;
+  const [pickedCustomerId, setPickedCustomerId] = useState<string | null>(null);
+  const ownerId = customerId ?? draft?.customer.match?.id ?? pickedCustomerId ?? undefined;
+  const [onlyChoiceId, setOnlyChoiceId] = useState<string | null>(null);
+  const listing = enabled && !chosenId && !onlyChoiceId && ownerId !== undefined;
   const overdue = useInfiniteQuery({
     ...receivablesQueryOptions(
       businessId,
       ownerId ? { customerId: ownerId, state: "overdue" } : undefined,
     ),
-    enabled: enabled && !chosenId && ownerId !== undefined,
+    enabled: listing,
   });
   const open = useInfiniteQuery({
     ...receivablesQueryOptions(
       businessId,
       ownerId ? { customerId: ownerId, state: "open" } : undefined,
     ),
-    enabled: enabled && !chosenId && ownerId !== undefined,
+    enabled: listing,
   });
   const choices = [...flattenPages(overdue.data), ...flattenPages(open.data)];
   const choicesRead = readState([overdue, open]);
   const choicesComplete = choicesRead.kind === "ready" && !overdue.hasNextPage && !open.hasNextPage;
-  // A customer with a single open receivable has nothing to choose.
-  const onlyChoice = !chosenId && choicesComplete && choices.length === 1 ? choices[0] : undefined;
-  const effectiveId = chosenId ?? onlyChoice?.id ?? null;
+  // A customer with a single open receivable has nothing to choose. The choice is kept once made:
+  // paying that receivable in full empties the list, and the form must outlive that refetch so a
+  // payment whose answer was lost can still be sent again under its key.
+  const onlyChoice = listing && choicesComplete && choices.length === 1 ? choices[0] : undefined;
+  if (onlyChoice) setOnlyChoiceId(onlyChoice.id);
+  const effectiveId = chosenId ?? onlyChoiceId;
+  const chooseAnotherCustomer = pickedCustomerId
+    ? () => {
+        setChosenId(null);
+        setOnlyChoiceId(null);
+        setPickedCustomerId(null);
+      }
+    : undefined;
 
-  if (!chosenId && !ownerId) {
-    throw new Error("A receivable payment needs a receivable or a customer");
-  }
   const accessState = manageCapabilityBoundaryState(access);
   if (accessState === "loading") return <ContentSkeleton variant="form" />;
   if (accessState !== "ready") {
@@ -172,10 +185,17 @@ export function ReceivablePaymentForm({
         key={effectiveId}
         onCancel={onCancel}
         onChooseAnother={chosenId && !receivableId && ownerId ? () => setChosenId(null) : undefined}
+        onChooseAnotherCustomer={chooseAnotherCustomer}
         onPhaseChange={onPhaseChange}
         onSaved={onSaved}
         receivableId={effectiveId}
       />
+    );
+  }
+  if (!ownerId) {
+    if (!businessId) return null;
+    return (
+      <CustomerChoice businessId={businessId} onCancel={onCancel} onChoose={setPickedCustomerId} />
     );
   }
   return (
@@ -185,6 +205,7 @@ export function ReceivablePaymentForm({
       failed={choicesRead.kind !== "ready" && choicesRead.kind !== "loading"}
       onCancel={onCancel}
       onChoose={setChosenId}
+      onChooseAnotherCustomer={chooseAnotherCustomer}
       onRetry={() => {
         void overdue.refetch();
         void open.refetch();
@@ -201,12 +222,53 @@ export function ReceivablePaymentForm({
   );
 }
 
+/** A dictated payment that named no known customer: the user says who paid before anything else. */
+function CustomerChoice({
+  businessId,
+  onCancel,
+  onChoose,
+}: {
+  businessId: string;
+  onCancel: () => void;
+  onChoose: (customerId: string) => void;
+}) {
+  const { t } = useTranslation();
+  const marker = useFieldMarker("customer");
+  const fieldRef = useRef<View>(null);
+  const [open, setOpen] = useState(false);
+  return (
+    <View className="gap-4">
+      <PickerField
+        label={t("receivables.paymentForm.customer")}
+        marker={marker}
+        onPress={() => setOpen(true)}
+        placeholder={t("receivables.paymentForm.chooseCustomer")}
+        ref={fieldRef}
+      />
+      <View className="items-end">
+        <Button label={t("common.cancel")} onPress={onCancel} variant="outline" />
+      </View>
+      <CustomerPickerDialog
+        businessId={businessId}
+        freshChoiceOnly
+        onOpenChange={setOpen}
+        onSelect={(customer) => onChoose(customer.id)}
+        open={open}
+        returnFocusRef={fieldRef}
+        selectedId={null}
+        status="active"
+      />
+    </View>
+  );
+}
+
 function ReceivableChoice({
   choices,
   failed,
   loading,
   onCancel,
   onChoose,
+  onChooseAnotherCustomer,
   onRetry,
   page,
 }: {
@@ -215,6 +277,8 @@ function ReceivableChoice({
   loading: boolean;
   onCancel: () => void;
   onChoose: (receivableId: string) => void;
+  /** Set when the customer was picked in this form, so a customer who owes nothing is no dead end. */
+  onChooseAnotherCustomer?: () => void;
   onRetry: () => void;
   page: CursorPage;
 }) {
@@ -237,10 +301,17 @@ function ReceivableChoice({
   if (choices.length === 0) {
     return (
       <View className="gap-4">
-        <Text className="text-[13px] leading-5 text-muted-foreground">
+        <Text className="text-dense text-muted-foreground">
           {t("receivables.paymentForm.nothingOwed")}
         </Text>
-        <View className="items-end">
+        <View className="flex-row flex-wrap items-center justify-end gap-2">
+          {onChooseAnotherCustomer ? (
+            <Button
+              label={t("receivables.paymentForm.chooseAnotherCustomer")}
+              onPress={onChooseAnotherCustomer}
+              variant="outline"
+            />
+          ) : null}
           <Button label={t("common.close")} onPress={onCancel} variant="outline" />
         </View>
       </View>
@@ -286,6 +357,7 @@ function PaymentFields({
   entrySource,
   onCancel,
   onChooseAnother,
+  onChooseAnotherCustomer,
   onPhaseChange,
   onSaved,
   receivableId,
@@ -294,6 +366,7 @@ function PaymentFields({
   entrySource: EntrySource;
   onCancel: () => void;
   onChooseAnother?: () => void;
+  onChooseAnotherCustomer?: () => void;
   onPhaseChange?: (phase: MutationPhase) => void;
   onSaved: (paymentId: string) => void;
   receivableId: string;
@@ -329,7 +402,10 @@ function PaymentFields({
   const [method, setMethod] = useState<PaymentMethod | null>(null);
   const [errors, setErrors] = useState<PaymentErrors>({});
   const [command, setCommand] = useState<ApplyReceivablePaymentRequest | null>(null);
-  const [reviewAccount, setReviewAccount] = useState<CashAccount | null>(null);
+  const [review, setReview] = useState<{
+    account: CashAccount;
+    outstandingMinorUnits: string;
+  } | null>(null);
   const [amountSeeded, setAmountSeeded] = useState(false);
 
   const receivable = detail.data?.receivable;
@@ -377,22 +453,38 @@ function PaymentFields({
   if (read.kind === "loading" || (read.kind === "ready" && (!receivable || !customer.data))) {
     return <ContentSkeleton variant="form" />;
   }
+  const refetchReads = () => {
+    void access.refetch();
+    void detail.refetch();
+    void customer.refetch();
+    void accountsQuery.refetch();
+  };
+  if (read.kind === "offline") return <OfflineState level={2} />;
+  if (read.kind === "denied") {
+    return (
+      <StatePanel
+        description={t("receivables.paymentForm.deniedDescription")}
+        icon={Lock}
+        level={2}
+        title={t("receivables.list.deniedTitle")}
+      />
+    );
+  }
   if (read.kind !== "ready" || !receivable || !customer.data) {
     return (
       <StatePanel
         action={
-          <Button
-            label={t("common.retry")}
-            onPress={() => {
-              void detail.refetch();
-              void customer.refetch();
-              void accountsQuery.refetch();
-            }}
-            size="sm"
-            variant="outline"
-          />
+          read.kind === "notFound" ? (
+            <Button label={t("common.close")} onPress={onCancel} size="sm" variant="outline" />
+          ) : (
+            <Button label={t("common.retry")} onPress={refetchReads} size="sm" variant="outline" />
+          )
         }
-        description={t("relationships.common.unavailableDescription")}
+        description={
+          read.kind === "notFound"
+            ? t("receivables.paymentForm.notFoundDescription")
+            : t("relationships.common.unavailableDescription")
+        }
         icon={TriangleAlert}
         level={2}
         title={t("receivables.paymentForm.unavailableTitle")}
@@ -410,9 +502,9 @@ function PaymentFields({
     phase === "pending" ||
     phase === "uncertain";
   const owes = (
-    <Text className="text-[13px] leading-5 text-muted-foreground">
+    <Text className="text-dense text-muted-foreground">
       {t("receivables.paymentForm.owes", {
-        amount: money(receivable.outstandingMinorUnits),
+        amount: money(review?.outstandingMinorUnits ?? receivable.outstandingMinorUnits),
         charge: receivable.description,
         customer: customerName,
       })}
@@ -423,7 +515,7 @@ function PaymentFields({
     return (
       <View className="gap-4">
         {owes}
-        <Text className="text-[13px] leading-5">{t("receivables.paymentForm.closed")}</Text>
+        <Text className="text-dense">{t("receivables.paymentForm.closed")}</Text>
         <View className="items-end">
           <Button label={t("common.close")} onPress={onCancel} variant="outline" />
         </View>
@@ -431,10 +523,11 @@ function PaymentFields({
     );
   }
 
-  if (command && reviewAccount) {
+  if (command && review) {
     return (
       <View className="gap-4">
         {owes}
+        {stale ? <StaleNotice onRetry={refetchReads} /> : null}
         <CommandReview
           confirmLabel={t("receivables.paymentForm.confirm")}
           disabled={stale}
@@ -445,7 +538,7 @@ function PaymentFields({
               numeric: true,
               value: money(command.amountMinorUnits),
             },
-            { label: t("receivables.paymentForm.account"), value: reviewAccount.name },
+            { label: t("receivables.paymentForm.account"), value: review.account.name },
             {
               label: t("receivables.payment.occurred"),
               numeric: true,
@@ -462,16 +555,16 @@ function PaymentFields({
               numeric: true,
               value: money(
                 (
-                  BigInt(receivable.outstandingMinorUnits) - BigInt(command.amountMinorUnits)
+                  BigInt(review.outstandingMinorUnits) - BigInt(command.amountMinorUnits)
                 ).toString(),
               ),
             },
           ]}
           note={t("receivables.payment.reviewDescription")}
-          onConfirm={() => send({ accountName: reviewAccount.name, command })}
+          onConfirm={() => send({ accountName: review.account.name, command })}
           onEdit={() => {
             setCommand(null);
-            setReviewAccount(null);
+            setReview(null);
             reset();
           }}
           phase={phase}
@@ -527,7 +620,12 @@ function PaymentFields({
     });
     if (!("command" in result) || !selectedAccount) return;
     reset();
-    setReviewAccount(selectedAccount);
+    // The balance is frozen with the command: once the payment commits, a refetch already carries
+    // the reduced balance and the review must not subtract the amount a second time.
+    setReview({
+      account: selectedAccount,
+      outstandingMinorUnits: receivable.outstandingMinorUnits,
+    });
     setCommand({ ...result.command, entrySource });
   };
 
@@ -544,16 +642,17 @@ function PaymentFields({
             variant="link"
           />
         ) : null}
+        {onChooseAnotherCustomer ? (
+          <Button
+            className="self-start px-0"
+            label={t("receivables.paymentForm.chooseAnotherCustomer")}
+            onPress={onChooseAnotherCustomer}
+            size="sm"
+            variant="link"
+          />
+        ) : null}
       </View>
-      {stale ? (
-        <StaleNotice
-          onRetry={() => {
-            void access.refetch();
-            void detail.refetch();
-            void customer.refetch();
-          }}
-        />
-      ) : null}
+      {stale ? <StaleNotice onRetry={refetchReads} /> : null}
       <View className="gap-2">
         <Field
           error={errors.amount}
@@ -622,7 +721,7 @@ function PaymentFields({
             <Text className="font-ui text-xs text-muted-foreground">
               {t("receivables.paymentForm.account")}
             </Text>
-            <Text className="text-[13px] leading-5 text-muted-foreground">
+            <Text className="text-dense text-muted-foreground">
               {t(`receivables.paymentForm.noAccounts.${activeMethod}`)}
             </Text>
           </View>
@@ -666,7 +765,7 @@ function PaymentFields({
         <SummaryRow
           label={t("receivables.paymentForm.payment")}
           tone={amount ? "positive" : undefined}
-          value={amount ? money(`-${amount}`) : "—"}
+          value={amount ? money(`-${amount}`) : EMPTY_VALUE}
         />
         <View className="border-t border-border">
           <SummaryRow
@@ -675,7 +774,7 @@ function PaymentFields({
             value={
               amount
                 ? money((BigInt(receivable.outstandingMinorUnits) - BigInt(amount)).toString())
-                : "—"
+                : EMPTY_VALUE
             }
           />
         </View>

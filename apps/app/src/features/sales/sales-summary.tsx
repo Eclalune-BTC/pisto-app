@@ -11,6 +11,7 @@ import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { formatLocalizedDateTime, formatMonthYear } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { EMPTY_VALUE } from "@/lib/empty-value";
 import { formatMinorUnits } from "@/lib/money";
 import { formatSaleCount } from "./format";
 import type { ReadState } from "./state";
@@ -51,7 +52,9 @@ export function SalesSummary({ onRetry, read, summary }: SalesSummaryProps) {
           <Stat
             detail={summary.averageMinorUnits === null ? t("sales.summary.noAverage") : undefined}
             label={t("sales.summary.average")}
-            value={summary.averageMinorUnits === null ? "—" : money(summary.averageMinorUnits)}
+            value={
+              summary.averageMinorUnits === null ? EMPTY_VALUE : money(summary.averageMinorUnits)
+            }
           />
         </StatGroup>
       </Section>

@@ -57,7 +57,7 @@ function BalanceAmount({
   if (cell.kind === "loading") return <Skeleton className="h-3 w-16" />;
   if (cell.kind === "unavailable") {
     return (
-      <Text className="text-[13px] text-muted-foreground">
+      <Text className="text-dense text-muted-foreground">
         {t("customers.list.balanceUnavailable")}
       </Text>
     );
@@ -82,7 +82,7 @@ function ContactValue({ maxWidth, value }: { maxWidth: string; value: string | n
   ) : (
     <Text
       accessibilityLabel={t("customers.list.noContact")}
-      className="text-[13px] text-muted-foreground"
+      className="text-dense text-muted-foreground"
     >
       —
     </Text>

@@ -13,11 +13,19 @@ export default function AuthenticatedLayout() {
 
   if (!isPending && !error && !session) return <Redirect href="/sign-in" />;
 
+  // A refresh that fails on the network keeps the last known session. The screen stays mounted
+  // then: replacing it would discard a typed form and the key of a command whose outcome is still
+  // unknown, and the server authorizes every request on its own anyway.
+  const unverified = Boolean(error) && Boolean(session);
+
   // The navigator stays mounted while the session restores: unmounting it resets the router to
   // the group's first route and the deep link bounces.
   return (
-    <AppShell user={session ? { email: session.user.email, name: session.user.name } : null}>
-      {error ? (
+    <AppShell
+      sessionUnverified={unverified}
+      user={session ? { email: session.user.email, name: session.user.name } : null}
+    >
+      {error && !session ? (
         <Page width="reading">
           <StatePanel
             action={

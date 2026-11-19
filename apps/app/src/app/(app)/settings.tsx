@@ -38,7 +38,7 @@ function FactsSkeleton({ label, rows }: { label: string; rows: number }) {
     <View
       accessibilityLabel={label}
       aria-busy
-      className="overflow-hidden rounded-lg border border-border bg-card"
+      className="overflow-hidden rounded-xl border border-border bg-card"
     >
       <Text className="sr-only">{label}</Text>
       {Array.from({ length: rows }, (_, index) => (
@@ -146,9 +146,7 @@ function BusinessTab({ locale }: { locale: string }) {
         </View>
       </View>
       {businesses.data.items.length > 1 ? (
-        <Text className="text-[13px] leading-5 text-muted-foreground">
-          {t("settings.businessSwitchHint")}
-        </Text>
+        <Text className="text-dense text-muted-foreground">{t("settings.businessSwitchHint")}</Text>
       ) : null}
     </View>
   );

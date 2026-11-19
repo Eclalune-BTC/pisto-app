@@ -25,6 +25,7 @@ import { FilterBar } from "@/components/ui/filter-bar";
 import { FilterToolbar } from "@/components/ui/filter-toolbar";
 import { LoadMoreButton } from "@/components/ui/load-more-button";
 import { SelectField } from "@/components/ui/select-field";
+import { Text } from "@/components/ui/text";
 import { ExpenseFilters } from "@/features/expenses/expense-filters";
 import { ExpenseHistory } from "@/features/expenses/expense-history";
 import { ExpensesScreen } from "@/features/expenses/expenses-screen";
@@ -208,26 +209,55 @@ describe("cash overview", () => {
     expect(props.onOpenMovement).toHaveBeenCalledWith(movement.id);
   });
 
-  test("opens accounts by their row and colors only a negative balance", () => {
-    const { tree, markup } = capture(CashAccountList, {
-      accounts: [account],
-      empty: createElement("p", {}, "empty"),
+  test("signs and tones only a movement that brought money in", () => {
+    const { tree: list } = capture(CashMovementList, {
+      actionLabels: { adjustment_out: "Ajuste de salida" } as never,
       formatMoney,
+      movements: [movement],
+      noMovements: "none",
     });
-    const href = (tree.props as { getRowHref: (record: CashAccount) => unknown }).getRowHref(
-      account,
-    );
-    expect(href).toEqual({
-      pathname: "/operate/cash/accounts/[accountId]",
-      params: { accountId: account.id },
-    });
-    expect(markup).not.toContain(t("dataTable.columns.actions"));
-    const balance = column<CashAccount>(tree, "balance");
-    const className = (record: CashAccount) =>
-      (balance(record).props as { className: string }).className;
-    expect(className(account)).not.toContain("text-destructive");
-    expect(className({ ...account, balanceMinorUnits: "0" })).not.toContain("text-destructive");
-    expect(className({ ...account, balanceMinorUnits: "-1" })).toContain("text-destructive");
+    const amount = (deltaMinorUnits: string) =>
+      column<CashMovement>(list, "amount")({ ...movement, deltaMinorUnits }) as ReactElement<{
+        children: string;
+        className: string;
+      }>;
+    const money = (deltaMinorUnits: string) =>
+      formatMoney(deltaMinorUnits, movement.currency, movement.currencyMinorUnitDigits);
+    expect(amount("500").props.children).toBe(`+${money("500")}`);
+    expect(amount("500").props.className).toContain("text-positive-foreground");
+    for (const delta of ["-500", "0"]) {
+      expect(amount(delta).props.children).toBe(money(delta));
+      expect(amount(delta).props.className).not.toContain("text-positive-foreground");
+    }
+  });
+
+  test("opens each account from its tile and colors only a negative balance", () => {
+    const tiles = (accounts: CashAccount[]) =>
+      capture(CashAccountList, {
+        accounts,
+        empty: createElement("p", {}, "empty"),
+        formatMoney,
+      });
+    const { markup } = tiles([account]);
+    expect(markup).toContain(account.name);
+    expect(markup).toContain("/operate/cash/accounts/[accountId]");
+    expect(markup).toContain(account.id);
+    const balanceClass = (record: CashAccount) => {
+      const figure = elements<{ children: ReactNode; className: string }>(
+        tiles([record]).tree,
+        Text,
+      ).find(
+        (element) =>
+          element.props.children ===
+          formatMoney(record.balanceMinorUnits, record.currency, record.currencyMinorUnitDigits),
+      );
+      if (!figure) throw new Error("The tile shows no balance.");
+      return figure.props.className;
+    };
+    expect(balanceClass(account)).not.toContain("text-destructive");
+    expect(balanceClass({ ...account, balanceMinorUnits: "0" })).not.toContain("text-destructive");
+    expect(balanceClass({ ...account, balanceMinorUnits: "-1" })).toContain("text-destructive");
+    expect(tiles([]).markup).toBe("<p>empty</p>");
   });
 
   test("keeps each section's own recovery while the other section succeeds", () => {

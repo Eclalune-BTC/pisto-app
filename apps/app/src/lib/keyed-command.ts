@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { isAmbiguousMutationError } from "@/lib/api-error";
 import { type MutationPhase, mutationPhase, provesNotCommitted } from "@/lib/mutation-phase";
 
@@ -59,6 +59,10 @@ export function useKeyedCommand<TVariables, TResult>({
   onRejected?: (error: unknown) => void;
 }) {
   const [unresolvedKey, setUnresolvedKey] = useState<string | null>(null);
+  // The pending state reaches a render one tick after `mutate`. Until then a second press still
+  // sees an idle command and would post it again under a new key, so each render sends at most once.
+  const sent = useRef(false);
+  sent.current = false;
   const mutation = useMutation({
     mutationFn,
     onError: (error, variables) => {
@@ -81,7 +85,11 @@ export function useKeyedCommand<TVariables, TResult>({
     phase: keyedCommandPhase(mutation, unresolvedKey, keyOf),
     /** Forgets a settled attempt before another command is prepared. */
     reset: mutation.reset,
-    send: (variables: TVariables) => mutation.mutate(variables),
+    send: (variables: TVariables) => {
+      if (sent.current) return;
+      sent.current = true;
+      mutation.mutate(variables);
+    },
     /** An earlier attempt of the current key had an unknown outcome. */
     unresolved,
     /** The last command sent, which an uncertain retry must send again unchanged. */

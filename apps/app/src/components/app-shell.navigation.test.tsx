@@ -234,6 +234,14 @@ describe("application shell", () => {
       "/operate/sales",
     ],
     ["/operate", ["(app)", "operate"], "/operate"],
+    ["/operate/purchases/new", ["(app)", "operate", "purchases", "new"], "/operate/payables"],
+    [
+      "/operate/purchases/purchase-1",
+      ["(app)", "operate", "purchases", "[purchaseId]"],
+      "/operate/payables",
+    ],
+    ["/operate/assistant/review", ["(app)", "operate", "assistant", "review"], "/operate"],
+    ["/settings", ["(app)", "settings"], "/settings"],
   ])("marks exactly one current destination for %s", (pathname, segments, expected) => {
     fixture.pathname = pathname;
     fixture.segments = segments;

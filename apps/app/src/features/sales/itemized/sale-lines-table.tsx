@@ -26,7 +26,7 @@ export function SaleLinesTable({
         header: t("sales.itemized.columns.product"),
         meta: { primary: true },
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px]" numberOfLines={2}>
+          <Text className="text-dense" numberOfLines={2}>
             {original.productName}
           </Text>
         ),
@@ -36,7 +36,7 @@ export function SaleLinesTable({
         header: t("sales.itemized.columns.quantity"),
         meta: { align: "end", width: 110 },
         cell: ({ row: { original } }) => (
-          <Text className="text-right text-[13px] tabular-nums">
+          <Text className="text-right text-dense tabular-nums">
             {formatQuantity(original.quantityMinorUnits, original.quantityPrecision, locale)}
           </Text>
         ),
@@ -46,7 +46,7 @@ export function SaleLinesTable({
         header: t("sales.itemized.columns.price"),
         meta: { align: "end", width: 120 },
         cell: ({ row: { original } }) => (
-          <Text className="text-right text-[13px] tabular-nums">
+          <Text className="text-right text-dense tabular-nums">
             {formatMinorUnits(original.unitPriceMinorUnits, currency, currencyDigits, locale)}
           </Text>
         ),
@@ -56,7 +56,7 @@ export function SaleLinesTable({
         header: t("sales.itemized.columns.subtotal"),
         meta: { align: "end", figure: true, width: 130 },
         cell: ({ row: { original } }) => (
-          <Text className="text-right font-ui text-[13px] tabular-nums">
+          <Text className="text-right font-ui text-dense tabular-nums">
             {formatMinorUnits(original.subtotalMinorUnits, currency, currencyDigits, locale)}
           </Text>
         ),

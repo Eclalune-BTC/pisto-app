@@ -11,7 +11,7 @@ import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { useRouter } from "expo-router";
 import { CircleAlert, Info, Lock, TriangleAlert } from "lucide-react-native";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
 import { ContentSkeleton } from "@/components/layout/skeletons";
@@ -35,6 +35,7 @@ import { requireSupportedLocale } from "@/i18n/locale";
 import { api } from "@/lib/api-client";
 import { ApiClientError } from "@/lib/api-error";
 import { cn } from "@/lib/cn";
+import { EMPTY_VALUE } from "@/lib/empty-value";
 import { useKeyedCommand } from "@/lib/keyed-command";
 import { currentLocalDateTime, formatMinorUnits, toDecimalString } from "@/lib/money";
 import { isLockedPhase, withStableIdempotencyKey } from "@/lib/mutation-phase";
@@ -64,6 +65,8 @@ export type ItemizedSaleFormProps = {
   entrySource: EntrySource;
   onSaved: (saleId: string) => void;
   onCancel: () => void;
+  /** Tells a host that the sale was sent and its outcome is pending or unknown. */
+  onLockedChange?: (locked: boolean) => void;
 };
 
 /** Wide enough for the form beside its payment summary instead of above it. */
@@ -74,7 +77,13 @@ const paymentMethods: readonly SalePaymentMethod[] = ["cash", "transfer", "card"
  * A counter sale with products, payment and credit (figure 15). It reads the active business
  * itself, so it works on the new-sale route and inside the assistant's review.
  */
-export function ItemizedSaleForm({ draft, entrySource, onCancel, onSaved }: ItemizedSaleFormProps) {
+export function ItemizedSaleForm({
+  draft,
+  entrySource,
+  onCancel,
+  onLockedChange,
+  onSaved,
+}: ItemizedSaleFormProps) {
   const { t } = useTranslation();
   const businesses = useQuery(businessesQueryOptions);
   const business = getActiveBusiness(businesses.data);
@@ -164,6 +173,7 @@ export function ItemizedSaleForm({ draft, entrySource, onCancel, onSaved }: Item
       initial={initial}
       key={business.id}
       onCancel={onCancel}
+      onLockedChange={onLockedChange}
       onSaved={onSaved}
       unmatched={prefill?.unmatched ?? []}
     />
@@ -182,6 +192,7 @@ function ItemizedSaleEditor({
   entrySource,
   initial,
   onCancel,
+  onLockedChange,
   onSaved,
   unmatched,
 }: {
@@ -190,6 +201,7 @@ function ItemizedSaleEditor({
   entrySource: EntrySource;
   initial: ItemizedSaleDraft;
   onCancel: () => void;
+  onLockedChange?: (locked: boolean) => void;
   onSaved: (saleId: string) => void;
   unmatched: readonly string[];
 }) {
@@ -235,6 +247,9 @@ function ItemizedSaleEditor({
     },
   });
   const locked = isLockedPhase(save.phase) || save.isSuccess;
+  useEffect(() => {
+    onLockedChange?.(locked);
+  }, [locked, onLockedChange]);
   const update = (change: Partial<ItemizedSaleDraft>) => {
     if (!locked) setDraft((current) => ({ ...current, ...change }));
   };
@@ -243,9 +258,18 @@ function ItemizedSaleEditor({
   const issues = attempted ? validation.issues : null;
   const errors = issues ? saleIssueMessages(t, issues.sale) : {};
   const totals = draftTotals(draft, digits);
-  const total = totals.totalMinorUnits ?? "0";
-  const balance = totals.balanceMinorUnits ?? "0";
-  const owes = balance !== "0";
+  // A line without a price has no subtotal yet: the total is unknown then, not zero.
+  const totalText =
+    totals.totalMinorUnits !== null
+      ? money(totals.totalMinorUnits)
+      : draft.lines.length === 0
+        ? money("0")
+        : EMPTY_VALUE;
+  const owed =
+    totals.balanceMinorUnits !== null && totals.balanceMinorUnits !== "0"
+      ? totals.balanceMinorUnits
+      : null;
+  const owes = owed !== null;
   const receives = totals.receivedMinorUnits !== "0";
   const selectedIds = new Set(draft.lines.map((line) => line.product.id));
 
@@ -363,7 +387,7 @@ function ItemizedSaleEditor({
         wide={wide}
       />
       {errors.lines ? (
-        <Text accessibilityRole="alert" className="text-[13px] leading-5 text-destructive">
+        <Text accessibilityRole="alert" className="text-dense text-destructive">
           {errors.lines}
         </Text>
       ) : null}
@@ -389,6 +413,7 @@ function ItemizedSaleEditor({
   const payment = (
     <View className="min-w-0 gap-4">
       <Field
+        className="tabular-nums"
         editable={!locked}
         error={errors.received}
         inputMode="decimal"
@@ -396,8 +421,18 @@ function ItemizedSaleEditor({
         label={t("sales.itemized.received")}
         marker={receivedMarker}
         onChangeText={(value) => update({ received: value, receivedEdited: true })}
+        placeholder={toDecimalString("0", digits)}
         selectTextOnFocus
-        value={draft.receivedEdited ? draft.received : toDecimalString(total, digits)}
+        trailing={
+          <Text className="font-ui text-sm text-muted-foreground">{business.currency}</Text>
+        }
+        value={
+          draft.receivedEdited
+            ? draft.received
+            : totals.totalMinorUnits !== null
+              ? toDecimalString(totals.totalMinorUnits, digits)
+              : ""
+        }
       />
       {receives ? (
         <>
@@ -432,13 +467,13 @@ function ItemizedSaleEditor({
           )}
         </>
       ) : null}
-      {owes ? (
+      {owed !== null ? (
         <View className="min-w-0 gap-3 rounded-md border border-border bg-background p-3">
           <View className="flex-row items-baseline justify-between gap-3">
             <FieldLabel marker={creditMarker ?? dueDateMarker}>
               <Text className="text-sm font-medium">{t("sales.itemized.balance")}</Text>
             </FieldLabel>
-            <Text className="font-ui text-base font-semibold tabular-nums">{money(balance)}</Text>
+            <Text className="font-ui text-base font-semibold tabular-nums">{money(owed)}</Text>
           </View>
           <Text className="text-xs leading-4 text-muted-foreground">
             {draft.customer
@@ -521,13 +556,13 @@ function ItemizedSaleEditor({
   }
 
   const totalBlock = (
-    <View className="gap-0.5">
-      <Text className="text-[13px] text-highlight-foreground/80">{t("sales.itemized.total")}</Text>
+    <View className="gap-1">
+      <Text className="text-xs text-highlight-foreground">{t("sales.itemized.total")}</Text>
       <Text
         accessibilityLiveRegion="polite"
-        className="font-heading text-3xl font-semibold tabular-nums text-highlight-foreground"
+        className="font-heading text-figure-lg tabular-nums text-highlight-foreground"
       >
-        {money(total)}
+        {totalText}
       </Text>
       {draft.lines.length > 0 ? (
         <Text className="text-xs text-highlight-foreground/80 tabular-nums">{productCount}</Text>
@@ -545,8 +580,8 @@ function ItemizedSaleEditor({
             {productsBlock}
             {note}
           </View>
-          <View className="w-[320px] shrink-0 overflow-hidden rounded-lg border border-border bg-card">
-            <View className="bg-highlight px-4 py-3">{totalBlock}</View>
+          <View className="w-[320px] shrink-0 overflow-hidden rounded-xl border border-border bg-card">
+            <View className="bg-highlight px-4 py-3.5">{totalBlock}</View>
             <View className="gap-4 p-4">
               {payment}
               {actions}
@@ -575,14 +610,14 @@ function ItemizedSaleEditor({
               <Text className="text-sm text-muted-foreground">
                 {t("sales.itemized.total")} · {productCount}
               </Text>
-              <Text className="font-ui text-lg font-semibold tabular-nums">{money(total)}</Text>
+              <Text className="font-ui text-lg font-semibold tabular-nums">{totalText}</Text>
             </View>
-            {owes ? (
+            {owed !== null ? (
               <View className="flex-row items-baseline justify-between gap-3">
-                <Text className="text-[13px] text-muted-foreground">
+                <Text className="text-dense text-muted-foreground">
                   {t("sales.itemized.balance")}
                 </Text>
-                <Text className="font-ui text-[13px] tabular-nums">{money(balance)}</Text>
+                <Text className="font-ui text-dense tabular-nums">{money(owed)}</Text>
               </View>
             ) : null}
             {actions}

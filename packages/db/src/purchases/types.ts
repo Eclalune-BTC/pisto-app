@@ -24,8 +24,6 @@ export type PurchaseRecord = typeof purchase.$inferSelect;
 export type PurchaseLineRecord = typeof purchaseLine.$inferSelect;
 export type SupplierPaymentRecord = typeof supplierPayment.$inferSelect;
 
-export type SupplierListItem = SupplierListResponse["data"]["items"][number];
-
 export interface PurchasesRepository {
   createSupplier(
     actor: ProductActor,

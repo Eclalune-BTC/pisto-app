@@ -55,7 +55,7 @@ export function nameWords(name: string): string[] {
  * The word and its possible singulars. Folding loses the accent that tells "cafés" (café + s)
  * from "frijoles" (frijol + es), so both readings are kept.
  */
-export function wordStems(word: string): string[] {
+function wordStems(word: string): string[] {
   const stems = [word];
   if (word.length > 3 && word.endsWith("s")) stems.push(word.slice(0, -1));
   if (word.length > 4 && word.endsWith("es")) stems.push(word.slice(0, -2));

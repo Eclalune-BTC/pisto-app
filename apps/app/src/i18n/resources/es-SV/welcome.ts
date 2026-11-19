@@ -4,10 +4,16 @@ export const welcome = {
   pageTitle: "Pisto · Las cuentas de su negocio, sin cuaderno",
   title: "Las cuentas de su negocio, sin cuaderno.",
   description:
-    "Ventas, compras, gastos, caja, cobros, pagos y reportes en un solo lugar. Usted dice o escribe lo que pasó y Pisto deja el registro listo para revisar.",
-  availability: "Funciona en el navegador de su computadora o de su teléfono.",
+    "Ventas, gastos, caja y cobros en un solo lugar. Dígalo o escríbalo y Pisto deja el registro listo para revisar.",
+  nav: {
+    label: "Secciones de esta página",
+    menu: "Menú",
+    modules: "Módulos",
+    roles: "Roles y permisos",
+  },
   preview: {
     label: "Ejemplo de la pantalla Hoy de Pisto con un negocio ficticio y cifras inventadas",
+    phoneLabel: "Ejemplo de la pantalla Hoy de Pisto en un teléfono",
     example: "Negocio y cifras de ejemplo",
   },
   sample: {
@@ -42,7 +48,8 @@ export const welcome = {
     rows: {
       kind: { label: "Tipo", value: "Venta" },
       customer: { label: "Cliente", value: "Carlos Rivas" },
-      product: { label: "Producto", value: "Café molido 1 lb × 3 · $9.75" },
+      // No-break spaces keep the quantity and the price together when the value wraps.
+      product: { label: "Producto", value: "Café molido 1 lb × 3 · $9.75" },
       received: { label: "Recibido", value: "$5.00 en efectivo" },
       credit: { label: "Queda debiendo", value: "$4.75" },
     },
@@ -72,7 +79,7 @@ export const welcome = {
   modules: {
     title: "Lo que lleva Pisto",
     description:
-      "Movimientos, cobros, pagos y reportes con cifras exactas. Pisto también lleva productos, inventario, clientes, proveedores y gastos.",
+      "Movimientos, reportes, cobros y pagos con cifras exactas. Pisto también lleva productos, inventario, clientes, proveedores y gastos.",
     items: {
       movements: {
         title: "Movimientos",
@@ -124,6 +131,9 @@ export const welcome = {
     description: "Cree su cuenta, registre su negocio y anote su primera venta.",
   },
   footer: {
+    rights: "© {{year}} Pisto",
     links: "Acceso a Pisto",
+    product: "Producto",
+    account: "Cuenta",
   },
 } as const;

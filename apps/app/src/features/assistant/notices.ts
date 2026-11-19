@@ -13,6 +13,8 @@ const missingKeys: Partial<Record<AssistantField, ParseKeys>> = {
   date: "assistant.notices.missing.date",
   dueDate: "assistant.notices.missing.dueDate",
   credit: "assistant.notices.missing.credit",
+  product: "assistant.notices.missing.product",
+  invoice: "assistant.notices.missing.invoice",
 };
 
 type Party = { heard: string | null; match: { name: string } | null };
@@ -50,6 +52,10 @@ export function noticeMessage(
         ? t("assistant.notices.exceeds.received")
         : t("assistant.notices.exceeds.amount");
     case "similar_match": {
+      if (notice.field === "account") {
+        if (!draft.account) throw new Error("An account notice needs the proposed account");
+        return t("assistant.notices.similar.account", { name: draft.account.name });
+      }
       if (notice.field === "product") {
         return line?.product
           ? t("assistant.notices.similar.product", { item, name: line.product.name })

@@ -25,7 +25,7 @@ export function StatePanel({
   tone?: "default" | "destructive";
 }) {
   return (
-    <View className="min-w-0 items-start gap-1.5 rounded-lg border border-border bg-card px-5 py-6">
+    <View className="min-w-0 items-start gap-1.5 rounded-xl border border-border bg-card px-5 py-6">
       <Icon
         as={icon}
         className={cn(
@@ -35,7 +35,7 @@ export function StatePanel({
         size={20}
         strokeWidth={1.75}
       />
-      <Text accessibilityRole="header" aria-level={level} className="font-heading text-sm">
+      <Text accessibilityRole="header" aria-level={level} className="font-ui text-title">
         {title}
       </Text>
       <Text className="max-w-[560px] text-sm leading-5 text-muted-foreground">{description}</Text>

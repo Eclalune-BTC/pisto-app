@@ -39,7 +39,7 @@ export interface AuthorizedBusinessContext {
   timeZone: string;
 }
 
-export function requireActiveBusiness(actor: ProductActor): string {
+function requireActiveBusiness(actor: ProductActor): string {
   if (!actor.activeBusinessId) {
     throw new ProductError("BUSINESS_REQUIRED", "Select or create a business before continuing");
   }

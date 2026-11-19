@@ -163,7 +163,7 @@ export default function BusinessSetupScreen() {
         />
       ) : existing.length > 0 ? (
         <View className="gap-3">
-          <View className="overflow-hidden rounded-lg border border-border bg-card">
+          <View className="overflow-hidden rounded-xl border border-border bg-card">
             {existing.map((business, index) => {
               const choosing = selection.isPending && selection.variables === business.id;
               return (
@@ -288,16 +288,19 @@ export default function BusinessSetupScreen() {
                 if (!creationLocked) setAcknowledged(checked);
               }}
             />
-            <Label
-              className="min-w-0 flex-1 text-[13px] leading-5"
-              disabled={creationLocked}
-              nativeID="business-acknowledgment-label"
-              onPress={() => {
-                if (!creationLocked) setAcknowledged((value) => !value);
-              }}
-            >
-              {t("business.acknowledgment")}
-            </Label>
+            {/* Label sizes its own row to the text, so the sentence only wraps inside a bounded box. */}
+            <View className="min-w-0 flex-1">
+              <Label
+                className="min-w-0 flex-1 text-dense"
+                disabled={creationLocked}
+                nativeID="business-acknowledgment-label"
+                onPress={() => {
+                  if (!creationLocked) setAcknowledged((value) => !value);
+                }}
+              >
+                {t("business.acknowledgment")}
+              </Label>
+            </View>
           </View>
 
           {creation.error ? (

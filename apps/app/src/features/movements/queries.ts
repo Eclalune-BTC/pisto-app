@@ -3,12 +3,12 @@ import { infiniteQueryOptions, queryOptions, skipToken } from "@tanstack/react-q
 
 import { movementsApi } from "./api";
 
-export const MOVEMENTS_PAGE_SIZE = 25;
+const MOVEMENTS_PAGE_SIZE = 25;
 
 export type MovementFilters = Omit<MovementListQuery, "cursor" | "limit">;
 
 /** Keys start with the area and business so the realtime refresh reaches them. */
-export const movementQueryKeys = {
+const movementQueryKeys = {
   all: (businessId: string | undefined) => ["movements", businessId] as const,
   list: (businessId: string | undefined, filters: MovementFilters | undefined) =>
     [...movementQueryKeys.all(businessId), "list", filters] as const,

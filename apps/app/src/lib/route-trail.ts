@@ -10,7 +10,7 @@ const ACCOUNT_ROUTE_PARENTS = {
   "/settings": null,
 } as const satisfies Readonly<Record<string, string | null>>;
 
-export type AccountRoute = keyof typeof ACCOUNT_ROUTE_PARENTS;
+type AccountRoute = keyof typeof ACCOUNT_ROUTE_PARENTS;
 export type ShellRoute = OperateRoute | AccountRoute;
 
 export type RouteTrailEntry = {
@@ -101,6 +101,19 @@ export function queryOutsideRoute(
     }
   }
   return search.toString();
+}
+
+/**
+ * The route and every declared ancestor, root first. Navigation marks its current item from this,
+ * because a path cannot say where a page belongs: a purchase lives under `/operate/purchases` and
+ * opens from `/operate/payables`.
+ */
+export function routeLineage(route: ShellRoute): readonly ShellRoute[] {
+  const lineage: ShellRoute[] = [];
+  for (let current: ShellRoute | null = route; current; current = parentOf(current)) {
+    lineage.unshift(current);
+  }
+  return lineage;
 }
 
 /**

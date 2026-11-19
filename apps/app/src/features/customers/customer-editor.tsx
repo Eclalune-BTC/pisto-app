@@ -153,8 +153,14 @@ export function CustomerEditor({
   return (
     <Page width="form">
       <PageHeader
+        // The form's line promises a review; on the review itself the note under the summary
+        // says what confirming does.
         description={
-          editing ? t("customers.editor.editDescription") : t("customers.editor.createDescription")
+          review
+            ? undefined
+            : editing
+              ? t("customers.editor.editDescription")
+              : t("customers.editor.createDescription")
         }
         title={
           review

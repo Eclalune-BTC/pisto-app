@@ -69,7 +69,7 @@ export function CorrectionModeField({
               {option.label}
             </Label>
             <Text
-              className="text-[13px] leading-5 text-muted-foreground"
+              className="text-dense text-muted-foreground"
               nativeID={`${FIELD_ID}-${option.value}-description`}
             >
               {option.description}

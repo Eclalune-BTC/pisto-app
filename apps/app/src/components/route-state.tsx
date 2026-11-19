@@ -7,13 +7,7 @@ import { OfflineState } from "@/components/remote-state";
 import { Button } from "@/components/ui/button";
 import { StatePanel } from "@/components/ui/state-panel";
 
-export type RouteStateKind =
-  | "denied"
-  | "error"
-  | "loading"
-  | "notFound"
-  | "offline"
-  | "unavailable";
+type RouteStateKind = "denied" | "error" | "loading" | "notFound" | "offline" | "unavailable";
 
 type PageWidth = NonNullable<ComponentProps<typeof Page>["width"]>;
 

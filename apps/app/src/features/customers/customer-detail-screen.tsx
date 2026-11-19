@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
 import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
+import { DetailColumns } from "@/components/layout/detail-columns";
 import { HeaderActions, type MenuTrigger } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
@@ -229,46 +230,49 @@ export function CustomerDetailScreen({
           ) : undefined
         }
         adornment={<CustomerStatusBadge status={customer.status} />}
-        description={
-          active
-            ? [customer.phone, since].filter(Boolean).join(" · ")
-            : t("customers.detail.archivedDescription")
-        }
+        description={active ? since : t("customers.detail.archivedDescription")}
         title={customer.name}
       />
       {state.stale ? <StaleNotice onRetry={onRetry} /> : null}
       {notice}
-      <StatGroup>
-        <Stat
-          detail={t("customers.detail.openCount", { count: Number(balance.openReceivableCount) })}
-          label={t("customers.detail.balance")}
-          value={money(balance.outstandingMinorUnits)}
+      <DetailColumns
+        aside={
+          <Section title={t("customers.detail.contact")}>
+            {contact.length > 0 ? (
+              <DescriptionList items={contact} layout="aside" />
+            ) : (
+              <Text className="text-sm leading-5 text-muted-foreground">
+                {t("customers.detail.noContact")}
+              </Text>
+            )}
+          </Section>
+        }
+      >
+        <StatGroup>
+          <Stat
+            detail={t("customers.detail.openCount", {
+              count: Number(balance.openReceivableCount),
+            })}
+            label={t("customers.detail.balance")}
+            value={money(balance.outstandingMinorUnits)}
+          />
+          <Stat
+            detail={t("customers.detail.overdueCount", {
+              count: Number(balance.overdueReceivableCount),
+            })}
+            label={t("customers.detail.overdue")}
+            tone={overdue ? "destructive" : "default"}
+            value={money(balance.overdueMinorUnits)}
+          />
+        </StatGroup>
+        <ReceivablesSection
+          canCharge={canCharge}
+          customer={customer}
+          onLoadMore={onLoadMoreReceivables}
+          onRetry={onRetry}
+          receivables={state.receivables}
         />
-        <Stat
-          detail={t("customers.detail.overdueCount", {
-            count: Number(balance.overdueReceivableCount),
-          })}
-          label={t("customers.detail.overdue")}
-          tone={overdue ? "destructive" : "default"}
-          value={money(balance.overdueMinorUnits)}
-        />
-      </StatGroup>
-      <Section title={t("customers.detail.contact")}>
-        {contact.length > 0 ? (
-          <DescriptionList items={contact} />
-        ) : (
-          <Text className="text-sm leading-5 text-muted-foreground">
-            {t("customers.detail.noContact")}
-          </Text>
-        )}
-      </Section>
-      <ReceivablesSection
-        canCharge={canCharge}
-        customer={customer}
-        onLoadMore={onLoadMoreReceivables}
-        onRetry={onRetry}
-        receivables={state.receivables}
-      />
+      </DetailColumns>
     </Page>
   );
 }

@@ -109,8 +109,8 @@ export function BusinessFactsCard({
           )}
           key={fact.label}
         >
-          <Text className="text-[13px] leading-5 text-muted-foreground">{fact.label}</Text>
-          <Text className="min-w-0 shrink text-right text-[13px] leading-5">{fact.value}</Text>
+          <Text className="text-dense text-muted-foreground">{fact.label}</Text>
+          <Text className="min-w-0 shrink text-right text-dense">{fact.value}</Text>
         </View>
       ))}
     </Card>
@@ -142,20 +142,20 @@ function MemberRows({
           >
             <Avatar alt={member.name || member.email} className="size-8">
               <AvatarFallback className="bg-muted">
-                <Text className="font-ui text-[11px] text-muted-foreground">
+                <Text className="font-ui text-micro text-muted-foreground">
                   {initialsOf(member.name || member.email)}
                 </Text>
               </AvatarFallback>
             </Avatar>
             <View className="min-w-0 flex-1">
-              <Text className="text-[13px] leading-5" numberOfLines={1}>
+              <Text className="text-dense" numberOfLines={1}>
                 {member.name || member.email}
               </Text>
               <Text className="text-xs leading-4 text-muted-foreground" numberOfLines={1}>
                 {member.email}
               </Text>
             </View>
-            <Text className="font-ui text-[13px] text-muted-foreground">
+            <Text className="font-ui text-dense text-muted-foreground">
               {roleLabel(t, member.role)}
             </Text>
             {onAction ? (
@@ -272,7 +272,7 @@ function PermissionMatrix() {
           key={capability.key}
           role="row"
         >
-          <Text className="flex-[2] text-[13px] leading-5" role="rowheader">
+          <Text className="flex-[2] text-dense" role="rowheader">
             {t(`settings.matrix.${capability.key}`)}
           </Text>
           {byRole.map((policy) => {
@@ -336,7 +336,7 @@ export function UsersCard({ business }: { business: Business }) {
           onAction={(kind, member) => setDialog({ kind, member, opener: focusReturnTarget() })}
         />
       ) : (
-        <Text className="px-4 py-3 text-[13px] leading-5 text-muted-foreground sm:px-5">
+        <Text className="px-4 py-3 text-dense text-muted-foreground sm:px-5">
           {t("settings.membersOwnerOnly")}
         </Text>
       )}

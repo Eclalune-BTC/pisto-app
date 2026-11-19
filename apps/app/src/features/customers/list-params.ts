@@ -1,6 +1,6 @@
 import { firstParam, type RouteParam } from "@/lib/route-params";
 
-export const CUSTOMER_STATUS_FILTERS = ["active", "archived", "all"] as const;
+const CUSTOMER_STATUS_FILTERS = ["active", "archived", "all"] as const;
 
 export type CustomerStatusFilter = (typeof CUSTOMER_STATUS_FILTERS)[number];
 

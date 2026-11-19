@@ -81,7 +81,10 @@ export default function NewSaleScreen() {
 
 /**
  * A sale is entered with its products (the default) or as a total alone. An open total-only review
- * found on arrival opens that mode, so a pending review is never hidden behind the other one.
+ * found on arrival opens that mode, so a pending review is never hidden behind the other one. The
+ * first answered read decides once: a later refetch must not swap the form being typed in. Until
+ * that answer exists, whether a review is pending is unknown, and the review screen owns that
+ * state (offline, failed, retry) instead of the products form opening as if there were none.
  */
 export function NewSaleModes(props: {
   business: Business;
@@ -93,10 +96,16 @@ export function NewSaleModes(props: {
   const router = useRouter();
   const recovery = useQuery(saleReviewQueryOptions(props.business.id));
   const [chosen, setChosen] = useState<SaleEntryMode | null>(null);
+  const [arrival, setArrival] = useState<SaleEntryMode | null>(null);
+  if (arrival === null && recovery.data) {
+    setArrival(recovery.data.review ? "total_only" : "itemized");
+  }
   if (chosen === null && recovery.isPending && recovery.fetchStatus === "fetching") {
     return <RouteState kind="loading" label={t("sales.new.loading")} variant="form" width="form" />;
   }
-  const mode = chosen ?? (recovery.data?.review ? "total_only" : "itemized");
+  const answered =
+    arrival ?? (recovery.data ? (recovery.data.review ? "total_only" : "itemized") : null);
+  const mode = chosen ?? answered ?? "total_only";
   const modeSwitch = (
     <FilterBar
       label={t("sales.mode.label")}
@@ -431,9 +440,7 @@ export function SaleReviewScreen({
             </ActionBar>
           ) : (
             <>
-              <Text className="text-[13px] leading-5 text-muted-foreground">
-                {t("sales.new.retained")}
-              </Text>
+              <Text className="text-dense text-muted-foreground">{t("sales.new.retained")}</Text>
               <ActionBar>
                 <Button
                   disabled={blocked}

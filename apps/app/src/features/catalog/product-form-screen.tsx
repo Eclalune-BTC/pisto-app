@@ -224,7 +224,7 @@ export function ProductFormScreen({
       <FormSection title={t("catalog.form.inventorySection")}>
         {/* The reason sits next to the controls it disables, not in the narrow title column. */}
         {historyLocked ? (
-          <Text className="text-[13px] leading-5 text-muted-foreground">
+          <Text className="text-dense text-muted-foreground">
             {t("catalog.form.historyLocked")}
           </Text>
         ) : null}
@@ -233,7 +233,7 @@ export function ProductFormScreen({
             <Label nativeID={`${trackedId}-label`} onPress={() => toggleTracked(!draft.tracked)}>
               {t("catalog.form.tracked")}
             </Label>
-            <Text className="text-[13px] leading-5 text-muted-foreground">
+            <Text className="text-dense text-muted-foreground">
               {t("catalog.form.trackedDescription")}
             </Text>
           </View>
@@ -257,7 +257,7 @@ export function ProductFormScreen({
           value={draft.unitKind}
         />
         <View className="min-w-0 gap-1.5">
-          <Label className="text-[13px]">{t("catalog.form.precision")}</Label>
+          <Label className="text-dense">{t("catalog.form.precision")}</Label>
           <FilterBar
             disabled={historyLocked}
             label={t("catalog.form.precision")}

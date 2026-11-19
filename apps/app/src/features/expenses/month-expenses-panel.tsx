@@ -51,9 +51,7 @@ export function MonthExpensesPanel({ query }: { query: SummaryQuery }) {
       </View>
       {summary ? (
         summary.categories.length === 0 ? (
-          <Text className="text-[13px] leading-5 text-muted-foreground">
-            {t("expenses.monthPanel.empty")}
-          </Text>
+          <Text className="text-dense text-muted-foreground">{t("expenses.monthPanel.empty")}</Text>
         ) : (
           <View>
             {byAmount(summary.categories).map((category) => (
@@ -61,15 +59,15 @@ export function MonthExpensesPanel({ query }: { query: SummaryQuery }) {
                 className="flex-row items-center justify-between gap-3 border-b border-border py-2"
                 key={category.category}
               >
-                <Text className="min-w-0 shrink text-[13px] text-muted-foreground">
+                <Text className="min-w-0 shrink text-dense text-muted-foreground">
                   {expenseCategoryLabels(t)[category.category]}
                 </Text>
-                <Text className="text-[13px] tabular-nums">{money(category.amountMinorUnits)}</Text>
+                <Text className="text-dense tabular-nums">{money(category.amountMinorUnits)}</Text>
               </View>
             ))}
             <View className="flex-row items-center justify-between gap-3 pt-2.5">
-              <Text className="font-heading text-[13px]">{t("expenses.monthPanel.total")}</Text>
-              <Text className="font-heading text-[13px] tabular-nums">
+              <Text className="font-heading text-dense">{t("expenses.monthPanel.total")}</Text>
+              <Text className="font-heading text-dense tabular-nums">
                 {money(summary.totalMinorUnits)}
               </Text>
             </View>
@@ -77,7 +75,7 @@ export function MonthExpensesPanel({ query }: { query: SummaryQuery }) {
         )
       ) : query.isError ? (
         <View className="items-start gap-2">
-          <Text className="text-[13px] leading-5 text-muted-foreground">
+          <Text className="text-dense text-muted-foreground">
             {t("expenses.summary.unavailable")}
           </Text>
           <Button

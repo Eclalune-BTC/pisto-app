@@ -77,7 +77,7 @@ function isCalendarDate(value: string): boolean {
 }
 
 /** The product's catalog price as an editable amount, or empty when it has none. */
-export function catalogPriceText(product: Product): string {
+function catalogPriceText(product: Product): string {
   return product.sellingPriceMinorUnits === null ||
     product.sellingPriceCurrencyMinorUnitDigits === null
     ? ""
@@ -305,12 +305,32 @@ export function draftFromAssistant(input: {
   const { assistant, currencyDigits } = input;
   const lines: ItemizedLineDraft[] = [];
   const unmatched: string[] = [];
+  const heardQuantities = new Map<string, { minorUnits: bigint; precision: number } | null>();
   for (const line of assistant.lines) {
     const match = line.product ? input.products.get(line.product.id) : undefined;
-    if (!match || lines.some((existing) => existing.product.id === match.product.id)) {
-      if (!match) unmatched.push(line.heard);
+    if (!match) {
+      unmatched.push(line.heard);
       continue;
     }
+    const heard =
+      line.quantityMinorUnits !== null && line.quantityPrecision !== null
+        ? { minorUnits: BigInt(line.quantityMinorUnits), precision: line.quantityPrecision }
+        : null;
+    const existing = lines.find((candidate) => candidate.product.id === match.product.id);
+    if (existing) {
+      // The form holds one line per product, so a product said twice adds to that line. When
+      // either quantity is unknown the second mention is listed for the person to add by hand.
+      const first = heardQuantities.get(match.product.id);
+      if (first && heard && first.precision === heard.precision) {
+        const sum = { minorUnits: first.minorUnits + heard.minorUnits, precision: first.precision };
+        heardQuantities.set(match.product.id, sum);
+        existing.quantity = formatQuantityMinorUnits(sum.minorUnits.toString(), sum.precision);
+      } else {
+        unmatched.push(line.heard);
+      }
+      continue;
+    }
+    heardQuantities.set(match.product.id, heard);
     lines.push({
       product: match.product,
       stock: match.stock,

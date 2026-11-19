@@ -3,7 +3,7 @@ import { cn } from "@/lib/cn";
 import { Text } from "./text";
 import { ToggleGroup, ToggleGroupItem } from "./toggle-group";
 
-export type FilterOption<T extends string> = { label: string; value: T };
+type FilterOption<T extends string> = { label: string; value: T };
 type FilterBarProps<T extends string> = {
   disabled?: boolean;
   label: string;
@@ -30,7 +30,9 @@ export function FilterBar<T extends string>({
         value={value}
         disabled={disabled}
         accessibilityLabel={label}
-        className="max-w-full flex-wrap gap-0.5 self-start rounded-md border border-border bg-muted p-0.5"
+        // One row at every width: on the web a group wider than its column scrolls sideways
+        // instead of wrapping into a second row of segments.
+        className="max-w-full gap-0.5 self-start rounded-lg bg-secondary p-0.5 native:flex-wrap web:overflow-x-auto web:[scrollbar-width:none]"
         onValueChange={(next) => {
           if (next === "") return;
           const option = options.find((entry) => entry.value === next);
@@ -48,21 +50,20 @@ export function FilterBar<T extends string>({
               accessibilityLabel={`${label}: ${option.label}`}
               role="radio"
               className={cn(
-                "max-w-full rounded-sm",
+                "max-w-full rounded-md",
                 // Pointer rows match the 36px fields beside them; touch keeps a 40pt target.
                 Platform.select({
-                  web: "h-[30px] min-w-0 flex-none whitespace-nowrap px-2.5 sm:h-[30px] sm:min-w-0 sm:px-2.5",
+                  web: "h-8 min-w-0 flex-none whitespace-nowrap px-3 sm:h-8 sm:min-w-0 sm:px-3",
                   default: "h-10 min-w-0 px-3 sm:h-10 sm:min-w-0 sm:px-3",
                 }),
-                "border",
                 selected
-                  ? "border-border bg-card shadow-sm shadow-black/5 dark:bg-foreground/15"
-                  : "border-transparent bg-transparent web:hover:bg-background/60",
+                  ? "bg-card shadow-sm shadow-black/10 dark:bg-foreground/15"
+                  : "bg-transparent web:hover:bg-background/60",
               )}
             >
               <Text
                 className={cn(
-                  "text-[13px] native:text-sm",
+                  "text-dense native:text-sm",
                   selected ? "text-foreground" : "text-muted-foreground",
                 )}
               >

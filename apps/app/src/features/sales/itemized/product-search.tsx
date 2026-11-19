@@ -55,15 +55,15 @@ export function ProductSearch({ businessId, disabled, onAdd, selectedIds }: Prod
           role="list"
         >
           {results.isError && !results.data ? (
-            <Text className="px-3 py-2.5 text-[13px] text-destructive">
+            <Text className="px-3 py-2.5 text-dense text-destructive">
               {t("sales.itemized.searchUnavailable")}
             </Text>
           ) : results.data === undefined ? (
-            <Text className="px-3 py-2.5 text-[13px] text-muted-foreground">
+            <Text className="px-3 py-2.5 text-dense text-muted-foreground">
               {t("sales.itemized.searchLoading")}
             </Text>
           ) : items.length === 0 ? (
-            <Text className="px-3 py-2.5 text-[13px] text-muted-foreground">
+            <Text className="px-3 py-2.5 text-dense text-muted-foreground">
               {t("sales.itemized.searchEmpty")}
             </Text>
           ) : (
@@ -105,7 +105,7 @@ export function ProductSearch({ businessId, disabled, onAdd, selectedIds }: Prod
                       </Text>
                     ) : null}
                   </View>
-                  <Text className="font-ui text-[13px] tabular-nums text-muted-foreground">
+                  <Text className="font-ui text-dense tabular-nums text-muted-foreground">
                     {price ?? t("sales.itemized.noPrice")}
                   </Text>
                   <Icon as={Plus} className="text-muted-foreground" size={16} />

@@ -10,7 +10,7 @@ const GROUP_SEGMENT = /^\([a-z][a-z0-9-]*\)$/;
 const DYNAMIC_SEGMENT = /^\[[a-z][A-Za-z0-9]*\]$/;
 const STATIC_SEGMENT = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
-export type RouteConflict = {
+type RouteConflict = {
   readonly files: readonly string[];
   readonly url: string;
 };

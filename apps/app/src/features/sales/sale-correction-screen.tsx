@@ -115,7 +115,13 @@ export default function SaleCorrectionScreen() {
   const accountName = accountId
     ? (accountOptions.data?.accounts.find(({ id }) => id === accountId)?.name ?? null)
     : null;
-  useRouteLabel("/operate/sales/[saleId]", sale ? saleAmount(sale, locale) : undefined);
+  // The same name the sale's own page gives it, so the breadcrumb does not rename the record.
+  useRouteLabel(
+    "/operate/sales/[saleId]",
+    sale
+      ? (sale.description ?? t("sales.detail.title", { moment: saleMoment(sale, locale) }))
+      : undefined,
+  );
   const [mode, setMode] = useState<CorrectionMode>("void");
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string>();

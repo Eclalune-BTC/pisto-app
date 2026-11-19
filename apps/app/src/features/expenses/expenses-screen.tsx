@@ -122,10 +122,15 @@ export function ExpensesScreen({
             state={summaryState}
           >
             {summary ? (
-              <View className="min-w-0 gap-4">
-                <ExpenseSummary summary={summary} />
+              // Wide screens read the period total beside what it is made of.
+              <View className="min-w-0 gap-4 lg:flex-row lg:items-start lg:gap-6">
+                <View className="min-w-0 lg:w-[380px] lg:shrink-0">
+                  <ExpenseSummary summary={summary} />
+                </View>
                 {breakdownAfterHistory ? null : (
-                  <ExpenseCategoryBreakdown level={3} summary={summary} />
+                  <View className="min-w-0 lg:flex-1">
+                    <ExpenseCategoryBreakdown level={3} summary={summary} />
+                  </View>
                 )}
               </View>
             ) : null}

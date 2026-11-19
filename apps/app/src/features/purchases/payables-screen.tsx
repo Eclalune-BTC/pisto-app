@@ -5,7 +5,6 @@ import { Lock, Plus, ReceiptText, TriangleAlert } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-
 import { PageHeader } from "@/components/layout/page-header";
 import { ContentSkeleton } from "@/components/layout/skeletons";
 import { Stat, StatGroup } from "@/components/layout/stat-group";
@@ -21,6 +20,7 @@ import { Text } from "@/components/ui/text";
 import { capabilityBoundaryState, useCapabilityAccess } from "@/features/customers/access";
 import { isPositiveAmount, useRecordFormat } from "@/features/customers/format";
 import { readState } from "@/features/customers/read-state";
+import { EMPTY_VALUE } from "@/lib/empty-value";
 import { firstParam } from "@/lib/route-params";
 
 import { PurchasesTable } from "./purchases-table";
@@ -71,7 +71,7 @@ function PayableStats({ summary }: { summary: PayablesSummaryResponse["data"] })
               : t("purchases.payables.noNextPayment")
           }
           label={t("purchases.payables.nextPayment")}
-          value={summary.nextDue ? money(summary.nextDue.balanceMinorUnits) : "—"}
+          value={summary.nextDue ? money(summary.nextDue.balanceMinorUnits) : EMPTY_VALUE}
         />
       </StatGroup>
       <Text className="text-xs text-muted-foreground">

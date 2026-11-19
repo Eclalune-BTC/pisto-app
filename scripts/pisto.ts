@@ -361,7 +361,7 @@ class ClientConfigurationError extends Error {
   override readonly name = "ClientConfigurationError";
 }
 
-async function inspectRepository(root: string, diagnostics: Diagnostic[]): Promise<void> {
+export async function inspectRepository(root: string, diagnostics: Diagnostic[]): Promise<void> {
   const requiredFiles = [
     "package.json",
     "bunfig.toml",
@@ -372,10 +372,12 @@ async function inspectRepository(root: string, diagnostics: Diagnostic[]): Promi
     "apps/app/package.json",
     "apps/app/.env.example",
     "apps/api/package.json",
-    "packages/contracts/package.json",
-    "packages/db/package.json",
+    "packages/assistant/package.json",
     "packages/auth/package.json",
     "packages/billing/package.json",
+    "packages/config/package.json",
+    "packages/contracts/package.json",
+    "packages/db/package.json",
   ];
 
   const missing: string[] = [];
@@ -451,19 +453,21 @@ async function inspectRepository(root: string, diagnostics: Diagnostic[]): Promi
       devDependencies?: Record<string, string>;
     };
     const lockfile = await readFile(join(root, "bun.lock"), "utf8");
+    const version = authPackage.dependencies?.["better-auth"];
     const aligned =
-      authPackage.dependencies?.["better-auth"] === "1.7.18" &&
-      authPackage.dependencies?.["@better-auth/expo"] === "1.7.18" &&
-      authPackage.devDependencies?.auth === "1.7.18" &&
-      /"auth":\s*\["auth@1\.7\.1"/.test(lockfile) &&
+      version !== undefined &&
+      /^\d+\.\d+\.\d+$/.test(version) &&
+      authPackage.dependencies?.["@better-auth/expo"] === version &&
+      authPackage.devDependencies?.auth === version &&
+      lockfile.includes(`"auth": ["auth@${version}"`) &&
       !lockfile.includes("@better-auth/cli");
     addDiagnostic(
       diagnostics,
       aligned ? "PASS" : "FAIL",
       "Better Auth toolchain",
       aligned
-        ? "better-auth, @better-auth/expo, and the auth CLI are aligned at 1.7.18."
-        : "Expected better-auth, @better-auth/expo, and auth at 1.7.18 with no @better-auth/cli lock entry.",
+        ? `better-auth, @better-auth/expo, and the auth CLI are aligned at ${version}.`
+        : "Expected better-auth, @better-auth/expo, and auth pinned to one exact version, the same auth version in bun.lock, and no @better-auth/cli lock entry.",
     );
   } catch {
     addDiagnostic(
@@ -609,6 +613,7 @@ async function inspectEnvironment(root: string, diagnostics: Diagnostic[]): Prom
     "POLAR_WEBHOOK_SECRET",
     "REVENUECAT_WEBHOOK_AUTHORIZATION",
     "REVENUECAT_WEBHOOK_SIGNING_SECRET",
+    "CLOUDFLARE_AI_API_TOKEN",
     "GOOGLE_APPLICATION_CREDENTIALS",
     "EXPO_PUBLIC_POLAR_CHECKOUT_URL",
   ];

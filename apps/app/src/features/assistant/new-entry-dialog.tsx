@@ -38,13 +38,18 @@ export type EntryMode = "voice" | "text";
 
 type VoiceProblem = "denied" | "unsupported" | "failed" | "silence";
 
+/** "denied" means the microphone for one source and the server for the other, so each keeps its own. */
+type VoiceFailure =
+  | { source: "microphone"; problem: VoiceProblem }
+  | { source: "request"; problem: AssistantProblem };
+
 type Phase =
   | { kind: "text" }
   | { kind: "requesting" }
   | { kind: "recording" }
   | { kind: "transcribing" }
   | { kind: "interpreting"; from: "voice" | "text" }
-  | { kind: "voiceProblem"; problem: VoiceProblem | AssistantProblem; audio: Blob | null };
+  | { kind: "voiceProblem"; failure: VoiceFailure; audio: Blob | null };
 
 /** Text shown next to the editable sentence after an attempt that produced no draft. */
 type TextNotice = "notARecord" | "severalRecords" | AssistantProblem | "tooShort" | null;
@@ -55,6 +60,8 @@ const voiceProblemKeys = {
   failed: "assistant.problems.micFailed",
   silence: "assistant.problems.silence",
 } as const satisfies Record<VoiceProblem, string>;
+
+const silence: VoiceFailure = { source: "microphone", problem: "silence" };
 
 const textNoticeKeys = {
   notARecord: "assistant.problems.notARecord",
@@ -92,7 +99,7 @@ function Examples({ onPick }: { onPick?: (example: string) => void }) {
   const examples = [t("assistant.dialog.examples.expense"), t("assistant.dialog.examples.payment")];
   return (
     <View className="gap-1.5">
-      <Text className="text-[13px] leading-5 text-muted-foreground">
+      <Text className="text-dense text-muted-foreground">
         {t("assistant.dialog.examplesTitle")}
       </Text>
       <View className="flex-row flex-wrap gap-2">
@@ -106,7 +113,7 @@ function Examples({ onPick }: { onPick?: (example: string) => void }) {
               variant="outline"
             />
           ) : (
-            <Text className="text-[13px] leading-5 text-foreground" key={example}>
+            <Text className="text-dense text-foreground" key={example}>
               «{example}»
             </Text>
           ),
@@ -122,8 +129,6 @@ type NewEntryDialogProps = {
   onOpenChange: (open: boolean) => void;
   /** Voice falls back to text where recording or transcription is unavailable. */
   initialMode: EntryMode;
-  /** Pre-fills the text, for example from the home composer. */
-  initialText?: string;
 };
 
 /** "Nuevo registro": dictate or write one sentence, then review the draft before saving. */
@@ -141,7 +146,7 @@ export function NewEntryDialog(props: NewEntryDialogProps) {
   );
 }
 
-function EntryBody({ availability, initialMode, initialText, onOpenChange }: NewEntryDialogProps) {
+function EntryBody({ availability, initialMode, onOpenChange }: NewEntryDialogProps) {
   const { t } = useTranslation();
   if (availability.kind === "loading") {
     return (
@@ -182,7 +187,6 @@ function EntryBody({ availability, initialMode, initialText, onOpenChange }: New
     <EntryFlow
       businessId={availability.businessId}
       initialMode={voiceAvailable ? initialMode : "text"}
-      initialText={initialText ?? ""}
       onClose={() => onOpenChange(false)}
       voiceAvailable={voiceAvailable}
     />
@@ -192,13 +196,11 @@ function EntryBody({ availability, initialMode, initialText, onOpenChange }: New
 function EntryFlow({
   businessId,
   initialMode,
-  initialText,
   onClose,
   voiceAvailable,
 }: {
   businessId: string;
   initialMode: EntryMode;
-  initialText: string;
   onClose: () => void;
   voiceAvailable: boolean;
 }) {
@@ -208,7 +210,7 @@ function EntryFlow({
   const [phase, setPhase] = useState<Phase>(
     initialMode === "voice" ? { kind: "requesting" } : { kind: "text" },
   );
-  const [text, setText] = useState(initialText);
+  const [text, setText] = useState("");
   const [source, setSource] = useState<"voice" | "text">("text");
   const [notice, setNotice] = useState<TextNotice>(null);
   const [levels, setLevels] = useState<number[]>(() => Array(BARS).fill(0));
@@ -250,7 +252,7 @@ function EntryFlow({
   async function transcribe(audio: Blob) {
     // A stop before the first audio callback leaves only the 44-byte header.
     if (audio.size <= 44) {
-      setPhase({ kind: "voiceProblem", problem: "silence", audio: null });
+      setPhase({ kind: "voiceProblem", failure: silence, audio: null });
       return;
     }
     setPhase({ kind: "transcribing" });
@@ -260,7 +262,7 @@ function EntryFlow({
       const heard = (await assistantApi.transcribe(audio, controller.signal)).trim();
       if (!alive.current) return;
       if (heard.length < MIN_TEXT) {
-        setPhase({ kind: "voiceProblem", problem: "silence", audio: null });
+        setPhase({ kind: "voiceProblem", failure: silence, audio: null });
         return;
       }
       setText(heard.slice(0, MAX_TEXT));
@@ -274,7 +276,11 @@ function EntryFlow({
       }
       // Only an outage or a lost connection is worth resending the same audio for.
       const retryable = problem === "provider" || problem === "offline";
-      setPhase({ kind: "voiceProblem", problem, audio: retryable ? audio : null });
+      setPhase({
+        kind: "voiceProblem",
+        failure: { source: "request", problem },
+        audio: retryable ? audio : null,
+      });
     }
   }
 
@@ -285,7 +291,13 @@ function EntryFlow({
     try {
       await transcribe(await active.stop());
     } catch {
-      if (alive.current) setPhase({ kind: "voiceProblem", problem: "failed", audio: null });
+      if (alive.current) {
+        setPhase({
+          kind: "voiceProblem",
+          failure: { source: "microphone", problem: "failed" },
+          audio: null,
+        });
+      }
     }
   }
 
@@ -310,7 +322,10 @@ function EntryFlow({
       if (!alive.current || attempt.current !== current) return;
       setPhase({
         kind: "voiceProblem",
-        problem: error instanceof RecorderError ? error.reason : "failed",
+        failure: {
+          source: "microphone",
+          problem: error instanceof RecorderError ? error.reason : "failed",
+        },
         audio: null,
       });
     }
@@ -409,12 +424,15 @@ function EntryFlow({
   }
 
   if (phase.kind === "voiceProblem") {
+    const { failure } = phase;
     const message =
-      phase.problem in voiceProblemKeys
-        ? t(voiceProblemKeys[phase.problem as VoiceProblem])
-        : t(problemMessageKeys[phase.problem as AssistantProblem]);
+      failure.source === "microphone"
+        ? t(voiceProblemKeys[failure.problem])
+        : t(problemMessageKeys[failure.problem]);
     const audio = phase.audio;
-    const canRetryMicrophone = phase.problem === "silence" || phase.problem === "failed";
+    const canRetryMicrophone =
+      failure.source === "microphone" &&
+      (failure.problem === "silence" || failure.problem === "failed");
     return (
       <View className="gap-4">
         <Alert icon={TriangleAlert} variant="warning">

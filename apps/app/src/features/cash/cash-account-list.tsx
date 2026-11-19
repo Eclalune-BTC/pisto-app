@@ -1,10 +1,12 @@
 import type { CashAccount } from "@pisto/contracts";
-import type { Href } from "expo-router";
-import { type ReactElement, useMemo } from "react";
+import { type Href, Link } from "expo-router";
+import { Banknote, Landmark, type LucideIcon, Smartphone, Wallet } from "lucide-react-native";
+import type { ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Badge } from "@/components/ui/badge";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { Icon } from "@/components/ui/icon";
+import { PressableSurface } from "@/components/ui/pressable-surface";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
@@ -16,89 +18,93 @@ type CashAccountListProps = {
   formatMoney: (minorUnits: string, currency: string, fractionDigits: number) => string;
 };
 
+const kindIcons: Record<CashAccount["kind"], LucideIcon> = {
+  bank: Landmark,
+  cash: Banknote,
+  mobile_money: Smartphone,
+  other: Wallet,
+};
+
 // `satisfies` keeps this exact route type; a wide `Href` return makes a ternary with another
 // route exceed the TypeScript union limit (TS2590).
 export function accountHref(accountId: string) {
   return { pathname: "/operate/cash/accounts/[accountId]", params: { accountId } } satisfies Href;
 }
 
+/**
+ * The business's accounts as tiles, each with its balance: a business has a handful of them, and
+ * the balance is what the owner came to read.
+ */
 export function CashAccountList({ accounts, empty, formatMoney }: CashAccountListProps) {
   const { t } = useTranslation();
-  const columns = useMemo<DataTableColumn<CashAccount>[]>(() => {
-    const kinds = cashAccountKindLabels(t);
-    const statuses = cashAccountStatusLabels(t);
-    return [
-      {
-        id: "name",
-        header: t("dataTable.columns.name"),
-        meta: { primary: true },
-        cell: ({ row: { original } }) => (
-          <Text className="text-[13px]" numberOfLines={2}>
-            {original.name}
-          </Text>
-        ),
-      },
-      {
-        id: "kind",
-        header: t("dataTable.columns.type"),
-        cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground">{kinds[original.kind]}</Text>
-        ),
-      },
-      {
-        id: "status",
-        header: t("dataTable.columns.status"),
-        cell: ({ row: { original } }) => (
-          <View className="flex-row flex-wrap gap-1">
-            <StatusBadge
-              label={statuses[original.status]}
-              tone={original.status === "active" ? "normal" : "exception"}
-            />
-            {original.allowNegativeBalance ? (
-              <Badge variant="outline">
-                <Text>{t("cash.negativeAllowed")}</Text>
-              </Badge>
-            ) : null}
-          </View>
-        ),
-      },
-      {
-        id: "currency",
-        header: t("dataTable.columns.currency"),
-        meta: { hideOnCompact: true },
-        cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground">{original.currency}</Text>
-        ),
-      },
-      {
-        id: "balance",
-        header: t("dataTable.columns.balance"),
-        meta: { align: "end" },
-        cell: ({ row: { original } }) => (
-          <Text
-            className={cn(
-              "font-ui text-[13px] tabular-nums",
-              original.balanceMinorUnits.startsWith("-") && "text-destructive",
-            )}
-          >
-            {formatMoney(
-              original.balanceMinorUnits,
-              original.currency,
-              original.currencyMinorUnitDigits,
-            )}
-          </Text>
-        ),
-      },
-    ];
-  }, [formatMoney, t]);
+  if (accounts.length === 0) return empty;
+  const kinds = cashAccountKindLabels(t);
+  const statuses = cashAccountStatusLabels(t);
   return (
-    <DataTable
-      caption={t("filters.accounts")}
-      columns={columns}
-      data={accounts}
-      empty={empty}
-      getRowHref={(account) => accountHref(account.id)}
-      getRowId={(account) => account.id}
-    />
+    <View
+      accessibilityLabel={t("filters.accounts")}
+      className="flex-row flex-wrap gap-3"
+      role="list"
+    >
+      {accounts.map((account) => (
+        <View
+          className="min-w-[240px] max-w-[360px] flex-1 basis-[240px]"
+          key={account.id}
+          role="listitem"
+        >
+          <Link asChild href={accountHref(account.id)}>
+            <PressableSurface
+              accessibilityRole="link"
+              className="flex-1 gap-5 rounded-xl border border-border bg-card p-4"
+            >
+              <View className="flex-row items-center gap-3">
+                <View className="size-9 items-center justify-center rounded-lg bg-muted">
+                  <Icon
+                    as={kindIcons[account.kind]}
+                    className="text-foreground/80"
+                    size={17}
+                    strokeWidth={1.75}
+                  />
+                </View>
+                <View className="min-w-0 flex-1">
+                  <Text className="font-ui text-dense" numberOfLines={2}>
+                    {account.name}
+                  </Text>
+                  <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+                    {kinds[account.kind]} · {account.currency}
+                  </Text>
+                </View>
+              </View>
+              <View className="gap-2">
+                <Text
+                  className={cn(
+                    "font-heading text-figure tabular-nums",
+                    account.balanceMinorUnits.startsWith("-") && "text-destructive",
+                  )}
+                  numberOfLines={1}
+                >
+                  {formatMoney(
+                    account.balanceMinorUnits,
+                    account.currency,
+                    account.currencyMinorUnitDigits,
+                  )}
+                </Text>
+                <View className="min-h-5 flex-row flex-wrap items-center gap-1.5">
+                  <StatusBadge
+                    label={statuses[account.status]}
+                    tone={account.status === "active" ? "normal" : "exception"}
+                  />
+                  {account.allowNegativeBalance ? (
+                    <Badge variant="outline">
+                      <Text>{t("cash.negativeAllowed")}</Text>
+                    </Badge>
+                  ) : null}
+                </View>
+              </View>
+            </PressableSurface>
+          </Link>
+        </View>
+      ))}
+    </View>
   );
 }

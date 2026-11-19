@@ -24,19 +24,8 @@ import type { catalogCategory, catalogProduct, inventoryMovement } from "../sche
 export type CategoryRecord = typeof catalogCategory.$inferSelect;
 export type ProductRecord = typeof catalogProduct.$inferSelect;
 export type MovementRecord = typeof inventoryMovement.$inferSelect;
-export type OperationAction =
-  | "category.created"
-  | "category.updated"
-  | "category.archived"
-  | "product.created"
-  | "product.updated"
-  | "product.archived"
-  | "inventory.receive"
-  | "inventory.adjust_in"
-  | "inventory.adjust_out"
-  | "inventory.reverse";
 
-export interface Page<T> {
+interface Page<T> {
   items: T[];
   nextCursor: string | null;
 }

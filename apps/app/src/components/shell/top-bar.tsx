@@ -1,6 +1,5 @@
 import type { BusinessPermission } from "@pisto/contracts";
 import { Menu, PanelLeft } from "lucide-react-native";
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import type { ShellUser } from "@/components/app-shell";
@@ -10,15 +9,15 @@ import { RealtimeNotice } from "@/components/shell/realtime-status";
 import { ShellBreadcrumbs } from "@/components/shell/shell-breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
 import { DictateButton } from "@/features/assistant/dictate-button";
 import type { RealtimeStatus } from "@/lib/realtime";
 
 type TopBarProps = {
   collapsed: boolean;
-  /** Trailing primary action mounted by the shell's owner, such as dictation. */
-  action?: ReactNode;
   permissions: readonly BusinessPermission[] | undefined;
   realtime: RealtimeStatus | undefined;
+  sessionUnverified: boolean;
   user: ShellUser | null;
   onOpenNavigation: () => void;
   onToggleSidebar: () => void;
@@ -27,10 +26,10 @@ type TopBarProps = {
 
 /** Overlays the content so pages scroll beneath its translucent surface on the web. */
 export function TopBar({
-  action,
   collapsed,
   permissions,
   realtime,
+  sessionUnverified,
   user,
   onOpenNavigation,
   onToggleSidebar,
@@ -64,11 +63,20 @@ export function TopBar({
       <View className="min-w-0 flex-1 px-1">
         <ShellBreadcrumbs compact={!wide} />
       </View>
-      {realtime ? <RealtimeNotice compact={!wide} status={realtime} /> : null}
+      {sessionUnverified ? (
+        <Text
+          className="min-w-0 shrink text-xs text-muted-foreground"
+          numberOfLines={1}
+          role="status"
+        >
+          {wide ? t("session.unverified") : t("session.unverifiedShort")}
+        </Text>
+      ) : realtime ? (
+        <RealtimeNotice compact={!wide} status={realtime} />
+      ) : null}
       {permissions ? <NewRecordMenu compact={!wide} permissions={permissions} /> : null}
       <DictateButton />
-      {action}
-      {wide ? null : <NavUser user={user} variant="avatar" />}
+      <NavUser user={user} />
     </View>
   );
 }

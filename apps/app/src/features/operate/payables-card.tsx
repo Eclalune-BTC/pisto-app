@@ -16,20 +16,23 @@ import { MoneyFigure } from "./money-figure";
 
 /** "Por pagar": what the business owes its suppliers and the next payment that falls due. */
 export function PayablesCard({
+  className,
   locale,
   summary,
 }: {
+  /** How the card sits in its row. */
+  className?: string;
   locale: string;
   summary: UseQueryResult<PayablesSummaryResponse["data"]>;
 }) {
   const { t } = useTranslation();
   const header = (
     <View className="flex-row items-center justify-between gap-2">
-      <Text accessibilityRole="header" aria-level={2} className="font-heading text-[15px]">
+      <Text accessibilityRole="header" aria-level={2} className="font-heading text-title">
         {t("operate.home.payables.title")}
       </Text>
       <Link asChild href="/operate/payables">
-        <Button accessibilityRole="link" className="h-7 px-1.5" size="sm" variant="ghost">
+        <Button accessibilityRole="link" className="-mr-1.5 h-7 px-1.5" size="sm" variant="ghost">
           <Text className="text-xs text-muted-foreground">{t("operate.home.payables.all")}</Text>
         </Button>
       </Link>
@@ -38,12 +41,12 @@ export function PayablesCard({
 
   if (summary.isError && !summary.data) {
     return (
-      <View className="gap-3 rounded-xl border border-border bg-card p-4">
+      <View className={cn("gap-3 rounded-xl border border-border bg-card p-4", className)}>
         {header}
         <View className="items-start gap-2">
           <View className="flex-row items-center gap-2">
             <Icon as={TriangleAlert} className="text-muted-foreground" size={16} />
-            <Text className="text-[13px]">{t("operate.home.payables.unavailableTitle")}</Text>
+            <Text className="text-dense">{t("operate.home.payables.unavailableTitle")}</Text>
           </View>
           <Button
             label={t("common.retry")}
@@ -57,7 +60,10 @@ export function PayablesCard({
   }
   if (!summary.data) {
     return (
-      <View aria-hidden className="gap-3 rounded-xl border border-border bg-card p-4">
+      <View
+        aria-hidden
+        className={cn("gap-3 rounded-xl border border-border bg-card p-4", className)}
+      >
         {header}
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-10" />
@@ -74,14 +80,14 @@ export function PayablesCard({
   return (
     <View
       accessibilityLabel={t("operate.home.payables.title")}
-      className="gap-3 rounded-xl border border-border bg-card p-4"
+      className={cn("gap-3 rounded-xl border border-border bg-card p-4", className)}
       role="region"
     >
       {header}
       {totals.outstandingMinorUnits === "0" ? (
         <View className="items-start gap-1 py-2">
           <Icon as={CalendarClock} className="text-muted-foreground" size={16} />
-          <Text className="font-ui text-[13px]">{t("operate.home.payables.emptyTitle")}</Text>
+          <Text className="font-ui text-dense">{t("operate.home.payables.emptyTitle")}</Text>
           <Text className="text-xs leading-4 text-muted-foreground">
             {t("operate.home.payables.emptyDescription")}
           </Text>
@@ -90,9 +96,9 @@ export function PayablesCard({
         <>
           <View className="gap-0.5">
             <MoneyFigure
-              className="text-[28px] leading-9 tracking-[-0.8px]"
+              className="text-figure-lg"
               currency={totals.currency}
-              fractionClassName="text-[17px] text-muted-foreground"
+              fractionClassName="text-lg text-muted-foreground"
               fractionDigits={totals.currencyMinorUnitDigits}
               locale={locale}
               minorUnits={totals.outstandingMinorUnits}
@@ -100,7 +106,7 @@ export function PayablesCard({
             <Text
               className={cn(
                 "text-xs leading-4",
-                overdue ? "text-warning-foreground" : "text-muted-foreground",
+                overdue ? "text-destructive" : "text-muted-foreground",
               )}
             >
               {overdue
@@ -113,49 +119,52 @@ export function PayablesCard({
             </Text>
           </View>
           {next ? (
-            <Link
-              asChild
-              href={{
-                pathname: "/operate/purchases/[purchaseId]",
-                params: { purchaseId: next.purchaseId },
-              }}
-            >
-              <PressableSurface
-                accessibilityLabel={t("operate.home.payables.nextLabel", {
-                  amount: money(next.balanceMinorUnits),
-                  date: formatLocalDayMonth(next.dueDate, locale),
-                  supplier: next.supplierName,
-                })}
-                accessibilityRole="link"
-                className="-mx-1 rounded-md border-t border-border px-1"
+            // The hairline is on a square wrapper: on the rounded row it curled at both ends.
+            <View className="border-t border-border">
+              <Link
+                asChild
+                href={{
+                  pathname: "/operate/purchases/[purchaseId]",
+                  params: { purchaseId: next.purchaseId },
+                }}
               >
-                <View className="min-h-12 flex-row items-center gap-3 py-2">
-                  <View className="min-w-0 flex-1">
-                    <Text className="text-xs leading-4 text-muted-foreground">
-                      {t("operate.home.payables.next")}
-                    </Text>
-                    <Text className="font-ui text-[13px] leading-5" numberOfLines={1}>
-                      {next.supplierName}
-                    </Text>
-                    <Text
-                      className={cn(
-                        "text-xs leading-4",
-                        next.dueDate < totals.businessLocalDate
-                          ? "text-warning-foreground"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {t("operate.home.debtors.dueOn", {
-                        date: formatLocalDayMonth(next.dueDate, locale),
-                      })}
+                <PressableSurface
+                  accessibilityLabel={t("operate.home.payables.nextLabel", {
+                    amount: money(next.balanceMinorUnits),
+                    date: formatLocalDayMonth(next.dueDate, locale),
+                    supplier: next.supplierName,
+                  })}
+                  accessibilityRole="link"
+                  className="-mx-1 rounded-md px-1"
+                >
+                  <View className="min-h-12 flex-row items-center gap-3 py-2">
+                    <View className="min-w-0 flex-1">
+                      <Text className="text-xs leading-4 text-muted-foreground">
+                        {t("operate.home.payables.next")}
+                      </Text>
+                      <Text className="font-ui text-dense" numberOfLines={1}>
+                        {next.supplierName}
+                      </Text>
+                      <Text
+                        className={cn(
+                          "text-xs leading-4",
+                          next.dueDate < totals.businessLocalDate
+                            ? "text-destructive"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        {t("operate.home.debtors.dueOn", {
+                          date: formatLocalDayMonth(next.dueDate, locale),
+                        })}
+                      </Text>
+                    </View>
+                    <Text className="font-ui text-dense tabular-nums">
+                      {money(next.balanceMinorUnits)}
                     </Text>
                   </View>
-                  <Text className="font-ui text-[13px] tabular-nums">
-                    {money(next.balanceMinorUnits)}
-                  </Text>
-                </View>
-              </PressableSurface>
-            </Link>
+                </PressableSurface>
+              </Link>
+            </View>
           ) : null}
         </>
       )}

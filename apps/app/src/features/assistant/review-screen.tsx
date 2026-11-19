@@ -14,7 +14,6 @@ import { RouteState } from "@/components/route-state";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { Skeleton } from "@/components/ui/skeleton";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,12 +60,15 @@ function Notices({
 function TranscriptPanel({
   interpret,
   interpretation,
+  locked,
   onRedictate,
   pending,
   voice,
 }: {
   interpret: ReturnType<typeof useInterpretation>["interpret"];
   interpretation: AssistantInterpretation;
+  /** The record form holds an unresolved command, so the sentence cannot be read again yet. */
+  locked: boolean;
   onRedictate: (() => void) | null;
   pending: boolean;
   voice: boolean;
@@ -148,7 +150,7 @@ function TranscriptPanel({
           ) : null}
           <View className="flex-row flex-wrap gap-2">
             <Button
-              disabled={sentence.length < 2}
+              disabled={sentence.length < 2 || locked}
               label={t("assistant.review.reinterpret")}
               loading={pending}
               onPress={() => void reinterpret()}
@@ -178,6 +180,7 @@ function TranscriptPanel({
           />
           <View className="flex-row flex-wrap gap-2">
             <Button
+              disabled={locked}
               onPress={() => {
                 setText(interpretation.text);
                 setEditing(true);
@@ -189,7 +192,7 @@ function TranscriptPanel({
               <Text>{t("assistant.review.editText")}</Text>
             </Button>
             {voice && onRedictate ? (
-              <Button onPress={onRedictate} size="sm" variant="secondary">
+              <Button disabled={locked} onPress={onRedictate} size="sm" variant="secondary">
                 <Icon as={Mic} className="text-secondary-foreground" size={14} />
                 <Text>{t("assistant.review.redictate")}</Text>
               </Button>
@@ -197,15 +200,6 @@ function TranscriptPanel({
           </View>
         </>
       )}
-    </View>
-  );
-}
-
-function ReviewSkeleton() {
-  return (
-    <View aria-busy className="gap-3" role="progressbar">
-      <Skeleton className="h-9 w-full rounded-md" />
-      <Skeleton className="h-64 w-full rounded-lg" />
     </View>
   );
 }
@@ -225,6 +219,7 @@ export function AssistantReviewScreen({ slots }: ReviewScreenProps) {
   const userId = authClient.useSession().data?.user.id;
   const entry = useReviewEntry(userId, business?.id);
   const [dialog, setDialog] = useState<EntryMode | null>(null);
+  const [formLocked, setFormLocked] = useState(false);
   const { interpret, pending } = useInterpretation(business?.id);
 
   if (businesses.data && !business) return <Redirect href="/business" />;
@@ -305,6 +300,7 @@ export function AssistantReviewScreen({ slots }: ReviewScreenProps) {
               interpret={interpret}
               interpretation={interpretation}
               key={entry.revision}
+              locked={formLocked}
               onRedictate={availability.kind === "ready" ? () => setDialog("voice") : null}
               pending={pending}
               voice={voice}
@@ -312,22 +308,23 @@ export function AssistantReviewScreen({ slots }: ReviewScreenProps) {
           </View>
           <View className="min-w-0 flex-1">
             <Section title={t("assistant.review.formTitle")}>
-              {pending ? (
-                <ReviewSkeleton />
-              ) : (
-                <>
-                  <Notices draft={draft} interpretation={interpretation} />
-                  <ReviewMarkersProvider spans={interpretation.spans}>
-                    <View key={entry.revision}>
-                      {renderDraftForm(slots, draft, {
-                        entrySource: interpretation.source,
-                        onCancel: leave,
-                        onSaved: leave,
-                      })}
-                    </View>
-                  </ReviewMarkersProvider>
-                </>
-              )}
+              <Notices draft={draft} interpretation={interpretation} />
+              <ReviewMarkersProvider spans={interpretation.spans}>
+                {/* The form stays mounted while the sentence is read again: a failed reading must
+                    leave the corrections typed here, and only a new draft replaces them. */}
+                <View
+                  aria-busy={pending}
+                  className={pending ? "pointer-events-none opacity-60" : undefined}
+                  key={entry.revision}
+                >
+                  {renderDraftForm(slots, draft, {
+                    entrySource: interpretation.source,
+                    onCancel: leave,
+                    onLockedChange: setFormLocked,
+                    onSaved: leave,
+                  })}
+                </View>
+              </ReviewMarkersProvider>
             </Section>
           </View>
         </View>

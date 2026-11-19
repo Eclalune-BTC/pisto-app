@@ -141,7 +141,7 @@ export function CatalogScreen({
           meta: { primary: true },
           cell: ({ row: { original } }) => (
             <View className="min-w-0">
-              <Text className="text-[13px]" numberOfLines={2}>
+              <Text className="text-dense" numberOfLines={2}>
                 {original.detail.product.name}
               </Text>
               <ProductLine category={original.category} sku={original.detail.product.sku} />
@@ -158,7 +158,7 @@ export function CatalogScreen({
           cell: ({ row: { original } }) => {
             const price = productPrice(original.detail.product, locale);
             return price ? (
-              <Text className="font-ui text-[13px] tabular-nums" numberOfLines={1}>
+              <Text className="font-ui text-dense tabular-nums" numberOfLines={1}>
                 {price}
               </Text>
             ) : (
@@ -189,7 +189,7 @@ export function CatalogScreen({
           cell: ({ row: { original } }) => {
             const productStock = original.detail.stock;
             return productStock?.lowStockThresholdMinorUnits ? (
-              <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
+              <Text className="text-dense text-muted-foreground tabular-nums" numberOfLines={1}>
                 {formatQuantity(
                   productStock.lowStockThresholdMinorUnits,
                   productStock.quantityPrecision,

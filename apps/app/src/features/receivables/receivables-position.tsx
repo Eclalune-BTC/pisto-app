@@ -52,7 +52,7 @@ function AgingBar({ summary }: { summary: ReceivablesSummary }) {
                   {t(`receivables.aging.buckets.${bucket}`)}
                 </Text>
               </View>
-              <Text className="font-ui text-[13px] leading-5 tabular-nums">
+              <Text className="font-ui text-dense tabular-nums">
                 {format.money(
                   facts.outstandingMinorUnits,
                   summary.currency,

@@ -42,6 +42,8 @@ export type ExpenseFormProps = {
   /** How the expense was captured; the command stores it with the expense. */
   entrySource: EntrySource;
   onCancel: () => void;
+  /** Tells a host that the expense was sent and its outcome is pending or unknown. */
+  onLockedChange?: (locked: boolean) => void;
   onSaved: (expenseId: string) => void;
 };
 
@@ -66,6 +68,7 @@ export function ExpenseForm({
   draft: assistantDraft,
   entrySource,
   onCancel,
+  onLockedChange,
   onSaved,
 }: ExpenseFormProps) {
   const queryClient = useQueryClient();
@@ -119,6 +122,9 @@ export function ExpenseForm({
   });
   const phase = mutation.phase;
   const locked = isLockedPhase(phase);
+  useEffect(() => {
+    onLockedChange?.(locked);
+  }, [locked, onLockedChange]);
 
   const stale = access.isStale || queryHasStaleData(accountsQuery);
   const canManage =

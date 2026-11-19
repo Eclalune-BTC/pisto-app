@@ -71,9 +71,7 @@ export function SaleDraftFields({
             />
           </View>
         </View>
-        <Text className="text-[13px] leading-5 text-muted-foreground">
-          {t("sales.fields.timeHint")}
-        </Text>
+        <Text className="text-dense text-muted-foreground">{t("sales.fields.timeHint")}</Text>
       </View>
       <Field
         error={errors.description}

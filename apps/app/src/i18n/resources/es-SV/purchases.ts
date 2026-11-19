@@ -61,6 +61,7 @@ export const purchases = {
     openPurchases_one: "{{count}} compra pendiente",
     openPurchases_other: "{{count}} compras pendientes",
     recentPurchases: "Compras recientes",
+    detailsTitle: "Detalles",
     noRecentPurchases: "Aún no hay compras de este proveedor.",
     purchasesUnavailable: "No pudimos cargar sus compras.",
     registerPayment: "Registrar pago",
@@ -276,10 +277,11 @@ export const purchases = {
     paymentTerms: "Forma de pago",
     due: "Vence",
     merchandise: "Mercadería",
-    receivedOn: "Recibida el {{date}}",
+    receivedAt: "Recibida",
     notReceived: "Pendiente de recibir",
     note: "Nota",
     lines: "Productos",
+    detailsTitle: "Detalles",
     payments: "Pagos",
     noPayments: "Aún no hay pagos registrados.",
     paidCash: "Pagada de contado al registrarla.",
@@ -293,6 +295,8 @@ export const purchases = {
     receiveConfirm: "Registrar entrada",
     receiveUncertain:
       "No sabemos si la entrada se registró. Reintente la misma confirmación; no se aplicará dos veces.",
+    receiveConflict:
+      "No se registró la entrada: la compra ya fue recibida o anulada, o uno de sus productos fue archivado o cambió su unidad.",
     received: "Mercadería recibida",
     voidTitle: "¿Anular esta compra?",
     voidDescription:
@@ -303,6 +307,8 @@ export const purchases = {
     voidConfirm: "Anular compra",
     voidUncertain:
       "No sabemos si la compra se anuló. Reintente la misma confirmación; no se aplicará dos veces.",
+    voidConflict:
+      "La compra no se anuló: ya tiene pagos al proveedor, parte de su mercadería ya salió del inventario o ya estaba anulada.",
     voided: "Compra anulada",
   },
 } as const;

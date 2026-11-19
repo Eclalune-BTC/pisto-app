@@ -6,8 +6,8 @@ import { CircleX, HandCoins, PackageCheck } from "lucide-react-native";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-
 import { DescriptionList } from "@/components/layout/description-list";
+import { DetailColumns } from "@/components/layout/detail-columns";
 import { HeaderActions, type MenuTrigger } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
@@ -29,6 +29,7 @@ import { readState } from "@/features/customers/read-state";
 import { useConfirmableCommand } from "@/features/customers/use-confirmable-command";
 import { cashAccountDetailQueryOptions } from "@/features/receivables/cash-account-source";
 import { uniqueValues } from "@/features/receivables/presentation";
+import { EMPTY_VALUE } from "@/lib/empty-value";
 import { currentLocalDateTime } from "@/lib/money";
 import { notify } from "@/lib/notify";
 import { hasDeniedRead } from "@/lib/query-state";
@@ -71,7 +72,7 @@ export function PurchaseDetailScreen() {
     notify.success(message);
   };
   const receive = useConfirmableCommand({
-    conflictMessage: t("purchases.detail.receiveUncertain"),
+    conflictMessage: t("purchases.detail.receiveConflict"),
     mutationFn: (command: ReceivePurchaseRequest) => {
       if (!purchaseId) throw new Error("Receiving requires the purchase");
       return purchasesApi.purchases.receive(purchaseId, command);
@@ -79,7 +80,7 @@ export function PurchaseDetailScreen() {
     onConfirmed: () => afterCommand(t("purchases.detail.received")),
   });
   const voidCommand = useConfirmableCommand({
-    conflictMessage: t("purchases.detail.voidUncertain"),
+    conflictMessage: t("purchases.detail.voidConflict"),
     mutationFn: (command: VoidPurchaseRequest) => {
       if (!purchaseId) throw new Error("Voiding requires the purchase");
       return purchasesApi.purchases.void(purchaseId, command);
@@ -190,172 +191,190 @@ export function PurchaseDetailScreen() {
         title={t("purchases.detail.title", { supplier: purchase.supplierName })}
       />
       {stale ? <StaleNotice onRetry={() => void detail.refetch()} /> : null}
-      <StatGroup>
-        <Stat label={t("purchases.detail.total")} value={money(purchase.totalMinorUnits)} />
-        <Stat label={t("purchases.detail.paid")} value={money(purchase.paidMinorUnits)} />
-        <Stat
-          label={t("purchases.detail.balance")}
-          tone={purchase.payableState === "overdue" && owes ? "destructive" : "default"}
-          value={money(purchase.balanceMinorUnits)}
-        />
-      </StatGroup>
-      <DescriptionList
-        items={[
-          {
-            label: t("purchases.detail.supplier"),
-            value: (
-              <Link
-                href={{
-                  pathname: "/operate/suppliers/[supplierId]",
-                  params: { supplierId: purchase.supplierId },
-                }}
-              >
-                <Text className="text-sm text-primary web:hover:underline">
-                  {purchase.supplierName}
-                </Text>
-              </Link>
-            ),
-          },
-          {
-            label: t("purchases.detail.occurred"),
-            numeric: true,
-            value: t("purchases.detail.occurredAt", { date, time: purchase.occurredLocalTime }),
-          },
-          {
-            label: t("purchases.detail.paymentTerms"),
-            value: t(`purchases.terms.${purchase.paymentTerms}`),
-          },
-          ...(purchase.dueDate
-            ? [
+      <DetailColumns
+        aside={
+          <Section title={t("purchases.detail.detailsTitle")}>
+            <DescriptionList
+              layout="aside"
+              items={[
                 {
-                  label: t("purchases.detail.due"),
-                  numeric: true,
-                  value: format.date(purchase.dueDate),
+                  label: t("purchases.detail.supplier"),
+                  value: (
+                    <Link
+                      href={{
+                        pathname: "/operate/suppliers/[supplierId]",
+                        params: { supplierId: purchase.supplierId },
+                      }}
+                    >
+                      <Text className="text-sm text-primary web:hover:underline">
+                        {purchase.supplierName}
+                      </Text>
+                    </Link>
+                  ),
                 },
-              ]
-            : []),
-          {
-            label: t("purchases.detail.merchandise"),
-            value: purchase.receivedAt
-              ? t("purchases.detail.receivedOn", {
-                  date: format.instant(purchase.receivedAt, purchase.timeZone),
-                })
-              : t("purchases.detail.notReceived"),
-          },
-          ...(purchase.note ? [{ label: t("purchases.detail.note"), value: purchase.note }] : []),
-        ]}
-      />
-      <Section title={t("purchases.detail.lines")}>
-        <DataTable
-          caption={t("purchases.detail.lines")}
-          columns={[
-            {
-              id: "product",
-              header: t("purchases.form.product"),
-              meta: { primary: true },
-              cell: ({ row: { original } }) => (
-                <Text className="text-[13px]" numberOfLines={2}>
-                  {original.productName}
-                </Text>
-              ),
-            },
-            {
-              id: "quantity",
-              header: t("purchases.form.quantity"),
-              meta: { align: "end" },
-              cell: ({ row: { original } }) => (
-                <Text className="text-[13px] tabular-nums">
-                  {quantityText(original.quantityMinorUnits, original.quantityPrecision)}
-                </Text>
-              ),
-            },
-            {
-              id: "cost",
-              header: t("purchases.form.unitCost"),
-              meta: { align: "end" },
-              cell: ({ row: { original } }) => (
-                <MoneyText
-                  currency={purchase.currency}
-                  digits={purchase.currencyMinorUnitDigits}
-                  minorUnits={original.unitCostMinorUnits}
-                />
-              ),
-            },
-            {
-              id: "subtotal",
-              header: t("purchases.form.subtotal"),
-              meta: { align: "end", figure: true },
-              cell: ({ row: { original } }) => (
-                <MoneyText
-                  currency={purchase.currency}
-                  digits={purchase.currencyMinorUnitDigits}
-                  minorUnits={original.subtotalMinorUnits}
-                />
-              ),
-            },
-          ]}
-          data={purchase.lines}
-          getRowId={(line) => line.id}
-        />
-      </Section>
-      <Section title={t("purchases.detail.payments")}>
-        {purchase.paymentTerms === "cash" ? (
-          <Text className="text-sm text-muted-foreground">{t("purchases.detail.paidCash")}</Text>
-        ) : payments.length === 0 ? (
-          <Text className="text-sm text-muted-foreground">{t("purchases.detail.noPayments")}</Text>
-        ) : (
+                {
+                  label: t("purchases.detail.occurred"),
+                  numeric: true,
+                  value: t("purchases.detail.occurredAt", {
+                    date,
+                    time: purchase.occurredLocalTime,
+                  }),
+                },
+                {
+                  label: t("purchases.detail.paymentTerms"),
+                  value: t(`purchases.terms.${purchase.paymentTerms}`),
+                },
+                ...(purchase.dueDate
+                  ? [
+                      {
+                        label: t("purchases.detail.due"),
+                        numeric: true,
+                        value: format.date(purchase.dueDate),
+                      },
+                    ]
+                  : []),
+                // A label of its own keeps the moment on one line in the side column.
+                purchase.receivedAt
+                  ? {
+                      label: t("purchases.detail.receivedAt"),
+                      numeric: true,
+                      value: format.instant(purchase.receivedAt, purchase.timeZone),
+                    }
+                  : {
+                      label: t("purchases.detail.merchandise"),
+                      value: t("purchases.detail.notReceived"),
+                    },
+                ...(purchase.note
+                  ? [{ label: t("purchases.detail.note"), value: purchase.note }]
+                  : []),
+              ]}
+            />
+          </Section>
+        }
+      >
+        <StatGroup>
+          <Stat label={t("purchases.detail.total")} value={money(purchase.totalMinorUnits)} />
+          <Stat label={t("purchases.detail.paid")} value={money(purchase.paidMinorUnits)} />
+          <Stat
+            label={t("purchases.detail.balance")}
+            tone={purchase.payableState === "overdue" && owes ? "destructive" : "default"}
+            value={money(purchase.balanceMinorUnits)}
+          />
+        </StatGroup>
+        <Section title={t("purchases.detail.lines")}>
           <DataTable
-            caption={t("purchases.detail.payments")}
+            caption={t("purchases.detail.lines")}
             columns={[
               {
-                id: "date",
-                header: t("dataTable.columns.date"),
+                id: "product",
+                header: t("purchases.form.product"),
                 meta: { primary: true },
                 cell: ({ row: { original } }) => (
-                  <Text className="text-[13px] tabular-nums">
-                    {t("purchases.detail.occurredAt", {
-                      date: format.date(original.occurredLocalDate),
-                      time: original.occurredLocalTime,
-                    })}
+                  <Text className="text-dense" numberOfLines={2}>
+                    {original.productName}
                   </Text>
                 ),
               },
               {
-                id: "account",
-                header: t("purchases.detail.paymentAccount"),
+                id: "quantity",
+                header: t("purchases.form.quantity"),
+                meta: { align: "end" },
                 cell: ({ row: { original } }) => (
-                  <Text className="text-[13px] text-muted-foreground" numberOfLines={1}>
-                    {accountName(original.accountId)}
+                  <Text className="text-dense tabular-nums">
+                    {quantityText(original.quantityMinorUnits, original.quantityPrecision)}
                   </Text>
                 ),
               },
               {
-                id: "reference",
-                header: t("dataTable.columns.reference"),
+                id: "cost",
+                header: t("purchases.form.unitCost"),
+                meta: { align: "end" },
                 cell: ({ row: { original } }) => (
-                  <Text className="text-[13px] text-muted-foreground" numberOfLines={1}>
-                    {original.reference ?? "—"}
-                  </Text>
+                  <MoneyText
+                    currency={purchase.currency}
+                    digits={purchase.currencyMinorUnitDigits}
+                    minorUnits={original.unitCostMinorUnits}
+                  />
                 ),
               },
               {
-                id: "amount",
-                header: t("dataTable.columns.amount"),
+                id: "subtotal",
+                header: t("purchases.form.subtotal"),
                 meta: { align: "end", figure: true },
                 cell: ({ row: { original } }) => (
                   <MoneyText
-                    currency={original.currency}
-                    digits={original.currencyMinorUnitDigits}
-                    minorUnits={original.amountMinorUnits}
+                    currency={purchase.currency}
+                    digits={purchase.currencyMinorUnitDigits}
+                    minorUnits={original.subtotalMinorUnits}
                   />
                 ),
               },
             ]}
-            data={payments}
-            getRowId={(payment) => payment.id}
+            data={purchase.lines}
+            getRowId={(line) => line.id}
           />
-        )}
-      </Section>
+        </Section>
+        <Section title={t("purchases.detail.payments")}>
+          {purchase.paymentTerms === "cash" ? (
+            <Text className="text-sm text-muted-foreground">{t("purchases.detail.paidCash")}</Text>
+          ) : payments.length === 0 ? (
+            <Text className="text-sm text-muted-foreground">
+              {t("purchases.detail.noPayments")}
+            </Text>
+          ) : (
+            <DataTable
+              caption={t("purchases.detail.payments")}
+              columns={[
+                {
+                  id: "date",
+                  header: t("dataTable.columns.date"),
+                  meta: { primary: true },
+                  cell: ({ row: { original } }) => (
+                    <Text className="text-dense tabular-nums">
+                      {t("purchases.detail.occurredAt", {
+                        date: format.date(original.occurredLocalDate),
+                        time: original.occurredLocalTime,
+                      })}
+                    </Text>
+                  ),
+                },
+                {
+                  id: "account",
+                  header: t("purchases.detail.paymentAccount"),
+                  cell: ({ row: { original } }) => (
+                    <Text className="text-dense text-muted-foreground" numberOfLines={1}>
+                      {accountName(original.accountId)}
+                    </Text>
+                  ),
+                },
+                {
+                  id: "reference",
+                  header: t("dataTable.columns.reference"),
+                  cell: ({ row: { original } }) => (
+                    <Text className="text-dense text-muted-foreground" numberOfLines={1}>
+                      {original.reference ?? EMPTY_VALUE}
+                    </Text>
+                  ),
+                },
+                {
+                  id: "amount",
+                  header: t("dataTable.columns.amount"),
+                  meta: { align: "end", figure: true },
+                  cell: ({ row: { original } }) => (
+                    <MoneyText
+                      currency={original.currency}
+                      digits={original.currencyMinorUnitDigits}
+                      minorUnits={original.amountMinorUnits}
+                    />
+                  ),
+                },
+              ]}
+              data={payments}
+              getRowId={(payment) => payment.id}
+            />
+          )}
+        </Section>
+      </DetailColumns>
       <SupplierPaymentDialog
         onOpenChange={setPaying}
         open={paying}

@@ -7,7 +7,7 @@ export const assistantQueryKeys = {
   status: (businessId: string | undefined) => ["assistant", businessId, "status"] as const,
 } as const;
 
-export function assistantStatusQueryOptions(businessId: string | undefined) {
+function assistantStatusQueryOptions(businessId: string | undefined) {
   return queryOptions({
     queryKey: assistantQueryKeys.status(businessId),
     queryFn: businessId ? ({ signal }) => assistantApi.status(signal) : skipToken,

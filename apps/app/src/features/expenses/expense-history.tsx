@@ -48,7 +48,7 @@ export function ExpenseHistory({
         header: t("dataTable.columns.description"),
         meta: { primary: true },
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px]" numberOfLines={2}>
+          <Text className="text-dense" numberOfLines={2}>
             {original.description}
           </Text>
         ),
@@ -57,7 +57,7 @@ export function ExpenseHistory({
         id: "category",
         header: t("dataTable.columns.category"),
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground">{categories[original.category]}</Text>
+          <Text className="text-dense text-muted-foreground">{categories[original.category]}</Text>
         ),
       },
       {
@@ -76,7 +76,7 @@ export function ExpenseHistory({
         id: "date",
         header: t("dataTable.columns.date"),
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
+          <Text className="text-dense text-muted-foreground tabular-nums" numberOfLines={1}>
             {formatOccurredAt(original)}
           </Text>
         ),
@@ -103,8 +103,8 @@ export function ExpenseHistory({
           <Text
             className={
               original.status === "voided"
-                ? "font-ui text-[13px] text-muted-foreground tabular-nums line-through"
-                : "font-ui text-[13px] tabular-nums"
+                ? "font-ui text-dense text-muted-foreground tabular-nums line-through"
+                : "font-ui text-dense tabular-nums"
             }
           >
             {formatMoney(

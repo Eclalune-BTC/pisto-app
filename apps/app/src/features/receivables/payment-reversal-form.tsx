@@ -2,7 +2,7 @@ import type { Href } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { FormActions } from "@/components/layout/form-actions";
-import { Section } from "@/components/layout/section";
+import { FormSection } from "@/components/layout/form-section";
 import { Field } from "@/components/ui/field";
 import { MomentFields } from "@/components/ui/moment-fields";
 
@@ -31,7 +31,7 @@ export function PaymentReversalForm({
   const { t } = useTranslation();
   return (
     <View className="gap-8">
-      <Section
+      <FormSection
         description={t("receivables.reversal.whenDescription")}
         title={t("receivables.reversal.whenSection")}
       >
@@ -53,7 +53,7 @@ export function PaymentReversalForm({
           placeholder={t("receivables.reversal.referencePlaceholder")}
           value={draft.reference}
         />
-      </Section>
+      </FormSection>
       <FormActions
         cancelHref={cancelHref}
         destructive

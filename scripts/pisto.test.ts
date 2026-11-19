@@ -7,6 +7,7 @@ import {
   createFileExclusive,
   generateBetterAuthSecret,
   injectBetterAuthSecret,
+  inspectRepository,
   inspectServerConfiguration,
   isVersionAtLeast,
   main,
@@ -171,6 +172,35 @@ describe("Pisto CLI", () => {
     expect(values.get("API_PORT")).toBe("3015");
     expect(values.get("LABEL")).toBe("a#b");
     expect(values.get("MULTILINE")).toBe("first\nsecond");
+  });
+});
+
+describe("doctor repository inspection", () => {
+  test("accepts this checkout", async () => {
+    const diagnostics: Parameters<typeof inspectRepository>[1] = [];
+
+    await inspectRepository(join(import.meta.dir, ".."), diagnostics);
+
+    expect(diagnostics.filter(({ level }) => level !== "PASS")).toEqual([]);
+    expect(diagnostics.map(({ name }) => name)).toContain("Better Auth toolchain");
+  });
+
+  test("reports a Better Auth CLI that drifted from the library", async () => {
+    const root = await temporaryDirectory();
+    await mkdir(join(root, "packages", "auth"), { recursive: true });
+    await writeFile(
+      join(root, "packages", "auth", "package.json"),
+      JSON.stringify({
+        dependencies: { "better-auth": "1.7.18", "@better-auth/expo": "1.7.18" },
+        devDependencies: { auth: "1.7.18" },
+      }),
+    );
+    await writeFile(join(root, "bun.lock"), '{ "packages": { "auth": ["auth@1.7.1", ""] } }');
+    const diagnostics: Parameters<typeof inspectRepository>[1] = [];
+
+    await inspectRepository(root, diagnostics);
+
+    expect(diagnostics.find(({ name }) => name === "Better Auth toolchain")?.level).toBe("FAIL");
   });
 });
 

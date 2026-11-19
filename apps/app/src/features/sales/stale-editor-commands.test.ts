@@ -291,15 +291,18 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
   test.each(["businesses", "sale"] as const)(
     "sale detail blocks new command navigation when %s is stale",
     (dependency) => {
-      const primaryCommand = (node: ReactNode) => {
+      // The correction waits in the overflow menu; no button on the page undoes a sale.
+      const correctionCommand = (node: ReactNode) => {
         const header = elements<ComponentProps<typeof HeaderActions>>(node, HeaderActions);
         expect(header).toHaveLength(1);
-        return header[0]?.props.primary;
+        expect(header[0]?.props.primary).toBeUndefined();
+        expect(header[0]?.props.overflow).toHaveLength(1);
+        return header[0]?.props.overflow?.[0];
       };
       setFailure(dependency, failure);
       const tree = render(SaleDetailScreen);
       expect(elements(tree, StaleNotice)).toHaveLength(1);
-      expect(primaryCommand(tree)).toMatchObject({ disabled: true });
+      expect(correctionCommand(tree)).toMatchObject({ disabled: true });
       const notice = elements<ComponentProps<typeof StaleNotice>>(tree, StaleNotice)[0];
       if (!notice) throw new Error("Missing stale notice");
       press(button(StaleNotice(notice.props), ({ label }) => label === "common.retry"));
@@ -307,7 +310,7 @@ describe.each(["paused", "error"] as const)("sales with cached %s reads", (failu
       expect(fixture.queries.sale?.refetch).toHaveBeenCalledTimes(1);
       expect(fixture.navigate).not.toHaveBeenCalled();
       recover(dependency);
-      expect(primaryCommand(render(SaleDetailScreen))).toMatchObject({
+      expect(correctionCommand(render(SaleDetailScreen))).toMatchObject({
         disabled: false,
         href: { pathname: "/operate/sales/correct/[saleId]", params: { saleId: "sale" } },
       });
@@ -427,6 +430,13 @@ describe("confirmed sale corrections", () => {
     const data = fixture.queries.sale?.data as { sale: Record<string, unknown> };
     data.sale = { ...data.sale, description: "Pedido del mostrador" };
     render(SaleDetailScreen);
+    expect(fixture.routeLabel).toHaveBeenLastCalledWith(
+      "/operate/sales/[saleId]",
+      "Pedido del mostrador",
+    );
+    // The correction page sits under the sale and must not rename it in the breadcrumb.
+    fixture.routeLabel.mockClear();
+    render(SaleCorrectionScreen);
     expect(fixture.routeLabel).toHaveBeenLastCalledWith(
       "/operate/sales/[saleId]",
       "Pedido del mostrador",

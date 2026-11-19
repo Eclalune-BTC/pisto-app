@@ -9,6 +9,7 @@ import { and, eq, sql } from "drizzle-orm";
 
 import {
   appendReceivablePaymentCashMovement,
+  requireBusinessCashAccount,
   reverseReceivablePaymentCashMovement,
 } from "../cash/receivable-ledger.ts";
 import type { Database } from "../client.ts";
@@ -223,6 +224,7 @@ export function createReceivableCommands(db: Database): ReceivableCommands {
           time: command.occurredLocalTime,
           timeZone: access.timeZone,
         });
+        await requireBusinessCashAccount(tx, access.businessId, command.cashAccountId);
         const [record] = await tx
           .insert(receivablePayment)
           .values({

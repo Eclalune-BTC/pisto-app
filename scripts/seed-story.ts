@@ -17,13 +17,13 @@ import {
 
 export const STORY_DAYS = 42;
 
-export type StoryActor = "owner" | "admin" | "seller";
-export type StoryAccount = "till" | "bank";
-export type StoryEntrySource = "manual" | "voice" | "text";
+type StoryActor = "owner" | "admin" | "seller";
+type StoryAccount = "till" | "bank";
+type StoryEntrySource = "manual" | "voice" | "text";
 
 type Moment = { date: string; time: string };
 
-export type StorySale = Moment & {
+type StorySale = Moment & {
   kind: "sale";
   ref: string;
   actor: StoryActor;
@@ -35,7 +35,7 @@ export type StorySale = Moment & {
   total: number;
 };
 
-export type StoryPurchase = Moment & {
+type StoryPurchase = Moment & {
   kind: "purchase";
   ref: string;
   actor: StoryActor;
@@ -49,7 +49,7 @@ export type StoryPurchase = Moment & {
   total: number;
 };
 
-export type StoryEvent =
+type StoryEvent =
   | StorySale
   | StoryPurchase
   | (Moment & {
@@ -106,7 +106,7 @@ export type StoryProduct = {
   endState?: "low" | "out";
 };
 
-export const STORY_CATEGORIES = ["Bebidas", "Abarrotes", "Lácteos", "Limpieza"] as const;
+const STORY_CATEGORIES = ["Bebidas", "Abarrotes", "Lácteos", "Limpieza"] as const;
 
 export const STORY_PRODUCTS: readonly StoryProduct[] = [
   {

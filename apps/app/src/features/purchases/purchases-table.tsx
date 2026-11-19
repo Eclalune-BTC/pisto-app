@@ -24,7 +24,7 @@ type PurchasesTableProps = {
 
 function DateText({ value }: { value: string }) {
   return (
-    <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
+    <Text className="text-dense text-muted-foreground tabular-nums" numberOfLines={1}>
       {value}
     </Text>
   );
@@ -54,7 +54,7 @@ export function PurchasesTable({
         meta: { primary: true },
         cell: ({ row: { original } }) => (
           <View className="min-w-0 max-w-[16rem]">
-            <Text className="text-[13px]" numberOfLines={1}>
+            <Text className="text-dense" numberOfLines={1}>
               {showSupplier ? original.supplierName : invoice(original)}
             </Text>
             {showSupplier ? (
@@ -87,7 +87,7 @@ export function PurchasesTable({
           original.dueDate ? (
             <DateText value={format.date(original.dueDate)} />
           ) : (
-            <Text className="text-[13px] text-muted-foreground">
+            <Text className="text-dense text-muted-foreground">
               {t("purchases.payables.paidCash")}
             </Text>
           ),

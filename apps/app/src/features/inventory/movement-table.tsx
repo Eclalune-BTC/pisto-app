@@ -2,7 +2,6 @@ import type { InventoryMovement, Product } from "@pisto/contracts";
 import type { ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { Badge } from "@/components/ui/badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { type FittedColumn, fitColumns } from "@/components/ui/fit-columns";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -64,9 +63,9 @@ export function MovementTable({
       return (
         <View className="min-w-0 gap-1">
           <View className="min-w-0 flex-row flex-wrap items-center gap-1.5">
-            <Badge variant="outline">
-              <Text>{t(`inventory.movementActions.${original.action}`)}</Text>
-            </Badge>
+            <Text className="font-ui text-dense">
+              {t(`inventory.movementActions.${original.action}`)}
+            </Text>
             {original.reversedByMovementId !== null ? (
               <StatusBadge label={t("inventory.history.reversed")} tone="exception" />
             ) : null}
@@ -90,7 +89,7 @@ export function MovementTable({
             id: "occurredAt",
             header: t("inventory.history.occurredAt"),
             cell: ({ row: { original } }) => (
-              <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
+              <Text className="text-dense text-muted-foreground tabular-nums" numberOfLines={1}>
                 {movementMoment(original, locale)}
               </Text>
             ),
@@ -102,7 +101,7 @@ export function MovementTable({
             id: "reason",
             header: t("inventory.history.reason"),
             cell: ({ row: { original } }) => (
-              <Text className="text-[13px]" numberOfLines={2}>
+              <Text className="text-dense" numberOfLines={2}>
                 {original.reason ?? t("inventory.systemReasons.sale")}
               </Text>
             ),
@@ -118,7 +117,7 @@ export function MovementTable({
                   cell: ({ row: { original } }) => {
                     const reference = reversedMovement(original);
                     return reference ? (
-                      <Text className="text-[13px] text-muted-foreground" numberOfLines={2}>
+                      <Text className="text-dense text-muted-foreground" numberOfLines={2}>
                         {reference}
                       </Text>
                     ) : (
@@ -140,7 +139,7 @@ export function MovementTable({
             cell: ({ row: { original } }) => (
               <Text
                 className={cn(
-                  "font-ui text-[13px] tabular-nums",
+                  "font-ui text-dense tabular-nums",
                   // The reversal row next to it carries the change that now counts.
                   original.reversedByMovementId !== null && "text-muted-foreground line-through",
                 )}

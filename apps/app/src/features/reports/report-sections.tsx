@@ -82,7 +82,7 @@ function StatementRow({
       <View className="min-w-0 shrink">
         <Text
           className={cn(
-            "text-[13px] leading-5",
+            "text-dense",
             emphasis ? "font-heading" : indent && "text-muted-foreground",
           )}
         >
@@ -92,10 +92,7 @@ function StatementRow({
           <Text className="text-xs leading-4 text-muted-foreground tabular-nums">{detail}</Text>
         ) : null}
       </View>
-      <Text
-        className={cn("text-[13px] tabular-nums", emphasis && "font-heading")}
-        numberOfLines={1}
-      >
+      <Text className={cn("text-dense tabular-nums", emphasis && "font-heading")} numberOfLines={1}>
         {value}
       </Text>
     </View>
@@ -132,7 +129,7 @@ export function IncomeStatement({ locale, report }: { locale: string; report: Op
           {t("reports.statement.operatingExpenses")}
         </Text>
         {report.expenses.categories.length === 0 ? (
-          <Text className="px-4 py-1.5 pl-7 text-[13px] text-muted-foreground sm:pl-8">
+          <Text className="px-4 py-1.5 pl-7 text-dense text-muted-foreground sm:pl-8">
             {t("reports.expenses.empty")}
           </Text>
         ) : (
@@ -166,7 +163,7 @@ export function IncomeStatement({ locale, report }: { locale: string; report: Op
         </View>
         <Text
           className={cn(
-            "font-heading text-2xl leading-8 tracking-[-0.5px] tabular-nums",
+            "font-heading text-figure tabular-nums",
             result.sign > 0 && "text-positive",
             result.sign < 0 && "text-destructive",
           )}
@@ -308,28 +305,28 @@ function CashFlowContent({ locale, report }: { locale: string; report: CashFlowR
             key={month.month}
             role="row"
           >
-            <Text className="flex-[1.3] text-[13px]" role="cell">
+            <Text className="flex-[1.3] text-dense" role="cell">
               {cashFlowMonthLabel(month.month, report.asOfLocalDate, locale, t)}
             </Text>
-            <Text className="flex-1 text-right text-[13px] tabular-nums" role="cell">
+            <Text className="flex-1 text-right text-dense tabular-nums" role="cell">
               {money(month.inflowMinorUnits)}
             </Text>
             {wide ? (
               <>
                 <Text
-                  className="flex-1 text-right text-[13px] text-muted-foreground tabular-nums"
+                  className="flex-1 text-right text-dense text-muted-foreground tabular-nums"
                   role="cell"
                 >
                   {month.outflowMinorUnits === "0"
                     ? money("0")
                     : money(`-${month.outflowMinorUnits}`)}
                 </Text>
-                <Text className="flex-1 text-right text-[13px] tabular-nums" role="cell">
+                <Text className="flex-1 text-right text-dense tabular-nums" role="cell">
                   {signed(month.netMinorUnits)}
                 </Text>
               </>
             ) : null}
-            <Text className="flex-1 text-right font-ui text-[13px] tabular-nums" role="cell">
+            <Text className="flex-1 text-right font-ui text-dense tabular-nums" role="cell">
               {money(month.closingBalanceMinorUnits)}
             </Text>
           </View>

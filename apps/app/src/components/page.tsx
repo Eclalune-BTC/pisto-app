@@ -1,13 +1,15 @@
 import type { ComponentProps, PropsWithChildren } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { useShellTopInset } from "@/components/shell/shell-context";
 import { cn } from "@/lib/cn";
 
 type PageWidth = "content" | "form" | "reading";
 
 const widthClasses: Record<PageWidth, string> = {
-  content: "max-w-[1280px]",
-  form: "max-w-[760px]",
+  content: "max-w-[1120px]",
+  // A form sits on the content grid and narrows inside it, so its title starts where the title
+  // of the list it came from did.
+  form: "max-w-[1120px]",
   reading: "max-w-[720px]",
 };
 
@@ -53,7 +55,11 @@ export function Page({
         scrollIndicatorInsets={{ top: topInset }}
         showsVerticalScrollIndicator={showsVerticalScrollIndicator}
       >
-        {children}
+        {width === "form" ? (
+          <View className="w-full max-w-[696px] gap-6">{children}</View>
+        ) : (
+          children
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

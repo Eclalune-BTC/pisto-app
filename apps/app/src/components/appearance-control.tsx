@@ -86,7 +86,7 @@ export function AppearanceControl({ compact = false }: { compact?: boolean }) {
                 />
                 <ButtonText
                   className={cn(
-                    "text-[13px] native:text-sm",
+                    "text-dense native:text-sm",
                     selected ? "text-foreground" : "text-muted-foreground",
                   )}
                 >

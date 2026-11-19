@@ -18,8 +18,6 @@ export const auth = {
   newToPisto: "¿Su negocio todavía no usa Pisto?",
   signInLink: "Iniciar sesión",
   createAccountLink: "Crear cuenta",
-  panel:
-    "Dígale lo que vendió, compró o cobró. Pisto llena el registro y usted lo revisa antes de guardar.",
   footer: "Pisto, sistema financiero para micro y pequeñas empresas.",
   validation: {
     name: "Escriba el nombre que quiere usar.",

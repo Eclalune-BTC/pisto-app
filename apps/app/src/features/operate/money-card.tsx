@@ -1,7 +1,8 @@
-import type { MoneyTrend, MoneyTrendRange, ReceivablesSummary } from "@pisto/contracts";
+import type { MoneyTrend, MoneyTrendRange } from "@pisto/contracts";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { Link } from "expo-router";
 import { TriangleAlert, Wallet } from "lucide-react-native";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Button } from "@/components/ui/button";
@@ -14,69 +15,16 @@ import { formatLocalDayMonth } from "@/i18n/format";
 import { cn } from "@/lib/cn";
 import { formatMinorUnits } from "@/lib/money";
 import { MoneyFigure } from "./money-figure";
+import { type MoneyFigureRow, MoneyFigureRows, MoneyFigureStrip } from "./money-figure-rows";
 import { MoneyTrendChart } from "./money-trend-chart";
 
 export const MONEY_TREND_RANGES = ["7d", "30d", "6m"] as const satisfies readonly MoneyTrendRange[];
 
-type Figure = { key: string; label: string; value: string; detail?: string; attention?: boolean };
-
-function Figures({ figures, tone }: { figures: Figure[]; tone: "card" | "highlight" }) {
-  return (
-    <View
-      className={cn(
-        "flex-row flex-wrap gap-y-3 border-t pt-3",
-        tone === "card" ? "border-border" : "border-highlight-foreground/15",
-      )}
-    >
-      {figures.map((figure, index) => (
-        <View
-          className={cn(
-            "min-w-[120px] flex-1 gap-0.5 pr-3",
-            index > 0 && "border-l pl-4",
-            tone === "card" ? "border-border" : "border-highlight-foreground/15",
-          )}
-          key={figure.key}
-        >
-          <Text
-            className={cn(
-              "text-xs leading-4",
-              tone === "card" ? "text-muted-foreground" : "text-highlight-foreground/70",
-            )}
-          >
-            {figure.label}
-          </Text>
-          <Text
-            className={cn(
-              "font-heading text-[17px] leading-6 tabular-nums",
-              tone === "highlight" && "text-highlight-foreground",
-            )}
-          >
-            {figure.value}
-          </Text>
-          {figure.detail ? (
-            <Text
-              className={cn(
-                "text-xs leading-4",
-                figure.attention
-                  ? "text-warning-foreground"
-                  : tone === "card"
-                    ? "text-muted-foreground"
-                    : "text-highlight-foreground/70",
-              )}
-              numberOfLines={1}
-            >
-              {figure.detail}
-            </Text>
-          ) : null}
-        </View>
-      ))}
-    </View>
-  );
-}
+type Figure = MoneyFigureRow;
 
 /**
- * "Dinero disponible": the lime hero card on phones, a white card with a lime chart on wide
- * screens.
+ * "Dinero disponible". Phones get the lime hero card. Wide screens get one card in two columns:
+ * the balance and its trend, and beside them the accounts that hold it.
  */
 export function MoneyCard({
   canManageCash,
@@ -84,7 +32,6 @@ export function MoneyCard({
   locale,
   onRangeChange,
   range,
-  receivables,
   trend,
 }: {
   canManageCash: boolean;
@@ -92,55 +39,61 @@ export function MoneyCard({
   locale: string;
   onRangeChange: (range: MoneyTrendRange) => void;
   range: MoneyTrendRange;
-  /** Present only when the member may read receivables. */
-  receivables: UseQueryResult<ReceivablesSummary> | undefined;
   trend: UseQueryResult<MoneyTrend>;
 }) {
   const { t } = useTranslation();
-  const tone = compact ? "highlight" : "card";
-  const rangeControl = (
-    <FilterBar<MoneyTrendRange>
-      label={t("operate.home.money.rangeLabel")}
-      onChange={onRangeChange}
-      options={MONEY_TREND_RANGES.map((value) => ({
-        label: t(`operate.home.money.ranges.${value}`),
-        value,
-      }))}
-      value={range}
-    />
-  );
-  const shell = (children: React.ReactNode) => (
-    <View
-      accessibilityLabel={t("operate.home.money.title")}
-      className={cn(
-        "gap-4 rounded-xl p-4 sm:p-5",
-        compact ? "bg-highlight" : "border border-border bg-card",
-      )}
-      role="region"
-    >
-      <View className="flex-row flex-wrap items-center justify-between gap-2">
-        <Text
-          accessibilityRole="header"
-          aria-level={2}
-          className={cn(
-            "text-[13px]",
-            compact ? "text-highlight-foreground/75" : "text-muted-foreground",
-          )}
-        >
-          {t("operate.home.money.title")}
-        </Text>
-        {rangeControl}
-      </View>
-      {children}
+  const title = t("operate.home.money.title");
+  const heading = (
+    <View className="flex-row flex-wrap items-center justify-between gap-2">
+      <Text
+        accessibilityRole="header"
+        aria-level={2}
+        className={cn("font-heading text-title", compact && "text-highlight-foreground")}
+      >
+        {title}
+      </Text>
+      <FilterBar<MoneyTrendRange>
+        label={t("operate.home.money.rangeLabel")}
+        onChange={onRangeChange}
+        options={MONEY_TREND_RANGES.map((value) => ({
+          label: t(`operate.home.money.ranges.${value}`),
+          value,
+        }))}
+        value={range}
+      />
     </View>
   );
+  const shell = (balance: ReactNode, accounts: ReactNode) =>
+    compact ? (
+      <View accessibilityLabel={title} className="gap-4 rounded-xl bg-highlight p-4" role="region">
+        {heading}
+        {balance}
+        {accounts}
+      </View>
+    ) : (
+      <View
+        accessibilityLabel={title}
+        className="flex-row overflow-hidden rounded-xl border border-border bg-card"
+        role="region"
+      >
+        <View className="min-w-0 flex-1 gap-4 p-4">
+          {heading}
+          {balance}
+        </View>
+        <View className="w-[300px] shrink-0 border-l border-border p-4">{accounts}</View>
+      </View>
+    );
 
   if (trend.isPending) {
     return shell(
       <View aria-hidden className="gap-4">
         <Skeleton className="h-11 w-56" />
-        <Skeleton className={compact ? "h-[110px]" : "h-[180px]"} />
-        <Skeleton className="h-10" />
+        <Skeleton className={compact ? "h-[110px]" : "h-[176px]"} />
+      </View>,
+      <View aria-hidden className="gap-3">
+        {[0, 1, 2].map((index) => (
+          <Skeleton className="h-9" key={index} />
+        ))}
       </View>,
     );
   }
@@ -191,31 +144,15 @@ export function MoneyCard({
     label: t(`operate.home.money.kinds.${kind.kind}`),
     value: money(kind.balanceMinorUnits),
   }));
-  const summary = receivables?.data;
-  if (summary && !compact) {
-    const overdue = summary.overdueMinorUnits !== "0";
-    figures.push({
-      key: "receivables",
-      label: t("operate.home.money.owed"),
-      value: money(summary.outstandingMinorUnits),
-      detail: overdue
-        ? t("operate.home.money.overdue", { amount: money(summary.overdueMinorUnits) })
-        : t("operate.home.money.nothingOverdue"),
-      attention: overdue,
-    });
-  }
 
   return shell(
     <>
       <View className="gap-1">
         <MoneyFigure
-          className={cn(
-            "text-[40px] leading-[46px] tracking-[-1.4px] sm:text-[46px] sm:leading-[52px]",
-            compact && "text-highlight-foreground",
-          )}
+          className={cn("text-figure-xl", compact && "text-highlight-foreground")}
           currency={data.currency}
           fractionClassName={cn(
-            "text-[24px] tracking-[-0.6px]",
+            "text-figure",
             compact ? "text-highlight-foreground/60" : "text-muted-foreground",
           )}
           fractionDigits={data.currencyMinorUnitDigits}
@@ -224,7 +161,7 @@ export function MoneyCard({
         />
         <Text
           className={cn(
-            "text-[13px] tabular-nums",
+            "text-dense tabular-nums",
             compact ? "text-highlight-foreground/75" : "text-muted-foreground",
           )}
         >
@@ -234,7 +171,7 @@ export function MoneyCard({
             <>
               <Text
                 className={cn(
-                  "font-ui text-[13px] tabular-nums",
+                  "font-ui text-dense tabular-nums",
                   compact
                     ? "text-highlight-foreground"
                     : change.startsWith("-")
@@ -249,8 +186,32 @@ export function MoneyCard({
           )}
         </Text>
       </View>
-      <MoneyTrendChart height={compact ? 110 : 180} locale={locale} tone={tone} trend={data} />
-      <Figures figures={figures} tone={tone} />
+      <MoneyTrendChart
+        height={compact ? 110 : 176}
+        locale={locale}
+        tone={compact ? "highlight" : "card"}
+        trend={data}
+      />
     </>,
+    compact ? (
+      <MoneyFigureStrip figures={figures} />
+    ) : (
+      <View className="flex-1 gap-3">
+        <View className="min-h-8 flex-row items-center justify-between gap-2">
+          <Text className="font-heading text-title">{t("operate.modules.cash.label")}</Text>
+          <Link asChild href="/operate/cash">
+            <Button
+              accessibilityRole="link"
+              className="-mr-1.5 h-7 px-1.5"
+              size="sm"
+              variant="ghost"
+            >
+              <Text className="text-xs text-muted-foreground">{t("operate.home.today.all")}</Text>
+            </Button>
+          </Link>
+        </View>
+        <MoneyFigureRows figures={figures} />
+      </View>
+    ),
   );
 }

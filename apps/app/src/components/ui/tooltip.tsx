@@ -48,7 +48,7 @@ function TooltipContent({
               <TooltipPrimitive.Content
                 sideOffset={sideOffset}
                 className={cn(
-                  "bg-primary z-50 rounded-md px-3 py-2 sm:py-1.5",
+                  "bg-primary z-50 rounded-lg px-3 py-2 sm:py-1.5",
                   Platform.select({
                     web: cn(
                       "pisto-enter-pop origin-(--radix-tooltip-content-transform-origin) w-fit text-balance",

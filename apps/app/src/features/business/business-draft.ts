@@ -6,7 +6,7 @@ export type BusinessDraft = {
   timeZone: string;
 };
 
-export type BusinessDraftField = keyof BusinessDraft;
+type BusinessDraftField = keyof BusinessDraft;
 
 export type BusinessDraftResult =
   | { command: CreateBusinessRequest; ok: true }

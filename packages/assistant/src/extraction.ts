@@ -7,7 +7,7 @@ import { weekdays } from "./dates.ts";
  * What the model may return. It only transcribes what the user said into fields; every identifier,
  * price, total, account, date and permission is decided afterwards by deterministic server code.
  */
-export const extractedKinds = [
+const extractedKinds = [
   "sale",
   "expense",
   "purchase",
@@ -20,65 +20,102 @@ export const extractedKinds = [
 const settlements = ["paid", "partial_credit", "credit"] as const;
 const paymentMethods = ["cash", "transfer", "card"] as const;
 
-// A malformed optional field becomes null (and later a "missing" notice) instead of discarding
-// everything else the model read correctly.
-const text = (maximum: number) => z.string().trim().min(1).max(maximum).nullable().catch(null);
-const decimal = z
-  .string()
-  .trim()
-  .regex(/^\d{1,15}(?:\.\d{1,6})?$/)
-  .nullable()
-  .catch(null);
-const smallInteger = (minimum: number, maximum: number) =>
-  z.number().int().min(minimum).max(maximum).nullable().catch(null);
+/** A draft holds at most this many lines; the review numbers them. */
+const maxItems = 20;
 
-const dateExpressionSchema = z
-  .object({
-    offsetDays: smallInteger(-366, 366),
-    weekday: z.enum(weekdays).nullable().catch(null),
-    day: smallInteger(1, 31),
-    month: smallInteger(1, 12),
-    year: smallInteger(2000, 2100),
-  })
-  .nullable()
-  .catch(null);
+/**
+ * Fields where "the model wrote something that does not fit" must not read as "the user did not say
+ * it": an unread settlement would otherwise become a sale paid in full, and an unread date today.
+ */
+export type UnreadField = "date" | "dueDate" | "invoice" | "product" | "received" | "settlement";
 
-export const extractionSchema = z.object({
-  kind: z.enum(extractedKinds),
-  fragments: z
-    .array(
-      z
-        .object({ text: z.string().trim().min(1).max(160), field: assistantFieldSchema })
-        .nullable()
-        .catch(null),
-    )
-    .max(40)
-    .catch([])
-    .transform((fragments) => fragments.filter((fragment) => fragment !== null)),
-  party: text(120),
-  items: z
-    .array(
-      z
-        .object({ name: z.string().trim().min(1).max(120), quantity: decimal, unitPrice: decimal })
-        .nullable()
-        .catch(null),
-    )
-    .max(20)
-    .catch([])
-    .transform((items) => items.filter((item) => item !== null)),
-  amount: decimal,
-  received: decimal,
-  settlement: z.enum(settlements).nullable().catch(null),
-  paymentMethod: z.enum(paymentMethods).nullable().catch(null),
-  goodsReceived: z.boolean().nullable().catch(null),
-  date: dateExpressionSchema,
-  dueDate: dateExpressionSchema,
-  category: expenseCategorySchema.nullable().catch(null),
-  description: text(240),
-  invoiceNumber: text(40),
-});
+/**
+ * A malformed optional field becomes null instead of discarding everything else the model read
+ * correctly. A null amount, name, category or payment method already produces a "missing" notice;
+ * the fields in `UnreadField` are reported through `unread` because their null has another meaning.
+ */
+function extractionSchemaReporting(unread: (field: UnreadField) => void) {
+  const reporting =
+    <T>(field: UnreadField, fallback: T) =>
+    () => {
+      unread(field);
+      return fallback;
+    };
+  const text = (maximum: number) => z.string().trim().min(1).max(maximum).nullable();
+  const decimal = z
+    .string()
+    .trim()
+    .regex(/^\d{1,15}(?:\.\d{1,6})?$/)
+    .nullable();
+  const dateExpression = (field: "date" | "dueDate") => {
+    const part = (minimum: number, maximum: number) =>
+      z.number().int().min(minimum).max(maximum).nullable().catch(reporting(field, null));
+    return z
+      .object({
+        offsetDays: part(-366, 366),
+        weekday: z.enum(weekdays).nullable().catch(reporting(field, null)),
+        day: part(1, 31),
+        month: part(1, 12),
+        year: part(2000, 2100),
+      })
+      .nullable()
+      .catch(reporting(field, null));
+  };
+
+  return z.object({
+    kind: z.enum(extractedKinds),
+    fragments: z
+      .array(
+        z
+          .object({ text: z.string().trim().min(1).max(160), field: assistantFieldSchema })
+          .nullable()
+          .catch(null),
+      )
+      .catch([])
+      .transform((fragments) => fragments.filter((fragment) => fragment !== null).slice(0, 40)),
+    party: text(120).catch(null),
+    items: z
+      .array(
+        z
+          .object({
+            name: z.string().trim().min(1).max(120),
+            quantity: decimal.catch(null),
+            unitPrice: decimal.catch(null),
+          })
+          .nullable()
+          .catch(reporting("product", null)),
+      )
+      .catch(reporting("product", []))
+      .transform((items) => {
+        const read = items.filter((item) => item !== null);
+        if (read.length > maxItems) unread("product");
+        return read.slice(0, maxItems);
+      }),
+    amount: decimal.catch(null),
+    received: decimal.catch(reporting("received", null)),
+    settlement: z.enum(settlements).nullable().catch(reporting("settlement", null)),
+    paymentMethod: z.enum(paymentMethods).nullable().catch(null),
+    goodsReceived: z.boolean().nullable().catch(null),
+    date: dateExpression("date"),
+    dueDate: dateExpression("dueDate"),
+    category: expenseCategorySchema.nullable().catch(null),
+    description: text(240).catch(null),
+    invoiceNumber: text(40).catch(reporting("invoice", null)),
+  });
+}
+
+export const extractionSchema = extractionSchemaReporting(() => undefined);
 
 export type Extraction = z.infer<typeof extractionSchema>;
+
+/** Parses model output, naming the fields it had to null; `null` when the output is not a record. */
+export function readExtraction(
+  raw: unknown,
+): { extraction: Extraction; unread: ReadonlySet<UnreadField> } | null {
+  const unread = new Set<UnreadField>();
+  const parsed = extractionSchemaReporting((field) => unread.add(field)).safeParse(raw);
+  return parsed.success ? { extraction: parsed.data, unread } : null;
+}
 
 /** An extraction that states nothing; the starting point of examples and test scripts. */
 export const blankExtraction: Extraction = {

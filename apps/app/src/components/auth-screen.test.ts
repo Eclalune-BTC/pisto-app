@@ -46,20 +46,12 @@ vi.mock("react-native", () => ({
 }));
 vi.mock("react-native-safe-area-context", () => ({ SafeAreaView: "div" }));
 vi.mock("@/components/brand", () => ({ Brand: "span" }));
-vi.mock("uniwind", () => ({ useUniwind: () => ({ theme: "light" }) }));
-vi.mock("@/features/welcome/dictation-example", () => ({ DictationExample: "figure" }));
+vi.mock("@/features/welcome/product-preview", () => ({ PhonePreview: "figure" }));
 vi.mock("@/components/appearance-control", () => ({ AppearanceControl: "div" }));
 vi.mock("@/components/ui/alert", () => ({ Alert: "div", AlertDescription: "span" }));
 vi.mock("@/components/ui/text", () => ({ Text: "span" }));
 vi.mock("@/components/ui/button", () => ({ Button: "button" }));
 vi.mock("@/components/ui/icon", () => ({ Icon: "span" }));
-vi.mock("@/components/ui/card", () => ({
-  Card: "div",
-  CardContent: "div",
-  CardHeader: "div",
-  CardFooter: "div",
-  CardDescription: "span",
-}));
 vi.mock("@/components/ui/field", () => ({ Field: "input" }));
 vi.mock("@/components/ui/heading", () => ({ Heading: "h1" }));
 vi.mock("@/lib/auth-client", () => ({

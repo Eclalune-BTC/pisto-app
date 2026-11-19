@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Text } from "@/components/ui/text";
+import { cn } from "@/lib/cn";
 import { cashMovementReason } from "./copy";
 
 type CashMovementListProps = {
@@ -55,12 +56,12 @@ export function CashMovementList({
               onPress={() => onOpenMovement(original.id)}
               variant="link"
             >
-              <Text className="font-ui text-left text-[13px] text-foreground no-underline web:hover:underline">
+              <Text className="font-ui text-left text-dense text-foreground no-underline web:hover:underline">
                 {actionLabels[original.action]}
               </Text>
             </Button>
           ) : (
-            <Text className="text-[13px]">{actionLabels[original.action]}</Text>
+            <Text className="text-dense">{actionLabels[original.action]}</Text>
           ),
       },
       ...(renderAccount
@@ -78,7 +79,7 @@ export function CashMovementList({
               id: "date",
               header: t("dataTable.columns.date"),
               cell: ({ row: { original } }) => (
-                <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
+                <Text className="text-dense text-muted-foreground tabular-nums" numberOfLines={1}>
                   {formatOccurredAt(original)}
                 </Text>
               ),
@@ -90,7 +91,7 @@ export function CashMovementList({
         header: t("cash.movements.reason"),
         // Rows of one type look alike; the reason tells them apart, on phones too.
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground" numberOfLines={2}>
+          <Text className="text-dense text-muted-foreground" numberOfLines={2}>
             {cashMovementReason(t, original)}
           </Text>
         ),
@@ -99,15 +100,26 @@ export function CashMovementList({
         id: "amount",
         header: t("dataTable.columns.amount"),
         meta: { align: "end" },
-        cell: ({ row: { original } }) => (
-          <Text className="font-ui text-[13px] tabular-nums">
-            {formatMoney(
-              original.deltaMinorUnits,
-              original.currency,
-              original.currencyMinorUnitDigits,
-            )}
-          </Text>
-        ),
+        // Signed like the Movimientos ledger: money in carries a plus and the positive tone.
+        cell: ({ row: { original } }) => {
+          const amount = formatMoney(
+            original.deltaMinorUnits,
+            original.currency,
+            original.currencyMinorUnitDigits,
+          );
+          const incoming =
+            !original.deltaMinorUnits.startsWith("-") && original.deltaMinorUnits !== "0";
+          return (
+            <Text
+              className={cn(
+                "font-ui text-dense tabular-nums",
+                incoming && "text-positive-foreground",
+              )}
+            >
+              {incoming ? `+${amount}` : amount}
+            </Text>
+          );
+        },
       },
     ],
     [actionLabels, formatMoney, formatOccurredAt, onOpenMovement, renderAccount, t],

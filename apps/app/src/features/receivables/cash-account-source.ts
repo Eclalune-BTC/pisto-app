@@ -18,7 +18,7 @@ export type CashAccountChoice = Pick<CashAccount, "id" | "name" | "status">;
 
 // Nested under the cash accounts key so that every cash-ledger invalidation also refreshes the
 // accounts a payment may be recorded into.
-export const receivableCashAccountKeys = {
+const receivableCashAccountKeys = {
   all: (businessId: string | undefined) =>
     [...cashQueryKeys.accounts(businessId), "receivable-account-choice"] as const,
   detail: (businessId: string | undefined, accountId: string | undefined) =>
@@ -29,7 +29,7 @@ export const receivableCashAccountKeys = {
 
 const CHOICE_PAGE_SIZE = 50;
 
-export const receivableCashAccountSource = {
+const receivableCashAccountSource = {
   list: (query: CashAccountListQuery, signal?: AbortSignal) =>
     apiRequest<CashAccountListResponse, CashAccountListResponse["data"]>(
       pathWithQuery("/v1/cash/accounts", parseRequestPayload(cashAccountListQuerySchema, query)),

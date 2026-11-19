@@ -15,7 +15,7 @@ const stateTones: Record<PurchaseState, StatusTone> = {
 };
 
 /** A voided purchase owes nothing, so its authority status replaces the payable state. */
-export function purchaseState(purchase: Pick<Purchase, "payableState" | "status">): PurchaseState {
+function purchaseState(purchase: Pick<Purchase, "payableState" | "status">): PurchaseState {
   return purchase.status === "voided" ? "voided" : purchase.payableState;
 }
 

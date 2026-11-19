@@ -10,7 +10,6 @@ import { and, desc, eq, getTableColumns, gte, lt, sql } from "drizzle-orm";
 import { authorizeBusinessAction } from "../business-access.ts";
 import type { Database } from "../client.ts";
 import { ProductError, parseInput } from "../errors.ts";
-import { nextCalendarDate, resolveLocalDateTime } from "../local-time.ts";
 import {
   decodeCursor,
   decodeOccurrenceCursor,
@@ -146,19 +145,21 @@ export function createCashQueries(db: Database): CashQueries {
       if (query.startLocalDate > query.endLocalDate) {
         throw new ProductError("VALIDATION_ERROR", "Expense period start must not follow its end");
       }
-      const endExclusiveLocal = nextCalendarDate(query.endLocalDate);
       return db.transaction(async (tx) => {
         const access = await authorizeBusinessAction(tx, actor, ["expenses:read"]);
-        const periodStartUtc = resolveLocalDateTime({
-          date: query.startLocalDate,
-          time: "00:00",
-          timeZone: access.timeZone,
-        });
-        const periodEndUtcExclusive = resolveLocalDateTime({
-          date: endExclusiveLocal,
-          time: "00:00",
-          timeZone: access.timeZone,
-        });
+        // A local midnight can fall in a daylight-saving gap, which only the zone's own rules
+        // resolve; a wall-clock lookup would reject the whole period.
+        const [bounds] = await tx.execute<{
+          end_utc_exclusive: Date | string;
+          start_utc: Date | string;
+        }>(sql`
+          select
+            (${query.startLocalDate}::date::timestamp at time zone ${access.timeZone}) as start_utc,
+            ((${query.endLocalDate}::date + 1)::timestamp at time zone ${access.timeZone}) as end_utc_exclusive
+        `);
+        if (!bounds) throw new Error("Expense period bounds query returned no row");
+        const periodStartUtc = new Date(bounds.start_utc);
+        const periodEndUtcExclusive = new Date(bounds.end_utc_exclusive);
         const rows = await tx
           .select({
             category: expense.category,

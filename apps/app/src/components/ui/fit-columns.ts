@@ -3,7 +3,7 @@ import { Platform } from "react-native";
 import type { DataTableColumn } from "@/components/ui/data-table";
 
 /** Mirrors the container width below which the shared web DataTable renders compact records. */
-export const COMPACT_TABLE_WIDTH = 640;
+const COMPACT_TABLE_WIDTH = 640;
 
 export type FittedColumn<T> = {
   column: DataTableColumn<T>;

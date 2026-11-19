@@ -6,12 +6,11 @@ import { Text } from "./text";
 const headingVariants = cva("font-heading font-normal text-foreground", {
   variants: {
     size: {
-      page: "text-xl leading-7 tracking-[-0.3px]",
-      section: "text-sm leading-5",
-      welcome:
-        "font-ui text-[36px] leading-[42px] tracking-[-0.5px] sm:text-[48px] sm:leading-[54px] lg:text-[56px] lg:leading-[62px]",
-      marketing:
-        "font-heading text-[26px] leading-8 tracking-[-0.6px] sm:text-[32px] sm:leading-10",
+      page: "text-heading",
+      section: "text-title",
+      item: "text-title-lg",
+      marketing: "text-heading web:text-balance sm:text-headline",
+      display: "text-display-sm web:text-balance sm:text-display lg:text-display-lg",
     },
   },
   defaultVariants: { size: "page" },

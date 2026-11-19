@@ -5,41 +5,82 @@
   --font-sans: PistoRegular;
   --font-ui: PistoMedium;
   --font-heading: PistoSemibold;
-  --radius-xs: 2px;
+
+  /* Type roles beyond Tailwind's xs/sm/base/lg/xl; `lib/cn.ts` registers each name as a font size. */
+  --text-micro: 11px;
+  --text-micro--line-height: 16px;
+  --text-dense: 14px;
+  --text-dense--line-height: 20px;
+  --text-title: 15px;
+  --text-title--line-height: 22px;
+  --text-title--letter-spacing: -0.1px;
+  --text-title-lg: 20px;
+  --text-title-lg--line-height: 28px;
+  --text-title-lg--letter-spacing: -0.3px;
+  --text-figure: 24px;
+  --text-figure--line-height: 32px;
+  --text-figure--letter-spacing: -0.6px;
+  --text-heading: 24px;
+  --text-heading--line-height: 32px;
+  --text-heading--letter-spacing: -0.5px;
+  --text-figure-lg: 28px;
+  --text-figure-lg--line-height: 36px;
+  --text-figure-lg--letter-spacing: -0.8px;
+  --text-figure-xl: 44px;
+  --text-figure-xl--line-height: 50px;
+  --text-figure-xl--letter-spacing: -1.5px;
+  --text-headline: 36px;
+  --text-headline--line-height: 42px;
+  --text-headline--letter-spacing: -0.9px;
+  --text-display-sm: 34px;
+  --text-display-sm--line-height: 38px;
+  --text-display-sm--letter-spacing: -0.9px;
+  --text-display: 46px;
+  --text-display--line-height: 50px;
+  --text-display--letter-spacing: -1.3px;
+  --text-display-lg: 60px;
+  --text-display-lg--line-height: 64px;
+  --text-display-lg--letter-spacing: -1.9px;
+  --text-display-xl: 72px;
+  --text-display-xl--line-height: 76px;
+  --text-display-xl--letter-spacing: -2.6px;
+
+  /* Square, defined corners: 4 marks and chips · 6 menu rows and segments · 8 buttons and fields ·
+     10 cards, tables and dialogs · 12 product frames and sheets. Only avatars are round. */
+  --radius-xs: 4px;
   --radius-sm: 4px;
   --radius-md: 6px;
-  --radius-lg: 6px;
-  --radius-xl: 8px;
-  --radius-2xl: 10px;
-  --radius-card: 8px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
 }
 @layer theme {
   :root {
     @variant light {
-      --color-background: #f2f3ee;
-      --color-foreground: #111a15;
+      --color-background: #ffffff;
+      --color-foreground: #131312;
       --color-card: #ffffff;
-      --color-card-foreground: #111a15;
+      --color-card-foreground: #131312;
       --color-popover: #ffffff;
-      --color-popover-foreground: #111a15;
-      --color-muted: #eef0ea;
-      --color-muted-foreground: #58635c;
-      --color-border: #e2e5de;
-      --color-input: #78827b;
-      --color-ring: #1d4a33;
+      --color-popover-foreground: #131312;
+      --color-muted: #f4f4f2;
+      --color-muted-foreground: #62625e;
+      --color-border: #e4e4e1;
+      --color-input: #8a8a85;
+      --color-ring: #1b3d2c;
       --color-primary: #1b3d2c;
       --color-primary-foreground: #ffffff;
-      --color-secondary: #e6ece5;
-      --color-secondary-foreground: #1b3d2c;
-      --color-accent: #e8ede6;
-      --color-accent-foreground: #111a15;
+      --color-secondary: #ececea;
+      --color-secondary-foreground: #131312;
+      --color-accent: #efefed;
+      --color-accent-foreground: #131312;
       --color-link: #1b5236;
-      --color-selection: #d5e6d9;
-      --color-sidebar: #ffffff;
-      --color-sidebar-foreground: #2f3933;
-      --color-sidebar-accent: #f0f1ed;
-      --color-sidebar-accent-foreground: #111a15;
-      --color-sidebar-border: #e8eae5;
+      --color-selection: #dcdcd8;
+      --color-sidebar: #f7f7f5;
+      --color-sidebar-foreground: #3a3a37;
+      --color-sidebar-accent: #e9e9e6;
+      --color-sidebar-accent-foreground: #131312;
+      --color-sidebar-border: #e4e4e1;
       --color-destructive: #b42318;
       --color-destructive-action: #b42318;
       --color-destructive-action-foreground: #ffffff;
@@ -66,30 +107,30 @@
 
   :root {
     @variant dark {
-      --color-background: #0b100d;
-      --color-foreground: #edf2ee;
-      --color-card: #111814;
-      --color-card-foreground: #edf2ee;
-      --color-popover: #151d18;
-      --color-popover-foreground: #edf2ee;
-      --color-muted: #18211c;
-      --color-muted-foreground: #9aa69f;
-      --color-border: #24302a;
-      --color-input: #6b7a71;
-      --color-ring: #8fc8a6;
-      --color-primary: #a7d8b9;
-      --color-primary-foreground: #0c1a12;
-      --color-secondary: #1a2620;
-      --color-secondary-foreground: #edf2ee;
-      --color-accent: #1d2a23;
-      --color-accent-foreground: #edf2ee;
-      --color-link: #a7d8b9;
-      --color-selection: #23382b;
-      --color-sidebar: #0e1511;
-      --color-sidebar-foreground: #c9d3cd;
-      --color-sidebar-accent: #1b2a21;
-      --color-sidebar-accent-foreground: #d4ecdd;
-      --color-sidebar-border: #1f2a24;
+      --color-background: #0f0f0e;
+      --color-foreground: #f3f3f1;
+      --color-card: #171716;
+      --color-card-foreground: #f3f3f1;
+      --color-popover: #1c1c1b;
+      --color-popover-foreground: #f3f3f1;
+      --color-muted: #1e1e1d;
+      --color-muted-foreground: #a3a39e;
+      --color-border: #2a2a28;
+      --color-input: #7a7a75;
+      --color-ring: #d4f26a;
+      --color-primary: #d4f26a;
+      --color-primary-foreground: #10200f;
+      --color-secondary: #262625;
+      --color-secondary-foreground: #f3f3f1;
+      --color-accent: #252524;
+      --color-accent-foreground: #f3f3f1;
+      --color-link: #d4f26a;
+      --color-selection: #3b3b39;
+      --color-sidebar: #0f0f0e;
+      --color-sidebar-foreground: #c9c9c4;
+      --color-sidebar-accent: #222221;
+      --color-sidebar-accent-foreground: #f3f3f1;
+      --color-sidebar-border: #242423;
       --color-destructive: #fda29b;
       --color-destructive-action: #d92d20;
       --color-destructive-action-foreground: #ffffff;
@@ -97,18 +138,18 @@
       --color-warning: #f79009;
       --color-warning-foreground: #fec84b;
       --color-warning-surface: #261a07;
-      --color-positive: #a7d8b9;
-      --color-positive-foreground: #a7d8b9;
-      --color-positive-surface: #13261b;
+      --color-positive: #6fd49b;
+      --color-positive-foreground: #6fd49b;
+      --color-positive-surface: #11261a;
       --color-highlight: #c6ea52;
-      --color-highlight-foreground: #0c1a12;
+      --color-highlight-foreground: #10200f;
       --color-highlight-strong: #d4f26a;
-      --color-chart-fill: #2c3d1a;
+      --color-chart-fill: #2a3a18;
       --color-brand: #1b3d2c;
       --color-brand-foreground: #d4f26a;
-      --color-chart-1: #a7d8b9;
-      --color-chart-2: #5f9b78;
-      --color-chart-3: #2f5a42;
+      --color-chart-1: #d4f26a;
+      --color-chart-2: #7fae5e;
+      --color-chart-3: #3f5a2a;
       --color-chart-4: #ffb334;
       --color-chart-5: #e8622c;
     }
@@ -182,6 +223,14 @@
   outline-width: 0;
 }
 
+/*
+ * For a large control that draws its own focus mark, where the ring would box a whole block. The
+ * ring above is unlayered, so a utility class cannot replace it; this rule can.
+ */
+.pisto-own-focus-mark:focus-visible {
+  outline-style: none;
+}
+
 ::selection {
   background: var(--color-selection);
   color: var(--color-foreground);
@@ -210,7 +259,7 @@ html.dark {
 .pisto-data-table-container {
   overflow-x: auto;
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: var(--radius-xl);
   background: var(--color-card);
 }
 
@@ -219,14 +268,14 @@ html.dark {
   border-collapse: separate;
   border-spacing: 0;
   font-family: PistoRegular, sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 20px;
   color: var(--color-foreground);
 }
 
 .pisto-data-table th {
-  height: 36px;
-  padding: 0 12px;
+  height: 38px;
+  padding: 0 16px;
   background: var(--color-muted);
   color: var(--color-muted-foreground);
   font-family: PistoMedium, sans-serif;
@@ -237,17 +286,9 @@ html.dark {
   border-bottom: 1px solid var(--color-border);
 }
 
-.pisto-data-table th:first-child {
-  border-top-left-radius: 4px;
-}
-
-.pisto-data-table th:last-child {
-  border-top-right-radius: 4px;
-}
-
 .pisto-data-table td {
-  height: 40px;
-  padding: 6px 12px;
+  height: 48px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
   overflow-wrap: anywhere;
@@ -267,8 +308,9 @@ html.dark {
   transition: background-color 80ms ease-out;
 }
 
-.pisto-data-table tbody tr:hover {
-  background: color-mix(in srgb, var(--color-muted) 70%, transparent);
+/* Only a row that opens something answers the pointer. */
+.pisto-data-table tbody tr[data-href]:hover {
+  background: var(--color-muted);
 }
 
 .pisto-data-table tbody tr[data-href] {
@@ -283,10 +325,11 @@ html.dark {
   font-family: PistoRegular, sans-serif;
 }
 
+/* The same box as `Field`'s label, so a date beside a text field keeps both controls on one line. */
 .pisto-picker-field label {
   font-family: PistoMedium, sans-serif;
-  font-size: 13px;
-  line-height: 1;
+  font-size: 14px;
+  line-height: 20px;
   color: var(--color-foreground);
 }
 
@@ -295,8 +338,8 @@ html.dark {
   min-width: 0;
   width: 100%;
   border: 1px solid var(--color-input);
-  border-radius: 3px;
-  padding: 0 10px;
+  border-radius: var(--radius-lg);
+  padding: 0 12px;
   background: var(--color-card);
   color: var(--color-foreground);
   font: inherit;
@@ -340,7 +383,7 @@ html.dark {
   --normal-bg: var(--color-popover);
   --normal-border: var(--color-border);
   --normal-text: var(--color-popover-foreground);
-  --border-radius: 4px;
+  --border-radius: var(--radius-xl);
   font-family: PistoRegular, sans-serif;
 }
 
@@ -356,5 +399,5 @@ html.dark {
 [data-sonner-toast] [data-button] {
   background: var(--color-primary);
   color: var(--color-primary-foreground);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
 }

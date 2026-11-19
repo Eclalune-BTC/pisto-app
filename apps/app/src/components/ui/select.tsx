@@ -11,32 +11,7 @@ import { NativeOnlyAnimatedView } from "@/components/ui/native-only-animated-vie
 import { TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 
-type Option = SelectPrimitive.Option;
-
 const Select = SelectPrimitive.Root;
-
-const SelectGroup = SelectPrimitive.Group;
-
-function SelectValue({
-  ref,
-  className,
-  ...props
-}: React.ComponentProps<typeof SelectPrimitive.Value> & {
-  className?: string;
-}) {
-  const { value } = SelectPrimitive.useRootContext();
-  return (
-    <SelectPrimitive.Value
-      ref={ref}
-      className={cn(
-        "text-foreground line-clamp-1 flex flex-row items-center gap-2 text-sm",
-        !value && "text-muted-foreground",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
 
 function SelectTrigger({
   ref,
@@ -52,7 +27,7 @@ function SelectTrigger({
     <SelectPrimitive.Trigger
       ref={ref}
       className={cn(
-        "border-input bg-card flex min-h-9 flex-row items-center justify-between gap-2 rounded-md border px-2.5 py-1.5",
+        "border-input bg-card flex min-h-9 flex-row items-center justify-between gap-2 rounded-lg border px-3 py-1.5",
         Platform.select({
           web: "focus-visible:border-ring focus-visible:ring-ring/25 aria-invalid:border-destructive web:hover:bg-accent/40 w-fit whitespace-nowrap text-sm outline-none transition-[color,box-shadow] focus-visible:ring-2 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:shrink-0",
           native: "min-h-11 px-3 py-2",
@@ -97,7 +72,7 @@ function SelectContent({
             <TextClassContext.Provider value="text-popover-foreground">
               <SelectPrimitive.Content
                 className={cn(
-                  "bg-popover border-border relative z-50 min-w-[8rem] rounded-md border shadow-lg shadow-black/10 web:bg-popover/95 web:backdrop-blur-md",
+                  "bg-popover border-border relative z-50 min-w-[8rem] rounded-xl border shadow-lg shadow-black/10 web:bg-popover/95 web:backdrop-blur-md",
                   Platform.select({
                     web: cn(
                       "pisto-enter-pop origin-(--radix-select-content-transform-origin) max-h-52 overflow-y-auto overflow-x-hidden",
@@ -141,15 +116,6 @@ function SelectContent({
   );
 }
 
-function SelectLabel({ className, ...props }: React.ComponentProps<typeof SelectPrimitive.Label>) {
-  return (
-    <SelectPrimitive.Label
-      className={cn("text-muted-foreground px-2 py-2 text-xs sm:py-1.5", className)}
-      {...props}
-    />
-  );
-}
-
 function SelectItem({
   className,
   ...props
@@ -157,7 +123,7 @@ function SelectItem({
   return (
     <SelectPrimitive.Item
       className={cn(
-        "active:bg-accent group relative flex w-full flex-row items-center gap-2 rounded-sm py-2 pl-2 pr-8 sm:py-1.5",
+        "active:bg-accent group relative flex w-full flex-row items-center gap-2 rounded-lg py-2 pl-2.5 pr-8 sm:py-1.5",
         Platform.select({
           web: "focus:bg-accent focus:text-accent-foreground *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2 cursor-default outline-none data-[disabled]:pointer-events-none [&_svg]:pointer-events-none",
         }),
@@ -173,22 +139,6 @@ function SelectItem({
       </View>
       <SelectPrimitive.ItemText className="font-sans text-foreground group-active:text-accent-foreground select-none text-sm" />
     </SelectPrimitive.Item>
-  );
-}
-
-function SelectSeparator({
-  className,
-  ...props
-}: React.ComponentProps<typeof SelectPrimitive.Separator>) {
-  return (
-    <SelectPrimitive.Separator
-      className={cn(
-        "bg-border -mx-1 my-1 h-px",
-        Platform.select({ web: "pointer-events-none" }),
-        className,
-      )}
-      {...props}
-    />
   );
 }
 
@@ -234,16 +184,4 @@ function SelectScrollDownButton({
   );
 }
 
-export {
-  type Option,
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectScrollDownButton,
-  SelectScrollUpButton,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-};
+export { Select, SelectContent, SelectItem, SelectTrigger };

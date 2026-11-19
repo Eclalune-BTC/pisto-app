@@ -88,6 +88,7 @@ function directory(
     context: DirectoryContext;
     products: DirectoryProduct[];
     customers: DirectoryCustomer[];
+    accounts: DirectoryAccount[];
   }> = {},
 ) {
   const calls: Array<{
@@ -101,7 +102,7 @@ function directory(
         context: overrides.context ?? context,
         products: overrides.products ?? [coffee, cola],
         customers: overrides.customers ?? [carlosRivas, carlosMendez, ana],
-        accounts: [till, bank],
+        accounts: overrides.accounts ?? [till, bank],
       };
     },
   };
@@ -661,6 +662,359 @@ describe("review findings", () => {
       { records },
     );
     expect(interpretation.notices).toEqual([
+      { code: "not_permitted", field: "kind", lineIndex: null },
+    ]);
+  });
+});
+
+describe("fields the model wrote but that could not be read", () => {
+  const sale: Partial<Extraction> = {
+    kind: "sale",
+    items: [{ name: "Café molido 1 lb", quantity: "3", unitPrice: null }],
+    paymentMethod: "cash",
+  };
+
+  test("an unreadable settlement is asked for instead of becoming a sale paid in full", async () => {
+    const { interpretation } = await interpret("Vendí tres cafés fiado", {
+      ...sale,
+      ...({ settlement: "fiado" } as object),
+    });
+
+    expect(interpretation.draft).toMatchObject({
+      totalMinorUnits: "975",
+      receivedMinorUnits: null,
+      creditMinorUnits: null,
+      account: null,
+    });
+    expect(interpretation.notices).toEqual([
+      { code: "missing", field: "received", lineIndex: null },
+    ]);
+  });
+
+  test("an unreadable received amount is asked for, whatever the settlement says", async () => {
+    const { interpretation } = await interpret("Vendí tres cafés y me dieron cinco dólares", {
+      ...sale,
+      settlement: "paid",
+      ...({ received: "5 dólares" } as object),
+    });
+
+    expect(interpretation.draft).toMatchObject({
+      receivedMinorUnits: null,
+      creditMinorUnits: null,
+    });
+    expect(interpretation.notices).toEqual([
+      { code: "missing", field: "received", lineIndex: null },
+    ]);
+  });
+
+  test("a sale that says nothing about payment is still paid in full", async () => {
+    const { interpretation } = await interpret("Vendí tres cafés", sale);
+
+    expect(interpretation.draft).toMatchObject({
+      receivedMinorUnits: "975",
+      creditMinorUnits: "0",
+      account: { id: till.id },
+    });
+    expect(interpretation.notices).toEqual([]);
+  });
+
+  test("a date with an impossible part falls back to today with a notice, never another date", async () => {
+    for (const date of [
+      { offsetDays: null, weekday: null, day: 5, month: 13, year: null },
+      { offsetDays: -730, weekday: null, day: null, month: null, year: null },
+      { offsetDays: null, weekday: null, day: 1, month: 11, year: 1999 },
+      "2026-10-01",
+    ]) {
+      const { interpretation } = await interpret("Vendí tres cafés", {
+        ...sale,
+        ...({ date } as object),
+      });
+
+      expect(interpretation.draft).toMatchObject({ occurredLocalDate: "2026-11-02" });
+      expect(interpretation.notices).toEqual([{ code: "missing", field: "date", lineIndex: null }]);
+    }
+  });
+
+  test("an unreadable due date is asked for on a credit sale", async () => {
+    const { interpretation } = await interpret("Le fié tres cafés a Ana Guzmán", {
+      ...sale,
+      party: "Ana Guzmán",
+      settlement: "credit",
+      paymentMethod: null,
+      ...({
+        dueDate: { offsetDays: 9_000, weekday: null, day: null, month: null, year: null },
+      } as object),
+    });
+
+    expect(interpretation.draft).toMatchObject({ creditMinorUnits: "975", dueDate: null });
+    expect(interpretation.notices).toEqual([
+      { code: "missing", field: "dueDate", lineIndex: null },
+    ]);
+  });
+
+  test("more lines than a draft holds keeps the first twenty and says some were left out", async () => {
+    const items = Array.from({ length: 21 }, () => ({
+      name: "Café molido 1 lb",
+      quantity: "1",
+      unitPrice: null,
+    }));
+    const { interpretation } = await interpret("Vendí veintiún cafés", { ...sale, items });
+
+    expect(interpretation.draft).toMatchObject({ totalMinorUnits: "6500" });
+    expect(interpretation.draft?.kind === "sale" && interpretation.draft.lines).toHaveLength(20);
+    expect(interpretation.notices).toEqual([
+      { code: "missing", field: "product", lineIndex: null },
+    ]);
+  });
+
+  test("an item list that is not a list is reported, not read as a sale without products", async () => {
+    const { interpretation } = await interpret("Vendí cincuenta dólares", {
+      kind: "sale",
+      amount: "50",
+      paymentMethod: "cash",
+      ...({ items: "café" } as object),
+    });
+
+    expect(interpretation.notices).toEqual([
+      { code: "missing", field: "product", lineIndex: null },
+    ]);
+  });
+
+  test("an invoice number that does not fit is reported on a purchase", async () => {
+    const { interpretation } = await interpret("Compré 24 Coca-Cola al crédito", {
+      kind: "purchase",
+      items: [{ name: "Coca-Cola 600 ml", quantity: "24", unitPrice: "0.80" }],
+      settlement: "credit",
+      invoiceNumber: "F".repeat(41),
+    });
+
+    expect(interpretation.draft).toMatchObject({ invoiceNumber: null });
+    expect(interpretation.notices).toContainEqual({
+      code: "missing",
+      field: "invoice",
+      lineIndex: null,
+    });
+  });
+});
+
+describe("the account a payment settles in", () => {
+  const expense: Partial<Extraction> = {
+    kind: "expense",
+    amount: "64",
+    category: "utilities",
+    description: "Luz",
+  };
+  const secondTill: DirectoryAccount = {
+    id: "00000000-0000-4000-8000-000000000033",
+    name: "Caja chica",
+    kind: "cash",
+  };
+  const wallet: DirectoryAccount = {
+    id: "00000000-0000-4000-8000-000000000034",
+    name: "Tigo Money",
+    kind: "mobile_money",
+  };
+
+  test("two accounts of the kind propose the oldest and ask the user to confirm it", async () => {
+    const { records } = directory({ accounts: [till, secondTill, bank] });
+    const { interpretation } = await interpret(
+      "Pagué 64 dólares de luz en efectivo",
+      { ...expense, paymentMethod: "cash" },
+      { records },
+    );
+
+    expect(interpretation.draft).toMatchObject({
+      account: { id: till.id, name: "Caja principal" },
+    });
+    expect(interpretation.notices).toEqual([
+      { code: "similar_match", field: "account", lineIndex: null },
+    ]);
+  });
+
+  test("a card settles in the bank, never in the cash drawer", async () => {
+    const { interpretation } = await interpret("Pagué 64 dólares de luz con tarjeta", {
+      ...expense,
+      paymentMethod: "card",
+    });
+
+    expect(interpretation.draft).toMatchObject({ account: { id: bank.id } });
+    expect(interpretation.notices).toEqual([]);
+  });
+
+  test("a card has no account when the business only has a wallet and a drawer", async () => {
+    const { records } = directory({ accounts: [till, wallet] });
+    const { interpretation } = await interpret(
+      "Pagué 64 dólares de luz con tarjeta",
+      { ...expense, paymentMethod: "card" },
+      { records },
+    );
+
+    expect(interpretation.draft).toMatchObject({ account: null });
+    expect(interpretation.notices).toEqual([
+      { code: "missing", field: "account", lineIndex: null },
+    ]);
+  });
+
+  test("a transfer falls back to the wallet when there is no bank", async () => {
+    const { records } = directory({ accounts: [till, wallet] });
+    const { interpretation } = await interpret(
+      "Pagué 64 dólares de luz por transferencia",
+      { ...expense, paymentMethod: "transfer" },
+      { records },
+    );
+
+    expect(interpretation.draft).toMatchObject({ account: { id: wallet.id } });
+  });
+});
+
+describe("supplier payments", () => {
+  const supplier: DirectorySupplier = {
+    id: "00000000-0000-4000-8000-000000000041",
+    name: "Distribuidora Centro",
+    oldestOpenPurchase: {
+      id: "00000000-0000-4000-8000-000000000051",
+      invoiceNumber: "F-204",
+      balanceMinorUnits: "1920",
+    },
+  };
+  const suppliers = (found: DirectorySupplier[]): SupplierDirectory<Actor> => ({
+    async lookup() {
+      return found;
+    },
+  });
+  const payment: Partial<Extraction> = {
+    kind: "supplier_payment",
+    party: "Distribuidora Centro",
+    amount: "10",
+    paymentMethod: "transfer",
+  };
+
+  test("a payment links the supplier's oldest open purchase and the bank account", async () => {
+    const { interpretation } = await interpret(
+      "Le pagué 10 dólares a Distribuidora Centro por transferencia",
+      payment,
+      { suppliers: suppliers([supplier]) },
+    );
+
+    expect(interpretation.draft).toEqual({
+      kind: "supplier_payment",
+      occurredLocalDate: "2026-11-02",
+      occurredLocalTime: "10:15",
+      supplier: {
+        heard: "Distribuidora Centro",
+        match: { id: supplier.id, name: "Distribuidora Centro", exact: true },
+      },
+      purchase: supplier.oldestOpenPurchase,
+      amountMinorUnits: "1000",
+      account: { id: bank.id, name: "Banco Agrícola" },
+    });
+    expect(interpretation.notices).toEqual([]);
+  });
+
+  test("paying exactly the balance is accepted and one cent more is flagged", async () => {
+    const exact = await interpret(
+      "Le pagué 19.20 a Distribuidora Centro",
+      {
+        ...payment,
+        amount: "19.20",
+      },
+      { suppliers: suppliers([supplier]) },
+    );
+    expect(exact.interpretation.notices).toEqual([]);
+
+    const over = await interpret(
+      "Le pagué 19.21 a Distribuidora Centro",
+      {
+        ...payment,
+        amount: "19.21",
+      },
+      { suppliers: suppliers([supplier]) },
+    );
+    expect(over.interpretation.notices).toEqual([
+      { code: "exceeds_total", field: "amount", lineIndex: null },
+    ]);
+  });
+
+  test("a supplier with nothing open has no purchase to pay", async () => {
+    const { interpretation } = await interpret(
+      "Le pagué 10 dólares a Distribuidora Centro por transferencia",
+      payment,
+      { suppliers: suppliers([{ ...supplier, oldestOpenPurchase: null }]) },
+    );
+
+    expect(interpretation.draft).toMatchObject({ purchase: null });
+    expect(interpretation.notices).toEqual([
+      { code: "not_found", field: "credit", lineIndex: null },
+    ]);
+  });
+
+  test("an unnamed supplier is asked for and nothing is looked up", async () => {
+    const { interpretation } = await interpret("Pagué 10 dólares al proveedor", {
+      ...payment,
+      party: null,
+    });
+
+    expect(interpretation.draft).toMatchObject({ supplier: { heard: null, match: null } });
+    expect(interpretation.notices).toEqual([
+      { code: "missing", field: "supplier", lineIndex: null },
+    ]);
+  });
+});
+
+describe("a cash purchase", () => {
+  test("names the account it is paid from and asks for the method when none was said", async () => {
+    const purchase: Partial<Extraction> = {
+      kind: "purchase",
+      items: [{ name: "Coca-Cola 600 ml", quantity: "24", unitPrice: "0.80" }],
+      settlement: "paid",
+    };
+    const paid = await interpret("Compré 24 Coca-Cola en efectivo", {
+      ...purchase,
+      paymentMethod: "cash",
+    });
+    expect(paid.interpretation.draft).toMatchObject({
+      paymentTerms: "cash",
+      account: { id: till.id },
+      dueDate: null,
+    });
+
+    const unsaid = await interpret("Compré 24 Coca-Cola de contado", purchase);
+    expect(unsaid.interpretation.draft).toMatchObject({ paymentTerms: "cash", account: null });
+    expect(unsaid.interpretation.notices).toContainEqual({
+      code: "missing",
+      field: "paymentMethod",
+      lineIndex: null,
+    });
+  });
+});
+
+describe("a full list of notices", () => {
+  test("keeps what concerns the whole record ahead of single lines", async () => {
+    const items = Array.from({ length: 20 }, (_, index) => ({
+      name: `Producto desconocido ${index}`,
+      quantity: null,
+      unitPrice: null,
+    }));
+    const { records } = directory({
+      context: { ...context, permissions: ["assistant:use"] },
+      products: Array.from({ length: 20 }, (_, index) => ({
+        ...coffee,
+        id: `00000000-0000-4000-8000-0000000001${String(index).padStart(2, "0")}`,
+        name: `Producto desconocido ${index}`,
+        sellingPriceMinorUnits: null,
+      })),
+    });
+    const { interpretation } = await interpret(
+      "Vendí veinte cosas",
+      { kind: "sale", items },
+      {
+        records,
+      },
+    );
+
+    expect(interpretation.notices).toHaveLength(40);
+    expect(interpretation.notices.slice(0, 2)).toEqual([
+      { code: "missing", field: "amount", lineIndex: null },
       { code: "not_permitted", field: "kind", lineIndex: null },
     ]);
   });

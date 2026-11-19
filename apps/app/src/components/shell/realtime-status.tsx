@@ -5,7 +5,7 @@ import { Text } from "@/components/ui/text";
 import type { RealtimeStatus } from "@/lib/realtime";
 import { nextInterrupted } from "./realtime-interruption";
 
-export function useRealtimeInterrupted(status: RealtimeStatus): boolean {
+function useRealtimeInterrupted(status: RealtimeStatus): boolean {
   const [previous, setPrevious] = useState(status);
   const [interrupted, setInterrupted] = useState(false);
   if (status !== previous) {

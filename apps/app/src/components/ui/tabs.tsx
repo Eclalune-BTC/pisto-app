@@ -13,7 +13,7 @@ function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimi
   return (
     <TabsPrimitive.List
       className={cn(
-        "bg-muted border-border flex min-h-9 flex-row flex-wrap items-center justify-center rounded-md border p-0.5 native:min-h-11",
+        "bg-muted border-border flex min-h-9 flex-row flex-wrap items-center justify-center rounded-lg border p-0.5 native:min-h-11",
         Platform.select({ web: "inline-flex w-fit", native: "mr-auto" }),
         className,
       )}
@@ -27,13 +27,13 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
   return (
     <TextClassContext.Provider
       value={cn(
-        "text-muted-foreground text-[13px] font-ui native:text-sm",
+        "text-muted-foreground text-dense font-ui native:text-sm",
         value === props.value && "text-foreground",
       )}
     >
       <TabsPrimitive.Trigger
         className={cn(
-          "flex flex-row items-center justify-center gap-1.5 rounded-sm px-2.5 py-1 shadow-none",
+          "flex flex-row items-center justify-center gap-1.5 rounded-md px-3 py-1 shadow-none",
           Platform.select({
             web: "inline-flex cursor-default whitespace-nowrap transition-[color,background-color] disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
           }),

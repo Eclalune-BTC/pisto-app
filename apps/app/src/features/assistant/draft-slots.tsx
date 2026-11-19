@@ -14,6 +14,11 @@ export type DraftFormProps<K extends AssistantDraftKind> = {
   /** Called after the record's own command committed. */
   onSaved: () => void;
   onCancel: () => void;
+  /**
+   * The form's command is in flight or its outcome is unknown. A new draft would remount the form
+   * and lose the only key that command may be sent again with, so the review waits.
+   */
+  onLockedChange: (locked: boolean) => void;
 };
 
 /**

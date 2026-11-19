@@ -267,7 +267,7 @@ export function CashAccountEditorScreen({
             <Label nativeID={`${policyId}-label`} onPress={togglePolicy}>
               {t("cash.accountEditor.allowNegative")}
             </Label>
-            <Text className="text-[13px] leading-5 text-muted-foreground">
+            <Text className="text-dense text-muted-foreground">
               {t("cash.accountEditor.allowNegativeDescription")}
             </Text>
           </View>

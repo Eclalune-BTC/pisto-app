@@ -8,7 +8,7 @@ export const shell = {
   userMenu: "Menú de {{name}}",
   activeBusiness: "Negocio activo: {{name}}",
   switchBusiness: "Cambiar de negocio. Negocio activo: {{name}}",
-  businesses: "Tus negocios",
+  businesses: "Sus negocios",
   businessStale: "sin actualizar",
   businessSwitchFailed: "No pudimos cambiar de negocio. El negocio activo no cambió.",
   signingOut: "Cerrando sesión…",

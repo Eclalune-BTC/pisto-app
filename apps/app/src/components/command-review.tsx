@@ -64,7 +64,7 @@ export function CommandReview({
     >
       {children}
       <DescriptionList items={items} />
-      {note ? <Text className="text-[13px] leading-5 text-muted-foreground">{note}</Text> : null}
+      {note ? <Text className="text-dense text-muted-foreground">{note}</Text> : null}
       {phase === "uncertain" ? (
         <Alert icon={TriangleAlert} variant="warning">
           <AlertTitle>{t("common.uncertainTitle")}</AlertTitle>

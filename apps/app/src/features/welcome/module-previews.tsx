@@ -18,9 +18,10 @@ import {
   movementTotals,
   shiftLocalDate,
 } from "./example-business";
-import { MovementLine, Surface, useExample } from "./fragments";
+import { MovementLine, useExample } from "./fragments";
 
-export const MODULES = ["movements", "receivables", "payables", "reports"] as const;
+/** In reading order: a row of what happened, then a row of what is still owed either way. */
+export const MODULES = ["movements", "reports", "receivables", "payables"] as const;
 
 const AGING_BUCKETS = ["current", "days1To30", "days31To60", "over60"] as const;
 
@@ -46,11 +47,11 @@ function Figure({
   value: string;
 }) {
   return (
-    <View className="min-w-0 flex-1 gap-0.5 px-4 py-3">
-      <Text className="text-xs leading-4 text-muted-foreground">{label}</Text>
+    <View className="min-w-0 flex-1 gap-0.5">
+      <Text className="text-xs text-muted-foreground">{label}</Text>
       <Text
         className={cn(
-          "font-heading text-xl leading-7 tracking-[-0.4px] tabular-nums",
+          "font-heading text-figure tabular-nums",
           tone === "destructive" && "text-destructive",
           tone === "warning" && "text-warning-foreground",
         )}
@@ -59,7 +60,7 @@ function Figure({
         {value}
       </Text>
       {detail ? (
-        <Text className="text-xs leading-4 text-muted-foreground" numberOfLines={1}>
+        <Text className="text-xs text-muted-foreground" numberOfLines={1}>
           {detail}
         </Text>
       ) : null}
@@ -67,17 +68,13 @@ function Figure({
   );
 }
 
+/** Two figures side by side over the hairline that starts the detail below them. */
 function FigureStrip({ children }: { children: ReactNode }) {
-  return <View className="flex-row border-b border-border">{children}</View>;
+  return <View className="flex-row gap-6 border-b border-border pb-4">{children}</View>;
 }
 
-function Divider() {
-  return <View className="w-px bg-border" />;
-}
-
-/** Column headings on the muted strip the app's tables use. */
 function TableHead({ children }: { children: ReactNode }) {
-  return <View className="flex-row gap-3 bg-muted/60 px-4 py-2">{children}</View>;
+  return <View className="flex-row gap-3 border-b border-border py-2">{children}</View>;
 }
 
 function MovementsPreview() {
@@ -86,10 +83,10 @@ function MovementsPreview() {
   const totals = movementTotals(EXAMPLE_YESTERDAY);
   const day = formatLocalDateFull(shiftLocalDate(today, -1), locale, { year: false });
   return (
-    <Surface>
-      <View className="min-h-9 flex-row flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border bg-muted/60 px-4 py-2">
-        <Text className="font-ui text-xs text-foreground">{capitalizeFirst(day, locale)}</Text>
-        <Text className="text-xs text-muted-foreground tabular-nums">
+    <View className="min-w-0">
+      <View className="flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border pb-2">
+        <Text className="font-ui text-dense">{capitalizeFirst(day, locale)}</Text>
+        <Text className="text-xs tabular-nums text-muted-foreground">
           {t("movements.totals.day", {
             inflow: signedMoney(totals.inflow),
             outflow: money(`-${totals.outflow}`),
@@ -98,13 +95,13 @@ function MovementsPreview() {
       </View>
       {EXAMPLE_YESTERDAY.map((movement, index) => (
         <MovementLine
-          className={cn(index > 0 && "border-t border-border")}
+          className={cn("px-0", index > 0 && "border-t border-border")}
           key={movement.key}
           movement={movement}
           showKind
         />
       ))}
-    </Surface>
+    </View>
   );
 }
 
@@ -117,14 +114,13 @@ function ReceivablesPreview() {
   );
   const total = Number(EXAMPLE_RECEIVABLES.outstanding);
   return (
-    <Surface>
+    <View className="min-w-0 gap-5">
       <FigureStrip>
         <Figure
           detail={t("operate.home.debtors.customers", { count: EXAMPLE_RECEIVABLES.customers })}
           label={t("receivables.summary.outstanding")}
           value={money(EXAMPLE_RECEIVABLES.outstanding)}
         />
-        <Divider />
         <Figure
           detail={t("receivables.aging.count", { count: overdueAccounts })}
           label={t("receivables.summary.overdue")}
@@ -132,12 +128,10 @@ function ReceivablesPreview() {
           value={money(EXAMPLE_RECEIVABLES.overdue)}
         />
       </FigureStrip>
-      <View className="gap-3 px-4 py-3.5">
+      <View className="gap-3">
         <View className="flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
-          <Text className="font-heading text-[13px] leading-5">{t("receivables.aging.title")}</Text>
-          <Text className="text-xs leading-4 text-muted-foreground">
-            {t("receivables.aging.scope")}
-          </Text>
+          <Text className="font-ui text-dense">{t("receivables.aging.title")}</Text>
+          <Text className="text-xs text-muted-foreground">{t("receivables.aging.scope")}</Text>
         </View>
         <View aria-hidden className="h-2 flex-row gap-0.5 overflow-hidden rounded-xs bg-muted">
           {AGING_BUCKETS.map((bucket) => (
@@ -148,26 +142,27 @@ function ReceivablesPreview() {
             />
           ))}
         </View>
+        {/* Two marks per line at every width: four across would end the cell short of its pair. */}
         <View className="flex-row flex-wrap gap-x-4 gap-y-3">
           {AGING_BUCKETS.map((bucket) => (
-            <View className="min-w-[96px] grow basis-[40%] gap-0.5 lg:basis-0" key={bucket}>
+            <View className="min-w-[96px] grow basis-[40%] gap-0.5" key={bucket}>
               <View className="flex-row items-center gap-1.5">
                 <View aria-hidden className={cn("size-2 rounded-xs", bucketColors[bucket])} />
-                <Text className="text-xs leading-4 text-muted-foreground" numberOfLines={1}>
+                <Text className="text-xs text-muted-foreground" numberOfLines={1}>
                   {t(`receivables.aging.buckets.${bucket}`)}
                 </Text>
               </View>
-              <Text className="font-ui text-[13px] leading-5 tabular-nums">
+              <Text className="font-ui text-dense tabular-nums">
                 {money(EXAMPLE_AGING[bucket].minorUnits)}
               </Text>
-              <Text className="text-xs leading-4 text-muted-foreground">
+              <Text className="text-xs text-muted-foreground">
                 {t("receivables.aging.count", { count: EXAMPLE_AGING[bucket].accounts })}
               </Text>
             </View>
           ))}
         </View>
       </View>
-    </Surface>
+    </View>
   );
 }
 
@@ -175,14 +170,13 @@ function PayablesPreview() {
   const { t } = useTranslation();
   const { dayMonth, money } = useExample();
   return (
-    <Surface>
+    <View className="min-w-0">
       <FigureStrip>
         <Figure
           detail={t("purchases.payables.openCount", { count: EXAMPLE_PAYABLES.purchases })}
           label={t("purchases.payables.owed")}
           value={money(EXAMPLE_PAYABLES.outstanding)}
         />
-        <Divider />
         <Figure
           detail={t("operate.home.debtors.nothingOverdue")}
           label={t("purchases.payables.dueSoon")}
@@ -201,28 +195,29 @@ function PayablesPreview() {
           {t("purchases.payables.columns.balance")}
         </Text>
       </TableHead>
-      {EXAMPLE_CREDITORS.map((creditor) => (
+      {EXAMPLE_CREDITORS.map((creditor, index) => (
         <View
-          className="min-h-12 flex-row items-center gap-3 border-t border-border px-4 py-2"
+          className={cn(
+            "min-h-12 flex-row items-center gap-3 py-2",
+            index > 0 && "border-t border-border",
+          )}
           key={creditor.name}
         >
           <View className="min-w-0 flex-1">
-            <Text className="text-[13px] leading-5" numberOfLines={1}>
-              {t(`welcome.sample.people.${creditor.name}`)}
-            </Text>
-            <Text className="text-xs leading-4 text-muted-foreground" numberOfLines={1}>
+            <Text className="text-dense">{t(`welcome.sample.people.${creditor.name}`)}</Text>
+            <Text className="text-xs text-muted-foreground" numberOfLines={1}>
               {t("purchases.payables.invoice", { number: creditor.invoice })}
             </Text>
           </View>
-          <Text className="w-16 text-[13px] text-muted-foreground tabular-nums">
+          <Text className="w-16 text-dense tabular-nums text-muted-foreground">
             {dayMonth(creditor.dueInDays)}
           </Text>
-          <Text className="w-20 text-right font-ui text-[13px] tabular-nums">
+          <Text className="w-20 text-right font-ui text-dense tabular-nums">
             {money(creditor.minorUnits)}
           </Text>
         </View>
       ))}
-    </Surface>
+    </View>
   );
 }
 
@@ -232,24 +227,22 @@ function ReportsPreview() {
   const months = exampleCashFlow(today);
   const recent = months.slice(-3);
   return (
-    <Surface>
-      <View className="gap-3 px-4 pt-3.5">
-        <View className="flex-row flex-wrap items-center justify-between gap-2">
-          <Text className="font-heading text-[15px] leading-5">{t("reports.cashFlow.title")}</Text>
-          <View className="flex-row items-center gap-3">
-            <View className="flex-row items-center gap-1.5">
-              <View className="size-2 rounded-xs bg-primary" />
-              <Text className="text-xs text-muted-foreground">{t("reports.cashFlow.inflow")}</Text>
-            </View>
-            <View className="flex-row items-center gap-1.5">
-              <View className="size-2 rounded-xs bg-muted-foreground/35" />
-              <Text className="text-xs text-muted-foreground">{t("reports.cashFlow.outflow")}</Text>
-            </View>
+    <View className="min-w-0 gap-4">
+      <View className="flex-row flex-wrap items-center justify-between gap-2">
+        <Text className="font-ui text-dense">{t("reports.cashFlow.title")}</Text>
+        <View className="flex-row items-center gap-3">
+          <View className="flex-row items-center gap-1.5">
+            <View className="size-2 rounded-xs bg-primary" />
+            <Text className="text-xs text-muted-foreground">{t("reports.cashFlow.inflow")}</Text>
+          </View>
+          <View className="flex-row items-center gap-1.5">
+            <View className="size-2 rounded-xs bg-muted-foreground/35" />
+            <Text className="text-xs text-muted-foreground">{t("reports.cashFlow.outflow")}</Text>
           </View>
         </View>
-        <CashFlowChart locale={locale} months={months} />
       </View>
-      <View className="mt-3 border-t border-border">
+      <CashFlowChart locale={locale} months={months} />
+      <View>
         <TableHead>
           <Text className="min-w-24 flex-1 text-xs text-muted-foreground">
             {t("reports.cashFlow.columns.month")}
@@ -257,36 +250,43 @@ function ReportsPreview() {
           <Text className="w-24 text-right text-xs text-muted-foreground">
             {t("reports.cashFlow.columns.inflow")}
           </Text>
-          {/* Visibility sits on a wrapper: a flex Text on the web ignores text-right. */}
+          <Text className="w-24 text-right text-xs text-muted-foreground">
+            {t("reports.cashFlow.columns.outflow")}
+          </Text>
+          {/*
+            The two bars of a month are what entered and what left, so those figures always show;
+            their difference joins them where there is room. Visibility sits on a wrapper: a flex
+            Text on the web ignores text-right.
+          */}
           <View className="hidden w-24 xl:flex">
             <Text className="text-right text-xs text-muted-foreground">
-              {t("reports.cashFlow.columns.outflow")}
+              {t("reports.cashFlow.columns.net")}
             </Text>
           </View>
-          <Text className="w-24 text-right text-xs text-muted-foreground">
-            {t("reports.cashFlow.columns.net")}
-          </Text>
         </TableHead>
-        {recent.map((month) => (
-          <View className="flex-row gap-3 border-t border-border px-4 py-2" key={month.month}>
-            <Text className="min-w-24 flex-1 text-[13px]" numberOfLines={1}>
+        {recent.map((month, index) => (
+          <View
+            className={cn("flex-row gap-3 py-2", index > 0 && "border-t border-border")}
+            key={month.month}
+          >
+            <Text className="min-w-24 flex-1 text-dense" numberOfLines={1}>
               {capitalizeFirst(formatMonthName(`${month.month}-01`, locale, "long"), locale)}
             </Text>
-            <Text className="w-24 text-right text-[13px] tabular-nums">
+            <Text className="w-24 text-right text-dense tabular-nums">
               {money(month.inflowMinorUnits)}
             </Text>
+            <Text className="w-24 text-right text-dense tabular-nums text-muted-foreground">
+              {money(`-${month.outflowMinorUnits}`)}
+            </Text>
             <View className="hidden w-24 xl:flex">
-              <Text className="text-right text-[13px] text-muted-foreground tabular-nums">
-                {money(`-${month.outflowMinorUnits}`)}
+              <Text className="text-right font-ui text-dense tabular-nums">
+                {signedMoney(month.netMinorUnits)}
               </Text>
             </View>
-            <Text className="w-24 text-right font-ui text-[13px] tabular-nums">
-              {signedMoney(month.netMinorUnits)}
-            </Text>
           </View>
         ))}
       </View>
-    </Surface>
+    </View>
   );
 }
 
@@ -297,18 +297,29 @@ const previews: Record<(typeof MODULES)[number], () => ReactNode> = {
   reports: () => <ReportsPreview />,
 };
 
-/** The modules a business works in every day, each shown by a fragment of its real screen. */
+/**
+ * The modules a business works in every day, each shown by a fragment of its real screen. The
+ * cells share hairlines like a ledger page, so no fragment needs a card of its own.
+ */
 export function ModulePreviews() {
   const { t } = useTranslation();
   return (
-    <View className="min-w-0 gap-y-14 md:-mx-4 md:flex-row md:flex-wrap md:gap-y-16" role="list">
-      {MODULES.map((module) => (
-        <View className="min-w-0 gap-5 md:w-1/2 md:px-4" key={module} role="listitem">
-          <View className="gap-1.5">
-            <Heading className="text-base leading-6" level={3}>
+    <View className="min-w-0 border-t border-border md:flex-row md:flex-wrap" role="list">
+      {MODULES.map((module, index) => (
+        <View
+          className={cn(
+            "min-w-0 gap-8 border-b border-border py-10 md:w-1/2 md:py-12",
+            index % 2 === 0 ? "md:pr-10 lg:pr-14" : "md:border-l md:pl-10 lg:pl-14",
+          )}
+          key={module}
+          role="listitem"
+        >
+          <View className="gap-2">
+            <Heading level={3} size="item">
               {t(`welcome.modules.items.${module}.title`)}
             </Heading>
-            <Text className="text-[15px] leading-6 text-muted-foreground web:text-pretty">
+            {/* Two lines of room beside a pair, so a one-line description does not raise its figure. */}
+            <Text className="max-w-[440px] text-base text-muted-foreground web:text-pretty md:min-h-12">
               {t(`welcome.modules.items.${module}.description`)}
             </Text>
           </View>

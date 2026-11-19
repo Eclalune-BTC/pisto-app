@@ -8,8 +8,8 @@ export type CustomerDraftValues = {
   phone: string;
 };
 
-export type CustomerDraftField = keyof CustomerDraftValues | "form";
-export type CustomerDraftIssue = "email" | "name" | "no-changes" | "notes" | "phone";
+type CustomerDraftField = keyof CustomerDraftValues | "form";
+type CustomerDraftIssue = "email" | "name" | "no-changes" | "notes" | "phone";
 export type CustomerDraftIssues = Partial<Record<CustomerDraftField, CustomerDraftIssue>>;
 
 type DraftResult<T> = { command: T; issues: CustomerDraftIssues } | { issues: CustomerDraftIssues };

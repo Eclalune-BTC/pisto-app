@@ -1,24 +1,24 @@
 export const productErrors = {
-  rateLimited: "Hiciste varias solicitudes seguidas. Espera un momento y vuelve a intentarlo.",
+  rateLimited: "Hizo varias solicitudes seguidas. Espere un momento y vuelva a intentarlo.",
   writesPaused:
-    "Los cambios están pausados temporalmente. Puedes consultar tus registros e intentar guardar más tarde.",
-  businessRequired: "Selecciona o crea un negocio antes de continuar.",
-  conflict: "La operación entra en conflicto con el estado actual. Actualiza y revisa de nuevo.",
-  forbidden: "Tu cuenta no tiene permiso para realizar esta acción.",
+    "Los cambios están pausados temporalmente. Puede consultar sus registros e intentar guardar más tarde.",
+  businessRequired: "Seleccione o cree un negocio antes de continuar.",
+  conflict: "La operación entra en conflicto con el estado actual. Actualice y revise de nuevo.",
+  forbidden: "Su cuenta no tiene permiso para realizar esta acción.",
   idempotencyConflict:
-    "Esta confirmación ya se usó con datos diferentes. Vuelve a preparar la operación.",
-  notFound: "No encontramos ese registro en tu negocio.",
-  unauthorized: "Tu sesión ya no es válida. Vuelve a iniciar sesión.",
-  validation: "Revisa los datos antes de continuar.",
-  connection: "No pudimos conectar con Pisto. Revisa la conexión e inténtalo de nuevo.",
+    "Esta confirmación ya se usó con datos diferentes. Vuelva a preparar la operación.",
+  notFound: "No encontramos ese registro en su negocio.",
+  unauthorized: "Su sesión ya no es válida. Vuelva a iniciar sesión.",
+  validation: "Revise los datos antes de continuar.",
+  connection: "No pudimos conectar con Pisto. Revise la conexión e inténtelo de nuevo.",
   ambiguous:
-    "No sabemos si el servidor confirmó esta operación. Reintenta exactamente la misma confirmación; Pisto conserva la clave para evitar duplicados.",
+    "No sabemos si el servidor confirmó esta operación. Reintente exactamente la misma confirmación; Pisto conserva la clave para evitar duplicados.",
   contexts: {
     archiveProduct: {
       conflict: "El producto ya está archivado o su estado cambió antes de confirmar.",
       fallback: "No pudimos archivar el producto. Su estado no se confirmó como cambiado.",
-      forbidden: "Tu rol actual no permite archivar productos.",
-      idempotency: "Esta confirmación ya se envió con otra operación. Abre de nuevo el producto.",
+      forbidden: "Su rol actual no permite archivar productos.",
+      idempotency: "Esta confirmación ya se envió con otra operación. Abra de nuevo el producto.",
       notFound: "El producto ya no está disponible en este negocio.",
       validation: "La confirmación para archivar no es válida.",
     },
@@ -28,40 +28,40 @@ export const productErrors = {
     category: {
       conflict: "Ya existe una categoría con ese nombre.",
       fallback: "No pudimos guardar la categoría. Ningún cambio se confirmó.",
-      forbidden: "Tu rol actual no permite administrar categorías.",
+      forbidden: "Su rol actual no permite administrar categorías.",
       idempotency:
-        "Esta confirmación ya se envió con otros datos. Edita y vuelve a revisar la operación.",
+        "Esta confirmación ya se envió con otros datos. Edite y vuelva a revisar la operación.",
       notFound: "La categoría ya no está disponible en este negocio.",
-      validation: "Revisa el nombre antes de continuar.",
+      validation: "Revise el nombre antes de continuar.",
     },
     movement: {
       conflict:
-        "La existencia o el estado actual del producto ya no permite este movimiento. Actualiza el historial antes de decidir.",
+        "La existencia o el estado actual del producto ya no permite este movimiento. Actualice el historial antes de decidir.",
       fallback: "No pudimos confirmar el movimiento. La existencia no se muestra como modificada.",
-      forbidden: "Tu rol actual no permite cambiar existencias.",
+      forbidden: "Su rol actual no permite cambiar existencias.",
       idempotency:
-        "Esta confirmación ya se envió con otros datos. Edita y vuelve a revisar el movimiento.",
+        "Esta confirmación ya se envió con otros datos. Edite y vuelva a revisar el movimiento.",
       notFound: "El producto ya no está disponible en este negocio.",
-      validation: "Revisa la cantidad, el motivo, la fecha y la hora antes de continuar.",
+      validation: "Revise la cantidad, el motivo, la fecha y la hora antes de continuar.",
     },
     product: {
       conflict:
         "El SKU ya existe o el historial del producto impide cambiar su precisión o seguimiento.",
       fallback: "No pudimos guardar el producto. Ningún cambio se confirmó.",
-      forbidden: "Tu rol actual no permite administrar productos.",
+      forbidden: "Su rol actual no permite administrar productos.",
       idempotency:
-        "Esta confirmación ya se envió con otros datos. Edita y vuelve a revisar la operación.",
+        "Esta confirmación ya se envió con otros datos. Edite y vuelva a revisar la operación.",
       notFound: "El producto ya no está disponible en este negocio.",
-      validation: "Revisa los datos del producto antes de continuar.",
+      validation: "Revise los datos del producto antes de continuar.",
     },
     reversal: {
       conflict:
         "El movimiento ya fue revertido, no admite reversión o la reversión dejaría una existencia negativa.",
       fallback: "No pudimos confirmar la reversión. La existencia no se muestra como modificada.",
-      forbidden: "Tu rol actual no permite revertir movimientos.",
-      idempotency: "Esta confirmación ya se envió con otros datos. Abre de nuevo el movimiento.",
+      forbidden: "Su rol actual no permite revertir movimientos.",
+      idempotency: "Esta confirmación ya se envió con otros datos. Abra de nuevo el movimiento.",
       notFound: "El movimiento ya no está disponible en este negocio.",
-      validation: "Revisa el motivo, la fecha y la hora antes de continuar.",
+      validation: "Revise el motivo, la fecha y la hora antes de continuar.",
     },
     sale: {
       idempotency: "Esta confirmación ya se utilizó para una venta diferente.",

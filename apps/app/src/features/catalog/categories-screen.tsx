@@ -85,7 +85,7 @@ export function CategoriesScreen({
         header: t("dataTable.columns.name"),
         meta: { primary: true },
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px]" numberOfLines={2}>
+          <Text className="text-dense" numberOfLines={2}>
             {original.name}
           </Text>
         ),
@@ -111,7 +111,7 @@ export function CategoriesScreen({
         header: t("catalog.categories.createdAt"),
         meta: { align: "end", width: 140 },
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
+          <Text className="text-dense text-muted-foreground tabular-nums" numberOfLines={1}>
             {formatLocalizedDate(original.createdAt, locale, timeZone)}
           </Text>
         ),

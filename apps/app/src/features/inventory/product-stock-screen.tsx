@@ -17,7 +17,8 @@ import { RowActions } from "@/components/ui/row-actions";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
-import { EMPTY_VALUE, LowStockBadge, ProductStatusBadge } from "../catalog/catalog-cells";
+import { EMPTY_VALUE } from "@/lib/empty-value";
+import { LowStockBadge, ProductStatusBadge } from "../catalog/catalog-cells";
 import { productHref } from "../catalog/catalog-screen";
 import { quantityText } from "../catalog/format";
 import type { ReadState } from "../catalog/state";
@@ -41,7 +42,7 @@ type ProductStockScreenProps = {
  * A movement can be reversed once; a reversal itself cannot be reversed, and a sale's movement
  * returns only when the sale is voided.
  */
-export function canReverse(movement: InventoryMovement): boolean {
+function canReverse(movement: InventoryMovement): boolean {
   return (
     movement.action !== "reverse" &&
     movement.action !== "sale" &&

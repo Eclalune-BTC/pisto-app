@@ -20,6 +20,19 @@ function catalogKeys(value: unknown, prefix: string[] = []): string[] {
   return Object.entries(value).flatMap(([key, child]) => catalogKeys(child, [...prefix, key]));
 }
 
+/**
+ * Second-person singular pronouns and the verb forms that reached the catalog before. Imperatives
+ * ("Revisa") cannot be told from descriptions ("Pisto revisa") by shape, so they stay to review.
+ */
+const INFORMAL_ADDRESS =
+  /(?<![\p{L}{])(tú|tu|tus|ti|te|contigo|tuy[oa]s?|puedes|tienes|quieres|necesitas|debes|podrás|tendrás|verás)(?![\p{L}}])/iu;
+
+function catalogStrings(value: unknown, path: string[] = []): { key: string; text: string }[] {
+  if (typeof value === "string") return [{ key: path.join("."), text: value }];
+  if (typeof value !== "object" || value === null) return [];
+  return Object.entries(value).flatMap(([key, child]) => catalogStrings(child, [...path, key]));
+}
+
 const sources = import.meta.glob("../**/*.{ts,tsx}", {
   eager: true,
   import: "default",
@@ -61,10 +74,10 @@ describe("Spanish translation catalog", () => {
       "Tienda Luna",
     );
     expect(translator.t("billing.accessCount", { count: 1 })).toBe(
-      "Encontramos un acceso activo para tu cuenta.",
+      "Encontramos un acceso activo para su cuenta.",
     );
     expect(translator.t("billing.accessCount", { count: 2 })).toBe(
-      "Encontramos 2 accesos activos para tu cuenta.",
+      "Encontramos 2 accesos activos para su cuenta.",
     );
     expect(translator.t("inventory.movementEditor.precisionHint", { count: 1 })).toBe(
       "Este producto acepta hasta 1 decimal.",
@@ -89,6 +102,17 @@ describe("Spanish translation catalog", () => {
   test("scans a realistic amount of application source", () => {
     expect(declaredKeys.size).toBeGreaterThan(500);
     expect(referencedKeys.size).toBeGreaterThan(500);
+  });
+
+  test("addresses the owner as usted in every string", () => {
+    const offenders = catalogStrings(esSV)
+      .filter(({ text }) => INFORMAL_ADDRESS.test(text))
+      .map(({ key }) => key);
+
+    expect(offenders).toEqual([]);
+    expect(INFORMAL_ADDRESS.test("Revisa tu conexión y vuelve a intentarlo.")).toBe(true);
+    expect(INFORMAL_ADDRESS.test("No puedes consultar el catálogo")).toBe(true);
+    expect(INFORMAL_ADDRESS.test("Revise su conexión; {{te}} no es una palabra.")).toBe(false);
   });
 });
 

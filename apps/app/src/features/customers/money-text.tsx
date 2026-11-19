@@ -29,7 +29,7 @@ export function MoneyText({
   return (
     <Text
       className={cn(
-        "font-ui text-[13px] tabular-nums",
+        "font-ui text-dense tabular-nums",
         (muted || !positive) && "text-muted-foreground",
         overdue && positive && !muted && "text-destructive",
       )}

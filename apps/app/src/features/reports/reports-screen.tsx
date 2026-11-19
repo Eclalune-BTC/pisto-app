@@ -55,7 +55,7 @@ function MonthNavigator({ locale, month }: { locale: string; month: ReportMonthN
       </Button>
       <View
         accessibilityLiveRegion="polite"
-        className="h-9 min-w-44 flex-row items-center justify-center gap-2 rounded-md border border-border bg-card px-3"
+        className="h-9 min-w-44 flex-row items-center justify-center gap-2 rounded-lg border border-border bg-card px-3"
       >
         <Icon as={CalendarDays} className="text-muted-foreground" size={15} />
         <Text className="font-ui text-sm">{label}</Text>

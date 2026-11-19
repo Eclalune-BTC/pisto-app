@@ -86,7 +86,7 @@ export function CashMovementDialog({
             { label: t("cash.movementDetail.recordedAt"), numeric: true, value: recordedAt },
           ]}
         />
-        {note ? <Text className="text-[13px] leading-5 text-muted-foreground">{note}</Text> : null}
+        {note ? <Text className="text-dense text-muted-foreground">{note}</Text> : null}
         {movement.expenseId || onReverse ? (
           <DialogFooter>
             {movement.expenseId ? (

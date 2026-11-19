@@ -33,9 +33,9 @@ export function PickerField({
   value,
 }: PickerFieldProps) {
   return (
-    <View className="min-w-0 gap-2">
+    <View className="min-w-0 gap-1.5">
       <FieldLabel marker={marker}>
-        <Text className="font-ui text-sm leading-none text-foreground">{label}</Text>
+        <Text className="font-ui text-dense text-foreground">{label}</Text>
       </FieldLabel>
       <PressableSurface
         accessibilityHint={error}
@@ -43,7 +43,7 @@ export function PickerField({
         accessibilityRole="button"
         aria-invalid={Boolean(error)}
         className={cn(
-          "min-h-9 flex-row items-center gap-2 rounded-md border bg-card px-2.5 py-1.5 native:min-h-11",
+          "min-h-9 flex-row items-center gap-2 rounded-lg border bg-card px-3 py-1.5 native:min-h-11",
           error ? "border-destructive" : "border-input",
         )}
         onPress={onPress}

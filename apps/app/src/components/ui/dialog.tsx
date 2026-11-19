@@ -13,11 +13,7 @@ import { cn } from "@/lib/cn";
 
 const Dialog = DialogPrimitive.Root;
 
-const DialogTrigger = DialogPrimitive.Trigger;
-
 const DialogPortal = DialogPrimitive.Portal;
-
-const DialogClose = DialogPrimitive.Close;
 
 const FullWindowOverlay = Platform.OS === "ios" ? RNFullWindowOverlay : React.Fragment;
 
@@ -88,7 +84,7 @@ function DialogContent({
       <DialogOverlay className={overlayClassName}>
         <DialogPrimitive.Content
           className={cn(
-            "bg-background border-border z-50 mx-auto flex w-full flex-col gap-4 rounded-lg border p-5 shadow-xl shadow-black/15 sm:max-w-lg",
+            "bg-background border-border z-50 mx-auto flex w-full flex-col gap-4 rounded-2xl border p-6 shadow-xl shadow-black/15 sm:max-w-lg",
             Platform.select({
               web: "pisto-enter-pop max-w-[calc(100%-2rem)] outline-none",
             }),
@@ -101,7 +97,7 @@ function DialogContent({
             <DialogPrimitive.Close
               accessibilityLabel={closeLabel ?? t("common.close")}
               className={cn(
-                "absolute right-3 top-3 size-8 items-center justify-center rounded-sm opacity-70 active:opacity-100 native:size-11",
+                "absolute right-3 top-3 size-8 items-center justify-center rounded-md opacity-70 active:opacity-100 native:size-11",
                 Platform.select({
                   web: "transition-opacity outline-none hover:bg-accent hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring",
                 }),
@@ -139,7 +135,7 @@ function DialogFooter({ className, ...props }: ViewProps) {
 function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
-      className={cn("text-foreground text-base font-heading leading-6", className)}
+      className={cn("text-foreground font-ui text-lg leading-6", className)}
       {...props}
     />
   );
@@ -157,15 +153,4 @@ function DialogDescription({
   );
 }
 
-export {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogOverlay,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
-};
+export { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle };

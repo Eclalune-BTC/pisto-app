@@ -42,7 +42,7 @@ import { PayablesCard } from "./payables-card";
 const RECENT_SALES = 6;
 const TODAY_MOVEMENTS = 6;
 /** Below this content width the home stacks into one column with the lime hero card. */
-const TWO_COLUMN_MIN_WIDTH = 860;
+const TWO_COLUMN_MIN_WIDTH = 820;
 
 function capitalize(value: string): string {
   return value.charAt(0).toLocaleUpperCase() + value.slice(1);
@@ -94,7 +94,7 @@ export default function OperateHomeScreen() {
         header: t("dataTable.columns.description"),
         meta: { primary: true },
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px]" numberOfLines={1}>
+          <Text className="text-dense" numberOfLines={1}>
             {original.entryMode === "itemized"
               ? (original.customer?.name ?? t("sales.itemized.counterSale"))
               : (original.description ?? t("common.noDescription"))}
@@ -105,7 +105,7 @@ export default function OperateHomeScreen() {
         id: "date",
         header: t("dataTable.columns.date"),
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground tabular-nums">
+          <Text className="text-dense text-muted-foreground tabular-nums">
             {formatLocalizedDateTime(original.occurredAt, locale, original.timeZone)}
           </Text>
         ),
@@ -122,7 +122,7 @@ export default function OperateHomeScreen() {
         cell: ({ row: { original } }) => (
           <Text
             className={cn(
-              "font-ui text-[13px] tabular-nums",
+              "font-ui text-dense tabular-nums",
               original.status === "voided" && "text-muted-foreground line-through",
             )}
           >
@@ -186,7 +186,6 @@ export default function OperateHomeScreen() {
       locale={locale}
       onRangeChange={(next) => router.setParams({ range: next === "30d" ? undefined : next })}
       range={range}
-      receivables={receivablesId ? summary : undefined}
       trend={trend}
     />
   ) : null;
@@ -198,11 +197,11 @@ export default function OperateHomeScreen() {
       role="region"
     >
       <View className="flex-row items-center justify-between gap-2 px-4 pb-1 pt-3.5">
-        <Text accessibilityRole="header" aria-level={2} className="font-heading text-[15px]">
+        <Text accessibilityRole="header" aria-level={2} className="font-heading text-title">
           {t("operate.home.today.title")}
         </Text>
         <Link asChild href={{ pathname: "/operate/movements", params: { range: "today" } }}>
-          <Button accessibilityRole="link" className="h-7 px-1.5" size="sm" variant="ghost">
+          <Button accessibilityRole="link" className="-mr-1.5 h-7 px-1.5" size="sm" variant="ghost">
             <Text className="text-xs text-muted-foreground">{t("operate.home.today.all")}</Text>
           </Button>
         </Link>
@@ -215,7 +214,7 @@ export default function OperateHomeScreen() {
         </View>
       ) : todayMovements.isError && !todayMovements.data ? (
         <View className="items-start gap-2 px-4 pb-4 pt-2">
-          <Text className="text-[13px]">{t("operate.home.today.unavailableTitle")}</Text>
+          <Text className="text-dense">{t("operate.home.today.unavailableTitle")}</Text>
           <Text className="text-xs text-muted-foreground">
             {t("operate.home.today.unavailable")}
           </Text>
@@ -228,7 +227,7 @@ export default function OperateHomeScreen() {
         </View>
       ) : movementItems.length === 0 ? (
         <View className="items-start gap-1 px-4 pb-4 pt-2">
-          <Text className="font-ui text-[13px]">{t("operate.home.today.emptyTitle")}</Text>
+          <Text className="font-ui text-dense">{t("operate.home.today.emptyTitle")}</Text>
           <Text className="text-xs leading-4 text-muted-foreground">
             {t("operate.home.today.emptyDescription")}
           </Text>
@@ -248,16 +247,20 @@ export default function OperateHomeScreen() {
     </View>
   ) : null;
 
+  const inRow = twoColumns ? "min-w-0 flex-1" : undefined;
   const debtorsCard = receivablesId ? (
     <DebtorsCard
       canOpenCustomers={can("customers:read")}
+      className={inRow}
       debtors={debtors}
       locale={locale}
       summary={summary}
     />
   ) : null;
 
-  const payablesCard = payablesId ? <PayablesCard locale={locale} summary={payables} /> : null;
+  const payablesCard = payablesId ? (
+    <PayablesCard className={inRow} locale={locale} summary={payables} />
+  ) : null;
 
   // Sellers cannot read cash, so their home lists the sales they can see instead.
   const salesSection =
@@ -267,7 +270,7 @@ export default function OperateHomeScreen() {
           recentSales.length ? (
             <Link asChild href="/operate/sales">
               <Button accessibilityRole="link" className="gap-1 px-1" size="sm" variant="ghost">
-                <Text className="text-[13px] text-link">{t("operate.home.allSales")}</Text>
+                <Text className="text-dense text-link">{t("operate.home.allSales")}</Text>
               </Button>
             </Link>
           ) : undefined
@@ -340,25 +343,19 @@ export default function OperateHomeScreen() {
         />
       ) : null}
 
-      <View
-        className={cn("min-w-0 gap-4", twoColumns && "flex-row items-start")}
-        onLayout={layout.onLayout}
-      >
-        <View className="min-w-0 flex-1 gap-4">
-          {moneyCard}
-          {twoColumns ? null : <AssistantComposer />}
-          {twoColumns ? null : debtorsCard}
-          {twoColumns ? null : payablesCard}
-          {todayCard}
-          {salesSection}
-        </View>
-        {twoColumns ? (
-          <View className="w-[320px] shrink-0 gap-4">
-            <AssistantComposer />
+      {/* Wide: full-width bands on one grid. Compact: the same blocks stacked, money first. */}
+      <View className="min-w-0 gap-4" onLayout={layout.onLayout}>
+        {twoColumns ? <AssistantComposer layout="bar" /> : null}
+        {moneyCard}
+        {twoColumns ? null : <AssistantComposer />}
+        {debtorsCard || payablesCard ? (
+          <View className={cn("min-w-0 gap-4", twoColumns && "flex-row")}>
             {debtorsCard}
             {payablesCard}
           </View>
         ) : null}
+        {todayCard}
+        {salesSection}
       </View>
     </Page>
   );

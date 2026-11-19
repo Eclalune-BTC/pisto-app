@@ -51,6 +51,11 @@ vi.mock("react", async (importOriginal) => ({
       },
     ];
   },
+  useRef: (initial: unknown) => {
+    const index = fixture.index++;
+    fixture.states[index] ??= { current: initial };
+    return fixture.states[index];
+  },
   useEffect: (effect: () => void) => {
     fixture.effects.push(effect);
   },

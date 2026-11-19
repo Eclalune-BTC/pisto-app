@@ -35,7 +35,7 @@ function AccountNameText({
   const text = (
     <Text
       className={cn(
-        "text-[13px]",
+        "text-dense",
         linked && "text-foreground underline underline-offset-4",
         className,
       )}
@@ -61,7 +61,7 @@ function FetchedAccountName({ businessId, ...props }: Omit<CashAccountNameProps,
   // Offline with nothing cached would otherwise look like a read that never ends.
   if (account.isError || account.fetchStatus === "paused") {
     return (
-      <Text className={cn("text-[13px] text-muted-foreground", props.className)}>
+      <Text className={cn("text-dense text-muted-foreground", props.className)}>
         {t("cash.accountName.unavailable")}
       </Text>
     );

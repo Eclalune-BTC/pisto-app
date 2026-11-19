@@ -521,6 +521,22 @@ describe("expenses and cash repository on PostgreSQL 18", () => {
     expect(summary.periodStartUtc).toBe("2026-08-01T06:00:00.000Z");
     expect(summary.periodEndUtcExclusive).toBe("2026-09-01T06:00:00.000Z");
 
+    // Havana's clocks jump from 00:00 to 01:00 on this date, so its local midnight does not exist.
+    await database.db
+      .update(businessSettings)
+      .set({ timeZone: "America/Havana" })
+      .where(eq(businessSettings.businessId, businessB));
+    const shortDay = await repository.getExpensePeriodSummary(actors.ownerB, {
+      startLocalDate: "2026-03-08",
+      endLocalDate: "2026-03-08",
+    });
+    expect(shortDay.periodStartUtc).toBe("2026-03-08T05:00:00.000Z");
+    expect(shortDay.periodEndUtcExclusive).toBe("2026-03-09T04:00:00.000Z");
+    await database.db
+      .update(businessSettings)
+      .set({ timeZone: "America/New_York" })
+      .where(eq(businessSettings.businessId, businessB));
+
     const otherAccount = await repository.createAccount(actors.ownerB, {
       idempotencyKey: crypto.randomUUID(),
       name: "New York cash",
@@ -542,11 +558,34 @@ describe("expenses and cash repository on PostgreSQL 18", () => {
       }),
     ).rejects.toBeInstanceOf(ProductError);
 
+    const held = (await repository.getAccount(actors.ownerA, secondAccount.account.id))
+      .balanceMinorUnits;
+    expect(BigInt(held)).toBeGreaterThan(0n);
+    await expect(
+      repository.archiveAccount(actors.ownerA, secondAccount.account.id, {
+        idempotencyKey: crypto.randomUUID(),
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect((await repository.getAccount(actors.ownerA, secondAccount.account.id)).status).toBe(
+      "active",
+    );
+    await repository.recordAdjustment(actors.ownerA, {
+      idempotencyKey: crypto.randomUUID(),
+      accountId: secondAccount.account.id,
+      direction: "out",
+      amountMinorUnits: held,
+      currency: "USD",
+      reason: "Empty the account before archiving it",
+      occurredLocalDate: "2026-08-20",
+      occurredLocalTime: "08:00",
+    });
+
     const archiveKey = crypto.randomUUID();
     const archived = await repository.archiveAccount(actors.ownerA, secondAccount.account.id, {
       idempotencyKey: archiveKey,
     });
     expect(archived.account.status).toBe("archived");
+    expect(archived.account.balanceMinorUnits).toBe("0");
     expect(
       (
         await repository.archiveAccount(actors.ownerA, secondAccount.account.id, {

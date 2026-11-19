@@ -63,6 +63,27 @@ describe("notice sentences", () => {
     expect(
       noticeMessage(t, { code: "exceeds_total", field: "received", lineIndex: null }, sale),
     ).toBe("Lo recibido es mayor que el total de la venta.");
+    expect(noticeMessage(t, { code: "missing", field: "product", lineIndex: null }, sale)).toBe(
+      "No pudimos leer todos los productos que dijo; revise las líneas.",
+    );
+    expect(noticeMessage(t, { code: "missing", field: "received", lineIndex: null }, sale)).toBe(
+      "Indique cuánto le pagaron.",
+    );
+  });
+
+  test("an account notice names the account the draft proposes", () => {
+    const account = { id: "00000000-0000-4000-8000-000000000031", name: "Caja principal" };
+
+    expect(
+      noticeMessage(
+        t,
+        { code: "similar_match", field: "account", lineIndex: null },
+        { ...sale, account },
+      ),
+    ).toBe("Hay más de una cuenta para esa forma de pago; confirme que es Caja principal.");
+    expect(() =>
+      noticeMessage(t, { code: "similar_match", field: "account", lineIndex: null }, sale),
+    ).toThrow("An account notice needs the proposed account");
   });
 
   test("never render an untranslated key for any code and field", () => {
@@ -101,6 +122,7 @@ describe("assistant problems", () => {
     expect(assistantProblem(new ApiClientError("x", 0))).toBe("offline");
     expect(assistantProblem(new ApiClientError("x", 429, "RATE_LIMITED"))).toBe("rateLimited");
     expect(assistantProblem(new ApiClientError("x", 403, "FORBIDDEN"))).toBe("denied");
+    expect(assistantProblem(new ApiClientError("x", 503, "WRITES_PAUSED"))).toBe("paused");
     expect(assistantProblem(new ApiClientError("x", 503, "SERVICE_UNAVAILABLE"))).toBe("provider");
     expect(assistantProblem(new Error("x"))).toBe("unexpected");
   });

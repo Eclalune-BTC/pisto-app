@@ -1,6 +1,28 @@
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ApiClientError } from "@/lib/api-error";
-import { keyedCommandPhase } from "@/lib/keyed-command";
+import { keyedCommandPhase, useKeyedCommand } from "@/lib/keyed-command";
+
+const react = vi.hoisted(() => ({ hooks: [] as unknown[], index: 0, mutate: vi.fn() }));
+vi.mock("react", async (original) => ({
+  ...(await original<typeof import("react")>()),
+  useRef: (initial: unknown) => {
+    const index = react.index++;
+    react.hooks[index] ??= { current: initial };
+    return react.hooks[index];
+  },
+  useState: (initial: unknown) => [initial, () => undefined],
+}));
+vi.mock("@tanstack/react-query", () => ({
+  useMutation: () => ({
+    error: null,
+    isError: false,
+    isPending: false,
+    isSuccess: false,
+    mutate: react.mutate,
+    reset: () => undefined,
+    variables: undefined,
+  }),
+}));
 
 const key = "00000000-0000-4000-8000-000000000001";
 
@@ -42,5 +64,36 @@ describe("keyed command phase", () => {
         key,
       ),
     ).toBe("pending");
+  });
+});
+
+describe("keyed command send", () => {
+  const render = () => {
+    react.index = 0;
+    return useKeyedCommand({
+      mutationFn: async (command: { idempotencyKey: string }) => command,
+      onConfirmed: () => undefined,
+    });
+  };
+
+  beforeEach(() => {
+    react.hooks = [];
+    react.mutate.mockClear();
+  });
+
+  test("a second press before the pending state renders sends nothing", () => {
+    const command = render();
+
+    command.send({ idempotencyKey: key });
+    command.send({ idempotencyKey: "00000000-0000-4000-8000-000000000002" });
+
+    expect(react.mutate.mock.calls).toEqual([[{ idempotencyKey: key }]]);
+  });
+
+  test("the next render may send again, as an uncertain retry does", () => {
+    render().send({ idempotencyKey: key });
+    render().send({ idempotencyKey: key });
+
+    expect(react.mutate).toHaveBeenCalledTimes(2);
   });
 });

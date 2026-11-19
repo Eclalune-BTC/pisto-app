@@ -38,7 +38,7 @@ export function Field({
   return (
     <View className="min-w-0 gap-1.5">
       <FieldLabel marker={marker}>
-        <Label className="text-[13px]" htmlFor={inputId}>
+        <Label className="text-dense" htmlFor={inputId}>
           {label}
         </Label>
       </FieldLabel>
@@ -61,7 +61,7 @@ export function Field({
           nativeID={`${id}-error`}
           accessibilityLiveRegion="polite"
           accessibilityRole="alert"
-          className="text-[13px] leading-5 text-destructive"
+          className="text-dense text-destructive"
         >
           {error}
         </Text>

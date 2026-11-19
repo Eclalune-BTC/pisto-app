@@ -9,7 +9,7 @@ import { type AssistantProblem, assistantProblem } from "./problems";
 import { assistantQueryKeys } from "./queries";
 import { reviewStore } from "./review-store";
 
-export const REVIEW_ROUTE = "/operate/assistant/review";
+const REVIEW_ROUTE = "/operate/assistant/review";
 
 export type InterpretOutcome =
   | { kind: "review" }

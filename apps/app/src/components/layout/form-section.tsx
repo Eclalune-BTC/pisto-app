@@ -17,7 +17,7 @@ export function FormSection({ children, description, title }: FormSectionProps) 
           {title}
         </Heading>
         {description ? (
-          <Text className="text-[13px] leading-5 text-muted-foreground">{description}</Text>
+          <Text className="text-dense text-muted-foreground">{description}</Text>
         ) : null}
       </View>
       <View className="min-w-0 flex-1 gap-4">{children}</View>

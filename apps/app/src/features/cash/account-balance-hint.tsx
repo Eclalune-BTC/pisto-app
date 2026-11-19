@@ -10,11 +10,11 @@ export function AccountBalanceHint({ account }: { account: CashAccount | undefin
   const { i18n, t } = useTranslation();
   if (!account) return null;
   return (
-    <Text className="text-[13px] leading-5 text-muted-foreground">
+    <Text className="text-dense text-muted-foreground">
       {t("cash.fields.currentBalance")}{" "}
       <Text
         className={cn(
-          "font-ui text-[13px] tabular-nums text-foreground",
+          "font-ui text-dense tabular-nums text-foreground",
           account.balanceMinorUnits.startsWith("-") && "text-destructive",
         )}
       >

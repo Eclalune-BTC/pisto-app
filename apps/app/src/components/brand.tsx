@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import Svg, { Path, Rect } from "react-native-svg";
+import Svg, { G, Path, Rect } from "react-native-svg";
 import { useCSSVariable } from "uniwind";
 import { Text } from "@/components/ui/text";
 
@@ -9,17 +9,21 @@ import mark from "../../assets/brand/mark.json";
 
 type BrandProps = {
   compact?: boolean;
-  /** For the dark brand panel: the wordmark turns light, the mark keeps its own colors. */
+  /** On the forest-green brand panel: the tile turns lime and the wordmark light. */
   inverse?: boolean;
 };
 
-/** The forest-green mark with the lime monogram, the same in both themes, like the prototypes. */
+/**
+ * Pisto's mark on its tile, beside the wordmark: a lime ring standing on one leg, which reads as
+ * a "p" and as a coin, on forest green. The tile keeps its two colours in both themes.
+ */
 export function Brand({ compact = false, inverse = false }: BrandProps) {
   const { t } = useTranslation();
-  const [brand, brandForeground] = useCSSVariable([
-    "--color-brand",
-    "--color-brand-foreground",
-  ]) as [string, string];
+  const [tile, glyph] = useCSSVariable(["--color-brand", "--color-brand-foreground"]) as [
+    string,
+    string,
+  ];
+  const size = compact ? 28 : 26;
 
   return (
     <View
@@ -27,14 +31,16 @@ export function Brand({ compact = false, inverse = false }: BrandProps) {
       accessibilityLabel={t("common.appName")}
       className="flex-row items-center gap-2"
     >
-      <Svg aria-hidden height={compact ? 28 : 26} viewBox={mark.viewBox} width={compact ? 28 : 26}>
-        <Rect fill={brand} height={64} rx={14} width={64} />
-        <Path d={mark.path} fill={brandForeground} fillRule="evenodd" />
+      <Svg aria-hidden height={size} viewBox={mark.viewBox} width={size}>
+        <Rect fill={inverse ? glyph : tile} height={64} rx={mark.radius} width={64} />
+        <G transform="translate(32 32) scale(0.64) translate(-32 -32)">
+          <Path d={mark.path} fill={inverse ? tile : glyph} fillRule="evenodd" />
+        </G>
       </Svg>
       {!compact ? (
         <Text
           className={cn(
-            "font-heading font-normal text-[19px] leading-6 tracking-[-0.5px]",
+            "font-heading text-title-lg tracking-[-0.7px]",
             inverse ? "text-primary-foreground" : "text-foreground",
           )}
         >

@@ -10,7 +10,7 @@ import { and, eq } from "drizzle-orm";
 import { ApiError } from "./errors.ts";
 import { requireSession, toProductActor } from "./session.ts";
 
-export const realtimePath = "/v1/realtime";
+const realtimePath = "/v1/realtime";
 
 /** The part of a server-side WebSocket the hub needs; Bun and Workers sockets both fit. */
 export interface RealtimeSocket {

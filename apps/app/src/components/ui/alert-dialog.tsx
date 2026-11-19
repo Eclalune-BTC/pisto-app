@@ -12,8 +12,6 @@ import { cn } from "@/lib/cn";
 
 const AlertDialog = AlertDialogPrimitive.Root;
 
-const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
-
 const AlertDialogPortal = AlertDialogPrimitive.Portal;
 
 const FullWindowOverlay = Platform.OS === "ios" ? RNFullWindowOverlay : React.Fragment;
@@ -62,7 +60,7 @@ function AlertDialogContent({
       <AlertDialogOverlay>
         <AlertDialogPrimitive.Content
           className={cn(
-            "bg-background border-border z-50 flex w-full flex-col gap-4 rounded-lg border p-5 shadow-xl shadow-black/15 sm:max-w-md",
+            "bg-background border-border z-50 flex w-full flex-col gap-4 rounded-2xl border p-6 shadow-xl shadow-black/15 sm:max-w-md",
             Platform.select({
               web: "pisto-enter-pop max-w-[calc(100%-2rem)] outline-none",
             }),
@@ -98,7 +96,7 @@ function AlertDialogTitle({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Title>) {
   return (
     <AlertDialogPrimitive.Title
-      className={cn("text-foreground text-base font-heading leading-6", className)}
+      className={cn("text-foreground font-ui text-lg leading-6", className)}
       {...props}
     />
   );
@@ -113,17 +111,6 @@ function AlertDialogDescription({
       className={cn("text-muted-foreground text-sm", className)}
       {...props}
     />
-  );
-}
-
-function AlertDialogAction({
-  className,
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
-  return (
-    <TextClassContext.Provider value={buttonTextVariants({ className })}>
-      <AlertDialogPrimitive.Action className={cn(buttonVariants(), className)} {...props} />
-    </TextClassContext.Provider>
   );
 }
 
@@ -143,14 +130,10 @@ function AlertDialogCancel({
 
 export {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogOverlay,
-  AlertDialogPortal,
   AlertDialogTitle,
-  AlertDialogTrigger,
 };

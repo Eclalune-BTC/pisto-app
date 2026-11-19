@@ -10,7 +10,7 @@ export const common = {
   uncertainTitle: "No sabemos si llegó la confirmación",
   reviewFailedTitle: "No se completó la operación",
   reviewUncertainDescription:
-    "No pudimos confirmar el resultado. Reintenta la misma confirmación: Pisto la reconoce y no la registra dos veces.",
+    "No pudimos confirmar el resultado. Reintente la misma confirmación: Pisto la reconoce y no la registra dos veces.",
   cancel: "Cancelar",
   editData: "Editar datos",
   yes: "Sí",

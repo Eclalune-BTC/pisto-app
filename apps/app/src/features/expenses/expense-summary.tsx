@@ -83,7 +83,7 @@ export function ExpenseCategoryBreakdown({
         header: t("dataTable.columns.category"),
         meta: { primary: true },
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px]">{labels[original.category]}</Text>
+          <Text className="text-dense">{labels[original.category]}</Text>
         ),
       },
       {
@@ -91,7 +91,7 @@ export function ExpenseCategoryBreakdown({
         header: t("expenses.summary.expenseCount"),
         // Not end-aligned: compact rows take the first end-aligned column as the row's figure.
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground tabular-nums">
+          <Text className="text-dense text-muted-foreground tabular-nums">
             {format.count(original.expenseCount)}
           </Text>
         ),
@@ -101,7 +101,7 @@ export function ExpenseCategoryBreakdown({
         header: t("dataTable.columns.amount"),
         meta: { align: "end" },
         cell: ({ row: { original } }) => (
-          <Text className="font-ui text-[13px] tabular-nums">
+          <Text className="font-ui text-dense tabular-nums">
             {format.money(original.amountMinorUnits)}
           </Text>
         ),
@@ -117,7 +117,7 @@ export function ExpenseCategoryBreakdown({
         getRowId={(category) => category.category}
       />
     ) : (
-      <Text className="text-[13px] text-muted-foreground">{t("expenses.summary.noExpenses")}</Text>
+      <Text className="text-dense text-muted-foreground">{t("expenses.summary.noExpenses")}</Text>
     );
   if (level === 2) return <Section title={t("expenses.summary.byCategory")}>{content}</Section>;
   return (

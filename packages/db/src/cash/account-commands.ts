@@ -223,6 +223,11 @@ export function createAccountCommands(db: Database): AccountCommands {
           throw new ProductError("CONFLICT", "Cash account is already archived");
         }
         const balance = await getAccountBalance(tx, businessId, accountId);
+        // An archived account takes no transfer, adjustment or expense and cannot be restored, so
+        // archiving one that still holds or owes money would strand that balance.
+        if (balance !== 0n) {
+          throw new ProductError("CONFLICT", "A cash account with a balance cannot be archived");
+        }
         const [archived] = await tx
           .update(cashAccount)
           .set({ status: "archived" })

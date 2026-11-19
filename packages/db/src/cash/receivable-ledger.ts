@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 
 import type { AuthorizedBusinessContext, DatabaseTransaction } from "../business-access.ts";
 import { ProductError } from "../errors.ts";
-import { cashMovement } from "../schema/cash.ts";
+import { cashAccount, cashMovement } from "../schema/cash.ts";
 import { getAccountBalance, lockAccount, requireSufficientBalance } from "./records.ts";
 import type { CashMovementRecord } from "./types.ts";
 
@@ -32,6 +32,25 @@ function requireMatchingMoneySnapshot(
       "The receivable payment currency does not match the business cash ledger",
     );
   }
+}
+
+/**
+ * A payment row references its account by foreign key, so an account that is not in the business
+ * is refused here, before that insert, as a product error. It takes no lock: accounts are never
+ * deleted, and the lock with the active and currency checks belongs to the cash movement, which
+ * concurrent payments into one account take only after their own payment insert.
+ */
+export async function requireBusinessCashAccount(
+  tx: DatabaseTransaction,
+  businessId: string,
+  accountId: string,
+): Promise<void> {
+  const [found] = await tx
+    .select({ id: cashAccount.id })
+    .from(cashAccount)
+    .where(and(eq(cashAccount.businessId, businessId), eq(cashAccount.id, accountId)))
+    .limit(1);
+  if (!found) throw new ProductError("NOT_FOUND", "Cash account was not found");
 }
 
 export async function appendReceivablePaymentCashMovement(
@@ -93,9 +112,8 @@ export async function reverseReceivablePaymentCashMovement(
     )
     .limit(1)
     .for("update");
-  if (!original) {
-    throw new ProductError("CONFLICT", "The payment has no matching cash movement to reverse");
-  }
+  // A payment and its cash movement commit together, so a missing movement is a broken ledger.
+  if (!original) throw new Error("The receivable payment has no cash movement to reverse");
   const [priorReversal] = await tx
     .select({ id: cashMovement.id })
     .from(cashMovement)

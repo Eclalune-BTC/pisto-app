@@ -1,8 +1,8 @@
 import type { BillingCapabilities } from "@/lib/billing/billing-policy";
 
-export type BillingUnavailableReason = "native-store-not-configured";
+type BillingUnavailableReason = "native-store-not-configured";
 
-export type BillingActionResult =
+type BillingActionResult =
   | { status: "opened" }
   | { status: "unavailable"; reason: BillingUnavailableReason };
 

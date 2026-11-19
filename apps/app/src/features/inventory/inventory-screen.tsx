@@ -31,7 +31,7 @@ import {
 import { quantityText } from "../catalog/format";
 import { SEARCH_MAX_LENGTH } from "../catalog/search-params";
 
-export type StockItem = StockListResponse["data"]["items"][number];
+type StockItem = StockListResponse["data"]["items"][number];
 
 export type InventoryCollectionState =
   | { status: "loading" }
@@ -120,7 +120,7 @@ export function InventoryScreen({
           header: t("inventory.list.product"),
           meta: { primary: true },
           cell: ({ row: { original } }) => (
-            <Text className="text-[13px]" numberOfLines={2}>
+            <Text className="text-dense" numberOfLines={2}>
               {original.item.product.name}
             </Text>
           ),
@@ -177,7 +177,7 @@ export function InventoryScreen({
             original.item.stock.lowStockThresholdMinorUnits === null ? (
               <MissingValue label={t("inventory.list.noThreshold")} />
             ) : (
-              <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
+              <Text className="text-dense text-muted-foreground tabular-nums" numberOfLines={1}>
                 {quantityText(t, locale, {
                   minorUnits: original.item.stock.lowStockThresholdMinorUnits,
                   precision: original.item.stock.quantityPrecision,

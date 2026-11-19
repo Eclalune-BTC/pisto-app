@@ -272,6 +272,59 @@ describe("customers and receivables repository on PostgreSQL 18", () => {
     expect(archived.customer.status).toBe("archived");
   });
 
+  test("refuses a payment into an account that is unknown, foreign or archived", async () => {
+    const created = await repository.createCustomer(actor("ownerA", businessA), {
+      idempotencyKey: crypto.randomUUID(),
+      name: "Account Check Customer",
+    });
+    const posted = await repository.postReceivable(actor("ownerA", businessA), {
+      idempotencyKey: crypto.randomUUID(),
+      customerId: created.customer.id,
+      originalMinorUnits: "400",
+      description: "Charge for the account checks",
+      postedDate: "2026-08-01",
+    });
+    const payInto = (cashAccountId: string) =>
+      repository.applyPayment(actor("ownerA", businessA), posted.receivable.id, {
+        idempotencyKey: crypto.randomUUID(),
+        amountMinorUnits: "100",
+        occurredLocalDate: "2026-08-02",
+        occurredLocalTime: "09:00",
+        cashAccountId,
+      });
+    const foreign = await cash.createAccount(actor("ownerB", businessB), {
+      idempotencyKey: crypto.randomUUID(),
+      name: `Foreign cash ${runId.slice(0, 8)}`,
+      kind: "cash",
+      allowNegativeBalance: false,
+      currency: "USD",
+      opening: null,
+    });
+    const retired = await cash.createAccount(actor("ownerA", businessA), {
+      idempotencyKey: crypto.randomUUID(),
+      name: `Retired cash ${runId.slice(0, 8)}`,
+      kind: "cash",
+      allowNegativeBalance: false,
+      currency: "USD",
+      opening: null,
+    });
+    await cash.archiveAccount(actor("ownerA", businessA), retired.account.id, {
+      idempotencyKey: crypto.randomUUID(),
+    });
+
+    await expect(payInto(crypto.randomUUID())).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(payInto(foreign.account.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(payInto(retired.account.id)).rejects.toMatchObject({ code: "CONFLICT" });
+    const detail = await repository.getReceivable(actor("ownerA", businessA), posted.receivable.id);
+    expect(detail.receivable.outstandingMinorUnits).toBe("400");
+
+    // The suite shares one business, so the charge is voided to leave its totals untouched.
+    await repository.voidReceivable(actor("ownerA", businessA), posted.receivable.id, {
+      idempotencyKey: crypto.randomUUID(),
+      reason: "Account checks finished",
+    });
+  });
+
   test("serializes payments, replays exactly, derives overdue locally, and reverses once", async () => {
     const createdCustomer = await repository.createCustomer(actor("ownerA", businessA), {
       idempotencyKey: crypto.randomUUID(),

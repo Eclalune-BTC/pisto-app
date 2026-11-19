@@ -1,11 +1,11 @@
 export const operate = {
-  loading: "Consultando las operaciones de tu negocio…",
+  loading: "Consultando las operaciones de su negocio…",
   unavailableTitle: "No pudimos abrir las operaciones",
   unavailableDescription:
-    "No pudimos comprobar tu acceso a las operaciones. Revisa tu conexión y vuelve a intentarlo.",
-  noAccessTitle: "No tienes acceso a estas operaciones",
+    "No pudimos comprobar su acceso a las operaciones. Revise su conexión y vuelva a intentarlo.",
+  noAccessTitle: "No tiene acceso a estas operaciones",
   noAccessDescription:
-    "Tu membresía no incluye permisos de lectura para estas operaciones. Pídele acceso a una persona administradora del negocio.",
+    "Su membresía no incluye permisos de lectura para estas operaciones. Pida acceso a una persona administradora del negocio.",
   home: {
     title: "Hoy",
     money: {
@@ -31,7 +31,6 @@ export const operate = {
       },
       owed: "Le deben",
       overdue: "{{amount}} vencido",
-      nothingOverdue: "Nada vencido",
     },
     today: {
       title: "Movimientos de hoy",
@@ -85,11 +84,11 @@ export const operate = {
     },
     sales: {
       label: "Ventas",
-      description: "Registra ingresos y consulta el historial de ventas.",
+      description: "Registre ingresos y consulte el historial de ventas.",
     },
     expenses: {
       label: "Gastos",
-      description: "Registra egresos revisados y consulta sus categorías.",
+      description: "Registre egresos revisados y consulte sus categorías.",
     },
     cash: {
       label: "Caja y bancos",
@@ -101,11 +100,11 @@ export const operate = {
     },
     inventory: {
       label: "Inventario",
-      description: "Consulta existencias y registra movimientos verificables.",
+      description: "Consulte existencias y registre movimientos verificables.",
     },
     customers: {
       label: "Clientes",
-      description: "Mantén los datos y el historial de cada cliente.",
+      description: "Mantenga los datos y el historial de cada cliente.",
     },
     receivables: {
       label: "Por cobrar",
@@ -121,7 +120,7 @@ export const operate = {
     },
     reports: {
       label: "Reportes",
-      description: "Consulta cifras exactas de un período y la posición operativa actual.",
+      description: "Consulte cifras exactas de un período y la posición operativa actual.",
     },
   },
 } as const;

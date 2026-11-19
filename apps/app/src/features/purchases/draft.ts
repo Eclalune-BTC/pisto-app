@@ -28,7 +28,7 @@ export type PurchaseDraftIssue =
   | "total"
   | "unit-cost";
 
-export type Choice = { id: string; name: string };
+type Choice = { id: string; name: string };
 
 export type PurchaseLineDraft = {
   /** Stable row identity while lines are added and removed. */
@@ -66,7 +66,7 @@ export type PurchaseDraftIssues = {
 };
 
 /** The calendar date `days` after a valid local date. */
-export function addCalendarDays(localDate: string, days: number): string {
+function addCalendarDays(localDate: string, days: number): string {
   const date = new Date(`${localDate}T00:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
@@ -79,12 +79,12 @@ export function defaultDueDate(purchaseDate: string, creditDays: number | null):
 }
 
 /** Quantity text scaled by the product precision, like the inventory ledger. */
-export function parseQuantity(text: string, quantityPrecision: number): string | null {
+function parseQuantity(text: string, quantityPrecision: number): string | null {
   const parsed = parseAmountToMinorUnits(text, quantityPrecision);
   return "value" in parsed ? parsed.value : null;
 }
 
-export function parseUnitCost(text: string, currencyMinorUnitDigits: number): string | null {
+function parseUnitCost(text: string, currencyMinorUnitDigits: number): string | null {
   const parsed = parseAmountToMinorUnits(text, currencyMinorUnitDigits, { allowZero: true });
   return "value" in parsed ? parsed.value : null;
 }

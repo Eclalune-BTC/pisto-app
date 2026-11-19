@@ -25,16 +25,6 @@ import type {
 import type { ProductActor } from "../business-access.ts";
 import type { cashAccount, cashMovement, cashTransfer, expense } from "../schema/cash.ts";
 
-export type CashOperationAction =
-  | "cash_account.create"
-  | "cash_account.update"
-  | "cash_account.archive"
-  | "expense.post"
-  | "expense.void"
-  | "cash.adjust"
-  | "cash.reverse"
-  | "cash.transfer";
-
 export type CashAccountRecord = typeof cashAccount.$inferSelect;
 export type CashMovementRecord = typeof cashMovement.$inferSelect;
 export type CashTransferRecord = typeof cashTransfer.$inferSelect;

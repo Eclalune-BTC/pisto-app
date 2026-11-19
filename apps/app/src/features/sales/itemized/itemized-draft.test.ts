@@ -251,4 +251,58 @@ describe("assistant draft prefill", () => {
       dueDate: "",
     });
   });
+
+  const coffeeLine = (quantityMinorUnits: string | null, heard: string) => ({
+    heard,
+    product: { id: coffee.id, name: coffee.name, exact: true },
+    quantityMinorUnits,
+    quantityPrecision: quantityMinorUnits === null ? null : 0,
+    unitAmountMinorUnits: null,
+    subtotalMinorUnits: null,
+  });
+  const prefillOf = (lines: AssistantSaleDraft["lines"]) =>
+    draftFromAssistant({
+      accounts: [cashAccount],
+      assistant: { ...assistant, lines },
+      currencyDigits: 2,
+      products: new Map([[coffee.id, { product: coffee, stock: stock(coffee.id, "12") }]]),
+    });
+
+  test("a product said twice adds to its one line", () => {
+    const prefill = prefillOf([coffeeLine("2", "dos cafés"), coffeeLine("1", "otro café")]);
+
+    expect(prefill.draft.lines.map(({ quantity }) => quantity)).toEqual(["3"]);
+    expect(prefill.unmatched).toEqual([]);
+  });
+
+  test("a second mention without a readable quantity is listed, never dropped", () => {
+    const prefill = prefillOf([coffeeLine("2", "dos cafés"), coffeeLine(null, "más café")]);
+
+    expect(prefill.draft.lines.map(({ quantity }) => quantity)).toEqual(["2"]);
+    expect(prefill.unmatched).toEqual(["más café"]);
+
+    const unknownFirst = prefillOf([coffeeLine(null, "café"), coffeeLine("1", "otro café")]);
+    expect(unknownFirst.draft.lines.map(({ quantity }) => quantity)).toEqual([""]);
+    expect(unknownFirst.unmatched).toEqual(["otro café"]);
+  });
+});
+
+describe("itemized sale totals", () => {
+  test("a line without a price leaves the total and the balance unknown, not zero", () => {
+    const totals = draftTotals(
+      draft({
+        lines: [
+          { product: coffee, stock: null, quantity: "2", unitPrice: "3.25" },
+          { product: cheese, stock: null, quantity: "1", unitPrice: "" },
+        ],
+      }),
+      2,
+    );
+
+    expect(totals).toEqual({
+      totalMinorUnits: null,
+      receivedMinorUnits: null,
+      balanceMinorUnits: null,
+    });
+  });
 });

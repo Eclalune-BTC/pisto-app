@@ -61,7 +61,7 @@ function SuppliersTable({
         cell: ({ row: { original } }) => (
           <View className="min-w-0 max-w-[15rem]">
             <Text
-              className={selectedId === original.id ? "font-ui text-[13px]" : "text-[13px]"}
+              className={selectedId === original.id ? "font-ui text-dense" : "text-dense"}
               numberOfLines={1}
             >
               {original.name}
@@ -86,7 +86,7 @@ function SuppliersTable({
         header: t("purchases.suppliers.columns.contact"),
         cell: ({ row: { original } }) => (
           <View className="min-w-0 max-w-[11rem]">
-            <Text className="text-[13px]" numberOfLines={1}>
+            <Text className="text-dense" numberOfLines={1}>
               {original.contactName ?? t("purchases.supplier.notProvided")}
             </Text>
             {original.phone ? (
@@ -105,7 +105,7 @@ function SuppliersTable({
         id: "lastPurchase",
         header: t("purchases.suppliers.columns.lastPurchase"),
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
+          <Text className="text-dense text-muted-foreground tabular-nums" numberOfLines={1}>
             {original.balance.lastPurchaseLocalDate
               ? format.date(original.balance.lastPurchaseLocalDate)
               : t("purchases.suppliers.noPurchases")}

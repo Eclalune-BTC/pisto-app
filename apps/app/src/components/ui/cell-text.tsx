@@ -19,7 +19,7 @@ export function CellText({
 }) {
   return (
     <View className={cn("min-w-0", maxWidth)}>
-      <Text className={cn("text-[13px]", className)} numberOfLines={1}>
+      <Text className={cn("text-dense", className)} numberOfLines={1}>
         {children}
       </Text>
     </View>

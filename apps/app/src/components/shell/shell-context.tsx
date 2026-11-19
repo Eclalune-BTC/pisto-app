@@ -10,7 +10,7 @@ import {
 } from "react";
 import type { ShellRoute } from "@/lib/route-trail";
 
-export const TOP_BAR_HEIGHT = 48;
+const TOP_BAR_HEIGHT = 48;
 
 type RouteLabels = Readonly<Partial<Record<ShellRoute, string>>>;
 

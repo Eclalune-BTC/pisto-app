@@ -59,7 +59,7 @@ export function TranscriptMarker({
     >
       <Text
         className={cn(
-          "font-ui text-[10px] leading-3",
+          "font-ui text-micro leading-3",
           tone === "inverse" ? "text-highlight-foreground" : "text-primary-foreground",
         )}
       >

@@ -104,6 +104,8 @@ export const assistant = {
       date: "La fecha que dijo está fuera del rango permitido; usamos la de hoy.",
       dueDate: "No pudimos usar la fecha de pago que dijo; elija una.",
       credit: "Indique si la compra fue al contado o al crédito.",
+      product: "No pudimos leer todos los productos que dijo; revise las líneas.",
+      invoice: "No pudimos leer el número de factura; escríbalo si lo necesita.",
       other: "Falta un dato; revíselo en el formulario.",
     },
     notFound: {
@@ -121,6 +123,7 @@ export const assistant = {
       supplierChoose: "Hay varios proveedores parecidos a «{{heard}}»; elija uno.",
       product: "Confirme que «{{item}}» es {{name}}.",
       productChoose: "Hay varios productos parecidos a «{{item}}»; elija uno.",
+      account: "Hay más de una cuenta para esa forma de pago; confirme que es {{name}}.",
     },
     exceeds: {
       received: "Lo recibido es mayor que el total de la venta.",

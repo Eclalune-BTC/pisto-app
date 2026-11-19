@@ -3,7 +3,7 @@ import { Info } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { FormActions } from "@/components/layout/form-actions";
-import { Section } from "@/components/layout/section";
+import { FormSection } from "@/components/layout/form-section";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Field } from "@/components/ui/field";
 import type { CustomerDraftValues } from "./draft";
@@ -33,7 +33,7 @@ export function CustomerForm({
   const { t } = useTranslation();
   return (
     <View className="gap-8">
-      <Section title={t("customers.form.identity")}>
+      <FormSection title={t("customers.form.identity")}>
         <Field
           autoCapitalize="words"
           error={errors.name}
@@ -43,8 +43,8 @@ export function CustomerForm({
           placeholder={t("customers.form.namePlaceholder")}
           value={values.name}
         />
-      </Section>
-      <Section
+      </FormSection>
+      <FormSection
         description={t("customers.form.contactDescription")}
         title={t("customers.form.contact")}
       >
@@ -83,7 +83,7 @@ export function CustomerForm({
           placeholder={t("customers.form.notesPlaceholder")}
           value={values.notes}
         />
-      </Section>
+      </FormSection>
       {formError ? (
         <Alert icon={Info}>
           <AlertDescription>{formError}</AlertDescription>

@@ -78,7 +78,7 @@ export function DataTableSurface<T>(props: DataTableSurfaceProps<T>) {
                         <td key={cell.id} data-align={column.meta?.align}>
                           {href && column.meta?.primary ? (
                             <Link asChild href={href}>
-                              <Text className="font-ui text-[13px] text-foreground web:hover:underline web:underline-offset-4">
+                              <Text className="font-ui text-dense text-foreground web:hover:underline web:underline-offset-4">
                                 {content}
                               </Text>
                             </Link>

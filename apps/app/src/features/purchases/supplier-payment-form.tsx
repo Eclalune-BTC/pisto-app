@@ -11,7 +11,6 @@ import { CircleAlert, TriangleAlert } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -26,6 +25,7 @@ import { readState } from "@/features/customers/read-state";
 import { useCommand } from "@/features/customers/use-command";
 import { CashAccountPickerDialog } from "@/features/receivables/cash-account-picker";
 import { cn } from "@/lib/cn";
+import { EMPTY_VALUE } from "@/lib/empty-value";
 import { currentLocalDateTime, toDecimalString } from "@/lib/money";
 import { notify } from "@/lib/notify";
 import { purchasesApi } from "./api";
@@ -183,7 +183,7 @@ function PaymentFormBody({
 
   return (
     <View className="gap-4">
-      {requestedPurchaseId === undefined && assistantDraft?.purchase === undefined ? (
+      {requestedPurchaseId === undefined && !assistantDraft?.purchase ? (
         <PickerField
           error={issues.purchase ? t("purchases.payment.validation.purchase") : undefined}
           label={t("purchases.payment.purchase")}
@@ -294,13 +294,15 @@ function PaymentFormBody({
               <SummaryRow
                 label={t("purchases.payment.paymentLine")}
                 value={
-                  after === null ? "—" : `−${money((BigInt(balance) - BigInt(after)).toString())}`
+                  after === null
+                    ? EMPTY_VALUE
+                    : `−${money((BigInt(balance) - BigInt(after)).toString())}`
                 }
               />
               <SummaryRow
                 emphasis
                 label={t("purchases.payment.balanceAfter")}
-                value={after === null ? "—" : money(after)}
+                value={after === null ? EMPTY_VALUE : money(after)}
               />
             </View>
           ) : null}
@@ -319,7 +321,10 @@ function PaymentFormBody({
       <View className="flex-row flex-wrap items-center justify-end gap-2">
         <Button disabled={busy} label={t("common.cancel")} onPress={onCancel} variant="outline" />
         <Button
-          disabled={nothingOwed || state.phase === "pending" || !canManage}
+          disabled={
+            state.phase === "pending" ||
+            (state.phase !== "uncertain" && (nothingOwed || !canManage))
+          }
           label={
             state.phase === "uncertain" ? t("purchases.payment.retry") : t("purchases.payment.save")
           }
@@ -345,7 +350,7 @@ function PaymentFormBody({
         open={purchasePickerOpen}
         returnFocusRef={purchaseRef}
         selectedId={chosenPurchase?.id ?? null}
-        supplierId={supplierId}
+        supplierId={supplierId ?? assistantDraft?.supplier.match?.id}
       />
     </View>
   );
@@ -363,16 +368,13 @@ function SummaryRow({
   return (
     <View className="flex-row items-center justify-between gap-3">
       <Text
-        className={cn(
-          "text-[13px]",
-          emphasis ? "font-ui text-foreground" : "text-muted-foreground",
-        )}
+        className={cn("text-dense", emphasis ? "font-ui text-foreground" : "text-muted-foreground")}
       >
         {label}
       </Text>
       <Text
         className={cn(
-          "text-[13px] tabular-nums",
+          "text-dense tabular-nums",
           emphasis ? "font-ui text-foreground" : "text-muted-foreground",
         )}
       >

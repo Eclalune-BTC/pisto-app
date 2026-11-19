@@ -70,12 +70,15 @@ export function MoneyTrendChart({
   const { t } = useTranslation();
   const [width, setWidth] = useState(0);
   const [active, setActive] = useState<number | null>(null);
-  const [primary, chartFill, highlightStrong, border] = useCSSVariable([
+  const [primary, chartFill, highlightStrong, highlightInk, border] = useCSSVariable([
     "--color-primary",
     "--color-chart-fill",
     "--color-highlight-strong",
+    "--color-highlight-foreground",
     "--color-border",
-  ]) as [string, string, string, string];
+  ]) as [string, string, string, string, string];
+  // The lime card keeps its own ink in both themes; the primary colour is lime in the dark one.
+  const ink = tone === "card" ? primary : highlightInk;
   const points = trend.points;
   const money = (minorUnits: string) =>
     formatMinorUnits(minorUnits, trend.currency, trend.currencyMinorUnitDigits, locale);
@@ -105,7 +108,7 @@ export function MoneyTrendChart({
             {[0.25, 0.5, 0.75].map((fraction) => (
               <Line
                 key={fraction}
-                stroke={tone === "card" ? border : primary}
+                stroke={tone === "card" ? border : ink}
                 strokeDasharray="2 4"
                 strokeOpacity={tone === "card" ? 1 : 0.18}
                 strokeWidth={1}
@@ -119,7 +122,7 @@ export function MoneyTrendChart({
             <Path
               d={geometry.line}
               fill="none"
-              stroke={primary}
+              stroke={ink}
               strokeLinejoin="round"
               strokeWidth={2}
             />
@@ -127,7 +130,7 @@ export function MoneyTrendChart({
               <>
                 {active !== null ? (
                   <Line
-                    stroke={primary}
+                    stroke={ink}
                     strokeOpacity={0.35}
                     strokeWidth={1}
                     x1={shownCoordinate.x}
@@ -136,7 +139,7 @@ export function MoneyTrendChart({
                     y2={height}
                   />
                 ) : null}
-                <Circle cx={shownCoordinate.x} cy={shownCoordinate.y} fill={primary} r={4} />
+                <Circle cx={shownCoordinate.x} cy={shownCoordinate.y} fill={ink} r={4} />
               </>
             ) : null}
           </Svg>
@@ -167,10 +170,10 @@ export function MoneyTrendChart({
               width: 140,
             }}
           >
-            <Text className="text-[11px] leading-4 text-muted-foreground">
+            <Text className="text-micro text-muted-foreground">
               {formatLocalDate(shownPoint.localDate, locale)}
             </Text>
-            <Text className="font-ui text-[13px] leading-4 tabular-nums">
+            <Text className="font-ui text-dense leading-4 tabular-nums">
               {money(shownPoint.closingMinorUnits)}
             </Text>
           </View>
@@ -183,9 +186,9 @@ export function MoneyTrendChart({
           return (
             <Text
               className={cn(
-                "text-[11px] leading-4 tabular-nums",
+                "text-micro tabular-nums",
                 index === lastIndex
-                  ? "font-ui text-foreground"
+                  ? cn("font-ui", tone === "card" ? "text-foreground" : "text-highlight-foreground")
                   : tone === "card"
                     ? "text-muted-foreground"
                     : "text-highlight-foreground/70",

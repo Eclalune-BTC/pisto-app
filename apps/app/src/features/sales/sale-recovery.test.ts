@@ -268,6 +268,50 @@ beforeEach(() => {
   });
 });
 
+describe("how a new sale opens", () => {
+  const modes = () => {
+    fixture.hookIndex = 0;
+    return NewSaleModes({
+      business: fixture.businesses.data.business,
+      businessStale: false,
+      businessFetching: false,
+      onRefreshBusiness: fixture.businesses.refetch,
+    });
+  };
+
+  test("with products when the first read finds no review", () => {
+    expect(modes().type).not.toBe(SaleReviewScreen);
+  });
+
+  test("on the pending review when one exists", () => {
+    restore(review());
+    expect(modes().type).toBe(SaleReviewScreen);
+  });
+
+  test.each(["error", "paused"])(
+    "on the recovery screen while the review read is %s and unanswered",
+    (kind) => {
+      fixture.recovery.data = undefined;
+      if (kind === "error") {
+        fixture.recovery.isError = true;
+        fixture.recovery.error = new ApiClientError("Failed", 503);
+      } else {
+        fixture.recovery.isPending = true;
+        fixture.recovery.fetchStatus = "paused";
+      }
+      expect(modes().type).toBe(SaleReviewScreen);
+    },
+  );
+
+  test("keeps the form it opened with when a later read finds a review", () => {
+    expect(modes().type).not.toBe(SaleReviewScreen);
+    // The mode latched by the first render is read back by the next one.
+    modes();
+    restore(review());
+    expect(modes().type).not.toBe(SaleReviewScreen);
+  });
+});
+
 describe("new sale durable recovery screen", () => {
   test("keys the editor by business so a business change discards only local component state", () => {
     const tree = NewSaleScreen();

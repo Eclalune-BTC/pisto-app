@@ -5,7 +5,7 @@ import { Text } from "@/components/ui/text";
 
 function Rows({ count }: { count: number }) {
   return (
-    <View className="overflow-hidden rounded-lg border border-border bg-card">
+    <View className="overflow-hidden rounded-xl border border-border bg-card">
       <View className="h-9 flex-row items-center gap-6 border-b border-border bg-muted px-3">
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-3 w-16" />
@@ -48,7 +48,7 @@ export function ContentSkeleton({
         </View>
       )}
       {variant === "detail" ? (
-        <View className="flex-row flex-wrap gap-px overflow-hidden rounded-lg border border-border bg-border">
+        <View className="flex-row flex-wrap gap-px overflow-hidden rounded-xl border border-border bg-border">
           {[0, 1, 2].map((index) => (
             <View className="min-w-[160px] flex-1 gap-2 bg-card p-4" key={index}>
               <Skeleton className="h-3 w-20" />

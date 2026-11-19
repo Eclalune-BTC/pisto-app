@@ -5,7 +5,7 @@ import { focusReturnTarget } from "@/lib/focus-return";
  * The title of the screen that holds `control`, focusable from script. The search walks up from
  * the control because screens kept mounted behind it have titles of their own.
  */
-export function screenHeadingOf(control: HTMLElement | null): HTMLElement | null {
+function screenHeadingOf(control: HTMLElement | null): HTMLElement | null {
   if (Platform.OS !== "web" || !control) return null;
   for (let node = control.parentElement; node; node = node.parentElement) {
     const heading = node.querySelector<HTMLElement>('h1, [role="heading"][aria-level="1"]');

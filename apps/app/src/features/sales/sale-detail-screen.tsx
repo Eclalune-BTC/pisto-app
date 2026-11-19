@@ -2,10 +2,11 @@ import type { Business, Sale, SaleDetails } from "@pisto/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { type Href, Link, Redirect, useLocalSearchParams } from "expo-router";
 import type { TFunction } from "i18next";
-import { Info, Pencil } from "lucide-react-native";
+import { Ban, Info, Pencil } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
+import { DetailColumns } from "@/components/layout/detail-columns";
 import { HeaderActions } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
@@ -231,22 +232,71 @@ export default function SaleDetailScreen() {
 
   const stale = queryHasStaleData(businesses) || queryHasStaleData(result);
   const canCorrect = permissions.includes("sales:correct") && canCorrectSale(sale);
+  const facts = (
+    <>
+      <StatGroup>
+        <Stat
+          detail={sale.status === "voided" ? t("sales.detail.voidedTotal") : undefined}
+          label={t("sales.fields.total")}
+          value={saleAmount(sale, locale)}
+        />
+      </StatGroup>
+      {details ? (
+        <Section title={t("sales.detail.settlementTitle")}>
+          <DescriptionList
+            items={settlementItems(sale, details, accountName, locale, t)}
+            layout="aside"
+          />
+        </Section>
+      ) : null}
+      <Section title={t("sales.detail.detailsTitle")}>
+        <DescriptionList
+          items={[
+            {
+              label: t("sales.fields.moment"),
+              numeric: true,
+              value: saleMoment(sale, locale),
+            },
+            {
+              label: t("sales.detail.source"),
+              value: t(`sales.sources.${sale.entrySource}`),
+            },
+            {
+              label: t("sales.fields.recordedAt"),
+              numeric: true,
+              value: formatLocalizedDateTime(sale.createdAt, locale, sale.timeZone),
+            },
+            ...settingItems(sale, business, t),
+          ]}
+          layout="aside"
+        />
+      </Section>
+    </>
+  );
   return (
     <Page>
       <PageHeader
         actions={
           canCorrect ? (
+            // Undoing a sale is never the page's main action: it waits in the menu, like an
+            // expense's void.
             <HeaderActions
               menuLabel={t("sales.detail.moreActions")}
-              primary={{
-                disabled: stale,
-                href: { pathname: "/operate/sales/correct/[saleId]", params: { saleId: sale.id } },
-                icon: Pencil,
-                label:
-                  sale.entryMode === "itemized"
-                    ? t("sales.correction.voidItemized")
-                    : t("sales.correction.open"),
-              }}
+              overflow={[
+                {
+                  destructive: sale.entryMode === "itemized",
+                  disabled: stale,
+                  href: {
+                    pathname: "/operate/sales/correct/[saleId]",
+                    params: { saleId: sale.id },
+                  },
+                  icon: sale.entryMode === "itemized" ? Ban : Pencil,
+                  label:
+                    sale.entryMode === "itemized"
+                      ? t("sales.correction.voidItemized")
+                      : t("sales.correction.open"),
+                },
+              ]}
             />
           ) : undefined
         }
@@ -263,55 +313,43 @@ export default function SaleDetailScreen() {
         />
       ) : null}
       <CorrectionNotice sale={sale} t={t} />
-      <StatGroup>
-        <Stat
-          detail={sale.status === "voided" ? t("sales.detail.voidedTotal") : undefined}
-          label={t("sales.fields.total")}
-          value={saleAmount(sale, locale)}
-        />
-      </StatGroup>
-      {details ? (
-        <Section title={t("sales.detail.productsTitle")}>
-          <SaleLinesTable
-            currency={sale.currency}
-            currencyDigits={sale.currencyMinorUnitDigits}
-            lines={details.lines}
-          />
-        </Section>
-      ) : null}
-      {details ? (
-        <Section title={t("sales.detail.settlementTitle")}>
-          <DescriptionList items={settlementItems(sale, details, accountName, locale, t)} />
-        </Section>
-      ) : null}
-      <Section title={t("sales.detail.detailsTitle")}>
-        <DescriptionList
-          items={[
-            { label: t("sales.fields.moment"), numeric: true, value: saleMoment(sale, locale) },
-            { label: t("sales.detail.source"), value: t(`sales.sources.${sale.entrySource}`) },
-            {
-              label: t("sales.fields.recordedAt"),
-              numeric: true,
-              value: formatLocalizedDateTime(sale.createdAt, locale, sale.timeZone),
-            },
-            ...settingItems(sale, business, t),
-          ]}
-        />
-      </Section>
-      {sale.correction ? (
-        <Section title={t("sales.correction.details")}>
-          <DescriptionList
-            items={[
-              { label: t("sales.correction.reason"), value: sale.correction.reason },
-              {
-                label: t("sales.correction.correctedAt"),
-                numeric: true,
-                value: formatLocalizedDateTime(sale.correction.correctedAt, locale, sale.timeZone),
-              },
-            ]}
-          />
-        </Section>
-      ) : null}
+      {details || sale.correction ? (
+        // The receipt reads like one: what was sold, then the total, how it was paid and when;
+        // beside the lines on a wide screen, under them on a phone.
+        <DetailColumns aside={facts}>
+          {details ? (
+            <Section title={t("sales.detail.productsTitle")}>
+              <SaleLinesTable
+                currency={sale.currency}
+                currencyDigits={sale.currencyMinorUnitDigits}
+                lines={details.lines}
+              />
+            </Section>
+          ) : null}
+          {sale.correction ? (
+            <Section title={t("sales.correction.details")}>
+              <DescriptionList
+                items={[
+                  { label: t("sales.correction.reason"), value: sale.correction.reason },
+                  {
+                    label: t("sales.correction.correctedAt"),
+                    numeric: true,
+                    value: formatLocalizedDateTime(
+                      sale.correction.correctedAt,
+                      locale,
+                      sale.timeZone,
+                    ),
+                  },
+                ]}
+              />
+            </Section>
+          ) : null}
+        </DetailColumns>
+      ) : (
+        // A sale recorded as a total has no lines: its facts are the whole page, at a width where
+        // a label still reads with its value.
+        <View className="max-w-[560px] gap-6">{facts}</View>
+      )}
     </Page>
   );
 }

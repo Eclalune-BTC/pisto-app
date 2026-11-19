@@ -5,13 +5,21 @@ import { PurchaseForm } from "@/features/purchases/purchase-form";
 import { SupplierPaymentForm } from "@/features/purchases/supplier-payment-form";
 import { ReceivablePaymentForm } from "@/features/receivables/receivable-payment-form";
 import { ItemizedSaleForm } from "@/features/sales/itemized/itemized-sale-form";
+import { isLockedPhase } from "@/lib/mutation-phase";
 
 const recordForms: DraftFormSlots = {
   sale: (props) => <ItemizedSaleForm {...props} />,
   expense: (props) => <ExpenseForm {...props} />,
   purchase: (props) => <PurchaseForm {...props} />,
-  receivable_payment: (props) => <ReceivablePaymentForm {...props} />,
-  supplier_payment: (props) => <SupplierPaymentForm {...props} />,
+  receivable_payment: ({ onLockedChange, ...props }) => (
+    <ReceivablePaymentForm
+      {...props}
+      onPhaseChange={(phase) => onLockedChange(isLockedPhase(phase))}
+    />
+  ),
+  supplier_payment: ({ onLockedChange, ...props }) => (
+    <SupplierPaymentForm {...props} onBusyChange={onLockedChange} />
+  ),
 };
 
 export default function AssistantReviewRoute() {

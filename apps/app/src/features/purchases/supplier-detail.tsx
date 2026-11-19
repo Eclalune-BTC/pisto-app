@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
 import { DescriptionList } from "@/components/layout/description-list";
+import { DetailColumns } from "@/components/layout/detail-columns";
 import { HeaderActions, type MenuTrigger } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
@@ -109,7 +110,7 @@ function RecentPurchaseRows({ items }: { items: readonly Purchase[] }) {
           }
         >
           <View className="min-w-0 flex-1 gap-0.5">
-            <Text className="text-[13px]" numberOfLines={1}>
+            <Text className="text-dense" numberOfLines={1}>
               {purchase.invoiceNumber ?? t("purchases.payables.noInvoice")} ·{" "}
               {format.date(purchase.occurredLocalDate)}
             </Text>
@@ -148,7 +149,7 @@ export function SupplierPanel({
   const read = readState([detail]);
   if (read.kind !== "ready" || !detail.data) {
     return (
-      <View className="gap-3 rounded-lg border border-border bg-card p-4">
+      <View className="gap-3 rounded-xl border border-border bg-card p-4">
         {read.kind === "loading" ? (
           <>
             <Skeleton className="h-5 w-40" />
@@ -178,14 +179,14 @@ export function SupplierPanel({
   const owes = isPositiveAmount(data.balance.outstandingMinorUnits);
   const active = data.supplier.status === "active";
   return (
-    <View className="gap-4 rounded-lg border border-border bg-card p-4">
+    <View className="gap-4 rounded-xl border border-border bg-card p-4">
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1 gap-0.5">
           <Heading level={2} size="section">
             {data.supplier.name}
           </Heading>
           {data.supplier.notes ? (
-            <Text className="text-[13px] text-muted-foreground" numberOfLines={2}>
+            <Text className="text-dense text-muted-foreground" numberOfLines={2}>
               {data.supplier.notes}
             </Text>
           ) : null}
@@ -200,8 +201,8 @@ export function SupplierPanel({
       <View className="gap-1.5">
         {facts.map((fact) => (
           <View className="flex-row gap-3" key={fact.label}>
-            <Text className="w-28 shrink-0 text-[13px] text-muted-foreground">{fact.label}</Text>
-            <Text className="min-w-0 flex-1 text-[13px]" numberOfLines={2}>
+            <Text className="w-28 shrink-0 text-dense text-muted-foreground">{fact.label}</Text>
+            <Text className="min-w-0 flex-1 text-dense" numberOfLines={2}>
               {fact.value}
             </Text>
           </View>
@@ -209,17 +210,17 @@ export function SupplierPanel({
       </View>
       <SupplierBalance data={data} />
       <View className="gap-2">
-        <Text className="font-ui text-[13px] text-foreground">
+        <Text className="font-ui text-dense text-foreground">
           {t("purchases.supplier.recentPurchases")}
         </Text>
         {purchases.isPending ? (
           <Skeleton className="h-16 w-full" />
         ) : purchases.isError ? (
-          <Text className="text-[13px] text-muted-foreground">
+          <Text className="text-dense text-muted-foreground">
             {t("purchases.supplier.purchasesUnavailable")}
           </Text>
         ) : recent.length === 0 ? (
-          <Text className="text-[13px] text-muted-foreground">
+          <Text className="text-dense text-muted-foreground">
             {t("purchases.supplier.noRecentPurchases")}
           </Text>
         ) : (
@@ -375,40 +376,47 @@ export function SupplierDetailScreen() {
         title={data.supplier.name}
       />
       {stale ? <StaleNotice onRetry={() => void detail.refetch()} /> : null}
-      <SupplierBalance data={data} />
-      <DescriptionList items={facts} />
-      <Section title={t("purchases.supplier.recentPurchases")}>
-        {purchases.isPending ? (
-          <Skeleton className="h-24 w-full" />
-        ) : purchases.isError ? (
-          <Text className="text-sm text-muted-foreground">
-            {t("purchases.supplier.purchasesUnavailable")}
-          </Text>
-        ) : items.length === 0 ? (
-          <Text className="text-sm text-muted-foreground">
-            {t("purchases.supplier.noRecentPurchases")}
-          </Text>
-        ) : (
-          <View className="gap-3">
-            <PurchasesTable
-              caption={t("purchases.supplier.recentPurchases")}
-              items={items}
-              showSupplier={false}
-            />
-            {purchases.hasNextPage ? (
-              <View className="items-center">
-                <Button
-                  label={t("common.loadMore")}
-                  loading={purchases.isFetchingNextPage}
-                  onPress={() => void purchases.fetchNextPage()}
-                  size="sm"
-                  variant="outline"
-                />
-              </View>
-            ) : null}
-          </View>
-        )}
-      </Section>
+      <DetailColumns
+        aside={
+          <Section title={t("purchases.supplier.detailsTitle")}>
+            <DescriptionList items={facts} layout="aside" />
+          </Section>
+        }
+      >
+        <SupplierBalance data={data} />
+        <Section title={t("purchases.supplier.recentPurchases")}>
+          {purchases.isPending ? (
+            <Skeleton className="h-24 w-full" />
+          ) : purchases.isError ? (
+            <Text className="text-sm text-muted-foreground">
+              {t("purchases.supplier.purchasesUnavailable")}
+            </Text>
+          ) : items.length === 0 ? (
+            <Text className="text-sm text-muted-foreground">
+              {t("purchases.supplier.noRecentPurchases")}
+            </Text>
+          ) : (
+            <View className="gap-3">
+              <PurchasesTable
+                caption={t("purchases.supplier.recentPurchases")}
+                items={items}
+                showSupplier={false}
+              />
+              {purchases.hasNextPage ? (
+                <View className="items-center">
+                  <Button
+                    label={t("common.loadMore")}
+                    loading={purchases.isFetchingNextPage}
+                    onPress={() => void purchases.fetchNextPage()}
+                    size="sm"
+                    variant="outline"
+                  />
+                </View>
+              ) : null}
+            </View>
+          )}
+        </Section>
+      </DetailColumns>
       <SupplierFormDialog
         businessId={access.business.id}
         onOpenChange={setEditing}

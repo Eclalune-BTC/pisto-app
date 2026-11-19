@@ -11,11 +11,25 @@ working method. When a lesson below becomes a durable rule, move it into the des
 
 ## Direction (owner, non-negotiable)
 
-- Modern fintech/AI SaaS that conveys trust. Clean, dense, calm. Nothing that looks generated.
-- One brand color: deep forest green, light theme first.
-  No blue (test-enforced hue band 175-280°) and no second accent. State colors only for state.
-- Crisp: radius tokens (6 px controls, 8 px cards); never pill buttons or soft blobs.
-- Little padding: compact rows, tight page gutters, information first.
+- Modern fintech that conveys trust: clean, dense, calm, well defined. Real finance products
+  (Mercury's app, Ramp, Brex, Qonto) are the inspiration, never a copy. Nothing that looks
+  generated.
+- Layout first. When the owner says a screen looks generated, the answer is its structure (what
+  sits beside what, on which grid, at which size), never a new palette. Changing only colours was
+  rejected twice.
+- Pisto is forest green with a lime accent, light theme first; that pair is the identity and
+  stays. What read as generated was the green cast on the greys, pastel mint and lime washes: the
+  neutrals are plain greys, the page is white and the sidebar light grey. Green text is only
+  "money came in", amber a warning, red an error. No blue (test-enforced hue band 175-280°).
+- Dark is a neutral near-black with lime as the primary action and the chart line, never a
+  green-tinted dark with a mint button.
+- Square, defined corners: 4 px marks, 6 px segments, 8 px buttons and fields, 10 px cards,
+  12 px product frames. No pill buttons, no soft blobs, no tinted "glow box" around a card.
+- One typeface (Hanken Grotesk): 400 body, 500 controls, 600 headings, money figures and card
+  titles. Sizes come from the type roles in `global.css`, never `text-[Npx]`.
+- Structure with type and hairlines before boxes: a rule plus a heading opens a section, grids
+  share `border-t`/`border-l`.
+- Little padding inside the product: compact rows, tight page gutters, information first.
 - No gradients, glows, decorative shadows, eyebrow labels, accent left-border lines, ornamental
   dividers, oversized headings or marketing copy inside the product.
 - Subtle glass only where it carries meaning: sticky top bar, overlays, popovers (web blur;
@@ -40,9 +54,10 @@ working method. When a lesson below becomes a durable rule, move it into the des
 | --- | --- | --- |
 | Route body | `components/page.tsx` `Page` | `width="content" \| "form" \| "reading"`; reserves the top-bar inset |
 | H1 + actions | `components/layout/page-header.tsx` | `title`, one-line `description`, `actions` (primary last), `adornment` (badge). Never an eyebrow |
-| H2 region | `components/layout/section.tsx` | `title`, optional `description`, `actions`; no borders |
+| H2 region | `components/layout/section.tsx` | a hairline opens it; `title`, the one-line `description` and `actions` share the row under the rule |
 | Exact figures | `components/layout/stat-group.tsx` `StatGroup`/`Stat` | one shared border; `tone` only for overdue/negative/warning |
-| Record facts | `components/layout/description-list.tsx` | label/value rows; `numeric` for money/dates |
+| Record facts | `components/layout/description-list.tsx` | label/value rows; `numeric` for money/dates; `layout="aside"` in a side column |
+| Record page | `components/layout/detail-columns.tsx` `DetailColumns` | figures and tables in the main column, the facts in `aside` under a `Section` title; stacks below 1360 px, main first |
 | Loading | `components/layout/skeletons.tsx` `ContentSkeleton` | `list`/`detail`/`form`/`section`; never a page spinner |
 | Whole-route state | `components/route-state.tsx` `RouteState` | `kind` loading/offline/denied/notFound/unavailable/error, `variant` skeleton, `onRetry` on error; pass `title`/`description` when the record matters |
 | Section states | `FeatureBoundary`, `ui/state-panel`, `ui/empty-state`, `remote-state` (`OfflineState`, `StaleNotice`) | empty only after a successful read |
@@ -72,7 +87,8 @@ Screen rules that follow from the owner direction:
 - Forms: `Page width="form"`, fields grouped in titled sections, actions at the end (secondary
   then primary). Review steps show a `DescriptionList` summary and an explicit confirm.
 - Money: right-aligned, tabular, default text colour; destructive colour only for an overdue or
-  negative value greater than zero, never for zero.
+  negative value greater than zero, never for zero. Overdue is red on every screen; the warning
+  tone is for "due soon" only. A ledger signs money in with a plus and the positive tone.
 - List filters live in the URL (`useLocalSearchParams` + `router.setParams`) so returning from a
   record restores them.
 
@@ -230,3 +246,156 @@ Append one line per lesson: `YYYY-MM-DD · screen · lesson · where it is now e
   sales page, and one warning tone for "vencido" and "vence esta semana" hid a real difference;
   pick example records whose amount reads right on its own, and give each preview the tones of
   the screen it shows · `features/welcome/example-business.ts`, `module-previews.tsx`.
+- 2026-11-17 · landing, logo · The owner called the page and the "P in a rounded square" logo
+  vibecoded: a thick forest-green frame around a lime card, three small cards per row and Inter.
+  What read as designed instead: one centred sentence, the real app frame cropped at the fold,
+  steps as tabs with one large figure, module fragments in a hairline grid without cards, and a
+  drawn mark (a ring on one leg) on the forest tile instead of a letter ·
+  `features/welcome/*`, `components/brand.tsx`.
+- 2026-11-17 · tokens · 26 one-off pixel font sizes and 12 one-off trackings had spread through
+  the screens; sizes are theme roles now and a test rejects `text-[Npx]`. A custom `text-*` role
+  must also be declared to tailwind-merge or `cn` silently drops the colour beside it ·
+  `global.css`, `lib/cn.ts`, `lib/cn.test.ts`.
+- 2026-11-17 · tokens · Corner sizes had drifted to seven values plus hard-coded pixels in the
+  CSS, and one button overrode the shared shape; the scale is 4/6/8/10/12 and CSS reads the
+  variables ·
+  `global.css`, `components/auth-screen.tsx`.
+- 2026-11-17 · palette, dark · The owner called the result "AI greens", the mint primary button
+  of the dark theme strange and the pills undefined. Replacing the brand with black ink was the
+  wrong answer: they said it removed what made it Pisto and looked worse. What was generated-
+  looking was the green cast on the greys and the pastel washes. Kept: forest green and lime on
+  plain greys, white page, grey sidebar, lime primary in dark, square corners, 14 px text ·
+  `global.css`, `docs/design-system.md`.
+- 2026-11-17 · home · A wide card with a right rail of stacked cards read as a generated
+  dashboard. Mercury's demo lays the home out in full-width bands on one grid, so the home is the
+  "Registrar" bar, the balance beside the accounts that hold it, owed and due side by side, then
+  today's movements · `features/operate/operate-home-screen.tsx`, `money-card.tsx`.
+- 2026-11-17 · every page · A title, a paragraph, a block, another title and another paragraph
+  read as a generated document. A section is ruled now: a hairline opens it and its title, its
+  one line and its actions share the row; the expense period total sits beside its categories on
+  wide screens instead of above them · `components/layout/section.tsx`, `features/expenses/expenses-screen.tsx`.
+- 2026-11-17 · record pages · Three or four label/value rows stretched across a 1056 px page,
+  and a lone total tile above them, read as a generated detail page. A sale, purchase, product,
+  customer, supplier, account and receivable now put figures and tables in the main column and
+  the facts in a 320 px side column, like a receipt · `components/layout/detail-columns.tsx`.
+- 2026-11-18 · home · Three 48 px rows in a 380 px column left a hole beside the chart; the
+  account kinds are cells that share the card's height, and the landing preview draws the same
+  component · `features/operate/money-figure-rows.tsx`.
+- 2026-11-18 · compact rows · A detail that wrapped started its line with the "·" separator; every
+  detail leads with its separator and the row is pulled left under a clip, so a line never starts
+  with one · `components/ui/data-table-records.tsx`.
+- 2026-11-18 · forms · Three label boxes (14/20 in `Field`, 13/13 in the web date and time
+  inputs, 14/14 with an 8 px gap in the customer and supplier picker) put the controls of one row
+  3 to 7 px apart; every field label is 14/20 with a 6 px gap · `global.css`
+  `.pisto-picker-field label`, `features/customers/picker-field.tsx`.
+- 2026-11-18 · home · A closed `Dialog` still renders an empty element, which took a gap slot and
+  left the "Registrar" card 12 px taller below than above; keep dialogs outside spaced columns ·
+  `features/assistant/assistant-composer.tsx`.
+- 2026-11-18 · landing · Two rejected openings in a row. A centred headline over a dashboard
+  read as "demasiado genérica". The answer to that, a full-width forest-green band with quoted
+  sentences and lime labels, closing on a lime band, read as "horrible, muy AI slop": coloured
+  bands and quote lists are decoration, the testimonial template with other words. What the
+  references the owner named do (Mercury, Ramp, Qonto) is keep the page neutral, set one large
+  left-aligned statement, and let the product be the only picture and the only colour. The page
+  now does that: no bands, the home at desktop and phone size on one grey stage, statements
+  instead of title-plus-paragraph. Never answer "generic" by adding colour blocks or invented
+  copy · `features/welcome/welcome-screen.tsx`, `product-preview.tsx` `PhonePreview`.
+- 2026-11-18 · phone home, dark · On the lime card the trend line used the primary colour, which
+  is lime in the dark theme, so the line vanished and "Hoy" was white on lime. The lime surface
+  draws with its own ink in both themes · `features/operate/money-trend-chart.tsx`.
+- 2026-11-18 · shell · A purchase lives under `/operate/purchases` and opens from "Por pagar", so
+  matching the sidebar by path prefix left both purchase routes with no current item; the sidebar
+  reads the declared parents, and a test resolves every declared route to exactly one item ·
+  `components/shell/current-destination.ts` and its test.
+- 2026-11-18 · purchase form · Three closed picker dialogs inside the spaced row took three
+  24 px gaps and left the form 72 px short of the page; a closed dialog still renders an element,
+  so it never sits inside a `gap` row or column that is measured · `purchase-form.tsx`.
+- 2026-11-18 · record pages · An independent review of the captures found four compositions for
+  six record pages. One rule now: figures (a `StatGroup` that spans its column) and tables in
+  the main column, every fact list titled in the side column, no fact repeated in the header,
+  and the action that undoes the record in the overflow menu.
+- 2026-11-18 · home · "Vencido" was amber on Home and red on Por pagar and the customer page,
+  and "Le deben" repeated the "Por cobrar" figure under it; overdue is red everywhere and a
+  figure appears once · `features/operate/*-card.tsx`.
+- 2026-11-18 · ledgers · The cash ledgers showed unsigned amounts under "Importe" while
+  Movimientos showed "+$2.50" in green under "Monto", and stock movements wore a chip on every
+  row; one word ("Monto"), one signed amount, plain type text, and only rows that open something
+  answer the pointer · `cash-movement-list.tsx`, `movement-table.tsx`, `global.css`.
+- 2026-11-18 · phone filters · Six segments wrapped into two rows inside a grey block; the
+  segmented control keeps one row and scrolls sideways on the web · `ui/filter-bar.tsx`.
+- 2026-11-18 · copy · The product addressed the owner as "tú" in about half its strings and
+  "usted" in the rest. Every string now uses usted, the form the landing, Home, purchases and
+  the assistant already had; a catalog test rejects second-person pronouns and the verb forms
+  that had slipped in. Lines that describe what Pisto or a role does stay in third person ·
+  `i18n/resources.test.ts`.
+- 2026-11-18 · review steps · A review kept the form's line ("Los revisará antes de guardar")
+  above the summary, and the correction page renamed its sale to the amount in the breadcrumb;
+  a review shows only its note, and a child page names the record as the record's page does.
+- 2026-11-18 · open · Date and time fields are the browser's native inputs and follow the
+  browser's language, not the app's spelled-month format. Replacing them needs a calendar
+  component of our own; that is the owner's decision.
+- 2026-11-18 · tests · A test that renders the whole shell once per route passed alone and timed
+  out under the default worker count; put the rule in a pure function and test that.
+- 2026-11-18 · tooling · To see a state the local machine cannot produce (assistant on), replace
+  only the body of that one response in the capture browser and say so in the caption; never
+  change product code or seed data for a screenshot.
+- 2026-11-18 · first run · `Label` sizes its row to the text, so `flex-1` on it does not wrap a
+  sentence beside a checkbox; bound it with a `min-w-0 flex-1` View · `app/(app)/business.tsx`.
+- 2026-11-17 · purchase form · Fields and a segmented control on a lime panel lost contrast and
+  read as a glow box; lime marks only the total, as in the sale form ·
+  `features/purchases/purchase-form.tsx`.
+- 2026-11-17 · sidebar · A grey chip on a grey rail did not mark the current page; it is a white
+  card with a hairline and a forest-green icon, and the business block is the same card ·
+  `components/ui/sidebar.tsx`, `components/shell/business-menu.tsx`.
+- 2026-11-17 · movements · A period selector inside a cell of the totals strip read as filler;
+  it sits beside the page title, as in Reportes, and the strip keeps its three figures ·
+  `features/movements/movements-screen.tsx`.
+- 2026-11-17 · tooling · When memory is short, render from one `expo export --platform web
+  --max-workers 1` (with `APP_VARIANT=development`) served by a small static server with a
+  single-page fallback, plus the API; a Metro dev server holds over a gigabyte for as long as it
+  runs.
+- 2026-11-17 · shell, cash · The account menu sits behind the avatar at the end of the top bar on
+  every width, so the sidebar ends at Configuración; a handful of accounts are tiles with their
+  balance, not a two-row table · `components/shell/nav-user.tsx`, `features/cash/cash-account-list.tsx`.
+- 2026-11-17 · landing hero · "Súper simple" means one sentence, one supporting line and one
+  button, with the product right below; the note, the second button and the tinted stage went ·
+  `features/welcome/welcome-screen.tsx`.
+- 2026-11-17 · tooling · Dark is captured by setting `localStorage["pisto.appearance"]` before
+  load; swapping the `dark` class by hand leaves icons and charts on the light values they read
+  through JavaScript and draws a theme that does not exist.
+- 2026-11-17 · tooling · Playwright's bundled Chromium may not match the installed package;
+  `chromium.launch({ channel: "chrome" })` drives the installed Chrome. A ScrollView page is
+  captured whole by growing the viewport to the scroll content's height. Signed-in screens are
+  reviewed with the seeded demo owner on the disposable `pisto_ui_review` database.
+- 2026-11-18 · landing header · At 360 and 320 px the brand, the appearance switch, "Iniciar
+  sesión" and "Crear cuenta" did not fit and the primary button was clipped at the edge. Below
+  `md` the header keeps the brand and "Crear cuenta" and folds the sections, sign-in and the
+  appearance switch into one menu; capture 320 and 360, not only 390 ·
+  `features/welcome/header-menu.tsx`.
+- 2026-11-18 · landing hero · The picture left out the home's "Registrar" composer, so the first
+  screen showed a dashboard and not what the headline promises; it now leads the window. Putting
+  the page's long example sentence in its one-line field was wrong: it was cut at every width.
+  No ellipsis inside a product picture from 320 to 1440 px; where a pictured phone is narrower
+  than a real one, the field takes a row of its own · `features/welcome/product-preview.tsx`.
+- 2026-11-18 · landing hero, overlay · The phone over the window cut "$2,035.00", a supplier's
+  name and an axis label. An overlay's edge is a column line: the rows under it end before it,
+  and what no longer fits beside it steps aside · `product-preview.tsx` `ProductPreview`.
+- 2026-11-18 · landing hero, crops · Adding a block above moved every crop line: at 768 px the
+  stage sliced a label. A fixed-height crop is set per breakpoint range and checked at both ends
+  of each (767/768, 1023/1024, 1279/1280) with no text crossing the stage edge; below `md` the
+  phone frame closes after the composer instead of being cropped · `welcome-screen.tsx`.
+- 2026-11-18 · landing modules · Cells of a two-column hairline grid ended 170 px apart and left
+  holes. Pair the cells by height (Movimientos with Reportes, Por cobrar with Por pagar) and
+  check the first width of a breakpoint, where a legend wraps. Levelling a cell with rows another
+  picture already shows was rejected in review as padding ·
+  `features/welcome/module-previews.tsx`.
+- 2026-11-18 · landing, 320 px · A hand-built table needs the same fixed column width in its
+  header and its rows, or a name wider than its share drifts off its marks; a `max-w-[N]` child
+  of a wrapping row needs `shrink`; a strip of fixed bars needs `flex-1 max-w-[N]` ·
+  `roles-section.tsx`, `how-it-works.tsx`.
+- 2026-11-18 · tabs · The tab primitive focuses a trigger from script, so Chrome matches
+  `:focus-visible` after a pointer press and the global ring boxed the whole step. A large
+  trigger replaces the ring with its own focus mark (the underlined title) · `how-it-works.tsx`.
+- 2026-11-18 · tooling · `react-native-web` 0.21.3+ with Uniwind 1.12.1 exports a bundle that
+  builds, typechecks and passes unit tests but renders nothing. After any dependency change,
+  load the exported page before calling the change verified · `docs/versioning-upgrades.md`.

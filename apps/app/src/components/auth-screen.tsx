@@ -11,7 +11,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useUniwind } from "uniwind";
 import { AppearanceControl } from "@/components/appearance-control";
 import { Brand } from "@/components/brand";
 import { DocumentTitle } from "@/components/document-title";
@@ -21,7 +20,7 @@ import { Field } from "@/components/ui/field";
 import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { DictationExample } from "@/features/welcome/dictation-example";
+import { PhonePreview } from "@/features/welcome/product-preview";
 import { authClient } from "@/lib/auth-client";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -36,7 +35,6 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   const { t } = useTranslation();
   const isSignUp = mode === "sign-up";
   const wide = useWindowDimensions().width >= 1024;
-  const { theme } = useUniwind();
   const queryClient = useQueryClient();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -195,10 +193,8 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                     <DocumentTitle
                       title={isSignUp ? t("auth.signUpTitle") : t("auth.signInTitle")}
                     />
-                    <Heading className="text-[26px] leading-8 tracking-[-0.6px]">
-                      {isSignUp ? t("auth.signUpTitle") : t("auth.signInTitle")}
-                    </Heading>
-                    <Text className="text-sm leading-5 text-muted-foreground">
+                    <Heading>{isSignUp ? t("auth.signUpTitle") : t("auth.signInTitle")}</Heading>
+                    <Text className="text-sm text-muted-foreground">
                       {isSignUp ? t("auth.signUpDescription") : t("auth.signInDescription")}
                     </Text>
                   </View>
@@ -249,7 +245,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                   ) : null}
 
                   <Button
-                    className="w-full rounded-lg"
+                    className="w-full"
                     label={isSignUp ? t("auth.createAccount") : t("auth.signIn")}
                     loading={submitting}
                     onPress={submit}
@@ -273,12 +269,13 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
           </ScrollView>
 
           {wide ? (
-            <View className="w-[52%] max-w-[760px] justify-center bg-primary px-12 py-12 dark:border-l dark:border-border dark:bg-card xl:px-20">
-              <View className="w-full max-w-[520px] gap-6 self-center">
-                <Text className="text-[17px] leading-7 text-primary-foreground/85 dark:text-foreground">
-                  {t("auth.panel")}
+            // The public page's grey stage: the product is the only picture, cropped by the edge.
+            <View className="w-[46%] max-w-[720px] overflow-hidden border-l border-border bg-muted px-12 pt-14">
+              <View className="w-full max-w-[380px] flex-1 gap-3 self-center">
+                <Text className="text-xs text-muted-foreground">
+                  {t("welcome.preview.example")}
                 </Text>
-                <DictationExample tone={theme === "dark" ? "default" : "inverse"} />
+                <PhonePreview className="flex-1" />
               </View>
             </View>
           ) : null}

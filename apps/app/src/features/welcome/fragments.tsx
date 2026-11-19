@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { buttonTextVariants, buttonVariants } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { movementFormat } from "@/features/movements/movement-row";
@@ -38,7 +39,47 @@ export function useExample() {
   };
 }
 
-/** A product surface as the app draws it: hairline border, 8 px radius, card fill. */
+/** A page section's H2 and the one sentence under it. */
+export function SectionHeading({ description, title }: { description: string; title: string }) {
+  return (
+    <View className="max-w-[640px] gap-4">
+      <Heading level={2} size="marketing">
+        {title}
+      </Heading>
+      <Text className="text-lg text-muted-foreground web:text-pretty">{description}</Text>
+    </View>
+  );
+}
+
+const STATEMENT_ROLES = {
+  marketing: "text-heading sm:text-headline",
+  display: "text-display-sm sm:text-display lg:text-display-lg",
+} as const;
+
+/**
+ * A heading that runs the full width of its band: the claim in ink and, in the same size, the
+ * sentence that completes it in grey. It replaces a title with a small paragraph under it.
+ */
+export function Statement({
+  continuation,
+  size = "marketing",
+  title,
+}: {
+  continuation: string;
+  size?: keyof typeof STATEMENT_ROLES;
+  title: string;
+}) {
+  return (
+    <Heading className="max-w-[940px] font-ui" level={2} size={size}>
+      {/[.!?:]$/.test(title) ? title : `${title}.`}{" "}
+      <Text className={cn("font-ui text-muted-foreground", STATEMENT_ROLES[size])}>
+        {continuation}
+      </Text>
+    </Heading>
+  );
+}
+
+/** A product surface as the app draws it: hairline border, card radius, card fill. */
 export function Surface({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <View
@@ -53,7 +94,7 @@ export function Surface({ children, className }: { children: ReactNode; classNam
 export function SurfaceHeader({ title, action }: { title: string; action?: string }) {
   return (
     <View className="flex-row items-center justify-between gap-2">
-      <Text className="font-heading text-[15px] leading-5">{title}</Text>
+      <Text className="font-heading text-title">{title}</Text>
       {action ? <Text className="text-xs text-muted-foreground">{action}</Text> : null}
     </View>
   );
@@ -83,13 +124,13 @@ export function ButtonLook({
           size={14}
         />
       ) : null}
-      <Text className={cn(buttonTextVariants({ variant }), "text-[13px]")}>{label}</Text>
+      <Text className={cn(buttonTextVariants({ variant }), "text-dense")}>{label}</Text>
     </View>
   );
 }
 
 /** Each example movement worded with the Movimientos screen's own phrases. */
-export function useMovementCopy() {
+function useMovementCopy() {
   const { t } = useTranslation();
   const { money } = useExample();
   const person = (name: ExampleBalance["name"] | "santaRita") => t(`welcome.sample.people.${name}`);
@@ -121,7 +162,8 @@ export function useMovementCopy() {
       case "creditSale":
         return {
           title: t("movements.titles.saleTo", { name: person("comedor") }),
-          detail: `${lines(5)} · ${t("movements.facts.paidOf", { paid: money("1000"), total: money("4370") })}`,
+          // The separator keeps to the first fact, so a wrapped line never starts with it.
+          detail: `${lines(5)} · ${t("movements.facts.paidOf", { paid: money("1000"), total: money("4370") })}`,
         };
       case "dairyPayment":
         return {
@@ -166,7 +208,7 @@ export function MovementLine({
         />
       </View>
       <View className="min-w-0 flex-1 gap-0.5">
-        <Text className="font-ui text-[13px] leading-5" numberOfLines={1}>
+        <Text className="font-ui text-dense" numberOfLines={1}>
           {copy.title}
         </Text>
         <View className="min-w-0 flex-row flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -184,10 +226,7 @@ export function MovementLine({
               {t(`movements.sources.${movement.source}`)}
             </Text>
           </View>
-          <Text
-            className="min-w-0 shrink text-xs leading-4 text-muted-foreground"
-            numberOfLines={1}
-          >
+          <Text className="min-w-0 shrink text-xs leading-4 text-muted-foreground">
             {copy.detail}
           </Text>
         </View>
@@ -199,7 +238,7 @@ export function MovementLine({
       ) : null}
       <Text
         className={cn(
-          "font-ui text-[13px] tabular-nums",
+          "font-ui text-dense tabular-nums",
           incoming ? "text-positive-foreground" : "text-foreground",
         )}
         numberOfLines={1}
@@ -231,22 +270,20 @@ export function BalanceLine({
     <View className={cn("min-h-12 flex-row items-center gap-3 py-2", className)}>
       {initials ? (
         <View className="size-8 items-center justify-center rounded-full bg-muted">
-          <Text className="font-ui text-[11px] text-muted-foreground">{initialsOf(name)}</Text>
+          <Text className="font-ui text-micro text-muted-foreground">{initialsOf(name)}</Text>
         </View>
       ) : null}
       <View className="min-w-0 flex-1">
         <View className="flex-row items-baseline justify-between gap-3">
-          <Text className="min-w-0 shrink font-ui text-[13px] leading-5" numberOfLines={1}>
+          <Text className="min-w-0 shrink font-ui text-dense" numberOfLines={1}>
             {name}
           </Text>
-          <Text className="font-ui text-[13px] leading-5 tabular-nums">
-            {money(balance.minorUnits)}
-          </Text>
+          <Text className="font-ui text-dense tabular-nums">{money(balance.minorUnits)}</Text>
         </View>
         <Text
           className={cn(
             "text-xs leading-4",
-            overdue ? "text-warning-foreground" : "text-muted-foreground",
+            overdue ? "text-destructive" : "text-muted-foreground",
           )}
           numberOfLines={1}
         >

@@ -7,11 +7,11 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
+import { EMPTY_VALUE } from "@/lib/empty-value";
 import { quantityText } from "./format";
 import { stockLevel, stockState } from "./stock-level";
 
 /** Stands in for an absent value; the label or detail next to it says what is missing. */
-export const EMPTY_VALUE = "—";
 
 /**
  * An absent optional value: a dash on screen and its meaning for screen readers. It is one line of
@@ -19,7 +19,7 @@ export const EMPTY_VALUE = "—";
  */
 export function MissingValue({ label }: { label: string }) {
   return (
-    <Text accessibilityLabel={label} className="text-[13px] text-muted-foreground">
+    <Text accessibilityLabel={label} className="text-dense text-muted-foreground">
       {EMPTY_VALUE}
     </Text>
   );
@@ -90,14 +90,12 @@ export function CategoryName({ cell }: { cell: CategoryCell }) {
 export function StockValue({ product, stock }: { product: Product; stock: ProductStock | null }) {
   const { i18n, t } = useTranslation();
   if (!stock) {
-    return (
-      <Text className="text-[13px] text-muted-foreground">{t("catalog.list.notTracked")}</Text>
-    );
+    return <Text className="text-dense text-muted-foreground">{t("catalog.list.notTracked")}</Text>;
   }
   return (
     <View className="min-w-0 flex-row items-center justify-end gap-2">
       {stock.lowStock && product.status === "active" ? <LowStockBadge short /> : null}
-      <Text className="font-ui text-[13px] tabular-nums" numberOfLines={1}>
+      <Text className="font-ui text-dense tabular-nums" numberOfLines={1}>
         {quantityText(t, requireSupportedLocale(i18n.resolvedLanguage), {
           minorUnits: stock.onHandMinorUnits,
           precision: stock.quantityPrecision,
@@ -118,9 +116,7 @@ export function StockLevelCell({
 }) {
   const { i18n, t } = useTranslation();
   if (!stock) {
-    return (
-      <Text className="text-[13px] text-muted-foreground">{t("catalog.list.notTracked")}</Text>
-    );
+    return <Text className="text-dense text-muted-foreground">{t("catalog.list.notTracked")}</Text>;
   }
   const state = stockState(stock);
   const level = stockLevel(stock);
@@ -129,7 +125,7 @@ export function StockLevelCell({
     <View className="min-w-0 flex-row items-center justify-end gap-2.5">
       <Text
         className={cn(
-          "font-ui text-[13px] tabular-nums",
+          "font-ui text-dense tabular-nums",
           attention && state === "out" && "text-destructive",
         )}
         numberOfLines={1}

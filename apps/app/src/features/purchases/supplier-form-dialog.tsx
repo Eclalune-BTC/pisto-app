@@ -59,7 +59,7 @@ function fieldsOf(supplier: Supplier | null): SupplierFields {
 }
 
 /** Trimmed values with their issues; an empty optional field is absent. */
-export function readSupplierFields(fields: SupplierFields): {
+function readSupplierFields(fields: SupplierFields): {
   issues: Partial<Record<keyof SupplierFields, FieldIssue>>;
   values: {
     contactName: string | null;

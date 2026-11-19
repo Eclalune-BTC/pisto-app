@@ -28,9 +28,11 @@ describe("shared brand asset contract", () => {
       .raw()
       .toBuffer({ resolveWithObject: true });
     expect([info.width, info.height, info.channels]).toEqual([1024, 1024, 4]);
-    expect(data[3]).toBe(0);
-    expect(data[(512 * info.width + 512) * 4 + 3]).toBe(0);
-    expect(data[(512 * info.width + 380) * 4 + 3]).toBe(255);
+    const alpha = (x: number, y: number) => data[(y * info.width + x) * 4 + 3];
+    expect(alpha(0, 0)).toBe(0);
+    // The ring's counter stays open and its leg is solid.
+    expect(alpha(512, 458)).toBe(0);
+    expect(alpha(378, 673)).toBe(255);
   });
 
   test("configures a distinct dark splash instead of hiding a dark mark on a dark surface", async () => {

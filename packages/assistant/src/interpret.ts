@@ -11,7 +11,7 @@ import {
 } from "@pisto/contracts";
 
 import { decimalToMinorUnits, lineSubtotal, positiveMinorUnits, withinRange } from "./amounts.ts";
-import { type DateExpression, resolveDate } from "./dates.ts";
+import { resolveDate } from "./dates.ts";
 import type {
   DirectoryAccount,
   DirectoryContext,
@@ -21,7 +21,12 @@ import type {
   RecordDirectory,
   SupplierDirectory,
 } from "./directory.ts";
-import { type Extraction, extractionJsonSchema, extractionSchema } from "./extraction.ts";
+import {
+  type Extraction,
+  extractionJsonSchema,
+  readExtraction,
+  type UnreadField,
+} from "./extraction.ts";
 import { matchName, type NameMatch } from "./matching.ts";
 import { extractionMessages } from "./prompt.ts";
 import { type AssistantProvider, AssistantProviderError } from "./provider.ts";
@@ -80,6 +85,7 @@ const kindPermissions: Record<AssistantDraftKind, readonly BusinessPermission[]>
 };
 
 const maxSpans = 40;
+const maxNotices = 40;
 
 export interface InterpretDependencies<Actor> {
   provider: AssistantProvider;
@@ -108,6 +114,14 @@ class Notices {
     else if (match.kind === "ambiguous" || !match.exact)
       this.add("similar_match", field, lineIndex);
   }
+  /** Notices about the whole record are kept before those of one line when the list is full. */
+  capped(): AssistantNotice[] {
+    if (this.items.length <= maxNotices) return this.items;
+    return [
+      ...this.items.filter((item) => item.lineIndex === null),
+      ...this.items.filter((item) => item.lineIndex !== null),
+    ].slice(0, maxNotices);
+  }
 }
 
 function recordMatch<T extends { id: string; name: string }>(match: NameMatch<T>) {
@@ -120,31 +134,37 @@ function matchedRecord<T>(match: NameMatch<T>): T | null {
   return match.kind === "matched" ? match.record : null;
 }
 
-function text(value: string | null, maximum: number): string | null {
-  return value === null ? null : value.slice(0, maximum);
-}
-
-/** Cash goes to a cash drawer; transfers and cards settle in a bank (or wallet) account. */
-function accountFor(
+/**
+ * The account a payment method settles in: cash goes to a cash drawer; transfers and cards settle
+ * in a bank (or wallet) account. The sentence never names the account, so when the business has
+ * more than one of that kind the oldest is proposed and the user is asked to confirm it.
+ */
+function paymentAccount(
   accounts: readonly DirectoryAccount[],
   method: Extraction["paymentMethod"],
+  notices: Notices,
 ): { id: string; name: string } | null {
-  if (method === null) return null;
+  if (method === null) {
+    notices.add("missing", "paymentMethod");
+    return null;
+  }
   const kinds: readonly DirectoryAccount["kind"][] =
     method === "cash" ? ["cash"] : method === "transfer" ? ["bank", "mobile_money"] : ["bank"];
   for (const kind of kinds) {
-    const account = accounts.find((candidate) => candidate.kind === kind);
-    if (account) return { id: account.id, name: account.name };
+    const [account, another] = accounts.filter((candidate) => candidate.kind === kind);
+    if (!account) continue;
+    if (another) notices.add("similar_match", "account");
+    return { id: account.id, name: account.name };
   }
+  notices.add("missing", "account");
   return null;
 }
 
-function occurrence(
-  context: DirectoryContext,
-  expression: DateExpression | null,
-  notices: Notices,
-) {
-  const resolved = resolveDate(expression, context.localDate, "past");
+function occurrence({ context, extraction, notices, unread }: DraftInput) {
+  // A date the model wrote but that could not be read is not "today by default": the user is told.
+  const resolved = unread.has("date")
+    ? ({ kind: "invalid" } as const)
+    : resolveDate(extraction.date, context.localDate, "past");
   if (resolved.kind === "invalid") notices.add("missing", "date");
   return {
     occurredLocalDate: resolved.kind === "resolved" ? resolved.date : context.localDate,
@@ -152,12 +172,10 @@ function occurrence(
   };
 }
 
-function dueDate(
-  context: DirectoryContext,
-  expression: DateExpression | null,
-  notices: Notices,
-): string | null {
-  const resolved = resolveDate(expression, context.localDate, "future");
+function dueDate({ context, extraction, notices, unread }: DraftInput): string | null {
+  const resolved = unread.has("dueDate")
+    ? ({ kind: "invalid" } as const)
+    : resolveDate(extraction.dueDate, context.localDate, "future");
   if (resolved.kind === "invalid") notices.add("missing", "dueDate");
   return resolved.kind === "resolved" ? resolved.date : null;
 }
@@ -169,7 +187,7 @@ function buildLines(
   price: "catalog" | "stated",
   notices: Notices,
 ) {
-  return extraction.items.slice(0, 20).map((item, index) => {
+  return extraction.items.map((item, index) => {
     const match = matchName(item.name, products);
     notices.match("product", match, index);
     const product = matchedRecord(match);
@@ -244,13 +262,17 @@ interface DraftInput {
   accounts: readonly DirectoryAccount[];
   suppliers: readonly DirectorySupplier[];
   notices: Notices;
+  /** Fields the model wrote but that did not fit; they are asked for, never defaulted. */
+  unread: ReadonlySet<UnreadField>;
 }
 
-function saleDraft({ extraction, context, products, customers, accounts, notices }: DraftInput) {
+function saleDraft(input: DraftInput) {
+  const { extraction, context, products, customers, accounts, notices, unread } = input;
   const digits = context.currencyMinorUnitDigits;
-  const occurred = occurrence(context, extraction.date, notices);
+  const occurred = occurrence(input);
   const customerMatch = matchName(extraction.party, customers);
   const lines = buildLines(extraction, products, digits, "catalog", notices);
+  if (unread.has("product")) notices.add("missing", "product");
   const total = totalOf(lines, positiveMinorUnits(extraction.amount, digits), notices);
   if (total === null) notices.add("missing", "amount");
 
@@ -259,6 +281,9 @@ function saleDraft({ extraction, context, products, customers, accounts, notices
   if (received !== null) {
     if (total !== null && received > total) notices.add("exceeds_total", "received");
     else if (total !== null) credit = total - received;
+  } else if (unread.has("received") || unread.has("settlement")) {
+    // How it was paid was said but not read, so the draft cannot claim it was paid in full.
+    notices.add("missing", "received");
   } else if (extraction.settlement === "credit") {
     received = 0n;
     credit = total;
@@ -274,9 +299,7 @@ function saleDraft({ extraction, context, products, customers, accounts, notices
   else if (owes || extraction.settlement === "credit") notices.add("missing", "customer");
 
   const paid = received !== null && received > 0n;
-  const account = paid ? accountFor(accounts, extraction.paymentMethod) : null;
-  if (paid && extraction.paymentMethod === null) notices.add("missing", "paymentMethod");
-  else if (paid && account === null) notices.add("missing", "account");
+  const account = paid ? paymentAccount(accounts, extraction.paymentMethod, notices) : null;
 
   return {
     kind: "sale" as const,
@@ -288,50 +311,47 @@ function saleDraft({ extraction, context, products, customers, accounts, notices
     creditMinorUnits: credit?.toString() ?? null,
     paymentMethod: paid ? extraction.paymentMethod : null,
     account,
-    dueDate: owes ? dueDate(context, extraction.dueDate, notices) : null,
-    description: text(extraction.description, 240),
+    dueDate: owes ? dueDate(input) : null,
+    description: extraction.description,
   };
 }
 
-function expenseDraft({ extraction, context, accounts, notices }: DraftInput) {
-  const occurred = occurrence(context, extraction.date, notices);
+function expenseDraft(input: DraftInput) {
+  const { extraction, context, accounts, notices } = input;
+  const occurred = occurrence(input);
   const amount = positiveMinorUnits(extraction.amount, context.currencyMinorUnitDigits);
   if (amount === null) notices.add("missing", "amount");
   if (extraction.category === null) notices.add("missing", "category");
   if (extraction.description === null) notices.add("missing", "description");
-  const account = accountFor(accounts, extraction.paymentMethod);
-  if (extraction.paymentMethod === null) notices.add("missing", "paymentMethod");
-  else if (account === null) notices.add("missing", "account");
+  const account = paymentAccount(accounts, extraction.paymentMethod, notices);
   return {
     kind: "expense" as const,
     ...occurred,
     category: extraction.category,
     amountMinorUnits: amount?.toString() ?? null,
-    description: text(extraction.description, 240),
+    description: extraction.description,
     payee: extraction.party,
     account,
   };
 }
 
 function purchaseDraft(input: DraftInput) {
-  const { extraction, context, products, accounts, suppliers, notices } = input;
+  const { extraction, context, products, accounts, suppliers, notices, unread } = input;
   const digits = context.currencyMinorUnitDigits;
-  const occurred = occurrence(context, extraction.date, notices);
+  const occurred = occurrence(input);
   const supplierMatch = matchName(extraction.party, suppliers);
   if (extraction.party === null) notices.add("missing", "supplier");
   else notices.match("supplier", supplierMatch);
+  if (unread.has("invoice")) notices.add("missing", "invoice");
   const lines = buildLines(extraction, products, digits, "stated", notices);
+  if (unread.has("product")) notices.add("missing", "product");
   const total = totalOf(lines, positiveMinorUnits(extraction.amount, digits), notices);
   if (total === null) notices.add("missing", "amount");
   const paymentTerms =
     extraction.settlement === null ? null : extraction.settlement === "paid" ? "cash" : "credit";
   if (paymentTerms === null) notices.add("missing", "credit");
-  const account = paymentTerms === "cash" ? accountFor(accounts, extraction.paymentMethod) : null;
-  if (paymentTerms === "cash" && extraction.paymentMethod === null) {
-    notices.add("missing", "paymentMethod");
-  } else if (paymentTerms === "cash" && account === null) {
-    notices.add("missing", "account");
-  }
+  const account =
+    paymentTerms === "cash" ? paymentAccount(accounts, extraction.paymentMethod, notices) : null;
   return {
     kind: "purchase" as const,
     ...occurred,
@@ -341,13 +361,14 @@ function purchaseDraft(input: DraftInput) {
     totalMinorUnits: total?.toString() ?? null,
     paymentTerms,
     account,
-    dueDate: paymentTerms === "credit" ? dueDate(context, extraction.dueDate, notices) : null,
+    dueDate: paymentTerms === "credit" ? dueDate(input) : null,
     received: extraction.goodsReceived,
   } as const;
 }
 
-function receivablePaymentDraft({ extraction, context, customers, accounts, notices }: DraftInput) {
-  const occurred = occurrence(context, extraction.date, notices);
+function receivablePaymentDraft(input: DraftInput) {
+  const { extraction, context, customers, accounts, notices } = input;
+  const occurred = occurrence(input);
   const match = matchName(extraction.party, customers);
   if (extraction.party === null) notices.add("missing", "customer");
   else notices.match("customer", match);
@@ -362,9 +383,7 @@ function receivablePaymentDraft({ extraction, context, customers, accounts, noti
   else if (receivable && amount > BigInt(receivable.balanceMinorUnits)) {
     notices.add("exceeds_total", "amount");
   }
-  const account = accountFor(accounts, extraction.paymentMethod);
-  if (extraction.paymentMethod === null) notices.add("missing", "paymentMethod");
-  else if (account === null) notices.add("missing", "account");
+  const account = paymentAccount(accounts, extraction.paymentMethod, notices);
   return {
     kind: "receivable_payment" as const,
     ...occurred,
@@ -375,8 +394,9 @@ function receivablePaymentDraft({ extraction, context, customers, accounts, noti
   };
 }
 
-function supplierPaymentDraft({ extraction, context, suppliers, accounts, notices }: DraftInput) {
-  const occurred = occurrence(context, extraction.date, notices);
+function supplierPaymentDraft(input: DraftInput) {
+  const { extraction, context, suppliers, accounts, notices } = input;
+  const occurred = occurrence(input);
   const match = matchName(extraction.party, suppliers);
   if (extraction.party === null) notices.add("missing", "supplier");
   else notices.match("supplier", match);
@@ -390,9 +410,7 @@ function supplierPaymentDraft({ extraction, context, suppliers, accounts, notice
   else if (purchase && amount > BigInt(purchase.balanceMinorUnits)) {
     notices.add("exceeds_total", "amount");
   }
-  const account = accountFor(accounts, extraction.paymentMethod);
-  if (extraction.paymentMethod === null) notices.add("missing", "paymentMethod");
-  else if (account === null) notices.add("missing", "account");
+  const account = paymentAccount(accounts, extraction.paymentMethod, notices);
   return {
     kind: "supplier_payment" as const,
     ...occurred,
@@ -451,11 +469,11 @@ export async function interpretSentence<Actor>(
     jsonSchema: extractionJsonSchema,
     signal: AbortSignal.timeout(dependencies.timeoutMs),
   });
-  const parsed = extractionSchema.safeParse(raw);
-  if (!parsed.success) {
+  const read = readExtraction(raw);
+  if (!read) {
     throw new AssistantProviderError("invalid_output", "The model output does not fit the schema");
   }
-  const extraction = parsed.data;
+  const { extraction, unread } = read;
   if (extraction.kind === "none" || extraction.kind === "several") {
     return {
       text: request.text,
@@ -490,6 +508,7 @@ export async function interpretSentence<Actor>(
     accounts: lookup.accounts,
     suppliers,
     notices,
+    unread,
   });
   if (
     !kindPermissions[kind].every((permission) => lookup.context.permissions.includes(permission))
@@ -503,6 +522,6 @@ export async function interpretSentence<Actor>(
     spans: locateSpans(request.text, extraction.fragments, kind),
     draft,
     unsupported: null,
-    notices: notices.items.slice(0, 40),
+    notices: notices.capped(),
   });
 }

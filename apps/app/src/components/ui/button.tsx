@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 
 const buttonVariants = cva(
   cn(
-    "group max-w-full shrink-0 flex-row items-center justify-center gap-2 rounded-md active:opacity-80",
+    "group max-w-full shrink-0 flex-row items-center justify-center gap-2 rounded-lg active:opacity-80",
     Platform.select({
       web: "select-none transition-colors disabled:pointer-events-none",
     }),
@@ -27,9 +27,9 @@ const buttonVariants = cva(
       },
       // Pointer screens get compact controls; touch platforms keep 44 pt targets.
       size: {
-        default: cn("min-h-9 px-3 py-1.5", Platform.select({ native: "min-h-11 px-4 py-2" })),
-        sm: cn("min-h-8 gap-1.5 px-2.5 py-1", Platform.select({ native: "min-h-10 px-3 py-1.5" })),
-        lg: cn("min-h-10 px-4 py-2", Platform.select({ native: "min-h-12 px-5 py-2.5" })),
+        default: cn("min-h-9 px-4 py-1.5", Platform.select({ native: "min-h-11 px-5 py-2" })),
+        sm: cn("min-h-8 gap-1.5 px-3 py-1", Platform.select({ native: "min-h-10 px-4 py-1.5" })),
+        lg: cn("min-h-11 px-6 py-2", Platform.select({ native: "min-h-12 px-6 py-2.5" })),
         icon: cn("h-9 w-9", Platform.select({ native: "h-11 w-11" })),
         "icon-sm": cn("h-8 w-8", Platform.select({ native: "h-10 w-10" })),
       },
@@ -47,8 +47,9 @@ const buttonTextVariants = cva("font-ui font-normal shrink text-center text-sm",
       ghost: "text-foreground",
       link: "text-link underline web:underline-offset-4",
     },
+    size: { default: "", sm: "", lg: "text-base", icon: "", "icon-sm": "" },
   },
-  defaultVariants: { variant: "default" },
+  defaultVariants: { variant: "default", size: "default" },
 });
 
 type ButtonProps = Omit<ComponentProps<typeof Pressable>, "children"> &
@@ -87,7 +88,7 @@ function Button({
         ? primaryForeground
         : foreground;
   return (
-    <TextClassContext.Provider value={buttonTextVariants({ variant })}>
+    <TextClassContext.Provider value={buttonTextVariants({ size, variant })}>
       <Component
         {...props}
         accessibilityLabel={
@@ -132,5 +133,4 @@ function ButtonText({
   );
 }
 
-export type { ButtonProps };
 export { Button, ButtonText, buttonTextVariants, buttonVariants };

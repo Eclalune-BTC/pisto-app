@@ -8,7 +8,7 @@ export const weekdays = [
   "saturday",
 ] as const;
 
-export type Weekday = (typeof weekdays)[number];
+type Weekday = (typeof weekdays)[number];
 
 /** A date as the model heard it; the server turns it into a calendar date. */
 export interface DateExpression {

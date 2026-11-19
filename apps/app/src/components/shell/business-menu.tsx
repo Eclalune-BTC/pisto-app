@@ -44,7 +44,7 @@ function BusinessIdentity({
       </Avatar>
       {collapsed ? null : (
         <View className="min-w-0 flex-1">
-          <Text className="font-ui text-left text-[13px] leading-4" numberOfLines={1}>
+          <Text className="font-ui text-left text-dense leading-4" numberOfLines={1}>
             {name}
           </Text>
           <Text className="text-left text-xs leading-4 text-muted-foreground" numberOfLines={1}>
@@ -88,8 +88,8 @@ export function BusinessMenu({ collapsed }: { collapsed: boolean }) {
       <View
         accessibilityLabel={t("shell.activeBusiness", { name: active.name })}
         className={cn(
-          "flex-row items-center gap-2.5 rounded-lg bg-muted px-2 py-2",
-          collapsed && "justify-center bg-transparent px-0",
+          "flex-row items-center gap-2.5 rounded-lg border border-sidebar-border bg-card px-2 py-2",
+          collapsed && "justify-center border-transparent bg-transparent px-0",
         )}
       >
         <BusinessIdentity
@@ -107,8 +107,8 @@ export function BusinessMenu({ collapsed }: { collapsed: boolean }) {
         <Button
           accessibilityLabel={t("shell.switchBusiness", { name: active.name })}
           className={cn(
-            "h-auto w-full justify-start gap-2.5 rounded-lg bg-muted px-2 py-2 web:hover:bg-accent",
-            collapsed && "bg-transparent px-0",
+            "h-auto w-full justify-start gap-2.5 rounded-lg border border-sidebar-border bg-card px-2 py-2 web:hover:bg-accent",
+            collapsed && "border-transparent bg-transparent px-0",
           )}
           disabled={selection.isPending}
           variant="ghost"

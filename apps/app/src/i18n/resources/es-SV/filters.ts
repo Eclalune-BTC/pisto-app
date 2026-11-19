@@ -2,9 +2,9 @@ export const filters = {
   reset: "Limpiar filtros",
   history: "Historial",
   periodSummary: "Resumen del período",
-  selectOption: "Selecciona una opción",
+  selectOption: "Seleccione una opción",
   selectionUnavailable:
-    "La opción seleccionada no está disponible. Actualiza la lista o elige otra.",
+    "La opción seleccionada no está disponible. Actualice la lista o elija otra.",
   accounts: "Cuentas",
   movements: "Movimientos",
   dateFormat: "AAAA-MM-DD",

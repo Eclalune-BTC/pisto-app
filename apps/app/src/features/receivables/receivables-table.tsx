@@ -48,7 +48,7 @@ function CustomerCell({ customer }: { customer: CustomerNameCell | undefined }) 
     <View className="min-w-0 flex-row items-center gap-2.5">
       <Avatar alt={customer.name} className="size-8">
         <AvatarFallback className="bg-muted">
-          <Text className="font-ui text-[11px] text-muted-foreground">
+          <Text className="font-ui text-micro text-muted-foreground">
             {initialsOf(customer.name)}
           </Text>
         </AvatarFallback>
@@ -67,7 +67,7 @@ function CustomerCell({ customer }: { customer: CustomerNameCell | undefined }) 
 
 function DateText({ value }: { value: string }) {
   return (
-    <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
+    <Text className="text-dense text-muted-foreground tabular-nums" numberOfLines={1}>
       {value}
     </Text>
   );
@@ -85,7 +85,7 @@ function LateDays({
     return (
       <Text
         accessibilityLabel={t("receivables.list.notLate")}
-        className="text-[13px] text-muted-foreground"
+        className="text-dense text-muted-foreground"
       >
         —
       </Text>
@@ -93,7 +93,7 @@ function LateDays({
   }
   const days = daysPastDue(receivable.dueDate, businessLocalDate);
   return (
-    <Text className="text-[13px] tabular-nums" numberOfLines={1}>
+    <Text className="text-dense tabular-nums" numberOfLines={1}>
       {t("receivables.list.lateDays", { count: days })}
     </Text>
   );
@@ -166,7 +166,7 @@ export function ReceivablesTable({
           ) : (
             <Text
               accessibilityLabel={t("receivables.list.noDueDate")}
-              className="text-[13px] text-muted-foreground"
+              className="text-dense text-muted-foreground"
             >
               —
             </Text>

@@ -3,7 +3,7 @@ import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { FormActions } from "@/components/layout/form-actions";
-import { Section } from "@/components/layout/section";
+import { FormSection } from "@/components/layout/form-section";
 import { DateField } from "@/components/ui/date-field";
 import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
@@ -48,7 +48,7 @@ export function ReceivableForm({
   const { t } = useTranslation();
   return (
     <View className="gap-8">
-      <Section title={t("receivables.form.chargeSection")}>
+      <FormSection title={t("receivables.form.chargeSection")}>
         <PickerField
           detail={customer?.detail}
           error={errors.customer}
@@ -79,8 +79,8 @@ export function ReceivableForm({
           placeholder={t("receivables.form.descriptionPlaceholder")}
           value={draft.description}
         />
-      </Section>
-      <Section
+      </FormSection>
+      <FormSection
         description={t("receivables.form.datesDescription")}
         title={t("receivables.form.datesSection")}
       >
@@ -102,7 +102,7 @@ export function ReceivableForm({
             />
           </View>
         </View>
-      </Section>
+      </FormSection>
       <FormActions
         cancelHref={cancelHref}
         disabled={reviewDisabled}

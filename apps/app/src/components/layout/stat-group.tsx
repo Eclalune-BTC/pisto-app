@@ -1,17 +1,15 @@
-import { Children, type PropsWithChildren, type ReactNode } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import { View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 
-/** A strip of exact figures that share one border, instead of floating KPI cards. */
+/**
+ * A strip of exact figures that share one border, instead of floating KPI cards. It always spans
+ * its column, so a single figure lines up with the table or list under it.
+ */
 export function StatGroup({ children }: PropsWithChildren) {
   return (
-    <View
-      className={cn(
-        "flex-row flex-wrap gap-px overflow-hidden rounded-lg border border-border bg-border",
-        Children.toArray(children).length === 1 && "self-start",
-      )}
-    >
+    <View className="flex-row flex-wrap gap-px overflow-hidden rounded-xl border border-border bg-border">
       {children}
     </View>
   );
@@ -30,11 +28,12 @@ export function Stat({
   value: string;
 }) {
   return (
-    <View className="min-w-[140px] flex-1 basis-[140px] gap-1 bg-card px-4 py-3">
+    // The same 16 px inset as a table cell, so stacked blocks start their text on one line.
+    <View className="min-w-[140px] flex-1 basis-[140px] gap-1 bg-card px-4 py-4">
       <Text className="text-xs leading-4 text-muted-foreground">{label}</Text>
       <Text
         className={cn(
-          "font-heading text-2xl leading-8 tracking-[-0.5px] tabular-nums",
+          "font-heading text-heading tabular-nums",
           tone === "destructive" && "text-destructive",
           tone === "warning" && "text-warning-foreground",
         )}

@@ -43,7 +43,7 @@ export function movementFormat(
 
 export function MovementIcon({ movement }: { movement: Movement }) {
   return (
-    <View className="size-8 items-center justify-center rounded-full bg-muted">
+    <View className="size-8 items-center justify-center rounded-lg bg-muted">
       <Icon
         as={movementKindIcons[movement.kind]}
         className="text-foreground/80"
@@ -83,7 +83,7 @@ export function MovementAmount({
   return (
     <Text
       className={cn(
-        "font-ui text-[13px] tabular-nums",
+        "font-ui text-dense tabular-nums",
         isIncoming(movement) ? "text-positive-foreground" : "text-foreground",
         className,
       )}
@@ -148,7 +148,7 @@ export function MovementRow({
       <View className="min-h-14 flex-row items-center gap-3 px-4 py-2.5">
         <MovementIcon movement={movement} />
         <View className="min-w-0 flex-1 gap-0.5">
-          <Text className="font-ui text-[13px] leading-5" numberOfLines={1}>
+          <Text className="font-ui text-dense" numberOfLines={1}>
             {movementTitle(t, movement)}
           </Text>
           <View className="min-w-0 flex-row flex-wrap items-center gap-x-2 gap-y-0.5">

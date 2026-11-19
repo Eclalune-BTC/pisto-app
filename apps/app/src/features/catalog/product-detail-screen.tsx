@@ -4,6 +4,7 @@ import { Archive, ArrowRightLeft, History, Pencil, TriangleAlert } from "lucide-
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { DescriptionList } from "@/components/layout/description-list";
+import { DetailColumns } from "@/components/layout/detail-columns";
 import { type HeaderAction, HeaderActions } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { MutedValue } from "@/components/layout/review-values";
@@ -20,16 +21,17 @@ import { StatePanel } from "@/components/ui/state-panel";
 import { Text } from "@/components/ui/text";
 import { formatLocalizedDateTime } from "@/i18n/format";
 import { requireSupportedLocale } from "@/i18n/locale";
+import { EMPTY_VALUE } from "@/lib/empty-value";
 import type { MutationPhase } from "@/lib/mutation-phase";
 import { newMovementHref, stockHref } from "../inventory/inventory-screen";
 import { MovementTable } from "../inventory/movement-table";
-import { EMPTY_VALUE, ProductStatusBadge } from "./catalog-cells";
+import { ProductStatusBadge } from "./catalog-cells";
 import { productPrice, quantityText } from "./format";
 import type { ReadState } from "./state";
 
 const RECENT_MOVEMENTS = 5;
 
-export type ArchiveDialogState = {
+type ArchiveDialogState = {
   errorMessage?: string;
   onCancel: () => void;
   onConfirm: () => void;
@@ -133,100 +135,108 @@ export function ProductDetailScreen({
 
       {isStale ? <StaleNotice loading={refreshing} onRetry={onRetry} /> : null}
 
-      {/* An untracked product has no balance or minimum; its details say it is not tracked. */}
-      {stock ? (
-        <StatGroup>
-          {priceStat}
-          <Stat
-            detail={lowStock ? t("catalog.detail.lowStockDetail") : undefined}
-            label={t("catalog.detail.onHand")}
-            tone={lowStock ? "warning" : "default"}
-            value={quantity(stock.onHandMinorUnits, stock.quantityPrecision)}
-          />
-          <Stat
-            detail={
-              stock.lowStockThresholdMinorUnits === null
-                ? t("catalog.detail.noThreshold")
-                : t("catalog.detail.thresholdDetail")
-            }
-            label={t("catalog.detail.threshold")}
-            value={
-              stock.lowStockThresholdMinorUnits === null
-                ? EMPTY_VALUE
-                : quantity(stock.lowStockThresholdMinorUnits, stock.quantityPrecision)
-            }
-          />
-        </StatGroup>
-      ) : (
-        <StatGroup>{priceStat}</StatGroup>
-      )}
+      <DetailColumns
+        aside={
+          <Section title={t("catalog.detail.detailsTitle")}>
+            <DescriptionList
+              layout="aside"
+              items={[
+                {
+                  label: t("catalog.detail.category"),
+                  value:
+                    categoryName === undefined ? (
+                      <Skeleton className="h-3.5 w-28" />
+                    ) : categoryName === null ? (
+                      <MutedValue>{t("catalog.detail.noCategory")}</MutedValue>
+                    ) : (
+                      categoryName
+                    ),
+                },
+                {
+                  label: t("dataTable.columns.sku"),
+                  value: product.sku ?? <MutedValue>{t("catalog.detail.noSku")}</MutedValue>,
+                },
+                {
+                  label: t("catalog.detail.unit"),
+                  value: t(`catalog.unitLabels.${product.unitKind}`),
+                },
+                {
+                  label: t("catalog.detail.precision"),
+                  value:
+                    product.quantityPrecision === 0
+                      ? t("catalog.detail.wholeNumbers")
+                      : t("catalog.detail.precisionValue", { count: product.quantityPrecision }),
+                },
+                {
+                  label: t("catalog.detail.tracked"),
+                  value: product.tracked ? t("common.yes") : t("common.no"),
+                },
+                {
+                  label: t("catalog.detail.createdAt"),
+                  numeric: true,
+                  value: formatLocalizedDateTime(product.createdAt, locale, timeZone),
+                },
+                {
+                  label: t("catalog.detail.updatedAt"),
+                  numeric: true,
+                  value: formatLocalizedDateTime(product.updatedAt, locale, timeZone),
+                },
+              ]}
+            />
+          </Section>
+        }
+      >
+        {/* An untracked product has no balance or minimum; its details say it is not tracked. */}
+        {stock ? (
+          <StatGroup>
+            {priceStat}
+            <Stat
+              detail={lowStock ? t("catalog.detail.lowStockDetail") : undefined}
+              label={t("catalog.detail.onHand")}
+              tone={lowStock ? "warning" : "default"}
+              value={quantity(stock.onHandMinorUnits, stock.quantityPrecision)}
+            />
+            <Stat
+              detail={
+                stock.lowStockThresholdMinorUnits === null
+                  ? t("catalog.detail.noThreshold")
+                  : t("catalog.detail.thresholdDetail")
+              }
+              label={t("catalog.detail.threshold")}
+              value={
+                stock.lowStockThresholdMinorUnits === null
+                  ? EMPTY_VALUE
+                  : quantity(stock.lowStockThresholdMinorUnits, stock.quantityPrecision)
+              }
+            />
+          </StatGroup>
+        ) : (
+          <StatGroup>{priceStat}</StatGroup>
+        )}
 
-      <Section title={t("catalog.detail.detailsTitle")}>
-        <DescriptionList
-          items={[
-            {
-              label: t("catalog.detail.category"),
-              value:
-                categoryName === undefined ? (
-                  <Skeleton className="h-3.5 w-28" />
-                ) : categoryName === null ? (
-                  <MutedValue>{t("catalog.detail.noCategory")}</MutedValue>
-                ) : (
-                  categoryName
-                ),
-            },
-            {
-              label: t("dataTable.columns.sku"),
-              value: product.sku ?? <MutedValue>{t("catalog.detail.noSku")}</MutedValue>,
-            },
-            { label: t("catalog.detail.unit"), value: t(`catalog.unitLabels.${product.unitKind}`) },
-            {
-              label: t("catalog.detail.precision"),
-              value:
-                product.quantityPrecision === 0
-                  ? t("catalog.detail.wholeNumbers")
-                  : t("catalog.detail.precisionValue", { count: product.quantityPrecision }),
-            },
-            {
-              label: t("catalog.detail.tracked"),
-              value: product.tracked ? t("common.yes") : t("common.no"),
-            },
-            {
-              label: t("catalog.detail.createdAt"),
-              numeric: true,
-              value: formatLocalizedDateTime(product.createdAt, locale, timeZone),
-            },
-            {
-              label: t("catalog.detail.updatedAt"),
-              numeric: true,
-              value: formatLocalizedDateTime(product.updatedAt, locale, timeZone),
-            },
-          ]}
-        />
-      </Section>
-
-      {movements ? (
-        <Section
-          actions={
-            movements.read === "ready" && movements.items.length > 0 ? (
-              <Link asChild href={stockHref(product.id)}>
-                <Button accessibilityRole="link" className="gap-1 px-1" size="sm" variant="ghost">
-                  <Text className="text-[13px] text-link">{t("catalog.detail.viewHistory")}</Text>
-                </Button>
-              </Link>
-            ) : undefined
-          }
-          description={t("catalog.detail.movementsDescription")}
-          title={t("catalog.detail.movementsTitle")}
-        >
-          <RecentMovements
-            detail={detail}
-            movements={movements}
-            onRetry={onRetryMovements}
-            recordAction={record}
-          />
-        </Section>
-      ) : null}
+        {movements ? (
+          <Section
+            actions={
+              movements.read === "ready" && movements.items.length > 0 ? (
+                <Link asChild href={stockHref(product.id)}>
+                  <Button accessibilityRole="link" className="gap-1 px-1" size="sm" variant="ghost">
+                    <Text className="text-dense text-link">{t("catalog.detail.viewHistory")}</Text>
+                  </Button>
+                </Link>
+              ) : undefined
+            }
+            description={t("catalog.detail.movementsDescription")}
+            title={t("catalog.detail.movementsTitle")}
+          >
+            <RecentMovements
+              detail={detail}
+              movements={movements}
+              onRetry={onRetryMovements}
+              recordAction={record}
+            />
+          </Section>
+        ) : null}
+      </DetailColumns>
 
       <ConfirmDialog
         confirmLabel={t("catalog.detail.archiveConfirm")}

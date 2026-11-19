@@ -7,7 +7,7 @@ import {
 export const ASSIGNABLE_ROLES: readonly AssignableBusinessRole[] = ["admin", "member"];
 
 type AddMemberField = "email" | "initialPassword" | "name" | "role";
-export type FieldProblem = "invalid" | "missing" | "tooLong" | "tooShort";
+type FieldProblem = "invalid" | "missing" | "tooLong" | "tooShort";
 export type AddMemberProblems = Partial<Record<AddMemberField, FieldProblem>>;
 
 export type AddMemberDraft = {

@@ -71,7 +71,7 @@ export function DictationExample({
           </Text>
         </View>
         <TranscriptHighlight
-          className="text-[17px] leading-8"
+          className="text-lg leading-8"
           spans={exampleSpans(text, fragments)}
           text={text}
           tone={inverse ? "inverse" : "default"}
@@ -81,7 +81,7 @@ export function DictationExample({
         className={cn("gap-0.5 rounded-xl bg-card px-4 py-3", !inverse && "border border-border")}
       >
         <View className="flex-row items-center justify-between gap-2 pb-1.5">
-          <Text className="font-ui text-[13px] text-card-foreground">
+          <Text className="font-ui text-dense text-card-foreground">
             {t("welcome.example.reviewTitle")}
           </Text>
           <Text className="text-xs text-muted-foreground">{t("welcome.example.unsaved")}</Text>
@@ -95,10 +95,10 @@ export function DictationExample({
             key={key}
           >
             <TranscriptMarker marker={index + 1} />
-            <Text className="w-28 text-[13px] text-muted-foreground">
+            <Text className="w-28 text-dense text-muted-foreground">
               {t(`welcome.example.rows.${key}.label`)}
             </Text>
-            <Text className="min-w-0 flex-1 font-ui text-[13px] text-card-foreground">
+            <Text className="min-w-0 flex-1 font-ui text-dense text-card-foreground">
               {t(`welcome.example.rows.${key}.value`)}
             </Text>
           </View>

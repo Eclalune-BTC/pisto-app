@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { FeatureBoundary, type FeatureRemoteState } from "@/components/feature-boundary";
 import { DescriptionList } from "@/components/layout/description-list";
+import { DetailColumns } from "@/components/layout/detail-columns";
 import { HeaderActions } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
@@ -22,7 +23,7 @@ import {
   cashMovementActionLabels,
 } from "./copy";
 
-export type CashArchiveState = {
+type CashArchiveState = {
   errorMessage?: string;
   onCancel: () => void;
   onConfirm: () => void;
@@ -66,6 +67,7 @@ export function CashAccountDetailScreen({
   const { t } = useTranslation();
   const active = account.status === "active";
   const negative = account.balanceMinorUnits.startsWith("-");
+  const holdsBalance = account.balanceMinorUnits !== "0";
   return (
     <Page>
       <PageHeader
@@ -120,83 +122,93 @@ export function CashAccountDetailScreen({
 
       {isStale ? <StaleNotice onRetry={onRetry} /> : null}
 
-      <StatGroup>
-        <Stat
-          detail={t("cash.accountDetail.balanceDetail")}
-          label={t("cash.accountDetail.balance")}
-          tone={negative ? "destructive" : "default"}
-          value={formatMoney(
-            account.balanceMinorUnits,
-            account.currency,
-            account.currencyMinorUnitDigits,
-          )}
-        />
-      </StatGroup>
-
-      <Section title={t("cash.accountDetail.detailsTitle")}>
-        <DescriptionList
-          items={[
-            { label: t("cash.accountDetail.kind"), value: cashAccountKindLabels(t)[account.kind] },
-            { label: t("cash.accountDetail.currency"), value: account.currency },
-            {
-              label: t("cash.accountDetail.negativePolicy"),
-              value: account.allowNegativeBalance
-                ? t("cash.accountDetail.negativeAllowed")
-                : t("cash.accountDetail.negativeProtected"),
-            },
-            {
-              label: t("cash.accountDetail.createdAt"),
-              numeric: true,
-              value: formatTimestamp(account.createdAt),
-            },
-            {
-              label: t("cash.accountDetail.updatedAt"),
-              numeric: true,
-              value: formatTimestamp(account.updatedAt),
-            },
-          ]}
-        />
-      </Section>
-
-      <Section
-        description={t("cash.movements.order")}
-        title={t("cash.accountDetail.movementsTitle")}
-      >
-        <FeatureBoundary
-          copy={{
-            ...cashBoundaryCopy(t),
-            unavailableTitle: t("cash.overview.movementsUnavailable"),
-          }}
-          inline
-          onRetry={onRetry}
-          state={movementsState}
-        >
-          <View className="min-w-0 gap-3">
-            <CashMovementList
-              actionLabels={cashMovementActionLabels(t)}
-              formatMoney={formatMoney}
-              formatOccurredAt={formatOccurredAt}
-              movements={movements}
-              noMovements={t("cash.accountDetail.noMovements")}
-              onOpenMovement={onOpenMovement}
+      <DetailColumns
+        aside={
+          <Section title={t("cash.accountDetail.detailsTitle")}>
+            <DescriptionList
+              layout="aside"
+              items={[
+                {
+                  label: t("cash.accountDetail.kind"),
+                  value: cashAccountKindLabels(t)[account.kind],
+                },
+                { label: t("cash.accountDetail.currency"), value: account.currency },
+                {
+                  label: t("cash.accountDetail.negativePolicy"),
+                  value: account.allowNegativeBalance
+                    ? t("cash.accountDetail.negativeAllowed")
+                    : t("cash.accountDetail.negativeProtected"),
+                },
+                {
+                  label: t("cash.accountDetail.createdAt"),
+                  numeric: true,
+                  value: formatTimestamp(account.createdAt),
+                },
+                {
+                  label: t("cash.accountDetail.updatedAt"),
+                  numeric: true,
+                  value: formatTimestamp(account.updatedAt),
+                },
+              ]}
             />
-            <LoadMoreButton page={movementsPage} />
-          </View>
-        </FeatureBoundary>
-      </Section>
-
+          </Section>
+        }
+      >
+        <StatGroup>
+          <Stat
+            detail={t("cash.accountDetail.balanceDetail")}
+            label={t("cash.accountDetail.balance")}
+            tone={negative ? "destructive" : "default"}
+            value={formatMoney(
+              account.balanceMinorUnits,
+              account.currency,
+              account.currencyMinorUnitDigits,
+            )}
+          />
+        </StatGroup>
+        <Section
+          description={t("cash.movements.order")}
+          title={t("cash.accountDetail.movementsTitle")}
+        >
+          <FeatureBoundary
+            copy={{
+              ...cashBoundaryCopy(t),
+              unavailableTitle: t("cash.overview.movementsUnavailable"),
+            }}
+            inline
+            onRetry={onRetry}
+            state={movementsState}
+          >
+            <View className="min-w-0 gap-3">
+              <CashMovementList
+                actionLabels={cashMovementActionLabels(t)}
+                formatMoney={formatMoney}
+                formatOccurredAt={formatOccurredAt}
+                movements={movements}
+                noMovements={t("cash.accountDetail.noMovements")}
+                onOpenMovement={onOpenMovement}
+              />
+              <LoadMoreButton page={movementsPage} />
+            </View>
+          </FeatureBoundary>
+        </Section>
+      </DetailColumns>
       <ConfirmDialog
         uncertainDescription={t("common.reviewUncertainDescription")}
         confirmLabel={t("cash.accountDetail.archive")}
-        description={t("cash.archive.description", {
-          balance: formatMoney(
-            account.balanceMinorUnits,
-            account.currency,
-            account.currencyMinorUnitDigits,
-          ),
-        })}
+        description={
+          holdsBalance
+            ? t("cash.archive.hasBalance", {
+                balance: formatMoney(
+                  account.balanceMinorUnits,
+                  account.currency,
+                  account.currencyMinorUnitDigits,
+                ),
+              })
+            : t("cash.archive.description")
+        }
         destructive
-        disabled={!canManage}
+        disabled={!canManage || holdsBalance}
         errorMessage={archive.errorMessage}
         onCancel={archive.onCancel}
         onConfirm={archive.onConfirm}

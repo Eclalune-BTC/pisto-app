@@ -10,7 +10,7 @@ export type SaleDraftValues = {
   description: string;
 };
 
-export type SaleDraftIssue =
+type SaleDraftIssue =
   | AmountParseError
   | "missing-amount"
   | "missing-date"

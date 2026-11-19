@@ -85,7 +85,7 @@ export function toSupplier(record: SupplierRecord): Supplier {
   };
 }
 
-export function toPurchaseLine(record: PurchaseLineRecord): PurchaseLine {
+function toPurchaseLine(record: PurchaseLineRecord): PurchaseLine {
   return {
     id: record.id,
     productId: record.productId,

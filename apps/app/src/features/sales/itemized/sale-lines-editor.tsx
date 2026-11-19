@@ -8,6 +8,7 @@ import { Text } from "@/components/ui/text";
 import { quantityText } from "@/features/catalog/format";
 import { requireSupportedLocale } from "@/i18n/locale";
 import { cn } from "@/lib/cn";
+import { EMPTY_VALUE } from "@/lib/empty-value";
 import { formatMinorUnits } from "@/lib/money";
 import { lineIssueMessage } from "./issue-copy";
 import {
@@ -118,13 +119,13 @@ export function SaleLinesEditor({
   const locale = requireSupportedLocale(i18n.resolvedLanguage);
   if (lines.length === 0) {
     return (
-      <Text className="rounded-md border border-dashed border-border px-3 py-6 text-center text-[13px] text-muted-foreground">
+      <Text className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-dense text-muted-foreground">
         {t("sales.itemized.noLines")}
       </Text>
     );
   }
   return (
-    <View className="min-w-0 overflow-hidden rounded-md border border-border bg-card">
+    <View className="min-w-0 overflow-hidden rounded-xl border border-border bg-card">
       {wide ? (
         <View
           aria-hidden
@@ -157,7 +158,7 @@ export function SaleLinesEditor({
         const quantityInvalid = Boolean(issue) && !priceInvalid;
         const subtotal =
           amounts.subtotalMinorUnits === null
-            ? "—"
+            ? EMPTY_VALUE
             : formatMinorUnits(amounts.subtotalMinorUnits, currency, currencyDigits, locale);
         const name = line.product.name;
         const price = (
@@ -231,7 +232,7 @@ export function SaleLinesEditor({
               </>
             )}
             {message ? (
-              <Text accessibilityRole="alert" className="text-[13px] leading-5 text-destructive">
+              <Text accessibilityRole="alert" className="text-dense text-destructive">
                 {message}
               </Text>
             ) : null}

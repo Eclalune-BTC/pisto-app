@@ -2,6 +2,7 @@ import type { Expense } from "@pisto/contracts";
 import { Ban } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
+import { DetailColumns } from "@/components/layout/detail-columns";
 import { HeaderActions } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { MutedValue } from "@/components/layout/review-values";
@@ -104,19 +105,24 @@ export function ExpenseDetailScreen({
         title={expense.description}
       />
       {isStale ? <StaleNotice onRetry={onRetry} /> : null}
-      <StatGroup>
-        <Stat
-          label={t("expenses.detail.amount")}
-          value={formatMoney(
-            expense.amountMinorUnits,
-            expense.currency,
-            expense.currencyMinorUnitDigits,
-          )}
-        />
-      </StatGroup>
-      <Section title={t("expenses.detail.detailsTitle")}>
-        <DescriptionList items={items} />
-      </Section>
+      <DetailColumns
+        aside={
+          <Section title={t("expenses.detail.detailsTitle")}>
+            <DescriptionList items={items} layout="aside" />
+          </Section>
+        }
+      >
+        <StatGroup>
+          <Stat
+            label={t("expenses.detail.amount")}
+            value={formatMoney(
+              expense.amountMinorUnits,
+              expense.currency,
+              expense.currencyMinorUnitDigits,
+            )}
+          />
+        </StatGroup>
+      </DetailColumns>
     </Page>
   );
 }

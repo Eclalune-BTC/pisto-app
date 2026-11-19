@@ -95,7 +95,7 @@ function RoleField({
   };
   return (
     <View className="min-w-0 gap-1.5">
-      <Label className="text-[13px]" nativeID={`${id}-label`}>
+      <Label className="text-dense" nativeID={`${id}-label`}>
         {t("settings.staff.role")}
       </Label>
       <RadioGroup
@@ -148,7 +148,7 @@ function RoleField({
         <Text
           accessibilityLiveRegion="polite"
           accessibilityRole="alert"
-          className="text-[13px] leading-5 text-destructive"
+          className="text-dense text-destructive"
           nativeID={`${id}-error`}
         >
           {error}

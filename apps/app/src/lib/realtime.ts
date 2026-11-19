@@ -13,7 +13,7 @@ const maxRetryMs = 30_000;
 // Several notices from one burst of writes become one refetch.
 const coalesceMs = 300;
 
-export function realtimeUrl(apiUrl: string): string {
+function realtimeUrl(apiUrl: string): string {
   return `${apiUrl.replace(/^http/, "ws")}/v1/realtime`;
 }
 

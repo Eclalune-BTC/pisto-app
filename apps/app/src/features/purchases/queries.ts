@@ -11,7 +11,7 @@ import { reportsQueryKeys } from "@/features/reports/queries";
 
 import { purchasesApi } from "./api";
 
-export const PURCHASES_PAGE_SIZE = 25;
+const PURCHASES_PAGE_SIZE = 25;
 
 export type SupplierListFilters = {
   balance: "all" | "outstanding";
@@ -25,7 +25,7 @@ export type PurchaseListFilters = {
   supplierId?: string;
 };
 
-export const purchaseQueryKeys = {
+const purchaseQueryKeys = {
   all: (businessId: string | undefined) => ["purchases", businessId] as const,
   suppliers: (businessId: string | undefined, filters: SupplierListFilters) =>
     [...purchaseQueryKeys.all(businessId), "suppliers", filters] as const,

@@ -1,21 +1,11 @@
 import type { ComponentProps } from "react";
 import { useWindowDimensions } from "react-native";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/cn";
 
 // RNR has no Sheet; the side panel reuses Dialog's focus trap, Escape handling and portal.
 const Sheet = Dialog;
-const SheetTrigger = DialogTrigger;
-const SheetClose = DialogClose;
 const SheetTitle = DialogTitle;
-const SheetDescription = DialogDescription;
 
 function SheetContent({
   className,
@@ -45,4 +35,4 @@ function SheetContent({
   );
 }
 
-export { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle, SheetTrigger };
+export { Sheet, SheetContent, SheetTitle };

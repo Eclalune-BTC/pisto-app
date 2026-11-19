@@ -8,7 +8,7 @@ import { Icon } from "@/components/ui/icon";
 import { Text, TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 
-const alertVariants = cva("relative w-full flex-row gap-2.5 rounded-lg border px-3 py-2.5", {
+const alertVariants = cva("relative w-full flex-row gap-2.5 rounded-xl border px-3.5 py-3", {
   variants: {
     variant: {
       default: "border-border bg-card",

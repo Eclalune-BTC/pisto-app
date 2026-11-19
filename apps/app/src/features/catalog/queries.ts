@@ -13,7 +13,7 @@ import { catalogApi } from "./api";
 
 export const CATALOG_PAGE_SIZE = 25;
 /** The server's largest page; choice lists read every category through it. */
-export const CATALOG_CHOICE_PAGE_SIZE = 50;
+const CATALOG_CHOICE_PAGE_SIZE = 50;
 
 export type CatalogStatusFilter = "active" | "archived" | "all";
 

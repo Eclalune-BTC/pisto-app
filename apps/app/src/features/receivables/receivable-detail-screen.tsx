@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
 import { type DescriptionItem, DescriptionList } from "@/components/layout/description-list";
+import { DetailColumns } from "@/components/layout/detail-columns";
 import { HeaderActions, type MenuTrigger } from "@/components/layout/header-actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
@@ -73,7 +74,7 @@ function paymentColumns(format: RecordFormat, t: TFunction): FittedColumn<Paymen
         meta: { primary: true },
         cell: ({ row: { original } }) => (
           <View className="min-w-0 flex-row flex-wrap items-center gap-1.5">
-            <Text className="text-[13px]">
+            <Text className="text-dense">
               {original.payment.kind === "reversal"
                 ? t("receivables.payments.reversal")
                 : t("receivables.payments.payment")}
@@ -93,7 +94,7 @@ function paymentColumns(format: RecordFormat, t: TFunction): FittedColumn<Paymen
         id: "occurred",
         header: t("dataTable.columns.date"),
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground tabular-nums" numberOfLines={1}>
+          <Text className="text-dense text-muted-foreground tabular-nums" numberOfLines={1}>
             {t("receivables.payments.occurredAt", {
               date: format.date(original.payment.occurredLocalDate),
               time: original.payment.occurredLocalTime,
@@ -126,7 +127,7 @@ function paymentColumns(format: RecordFormat, t: TFunction): FittedColumn<Paymen
           ) : (
             <Text
               accessibilityLabel={t("receivables.payments.noReference")}
-              className="text-[13px] text-muted-foreground"
+              className="text-dense text-muted-foreground"
             >
               —
             </Text>
@@ -262,94 +263,99 @@ export function ReceivableDetailScreen({
       />
       {state.stale ? <StaleNotice onRetry={onRetry} /> : null}
       {notice}
-      <StatGroup>
-        <Stat
-          detail={t("receivables.detail.postedOn", { date: format.date(receivable.postedDate) })}
-          label={t("receivables.detail.amount")}
-          value={money(receivable.originalMinorUnits)}
-        />
-        <Stat label={t("receivables.detail.paid")} value={money(receivable.paidMinorUnits)} />
-        <Stat
-          detail={outstandingDetail(
-            t,
-            receivable.state,
-            receivable.dueDate ? format.date(receivable.dueDate) : undefined,
-          )}
-          label={t("receivables.detail.outstanding")}
-          tone={
-            receivable.state === "overdue" && isPositiveAmount(receivable.outstandingMinorUnits)
-              ? "destructive"
-              : "default"
-          }
-          value={money(receivable.outstandingMinorUnits)}
-        />
-      </StatGroup>
-      <Section title={t("receivables.detail.facts")}>
-        <DescriptionList items={facts} />
-      </Section>
-      <Section
-        description={t("receivables.payments.description")}
-        title={t("receivables.payments.title")}
+      <DetailColumns
+        aside={
+          <Section title={t("receivables.detail.facts")}>
+            <DescriptionList layout="aside" items={facts} />
+          </Section>
+        }
       >
-        {payments.length === 0 ? (
-          <EmptyState
-            action={
-              payable ? (
-                <Link asChild href={paymentHref}>
-                  <Button accessibilityRole="link" size="sm" variant="outline">
-                    <Text>{t("receivables.detail.applyPayment")}</Text>
-                  </Button>
-                </Link>
-              ) : undefined
-            }
-            description={
-              receivable.state === "voided"
-                ? t("receivables.payments.emptyVoided")
-                : t("receivables.payments.emptyDescription")
-            }
-            icon={Banknote}
-            title={t("receivables.payments.emptyTitle")}
+        <StatGroup>
+          <Stat
+            detail={t("receivables.detail.postedOn", { date: format.date(receivable.postedDate) })}
+            label={t("receivables.detail.amount")}
+            value={money(receivable.originalMinorUnits)}
           />
-        ) : (
-          <View className="min-w-0" onLayout={onLayout}>
-            <DataTable
-              caption={t("receivables.payments.title")}
-              columns={fitColumns(
-                paymentColumns(format, t),
-                width - (canManage ? ACTIONS_COLUMN_WIDTH : 0),
-                rendersCompactRecords(width),
-              )}
-              data={payments.map((payment) => ({
-                account: accountNameFor(payment.cashAccountId),
-                payment,
-                reversed: isReversed(payment, payments),
-              }))}
-              getRowId={({ payment }) => payment.id}
-              rowActions={
-                canManage
-                  ? (row) =>
-                      reversible(row) ? (
-                        <RowActions
-                          actions={[
-                            {
-                              destructive: true,
-                              icon: Undo2,
-                              label: t("receivables.payments.reverse"),
-                              onPress: () => onReversePayment(row.payment.id),
-                            },
-                          ]}
-                          label={t("receivables.payments.actions")}
-                        />
-                      ) : (
-                        // Every row keeps the action slot so heights and amounts stay aligned.
-                        <View aria-hidden className="h-8 w-8 native:h-10 native:w-10" />
-                      )
-                  : undefined
+          <Stat label={t("receivables.detail.paid")} value={money(receivable.paidMinorUnits)} />
+          <Stat
+            detail={outstandingDetail(
+              t,
+              receivable.state,
+              receivable.dueDate ? format.date(receivable.dueDate) : undefined,
+            )}
+            label={t("receivables.detail.outstanding")}
+            tone={
+              receivable.state === "overdue" && isPositiveAmount(receivable.outstandingMinorUnits)
+                ? "destructive"
+                : "default"
+            }
+            value={money(receivable.outstandingMinorUnits)}
+          />
+        </StatGroup>
+        <Section
+          description={t("receivables.payments.description")}
+          title={t("receivables.payments.title")}
+        >
+          {payments.length === 0 ? (
+            <EmptyState
+              action={
+                payable ? (
+                  <Link asChild href={paymentHref}>
+                    <Button accessibilityRole="link" size="sm" variant="outline">
+                      <Text>{t("receivables.detail.applyPayment")}</Text>
+                    </Button>
+                  </Link>
+                ) : undefined
               }
+              description={
+                receivable.state === "voided"
+                  ? t("receivables.payments.emptyVoided")
+                  : t("receivables.payments.emptyDescription")
+              }
+              icon={Banknote}
+              title={t("receivables.payments.emptyTitle")}
             />
-          </View>
-        )}
-      </Section>
+          ) : (
+            <View className="min-w-0" onLayout={onLayout}>
+              <DataTable
+                caption={t("receivables.payments.title")}
+                columns={fitColumns(
+                  paymentColumns(format, t),
+                  width - (canManage ? ACTIONS_COLUMN_WIDTH : 0),
+                  rendersCompactRecords(width),
+                )}
+                data={payments.map((payment) => ({
+                  account: accountNameFor(payment.cashAccountId),
+                  payment,
+                  reversed: isReversed(payment, payments),
+                }))}
+                getRowId={({ payment }) => payment.id}
+                rowActions={
+                  canManage
+                    ? (row) =>
+                        reversible(row) ? (
+                          <RowActions
+                            actions={[
+                              {
+                                destructive: true,
+                                icon: Undo2,
+                                label: t("receivables.payments.reverse"),
+                                onPress: () => onReversePayment(row.payment.id),
+                              },
+                            ]}
+                            label={t("receivables.payments.actions")}
+                          />
+                        ) : (
+                          // Every row keeps the action slot so heights and amounts stay aligned.
+                          <View aria-hidden className="h-8 w-8 native:h-10 native:w-10" />
+                        )
+                    : undefined
+                }
+              />
+            </View>
+          )}
+        </Section>
+      </DetailColumns>
     </Page>
   );
 }

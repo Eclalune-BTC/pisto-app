@@ -2,7 +2,7 @@ import type { Movement, MovementList } from "@pisto/contracts";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeftRight, TriangleAlert } from "lucide-react-native";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { PageHeader } from "@/components/layout/page-header";
@@ -52,17 +52,15 @@ import { movementsInfiniteOptions } from "./queries";
 
 const TABLE_MIN_WIDTH = 720;
 
-/** The period's figures; the period control sits in the same strip, as in the prototype. */
+/** The period's figures in one strip; the period itself is chosen beside the page title. */
 function Totals({
   format,
   list,
   loading,
-  range,
 }: {
   format: MovementRowFormat;
   list: MovementList | undefined;
   loading: boolean;
-  range: ReactNode;
 }) {
   const { t } = useTranslation();
   return (
@@ -74,15 +72,12 @@ function Totals({
       {list ? (
         <TotalFigures format={format} list={list} />
       ) : loading ? (
-        <View aria-hidden className="min-w-[260px] flex-[3] flex-row gap-4 bg-card px-5 py-4">
+        <View aria-hidden className="min-w-[260px] flex-1 flex-row gap-4 bg-card px-5 py-4">
           <Skeleton className="h-12 flex-1" />
           <Skeleton className="h-12 flex-1" />
           <Skeleton className="h-12 flex-1" />
         </View>
       ) : null}
-      <View className="shrink-0 grow basis-auto items-start justify-center bg-card px-4 py-3 lg:items-end">
-        {range}
-      </View>
     </View>
   );
 }
@@ -121,7 +116,7 @@ function TotalFigures({ format, list }: { format: MovementRowFormat; list: Movem
           <Text className="text-xs leading-4 text-muted-foreground">{figure.label}</Text>
           <Text
             className={cn(
-              "font-heading text-[20px] leading-7 tracking-[-0.4px] tabular-nums sm:text-[26px] sm:leading-8 sm:tracking-[-0.6px]",
+              "font-heading text-title-lg tabular-nums sm:text-heading",
               figure.className,
             )}
           >
@@ -169,13 +164,13 @@ function WideRow({ format, movement }: { format: MovementRowFormat; movement: Mo
   return (
     <MovementLink label={movementAccessibilityLabel(t, movement, format)} movement={movement}>
       <View className="min-h-[52px] flex-row items-center gap-4 border-b border-border px-4 py-2">
-        <Text className="w-12 text-[13px] text-muted-foreground tabular-nums">
+        <Text className="w-12 text-dense text-muted-foreground tabular-nums">
           {movement.occurredLocalTime}
         </Text>
         <View className="min-w-0 flex-1 flex-row items-center gap-3">
           <MovementIcon movement={movement} />
           <View className="min-w-0 flex-1">
-            <Text className="font-ui text-[13px] leading-5" numberOfLines={1}>
+            <Text className="font-ui text-dense" numberOfLines={1}>
               {movementTitle(t, movement)}
             </Text>
             {subtitle ? (
@@ -185,13 +180,13 @@ function WideRow({ format, movement }: { format: MovementRowFormat; movement: Mo
             ) : null}
           </View>
         </View>
-        <Text className="w-24 text-[13px]" numberOfLines={1}>
+        <Text className="w-24 text-dense" numberOfLines={1}>
           {movementKindLabel(t, movement.kind)}
         </Text>
         <View className="w-24">
           <EntrySourceTag movement={movement} />
         </View>
-        <Text className="w-32 text-[13px] text-muted-foreground" numberOfLines={1}>
+        <Text className="w-32 text-dense text-muted-foreground" numberOfLines={1}>
           {movement.accountName ?? t("movements.noAccount")}
         </Text>
         <View className="w-28 items-end">
@@ -210,7 +205,7 @@ function LedgerSkeleton() {
           className="h-[52px] flex-row items-center gap-4 border-b border-border px-4"
           key={index}
         >
-          <Skeleton className="size-8 rounded-full" />
+          <Skeleton className="size-8 rounded-lg" />
           <Skeleton className="h-3 flex-1" />
           <Skeleton className="h-3 w-20" />
         </View>
@@ -273,13 +268,8 @@ export default function MovementsScreen() {
 
   return (
     <Page>
-      <PageHeader description={t("movements.description")} title={t("movements.title")} />
-
-      <Totals
-        format={format}
-        list={first}
-        loading={list.isPending}
-        range={
+      <PageHeader
+        actions={
           <FilterBar<MovementRange>
             label={t("movements.filters.range")}
             onChange={(range) => update({ range })}
@@ -290,7 +280,11 @@ export default function MovementsScreen() {
             value={params.range}
           />
         }
+        description={t("movements.description")}
+        title={t("movements.title")}
       />
+
+      <Totals format={format} list={first} loading={list.isPending} />
 
       <View className="gap-3" onLayout={ledger.onLayout}>
         <View className="flex-row flex-wrap items-center gap-2">
@@ -378,7 +372,7 @@ export default function MovementsScreen() {
             {wide ? (
               <View
                 aria-hidden
-                className="h-9 flex-row items-center gap-4 border-b border-border px-4"
+                className="h-[38px] flex-row items-center gap-4 border-b border-border bg-muted px-4"
               >
                 {(
                   [
@@ -390,7 +384,10 @@ export default function MovementsScreen() {
                     ["amount", "w-28 text-right"],
                   ] as const
                 ).map(([column, className]) => (
-                  <Text className={cn("text-xs text-muted-foreground", className)} key={column}>
+                  <Text
+                    className={cn("font-ui text-xs text-muted-foreground", className)}
+                    key={column}
+                  >
                     {t(`movements.columns.${column}`)}
                   </Text>
                 ))}

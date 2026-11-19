@@ -176,7 +176,7 @@ function ActionField({
   };
   return (
     <View className="min-w-0 gap-1.5">
-      <Text className="font-ui text-[13px] leading-5" nativeID={`${id}-label`}>
+      <Text className="font-ui text-dense" nativeID={`${id}-label`}>
         {t("inventory.movementEditor.actionLabel")}
       </Text>
       <RadioGroup
@@ -207,7 +207,7 @@ function ActionField({
                 {t(`inventory.movementActions.${action}`)}
               </Label>
               <Text
-                className="text-[13px] leading-5 text-muted-foreground"
+                className="text-dense text-muted-foreground"
                 nativeID={`${id}-${action}-description`}
               >
                 {t(`inventory.movementEditor.actionDescriptions.${action}`)}

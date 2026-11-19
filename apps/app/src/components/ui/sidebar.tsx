@@ -76,11 +76,12 @@ export function SidebarLink({
         accessibilityState={{ selected: active }}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "h-9 w-full justify-start gap-3 rounded-md px-2.5 web:pointer-coarse:min-h-10",
+          "h-9 w-full justify-start gap-3 rounded-md border px-2.5 web:pointer-coarse:min-h-10",
           collapsed && "justify-center px-0",
+          // The current page is a card on the grey rail; the rest stay flat until hovered.
           active
-            ? "bg-sidebar-accent web:hover:bg-sidebar-accent"
-            : "web:hover:bg-sidebar-accent/60",
+            ? "border-sidebar-border bg-card web:hover:bg-card"
+            : "border-transparent web:hover:bg-sidebar-accent",
         )}
         onPress={onNavigate}
         size="sm"
@@ -88,14 +89,14 @@ export function SidebarLink({
       >
         <Icon
           as={icon}
-          className={active ? "text-sidebar-accent-foreground" : "text-muted-foreground"}
+          className={active ? "text-primary" : "text-muted-foreground"}
           size={17}
           strokeWidth={active ? 2 : 1.6}
         />
         {collapsed ? null : (
           <Text
             className={cn(
-              "min-w-0 shrink text-left text-[14px]",
+              "min-w-0 shrink text-left text-sm",
               active
                 ? "font-ui text-sidebar-accent-foreground"
                 : "font-sans text-sidebar-foreground",

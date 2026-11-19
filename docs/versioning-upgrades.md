@@ -12,7 +12,7 @@ not establish the latest upstream releases or a passing current audit.
 | Node.js for Expo tools | Repository range `>=24.19.0 <25`, pin 24.19.0; Expo floor 22.13.x | Follow `engines`, `.node-version`, Node LTS, and Expo matrix |
 | Expo | 57.x | Upgrade one SDK at a time with Expo tooling |
 | EAS CLI contract | `>=22.2.0` in `apps/app/eas.json` | Recheck build-profile schema and remote version behavior |
-| React Native / React / RN Web | 0.86 / 19.2.3 / 0.21 | Keep Expo-supported matrix together |
+| React Native / React / RN Web | 0.86 / 19.2.3 / exactly 0.21.2 | Keep Expo-supported matrix together; RN Web moves only with the Uniwind check below |
 | Elysia / CORS / runtime TypeBox peer | 1.4.30 / `@elysiajs/cors` 1.4.2 / `@sinclair/typebox` 0.34.52 | Exact pins; review lifecycle/Standard Schema compatibility; Elysia 2 remains beta |
 | PostgreSQL | 18; resolve the deployed image patch explicitly | Test migrations and backups before major upgrade |
 | Drizzle ORM / Kit | 0.45.2 / 0.31.10 | Review generated SQL and release notes |
@@ -25,6 +25,14 @@ The repository retains TypeScript 6.0.3 and the Expo-managed version family. Ups
 compatibility can change; run the upgrade audit when work is scoped rather than treating a historical
 registry snapshot as a current constraint. Follow the current compatibility workflow in
 [the frontend guide](frontend-expo-ui.md#dependency-checks).
+
+React Native Web is pinned to exactly 0.21.2 in `apps/app/package.json`. From 0.21.3 its package
+index exports `InputAccessoryView`, and Uniwind 1.12.1's web wrapper for that component reads the
+export from the same index while Metro is still evaluating it. The exported web bundle then stops at
+startup with `Cannot read properties of undefined (reading 'default')` and renders nothing.
+Typecheck, unit tests and `expo export` all pass with the broken pair; only loading the exported
+page or running the Playwright suite shows it. Raise this pin together with a Uniwind release that
+no longer reads the index, and load the exported page before committing the lockfile.
 
 ## Dependency policy
 

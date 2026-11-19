@@ -18,11 +18,14 @@ import { MoneyFigure } from "./money-figure";
 /** "Por cobrar": the open balance and the customers who owe the most, overdue first. */
 export function DebtorsCard({
   canOpenCustomers,
+  className,
   debtors,
   locale,
   summary,
 }: {
   canOpenCustomers: boolean;
+  /** How the card sits in its row. */
+  className?: string;
   debtors: UseQueryResult<Debtors>;
   locale: string;
   summary: UseQueryResult<ReceivablesSummary>;
@@ -30,11 +33,11 @@ export function DebtorsCard({
   const { t } = useTranslation();
   const header = (
     <View className="flex-row items-center justify-between gap-2">
-      <Text accessibilityRole="header" aria-level={2} className="font-heading text-[15px]">
+      <Text accessibilityRole="header" aria-level={2} className="font-heading text-title">
         {t("operate.home.debtors.title")}
       </Text>
       <Link asChild href="/operate/receivables">
-        <Button accessibilityRole="link" className="h-7 px-1.5" size="sm" variant="ghost">
+        <Button accessibilityRole="link" className="-mr-1.5 h-7 px-1.5" size="sm" variant="ghost">
           <Text className="text-xs text-muted-foreground">{t("operate.home.debtors.all")}</Text>
         </Button>
       </Link>
@@ -44,12 +47,12 @@ export function DebtorsCard({
   const failed = (debtors.isError && !debtors.data) || (summary.isError && !summary.data);
   if (failed) {
     return (
-      <View className="gap-3 rounded-xl border border-border bg-card p-4">
+      <View className={cn("gap-3 rounded-xl border border-border bg-card p-4", className)}>
         {header}
         <View className="items-start gap-2">
           <View className="flex-row items-center gap-2">
             <Icon as={TriangleAlert} className="text-muted-foreground" size={16} />
-            <Text className="text-[13px]">{t("operate.home.debtors.unavailableTitle")}</Text>
+            <Text className="text-dense">{t("operate.home.debtors.unavailableTitle")}</Text>
           </View>
           <Button
             label={t("common.retry")}
@@ -66,7 +69,10 @@ export function DebtorsCard({
   }
   if (!debtors.data || !summary.data) {
     return (
-      <View aria-hidden className="gap-3 rounded-xl border border-border bg-card p-4">
+      <View
+        aria-hidden
+        className={cn("gap-3 rounded-xl border border-border bg-card p-4", className)}
+      >
         {header}
         <Skeleton className="h-8 w-40" />
         {[0, 1, 2].map((index) => (
@@ -85,14 +91,14 @@ export function DebtorsCard({
   return (
     <View
       accessibilityLabel={t("operate.home.debtors.title")}
-      className="gap-3 rounded-xl border border-border bg-card p-4"
+      className={cn("gap-3 rounded-xl border border-border bg-card p-4", className)}
       role="region"
     >
       {header}
       {list.items.length === 0 ? (
         <View className="items-start gap-1 py-2">
           <Icon as={HandCoins} className="text-muted-foreground" size={16} />
-          <Text className="font-ui text-[13px]">{t("operate.home.debtors.emptyTitle")}</Text>
+          <Text className="font-ui text-dense">{t("operate.home.debtors.emptyTitle")}</Text>
           <Text className="text-xs leading-4 text-muted-foreground">
             {t("operate.home.debtors.emptyDescription")}
           </Text>
@@ -101,9 +107,9 @@ export function DebtorsCard({
         <>
           <View className="gap-0.5">
             <MoneyFigure
-              className="text-[28px] leading-9 tracking-[-0.8px]"
+              className="text-figure-lg"
               currency={totals.currency}
-              fractionClassName="text-[17px] text-muted-foreground"
+              fractionClassName="text-lg text-muted-foreground"
               fractionDigits={totals.currencyMinorUnitDigits}
               locale={locale}
               minorUnits={totals.outstandingMinorUnits}
@@ -111,7 +117,7 @@ export function DebtorsCard({
             <Text
               className={cn(
                 "text-xs leading-4",
-                overdue ? "text-warning-foreground" : "text-muted-foreground",
+                overdue ? "text-destructive" : "text-muted-foreground",
               )}
             >
               {overdue
@@ -140,27 +146,25 @@ export function DebtorsCard({
                   key={debtor.customerId}
                 >
                   <View className="size-8 items-center justify-center rounded-full bg-muted">
-                    <Text className="font-ui text-[11px] text-muted-foreground">
+                    <Text className="font-ui text-micro text-muted-foreground">
                       {initialsOf(debtor.customerName)}
                     </Text>
                   </View>
                   <View className="min-w-0 flex-1">
-                    <Text className="font-ui text-[13px] leading-5" numberOfLines={1}>
+                    <Text className="font-ui text-dense" numberOfLines={1}>
                       {debtor.customerName}
                     </Text>
                     <Text
                       className={cn(
                         "text-xs leading-4",
-                        debtor.overdueSinceLocalDate
-                          ? "text-warning-foreground"
-                          : "text-muted-foreground",
+                        debtor.overdueSinceLocalDate ? "text-destructive" : "text-muted-foreground",
                       )}
                       numberOfLines={1}
                     >
                       {due}
                     </Text>
                   </View>
-                  <Text className="font-ui text-[13px] tabular-nums">
+                  <Text className="font-ui text-dense tabular-nums">
                     {money(debtor.outstandingMinorUnits)}
                   </Text>
                 </View>

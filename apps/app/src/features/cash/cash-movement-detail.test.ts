@@ -41,6 +41,11 @@ vi.mock("react", async (importOriginal) => ({
       },
     ];
   },
+  useRef: (initial: unknown) => {
+    const index = fixture.index++;
+    fixture.states[index] ??= { current: initial };
+    return fixture.states[index];
+  },
 }));
 vi.mock("@tanstack/react-query", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-query")>()),

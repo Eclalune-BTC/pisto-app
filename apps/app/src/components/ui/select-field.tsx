@@ -48,11 +48,19 @@ export function SelectField<T extends string>({
       : (placeholder ?? t("filters.selectOption"));
   return (
     <View className="min-w-0 gap-1.5">
-      <FieldLabel marker={labelHidden ? null : marker}>
-        <Label className={cn("text-[13px]", labelHidden && "sr-only")} htmlFor={id}>
-          {label}
-        </Label>
-      </FieldLabel>
+      {labelHidden ? (
+        // Out of flow as a whole: a hidden label that kept its row would still take the gap and
+        // push the trigger below the controls beside it.
+        <View className="sr-only">
+          <Label htmlFor={id}>{label}</Label>
+        </View>
+      ) : (
+        <FieldLabel marker={marker}>
+          <Label className="text-dense" htmlFor={id}>
+            {label}
+          </Label>
+        </FieldLabel>
+      )}
       <Select
         value={primitiveValue}
         onValueChange={(option) => {
@@ -106,7 +114,7 @@ export function SelectField<T extends string>({
           accessibilityLiveRegion="polite"
           accessibilityRole="alert"
           nativeID={`${id}-error`}
-          className="text-[13px] leading-5 text-destructive"
+          className="text-dense text-destructive"
         >
           {message}
         </Text>

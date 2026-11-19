@@ -25,7 +25,7 @@ import { Text } from "@/components/ui/text";
 type NewRecordId = "sale" | "purchase" | "expense" | "receivablePayment" | "supplierPayment";
 
 /** The prototype's "¿Qué quiere registrar?" (figure 11), each behind its write permission. */
-export const NEW_RECORD_ENTRIES: readonly {
+const NEW_RECORD_ENTRIES: readonly {
   href: Href;
   icon: LucideIcon;
   id: NewRecordId;
@@ -81,12 +81,12 @@ export function NewRecordMenu({
           variant="outline"
         >
           <Icon as={Plus} className="text-foreground" size={16} />
-          {compact ? null : <Text className="text-[13px]">{t("shell.newRecord.trigger")}</Text>}
+          {compact ? null : <Text className="text-dense">{t("shell.newRecord.trigger")}</Text>}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72" sideOffset={6}>
         <DropdownMenuLabel>
-          <Text className="font-ui text-[13px] text-foreground">{t("shell.newRecord.title")}</Text>
+          <Text className="font-ui text-dense text-foreground">{t("shell.newRecord.title")}</Text>
         </DropdownMenuLabel>
         {entries.map((entry) => (
           <DropdownMenuItem
@@ -98,9 +98,7 @@ export function NewRecordMenu({
               <Icon as={entry.icon} className="text-muted-foreground" size={16} />
             </View>
             <View className="min-w-0 flex-1 gap-0.5">
-              <Text className="text-[13px] leading-4">
-                {t(`shell.newRecord.${entry.id}.title`)}
-              </Text>
+              <Text className="text-dense leading-4">{t(`shell.newRecord.${entry.id}.title`)}</Text>
               <Text className="text-xs leading-4 text-muted-foreground">
                 {t(`shell.newRecord.${entry.id}.description`)}
               </Text>

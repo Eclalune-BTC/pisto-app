@@ -57,7 +57,7 @@ export function SalesHistory({
         header: t("sales.fields.moment"),
         meta: { primary: true },
         cell: ({ row: { original } }) => (
-          <Text className="min-w-32 text-[13px] tabular-nums" numberOfLines={1}>
+          <Text className="min-w-32 text-dense tabular-nums" numberOfLines={1}>
             {formatLocalizedDateTime(original.occurredAt, locale, original.timeZone)}
           </Text>
         ),
@@ -74,8 +74,8 @@ export function SalesHistory({
               : original.description;
           if (!primary) {
             return (
-              <Text className="text-[13px]">
-                <Text aria-hidden className="text-[13px] text-muted-foreground">
+              <Text className="text-dense">
+                <Text aria-hidden className="text-dense text-muted-foreground">
                   —
                 </Text>
                 <Text className="sr-only">{t("common.noDescription")}</Text>
@@ -83,10 +83,10 @@ export function SalesHistory({
             );
           }
           return (
-            <Text className="text-[13px]" numberOfLines={2}>
+            <Text className="text-dense" numberOfLines={2}>
               {primary}
               {original.entryMode === "itemized" && original.description ? (
-                <Text className="text-[13px] text-muted-foreground">
+                <Text className="text-dense text-muted-foreground">
                   {" · "}
                   {original.description}
                 </Text>
@@ -100,7 +100,7 @@ export function SalesHistory({
         header: t("sales.list.source"),
         meta: { hideOnCompact: true },
         cell: ({ row: { original } }) => (
-          <Text className="text-[13px] text-muted-foreground" numberOfLines={1}>
+          <Text className="text-dense text-muted-foreground" numberOfLines={1}>
             {t(`sales.sources.${original.entrySource}`)}
           </Text>
         ),
@@ -121,7 +121,7 @@ export function SalesHistory({
         cell: ({ row: { original } }) => (
           <Text
             className={cn(
-              "min-w-24 text-right font-ui text-[13px] tabular-nums",
+              "min-w-24 text-right font-ui text-dense tabular-nums",
               original.status === "voided" && "text-muted-foreground line-through",
             )}
           >

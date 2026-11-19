@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Text } from "@/components/ui/text";
 
-export type ChoiceOption<T extends string> = { label: string; value: T };
+type ChoiceOption<T extends string> = { label: string; value: T };
 
 type ChoiceListProps<T extends string> = {
   label: string;

@@ -1,11 +1,7 @@
 // React Native Reusables / Uniwind. MIT attribution: licenses/react-native-reusables.txt.
 
-import * as TogglePrimitive from "@rn-primitives/toggle";
-import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
+import { cva } from "class-variance-authority";
 import { Platform } from "react-native";
-import { Icon } from "@/components/ui/icon";
-import { TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 
 const toggleVariants = cva(
@@ -39,38 +35,4 @@ const toggleVariants = cva(
   },
 );
 
-function Toggle({
-  className,
-  variant,
-  size,
-  ...props
-}: React.ComponentProps<typeof TogglePrimitive.Root> & VariantProps<typeof toggleVariants>) {
-  return (
-    <TextClassContext.Provider
-      value={cn(
-        "text-sm text-foreground font-ui",
-        props.pressed
-          ? "text-accent-foreground"
-          : Platform.select({ web: "group-hover:text-muted-foreground" }),
-        className,
-      )}
-    >
-      <TogglePrimitive.Root
-        className={cn(
-          toggleVariants({ variant, size }),
-          props.disabled && "opacity-50",
-          props.pressed && "bg-accent",
-          className,
-        )}
-        {...props}
-      />
-    </TextClassContext.Provider>
-  );
-}
-
-function ToggleIcon({ className, ...props }: React.ComponentProps<typeof Icon>) {
-  const textClass = React.useContext(TextClassContext);
-  return <Icon className={cn("size-4 shrink-0", textClass, className)} {...props} />;
-}
-
-export { Toggle, ToggleIcon, toggleVariants };
+export { toggleVariants };
