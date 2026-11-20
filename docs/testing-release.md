@@ -57,6 +57,62 @@ digest/build IDs.
 | Native purchase acceptance | Real store sandbox purchase/restore lifecycle | Physical iOS/Android development/preview build |
 | Deployment smoke | Container contract, DB connection, secrets, IAM, health, rollback | Isolated candidate on a separately approved host |
 
+## Concurrency and requirement traceability
+
+Row locks (`SELECT ... FOR UPDATE`) and per-command idempotency keys guard every shared resource.
+These PostgreSQL integration tests prove it:
+
+| Test | File | Shared resource and outcome |
+| --- | --- | --- |
+| serializes outbound stock, preserves exact precision, and reverses once | `catalog.integration.ts` | Two simultaneous outbound movements: one commits, one is refused, stock never goes negative |
+| refuses a sale beyond tracked stock and leaves stock, cash and debts unchanged | `itemized-sales.integration.ts` | A sale above stock writes nothing |
+| serializes payments, replays exactly, derives overdue locally, and reverses once | `receivables.integration.ts` | Simultaneous payments apply in order; a retry is not a second payment |
+| serializes payments and reversals on separate charges sharing one cash account | `data-hardening.integration.ts` | The shared cash balance stays exact |
+| serializes sales and cash sharing a command key without reversing lock order | `data-hardening.integration.ts` | One key, one effect, no deadlock |
+| keeps customer identity and balance in one snapshot across a concurrent commit | `data-hardening.integration.ts` | Reads never mix states |
+| concurrent adds of one email create one membership | `business-members.integration.ts` | One membership per email |
+| double confirmation commits exactly once and the lost result remains recoverable | `sale-review.integration.ts` | One sale per review |
+| concurrent cancel and confirm have one truthful serialized outcome | `sale-review.integration.ts` | One outcome per review |
+
+Run only these with the local database:
+
+```sh
+cd packages/db
+bun --env-file=../../.env test ./integration/catalog.integration.ts \
+  ./integration/data-hardening.integration.ts ./integration/receivables.integration.ts \
+  ./integration/business-members.integration.ts ./integration/sale-review.integration.ts \
+  ./integration/itemized-sales.integration.ts \
+  --test-name-pattern "concurrent|serializ|beyond tracked stock|double confirmation"
+```
+
+Each backlog requirement maps to the suites that verify it (API unit tests in `apps/api/test`,
+integration in `packages/db/integration`, browser flows in `e2e`, folders of the
+[Postman collection](postman/README.md)):
+
+| Requirement | Verification |
+| --- | --- |
+| HU-01 Business registration | `product.integration.ts`; Postman 02 |
+| HU-02 Staff and roles | `members.test.ts`; `business-members.integration.ts`; `seller.spec.ts`; Postman 15 |
+| HU-03 Products | `catalog.test.ts`; `catalog.integration.ts`; Postman 03 |
+| HU-04 Dictated or typed records | `assistant.test.ts`, `packages/assistant`; `assistant.spec.ts`, `owner.spec.ts`; Postman 14 |
+| HU-05 Inventory | `catalog.integration.ts`; `owner.spec.ts`; Postman 04 |
+| HU-06 Transfers between warehouses | Not in the MVP: one stock per product |
+| HU-07 Sales | `sales.test.ts`, `sale-line-amounts.test.ts`; `itemized-sales.integration.ts`, `sale-review.integration.ts`; `owner.spec.ts`; Postman 07 and 11 |
+| HU-08 Sale payments | `itemized-sales.integration.ts`, `ledger.integration.ts`; Postman 05 and 11 |
+| HU-09 Credit sales | `itemized-sales.integration.ts`; Postman 08 |
+| HU-10 Sale corrections and voids | `app.test.ts`; `itemized-sales.integration.ts`, `product.integration.ts`; Postman 07 |
+| HU-11 Suppliers | `purchases.integration.ts`; Postman 12 |
+| HU-12 Purchases | `purchases.test.ts`; `purchases.integration.ts`; `owner.spec.ts`; Postman 12 |
+| HU-13 Accounts payable | `purchases.integration.ts`; Postman 12 |
+| HU-14 Accounts receivable | `receivables.test.ts`; `receivables.integration.ts`, `data-hardening.integration.ts`; Postman 08 |
+| HU-15 History and balance aging | `receivables.integration.ts`, `ledger.integration.ts`; `reports.test.ts` |
+| SEG-01 Role permissions | `app.test.ts`, `members.test.ts`; every integration suite; `seller.spec.ts`; Postman 16 |
+| SEG-02 Uniform errors without internals | `app.test.ts`, `logging.test.ts`; Postman 16 |
+| SEG-03 Server-side input validation | `packages/contracts` tests, `app.test.ts`; Postman 16 |
+| SEG-04 Password hashing and secrets in the environment | `env.test.ts`, `staff-accounts.test.ts`, `config.test.ts` |
+| SEG-05 Concurrent access to a limited resource | The concurrency table above |
+| SEG-06 Tenant isolation | `itemized-sales`, `product`, `reports` and `ledger` integration suites |
+
 ## Product UI acceptance gate when introduced
 
 Material shell, route, or feature UI changes require evidence for:
